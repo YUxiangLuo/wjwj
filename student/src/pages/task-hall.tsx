@@ -131,12 +131,12 @@ export function TaskHallPage() {
                                 )}
                                 {task.status === 'submitted' && (
                                     <Button variant="outline" asChild className="flex-1">
-                                        <Link to={`/topic/${task.id}`}>查看提交</Link>
+                                        <Link to={`/experiment/${task.id}/preview`}>查看提交</Link>
                                     </Button>
                                 )}
                                 {task.status === 'graded' && (
                                     <Button variant="outline" asChild className="flex-1">
-                                        <Link to={`/topic/${task.id}`}>查看成绩</Link>
+                                        <Link to={`/topic/${task.id}/score`}>查看成绩</Link>
                                     </Button>
                                 )}
                                 <Button variant="ghost" size="icon">
