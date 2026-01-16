@@ -1,0 +1,8 @@
+export { DashboardPage } from './dashboard'
+export { ClassesPage } from './classes'
+export { StudentsPage } from './students'
+export { TopicsPage } from './topics'
+export { TasksPage } from './tasks'
+export { GradingPage } from './grading'
+export { AssistantsPage } from './assistants'
+export { ExportPage } from './export'
