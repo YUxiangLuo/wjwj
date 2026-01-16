@@ -158,9 +158,11 @@ export function TopicDetailPage() {
                     </div>
 
                     {/* Action Button */}
-                    <Button className="w-full" size="lg">
-                        继续实验
-                        <ArrowRight className="ml-2 h-5 w-5" />
+                    <Button className="w-full" size="lg" asChild>
+                        <Link to={`/experiment/1/stage${Math.max(1, topic.currentStage)}`}>
+                            {topic.currentStage === 0 ? '开始实验' : '继续实验'}
+                            <ArrowRight className="ml-2 h-5 w-5" />
+                        </Link>
                     </Button>
                 </CardContent>
             </Card>

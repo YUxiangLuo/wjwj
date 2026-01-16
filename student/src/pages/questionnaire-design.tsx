@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +39,7 @@ interface Question {
 }
 
 export function QuestionnaireDesignPage() {
+    const navigate = useNavigate()
     const [currentStep, setCurrentStep] = useState(1)
     const [title, setTitle] = useState('')
     const [welcomeMessage, setWelcomeMessage] = useState('')
@@ -97,6 +98,7 @@ export function QuestionnaireDesignPage() {
     const handleConfirm = () => {
         toast.success('问卷设计已完成！', { description: '进入样本量规划阶段' })
         setConfirmDialogOpen(false)
+        navigate('/experiment/1/stage2')
     }
 
     return (

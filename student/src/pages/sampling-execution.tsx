@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +25,7 @@ const stratificationVars = [
 ]
 
 export function SamplingExecutionPage() {
+    const navigate = useNavigate()
     const sampleSize = 400
     const [completedMethods, setCompletedMethods] = useState<string[]>([])
     const [currentSamples, setCurrentSamples] = useState<typeof mockSampleData>([])
@@ -66,6 +67,11 @@ export function SamplingExecutionPage() {
             selectedStratVar.strata.forEach((s) => { allocation[s.name] = each })
         }
         setStratAllocation(allocation)
+    }
+
+    const handleComplete = () => {
+        toast.success('抽样执行完成！', { description: '进入分析报告阶段' })
+        navigate('/experiment/1/stage4')
     }
 
     return (
@@ -171,7 +177,7 @@ export function SamplingExecutionPage() {
                 <p className="text-sm text-muted-foreground">进度: {completedMethods.length}/3 种方法完成</p>
                 <div className="flex gap-2">
                     <Button variant="outline" asChild><Link to="/experiment/1/stage2"><ArrowLeft className="mr-2 h-4 w-4" />上一阶段</Link></Button>
-                    <Button disabled={completedMethods.length < 3}>完成阶段<ArrowRight className="ml-2 h-4 w-4" /></Button>
+                    <Button onClick={handleComplete} disabled={completedMethods.length < 3}>完成阶段<ArrowRight className="ml-2 h-4 w-4" /></Button>
                 </div>
             </div>
         </div>

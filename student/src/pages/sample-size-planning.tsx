@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,7 @@ const confidenceLevels = [
 ]
 
 export function SampleSizePlanningPage() {
+    const navigate = useNavigate()
     const populationSize = 10000
     const [confidenceLevel, setConfidenceLevel] = useState(95)
     const [marginOfError, setMarginOfError] = useState(5)
@@ -34,6 +35,7 @@ export function SampleSizePlanningPage() {
             return
         }
         toast.success('样本量规划完成！', { description: '进入抽样执行阶段' })
+        navigate('/experiment/1/stage3')
     }
 
     return (
