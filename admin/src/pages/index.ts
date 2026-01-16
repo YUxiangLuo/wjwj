@@ -1,0 +1,8 @@
+export { DashboardPage } from './dashboard'
+export { SemestersPage } from './semesters'
+export { TeachersPage } from './teachers'
+export { AssistantsPage } from './assistants'
+export { ClassesPage } from './classes'
+export { StudentsPage } from './students'
+export { MonitoringPage } from './monitoring'
+export { AnnouncementsPage } from './announcements'
