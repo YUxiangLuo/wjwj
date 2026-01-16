@@ -12,6 +12,16 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -21,10 +31,15 @@ import {
 import { Search, MoreHorizontal, KeyRound, Ban, CheckCircle, Trash2 } from 'lucide-react'
 import { mockAssistants } from '@/data/mock'
 import type { Assistant } from '@/types'
+import { toast } from 'sonner'
+
+type AlertType = 'resetPassword' | 'toggleStatus' | 'delete' | null
 
 export function AssistantsPage() {
     const [assistants, setAssistants] = useState<Assistant[]>(mockAssistants)
     const [search, setSearch] = useState('')
+    const [alertType, setAlertType] = useState<AlertType>(null)
+    const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null)
 
     const filteredAssistants = assistants.filter(
         (a) =>
@@ -32,16 +47,42 @@ export function AssistantsPage() {
             a.name.toLowerCase().includes(search.toLowerCase())
     )
 
-    const toggleStatus = (id: number) => {
-        setAssistants(
-            assistants.map((a) =>
-                a.id === id ? { ...a, status: a.status === 1 ? 0 : 1 } : a
-            )
-        )
+    const openAlert = (type: AlertType, assistant: Assistant) => {
+        setSelectedAssistant(assistant)
+        setAlertType(type)
     }
 
-    const handleDelete = (id: number) => {
-        setAssistants(assistants.filter((a) => a.id !== id))
+    const closeAlert = () => {
+        setAlertType(null)
+        setSelectedAssistant(null)
+    }
+
+    const handleResetPassword = () => {
+        if (!selectedAssistant) return
+        toast.success('密码已重置', { description: `${selectedAssistant.name} 的密码已重置` })
+        closeAlert()
+    }
+
+    const handleToggleStatus = () => {
+        if (!selectedAssistant) return
+        const newStatus = selectedAssistant.status === 1 ? 0 : 1
+        setAssistants(
+            assistants.map((a) =>
+                a.id === selectedAssistant.id ? { ...a, status: newStatus } : a
+            )
+        )
+        toast.success(
+            newStatus === 1 ? '已启用' : '已停用',
+            { description: `${selectedAssistant.name} 的账号已${newStatus === 1 ? '启用' : '停用'}` }
+        )
+        closeAlert()
+    }
+
+    const handleDelete = () => {
+        if (!selectedAssistant) return
+        setAssistants(assistants.filter((a) => a.id !== selectedAssistant.id))
+        toast.success('删除成功', { description: `助教 ${selectedAssistant.name} 已删除` })
+        closeAlert()
     }
 
     return (
@@ -52,6 +93,76 @@ export function AssistantsPage() {
                     助教由教师创建，管理员可以管理现有账号
                 </p>
             </div>
+
+            {/* Reset Password Alert */}
+            <AlertDialog open={alertType === 'resetPassword'} onOpenChange={(open) => !open && closeAlert()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>重置密码</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            确定要重置 <span className="font-medium text-foreground">{selectedAssistant?.name}</span> 的密码吗？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleResetPassword}>确认重置</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Toggle Status Alert */}
+            <AlertDialog open={alertType === 'toggleStatus'} onOpenChange={(open) => !open && closeAlert()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>
+                            {selectedAssistant?.status === 1 ? '停用账号' : '启用账号'}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {selectedAssistant?.status === 1 ? (
+                                <>
+                                    确定要停用 <span className="font-medium text-foreground">{selectedAssistant?.name}</span> 的账号吗？
+                                    停用后该助教将无法登录系统。
+                                </>
+                            ) : (
+                                <>
+                                    确定要启用 <span className="font-medium text-foreground">{selectedAssistant?.name}</span> 的账号吗？
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleToggleStatus}
+                            className={selectedAssistant?.status === 1 ? 'bg-destructive hover:bg-destructive/90' : ''}
+                        >
+                            {selectedAssistant?.status === 1 ? '停用' : '启用'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Alert */}
+            <AlertDialog open={alertType === 'delete'} onOpenChange={(open) => !open && closeAlert()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>删除助教</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            确定要删除助教 <span className="font-medium text-foreground">{selectedAssistant?.name}</span> 吗？
+                            此操作不可撤销。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            删除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <Card>
                 <CardHeader>
@@ -116,13 +227,11 @@ export function AssistantsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => openAlert('resetPassword', assistant)}>
                                                     <KeyRound className="mr-2 h-4 w-4" />
                                                     重置密码
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() => toggleStatus(assistant.id)}
-                                                >
+                                                <DropdownMenuItem onClick={() => openAlert('toggleStatus', assistant)}>
                                                     {assistant.status === 1 ? (
                                                         <>
                                                             <Ban className="mr-2 h-4 w-4" />
@@ -138,7 +247,7 @@ export function AssistantsPage() {
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem
                                                     className="text-destructive"
-                                                    onClick={() => handleDelete(assistant.id)}
+                                                    onClick={() => openAlert('delete', assistant)}
                                                 >
                                                     <Trash2 className="mr-2 h-4 w-4" />
                                                     删除

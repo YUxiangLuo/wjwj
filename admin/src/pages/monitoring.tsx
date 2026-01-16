@@ -1,8 +1,43 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react'
 import { mockSystemMetrics, mockAlerts, mockDashboardStats } from '@/data/mock'
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+} from 'recharts'
+import { toast } from 'sonner'
+
+// Generate mock historical data
+const generateHistoricalData = (hours: number) => {
+    const data = []
+    const now = new Date()
+    for (let i = hours; i >= 0; i--) {
+        const time = new Date(now.getTime() - i * 60 * 60 * 1000)
+        data.push({
+            time: time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
+            cpu: Math.floor(30 + Math.random() * 40),
+            memory: Math.floor(50 + Math.random() * 30),
+            disk: Math.floor(70 + Math.random() * 15),
+        })
+    }
+    return data
+}
+
+const historicalData = {
+    '1h': generateHistoricalData(1),
+    '24h': generateHistoricalData(24),
+    '7d': generateHistoricalData(24 * 7),
+    '30d': generateHistoricalData(24 * 30),
+}
 
 function MetricCard({
     label,
@@ -44,12 +79,6 @@ function MetricCard({
                             </span>
                         </div>
                     </div>
-                    <div className="h-16 w-24">
-                        {/* Placeholder for trend chart */}
-                        <div className="h-full w-full bg-muted/50 rounded flex items-center justify-center text-xs text-muted-foreground">
-                            趋势图
-                        </div>
-                    </div>
                 </div>
             </CardContent>
         </Card>
@@ -81,9 +110,16 @@ function StatCard({
 }
 
 export function MonitoringPage() {
+    const [selectedRange, setSelectedRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h')
     const metrics = mockSystemMetrics
     const alerts = mockAlerts
     const stats = mockDashboardStats
+
+    const handleRefresh = () => {
+        toast.success('已刷新', { description: '监控数据已更新' })
+    }
+
+    const chartData = historicalData[selectedRange]
 
     return (
         <div className="space-y-6">
@@ -94,7 +130,7 @@ export function MonitoringPage() {
                         最后更新: {new Date().toLocaleString('zh-CN')}
                     </p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleRefresh}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     刷新
                 </Button>
@@ -126,20 +162,77 @@ export function MonitoringPage() {
                 />
             </div>
 
-            {/* Historical Chart Placeholder */}
+            {/* Historical Chart */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>历史趋势</CardTitle>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm">1小时</Button>
-                        <Button variant="outline" size="sm">24小时</Button>
-                        <Button variant="secondary" size="sm">7天</Button>
-                        <Button variant="outline" size="sm">30天</Button>
+                        {(['1h', '24h', '7d', '30d'] as const).map((range) => (
+                            <Button
+                                key={range}
+                                variant={selectedRange === range ? 'secondary' : 'outline'}
+                                size="sm"
+                                onClick={() => setSelectedRange(range)}
+                            >
+                                {range === '1h' ? '1小时' : range === '24h' ? '24小时' : range === '7d' ? '7天' : '30天'}
+                            </Button>
+                        ))}
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="h-64 bg-muted/50 rounded flex items-center justify-center text-muted-foreground">
-                        历史趋势图表（需要图表库如 Recharts）
+                    <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                                <XAxis
+                                    dataKey="time"
+                                    tick={{ fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    interval={selectedRange === '1h' ? 0 : selectedRange === '24h' ? 3 : 'preserveStartEnd'}
+                                />
+                                <YAxis
+                                    tick={{ fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    domain={[0, 100]}
+                                    tickFormatter={(value) => `${value}%`}
+                                />
+                                <Tooltip
+                                    contentStyle={{
+                                        backgroundColor: 'hsl(var(--background))',
+                                        border: '1px solid hsl(var(--border))',
+                                        borderRadius: '8px',
+                                    }}
+                                    formatter={(value) => [`${value}%`]}
+                                />
+                                <Legend />
+                                <Line
+                                    type="monotone"
+                                    dataKey="cpu"
+                                    name="CPU"
+                                    stroke="#3b82f6"
+                                    strokeWidth={2}
+                                    dot={false}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="memory"
+                                    name="内存"
+                                    stroke="#22c55e"
+                                    strokeWidth={2}
+                                    dot={false}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="disk"
+                                    name="磁盘"
+                                    stroke="#f59e0b"
+                                    strokeWidth={2}
+                                    dot={false}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
                     </div>
                 </CardContent>
             </Card>
