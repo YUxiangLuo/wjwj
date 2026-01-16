@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -22,6 +22,7 @@ const errorData = [
 ]
 
 export function AnalysisReportPage() {
+    const navigate = useNavigate()
     const [selectedVar, setSelectedVar] = useState('income')
     const [report, setReport] = useState('')
 
@@ -30,7 +31,8 @@ export function AnalysisReportPage() {
             toast.error('报告内容至少需要100字')
             return
         }
-        toast.success('提交成功！', { description: '正在生成预览...' })
+        toast.success('报告完成！', { description: '正在生成预览...' })
+        navigate('/experiment/1/preview')
     }
 
     return (

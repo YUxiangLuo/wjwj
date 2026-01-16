@@ -6,7 +6,9 @@ import {
     QuestionnaireDesignPage,
     SampleSizePlanningPage,
     SamplingExecutionPage,
-    AnalysisReportPage
+    AnalysisReportPage,
+    SubmissionPreviewPage,
+    ScoreViewPage
 } from '@/pages'
 
 function App() {
@@ -20,6 +22,8 @@ function App() {
                     <Route path="/experiment/:taskId/stage2" element={<SampleSizePlanningPage />} />
                     <Route path="/experiment/:taskId/stage3" element={<SamplingExecutionPage />} />
                     <Route path="/experiment/:taskId/stage4" element={<AnalysisReportPage />} />
+                    <Route path="/experiment/:taskId/preview" element={<SubmissionPreviewPage />} />
+                    <Route path="/topic/:taskId/score" element={<ScoreViewPage />} />
                 </Route>
             </Routes>
         </BrowserRouter>
