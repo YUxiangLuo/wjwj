@@ -1,2 +1,6 @@
 export { TaskHallPage } from './task-hall'
 export { TopicDetailPage } from './topic-detail'
+export { QuestionnaireDesignPage } from './questionnaire-design'
+export { SampleSizePlanningPage } from './sample-size-planning'
+export { SamplingExecutionPage } from './sampling-execution'
+export { AnalysisReportPage } from './analysis-report'
