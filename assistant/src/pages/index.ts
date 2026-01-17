@@ -1,5 +1,0 @@
-export { DashboardPage } from './dashboard'
-export { ClassesPage } from './classes'
-export { TaskProgressPage } from './task-progress'
-export { GradingPage } from './grading'
-export { GradingDetailPage } from './grading-detail'
