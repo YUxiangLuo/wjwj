@@ -1,12 +1,17 @@
 import { serve } from "bun";
 import loginPage from "./login/login.html";
 import adminPage from "./admin/admin.html";
+import teacherPage from "./teacher/teacher.html";
 
 const server = serve({
   routes: {
     // Admin panel
     "/admin": adminPage,
     "/admin/*": adminPage,
+
+    // Teacher panel
+    "/teacher": teacherPage,
+    "/teacher/*": teacherPage,
 
     // Login page (default)
     "/": loginPage,
