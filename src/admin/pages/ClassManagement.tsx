@@ -1,4 +1,13 @@
 import { useState } from "react";
+import { Plus, Trash2, Users, Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const mockClasses = [
     { id: 1, name: "统计学2024-1班", semester: "2024-Spring", teacher: "张三", studentCount: 45, createdAt: "2024-02-15" },
@@ -22,13 +31,13 @@ interface Class {
 export function ClassManagement() {
     const [classes, setClasses] = useState<Class[]>(mockClasses);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [filterSemester, setFilterSemester] = useState("");
-    const [filterTeacher, setFilterTeacher] = useState("");
+    const [filterSemester, setFilterSemester] = useState("all");
+    const [filterTeacher, setFilterTeacher] = useState("all");
     const [newClass, setNewClass] = useState({ name: "", semester: mockSemesters[0] ?? "", teacher: mockTeachers[0] ?? "" });
 
     const filteredClasses = classes.filter((c) => {
-        if (filterSemester && c.semester !== filterSemester) return false;
-        if (filterTeacher && c.teacher !== filterTeacher) return false;
+        if (filterSemester !== "all" && c.semester !== filterSemester) return false;
+        if (filterTeacher !== "all" && c.teacher !== filterTeacher) return false;
         return true;
     });
 
@@ -57,122 +66,132 @@ export function ClassManagement() {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-base font-semibold text-slate-800">班级列表</h3>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-                >
-                    + 创建班级
-                </button>
-            </div>
+        <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">班级列表</CardTitle>
+                <Button onClick={() => setShowAddModal(true)}>
+                    <Plus className="w-4 h-4" />
+                    创建班级
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <div className="flex gap-3 mb-4">
+                    <Select value={filterSemester} onValueChange={setFilterSemester}>
+                        <SelectTrigger className="w-40">
+                            <SelectValue placeholder="全部学期" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">全部学期</SelectItem>
+                            {mockSemesters.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={filterTeacher} onValueChange={setFilterTeacher}>
+                        <SelectTrigger className="w-40">
+                            <SelectValue placeholder="全部教师" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">全部教师</SelectItem>
+                            {mockTeachers.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
 
-            {/* Filters */}
-            <div className="flex gap-3 mb-4">
-                <select
-                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
-                    value={filterSemester}
-                    onChange={(e) => setFilterSemester(e.target.value)}
-                >
-                    <option value="">全部学期</option>
-                    {mockSemesters.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select
-                    className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
-                    value={filterTeacher}
-                    onChange={(e) => setFilterTeacher(e.target.value)}
-                >
-                    <option value="">全部教师</option>
-                    {mockTeachers.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-            </div>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>班级名称</TableHead>
+                            <TableHead>学期</TableHead>
+                            <TableHead>授课教师</TableHead>
+                            <TableHead>学生人数</TableHead>
+                            <TableHead>创建时间</TableHead>
+                            <TableHead>操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredClasses.map((cls) => (
+                            <TableRow key={cls.id}>
+                                <TableCell className="font-medium">{cls.name}</TableCell>
+                                <TableCell>
+                                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">{cls.semester}</Badge>
+                                </TableCell>
+                                <TableCell>{cls.teacher}</TableCell>
+                                <TableCell>{cls.studentCount}</TableCell>
+                                <TableCell className="text-muted-foreground">{cls.createdAt}</TableCell>
+                                <TableCell>
+                                    <div className="flex gap-2">
+                                        <Button variant="ghost" size="sm">
+                                            <Users className="w-3 h-3 mr-1" />
+                                            查看学生
+                                        </Button>
+                                        <Button variant="ghost" size="sm">
+                                            <Pencil className="w-3 h-3 mr-1" />
+                                            编辑
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDelete(cls)}
+                                            className="text-destructive hover:text-destructive"
+                                        >
+                                            <Trash2 className="w-3 h-3 mr-1" />
+                                            删除
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
 
-            {/* Table */}
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="bg-slate-50">
-                        <th className="text-left p-3 text-slate-600 font-medium">班级名称</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">学期</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">授课教师</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">学生人数</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">创建时间</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filteredClasses.map((cls) => (
-                        <tr key={cls.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="p-3 font-medium text-slate-800">{cls.name}</td>
-                            <td className="p-3">
-                                <span className="px-2 py-1 text-xs font-medium rounded bg-teal-100 text-teal-700">{cls.semester}</span>
-                            </td>
-                            <td className="p-3 text-slate-700">{cls.teacher}</td>
-                            <td className="p-3 text-slate-600">{cls.studentCount}</td>
-                            <td className="p-3 text-slate-500">{cls.createdAt}</td>
-                            <td className="p-3">
-                                <div className="flex gap-2">
-                                    <button className="text-teal-600 hover:text-teal-700 text-sm">查看学生</button>
-                                    <button className="text-teal-600 hover:text-teal-700 text-sm">编辑</button>
-                                    <button onClick={() => handleDelete(cls)} className="text-red-500 hover:text-red-600 text-sm">删除</button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                {filteredClasses.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">暂无数据</div>
+                )}
+            </CardContent>
 
-            {filteredClasses.length === 0 && <div className="text-center py-12 text-slate-500">暂无数据</div>}
-
-            {/* Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddModal(false)}>
-                    <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-6">创建班级</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">班级名称</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
-                                    placeholder="请输入班级名称"
-                                    value={newClass.name}
-                                    onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">所属学期</label>
-                                <select
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal-500"
-                                    value={newClass.semester}
-                                    onChange={(e) => setNewClass({ ...newClass, semester: e.target.value })}
-                                >
-                                    {mockSemesters.map((s) => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">授课教师</label>
-                                <select
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal-500"
-                                    value={newClass.teacher}
-                                    onChange={(e) => setNewClass({ ...newClass, teacher: e.target.value })}
-                                >
-                                    {mockTeachers.map((t) => <option key={t} value={t}>{t}</option>)}
-                                </select>
-                            </div>
+            <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>创建班级</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="className">班级名称</Label>
+                            <Input
+                                id="className"
+                                placeholder="请输入班级名称"
+                                value={newClass.name}
+                                onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
+                            />
                         </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
-                                取消
-                            </button>
-                            <button onClick={handleAddClass} className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">
-                                确认创建
-                            </button>
+                        <div className="space-y-2">
+                            <Label>所属学期</Label>
+                            <Select value={newClass.semester} onValueChange={(v) => setNewClass({ ...newClass, semester: v })}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {mockSemesters.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>授课教师</Label>
+                            <Select value={newClass.teacher} onValueChange={(v) => setNewClass({ ...newClass, teacher: v })}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {mockTeachers.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAddModal(false)}>取消</Button>
+                        <Button onClick={handleAddClass}>确认创建</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Card>
     );
 }

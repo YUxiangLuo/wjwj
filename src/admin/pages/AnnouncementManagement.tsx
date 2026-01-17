@@ -1,4 +1,12 @@
 import { useState } from "react";
+import { Plus, Pencil, Trash2, Send, Archive } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 const mockAnnouncements = [
     { id: 1, title: "系统维护通知：本周六凌晨2点进行例行维护", content: "为保障系统稳定运行，我们将于本周六凌晨2点进行例行维护...", isPublished: true, createdAt: "2024-03-15 10:00" },
@@ -45,89 +53,109 @@ export function AnnouncementManagement() {
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-base font-semibold text-slate-800">公告列表</h3>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-                >
-                    + 发布公告
-                </button>
-            </div>
-
-            <div className="space-y-4">
+        <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">公告列表</CardTitle>
+                <Button onClick={() => setShowAddModal(true)}>
+                    <Plus className="w-4 h-4" />
+                    发布公告
+                </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
                 {announcements.map((announcement) => (
-                    <div key={announcement.id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                    <div key={announcement.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                         <div className="flex justify-between items-start mb-2">
                             <div className="flex items-center gap-2">
-                                <h4 className="font-medium text-slate-800">{announcement.title}</h4>
+                                <h4 className="font-medium text-foreground">{announcement.title}</h4>
                                 {announcement.isPublished ? (
-                                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-emerald-100 text-emerald-700">已发布</span>
+                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">已发布</Badge>
                                 ) : (
-                                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">草稿</span>
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">草稿</Badge>
                                 )}
                             </div>
-                            <span className="text-xs text-slate-500">{announcement.createdAt}</span>
+                            <span className="text-xs text-muted-foreground">{announcement.createdAt}</span>
                         </div>
-                        <p className="text-sm text-slate-600 mb-3 line-clamp-2">{announcement.content}</p>
-                        <div className="flex gap-3">
-                            <button className="text-teal-600 hover:text-teal-700 text-sm">编辑</button>
-                            <button
+                        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{announcement.content}</p>
+                        <div className="flex gap-2">
+                            <Button variant="ghost" size="sm">
+                                <Pencil className="w-3 h-3 mr-1" />
+                                编辑
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleTogglePublish(announcement.id)}
-                                className={`text-sm ${announcement.isPublished ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}`}
+                                className={announcement.isPublished ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
                             >
-                                {announcement.isPublished ? "撤回" : "发布"}
-                            </button>
-                            <button onClick={() => handleDelete(announcement)} className="text-red-500 hover:text-red-600 text-sm">
+                                {announcement.isPublished ? (
+                                    <>
+                                        <Archive className="w-3 h-3 mr-1" />
+                                        撤回
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="w-3 h-3 mr-1" />
+                                        发布
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(announcement)}
+                                className="text-destructive hover:text-destructive"
+                            >
+                                <Trash2 className="w-3 h-3 mr-1" />
                                 删除
-                            </button>
+                            </Button>
                         </div>
                     </div>
                 ))}
-            </div>
 
-            {announcements.length === 0 && <div className="text-center py-12 text-slate-500">暂无公告</div>}
+                {announcements.length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">暂无公告</div>
+                )}
+            </CardContent>
 
-            {showAddModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAddModal(false)}>
-                    <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-6">发布公告</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">标题</label>
-                                <input
-                                    type="text"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
-                                    placeholder="请输入公告标题"
-                                    value={newAnnouncement.title}
-                                    onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">内容</label>
-                                <textarea
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 h-32 resize-none"
-                                    placeholder="请输入公告内容"
-                                    value={newAnnouncement.content}
-                                    onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
-                                />
-                            </div>
+            <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>发布公告</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="title">标题</Label>
+                            <Input
+                                id="title"
+                                placeholder="请输入公告标题"
+                                value={newAnnouncement.title}
+                                onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
+                            />
                         </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => setShowAddModal(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
-                                取消
-                            </button>
-                            <button onClick={() => handleAddAnnouncement(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">
-                                保存草稿
-                            </button>
-                            <button onClick={() => handleAddAnnouncement(true)} className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">
-                                立即发布
-                            </button>
+                        <div className="space-y-2">
+                            <Label htmlFor="content">内容</Label>
+                            <Textarea
+                                id="content"
+                                placeholder="请输入公告内容"
+                                value={newAnnouncement.content}
+                                onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
+                                className="min-h-32 resize-none"
+                            />
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setShowAddModal(false)}>取消</Button>
+                        <Button variant="outline" onClick={() => handleAddAnnouncement(false)}>
+                            <Archive className="w-4 h-4" />
+                            保存草稿
+                        </Button>
+                        <Button onClick={() => handleAddAnnouncement(true)}>
+                            <Send className="w-4 h-4" />
+                            立即发布
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Card>
     );
 }

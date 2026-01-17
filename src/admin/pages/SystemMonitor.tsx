@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
+import { Cpu, HardDrive, Activity, Wifi, Users, Zap, Pause, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
-// Mock real-time data
 const generateMetrics = () => ({
     cpu: Math.floor(Math.random() * 40) + 20,
     memory: Math.floor(Math.random() * 30) + 50,
@@ -19,21 +23,27 @@ const mockLogs = [
     { id: 6, time: "17:35:20", level: "INFO", message: "定时任务：清理过期缓存完成", source: "SchedulerService" },
 ];
 
-function MetricCard({ label, value, unit, color, icon }: { label: string; value: number; unit: string; color: string; icon: string }) {
+function MetricCard({ label, value, unit, icon: Icon, color }: {
+    label: string;
+    value: number;
+    unit: string;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+}) {
     return (
-        <div className="bg-white rounded-xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-slate-500">{label}</span>
-                <span className="text-xl">{icon}</span>
-            </div>
-            <div className="flex items-end gap-1">
-                <span className={`text-3xl font-bold ${color}`}>{value}</span>
-                <span className="text-sm text-slate-500 mb-1">{unit}</span>
-            </div>
-            <div className="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-500 ${color.replace("text-", "bg-")}`} style={{ width: `${Math.min(value, 100)}%` }} />
-            </div>
-        </div>
+        <Card>
+            <CardContent className="pt-5">
+                <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                    <Icon className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="flex items-end gap-1 mb-3">
+                    <span className={`text-3xl font-bold ${color}`}>{value}</span>
+                    <span className="text-sm text-muted-foreground mb-1">{unit}</span>
+                </div>
+                <Progress value={Math.min(value, 100)} className={`h-2 ${color.replace("text-", "[&>div]:bg-")}`} />
+            </CardContent>
+        </Card>
     );
 }
 
@@ -47,64 +57,115 @@ export function SystemMonitor() {
         return () => clearInterval(interval);
     }, [isLive]);
 
-    const getLevelColor = (level: string) => {
+    const getLevelBadge = (level: string) => {
         switch (level) {
-            case "ERROR": return "text-red-600 bg-red-50";
-            case "WARN": return "text-amber-600 bg-amber-50";
-            default: return "text-slate-600 bg-slate-50";
+            case "ERROR":
+                return <Badge variant="destructive">{level}</Badge>;
+            case "WARN":
+                return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">{level}</Badge>;
+            default:
+                return <Badge variant="secondary">{level}</Badge>;
         }
+    };
+
+    const getMetricColor = (value: number, thresholds: [number, number]) => {
+        if (value > thresholds[1]) return "text-destructive";
+        if (value > thresholds[0]) return "text-amber-500";
+        return "text-emerald-500";
     };
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                    <span className={`w-3 h-3 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
-                    <span className="text-sm text-slate-500">{isLive ? "实时监控中" : "监控已暂停"}</span>
+                    <span className={`w-3 h-3 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
+                    <span className="text-sm text-muted-foreground">{isLive ? "实时监控中" : "监控已暂停"}</span>
                 </div>
-                <button
+                <Button
+                    variant={isLive ? "secondary" : "default"}
                     onClick={() => setIsLive(!isLive)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isLive ? "bg-slate-200 text-slate-700 hover:bg-slate-300" : "bg-teal-600 text-white hover:bg-teal-700"}`}
                 >
-                    {isLive ? "暂停" : "恢复监控"}
-                </button>
+                    {isLive ? (
+                        <>
+                            <Pause className="w-4 h-4" />
+                            暂停
+                        </>
+                    ) : (
+                        <>
+                            <Play className="w-4 h-4" />
+                            恢复监控
+                        </>
+                    )}
+                </Button>
             </div>
 
-            {/* Metrics Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricCard label="CPU 使用率" value={metrics.cpu} unit="%" color={metrics.cpu > 80 ? "text-red-500" : metrics.cpu > 60 ? "text-amber-500" : "text-emerald-500"} icon="💻" />
-                <MetricCard label="内存使用率" value={metrics.memory} unit="%" color={metrics.memory > 85 ? "text-red-500" : metrics.memory > 70 ? "text-amber-500" : "text-emerald-500"} icon="🧠" />
-                <MetricCard label="磁盘使用率" value={metrics.disk} unit="%" color={metrics.disk > 90 ? "text-red-500" : metrics.disk > 75 ? "text-amber-500" : "text-emerald-500"} icon="💾" />
-                <MetricCard label="网络带宽" value={metrics.network} unit="Mbps" color="text-teal-500" icon="🌐" />
+                <MetricCard
+                    label="CPU 使用率"
+                    value={metrics.cpu}
+                    unit="%"
+                    icon={Cpu}
+                    color={getMetricColor(metrics.cpu, [60, 80])}
+                />
+                <MetricCard
+                    label="内存使用率"
+                    value={metrics.memory}
+                    unit="%"
+                    icon={Activity}
+                    color={getMetricColor(metrics.memory, [70, 85])}
+                />
+                <MetricCard
+                    label="磁盘使用率"
+                    value={metrics.disk}
+                    unit="%"
+                    icon={HardDrive}
+                    color={getMetricColor(metrics.disk, [75, 90])}
+                />
+                <MetricCard
+                    label="网络带宽"
+                    value={metrics.network}
+                    unit="Mbps"
+                    icon={Wifi}
+                    color="text-primary"
+                />
             </div>
 
-            {/* Stats Row */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl p-5 shadow-sm">
-                    <div className="text-sm text-slate-500 mb-1">活跃连接数</div>
-                    <div className="text-2xl font-bold text-slate-800">{metrics.activeConnections}</div>
-                </div>
-                <div className="bg-white rounded-xl p-5 shadow-sm">
-                    <div className="text-sm text-slate-500 mb-1">请求数/分钟</div>
-                    <div className="text-2xl font-bold text-slate-800">{metrics.requestsPerMinute}</div>
-                </div>
+                <Card>
+                    <CardContent className="pt-5">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Users className="w-4 h-4" />
+                            <span className="text-sm">活跃连接数</span>
+                        </div>
+                        <div className="text-2xl font-bold text-foreground">{metrics.activeConnections}</div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-5">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Zap className="w-4 h-4" />
+                            <span className="text-sm">请求数/分钟</span>
+                        </div>
+                        <div className="text-2xl font-bold text-foreground">{metrics.requestsPerMinute}</div>
+                    </CardContent>
+                </Card>
             </div>
 
-            {/* System Logs */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-base font-semibold text-slate-800 mb-4">系统日志</h3>
-                <div className="space-y-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">系统日志</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
                     {mockLogs.map((log) => (
-                        <div key={log.id} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg text-sm">
-                            <span className="text-slate-400 font-mono text-xs">{log.time}</span>
-                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getLevelColor(log.level)}`}>{log.level}</span>
-                            <span className="text-slate-700 flex-1">{log.message}</span>
-                            <span className="text-xs text-slate-400">{log.source}</span>
+                        <div key={log.id} className="flex items-start gap-3 p-3 bg-muted rounded-lg text-sm">
+                            <span className="text-muted-foreground font-mono text-xs">{log.time}</span>
+                            {getLevelBadge(log.level)}
+                            <span className="text-foreground flex-1">{log.message}</span>
+                            <span className="text-xs text-muted-foreground">{log.source}</span>
                         </div>
                     ))}
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
