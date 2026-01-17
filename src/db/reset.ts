@@ -1,0 +1,60 @@
+/**
+ * Database Reset Script
+ * 
+ * WARNING: This will DROP ALL TABLES and re-run migrations.
+ * Only use in development environment!
+ */
+
+import { db } from "./index";
+import { migrate } from "drizzle-orm/mysql2/migrator";
+import { sql } from "drizzle-orm";
+
+async function reset() {
+    const args = process.argv.slice(2);
+    const force = args.includes("--force") || args.includes("-f");
+
+    if (!force) {
+        console.log("⚠️  WARNING: This will DROP ALL TABLES in the database!");
+        console.log("Run with --force or -f to confirm.\n");
+        console.log("Usage: bun run db:reset --force");
+        process.exit(1);
+    }
+
+    console.log("🗑️  Dropping all tables...\n");
+
+    // Disable foreign key checks temporarily
+    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
+
+    // Get all table names
+    const tables = await db.execute(sql`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = DATABASE() 
+        AND table_type = 'BASE TABLE'
+    `);
+
+    // Drop each table
+    const rows = (tables as any)[0] as Array<{ table_name?: string; TABLE_NAME?: string }>;
+    for (const row of rows) {
+        const tableName = row.table_name || row.TABLE_NAME;
+        console.log(`  Dropping table: ${tableName}`);
+        await db.execute(sql.raw(`DROP TABLE IF EXISTS \`${tableName}\``));
+    }
+
+    // Re-enable foreign key checks
+    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
+
+    console.log("\n✅ All tables dropped.");
+    console.log("\n🔄 Running migrations...\n");
+
+    // Run migrations
+    await migrate(db, { migrationsFolder: "drizzle" });
+
+    console.log("\n✅ Database reset complete!");
+    process.exit(0);
+}
+
+reset().catch((err) => {
+    console.error("❌ Reset failed:", err);
+    process.exit(1);
+});
