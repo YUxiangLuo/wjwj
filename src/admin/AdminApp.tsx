@@ -1,5 +1,8 @@
 import { useState } from "react";
 import "./admin.css";
+import { SemesterManagement } from "./pages/SemesterManagement";
+import { TeacherManagement } from "./pages/TeacherManagement";
+import { ClassManagement } from "./pages/ClassManagement";
 
 // Menu items for sidebar
 const menuItems = [
@@ -14,7 +17,6 @@ const menuItems = [
     { id: "settings", label: "系统设置", icon: "⚙️" },
 ];
 
-// Page titles
 const pageTitles: Record<string, string> = {
     dashboard: "首页概览",
     semester: "学期管理",
@@ -27,7 +29,7 @@ const pageTitles: Record<string, string> = {
     settings: "系统设置",
 };
 
-// Mock statistics data
+// Mock data
 const mockStats = {
     currentSemester: "2024-Spring",
     teacherCount: 12,
@@ -39,121 +41,78 @@ const mockStats = {
     pendingItems: 3,
 };
 
-// Mock system metrics
-const mockMetrics = {
-    cpu: 35,
-    memory: 62,
-    disk: 48,
-};
+const mockMetrics = { cpu: 35, memory: 62, disk: 48 };
 
-// Mock announcements
 const mockAnnouncements = [
     { id: 1, title: "系统维护通知：本周六凌晨2点进行例行维护", date: "2024-03-15" },
     { id: 2, title: "新学期开始，请各位教师及时发布任务", date: "2024-03-01" },
     { id: 3, title: "欢迎使用抽样统计虚拟仿真系统V3.0", date: "2024-02-20" },
 ];
 
+// Stat Card Component
+function StatCard({ icon, value, label, colorClass }: { icon: string; value: string | number; label: string; colorClass: string }) {
+    return (
+        <div className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl mb-4 ${colorClass}`}>
+                {icon}
+            </div>
+            <div className="text-2xl font-bold text-slate-800">{value}</div>
+            <div className="text-sm text-slate-500">{label}</div>
+        </div>
+    );
+}
+
+// System Status Bar
+function StatusBar({ label, value, color }: { label: string; value: number; color: string }) {
+    return (
+        <div className="p-4 bg-slate-50 rounded-lg">
+            <div className="text-xs text-slate-500 mb-2">{label}</div>
+            <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-2">
+                <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${value}%` }} />
+            </div>
+            <div className="text-sm font-semibold text-slate-800">{value}%</div>
+        </div>
+    );
+}
+
 // Dashboard Component
 function Dashboard() {
     return (
-        <div>
+        <div className="space-y-6">
             {/* Stats Row 1 */}
-            <div className="stats-grid">
-                <div className="stat-card">
-                    <div className="stat-icon blue">📅</div>
-                    <div className="stat-value">{mockStats.currentSemester}</div>
-                    <div className="stat-label">当前学期</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-icon green">👨‍🏫</div>
-                    <div className="stat-value">{mockStats.teacherCount}</div>
-                    <div className="stat-label">教师总数</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-icon purple">🏫</div>
-                    <div className="stat-value">{mockStats.classCount}</div>
-                    <div className="stat-label">班级总数</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-icon orange">🎓</div>
-                    <div className="stat-value">{mockStats.studentCount}</div>
-                    <div className="stat-label">学生总数</div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard icon="📅" value={mockStats.currentSemester} label="当前学期" colorClass="bg-teal-50 text-teal-600" />
+                <StatCard icon="👨‍🏫" value={mockStats.teacherCount} label="教师总数" colorClass="bg-emerald-50 text-emerald-600" />
+                <StatCard icon="🏫" value={mockStats.classCount} label="班级总数" colorClass="bg-slate-100 text-slate-600" />
+                <StatCard icon="🎓" value={mockStats.studentCount} label="学生总数" colorClass="bg-amber-50 text-amber-600" />
             </div>
 
             {/* Stats Row 2 */}
-            <div className="stats-grid">
-                <div className="stat-card">
-                    <div className="stat-icon pink">👥</div>
-                    <div className="stat-value">{mockStats.assistantCount}</div>
-                    <div className="stat-label">助教总数</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-icon cyan">👤</div>
-                    <div className="stat-value">{mockStats.todayActiveUsers}</div>
-                    <div className="stat-label">今日活跃用户</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-icon blue">🔑</div>
-                    <div className="stat-value">{mockStats.todayLogins}</div>
-                    <div className="stat-label">今日登录次数</div>
-                </div>
-                <div className="stat-card">
-                    <div className="stat-icon orange">⏳</div>
-                    <div className="stat-value">{mockStats.pendingItems}</div>
-                    <div className="stat-label">待处理事项</div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard icon="👥" value={mockStats.assistantCount} label="助教总数" colorClass="bg-rose-50 text-rose-600" />
+                <StatCard icon="👤" value={mockStats.todayActiveUsers} label="今日活跃用户" colorClass="bg-teal-50 text-teal-600" />
+                <StatCard icon="🔑" value={mockStats.todayLogins} label="今日登录次数" colorClass="bg-blue-50 text-blue-600" />
+                <StatCard icon="⏳" value={mockStats.pendingItems} label="待处理事项" colorClass="bg-orange-50 text-orange-600" />
             </div>
 
             {/* System Status */}
-            <div className="section-card">
-                <div className="section-header">
-                    <h3 className="section-title">系统状态</h3>
-                </div>
-                <div className="system-grid">
-                    <div className="system-item">
-                        <div className="system-label">CPU 使用率</div>
-                        <div className="system-bar">
-                            <div
-                                className={`system-bar-fill ${mockMetrics.cpu > 90 ? "danger" : mockMetrics.cpu > 70 ? "warning" : "normal"}`}
-                                style={{ width: `${mockMetrics.cpu}%` }}
-                            />
-                        </div>
-                        <div className="system-value">{mockMetrics.cpu}%</div>
-                    </div>
-                    <div className="system-item">
-                        <div className="system-label">内存使用率</div>
-                        <div className="system-bar">
-                            <div
-                                className={`system-bar-fill ${mockMetrics.memory > 90 ? "danger" : mockMetrics.memory > 75 ? "warning" : "normal"}`}
-                                style={{ width: `${mockMetrics.memory}%` }}
-                            />
-                        </div>
-                        <div className="system-value">{mockMetrics.memory}%</div>
-                    </div>
-                    <div className="system-item">
-                        <div className="system-label">磁盘使用率</div>
-                        <div className="system-bar">
-                            <div
-                                className={`system-bar-fill ${mockMetrics.disk > 95 ? "danger" : mockMetrics.disk > 80 ? "warning" : "normal"}`}
-                                style={{ width: `${mockMetrics.disk}%` }}
-                            />
-                        </div>
-                        <div className="system-value">{mockMetrics.disk}%</div>
-                    </div>
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-800 mb-4">系统状态</h3>
+                <div className="grid grid-cols-3 gap-4">
+                    <StatusBar label="CPU 使用率" value={mockMetrics.cpu} color={mockMetrics.cpu > 90 ? "bg-red-500" : mockMetrics.cpu > 70 ? "bg-amber-500" : "bg-emerald-500"} />
+                    <StatusBar label="内存使用率" value={mockMetrics.memory} color={mockMetrics.memory > 90 ? "bg-red-500" : mockMetrics.memory > 75 ? "bg-amber-500" : "bg-emerald-500"} />
+                    <StatusBar label="磁盘使用率" value={mockMetrics.disk} color={mockMetrics.disk > 95 ? "bg-red-500" : mockMetrics.disk > 80 ? "bg-amber-500" : "bg-emerald-500"} />
                 </div>
             </div>
 
             {/* Recent Announcements */}
-            <div className="section-card">
-                <div className="section-header">
-                    <h3 className="section-title">最近公告</h3>
-                </div>
-                <div className="announcement-list">
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-800 mb-4">最近公告</h3>
+                <div className="space-y-3">
                     {mockAnnouncements.map((item) => (
-                        <div key={item.id} className="announcement-item">
-                            <span className="announcement-title">{item.title}</span>
-                            <span className="announcement-date">{item.date}</span>
+                        <div key={item.id} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                            <span className="text-sm text-slate-700">{item.title}</span>
+                            <span className="text-xs text-slate-500">{item.date}</span>
                         </div>
                     ))}
                 </div>
@@ -162,12 +121,12 @@ function Dashboard() {
     );
 }
 
-// Placeholder page for other menus
+// Placeholder page
 function PlaceholderPage({ name }: { name: string }) {
     return (
-        <div className="page-placeholder">
-            <div className="page-placeholder-icon">🚧</div>
-            <div className="page-placeholder-text">{name}页面开发中...</div>
+        <div className="flex flex-col items-center justify-center h-96 bg-white rounded-xl text-slate-500">
+            <div className="text-6xl mb-4">🚧</div>
+            <div className="text-lg">{name}页面开发中...</div>
         </div>
     );
 }
@@ -178,63 +137,60 @@ export function AdminApp() {
 
     const renderPage = () => {
         switch (activePage) {
-            case "dashboard":
-                return <Dashboard />;
-            default:
-                return <PlaceholderPage name={pageTitles[activePage]} />;
+            case "dashboard": return <Dashboard />;
+            case "semester": return <SemesterManagement />;
+            case "teacher": return <TeacherManagement />;
+            case "class": return <ClassManagement />;
+            default: return <PlaceholderPage name={pageTitles[activePage] ?? activePage} />;
         }
     };
 
     return (
-        <div className="admin-layout">
+        <div className="flex min-h-screen bg-slate-100">
             {/* Sidebar */}
-            <aside className="admin-sidebar">
-                <div className="sidebar-header">
-                    <h1 className="sidebar-title">抽样统计系统</h1>
-                    <p className="sidebar-subtitle">管理后台</p>
+            <aside className="w-60 bg-slate-800 text-white flex flex-col shrink-0">
+                <div className="p-6 border-b border-white/10">
+                    <h1 className="text-lg font-semibold">抽样统计系统</h1>
+                    <p className="text-xs text-white/70 mt-1">管理后台</p>
                 </div>
 
-                <nav className="sidebar-nav">
+                <nav className="flex-1 py-4 overflow-y-auto">
                     {menuItems.map((item) => (
                         <button
                             key={item.id}
-                            className={`nav-item ${activePage === item.id ? "active" : ""}`}
                             onClick={() => setActivePage(item.id)}
+                            className={`w-full flex items-center gap-3 px-6 py-3 text-sm transition-colors
+                ${activePage === item.id
+                                    ? "bg-teal-600/20 text-teal-400 border-l-[3px] border-teal-500"
+                                    : "text-white/70 hover:bg-white/10 hover:text-white border-l-[3px] border-transparent"
+                                }`}
                         >
-                            <span className="nav-icon">{item.icon}</span>
+                            <span className="text-base">{item.icon}</span>
                             <span>{item.label}</span>
                         </button>
                     ))}
                 </nav>
 
-                <div className="sidebar-footer">
-                    <div className="user-info">
-                        <div className="user-avatar">管</div>
+                <div className="p-4 border-t border-white/10">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-sm">管</div>
                         <div>
-                            <div className="user-name">管理员</div>
-                            <div className="user-role">Administrator</div>
+                            <div className="text-sm font-medium">管理员</div>
+                            <div className="text-xs text-white/70">Administrator</div>
                         </div>
                     </div>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="admin-main">
-                <header className="admin-header">
-                    <h2 className="page-title">{pageTitles[activePage]}</h2>
-                    <div className="header-actions">
-                        <span style={{ fontSize: "0.875rem", color: "hsl(220 10% 50%)" }}>
-                            {new Date().toLocaleDateString("zh-CN", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                                weekday: "long",
-                            })}
-                        </span>
-                    </div>
+            <main className="flex-1 flex flex-col overflow-hidden">
+                <header className="bg-white px-8 py-4 border-b border-slate-200 flex justify-between items-center">
+                    <h2 className="text-xl font-semibold text-slate-800">{pageTitles[activePage]}</h2>
+                    <span className="text-sm text-slate-500">
+                        {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
+                    </span>
                 </header>
-
-                <div className="admin-content">{renderPage()}</div>
+                <div className="flex-1 p-8 overflow-y-auto">{renderPage()}</div>
             </main>
         </div>
     );
