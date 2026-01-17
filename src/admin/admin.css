@@ -1,1 +1,350 @@
 @import "../../styles/globals.css";
+
+/* Admin Layout */
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+    background: hsl(220 14% 96%);
+}
+
+/* Sidebar */
+.admin-sidebar {
+    width: 240px;
+    background: linear-gradient(180deg, hsl(220 70% 50%) 0%, hsl(250 60% 45%) 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.sidebar-subtitle {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 0.25rem;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 1rem 0;
+    overflow-y: auto;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.nav-item.active {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-left: 3px solid white;
+}
+
+.nav-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    opacity: 0.8;
+}
+
+.sidebar-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+}
+
+.user-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.user-role {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+/* Main Content */
+.admin-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.admin-header {
+    background: white;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid hsl(220 14% 90%);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: hsl(220 20% 20%);
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+/* Dashboard Cards */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.stat-icon.blue {
+    background: hsl(220 90% 95%);
+    color: hsl(220 70% 50%);
+}
+
+.stat-icon.green {
+    background: hsl(150 90% 95%);
+    color: hsl(150 60% 40%);
+}
+
+.stat-icon.purple {
+    background: hsl(270 90% 95%);
+    color: hsl(270 60% 50%);
+}
+
+.stat-icon.orange {
+    background: hsl(30 90% 95%);
+    color: hsl(30 70% 45%);
+}
+
+.stat-icon.pink {
+    background: hsl(340 90% 95%);
+    color: hsl(340 70% 50%);
+}
+
+.stat-icon.cyan {
+    background: hsl(190 90% 95%);
+    color: hsl(190 70% 40%);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: hsl(220 20% 20%);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: hsl(220 10% 50%);
+}
+
+/* Section Card */
+.section-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 1.5rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: hsl(220 20% 20%);
+    margin: 0;
+}
+
+/* System Status */
+.system-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.system-item {
+    padding: 1rem;
+    background: hsl(220 14% 98%);
+    border-radius: 8px;
+}
+
+.system-label {
+    font-size: 0.75rem;
+    color: hsl(220 10% 50%);
+    margin-bottom: 0.5rem;
+}
+
+.system-bar {
+    height: 8px;
+    background: hsl(220 14% 90%);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.system-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.system-bar-fill.normal {
+    background: hsl(150 60% 45%);
+}
+
+.system-bar-fill.warning {
+    background: hsl(40 90% 50%);
+}
+
+.system-bar-fill.danger {
+    background: hsl(0 70% 55%);
+}
+
+.system-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: hsl(220 20% 20%);
+}
+
+/* Announcement List */
+.announcement-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.announcement-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: hsl(220 14% 98%);
+    border-radius: 8px;
+}
+
+.announcement-title {
+    font-size: 0.875rem;
+    color: hsl(220 20% 20%);
+}
+
+.announcement-date {
+    font-size: 0.75rem;
+    color: hsl(220 10% 50%);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: hsl(220 10% 50%);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Page Placeholder */
+.page-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    background: white;
+    border-radius: 12px;
+    color: hsl(220 10% 50%);
+}
+
+.page-placeholder-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.page-placeholder-text {
+    font-size: 1.125rem;
+}

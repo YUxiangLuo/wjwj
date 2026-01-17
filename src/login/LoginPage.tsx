@@ -26,9 +26,18 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // TODO: Implement login API
-    console.log("Login attempt:", { role, account, password });
-    setTimeout(() => setIsLoading(false), 1000);
+
+    // Simulate login delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Redirect based on role (prototype behavior)
+    if (role === "admin") {
+      window.location.href = "/admin";
+    } else {
+      // TODO: Implement login API for other roles
+      console.log("Login attempt:", { role, account, password });
+      setIsLoading(false);
+    }
   };
 
   return (
