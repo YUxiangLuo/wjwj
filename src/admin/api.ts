@@ -650,10 +650,32 @@ const studentRoutes: RouteDefinition = {
 
         const rows = await query;
 
+        // 获取最后活跃时间
+        const studentIds = rows.map((r) => r.id);
+        const lastActives =
+            studentIds.length > 0
+                ? await db
+                    .select({
+                        userId: loginLog.userId,
+                        lastActive: sql<Date>`MAX(${loginLog.loginAt})`,
+                    })
+                    .from(loginLog)
+                    .where(
+                        and(
+                            eq(loginLog.userType, 4), // 4 = student
+                            sql`${loginLog.userId} IN (${sql.join(studentIds, sql`, `)})`
+                        )
+                    )
+                    .groupBy(loginLog.userId)
+                : [];
+
+        const lastActiveMap = new Map(lastActives.map((l) => [l.userId, l.lastActive]));
+
         const result = rows.map((r) => ({
             ...r,
             isLocked: r.lockedUntil ? new Date(r.lockedUntil) > new Date() : false,
             progress: 0, // TODO: 计算实验进度
+            lastActive: lastActiveMap.get(r.id) ?? null,
         }));
 
         return json(result);
