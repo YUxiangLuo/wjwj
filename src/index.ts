@@ -6,8 +6,6 @@ import { adminApiRoutes } from "./admin/api";
 
 const server = serve({
   routes: {
-    // Student panel (default)
-    "/": studentPage,
     "/student": studentPage,
     "/student/*": studentPage,
 
