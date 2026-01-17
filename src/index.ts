@@ -1,11 +1,16 @@
 import { serve } from "bun";
-import loginPage from "./login/login.html";
 import adminPage from "./admin/admin.html";
 import teacherPage from "./teacher/teacher.html";
+import studentPage from "./student/student.html";
 import { adminApiRoutes } from "./admin/api";
 
 const server = serve({
   routes: {
+    // Student panel (default)
+    "/": studentPage,
+    "/student": studentPage,
+    "/student/*": studentPage,
+
     // Admin panel
     "/admin": adminPage,
     "/admin/*": adminPage,
@@ -13,10 +18,6 @@ const server = serve({
     // Teacher panel
     "/teacher": teacherPage,
     "/teacher/*": teacherPage,
-
-    // Login page (default)
-    "/": loginPage,
-    "/login": loginPage,
 
     // Admin API routes
     ...adminApiRoutes,
