@@ -80,6 +80,7 @@ export interface Student {
     status: number;
     isLocked: boolean;
     progress: number;
+    lastActive: string | null;
     createdAt: string;
 }
 
@@ -212,6 +213,16 @@ export const assistantApi = {
     delete: (id: number) =>
         request<{ success: boolean }>(`/api/admin/assistants/${id}`, {
             method: "DELETE",
+        }),
+
+    unlock: (id: number) =>
+        request<{ success: boolean }>(`/api/admin/assistants/${id}/unlock`, {
+            method: "PUT",
+        }),
+
+    resetPassword: (id: number) =>
+        request<{ success: boolean }>(`/api/admin/assistants/${id}/reset-password`, {
+            method: "POST",
         }),
 };
 

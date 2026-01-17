@@ -221,18 +221,18 @@ const teacherRoutes: RouteDefinition = {
         const lastLogins =
             teacherIds.length > 0
                 ? await db
-                      .select({
-                          userId: loginLog.userId,
-                          lastLogin: sql<Date>`MAX(${loginLog.loginAt})`,
-                      })
-                      .from(loginLog)
-                      .where(
-                          and(
-                              eq(loginLog.userType, 2), // 2 = teacher
-                              sql`${loginLog.userId} IN (${sql.join(teacherIds, sql`, `)})`
-                          )
-                      )
-                      .groupBy(loginLog.userId)
+                    .select({
+                        userId: loginLog.userId,
+                        lastLogin: sql<Date>`MAX(${loginLog.loginAt})`,
+                    })
+                    .from(loginLog)
+                    .where(
+                        and(
+                            eq(loginLog.userType, 2), // 2 = teacher
+                            sql`${loginLog.userId} IN (${sql.join(teacherIds, sql`, `)})`
+                        )
+                    )
+                    .groupBy(loginLog.userId)
                 : [];
 
         const lastLoginMap = new Map(lastLogins.map((l) => [l.userId, l.lastLogin]));
@@ -452,6 +452,54 @@ const assistantDeleteRoutes = {
 
         // 删除助教
         await db.delete(assistant).where(eq(assistant.id, id));
+
+        return json({ success: true });
+    },
+};
+
+const assistantUnlockRoutes = {
+    async PUT(req: Request) {
+        const url = new URL(req.url);
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[parts.length - 2] ?? "");
+
+        if (!id) {
+            return error("无效的助教ID", "INVALID_ID");
+        }
+
+        await db
+            .update(assistant)
+            .set({ lockedUntil: null, loginFailCount: 0 })
+            .where(eq(assistant.id, id));
+
+        return json({ success: true });
+    },
+};
+
+const assistantResetPasswordRoutes = {
+    async POST(req: Request) {
+        const url = new URL(req.url);
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[parts.length - 2] ?? "");
+
+        if (!id) {
+            return error("无效的助教ID", "INVALID_ID");
+        }
+
+        // 获取助教信息
+        const [a] = await db.select().from(assistant).where(eq(assistant.id, id));
+
+        if (!a) {
+            return error("助教不存在", "NOT_FOUND", 404);
+        }
+
+        // 重置密码为账号
+        const hashedPassword = await Bun.password.hash(a.account);
+
+        await db
+            .update(assistant)
+            .set({ password: hashedPassword, isFirstLogin: 1 })
+            .where(eq(assistant.id, id));
 
         return json({ success: true });
     },
@@ -776,6 +824,8 @@ export const adminApiRoutes = {
     // Assistants
     "/api/admin/assistants": assistantRoutes,
     "/api/admin/assistants/:id/status": assistantStatusRoutes,
+    "/api/admin/assistants/:id/unlock": assistantUnlockRoutes,
+    "/api/admin/assistants/:id/reset-password": assistantResetPasswordRoutes,
     "/api/admin/assistants/:id": assistantDeleteRoutes,
 
     // Classes

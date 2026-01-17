@@ -45,7 +45,7 @@ export function AnnouncementManagement() {
             const res = await announcementApi.create({
                 title: newAnnouncement.title.trim(),
                 content: newAnnouncement.content.trim(),
-                status: publish ? 1 : 0,
+                publish: publish,
             });
 
             if (res.success) {
@@ -95,15 +95,17 @@ export function AnnouncementManagement() {
     }
 
     async function handleTogglePublish(announcement: Announcement) {
-        const newStatus = announcement.status === 1 ? 0 : 1;
-        const action = newStatus === 0 ? "撤回" : "发布";
+        const isPublished = announcement.status === 1;
+        const action = isPublished ? "撤回" : "发布";
 
         if (!confirm(`确定${action}公告「${announcement.title}」吗？`)) {
             return;
         }
 
         try {
-            const res = await announcementApi.updateStatus(announcement.id, newStatus);
+            const res = isPublished
+                ? await announcementApi.unpublish(announcement.id)
+                : await announcementApi.publish(announcement.id);
             if (res.success) {
                 loadAnnouncements();
             } else {

@@ -33,8 +33,9 @@ export function AssistantManagement() {
             if (teachersRes.success && teachersRes.data) {
                 const activeTeachers = teachersRes.data.filter(t => t.status === 1);
                 setTeachers(activeTeachers);
-                if (activeTeachers.length > 0) {
-                    setNewAssistant(prev => ({ ...prev, teacherId: String(activeTeachers[0].id) }));
+                const firstTeacher = activeTeachers[0];
+                if (firstTeacher) {
+                    setNewAssistant(prev => ({ ...prev, teacherId: String(firstTeacher.id) }));
                 }
             }
         } catch (error) {
