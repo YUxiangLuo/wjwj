@@ -6,6 +6,8 @@ import { ClassManagement } from "./pages/ClassManagement";
 import { AssistantManagement } from "./pages/AssistantManagement";
 import { StudentManagement } from "./pages/StudentManagement";
 import { AnnouncementManagement } from "./pages/AnnouncementManagement";
+import { SystemMonitor } from "./pages/SystemMonitor";
+import { SystemSettings } from "./pages/SystemSettings";
 
 // Menu items for sidebar
 const menuItems = [
@@ -146,7 +148,9 @@ export function AdminApp() {
             case "assistant": return <AssistantManagement />;
             case "class": return <ClassManagement />;
             case "student": return <StudentManagement />;
+            case "monitor": return <SystemMonitor />;
             case "announcement": return <AnnouncementManagement />;
+            case "settings": return <SystemSettings />;
             default: return <PlaceholderPage name={pageTitles[activePage] ?? activePage} />;
         }
     };
