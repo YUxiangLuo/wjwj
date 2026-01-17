@@ -26,29 +26,28 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #ffffff;
+  --background: #fff;
   --foreground: #0f172a;
-  --card: #ffffff;
+  --card: #fff;
   --card-foreground: #0f172a;
   --primary: #0d9488;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
+  --primary-foreground: #fff;
+  --secondary: #e2e8f0;
   --secondary-foreground: #1e293b;
-  --muted: #f1f5f9;
+  --muted: #f8fafc;
   --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #1e293b;
+  --accent: #f0fdfa;
+  --accent-foreground: #0f766e;
   --destructive: #ef4444;
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #94a3b8;
+  --ring: #0d9488;
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground antialiased;
   }

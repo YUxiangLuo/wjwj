@@ -196,7 +196,7 @@ export function AdminApp() {
                                 onClick={() => setActivePage(item.id)}
                                 className={`w-full justify-start gap-3 px-6 py-3 h-auto rounded-none text-sm font-normal
                                     ${activePage === item.id
-                                        ? "bg-primary/20 text-primary border-l-[3px] border-primary"
+                                        ? "bg-primary/20 text-primary border-l-[3px] border-primary hover:bg-primary/30 hover:text-primary"
                                         : "text-white/70 hover:bg-white/10 hover:text-white border-l-[3px] border-transparent"
                                     }`}
                             >
