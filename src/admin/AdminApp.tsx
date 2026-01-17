@@ -3,6 +3,9 @@ import "./admin.css";
 import { SemesterManagement } from "./pages/SemesterManagement";
 import { TeacherManagement } from "./pages/TeacherManagement";
 import { ClassManagement } from "./pages/ClassManagement";
+import { AssistantManagement } from "./pages/AssistantManagement";
+import { StudentManagement } from "./pages/StudentManagement";
+import { AnnouncementManagement } from "./pages/AnnouncementManagement";
 
 // Menu items for sidebar
 const menuItems = [
@@ -140,7 +143,10 @@ export function AdminApp() {
             case "dashboard": return <Dashboard />;
             case "semester": return <SemesterManagement />;
             case "teacher": return <TeacherManagement />;
+            case "assistant": return <AssistantManagement />;
             case "class": return <ClassManagement />;
+            case "student": return <StudentManagement />;
+            case "announcement": return <AnnouncementManagement />;
             default: return <PlaceholderPage name={pageTitles[activePage] ?? activePage} />;
         }
     };
