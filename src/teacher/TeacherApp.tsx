@@ -1,15 +1,29 @@
 import { useState } from "react";
+import {
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, Settings
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import "./teacher.css";
 
-// Menu items for teacher sidebar
 const menuItems = [
-    { id: "dashboard", label: "首页概览", icon: "📊" },
-    { id: "class", label: "班级管理", icon: "🏫" },
-    { id: "topic", label: "课题管理", icon: "📚" },
-    { id: "task", label: "任务管理", icon: "📋" },
-    { id: "grading", label: "作业批改", icon: "✏️" },
-    { id: "assistant", label: "助教管理", icon: "👥" },
-    { id: "export", label: "成绩导出", icon: "📥" },
+    { id: "dashboard", label: "首页概览", icon: LayoutDashboard },
+    { id: "class", label: "班级管理", icon: School },
+    { id: "topic", label: "课题管理", icon: BookOpen },
+    { id: "task", label: "任务管理", icon: ClipboardList },
+    { id: "grading", label: "作业批改", icon: PenLine, badge: 12 },
+    { id: "assistant", label: "助教管理", icon: Users },
+    { id: "export", label: "成绩导出", icon: Download },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -22,13 +36,12 @@ const pageTitles: Record<string, string> = {
     export: "成绩导出",
 };
 
-// Dashboard Component
 function Dashboard() {
     const stats = [
-        { label: "我的班级", value: 3, icon: "🏫", color: "bg-blue-500" },
-        { label: "我的课题", value: 5, icon: "📚", color: "bg-emerald-500" },
-        { label: "待批改作业", value: 12, icon: "✏️", color: "bg-red-500", highlight: true },
-        { label: "进行中任务", value: 4, icon: "📋", color: "bg-amber-500" },
+        { label: "我的班级", value: 3, icon: School, color: "bg-blue-500" },
+        { label: "我的课题", value: 5, icon: BookOpen, color: "bg-emerald-500" },
+        { label: "待批改作业", value: 12, icon: PenLine, color: "bg-destructive", highlight: true },
+        { label: "进行中任务", value: 4, icon: ClipboardList, color: "bg-amber-500" },
     ];
 
     const recentSubmissions = [
@@ -39,60 +52,64 @@ function Dashboard() {
 
     return (
         <div className="space-y-6">
-            {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {stats.map((stat) => (
-                    <div key={stat.label} className={`bg-white rounded-xl p-5 shadow-sm cursor-pointer hover:shadow-md transition-shadow ${stat.highlight ? "ring-2 ring-red-200" : ""}`}>
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm text-slate-500">{stat.label}</span>
-                            <span className={`w-10 h-10 rounded-lg ${stat.color} flex items-center justify-center text-white text-lg`}>
-                                {stat.icon}
-                            </span>
-                        </div>
-                        <div className={`text-3xl font-bold ${stat.highlight ? "text-red-600" : "text-slate-800"}`}>{stat.value}</div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-800 mb-4">快捷入口</h3>
-                <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors flex items-center gap-2">
-                        ✏️ 进入批改
-                        <span className="bg-white/20 px-2 py-0.5 rounded text-xs">12</span>
-                    </button>
-                    <button className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors">
-                        + 创建新课题
-                    </button>
-                </div>
-            </div>
-
-            {/* Recent Submissions */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-800 mb-4">最近提交</h3>
-                <div className="space-y-3">
-                    {recentSubmissions.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center text-teal-700 text-sm font-medium">
-                                    {item.student[0]}
+                {stats.map((stat) => {
+                    const Icon = stat.icon;
+                    return (
+                        <Card key={stat.label} className={`cursor-pointer hover:shadow-md transition-shadow ${stat.highlight ? "ring-2 ring-destructive/20" : ""}`}>
+                            <CardContent className="pt-5">
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-sm text-muted-foreground">{stat.label}</span>
+                                    <span className={`w-10 h-10 rounded-lg ${stat.color} flex items-center justify-center text-white`}>
+                                        <Icon className="w-5 h-5" />
+                                    </span>
                                 </div>
+                                <div className={`text-3xl font-bold ${stat.highlight ? "text-destructive" : "text-foreground"}`}>{stat.value}</div>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">快捷入口</CardTitle>
+                </CardHeader>
+                <CardContent className="flex gap-3">
+                    <Button variant="destructive">
+                        <PenLine className="w-4 h-4" />
+                        进入批改
+                        <Badge variant="secondary" className="ml-2 bg-white/20">12</Badge>
+                    </Button>
+                    <Button>+ 创建新课题</Button>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">最近提交</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    {recentSubmissions.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                            <div className="flex items-center gap-3">
+                                <Avatar className="w-8 h-8">
+                                    <AvatarFallback className="bg-accent text-accent-foreground text-sm">{item.student[0]}</AvatarFallback>
+                                </Avatar>
                                 <div>
-                                    <div className="text-sm font-medium text-slate-800">{item.student}</div>
-                                    <div className="text-xs text-slate-500">{item.class} · {item.topic}</div>
+                                    <div className="text-sm font-medium text-foreground">{item.student}</div>
+                                    <div className="text-xs text-muted-foreground">{item.class} · {item.topic}</div>
                                 </div>
                             </div>
-                            <span className="text-xs text-slate-400">{item.time}</span>
+                            <span className="text-xs text-muted-foreground">{item.time}</span>
                         </div>
                     ))}
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
 
-// Class Management Component
 function ClassManagement() {
     const classes = [
         { id: 1, name: "统计学2024-1班", semester: "2024-Spring", studentCount: 45, createdAt: "2024-02-01" },
@@ -101,47 +118,52 @@ function ClassManagement() {
     ];
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-base font-semibold text-slate-800">班级列表</h3>
-                <select className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-                    <option>2024-Spring</option>
-                    <option>2023-Fall</option>
-                </select>
-            </div>
-
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="bg-slate-50">
-                        <th className="text-left p-3 text-slate-600 font-medium">班级名称</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">学期</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">学生人数</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">创建时间</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {classes.map((cls) => (
-                        <tr key={cls.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="p-3 font-medium text-slate-800">{cls.name}</td>
-                            <td className="p-3 text-slate-600">{cls.semester}</td>
-                            <td className="p-3 text-slate-700">{cls.studentCount}人</td>
-                            <td className="p-3 text-slate-500">{cls.createdAt}</td>
-                            <td className="p-3">
-                                <div className="flex gap-2">
-                                    <button className="text-teal-600 hover:text-teal-700 text-sm">管理学生</button>
-                                    <button className="text-slate-500 hover:text-slate-700 text-sm">查看详情</button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+        <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">班级列表</CardTitle>
+                <Select defaultValue="2024-Spring">
+                    <SelectTrigger className="w-36">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="2024-Spring">2024-Spring</SelectItem>
+                        <SelectItem value="2023-Fall">2023-Fall</SelectItem>
+                    </SelectContent>
+                </Select>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>班级名称</TableHead>
+                            <TableHead>学期</TableHead>
+                            <TableHead>学生人数</TableHead>
+                            <TableHead>创建时间</TableHead>
+                            <TableHead>操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {classes.map((cls) => (
+                            <TableRow key={cls.id}>
+                                <TableCell className="font-medium">{cls.name}</TableCell>
+                                <TableCell>{cls.semester}</TableCell>
+                                <TableCell>{cls.studentCount}人</TableCell>
+                                <TableCell className="text-muted-foreground">{cls.createdAt}</TableCell>
+                                <TableCell>
+                                    <div className="flex gap-2">
+                                        <Button variant="ghost" size="sm" className="text-primary">管理学生</Button>
+                                        <Button variant="ghost" size="sm">查看详情</Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
     );
 }
 
-// Topic Management Component
 function TopicManagement() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const topics = [
@@ -151,207 +173,202 @@ function TopicManagement() {
     ];
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-base font-semibold text-slate-800">课题列表</h3>
+        <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">课题列表</CardTitle>
                 <div className="flex gap-3">
-                    <select className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-                        <option>全部状态</option>
-                        <option>草稿</option>
-                        <option>已发布</option>
-                    </select>
-                    <button onClick={() => setShowCreateModal(true)} className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors">
-                        + 创建课题
-                    </button>
+                    <Select defaultValue="all">
+                        <SelectTrigger className="w-28">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">全部状态</SelectItem>
+                            <SelectItem value="draft">草稿</SelectItem>
+                            <SelectItem value="published">已发布</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={() => setShowCreateModal(true)}>+ 创建课题</Button>
                 </div>
-            </div>
-
-            <div className="grid gap-4">
+            </CardHeader>
+            <CardContent className="space-y-4">
                 {topics.map((topic) => (
-                    <div key={topic.id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                    <div key={topic.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                         <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center gap-3">
-                                <span className="text-xl">📊</span>
+                                <BookOpen className="w-5 h-5 text-primary" />
                                 <div>
-                                    <h4 className="font-medium text-slate-800">{topic.name}</h4>
-                                    <div className="text-xs text-slate-500 mt-1">
-                                        创建于 {topic.createdAt}
-                                    </div>
+                                    <h4 className="font-medium text-foreground">{topic.name}</h4>
+                                    <div className="text-xs text-muted-foreground mt-1">创建于 {topic.createdAt}</div>
                                 </div>
                             </div>
                             {topic.status === "published" ? (
-                                <span className="px-2 py-1 text-xs font-medium rounded bg-emerald-100 text-emerald-700">已发布</span>
+                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">已发布</Badge>
                             ) : (
-                                <span className="px-2 py-1 text-xs font-medium rounded bg-slate-100 text-slate-600">草稿</span>
+                                <Badge variant="secondary">草稿</Badge>
                             )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-slate-500 mb-3">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                             <span>数据行数：{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
                             <span>附件：{topic.attachments}个</span>
                         </div>
                         <div className="flex gap-2">
                             {topic.status === "draft" ? (
                                 <>
-                                    <button className="text-teal-600 hover:text-teal-700 text-sm">编辑</button>
-                                    <button className="text-emerald-600 hover:text-emerald-700 text-sm">发布</button>
-                                    <button className="text-red-500 hover:text-red-600 text-sm">删除</button>
+                                    <Button variant="ghost" size="sm" className="text-primary">编辑</Button>
+                                    <Button variant="ghost" size="sm" className="text-emerald-600">发布</Button>
+                                    <Button variant="ghost" size="sm" className="text-destructive">删除</Button>
                                 </>
                             ) : (
                                 <>
-                                    <button className="text-teal-600 hover:text-teal-700 text-sm">查看</button>
-                                    <button className="text-slate-500 hover:text-slate-700 text-sm">编辑</button>
-                                    <button className="text-blue-500 hover:text-blue-600 text-sm">复制</button>
-                                    <button className="text-red-500 hover:text-red-600 text-sm">删除</button>
+                                    <Button variant="ghost" size="sm" className="text-primary">查看</Button>
+                                    <Button variant="ghost" size="sm">编辑</Button>
+                                    <Button variant="ghost" size="sm" className="text-blue-500">复制</Button>
+                                    <Button variant="ghost" size="sm" className="text-destructive">删除</Button>
                                 </>
                             )}
                         </div>
                     </div>
                 ))}
-            </div>
+            </CardContent>
 
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowCreateModal(false)}>
-                    <div className="bg-white rounded-xl p-6 w-full max-w-2xl shadow-xl" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-6">创建新课题</h3>
-                        <div className="space-y-4">
-                            {/* Stepper */}
-                            <div className="flex items-center gap-2 mb-6">
-                                {["基本信息", "上传数据", "字段映射", "辅助资料", "推荐题目", "评分权重"].map((step, idx) => (
-                                    <div key={step} className="flex items-center">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${idx === 0 ? "bg-teal-600 text-white" : "bg-slate-200 text-slate-500"}`}>
-                                            {idx + 1}
-                                        </div>
-                                        <span className={`text-xs ml-1 ${idx === 0 ? "text-teal-600 font-medium" : "text-slate-400"}`}>{step}</span>
-                                        {idx < 5 && <span className="mx-2 text-slate-300">→</span>}
+            <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>创建新课题</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="flex items-center gap-2 mb-6">
+                            {["基本信息", "上传数据", "字段映射", "辅助资料", "推荐题目", "评分权重"].map((step, idx) => (
+                                <div key={step} className="flex items-center">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${idx === 0 ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                                        {idx + 1}
                                     </div>
-                                ))}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">课题名称</label>
-                                <input type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal-500" placeholder="请输入课题名称" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">背景描述</label>
-                                <textarea className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-teal-500 h-32 resize-none" placeholder="请输入课题背景描述" />
-                            </div>
+                                    <span className={`text-xs ml-1 ${idx === 0 ? "text-primary font-medium" : "text-muted-foreground"}`}>{step}</span>
+                                    {idx < 5 && <span className="mx-2 text-muted-foreground">→</span>}
+                                </div>
+                            ))}
                         </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">取消</button>
-                            <button className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">保存草稿</button>
-                            <button className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">下一步</button>
+                        <div className="space-y-2">
+                            <Label htmlFor="topicName">课题名称</Label>
+                            <Input id="topicName" placeholder="请输入课题名称" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="topicDesc">背景描述</Label>
+                            <Textarea id="topicDesc" placeholder="请输入课题背景描述" className="min-h-32 resize-none" />
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowCreateModal(false)}>取消</Button>
+                        <Button variant="outline">保存草稿</Button>
+                        <Button>下一步</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Card>
     );
 }
 
-// Task Management Component
 function TaskManagement() {
     const [showPublishModal, setShowPublishModal] = useState(false);
     const tasks = [
-        { id: 1, topic: "消费者行为调研", class: "统计学2024-1班", publishedAt: "2024-03-01", deadline: "2024-03-31", progress: "32/45", pending: 8 },
-        { id: 2, topic: "消费者行为调研", class: "统计学2024-2班", publishedAt: "2024-03-01", deadline: "2024-03-31", progress: "28/42", pending: 5 },
-        { id: 3, topic: "市场竞争分析", class: "统计学2024-3班", publishedAt: "2024-03-10", deadline: "2024-04-10", progress: "15/38", pending: 3 },
+        { id: 1, topic: "消费者行为调研", class: "统计学2024-1班", publishedAt: "2024-03-01", deadline: "2024-03-31", completed: 32, total: 45, pending: 8 },
+        { id: 2, topic: "消费者行为调研", class: "统计学2024-2班", publishedAt: "2024-03-01", deadline: "2024-03-31", completed: 28, total: 42, pending: 5 },
+        { id: 3, topic: "市场竞争分析", class: "统计学2024-3班", publishedAt: "2024-03-10", deadline: "2024-04-10", completed: 15, total: 38, pending: 3 },
     ];
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-base font-semibold text-slate-800">任务列表</h3>
-                <button onClick={() => setShowPublishModal(true)} className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors">
-                    + 发布任务
-                </button>
-            </div>
-
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="bg-slate-50">
-                        <th className="text-left p-3 text-slate-600 font-medium">课题</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">班级</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">发布时间</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">截止时间</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">完成进度</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">待批改</th>
-                        <th className="text-left p-3 text-slate-600 font-medium">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {tasks.map((task) => (
-                        <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="p-3 font-medium text-slate-800">{task.topic}</td>
-                            <td className="p-3 text-slate-600">{task.class}</td>
-                            <td className="p-3 text-slate-500">{task.publishedAt}</td>
-                            <td className="p-3 text-slate-500">{task.deadline}</td>
-                            <td className="p-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
-                                        <div className="h-full bg-teal-500 rounded-full" style={{ width: `${(parseInt(task.progress.split("/")[0] ?? "0") / parseInt(task.progress.split("/")[1] ?? "1")) * 100}%` }} />
+        <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">任务列表</CardTitle>
+                <Button onClick={() => setShowPublishModal(true)}>+ 发布任务</Button>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>课题</TableHead>
+                            <TableHead>班级</TableHead>
+                            <TableHead>发布时间</TableHead>
+                            <TableHead>截止时间</TableHead>
+                            <TableHead>完成进度</TableHead>
+                            <TableHead>待批改</TableHead>
+                            <TableHead>操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {tasks.map((task) => (
+                            <TableRow key={task.id}>
+                                <TableCell className="font-medium">{task.topic}</TableCell>
+                                <TableCell>{task.class}</TableCell>
+                                <TableCell className="text-muted-foreground">{task.publishedAt}</TableCell>
+                                <TableCell className="text-muted-foreground">{task.deadline}</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <Progress value={(task.completed / task.total) * 100} className="w-16 h-2" />
+                                        <span className="text-xs text-muted-foreground">{task.completed}/{task.total}</span>
                                     </div>
-                                    <span className="text-xs text-slate-600">{task.progress}</span>
-                                </div>
-                            </td>
-                            <td className="p-3">
-                                <span className={`px-2 py-1 text-xs font-medium rounded ${task.pending > 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-700"}`}>
-                                    {task.pending}
-                                </span>
-                            </td>
-                            <td className="p-3">
-                                <div className="flex gap-2">
-                                    <button className="text-teal-600 hover:text-teal-700 text-sm">查看进度</button>
-                                    <button className="text-slate-500 hover:text-slate-700 text-sm">延长时间</button>
-                                    <button className="text-red-500 hover:text-red-600 text-sm">进入批改</button>
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={task.pending > 0 ? "destructive" : "secondary"} className={task.pending > 0 ? "" : "bg-emerald-100 text-emerald-700"}>
+                                        {task.pending}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex gap-2">
+                                        <Button variant="ghost" size="sm" className="text-primary">查看进度</Button>
+                                        <Button variant="ghost" size="sm">延长时间</Button>
+                                        <Button variant="ghost" size="sm" className="text-destructive">进入批改</Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
 
-            {showPublishModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowPublishModal(false)}>
-                    <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-lg font-semibold text-slate-800 mb-6">发布任务</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">选择课题</label>
-                                <select className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">
-                                    <option>消费者行为调研</option>
-                                    <option>市场竞争分析</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">选择班级</label>
-                                <div className="space-y-2">
-                                    <label className="flex items-center gap-2 text-sm">
-                                        <input type="checkbox" className="rounded" /> 统计学2024-1班
+            <Dialog open={showPublishModal} onOpenChange={setShowPublishModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>发布任务</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>选择课题</Label>
+                            <Select defaultValue="topic1">
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="topic1">消费者行为调研</SelectItem>
+                                    <SelectItem value="topic2">市场竞争分析</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>选择班级</Label>
+                            <div className="space-y-2">
+                                {["统计学2024-1班", "统计学2024-2班", "统计学2024-3班"].map((cls) => (
+                                    <label key={cls} className="flex items-center gap-2 text-sm">
+                                        <input type="checkbox" className="rounded border-input" /> {cls}
                                     </label>
-                                    <label className="flex items-center gap-2 text-sm">
-                                        <input type="checkbox" className="rounded" /> 统计学2024-2班
-                                    </label>
-                                    <label className="flex items-center gap-2 text-sm">
-                                        <input type="checkbox" className="rounded" /> 统计学2024-3班
-                                    </label>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">截止时间（可选）</label>
-                                <input type="datetime-local" className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" />
+                                ))}
                             </div>
                         </div>
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button onClick={() => setShowPublishModal(false)} className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">取消</button>
-                            <button className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">确认发布</button>
+                        <div className="space-y-2">
+                            <Label htmlFor="deadline">截止时间（可选）</Label>
+                            <Input id="deadline" type="datetime-local" />
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPublishModal(false)}>取消</Button>
+                        <Button>确认发布</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Card>
     );
 }
 
-// Grading Component
 function GradingManagement() {
     const submissions = [
         { id: 1, studentId: "2024001", name: "张明", topic: "消费者行为调研", class: "统计学2024-1班", submittedAt: "2024-03-15 14:30", status: "pending" },
@@ -362,85 +379,87 @@ function GradingManagement() {
 
     const getStatusBadge = (status: string, score?: number) => {
         switch (status) {
-            case "pending": return <span className="px-2 py-1 text-xs font-medium rounded bg-amber-100 text-amber-700">待批改</span>;
-            case "draft": return <span className="px-2 py-1 text-xs font-medium rounded bg-slate-100 text-slate-600">批改草稿</span>;
-            case "graded": return <span className="px-2 py-1 text-xs font-medium rounded bg-emerald-100 text-emerald-700">已批改 ({score}分)</span>;
-            case "rejected": return <span className="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-600">已驳回</span>;
+            case "pending": return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">待批改</Badge>;
+            case "draft": return <Badge variant="secondary">批改草稿</Badge>;
+            case "graded": return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">已批改 ({score}分)</Badge>;
+            case "rejected": return <Badge variant="destructive">已驳回</Badge>;
             default: return null;
         }
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h3 className="text-base font-semibold text-slate-800">作业批改</h3>
+        <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">作业批改</CardTitle>
                 <div className="flex gap-3">
-                    <select className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-                        <option>全部班级</option>
-                        <option>统计学2024-1班</option>
-                        <option>统计学2024-2班</option>
-                    </select>
-                    <select className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
-                        <option>全部状态</option>
-                        <option>待批改</option>
-                        <option>批改草稿</option>
-                        <option>已批改</option>
-                        <option>已驳回</option>
-                    </select>
+                    <Select defaultValue="all-class">
+                        <SelectTrigger className="w-36">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all-class">全部班级</SelectItem>
+                            <SelectItem value="class1">统计学2024-1班</SelectItem>
+                            <SelectItem value="class2">统计学2024-2班</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select defaultValue="all-status">
+                        <SelectTrigger className="w-28">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all-status">全部状态</SelectItem>
+                            <SelectItem value="pending">待批改</SelectItem>
+                            <SelectItem value="draft">批改草稿</SelectItem>
+                            <SelectItem value="graded">已批改</SelectItem>
+                            <SelectItem value="rejected">已驳回</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
-            </div>
-
-            <div className="space-y-3">
+            </CardHeader>
+            <CardContent className="space-y-3">
                 {submissions.map((sub) => (
-                    <div key={sub.id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                    <div key={sub.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
                         <div className="flex justify-between items-start">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center text-teal-700 font-medium">
-                                    {sub.name[0]}
-                                </div>
+                                <Avatar className="w-10 h-10">
+                                    <AvatarFallback className="bg-accent text-accent-foreground">{sub.name[0]}</AvatarFallback>
+                                </Avatar>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="font-medium text-slate-800">{sub.name}</span>
-                                        <span className="text-xs text-slate-500">({sub.studentId})</span>
+                                        <span className="font-medium text-foreground">{sub.name}</span>
+                                        <span className="text-xs text-muted-foreground">({sub.studentId})</span>
                                     </div>
-                                    <div className="text-xs text-slate-500">{sub.class} · {sub.topic}</div>
+                                    <div className="text-xs text-muted-foreground">{sub.class} · {sub.topic}</div>
                                 </div>
                             </div>
                             <div className="text-right">
-                                {getStatusBadge(sub.status, sub.status === "graded" ? 85 : undefined)}
-                                <div className="text-xs text-slate-400 mt-1">{sub.submittedAt}</div>
+                                {getStatusBadge(sub.status, sub.score)}
+                                <div className="text-xs text-muted-foreground mt-1">{sub.submittedAt}</div>
                             </div>
                         </div>
                         <div className="flex justify-end mt-3">
-                            {sub.status === "pending" && (
-                                <button className="px-4 py-1.5 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700">开始批改</button>
-                            )}
-                            {sub.status === "draft" && (
-                                <button className="px-4 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600">继续批改</button>
-                            )}
-                            {(sub.status === "graded" || sub.status === "rejected") && (
-                                <button className="px-4 py-1.5 border border-slate-300 rounded-lg text-sm text-slate-600 hover:bg-slate-50">查看详情</button>
-                            )}
+                            {sub.status === "pending" && <Button size="sm">开始批改</Button>}
+                            {sub.status === "draft" && <Button size="sm" className="bg-amber-500 hover:bg-amber-600">继续批改</Button>}
+                            {(sub.status === "graded" || sub.status === "rejected") && <Button variant="outline" size="sm">查看详情</Button>}
                         </div>
                     </div>
                 ))}
-            </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }
 
-// Placeholder for other pages
 function PlaceholderPage({ name }: { name: string }) {
     return (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-            <div className="text-4xl mb-4">🚧</div>
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">{name}</h2>
-            <p className="text-slate-500">此页面正在开发中...</p>
-        </div>
+        <Card className="flex flex-col items-center justify-center h-96">
+            <CardContent className="text-center text-muted-foreground pt-6">
+                <Settings className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <div className="text-lg">{name}页面开发中...</div>
+            </CardContent>
+        </Card>
     );
 }
 
-// Main Teacher App
 export function TeacherApp() {
     const [activePage, setActivePage] = useState("dashboard");
 
@@ -456,63 +475,66 @@ export function TeacherApp() {
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-100">
-            {/* Sidebar */}
+        <div className="flex min-h-screen bg-muted/40">
             <aside className="w-60 bg-slate-800 text-white flex flex-col shrink-0">
                 <div className="p-6 border-b border-white/10">
                     <h1 className="text-lg font-semibold">抽样统计系统</h1>
                     <p className="text-xs text-white/70 mt-1">教师端</p>
                 </div>
 
-                <nav className="flex-1 p-4">
-                    <ul className="space-y-1">
-                        {menuItems.map((item) => (
-                            <li key={item.id}>
-                                <button
-                                    onClick={() => setActivePage(item.id)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${activePage === item.id
-                                        ? "bg-teal-600 text-white"
-                                        : "text-white/80 hover:bg-white/10"
-                                        }`}
-                                >
-                                    <span>{item.icon}</span>
-                                    <span>{item.label}</span>
-                                    {item.id === "grading" && (
-                                        <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">12</span>
-                                    )}
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
+                <nav className="flex-1 py-4 overflow-y-auto">
+                    {menuItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <Button
+                                key={item.id}
+                                variant="ghost"
+                                onClick={() => setActivePage(item.id)}
+                                className={`w-full justify-start gap-3 px-6 py-3 h-auto rounded-none text-sm font-normal
+                                    ${activePage === item.id
+                                        ? "bg-primary/20 text-primary border-l-[3px] border-primary hover:bg-primary/30 hover:text-primary"
+                                        : "text-white/70 hover:bg-white/10 hover:text-white border-l-[3px] border-transparent"
+                                    }`}
+                            >
+                                <Icon className="w-4 h-4" />
+                                <span>{item.label}</span>
+                                {item.badge && (
+                                    <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5">{item.badge}</Badge>
+                                )}
+                            </Button>
+                        );
+                    })}
                 </nav>
 
-                <div className="p-4 border-t border-white/10">
-                    <div className="flex items-center gap-3 text-sm">
-                        <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">张</div>
+                <Separator className="bg-white/10" />
+
+                <div className="p-4">
+                    <div className="flex items-center gap-3">
+                        <Avatar className="w-8 h-8">
+                            <AvatarFallback className="bg-primary text-primary-foreground text-sm">张</AvatarFallback>
+                        </Avatar>
                         <div>
-                            <div className="font-medium">张老师</div>
-                            <div className="text-xs text-white/60">T001</div>
+                            <div className="text-sm font-medium">张老师</div>
+                            <div className="text-xs text-white/70">T001</div>
                         </div>
                     </div>
                 </div>
             </aside>
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col">
-                <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-slate-800">{pageTitles[activePage]}</h2>
+            <main className="flex-1 flex flex-col overflow-hidden">
+                <header className="bg-background px-8 py-4 border-b flex justify-between items-center">
+                    <h2 className="text-xl font-semibold text-foreground">{pageTitles[activePage]}</h2>
                     <div className="flex items-center gap-4">
-                        <button className="relative text-slate-500 hover:text-slate-700">
-                            🔔
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">2</span>
-                        </button>
-                        <span className="text-sm text-slate-500">2024年3月17日</span>
+                        <Button variant="ghost" size="sm" className="relative">
+                            <Bell className="w-5 h-5" />
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-xs rounded-full flex items-center justify-center">2</span>
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                            {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}
+                        </span>
                     </div>
                 </header>
-
-                <div className="flex-1 p-6 overflow-auto">
-                    {renderPage()}
-                </div>
+                <div className="flex-1 p-8 overflow-y-auto">{renderPage()}</div>
             </main>
         </div>
     );
