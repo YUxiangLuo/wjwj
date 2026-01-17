@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Trash2, Star } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,59 +8,99 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-
-const mockSemesters = [
-    { id: 1, name: "2024-Spring", isCurrent: true, classCount: 8, createdAt: "2024-02-01" },
-    { id: 2, name: "2023-Fall", isCurrent: false, classCount: 6, createdAt: "2023-09-01" },
-    { id: 3, name: "2023-Spring", isCurrent: false, classCount: 5, createdAt: "2023-02-01" },
-];
-
-interface Semester {
-    id: number;
-    name: string;
-    isCurrent: boolean;
-    classCount: number;
-    createdAt: string;
-}
+import { semesterApi, type Semester } from "../api-client";
 
 export function SemesterManagement() {
-    const [semesters, setSemesters] = useState<Semester[]>(mockSemesters);
+    const [semesters, setSemesters] = useState<Semester[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [newSemesterName, setNewSemesterName] = useState("");
     const [setAsCurrent, setSetAsCurrent] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
-    const handleAddSemester = () => {
-        if (!newSemesterName.trim()) return;
-        const newSemester: Semester = {
-            id: Date.now(),
-            name: newSemesterName,
-            isCurrent: setAsCurrent,
-            classCount: 0,
-            createdAt: new Date().toISOString().split("T")[0] ?? "",
-        };
-        if (setAsCurrent) {
-            setSemesters(semesters.map(s => ({ ...s, isCurrent: false })).concat(newSemester));
-        } else {
-            setSemesters([...semesters, newSemester]);
+    useEffect(() => {
+        loadSemesters();
+    }, []);
+
+    async function loadSemesters() {
+        setLoading(true);
+        try {
+            const res = await semesterApi.list();
+            if (res.success && res.data) {
+                setSemesters(res.data);
+            }
+        } catch (error) {
+            console.error("Failed to load semesters:", error);
+        } finally {
+            setLoading(false);
         }
-        setNewSemesterName("");
-        setSetAsCurrent(false);
-        setShowAddModal(false);
-    };
+    }
 
-    const handleSetCurrent = (id: number) => {
-        setSemesters(semesters.map(s => ({ ...s, isCurrent: s.id === id })));
-    };
+    async function handleAddSemester() {
+        if (!newSemesterName.trim()) return;
 
-    const handleDelete = (id: number) => {
-        const semester = semesters.find(s => s.id === id);
-        if (semester?.classCount && semester.classCount > 0) {
+        setSubmitting(true);
+        try {
+            const res = await semesterApi.create({
+                name: newSemesterName.trim(),
+                setAsCurrent,
+            });
+
+            if (res.success) {
+                setNewSemesterName("");
+                setSetAsCurrent(false);
+                setShowAddModal(false);
+                loadSemesters();
+            } else {
+                alert(res.error?.message ?? "创建失败");
+            }
+        } catch (error) {
+            console.error("Failed to create semester:", error);
+            alert("创建失败");
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function handleSetCurrent(id: number) {
+        try {
+            const res = await semesterApi.setCurrent(id);
+            if (res.success) {
+                loadSemesters();
+            } else {
+                alert(res.error?.message ?? "设置失败");
+            }
+        } catch (error) {
+            console.error("Failed to set current semester:", error);
+            alert("设置失败");
+        }
+    }
+
+    async function handleDelete(semester: Semester) {
+        if (semester.classCount > 0) {
             alert("该学期下有班级，无法删除");
             return;
         }
-        if (confirm(`确定删除学期「${semester?.name}」吗？`)) {
-            setSemesters(semesters.filter(s => s.id !== id));
+
+        if (!confirm(`确定删除学期「${semester.name}」吗？`)) {
+            return;
         }
+
+        try {
+            const res = await semesterApi.delete(semester.id);
+            if (res.success) {
+                loadSemesters();
+            } else {
+                alert(res.error?.message ?? "删除失败");
+            }
+        } catch (error) {
+            console.error("Failed to delete semester:", error);
+            alert("删除失败");
+        }
+    }
+
+    const formatDate = (dateStr: string) => {
+        return new Date(dateStr).toLocaleDateString("zh-CN");
     };
 
     return (
@@ -73,52 +113,66 @@ export function SemesterManagement() {
                 </Button>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>学期名称</TableHead>
-                            <TableHead>状态</TableHead>
-                            <TableHead>班级数量</TableHead>
-                            <TableHead>创建时间</TableHead>
-                            <TableHead>操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {semesters.map((semester) => (
-                            <TableRow key={semester.id}>
-                                <TableCell className="font-medium">{semester.name}</TableCell>
-                                <TableCell>
-                                    {semester.isCurrent ? (
-                                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">当前学期</Badge>
-                                    ) : (
-                                        <Badge variant="secondary">历史学期</Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell>{semester.classCount}</TableCell>
-                                <TableCell className="text-muted-foreground">{semester.createdAt}</TableCell>
-                                <TableCell>
-                                    <div className="flex gap-2">
-                                        {!semester.isCurrent && (
-                                            <Button variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)}>
-                                                <Star className="w-3 h-3 mr-1" />
-                                                设为当前
-                                            </Button>
-                                        )}
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDelete(semester.id)}
-                                            className="text-destructive hover:text-destructive"
-                                        >
-                                            <Trash2 className="w-3 h-3 mr-1" />
-                                            删除
-                                        </Button>
-                                    </div>
-                                </TableCell>
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>学期名称</TableHead>
+                                <TableHead>状态</TableHead>
+                                <TableHead>班级数量</TableHead>
+                                <TableHead>创建时间</TableHead>
+                                <TableHead>操作</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {semesters.map((semester) => (
+                                <TableRow key={semester.id}>
+                                    <TableCell className="font-medium">{semester.name}</TableCell>
+                                    <TableCell>
+                                        {semester.isCurrent ? (
+                                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">当前学期</Badge>
+                                        ) : (
+                                            <Badge variant="secondary">历史学期</Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>{semester.classCount}</TableCell>
+                                    <TableCell className="text-muted-foreground">{formatDate(semester.createdAt)}</TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-2">
+                                            {!semester.isCurrent && (
+                                                <Button variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)}>
+                                                    <Star className="w-3 h-3 mr-1" />
+                                                    设为当前
+                                                </Button>
+                                            )}
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleDelete(semester)}
+                                                className="text-destructive hover:text-destructive"
+                                                disabled={semester.classCount > 0}
+                                            >
+                                                <Trash2 className="w-3 h-3 mr-1" />
+                                                删除
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {semesters.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
+                                        暂无数据
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                )}
             </CardContent>
 
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
@@ -148,8 +202,13 @@ export function SemesterManagement() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowAddModal(false)}>取消</Button>
-                        <Button onClick={handleAddSemester}>确认创建</Button>
+                        <Button variant="outline" onClick={() => setShowAddModal(false)} disabled={submitting}>
+                            取消
+                        </Button>
+                        <Button onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()}>
+                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            确认创建
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

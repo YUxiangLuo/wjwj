@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Search, RotateCcw } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Search, RotateCcw, Loader2, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,58 +7,133 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-
-const mockTeachers = [
-    { id: 1, employeeId: "T001", name: "张三", status: 1, classCount: 3, lastLogin: "2024-03-15 10:30", createdAt: "2023-09-01" },
-    { id: 2, employeeId: "T002", name: "李四", status: 1, classCount: 2, lastLogin: "2024-03-14 14:20", createdAt: "2023-09-01" },
-    { id: 3, employeeId: "T003", name: "王五", status: 0, classCount: 0, lastLogin: "2024-01-10 09:00", createdAt: "2023-09-15" },
-    { id: 4, employeeId: "T004", name: "赵六", status: 1, classCount: 3, lastLogin: "2024-03-15 08:45", createdAt: "2024-01-01" },
-];
-
-interface Teacher {
-    id: number;
-    employeeId: string;
-    name: string;
-    status: number;
-    classCount: number;
-    lastLogin: string;
-    createdAt: string;
-}
+import { teacherApi, type Teacher } from "../api-client";
 
 export function TeacherManagement() {
-    const [teachers, setTeachers] = useState<Teacher[]>(mockTeachers);
+    const [teachers, setTeachers] = useState<Teacher[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [newTeacher, setNewTeacher] = useState({ employeeId: "", name: "" });
+    const [submitting, setSubmitting] = useState(false);
 
-    const filteredTeachers = teachers.filter(
-        (t) => t.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) || t.name.includes(searchTerm)
-    );
+    useEffect(() => {
+        loadTeachers();
+    }, []);
 
-    const handleAddTeacher = () => {
-        if (!newTeacher.employeeId.trim() || !newTeacher.name.trim()) return;
-        const teacher: Teacher = {
-            id: Date.now(),
-            employeeId: newTeacher.employeeId,
-            name: newTeacher.name,
-            status: 1,
-            classCount: 0,
-            lastLogin: "-",
-            createdAt: new Date().toISOString().split("T")[0] ?? "",
-        };
-        setTeachers([...teachers, teacher]);
-        setNewTeacher({ employeeId: "", name: "" });
-        setShowAddModal(false);
-    };
-
-    const handleToggleStatus = (id: number) => {
-        setTeachers(teachers.map((t) => (t.id === id ? { ...t, status: t.status === 1 ? 0 : 1 } : t)));
-    };
-
-    const handleResetPassword = (teacher: Teacher) => {
-        if (confirm(`确定重置教师「${teacher.name}」的密码吗？\n\n密码将重置为工号，下次登录需要修改密码。`)) {
-            alert(`密码已重置为：${teacher.employeeId}`);
+    async function loadTeachers(search?: string) {
+        setLoading(true);
+        try {
+            const res = await teacherApi.list(search);
+            if (res.success && res.data) {
+                setTeachers(res.data);
+            }
+        } catch (error) {
+            console.error("Failed to load teachers:", error);
+        } finally {
+            setLoading(false);
         }
+    }
+
+    function handleSearch() {
+        loadTeachers(searchTerm);
+    }
+
+    async function handleAddTeacher() {
+        if (!newTeacher.employeeId.trim() || !newTeacher.name.trim()) return;
+
+        setSubmitting(true);
+        try {
+            const res = await teacherApi.create({
+                employeeId: newTeacher.employeeId.trim(),
+                name: newTeacher.name.trim(),
+            });
+
+            if (res.success) {
+                setNewTeacher({ employeeId: "", name: "" });
+                setShowAddModal(false);
+                loadTeachers(searchTerm);
+            } else {
+                alert(res.error?.message ?? "添加失败");
+            }
+        } catch (error) {
+            console.error("Failed to create teacher:", error);
+            alert("添加失败");
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function handleToggleStatus(teacher: Teacher) {
+        const newStatus = teacher.status === 1 ? 0 : 1;
+        const action = newStatus === 0 ? "停用" : "启用";
+
+        if (!confirm(`确定${action}教师「${teacher.name}」吗？`)) {
+            return;
+        }
+
+        try {
+            const res = await teacherApi.updateStatus(teacher.id, newStatus);
+            if (res.success) {
+                loadTeachers(searchTerm);
+            } else {
+                alert(res.error?.message ?? `${action}失败`);
+            }
+        } catch (error) {
+            console.error(`Failed to ${action} teacher:`, error);
+            alert(`${action}失败`);
+        }
+    }
+
+    async function handleUnlock(teacher: Teacher) {
+        if (!confirm(`确定解锁教师「${teacher.name}」吗？`)) {
+            return;
+        }
+
+        try {
+            const res = await teacherApi.unlock(teacher.id);
+            if (res.success) {
+                loadTeachers(searchTerm);
+            } else {
+                alert(res.error?.message ?? "解锁失败");
+            }
+        } catch (error) {
+            console.error("Failed to unlock teacher:", error);
+            alert("解锁失败");
+        }
+    }
+
+    async function handleResetPassword(teacher: Teacher) {
+        if (!confirm(`确定重置教师「${teacher.name}」的密码吗？\n\n密码将重置为工号，下次登录需要修改密码。`)) {
+            return;
+        }
+
+        try {
+            const res = await teacherApi.resetPassword(teacher.id);
+            if (res.success) {
+                alert(`密码已重置为：${teacher.employeeId}`);
+            } else {
+                alert(res.error?.message ?? "重置失败");
+            }
+        } catch (error) {
+            console.error("Failed to reset password:", error);
+            alert("重置失败");
+        }
+    }
+
+    const formatDate = (dateStr: string | null) => {
+        if (!dateStr) return "-";
+        return new Date(dateStr).toLocaleString("zh-CN");
+    };
+
+    const getStatusBadge = (teacher: Teacher) => {
+        if (teacher.isLocked) {
+            return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">已锁定</Badge>;
+        }
+        if (teacher.status === 1) {
+            return <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>;
+        }
+        return <Badge variant="destructive">已停用</Badge>;
     };
 
     return (
@@ -72,6 +147,7 @@ export function TeacherManagement() {
                             placeholder="搜索工号或姓名..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                             className="pl-9 w-52"
                         />
                     </div>
@@ -82,56 +158,65 @@ export function TeacherManagement() {
                 </div>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>工号</TableHead>
-                            <TableHead>姓名</TableHead>
-                            <TableHead>状态</TableHead>
-                            <TableHead>班级数</TableHead>
-                            <TableHead>最后登录</TableHead>
-                            <TableHead>创建时间</TableHead>
-                            <TableHead>操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {filteredTeachers.map((teacher) => (
-                            <TableRow key={teacher.id}>
-                                <TableCell className="font-medium">{teacher.employeeId}</TableCell>
-                                <TableCell>{teacher.name}</TableCell>
-                                <TableCell>
-                                    {teacher.status === 1 ? (
-                                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
-                                    ) : (
-                                        <Badge variant="destructive">已停用</Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell>{teacher.classCount}</TableCell>
-                                <TableCell className="text-muted-foreground">{teacher.lastLogin}</TableCell>
-                                <TableCell className="text-muted-foreground">{teacher.createdAt}</TableCell>
-                                <TableCell>
-                                    <div className="flex gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)}>
-                                            <RotateCcw className="w-3 h-3 mr-1" />
-                                            重置密码
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleToggleStatus(teacher.id)}
-                                            className={teacher.status === 1 ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
-                                        >
-                                            {teacher.status === 1 ? "停用" : "启用"}
-                                        </Button>
-                                    </div>
-                                </TableCell>
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>工号</TableHead>
+                                <TableHead>姓名</TableHead>
+                                <TableHead>状态</TableHead>
+                                <TableHead>班级数</TableHead>
+                                <TableHead>最后登录</TableHead>
+                                <TableHead>创建时间</TableHead>
+                                <TableHead>操作</TableHead>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-
-                {filteredTeachers.length === 0 && (
-                    <div className="text-center py-12 text-muted-foreground">暂无数据</div>
+                        </TableHeader>
+                        <TableBody>
+                            {teachers.map((teacher) => (
+                                <TableRow key={teacher.id}>
+                                    <TableCell className="font-medium">{teacher.employeeId}</TableCell>
+                                    <TableCell>{teacher.name}</TableCell>
+                                    <TableCell>{getStatusBadge(teacher)}</TableCell>
+                                    <TableCell>{teacher.classCount}</TableCell>
+                                    <TableCell className="text-muted-foreground">{formatDate(teacher.lastLogin)}</TableCell>
+                                    <TableCell className="text-muted-foreground">{formatDate(teacher.createdAt)}</TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-2">
+                                            {teacher.isLocked && (
+                                                <Button variant="ghost" size="sm" onClick={() => handleUnlock(teacher)}>
+                                                    <Unlock className="w-3 h-3 mr-1" />
+                                                    解锁
+                                                </Button>
+                                            )}
+                                            <Button variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)}>
+                                                <RotateCcw className="w-3 h-3 mr-1" />
+                                                重置密码
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleToggleStatus(teacher)}
+                                                className={teacher.status === 1 ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
+                                            >
+                                                {teacher.status === 1 ? "停用" : "启用"}
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {teachers.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                                        暂无数据
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
                 )}
             </CardContent>
 
@@ -162,8 +247,16 @@ export function TeacherManagement() {
                         <p className="text-xs text-muted-foreground">初始密码为工号</p>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowAddModal(false)}>取消</Button>
-                        <Button onClick={handleAddTeacher}>确认添加</Button>
+                        <Button variant="outline" onClick={() => setShowAddModal(false)} disabled={submitting}>
+                            取消
+                        </Button>
+                        <Button
+                            onClick={handleAddTeacher}
+                            disabled={submitting || !newTeacher.employeeId.trim() || !newTeacher.name.trim()}
+                        >
+                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            确认添加
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

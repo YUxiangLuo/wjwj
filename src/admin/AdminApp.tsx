@@ -1,13 +1,13 @@
 import { useState } from "react";
 import {
     LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
-    Activity, Megaphone, Settings, LogOut
+    Activity, Megaphone, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Dashboard } from "./pages/Dashboard";
 import { SemesterManagement } from "./pages/SemesterManagement";
 import { TeacherManagement } from "./pages/TeacherManagement";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -40,113 +40,6 @@ const pageTitles: Record<string, string> = {
     announcement: "公告管理",
     settings: "系统设置",
 };
-
-const mockStats = {
-    currentSemester: "2024-Spring",
-    teacherCount: 12,
-    classCount: 8,
-    studentCount: 320,
-    assistantCount: 6,
-    todayActiveUsers: 45,
-    todayLogins: 128,
-    pendingItems: 3,
-};
-
-const mockMetrics = { cpu: 35, memory: 62, disk: 48 };
-
-const mockAnnouncements = [
-    { id: 1, title: "系统维护通知：本周六凌晨2点进行例行维护", date: "2024-03-15" },
-    { id: 2, title: "新学期开始，请各位教师及时发布任务", date: "2024-03-01" },
-    { id: 3, title: "欢迎使用抽样统计虚拟仿真系统V3.0", date: "2024-02-20" },
-];
-
-function StatCard({ icon: Icon, value, label, colorClass }: {
-    icon: React.ComponentType<{ className?: string }>;
-    value: string | number;
-    label: string;
-    colorClass: string
-}) {
-    return (
-        <Card>
-            <CardContent className="pt-6">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${colorClass}`}>
-                    <Icon className="w-6 h-6" />
-                </div>
-                <div className="text-2xl font-bold text-foreground">{value}</div>
-                <div className="text-sm text-muted-foreground">{label}</div>
-            </CardContent>
-        </Card>
-    );
-}
-
-function StatusBar({ label, value, color }: { label: string; value: number; color: string }) {
-    return (
-        <div className="p-4 bg-muted rounded-lg">
-            <div className="text-xs text-muted-foreground mb-2">{label}</div>
-            <Progress value={value} className={`h-2 mb-2 ${color}`} />
-            <div className="text-sm font-semibold text-foreground">{value}%</div>
-        </div>
-    );
-}
-
-function Dashboard() {
-    return (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard icon={Calendar} value={mockStats.currentSemester} label="当前学期" colorClass="bg-primary/10 text-primary" />
-                <StatCard icon={Users} value={mockStats.teacherCount} label="教师总数" colorClass="bg-emerald-50 text-emerald-600" />
-                <StatCard icon={School} value={mockStats.classCount} label="班级总数" colorClass="bg-secondary text-secondary-foreground" />
-                <StatCard icon={GraduationCap} value={mockStats.studentCount} label="学生总数" colorClass="bg-amber-50 text-amber-600" />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard icon={UserCheck} value={mockStats.assistantCount} label="助教总数" colorClass="bg-rose-50 text-rose-600" />
-                <StatCard icon={Users} value={mockStats.todayActiveUsers} label="今日活跃用户" colorClass="bg-primary/10 text-primary" />
-                <StatCard icon={LogOut} value={mockStats.todayLogins} label="今日登录次数" colorClass="bg-blue-50 text-blue-600" />
-                <StatCard icon={Activity} value={mockStats.pendingItems} label="待处理事项" colorClass="bg-orange-50 text-orange-600" />
-            </div>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">系统状态</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-3 gap-4">
-                        <StatusBar
-                            label="CPU 使用率"
-                            value={mockMetrics.cpu}
-                            color={mockMetrics.cpu > 90 ? "[&>div]:bg-destructive" : mockMetrics.cpu > 70 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500"}
-                        />
-                        <StatusBar
-                            label="内存使用率"
-                            value={mockMetrics.memory}
-                            color={mockMetrics.memory > 90 ? "[&>div]:bg-destructive" : mockMetrics.memory > 75 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500"}
-                        />
-                        <StatusBar
-                            label="磁盘使用率"
-                            value={mockMetrics.disk}
-                            color={mockMetrics.disk > 95 ? "[&>div]:bg-destructive" : mockMetrics.disk > 80 ? "[&>div]:bg-amber-500" : "[&>div]:bg-emerald-500"}
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">最近公告</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    {mockAnnouncements.map((item) => (
-                        <div key={item.id} className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                            <span className="text-sm text-foreground">{item.title}</span>
-                            <span className="text-xs text-muted-foreground">{item.date}</span>
-                        </div>
-                    ))}
-                </CardContent>
-            </Card>
-        </div>
-    );
-}
 
 function PlaceholderPage({ name }: { name: string }) {
     return (
