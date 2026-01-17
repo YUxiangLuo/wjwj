@@ -1,0 +1,39 @@
+{
+  "name": "sampling-simulation",
+  "version": "1.0.0",
+  "description": "抽样统计虚拟仿真教学系统",
+  "main": "index.js",
+  "scripts": {
+    "db:init": "tsx scripts/db-init.ts",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:prod": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:reset": "tsx scripts/db-reset.ts",
+    "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "keywords": [
+    "sampling",
+    "statistics",
+    "simulation",
+    "education"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.10.0",
+    "prisma": "^6.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "mysql2": "^3.9.0"
+  }
+}
