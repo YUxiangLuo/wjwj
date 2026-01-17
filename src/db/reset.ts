@@ -1,12 +1,11 @@
 /**
  * Database Reset Script
  * 
- * WARNING: This will DROP ALL TABLES and re-run migrations.
+ * WARNING: This will DROP ALL TABLES in the database.
  * Only use in development environment!
  */
 
 import { db } from "./index";
-import { migrate } from "drizzle-orm/mysql2/migrator";
 import { sql } from "drizzle-orm";
 
 async function reset() {
@@ -45,12 +44,6 @@ async function reset() {
     await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
 
     console.log("\n✅ All tables dropped.");
-    console.log("\n🔄 Running migrations...\n");
-
-    // Run migrations
-    await migrate(db, { migrationsFolder: "drizzle" });
-
-    console.log("\n✅ Database reset complete!");
     process.exit(0);
 }
 
