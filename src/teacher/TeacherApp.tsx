@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, Settings
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, Settings,
+    ArrowLeft, UserPlus, Upload, RotateCcw, UserX, Trash2, Search, FileSpreadsheet, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,13 +111,162 @@ function Dashboard() {
     );
 }
 
-function ClassManagement() {
-    const classes = [
-        { id: 1, name: "统计学2024-1班", semester: "2024-Spring", studentCount: 45, createdAt: "2024-02-01" },
-        { id: 2, name: "统计学2024-2班", semester: "2024-Spring", studentCount: 42, createdAt: "2024-02-01" },
-        { id: 3, name: "统计学2024-3班", semester: "2024-Spring", studentCount: 38, createdAt: "2024-02-15" },
-    ];
+const mockClasses = [
+    { id: 1, name: "统计学2024-1班", semester: "2024-Spring", studentCount: 45, createdAt: "2024-02-01" },
+    { id: 2, name: "统计学2024-2班", semester: "2024-Spring", studentCount: 42, createdAt: "2024-02-01" },
+    { id: 3, name: "统计学2024-3班", semester: "2024-Spring", studentCount: 38, createdAt: "2024-02-15" },
+];
 
+const mockStudents = [
+    { id: 1, studentId: "2024001", name: "张明", email: "zhangming@edu.cn", status: "active", lastLogin: "2024-03-15 14:30" },
+    { id: 2, studentId: "2024002", name: "李华", email: "lihua@edu.cn", status: "active", lastLogin: "2024-03-15 10:20" },
+    { id: 3, studentId: "2024003", name: "王芳", email: "wangfang@edu.cn", status: "active", lastLogin: "2024-03-14 16:45" },
+    { id: 4, studentId: "2024004", name: "刘强", email: "liuqiang@edu.cn", status: "disabled", lastLogin: "2024-03-10 09:10" },
+    { id: 5, studentId: "2024005", name: "赵丽", email: "zhaoli@edu.cn", status: "active", lastLogin: "2024-03-15 08:00" },
+];
+
+function StudentManagement({ classInfo, onBack }: { classInfo: typeof mockClasses[0]; onBack: () => void }) {
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+
+    const filteredStudents = mockStudents.filter(s =>
+        s.name.includes(searchQuery) || s.studentId.includes(searchQuery) || s.email.includes(searchQuery)
+    );
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-3">
+                <Button variant="ghost" size="sm" onClick={onBack}>
+                    <ArrowLeft className="w-4 h-4 mr-1" />
+                    返回
+                </Button>
+                <span className="text-muted-foreground">/</span>
+                <span className="font-medium">{classInfo.name}</span>
+            </div>
+
+            <Card>
+                <CardHeader className="flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-base">学生列表（{classInfo.studentCount}人）</CardTitle>
+                    <div className="flex gap-3">
+                        <div className="relative">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                placeholder="搜索学生..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 w-48"
+                            />
+                        </div>
+                        <Button variant="outline" onClick={() => setShowImportModal(true)}>
+                            <Upload className="w-4 h-4" />
+                            批量导入
+                        </Button>
+                        <Button onClick={() => setShowAddModal(true)}>
+                            <UserPlus className="w-4 h-4" />
+                            添加学生
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>学号</TableHead>
+                                <TableHead>姓名</TableHead>
+                                <TableHead>邮箱</TableHead>
+                                <TableHead>状态</TableHead>
+                                <TableHead>最后登录</TableHead>
+                                <TableHead>操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredStudents.map((student) => (
+                                <TableRow key={student.id}>
+                                    <TableCell className="font-mono">{student.studentId}</TableCell>
+                                    <TableCell className="font-medium">{student.name}</TableCell>
+                                    <TableCell className="text-muted-foreground">{student.email}</TableCell>
+                                    <TableCell>
+                                        {student.status === "active" ? (
+                                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
+                                        ) : (
+                                            <Badge variant="secondary">已禁用</Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground">{student.lastLogin}</TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-1">
+                                            <Button variant="ghost" size="sm" title="重置密码">
+                                                <RotateCcw className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="sm" title={student.status === "active" ? "禁用" : "启用"}>
+                                                <UserX className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="sm" className="text-destructive" title="删除">
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>添加学生</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="studentId">学号</Label>
+                            <Input id="studentId" placeholder="请输入学号" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="studentName">姓名</Label>
+                            <Input id="studentName" placeholder="请输入姓名" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="studentEmail">邮箱（可选）</Label>
+                            <Input id="studentEmail" type="email" placeholder="请输入邮箱" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAddModal(false)}>取消</Button>
+                        <Button>确认添加</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>批量导入学生</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                            <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                            <p className="text-sm text-muted-foreground mb-2">点击或拖拽文件到此处上传</p>
+                            <p className="text-xs text-muted-foreground">支持 .xlsx, .xls, .csv 格式</p>
+                        </div>
+                        <Button variant="link" className="text-primary p-0 h-auto">
+                            <Download className="w-4 h-4 mr-1" />
+                            下载导入模板
+                        </Button>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowImportModal(false)}>取消</Button>
+                        <Button disabled>开始导入</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
+
+function ClassManagement({ onManageStudents }: { onManageStudents: (classInfo: typeof mockClasses[0]) => void }) {
     return (
         <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -143,7 +293,7 @@ function ClassManagement() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {classes.map((cls) => (
+                        {mockClasses.map((cls) => (
                             <TableRow key={cls.id}>
                                 <TableCell className="font-medium">{cls.name}</TableCell>
                                 <TableCell>{cls.semester}</TableCell>
@@ -151,7 +301,7 @@ function ClassManagement() {
                                 <TableCell className="text-muted-foreground">{cls.createdAt}</TableCell>
                                 <TableCell>
                                     <div className="flex gap-2">
-                                        <Button variant="ghost" size="sm" className="text-primary">管理学生</Button>
+                                        <Button variant="ghost" size="sm" className="text-primary" onClick={() => onManageStudents(cls)}>管理学生</Button>
                                         <Button variant="ghost" size="sm">查看详情</Button>
                                     </div>
                                 </TableCell>
@@ -449,6 +599,207 @@ function GradingManagement() {
     );
 }
 
+const mockAssistants = [
+    { id: 1, name: "陈助教", studentId: "TA2024001", email: "chenta@edu.cn", assignedClasses: ["统计学2024-1班", "统计学2024-2班"], status: "active" },
+    { id: 2, name: "周助教", studentId: "TA2024002", email: "zhouta@edu.cn", assignedClasses: ["统计学2024-3班"], status: "active" },
+];
+
+function AssistantManagement() {
+    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [selectedAssistant, setSelectedAssistant] = useState<typeof mockAssistants[0] | null>(null);
+
+    return (
+        <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base">助教列表</CardTitle>
+                <Button>
+                    <UserPlus className="w-4 h-4" />
+                    添加助教
+                </Button>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>姓名</TableHead>
+                            <TableHead>工号</TableHead>
+                            <TableHead>邮箱</TableHead>
+                            <TableHead>负责班级</TableHead>
+                            <TableHead>状态</TableHead>
+                            <TableHead>操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {mockAssistants.map((ta) => (
+                            <TableRow key={ta.id}>
+                                <TableCell className="font-medium">{ta.name}</TableCell>
+                                <TableCell className="font-mono">{ta.studentId}</TableCell>
+                                <TableCell className="text-muted-foreground">{ta.email}</TableCell>
+                                <TableCell>
+                                    <div className="flex gap-1 flex-wrap">
+                                        {ta.assignedClasses.map((cls) => (
+                                            <Badge key={cls} variant="secondary" className="text-xs">{cls}</Badge>
+                                        ))}
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex gap-2">
+                                        <Button variant="ghost" size="sm" className="text-primary" onClick={() => { setSelectedAssistant(ta); setShowAssignModal(true); }}>
+                                            分配班级
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="text-destructive">移除</Button>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+
+            <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>分配班级 - {selectedAssistant?.name}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-3">
+                            {mockClasses.map((cls) => (
+                                <label key={cls.id} className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-input"
+                                        defaultChecked={selectedAssistant?.assignedClasses.includes(cls.name)}
+                                    />
+                                    <div>
+                                        <div className="font-medium">{cls.name}</div>
+                                        <div className="text-xs text-muted-foreground">{cls.studentCount}人 · {cls.semester}</div>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAssignModal(false)}>取消</Button>
+                        <Button>确认分配</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </Card>
+    );
+}
+
+function GradeExport() {
+    const exportTasks = [
+        { id: 1, topic: "消费者行为调研", class: "统计学2024-1班", graded: 45, total: 45, avgScore: 82.5 },
+        { id: 2, topic: "消费者行为调研", class: "统计学2024-2班", graded: 40, total: 42, avgScore: 79.8 },
+        { id: 3, topic: "市场竞争分析", class: "统计学2024-3班", graded: 35, total: 38, avgScore: 85.2 },
+    ];
+
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader className="flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-base">成绩导出</CardTitle>
+                    <div className="flex gap-3">
+                        <Select defaultValue="all-class">
+                            <SelectTrigger className="w-36">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all-class">全部班级</SelectItem>
+                                {mockClasses.map((cls) => (
+                                    <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select defaultValue="all-topic">
+                            <SelectTrigger className="w-36">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all-topic">全部课题</SelectItem>
+                                <SelectItem value="topic1">消费者行为调研</SelectItem>
+                                <SelectItem value="topic2">市场竞争分析</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-8">
+                                    <input type="checkbox" className="rounded border-input" />
+                                </TableHead>
+                                <TableHead>课题</TableHead>
+                                <TableHead>班级</TableHead>
+                                <TableHead>批改进度</TableHead>
+                                <TableHead>平均分</TableHead>
+                                <TableHead>操作</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {exportTasks.map((task) => (
+                                <TableRow key={task.id}>
+                                    <TableCell>
+                                        <input type="checkbox" className="rounded border-input" />
+                                    </TableCell>
+                                    <TableCell className="font-medium">{task.topic}</TableCell>
+                                    <TableCell>{task.class}</TableCell>
+                                    <TableCell>
+                                        <div className="flex items-center gap-2">
+                                            <Progress value={(task.graded / task.total) * 100} className="w-16 h-2" />
+                                            <span className="text-xs text-muted-foreground">{task.graded}/{task.total}</span>
+                                            {task.graded === task.total && (
+                                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-xs">已完成</Badge>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="font-medium">{task.avgScore.toFixed(1)}</TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-2">
+                                            <Button variant="ghost" size="sm" className="text-primary">
+                                                <FileSpreadsheet className="w-4 h-4 mr-1" />
+                                                导出Excel
+                                            </Button>
+                                            <Button variant="ghost" size="sm">
+                                                <FileText className="w-4 h-4 mr-1" />
+                                                导出PDF
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">批量导出</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground">已选择 0 项</span>
+                        <Button variant="outline" disabled>
+                            <FileSpreadsheet className="w-4 h-4" />
+                            批量导出Excel
+                        </Button>
+                        <Button variant="outline" disabled>
+                            <FileText className="w-4 h-4" />
+                            批量导出PDF
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
 function PlaceholderPage({ name }: { name: string }) {
     return (
         <Card className="flex flex-col items-center justify-center h-96">
@@ -462,14 +813,21 @@ function PlaceholderPage({ name }: { name: string }) {
 
 export function TeacherApp() {
     const [activePage, setActivePage] = useState("dashboard");
+    const [selectedClass, setSelectedClass] = useState<typeof mockClasses[0] | null>(null);
 
     const renderPage = () => {
+        if (activePage === "class" && selectedClass) {
+            return <StudentManagement classInfo={selectedClass} onBack={() => setSelectedClass(null)} />;
+        }
+
         switch (activePage) {
             case "dashboard": return <Dashboard />;
-            case "class": return <ClassManagement />;
+            case "class": return <ClassManagement onManageStudents={setSelectedClass} />;
             case "topic": return <TopicManagement />;
             case "task": return <TaskManagement />;
             case "grading": return <GradingManagement />;
+            case "assistant": return <AssistantManagement />;
+            case "export": return <GradeExport />;
             default: return <PlaceholderPage name={pageTitles[activePage] ?? activePage} />;
         }
     };
@@ -489,7 +847,7 @@ export function TeacherApp() {
                             <Button
                                 key={item.id}
                                 variant="ghost"
-                                onClick={() => setActivePage(item.id)}
+                                onClick={() => { setActivePage(item.id); setSelectedClass(null); }}
                                 className={`w-full justify-start gap-3 px-6 py-3 h-auto rounded-none text-sm font-normal
                                     ${activePage === item.id
                                         ? "bg-primary/20 text-primary border-l-[3px] border-primary hover:bg-primary/30 hover:text-primary"
