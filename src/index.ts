@@ -3,6 +3,7 @@ import adminPage from "./admin/admin.html";
 import teacherPage from "./teacher/teacher.html";
 import studentPage from "./student/student.html";
 import { adminApiRoutes } from "./admin/api";
+import { studentApiRoutes } from "./student/api";
 
 const server = serve({
   routes: {
@@ -19,6 +20,9 @@ const server = serve({
 
     // Admin API routes
     ...adminApiRoutes,
+
+    // Student API routes
+    ...studentApiRoutes,
 
     // API endpoints (example)
     "/api/hello": {

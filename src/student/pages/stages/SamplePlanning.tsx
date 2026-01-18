@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Calculator } from "lucide-react";
+import { useExperiment } from "../ExperimentLayout";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -13,11 +14,12 @@ interface SamplePlanningProps {
 }
 
 export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
+    const { populationSize } = useExperiment();
     const [confidenceLevel, setConfidenceLevel] = useState("95");
     const [marginOfError, setMarginOfError] = useState([5]);
     const [finalSampleSize, setFinalSampleSize] = useState(384);
 
-    const N = 10000; // Total population (from Excel)
+    const N = populationSize; // Total population (from topic)
 
     // Z values for confidence levels
     const zValues: Record<string, number> = {

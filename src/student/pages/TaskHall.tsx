@@ -1,91 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
     LayoutDashboard, FileText, FlaskConical, CheckCircle,
-    ChevronRight, Clock, AlertCircle
+    ChevronRight, Clock, AlertCircle, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { tasksApi, type StudentTask, type TaskStatus } from "../api-client";
 
-// Types
-export type TaskStatus = "not_started" | "in_progress" | "submitted" | "grading" | "graded" | "rejected";
-
-export interface StudentTask {
-    id: number;
-    topicId: number;
-    name: string;
-    description: string;
-    publishedAt: string;
-    deadline: string | null;
-    status: TaskStatus;
-    progress: number;
-    currentStage: number;
-    score?: number;
-    rejectReason?: string;
-}
-
-// Mock data - exported for use by other components
-export const mockTasks: StudentTask[] = [
-    {
-        id: 1,
-        topicId: 101,
-        name: "消费者行为调研",
-        description: "通过问卷调查了解消费者的购物决策过程和影响因素，分析不同人群的消费偏好差异。",
-        publishedAt: "2024-03-01",
-        deadline: "2024-04-15",
-        status: "in_progress",
-        progress: 50,
-        currentStage: 2,
-    },
-    {
-        id: 2,
-        topicId: 102,
-        name: "医疗可及性调查",
-        description: "研究不同地区居民获取医疗服务的便利程度，包括就医距离、等待时间等因素。",
-        publishedAt: "2024-03-10",
-        deadline: "2024-04-20",
-        status: "not_started",
-        progress: 0,
-        currentStage: 0,
-    },
-    {
-        id: 3,
-        topicId: 103,
-        name: "教育资源分布研究",
-        description: "调查城乡教育资源配置差异及其对学生发展的影响，为教育公平政策提供数据支持。",
-        publishedAt: "2024-02-15",
-        deadline: "2024-03-30",
-        status: "graded",
-        progress: 100,
-        currentStage: 4,
-        score: 87,
-    },
-    {
-        id: 4,
-        topicId: 104,
-        name: "居民出行方式调查",
-        description: "分析城市居民日常出行方式选择及影响因素。",
-        publishedAt: "2024-03-15",
-        deadline: "2024-04-25",
-        status: "submitted",
-        progress: 100,
-        currentStage: 4,
-    },
-    {
-        id: 5,
-        topicId: 105,
-        name: "环境意识调查",
-        description: "调查公众对环境问题的认知和态度。",
-        publishedAt: "2024-02-20",
-        deadline: "2024-03-25",
-        status: "rejected",
-        progress: 100,
-        currentStage: 4,
-        rejectReason: "报告分析不够深入，缺少对抽样方法的比较分析。",
-    },
-];
+// Re-export types for compatibility
+export type { TaskStatus, StudentTask };
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -234,9 +160,29 @@ function TaskCard({ task }: TaskCardProps) {
 type FilterType = "all" | "in_progress" | "completed";
 
 export function TaskHall() {
+    const [tasks, setTasks] = useState<StudentTask[]>([]);
+    const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<FilterType>("all");
 
-    const filteredTasks = mockTasks.filter(task => {
+    // 加载任务列表
+    useEffect(() => {
+        async function loadTasks() {
+            setLoading(true);
+            try {
+                const res = await tasksApi.list();
+                if (res.success && res.data) {
+                    setTasks(res.data);
+                }
+            } catch (error) {
+                console.error("Failed to load tasks:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        loadTasks();
+    }, []);
+
+    const filteredTasks = tasks.filter(task => {
         if (filter === "all") return true;
         if (filter === "in_progress") {
             return ["not_started", "in_progress", "submitted", "grading", "rejected"].includes(task.status);
@@ -246,13 +192,21 @@ export function TaskHall() {
     });
 
     // Calculate stats
-    const inProgressCount = mockTasks.filter(t =>
+    const inProgressCount = tasks.filter(t =>
         ["not_started", "in_progress", "submitted", "grading", "rejected"].includes(t.status)
     ).length;
-    const completedCount = mockTasks.filter(t => t.status === "graded").length;
-    const averageScore = mockTasks
+    const completedCount = tasks.filter(t => t.status === "graded").length;
+    const averageScore = tasks
         .filter(t => t.status === "graded" && t.score !== undefined)
         .reduce((acc, t, _, arr) => acc + (t.score || 0) / arr.length, 0);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -308,7 +262,7 @@ export function TaskHall() {
                         size="sm"
                         onClick={() => setFilter("all")}
                     >
-                        全部 ({mockTasks.length})
+                        全部 ({tasks.length})
                     </Button>
                     <Button
                         variant={filter === "in_progress" ? "default" : "outline"}

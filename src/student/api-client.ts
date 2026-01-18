@@ -1,0 +1,282 @@
+/**
+ * Student API Client
+ * 学生端前端 API 调用工具
+ */
+
+// ============================================================
+// Types
+// ============================================================
+
+export interface ApiResponse<T> {
+    success: boolean;
+    data?: T;
+    error?: {
+        code: string;
+        message: string;
+    };
+}
+
+export interface CurrentStudent {
+    id: number;
+    studentId: string;
+    name: string;
+    classId: number;
+    className: string | null;
+}
+
+export type TaskStatus = "not_started" | "in_progress" | "submitted" | "grading" | "graded" | "rejected";
+
+export interface StudentTask {
+    id: number;
+    topicId: number;
+    name: string;
+    description: string | null;
+    publishedAt: string;
+    deadline: string | null;
+    status: TaskStatus;
+    progress: number;
+    currentStage: number;
+    score?: number;
+    rejectReason?: string;
+}
+
+export interface TopicAttachment {
+    id: number;
+    name: string;
+    type: string;
+    size: number;
+}
+
+export interface RecommendQuestion {
+    id: number;
+    questionType: number;
+    content: string;
+    options: unknown;
+    sortOrder: number;
+}
+
+export interface TaskDetail {
+    id: number;
+    topicId: number;
+    name: string;
+    description: string | null;
+    publishedAt: string;
+    deadline: string | null;
+    populationSize: number;
+    attachments: TopicAttachment[];
+    recommendQuestions: RecommendQuestion[];
+    status: TaskStatus;
+    currentStage: number;
+    score?: number;
+    rejectReason?: string;
+}
+
+export interface QuestionnaireData {
+    title: string;
+    welcomeText: string;
+    endingText: string;
+    questions: Array<{
+        id: number;
+        type: string;
+        content: string;
+        options?: string[];
+    }>;
+}
+
+export interface SamplePlanData {
+    confidenceLevel: string;
+    marginOfError: number;
+    recommendedSize: number;
+    finalSampleSize: number;
+}
+
+export interface SamplingResultsData {
+    simple?: {
+        completed: boolean;
+        sampleCount: number;
+        data?: unknown[];
+    };
+    systematic?: {
+        completed: boolean;
+        kValue: number;
+        sampleCount: number;
+        data?: unknown[];
+    };
+    stratified?: {
+        completed: boolean;
+        stratifyBy: string;
+        layers: Array<{
+            name: string;
+            count: number;
+            ratio: number;
+            sampleCount: number;
+        }>;
+        data?: unknown[];
+    };
+}
+
+export interface ExperimentData {
+    id: number;
+    taskId: number;
+    currentStage: number;
+    status: number;
+    questionnaire: QuestionnaireData | null;
+    samplePlan: SamplePlanData | null;
+    samplingResults: SamplingResultsData | null;
+    reportContent: string | null;
+    lastSavedAt: string | null;
+    populationSize: number;
+}
+
+export interface Notification {
+    id: number;
+    type: string;
+    title: string;
+    content: string;
+    isRead: number;
+    createdAt: string;
+    relatedType: string | null;
+    relatedId: number | null;
+}
+
+export interface NotificationsResponse {
+    notifications: Notification[];
+    unreadCount: number;
+}
+
+export interface Announcement {
+    id: number;
+    title: string;
+    content: string;
+    createdAt: string;
+    isRead: boolean;
+}
+
+// ============================================================
+// API Client
+// ============================================================
+
+async function request<T>(
+    url: string,
+    options?: RequestInit
+): Promise<ApiResponse<T>> {
+    try {
+        const res = await fetch(url, {
+            headers: {
+                "Content-Type": "application/json",
+                ...options?.headers,
+            },
+            credentials: "include", // 包含 cookies
+            ...options,
+        });
+
+        const data = await res.json();
+        return data as ApiResponse<T>;
+    } catch (error) {
+        return {
+            success: false,
+            error: {
+                code: "NETWORK_ERROR",
+                message: error instanceof Error ? error.message : "网络请求失败",
+            },
+        };
+    }
+}
+
+// ============================================================
+// Me API - 当前用户
+// ============================================================
+
+export const meApi = {
+    get: () => request<CurrentStudent>("/api/student/me"),
+};
+
+// ============================================================
+// Tasks API - 任务
+// ============================================================
+
+export const tasksApi = {
+    list: () => request<StudentTask[]>("/api/student/tasks"),
+
+    get: (taskId: number) => request<TaskDetail>(`/api/student/tasks/${taskId}`),
+};
+
+// ============================================================
+// Experiment API - 实验
+// ============================================================
+
+export const experimentApi = {
+    get: (taskId: number) =>
+        request<ExperimentData>(`/api/student/tasks/${taskId}/experiment`),
+
+    save: (
+        taskId: number,
+        data: {
+            currentStage?: number;
+            questionnaire?: QuestionnaireData;
+            samplePlan?: SamplePlanData;
+            samplingResults?: SamplingResultsData;
+            reportContent?: string;
+        }
+    ) =>
+        request<{ success: boolean; lastSavedAt: string }>(
+            `/api/student/tasks/${taskId}/experiment`,
+            {
+                method: "PUT",
+                body: JSON.stringify(data),
+            }
+        ),
+
+    submit: (taskId: number) =>
+        request<{ success: boolean }>(`/api/student/tasks/${taskId}/submit`, {
+            method: "POST",
+        }),
+};
+
+// ============================================================
+// Notifications API - 通知
+// ============================================================
+
+export const notificationsApi = {
+    list: () => request<NotificationsResponse>("/api/student/notifications"),
+
+    markAsRead: (notificationId: number) =>
+        request<{ success: boolean }>(
+            `/api/student/notifications/${notificationId}/read`,
+            { method: "PUT" }
+        ),
+
+    markAllAsRead: () =>
+        request<{ success: boolean }>("/api/student/notifications/read-all", {
+            method: "PUT",
+        }),
+};
+
+// ============================================================
+// Announcements API - 公告
+// ============================================================
+
+export const announcementsApi = {
+    list: () => request<Announcement[]>("/api/student/announcements"),
+
+    markAsRead: (announcementId: number) =>
+        request<{ success: boolean }>(
+            `/api/student/announcements/${announcementId}/read`,
+            { method: "PUT" }
+        ),
+};
+
+// ============================================================
+// Attachments API - 附件
+// ============================================================
+
+export const attachmentsApi = {
+    getDownloadInfo: (attachmentId: number) =>
+        request<{
+            id: number;
+            fileName: string;
+            filePath: string;
+            fileType: string;
+            fileSize: number;
+        }>(`/api/student/attachments/${attachmentId}/download`),
+};

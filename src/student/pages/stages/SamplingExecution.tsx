@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Play, RefreshCw } from "lucide-react";
+import { useExperiment } from "../ExperimentLayout";
 
 interface SamplingExecutionProps {
     onNext: () => void;
@@ -16,6 +17,7 @@ interface SamplingExecutionProps {
 type SamplingMethod = "simple" | "systematic" | "stratified";
 
 export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
+    const { populationSize, experiment } = useExperiment();
     const [completedMethods, setCompletedMethods] = useState<Set<SamplingMethod>>(new Set());
     const [kValue, setKValue] = useState(25);
     const [executed, setExecuted] = useState<Record<SamplingMethod, boolean>>({
@@ -24,8 +26,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         stratified: false,
     });
 
-    const n = 384; // Target sample size
-    const N = 10000; // Population size
+    // Get sample size from experiment's sample plan, or default to 384
+    const n = (experiment?.samplePlan as { finalSampleSize?: number })?.finalSampleSize ?? 384;
+    const N = populationSize; // Population size from topic
 
     const handleExecute = (method: SamplingMethod) => {
         setExecuted(prev => ({ ...prev, [method]: true }));
