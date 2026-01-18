@@ -1,12 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Calculator } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
+import type { SamplePlanData } from "../../api-client";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -14,12 +25,17 @@ interface SamplePlanningProps {
 }
 
 export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
-    const { populationSize } = useExperiment();
-    const [confidenceLevel, setConfidenceLevel] = useState("95");
-    const [marginOfError, setMarginOfError] = useState([5]);
-    const [finalSampleSize, setFinalSampleSize] = useState(384);
+    const { populationSize, experiment, saveExperiment } = useExperiment();
 
-    const N = populationSize; // Total population (from topic)
+    // Initialize from saved data
+    const initialData = experiment?.samplePlan as SamplePlanData | null;
+
+    const [confidenceLevel, setConfidenceLevel] = useState(initialData?.confidenceLevel ?? "95");
+    const [marginOfError, setMarginOfError] = useState([initialData?.marginOfError ?? 5]);
+    const [finalSampleSize, setFinalSampleSize] = useState(initialData?.finalSampleSize ?? 384);
+    const [confirmNextOpen, setConfirmNextOpen] = useState(false);
+
+    const N = populationSize;
 
     // Z values for confidence levels
     const zValues: Record<string, number> = {
@@ -29,21 +45,55 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     };
 
     // Calculate recommended sample size
-    const calculateSampleSize = () => {
+    const calculateSampleSize = useCallback(() => {
         const z = zValues[confidenceLevel] ?? 1.96;
         const e = (marginOfError[0] ?? 5) / 100;
-        const p = 0.5; // Maximum variability
+        const p = 0.5;
 
         const n0 = (z * z * p * (1 - p)) / (e * e);
         const n = n0 / (1 + (n0 - 1) / N);
         return Math.ceil(n);
-    };
+    }, [confidenceLevel, marginOfError, N]);
 
     const recommendedSize = calculateSampleSize();
     const minSize = 30;
     const maxSize = Math.floor(N * 0.5);
 
     const isValidSize = finalSampleSize >= minSize && finalSampleSize <= maxSize;
+
+    // Auto-update final sample size when recommended changes (only if user hasn't modified it)
+    useEffect(() => {
+        if (!initialData) {
+            setFinalSampleSize(recommendedSize);
+        }
+    }, [recommendedSize, initialData]);
+
+    // Save data on change (debounced)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const samplePlanData: SamplePlanData = {
+                confidenceLevel,
+                marginOfError: marginOfError[0] ?? 5,
+                recommendedSize,
+                finalSampleSize,
+            };
+            saveExperiment({ samplePlan: samplePlanData });
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [confidenceLevel, marginOfError, finalSampleSize, recommendedSize, saveExperiment]);
+
+    const handleConfirmNext = async () => {
+        // Save current data
+        const samplePlanData: SamplePlanData = {
+            confidenceLevel,
+            marginOfError: marginOfError[0] ?? 5,
+            recommendedSize,
+            finalSampleSize,
+        };
+        await saveExperiment({ samplePlan: samplePlanData, currentStage: 3 });
+        onNext();
+    };
 
     return (
         <div className="space-y-6">
@@ -131,15 +181,26 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="finalSize">最终样本量</Label>
-                        <Input
-                            id="finalSize"
-                            type="number"
-                            value={finalSampleSize}
-                            onChange={(e) => setFinalSampleSize(parseInt(e.target.value) || 0)}
-                            min={minSize}
-                            max={maxSize}
-                        />
+                        <div className="flex items-center gap-4">
+                            <div className="flex-1 space-y-2">
+                                <Label htmlFor="finalSize">最终样本量</Label>
+                                <Input
+                                    id="finalSize"
+                                    type="number"
+                                    value={finalSampleSize}
+                                    onChange={(e) => setFinalSampleSize(parseInt(e.target.value) || 0)}
+                                    min={minSize}
+                                    max={maxSize}
+                                />
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={() => setFinalSampleSize(recommendedSize)}
+                                className="mt-6"
+                            >
+                                使用建议值
+                            </Button>
+                        </div>
                         <p className="text-xs text-muted-foreground">
                             有效范围: {minSize} - {maxSize.toLocaleString()}（总体的50%）
                         </p>
@@ -158,10 +219,28 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 <Button variant="outline" onClick={onPrev}>
                     上一阶段
                 </Button>
-                <Button onClick={onNext} disabled={!isValidSize}>
+                <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize}>
                     确认并进入下一阶段
                 </Button>
             </div>
+
+            {/* Confirm Next Stage Dialog */}
+            <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>确认样本量规划</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            您设定的最终样本量为 <strong>{finalSampleSize}</strong>。
+                            <br /><br />
+                            确认后将进入抽样执行阶段。如需修改，您可以返回本阶段。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmNext}>确认</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

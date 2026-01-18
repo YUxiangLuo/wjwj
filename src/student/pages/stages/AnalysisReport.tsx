@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Download, FileText, Send } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { BarChart3, Download, FileText, Send, Loader2 } from "lucide-react";
+import { useExperiment } from "../ExperimentLayout";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -12,11 +23,42 @@ interface AnalysisReportProps {
 }
 
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
-    const [reportContent, setReportContent] = useState("");
+    const { experiment, saveExperiment } = useExperiment();
+
+    // Initialize from saved data
+    const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
+    const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const minLength = 100;
     const maxLength = 5000;
     const isValidLength = reportContent.length >= minLength && reportContent.length <= maxLength;
+
+    // Auto-save report content
+    useEffect(() => {
+        if (reportContent) {
+            const timer = setTimeout(() => {
+                saveExperiment({ reportContent });
+            }, 2000); // 2 second debounce
+            return () => clearTimeout(timer);
+        }
+    }, [reportContent, saveExperiment]);
+
+    const handleSubmit = async () => {
+        setIsSubmitting(true);
+        try {
+            // Save final report content
+            await saveExperiment({ reportContent, currentStage: 5 });
+            onSubmit();
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Mock export functions (TODO: implement actual export)
+    const handleExport = (type: string) => {
+        alert(`导出 ${type} 功能即将上线`);
+    };
 
     return (
         <div className="space-y-6">
@@ -83,19 +125,19 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            <Button variant="outline" className="w-full justify-start">
+                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("简单随机抽样")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 简单随机抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start">
+                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("系统抽样")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 系统抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start">
+                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("分层抽样")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 分层抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start">
+                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("全部数据")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 导出全部数据
                             </Button>
@@ -154,11 +196,45 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <Button variant="outline" onClick={onPrev}>
                     上一阶段
                 </Button>
-                <Button onClick={onSubmit} disabled={!isValidLength}>
+                <Button onClick={() => setConfirmSubmitOpen(true)} disabled={!isValidLength}>
                     <Send className="w-4 h-4 mr-2" />
                     完成并预览提交
                 </Button>
             </div>
+
+            {/* Confirm Submit Dialog */}
+            <AlertDialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>确认提交实验</AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="text-sm text-muted-foreground">
+                                您即将提交本次实验，包括：
+                                <ul className="list-disc list-inside mt-2">
+                                    <li>问卷设计</li>
+                                    <li>样本量规划</li>
+                                    <li>抽样执行结果</li>
+                                    <li>分析报告（{reportContent.length} 字）</li>
+                                </ul>
+                                <p className="mt-2"><strong>提交后将无法修改。</strong>确定提交吗？</p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isSubmitting}>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleSubmit} disabled={isSubmitting}>
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    提交中...
+                                </>
+                            ) : (
+                                "确认提交"
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

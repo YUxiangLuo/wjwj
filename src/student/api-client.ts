@@ -71,16 +71,26 @@ export interface TaskDetail {
     rejectReason?: string;
 }
 
+export type QuestionType = 'boolean' | 'single' | 'multiple' | 'scale';
+
+export interface Question {
+    id: string;
+    type: QuestionType;
+    content: string;
+    options?: string[];           // 单选/多选的选项列表
+    minSelect?: number;           // 多选最少选择数
+    maxSelect?: number;           // 多选最多选择数
+    scaleMin?: number;            // 量表最小值 (默认1)
+    scaleMax?: number;            // 量表最大值 (默认10)
+    scaleMinLabel?: string;       // 量表左端标签
+    scaleMaxLabel?: string;       // 量表右端标签
+}
+
 export interface QuestionnaireData {
     title: string;
     welcomeText: string;
     endingText: string;
-    questions: Array<{
-        id: number;
-        type: string;
-        content: string;
-        options?: string[];
-    }>;
+    questions: Question[];
 }
 
 export interface SamplePlanData {
@@ -94,6 +104,7 @@ export interface SamplingResultsData {
     simple?: {
         completed: boolean;
         sampleCount: number;
+        seed?: number;
         data?: unknown[];
     };
     systematic?: {
