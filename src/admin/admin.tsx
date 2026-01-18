@@ -1,12 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import "./admin.css";
 import { AdminApp } from "./AdminApp";
 
 const elem = document.getElementById("root")!;
 const app = (
     <StrictMode>
-        <AdminApp />
+        <BrowserRouter basename="/admin">
+            <AdminApp />
+        </BrowserRouter>
     </StrictMode>
 );
 
