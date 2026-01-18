@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
     LayoutDashboard, FileText, FlaskConical, CheckCircle,
     ChevronRight, Clock, AlertCircle
@@ -25,8 +26,8 @@ export interface StudentTask {
     rejectReason?: string;
 }
 
-// Mock data
-const mockTasks: StudentTask[] = [
+// Mock data - exported for use by other components
+export const mockTasks: StudentTask[] = [
     {
         id: 1,
         topicId: 101,
@@ -139,10 +140,9 @@ function DeadlineDisplay({ deadline, status }: { deadline: string | null; status
 
 interface TaskCardProps {
     task: StudentTask;
-    onSelect: (task: StudentTask) => void;
 }
 
-function TaskCard({ task, onSelect }: TaskCardProps) {
+function TaskCard({ task }: TaskCardProps) {
     const status = statusConfig[task.status];
 
     const getActionButton = () => {
@@ -216,14 +216,15 @@ function TaskCard({ task, onSelect }: TaskCardProps) {
                     </div>
 
                     {/* Action button */}
-                    <Button
-                        className="w-full"
-                        variant={action.variant}
-                        onClick={() => onSelect(task)}
-                    >
-                        {action.text}
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                    </Button>
+                    <Link to={`/task/${task.id}`} className="w-full">
+                        <Button
+                            className="w-full"
+                            variant={action.variant}
+                        >
+                            {action.text}
+                            <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                    </Link>
                 </div>
             </CardContent>
         </Card>
@@ -232,11 +233,7 @@ function TaskCard({ task, onSelect }: TaskCardProps) {
 
 type FilterType = "all" | "in_progress" | "completed";
 
-interface TaskHallProps {
-    onSelectTask: (task: StudentTask) => void;
-}
-
-export function TaskHall({ onSelectTask }: TaskHallProps) {
+export function TaskHall() {
     const [filter, setFilter] = useState<FilterType>("all");
 
     const filteredTasks = mockTasks.filter(task => {
@@ -333,7 +330,7 @@ export function TaskHall({ onSelectTask }: TaskHallProps) {
             {/* Task Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredTasks.map(task => (
-                    <TaskCard key={task.id} task={task} onSelect={onSelectTask} />
+                    <TaskCard key={task.id} task={task} />
                 ))}
             </div>
 

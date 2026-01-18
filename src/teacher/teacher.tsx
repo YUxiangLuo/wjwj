@@ -1,11 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import { TeacherApp } from "./TeacherApp";
 
 const elem = document.getElementById("root")!;
 const app = (
     <StrictMode>
-        <TeacherApp />
+        <BrowserRouter basename="/teacher">
+            <TeacherApp />
+        </BrowserRouter>
     </StrictMode>
 );
 

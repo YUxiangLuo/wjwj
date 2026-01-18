@@ -1,8 +1,9 @@
 import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle } from "lucide-react";
+import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { StudentTask, TaskStatus } from "./TaskHall";
+import { mockTasks, type StudentTask, type TaskStatus } from "./TaskHall";
 
 // Mock topic details
 interface TopicAttachment {
@@ -95,13 +96,15 @@ function getFileIcon(type: TopicAttachment["type"]) {
     }
 }
 
-interface TopicDetailsProps {
-    task: StudentTask;
-    onBack: () => void;
-    onStartExperiment: () => void;
-}
+export function TopicDetails() {
+    const { taskId } = useParams();
+    const navigate = useNavigate();
+    const task = mockTasks.find(t => t.id === Number(taskId));
 
-export function TopicDetails({ task, onBack, onStartExperiment }: TopicDetailsProps) {
+    if (!task) {
+        return <Navigate to="/" replace />;
+    }
+
     const topic = mockTopicDetails[task.topicId] || {
         id: task.topicId,
         name: task.name,
@@ -113,19 +116,21 @@ export function TopicDetails({ task, onBack, onStartExperiment }: TopicDetailsPr
 
     const status = statusConfig[task.status];
 
+    const canStartExperiment = ["not_started", "in_progress", "rejected"].includes(task.status);
+
     const getActionButton = () => {
         switch (task.status) {
             case "not_started":
-                return { text: "开始实验", action: onStartExperiment };
+                return { text: "开始实验", link: `/task/${task.id}/experiment` };
             case "in_progress":
-                return { text: "继续实验", action: onStartExperiment };
+                return { text: "继续实验", link: `/task/${task.id}/experiment` };
             case "submitted":
             case "grading":
-                return { text: "查看提交内容", action: () => { } };
+                return { text: "查看提交内容", link: null };
             case "graded":
-                return { text: "查看成绩", action: () => { } };
+                return { text: "查看成绩", link: null };
             case "rejected":
-                return { text: "重新开始", action: onStartExperiment };
+                return { text: "重新开始", link: `/task/${task.id}/experiment` };
         }
     };
 
@@ -134,10 +139,12 @@ export function TopicDetails({ task, onBack, onStartExperiment }: TopicDetailsPr
     return (
         <div className="space-y-6">
             {/* Back button */}
-            <Button variant="ghost" onClick={onBack} className="gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                返回任务列表
-            </Button>
+            <Link to="/">
+                <Button variant="ghost" className="gap-2">
+                    <ArrowLeft className="w-4 h-4" />
+                    返回任务列表
+                </Button>
+            </Link>
 
             {/* Header */}
             <div className="flex justify-between items-start">
@@ -257,9 +264,13 @@ export function TopicDetails({ task, onBack, onStartExperiment }: TopicDetailsPr
 
             {/* Action Button */}
             <div className="flex justify-end">
-                <Button size="lg" onClick={action.action}>
-                    {action.text}
-                </Button>
+                {action.link ? (
+                    <Link to={action.link}>
+                        <Button size="lg">{action.text}</Button>
+                    </Link>
+                ) : (
+                    <Button size="lg">{action.text}</Button>
+                )}
             </div>
         </div>
     );

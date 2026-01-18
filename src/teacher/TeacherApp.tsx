@@ -3,6 +3,7 @@ import {
     LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, Settings,
     ArrowLeft, UserPlus, Upload, RotateCcw, UserX, Trash2, Search, FileSpreadsheet, FileText
 } from "lucide-react";
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,23 +19,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import "./teacher.css";
 
 const menuItems = [
-    { id: "dashboard", label: "首页概览", icon: LayoutDashboard },
-    { id: "class", label: "班级管理", icon: School },
-    { id: "topic", label: "课题管理", icon: BookOpen },
-    { id: "task", label: "任务管理", icon: ClipboardList },
-    { id: "grading", label: "作业批改", icon: PenLine, badge: 12 },
-    { id: "assistant", label: "助教管理", icon: Users },
-    { id: "export", label: "成绩导出", icon: Download },
+    { path: "/", label: "首页概览", icon: LayoutDashboard },
+    { path: "/class", label: "班级管理", icon: School },
+    { path: "/topic", label: "课题管理", icon: BookOpen },
+    { path: "/task", label: "任务管理", icon: ClipboardList },
+    { path: "/grading", label: "作业批改", icon: PenLine, badge: 12 },
+    { path: "/assistant", label: "助教管理", icon: Users },
+    { path: "/export", label: "成绩导出", icon: Download },
 ];
 
 const pageTitles: Record<string, string> = {
-    dashboard: "首页概览",
-    class: "班级管理",
-    topic: "课题管理",
-    task: "任务管理",
-    grading: "作业批改",
-    assistant: "助教管理",
-    export: "成绩导出",
+    "/": "首页概览",
+    "/class": "班级管理",
+    "/topic": "课题管理",
+    "/task": "任务管理",
+    "/grading": "作业批改",
+    "/assistant": "助教管理",
+    "/export": "成绩导出",
 };
 
 function Dashboard() {
@@ -125,7 +126,9 @@ const mockStudents = [
     { id: 5, studentId: "2024005", name: "赵丽", email: "zhaoli@edu.cn", status: "active", lastLogin: "2024-03-15 08:00" },
 ];
 
-function StudentManagement({ classInfo, onBack }: { classInfo: typeof mockClasses[0]; onBack: () => void }) {
+function StudentManagement() {
+    const { classId } = useParams();
+    const classInfo = mockClasses.find(c => c.id === Number(classId));
     const [showAddModal, setShowAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -134,13 +137,19 @@ function StudentManagement({ classInfo, onBack }: { classInfo: typeof mockClasse
         s.name.includes(searchQuery) || s.studentId.includes(searchQuery) || s.email.includes(searchQuery)
     );
 
+    if (!classInfo) {
+        return <Navigate to="/class" replace />;
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-3">
-                <Button variant="ghost" size="sm" onClick={onBack}>
-                    <ArrowLeft className="w-4 h-4 mr-1" />
-                    返回
-                </Button>
+                <Link to="/class">
+                    <Button variant="ghost" size="sm">
+                        <ArrowLeft className="w-4 h-4 mr-1" />
+                        返回
+                    </Button>
+                </Link>
                 <span className="text-muted-foreground">/</span>
                 <span className="font-medium">{classInfo.name}</span>
             </div>
@@ -266,7 +275,7 @@ function StudentManagement({ classInfo, onBack }: { classInfo: typeof mockClasse
     );
 }
 
-function ClassManagement({ onManageStudents }: { onManageStudents: (classInfo: typeof mockClasses[0]) => void }) {
+function ClassManagement() {
     return (
         <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -301,7 +310,9 @@ function ClassManagement({ onManageStudents }: { onManageStudents: (classInfo: t
                                 <TableCell className="text-muted-foreground">{cls.createdAt}</TableCell>
                                 <TableCell>
                                     <div className="flex gap-2">
-                                        <Button variant="ghost" size="sm" className="text-primary" onClick={() => onManageStudents(cls)}>管理学生</Button>
+                                        <Link to={`/class/${cls.id}/students`}>
+                                            <Button variant="ghost" size="sm" className="text-primary">管理学生</Button>
+                                        </Link>
                                         <Button variant="ghost" size="sm">查看详情</Button>
                                     </div>
                                 </TableCell>
@@ -800,37 +811,12 @@ function GradeExport() {
     );
 }
 
-function PlaceholderPage({ name }: { name: string }) {
-    return (
-        <Card className="flex flex-col items-center justify-center h-96">
-            <CardContent className="text-center text-muted-foreground pt-6">
-                <Settings className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <div className="text-lg">{name}页面开发中...</div>
-            </CardContent>
-        </Card>
-    );
-}
-
 export function TeacherApp() {
-    const [activePage, setActivePage] = useState("dashboard");
-    const [selectedClass, setSelectedClass] = useState<typeof mockClasses[0] | null>(null);
-
-    const renderPage = () => {
-        if (activePage === "class" && selectedClass) {
-            return <StudentManagement classInfo={selectedClass} onBack={() => setSelectedClass(null)} />;
-        }
-
-        switch (activePage) {
-            case "dashboard": return <Dashboard />;
-            case "class": return <ClassManagement onManageStudents={setSelectedClass} />;
-            case "topic": return <TopicManagement />;
-            case "task": return <TaskManagement />;
-            case "grading": return <GradingManagement />;
-            case "assistant": return <AssistantManagement />;
-            case "export": return <GradeExport />;
-            default: return <PlaceholderPage name={pageTitles[activePage] ?? activePage} />;
-        }
-    };
+    const location = useLocation();
+    const currentPath = location.pathname;
+    // Get base path for title (e.g., /class/1/students -> /class)
+    const basePath = "/" + (currentPath.split("/")[1] || "");
+    const pageTitle = pageTitles[basePath] ?? "教师端";
 
     return (
         <div className="flex min-h-screen bg-muted/40">
@@ -843,15 +829,15 @@ export function TeacherApp() {
                 <nav className="flex-1 py-4 overflow-y-auto">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
+                        const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
                         return (
-                            <Button
-                                key={item.id}
-                                variant="ghost"
-                                onClick={() => { setActivePage(item.id); setSelectedClass(null); }}
-                                className={`w-full justify-start gap-3 px-6 py-3 h-auto rounded-none text-sm font-normal
-                                    ${activePage === item.id
-                                        ? "bg-primary/20 text-primary border-l-[3px] border-primary hover:bg-primary/30 hover:text-primary"
-                                        : "text-white/70 hover:bg-white/10 hover:text-white border-l-[3px] border-transparent"
+                            <NavLink
+                                key={item.path}
+                                to={item.path}
+                                className={`flex items-center gap-3 px-6 py-3 text-sm font-normal border-l-[3px] transition-colors
+                                    ${isActive
+                                        ? "bg-primary/20 text-primary border-primary"
+                                        : "text-white/70 hover:bg-white/10 hover:text-white border-transparent"
                                     }`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -859,7 +845,7 @@ export function TeacherApp() {
                                 {item.badge && (
                                     <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5">{item.badge}</Badge>
                                 )}
-                            </Button>
+                            </NavLink>
                         );
                     })}
                 </nav>
@@ -881,7 +867,7 @@ export function TeacherApp() {
 
             <main className="flex-1 flex flex-col overflow-hidden">
                 <header className="bg-background px-8 py-4 border-b flex justify-between items-center">
-                    <h2 className="text-xl font-semibold text-foreground">{pageTitles[activePage]}</h2>
+                    <h2 className="text-xl font-semibold text-foreground">{pageTitle}</h2>
                     <div className="flex items-center gap-4">
                         <Button variant="ghost" size="sm" className="relative">
                             <Bell className="w-5 h-5" />
@@ -892,7 +878,19 @@ export function TeacherApp() {
                         </span>
                     </div>
                 </header>
-                <div className="flex-1 p-8 overflow-y-auto">{renderPage()}</div>
+                <div className="flex-1 p-8 overflow-y-auto">
+                    <Routes>
+                        <Route index element={<Dashboard />} />
+                        <Route path="class" element={<ClassManagement />} />
+                        <Route path="class/:classId/students" element={<StudentManagement />} />
+                        <Route path="topic" element={<TopicManagement />} />
+                        <Route path="task" element={<TaskManagement />} />
+                        <Route path="grading" element={<GradingManagement />} />
+                        <Route path="assistant" element={<AssistantManagement />} />
+                        <Route path="export" element={<GradeExport />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </div>
             </main>
         </div>
     );

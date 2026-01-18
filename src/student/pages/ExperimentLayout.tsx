@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ArrowLeft, Save, CheckCircle } from "lucide-react";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { StudentTask } from "./TaskHall";
+import { Card, CardContent } from "@/components/ui/card";
+import { mockTasks } from "./TaskHall";
 
 // Stage components (simplified placeholders)
 import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
@@ -12,13 +13,10 @@ import { AnalysisReport } from "./stages/AnalysisReport";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
-interface ExperimentLayoutProps {
-    task: StudentTask;
-    onExit: () => void;
-}
-
-export function ExperimentLayout({ task, onExit }: ExperimentLayoutProps) {
-    const [currentStage, setCurrentStage] = useState(Math.max(task.currentStage, 1));
+export function ExperimentLayout() {
+    const { taskId } = useParams();
+    const task = mockTasks.find(t => t.id === Number(taskId));
+    const [currentStage, setCurrentStage] = useState(Math.max(task?.currentStage || 1, 1));
     const [lastSaved, setLastSaved] = useState<string | null>(null);
 
     const handleSave = () => {
@@ -36,6 +34,10 @@ export function ExperimentLayout({ task, onExit }: ExperimentLayoutProps) {
             setCurrentStage(currentStage - 1);
         }
     };
+
+    if (!task) {
+        return <Navigate to="/" replace />;
+    }
 
     const renderStage = () => {
         switch (currentStage) {
@@ -56,10 +58,12 @@ export function ExperimentLayout({ task, onExit }: ExperimentLayoutProps) {
         <div className="space-y-6">
             {/* Top bar */}
             <div className="flex justify-between items-center">
-                <Button variant="ghost" onClick={onExit} className="gap-2">
-                    <ArrowLeft className="w-4 h-4" />
-                    退出实验
-                </Button>
+                <Link to={`/task/${task.id}`}>
+                    <Button variant="ghost" className="gap-2">
+                        <ArrowLeft className="w-4 h-4" />
+                        退出实验
+                    </Button>
+                </Link>
                 <div className="flex items-center gap-4">
                     {lastSaved && (
                         <span className="text-sm text-muted-foreground">
