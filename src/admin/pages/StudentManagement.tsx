@@ -15,7 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { studentApi, classApi, type Student, type Class } from "../api-client";
+import { studentApi, classApi, type Student, type Class, type StudentExperiment } from "../api-client";
 
 export function StudentManagement() {
     const [students, setStudents] = useState<Student[]>([]);
@@ -28,6 +28,11 @@ export function StudentManagement() {
     const [transferStudent, setTransferStudent] = useState<Student | null>(null);
     const [targetClassId, setTargetClassId] = useState<string>("");
     const [transferReason, setTransferReason] = useState("");
+
+    // Experiment Modal State
+    const [selectedStudentForExp, setSelectedStudentForExp] = useState<Student | null>(null);
+    const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
+    const [loadingExperiments, setLoadingExperiments] = useState(false);
 
     useEffect(() => {
         loadInitialData();
@@ -114,6 +119,22 @@ export function StudentManagement() {
         setTransferStudent(student);
         setTargetClassId("");
         setTransferReason("");
+    }
+
+    async function openExperimentsModal(student: Student) {
+        setSelectedStudentForExp(student);
+        setExperiments([]);
+        setLoadingExperiments(true);
+        try {
+            const res = await studentApi.getExperiments(student.id);
+            if (res.success && res.data) {
+                setExperiments(res.data);
+            }
+        } catch (error) {
+            console.error("Failed to load experiments:", error);
+        } finally {
+            setLoadingExperiments(false);
+        }
     }
 
     async function handleTransfer() {
@@ -219,6 +240,14 @@ export function StudentManagement() {
                                         <TableCell className="text-muted-foreground">{formatDateTime(student.lastActive)}</TableCell>
                                         <TableCell>
                                             <div className="flex gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => openExperimentsModal(student)}
+                                                >
+                                                    <Search className="w-3 h-3 mr-1" />
+                                                    实验记录
+                                                </Button>
                                                 <Button variant="ghost" size="sm" onClick={() => handleResetPassword(student)}>
                                                     <RotateCcw className="w-3 h-3 mr-1" />
                                                     重置密码
@@ -306,6 +335,60 @@ export function StudentManagement() {
                             确认转班
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={!!selectedStudentForExp} onOpenChange={(open) => !open && setSelectedStudentForExp(null)}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>实验记录 - {selectedStudentForExp?.name} ({selectedStudentForExp?.studentId})</DialogTitle>
+                    </DialogHeader>
+
+                    {loadingExperiments ? (
+                        <div className="flex justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>实验/任务名称</TableHead>
+                                    <TableHead>当前阶段</TableHead>
+                                    <TableHead>状态</TableHead>
+                                    <TableHead>进度</TableHead>
+                                    <TableHead>得分</TableHead>
+                                    <TableHead>提交时间</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {experiments.map((exp) => (
+                                    <TableRow key={exp.id}>
+                                        <TableCell>{exp.taskName || "未命名任务"}</TableCell>
+                                        <TableCell>第 {exp.currentStage} 阶段</TableCell>
+                                        <TableCell>
+                                            <Badge variant={exp.status >= 1 ? "default" : "secondary"}>
+                                                {exp.statusText}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Progress value={exp.progress} className={`w-16 h-2 ${getProgressColor(exp.progress)}`} />
+                                                <span className="text-xs">{exp.progress}%</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{exp.score !== null ? exp.score : "-"}</TableCell>
+                                        <TableCell>{formatDateTime(exp.submitTime)}</TableCell>
+                                    </TableRow>
+                                ))}
+                                {experiments.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                            暂无实验记录
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
                 </DialogContent>
             </Dialog>
         </>

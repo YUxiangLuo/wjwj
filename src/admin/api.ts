@@ -19,6 +19,8 @@ import {
     submission,
     announcementRead,
     systemConfig,
+    task,
+    topic,
 } from "../db/schema";
 import { eq, desc, asc, sql, and, like, or, isNull, count } from "drizzle-orm";
 
@@ -828,6 +830,43 @@ const studentRoutes: RouteDefinition = {
     },
 };
 
+const studentExperimentsRoutes = {
+    async GET(req: Request) {
+        const url = new URL(req.url);
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[parts.length - 2] ?? "");
+
+        if (!id) {
+            return error("无效的学生ID", "INVALID_ID");
+        }
+
+        const rows = await db
+            .select({
+                id: experiment.id,
+                taskName: topic.name,
+                currentStage: experiment.currentStage,
+                status: experiment.status,
+                submitTime: experiment.stage4CompletedAt,
+                score: submission.totalScore,
+                lastUpdate: experiment.updatedAt,
+            })
+            .from(experiment)
+            .leftJoin(task, eq(experiment.taskId, task.id))
+            .leftJoin(topic, eq(task.topicId, topic.id))
+            .leftJoin(submission, eq(submission.experimentId, experiment.id))
+            .where(eq(experiment.studentId, id))
+            .orderBy(desc(experiment.updatedAt));
+
+        const result = rows.map(r => ({
+            ...r,
+            progress: r.status >= 1 ? 100 : Math.min(r.currentStage * 25, 100),
+            statusText: r.status === 2 ? "已批改" : (r.status === 1 ? "已提交" : "进行中"),
+        }));
+
+        return json(result);
+    },
+};
+
 const studentStatusRoutes = {
     async PUT(req: Request) {
         const url = new URL(req.url);
@@ -1139,6 +1178,7 @@ export const adminApiRoutes = {
     "/api/admin/students/:id/status": studentStatusRoutes,
     "/api/admin/students/:id/reset-password": studentResetPasswordRoutes,
     "/api/admin/students/:id/transfer": studentTransferRoutes,
+    "/api/admin/students/:id/experiments": studentExperimentsRoutes,
 
     // Announcements
     "/api/admin/announcements": announcementRoutes,

@@ -289,12 +289,28 @@ export const studentApi = {
             method: "POST",
         }),
 
+    // ...existing code...
     transfer: (id: number, data: { targetClassId: number; reason?: string }) =>
         request<{ success: boolean }>(`/api/admin/students/${id}/transfer`, {
             method: "POST",
             body: JSON.stringify(data),
         }),
+
+    getExperiments: (id: number) =>
+        request<StudentExperiment[]>(`/api/admin/students/${id}/experiments`),
 };
+
+export interface StudentExperiment {
+    id: number;
+    taskName: string | null;
+    currentStage: number;
+    status: number;
+    statusText: string;
+    submitTime: string | null;
+    score: number | null;
+    lastUpdate: string | null;
+    progress: number;
+}
 
 // ============================================================
 // Announcement API
