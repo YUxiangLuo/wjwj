@@ -18,6 +18,7 @@ import {
     experiment,
     submission,
     announcementRead,
+    systemConfig,
 } from "../db/schema";
 import { eq, desc, asc, sql, and, like, or, isNull, count } from "drizzle-orm";
 
@@ -142,6 +143,68 @@ const systemMetricsRoutes = {
             activeConnections: 0, // TODO
             requestsPerMinute: 0, // TODO
         });
+    },
+};
+
+const systemSettingsRoutes = {
+    async GET() {
+        const configs = await db.select().from(systemConfig);
+
+        // Convert array to key-value object
+        const settings: Record<string, any> = {};
+
+        configs.forEach(c => {
+            if (c.valueType === 'boolean') {
+                settings[c.configKey] = c.configValue === 'true';
+            } else if (c.valueType === 'number') {
+                settings[c.configKey] = Number(c.configValue);
+            } else {
+                settings[c.configKey] = c.configValue;
+            }
+        });
+
+        return json(settings);
+    },
+
+    async PUT(req: Request) {
+        const body = await req.json();
+
+        // Loop through keys and upsert
+        for (const [key, value] of Object.entries(body)) {
+            let valStr = String(value);
+            let valType = "string";
+
+            if (typeof value === "boolean") {
+                valType = "boolean";
+                valStr = value ? "true" : "false";
+            } else if (typeof value === "number") {
+                valType = "number";
+            }
+
+            await db.insert(systemConfig).values({
+                configKey: key,
+                configValue: valStr,
+                valueType: valType,
+            }).onDuplicateKeyUpdate({
+                set: {
+                    configValue: valStr,
+                    valueType: valType,
+                }
+            });
+        }
+
+        // Log operation
+        // (Simplified, normally get real user ID)
+        await db.insert(operationLog).values({
+            userType: 1, // Admin (assuming)
+            userId: 0, // System
+            action: 'UPDATE_SETTINGS',
+            targetType: 'system',
+            detail: body,
+            ipAddress: '127.0.0.1'
+        });
+
+        return json({ success: true });
     },
 };
 
@@ -1087,4 +1150,5 @@ export const adminApiRoutes = {
     // System
     "/api/admin/system/metrics": systemMetricsRoutes,
     "/api/admin/system/logs": systemLogsRoutes,
+    "/api/admin/settings": systemSettingsRoutes,
 };

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Settings, FlaskConical, Shield, Database, Save } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings, FlaskConical, Shield, Database, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { settingsApi } from "../api-client";
 
 interface SettingSection {
     id: string;
@@ -23,6 +24,8 @@ const sections: SettingSection[] = [
 
 export function SystemSettings() {
     const [activeSection, setActiveSection] = useState("general");
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState({
         systemName: "抽样统计虚拟仿真系统",
         maintenanceMode: false,
@@ -36,8 +39,77 @@ export function SystemSettings() {
         backupFrequency: "daily",
     });
 
-    const handleSave = () => {
-        alert("设置已保存！");
+    useEffect(() => {
+        loadSettings();
+    }, []);
+
+    async function loadSettings() {
+        try {
+            const res = await settingsApi.get();
+            if (res.success && res.data) {
+                // Merge remote settings with default/local state
+                // Note: Keys in DB might be snake_case if we strictly followed DB schema but 
+                // in our API implementation we used whatever key was sent in body (which is camelCase from here).
+                // So if we save camelCase, we get camelCase.
+                // However, Seed script used snake_case. So we might need to handle both or migrate.
+                // For now, let's assume we want to support both or verify what API returns.
+                // The API logic: settings[c.configKey] = c.configValue.
+                // If seed has "system_name", we get "system_name".
+                // Our state has "systemName".
+                // We should map them.
+
+                const data = res.data;
+                setSettings(prev => ({
+                    ...prev,
+                    systemName: data.system_name ?? data.systemName ?? prev.systemName,
+                    maintenanceMode: data.maintenance_mode ?? data.maintenanceMode ?? prev.maintenanceMode,
+                    allowRegistration: data.allow_registration ?? data.allowRegistration ?? prev.allowRegistration,
+                    maxLoginAttempts: data.max_login_attempts ?? data.maxLoginAttempts ?? prev.maxLoginAttempts,
+                    sessionTimeout: data.session_timeout ?? data.sessionTimeout ?? prev.sessionTimeout,
+                    experimentTimeLimit: data.experiment_time_limit ?? data.experimentTimeLimit ?? prev.experimentTimeLimit,
+                    autoSaveInterval: data.auto_save_interval ?? data.autoSaveInterval ?? prev.autoSaveInterval,
+                    requireApproval: data.require_approval ?? data.requireApproval ?? prev.requireApproval,
+                    enableBackup: data.enable_backup ?? data.enableBackup ?? prev.enableBackup,
+                    backupFrequency: data.backup_frequency ?? data.backupFrequency ?? prev.backupFrequency,
+                }));
+            }
+        } catch (error) {
+            console.error("Failed to load settings:", error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            // We save back as snake_case to match standard DB convention (if we care) or consistent with seed.
+            // Let's use snake_case for persistence.
+            const payload = {
+                system_name: settings.systemName,
+                maintenance_mode: settings.maintenanceMode,
+                allow_registration: settings.allowRegistration,
+                max_login_attempts: settings.maxLoginAttempts,
+                session_timeout: settings.sessionTimeout,
+                experiment_time_limit: settings.experimentTimeLimit,
+                auto_save_interval: settings.autoSaveInterval,
+                require_approval: settings.requireApproval,
+                enable_backup: settings.enableBackup,
+                backup_frequency: settings.backupFrequency,
+            };
+
+            const res = await settingsApi.update(payload);
+            if (res.success) {
+                alert("设置已保存！");
+            } else {
+                alert("保存失败");
+            }
+        } catch (error) {
+            console.error("Failed to save settings:", error);
+            alert("保存失败");
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -222,8 +294,8 @@ export function SystemSettings() {
                     <Separator className="my-8" />
 
                     <div className="flex justify-end">
-                        <Button onClick={handleSave}>
-                            <Save className="w-4 h-4" />
+                        <Button onClick={handleSave} disabled={saving}>
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                             保存设置
                         </Button>
                     </div>

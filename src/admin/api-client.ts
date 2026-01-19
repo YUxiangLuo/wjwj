@@ -359,3 +359,11 @@ export const systemApi = {
     getMetrics: () => request<SystemMetrics>("/api/admin/system/metrics"),
     getLogs: () => request<SystemLog[]>("/api/admin/system/logs"),
 };
+
+export const settingsApi = {
+    get: () => request<Record<string, any>>("/api/admin/settings"),
+    update: (data: Record<string, any>) => request<{ success: boolean }>("/api/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify(data),
+    }),
+};
