@@ -242,6 +242,24 @@ export const experimentApi = {
         request<{ success: boolean }>(`/api/student/tasks/${taskId}/submit`, {
             method: "POST",
         }),
+
+    executeSampling: (
+        taskId: number,
+        method: "simple" | "systematic" | "stratified",
+        params: any
+    ) =>
+        request<{ success: boolean; result: any }>(
+            `/api/student/tasks/${taskId}/sampling`,
+            {
+                method: "POST",
+                body: JSON.stringify({ method, params }),
+            }
+        ),
+
+    getStats: (taskId: number) =>
+        request<{ stats: Record<string, Record<string, number>> }>(
+            `/api/student/tasks/${taskId}/stats`
+        ),
 };
 
 // ============================================================

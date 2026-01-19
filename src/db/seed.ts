@@ -232,7 +232,14 @@ async function seed() {
             name: t.name,
             description: `# ${t.name}\n\nObjective: Understand the core factors...`,
             status: t.status,
-            excelRowCount: 100
+            excelRowCount: 10000,
+            excelFilePath: "/uploads/population.xlsx",
+            fieldMapping: {
+                "id": "id",
+                "stratified": ["gender", "education"],
+                "numerical": ["age", "income"],
+                "text": []
+            }
         });
         topicIds.push(res.insertId);
 

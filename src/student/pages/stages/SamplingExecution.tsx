@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { CheckCircle, Play, RefreshCw, Loader2 } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
-import type { SamplingResultsData, SamplePlanData } from "../../api-client";
+import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
 
 interface SamplingExecutionProps {
     onNext: () => void;
@@ -34,27 +34,19 @@ interface SamplingExecutionProps {
 
 type SamplingMethod = "simple" | "systematic" | "stratified";
 
-// Mock population data for demonstration
-function generateMockSample(count: number): unknown[] {
-    const genders = ["男", "女"];
-    const incomes = ["3000以下", "3000-5000", "5000-8000", "8000-12000", "12000-20000", "20000以上"];
-    const ages = ["18-25", "26-35", "36-45", "46-55", "56以上"];
+const FIELD_LABELS: Record<string, string> = {
+    "gender": "性别",
+    "education": "学历",
+    "age": "年龄段",
+    "income": "收入水平"
+};
 
-    return Array.from({ length: count }, (_, i) => ({
-        id: i + 1,
-        age: ages[Math.floor(Math.random() * ages.length)],
-        gender: genders[Math.floor(Math.random() * genders.length)],
-        income: incomes[Math.floor(Math.random() * incomes.length)],
-    }));
-}
+// Mock population data for demonstration
+// No mock data generation function needed anymore
 
 // Stratified layers for mock data
-const mockLayers = [
-    { name: "18-25岁", count: 2500, ratio: 25 },
-    { name: "26-35岁", count: 3500, ratio: 35 },
-    { name: "36-45岁", count: 2500, ratio: 25 },
-    { name: "46岁以上", count: 1500, ratio: 15 },
-];
+// No mock layers needed
+
 
 export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const { populationSize, experiment, saveExperiment } = useExperiment();
@@ -72,10 +64,50 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [stratifiedResult, setStratifiedResult] = useState(initialResults?.stratified ?? null);
 
     const [kValue, setKValue] = useState(initialResults?.systematic?.kValue ?? Math.round(N / n));
-    const [stratifyBy, setStratifyBy] = useState(initialResults?.stratified?.stratifyBy ?? "age");
-    const [layerSampleCounts, setLayerSampleCounts] = useState<number[]>(
-        initialResults?.stratified?.layers?.map(l => l.sampleCount) ?? mockLayers.map(l => Math.round(n * l.ratio / 100))
-    );
+    const [stratifyBy, setStratifyBy] = useState(initialResults?.stratified?.stratifyBy ?? "gender");
+    // Stats state
+    const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
+    const [layers, setLayers] = useState<Array<{ name: string; count: number; ratio: number }>>([]);
+    const [layerSampleCounts, setLayerSampleCounts] = useState<number[]>([]);
+
+    // Fetch stats on mount
+    useEffect(() => {
+        experimentApi.getStats(experiment?.taskId!).then(res => {
+            if (res.success && res.data?.stats) {
+                setPopulationStats(res.data.stats);
+            }
+        });
+    }, [experiment?.taskId]);
+
+    // Update layers when stratifyBy changes or stats load
+    useEffect(() => {
+        if (!populationStats[stratifyBy]) {
+            setLayers([]);
+            return;
+        }
+
+        const stats = populationStats[stratifyBy];
+        const total = Object.values(stats).reduce((a, b) => a + b, 0);
+
+        const newLayers = Object.entries(stats).map(([name, count]) => ({
+            name,
+            count,
+            ratio: total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0
+        }));
+
+        setLayers(newLayers);
+
+        // If we have saved results, use them, otherwise init with 0 or proportional
+        if (initialResults?.stratified?.stratifyBy === stratifyBy && initialResults.stratified.layers) {
+            // Map saved counts to new layers order
+            const savedMap = new Map(initialResults.stratified.layers.map(l => [l.name, l.sampleCount]));
+            setLayerSampleCounts(newLayers.map(l => savedMap.get(l.name) ?? 0));
+        } else {
+            // Default to proportional
+            setLayerSampleCounts(newLayers.map(l => Math.round(n * l.ratio / 100)));
+        }
+
+    }, [stratifyBy, populationStats, n, initialResults?.stratified]);
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
@@ -105,55 +137,66 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         }
     }, [simpleResult, systematicResult, stratifiedResult, saveResults]);
 
-    // Execute sampling with mock delay
+    // Execute simple mock delay (removed)
+    // Execute sampling with real API
     const executeSimple = async () => {
         setExecuting("simple");
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        const sample = generateMockSample(n);
-        setSimpleResult({
-            completed: true,
-            sampleCount: n,
-            seed: Math.floor(Math.random() * 1000000),
-            data: sample.slice(0, 20),
-        });
-        setExecuting(null);
+        try {
+            const res = await experimentApi.executeSampling(experiment?.taskId!, "simple", {
+                sampleSize: n
+            });
+            if (res.success && res.data?.result) {
+                setSimpleResult(res.data.result);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setExecuting(null);
+        }
     };
 
     const executeSystematic = async () => {
         setExecuting("systematic");
-        await new Promise(resolve => setTimeout(resolve, 600));
-
-        const actualCount = Math.ceil(N / kValue);
-        const sample = generateMockSample(actualCount);
-        setSystematicResult({
-            completed: true,
-            kValue,
-            sampleCount: actualCount,
-            data: sample.slice(0, 20),
-        });
-        setExecuting(null);
+        try {
+            const res = await experimentApi.executeSampling(experiment?.taskId!, "systematic", {
+                kValue,
+                sampleSize: Math.ceil(N / kValue)
+            });
+            if (res.success && res.data?.result) {
+                setSystematicResult(res.data.result);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setExecuting(null);
+        }
     };
 
     const executeStratified = async () => {
         setExecuting("stratified");
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
         const totalSampleCount = layerSampleCounts.reduce((a, b) => a + b, 0);
-        const layers = mockLayers.map((layer, i) => ({
+
+        // Construct layers payload mapping current counts to layer names
+        const layersPayload = layers.map((layer, i) => ({
             name: layer.name,
             count: layer.count,
             ratio: layer.ratio,
             sampleCount: layerSampleCounts[i] ?? 0,
         }));
 
-        setStratifiedResult({
-            completed: true,
-            stratifyBy,
-            layers,
-            data: generateMockSample(totalSampleCount).slice(0, 20),
-        });
-        setExecuting(null);
+        try {
+            const res = await experimentApi.executeSampling(experiment?.taskId!, "stratified", {
+                stratifyBy,
+                layers: layersPayload
+            });
+            if (res.success && res.data?.result) {
+                setStratifiedResult(res.data.result);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setExecuting(null);
+        }
     };
 
     // Validation
@@ -162,7 +205,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         expectedSystematicCount >= n * 0.8 && expectedSystematicCount <= n * 1.2;
 
     const stratifiedTotal = layerSampleCounts.reduce((a, b) => a + b, 0);
-    const isStratifiedValid = stratifiedTotal === n;
+    // Allow small deviation for rounding
+    const isStratifiedValid = Math.abs(stratifiedTotal - n) <= layers.length;
 
     const allCompleted = simpleResult?.completed && systematicResult?.completed && stratifiedResult?.completed;
 
@@ -174,13 +218,14 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     // Allocation helpers
     const applyProportionalAllocation = () => {
-        setLayerSampleCounts(mockLayers.map(l => Math.round(n * l.ratio / 100)));
+        setLayerSampleCounts(layers.map(l => Math.round(n * l.ratio / 100)));
     };
 
     const applyEqualAllocation = () => {
-        const equalCount = Math.floor(n / mockLayers.length);
-        const remainder = n % mockLayers.length;
-        setLayerSampleCounts(mockLayers.map((_, i) => equalCount + (i < remainder ? 1 : 0)));
+        if (layers.length === 0) return;
+        const equalCount = Math.floor(n / layers.length);
+        const remainder = n % layers.length;
+        setLayerSampleCounts(layers.map((_, i) => equalCount + (i < remainder ? 1 : 0)));
     };
 
     const updateLayerCount = (index: number, value: number) => {
@@ -345,68 +390,86 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="age">年龄段</SelectItem>
-                                        <SelectItem value="gender">性别</SelectItem>
-                                        <SelectItem value="income">收入水平</SelectItem>
+                                        {Object.keys(populationStats).length > 0 ? (
+                                            Object.keys(populationStats).map(key => (
+                                                <SelectItem key={key} value={key}>
+                                                    {FIELD_LABELS[key] || key}
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <SelectItem value="gender">性别</SelectItem>
+                                                <SelectItem value="education">学历</SelectItem>
+                                            </>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="flex gap-2">
-                                <Button variant="outline" size="sm" onClick={applyProportionalAllocation}>
+                                <Button variant="outline" size="sm" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
                                     比例分配
                                 </Button>
-                                <Button variant="outline" size="sm" onClick={applyEqualAllocation}>
+                                <Button variant="outline" size="sm" onClick={applyEqualAllocation} disabled={layers.length === 0}>
                                     等额分配
                                 </Button>
                             </div>
 
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>层</TableHead>
-                                        <TableHead>人数</TableHead>
-                                        <TableHead>占比</TableHead>
-                                        <TableHead>样本数</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {mockLayers.map((layer, index) => (
-                                        <TableRow key={layer.name}>
-                                            <TableCell>{layer.name}</TableCell>
-                                            <TableCell>{layer.count.toLocaleString()}</TableCell>
-                                            <TableCell>{layer.ratio}%</TableCell>
+                            <div className="border rounded-md">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>层</TableHead>
+                                            <TableHead>人数 (N_h)</TableHead>
+                                            <TableHead>占比</TableHead>
+                                            <TableHead>样本数 (n_h)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {layers.map((layer, index) => (
+                                            <TableRow key={layer.name}>
+                                                <TableCell>{layer.name}</TableCell>
+                                                <TableCell>{layer.count.toLocaleString()}</TableCell>
+                                                <TableCell>{layer.ratio}%</TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="number"
+                                                        value={layerSampleCounts[index] ?? 0}
+                                                        onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
+                                                        className="w-20"
+                                                        min={0}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {layers.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
+                                                    正在加载统计数据或该变量无数据...
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="font-medium">合计</TableCell>
                                             <TableCell>
-                                                <Input
-                                                    type="number"
-                                                    value={layerSampleCounts[index] ?? 0}
-                                                    onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
-                                                    className="w-20"
-                                                    min={0}
-                                                />
+                                                <span className={Math.abs(stratifiedTotal - n) <= layers.length ? "text-emerald-600 font-medium" : "text-red-600"}>
+                                                    {stratifiedTotal}
+                                                </span>
+                                                <span className="text-muted-foreground"> / {n}</span>
                                             </TableCell>
                                         </TableRow>
-                                    ))}
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="font-medium">合计</TableCell>
-                                        <TableCell>
-                                            <span className={stratifiedTotal === n ? "text-emerald-600 font-medium" : "text-red-600"}>
-                                                {stratifiedTotal}
-                                            </span>
-                                            <span className="text-muted-foreground"> / {n}</span>
-                                        </TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
+                                    </TableBody>
+                                </Table>
+                            </div>
 
-                            {!isStratifiedValid && (
+                            {!isStratifiedValid && layers.length > 0 && (
                                 <div className="p-3 bg-amber-50 text-amber-700 rounded-lg text-sm">
-                                    各层样本数之和必须等于目标样本量 {n}（当前：{stratifiedTotal}）
+                                    各层样本数之和应接近目标样本量 {n}（当前：{stratifiedTotal}）
                                 </div>
                             )}
 
                             {!stratifiedResult?.completed ? (
-                                <Button onClick={executeStratified} disabled={executing !== null || !isStratifiedValid}>
+                                <Button onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0}>
                                     {executing === "stratified" ? (
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                     ) : (
@@ -417,9 +480,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                             ) : (
                                 <>
                                     <div className="p-4 bg-emerald-50 rounded-lg">
-                                        <p className="text-emerald-700">✓ 分层抽样完成，按 {stratifyBy === "age" ? "年龄段" : stratifyBy === "gender" ? "性别" : "收入水平"} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本</p>
+                                        <p className="text-emerald-700">✓ 分层抽样完成，按 {stratifyBy === "education" ? "学历" : "性别"} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本</p>
                                     </div>
-                                    <Button variant="outline" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid}>
+                                    <Button variant="outline" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0}>
                                         <RefreshCw className="w-4 h-4 mr-1" />
                                         重新抽样
                                     </Button>
