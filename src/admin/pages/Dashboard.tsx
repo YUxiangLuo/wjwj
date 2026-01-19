@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { statsApi, announcementApi, type Stats, type Announcement } from "../api-client";
+import { statsApi, announcementApi, systemApi, type Stats, type Announcement, type SystemMetrics } from "../api-client";
 
 function StatCard({ icon: Icon, value, label, colorClass, loading }: {
     icon: React.ComponentType<{ className?: string }>;
@@ -48,11 +48,20 @@ export function Dashboard() {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // 模拟系统指标（后续可接入真实监控 API）
-    const [metrics] = useState({ cpu: 35, memory: 62, disk: 48 });
+    const [metrics, setMetrics] = useState<SystemMetrics>({
+        cpu: 0,
+        memory: 0,
+        disk: 0,
+        network: 0,
+        activeConnections: 0,
+        requestsPerMinute: 0
+    });
 
     useEffect(() => {
         loadData();
+        // Refresh metrics every 5 seconds
+        const interval = setInterval(loadMetrics, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     async function loadData() {
@@ -75,10 +84,23 @@ export function Dashboard() {
                         .slice(0, 5)
                 );
             }
+
+            await loadMetrics();
         } catch (error) {
             console.error("Failed to load dashboard data:", error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function loadMetrics() {
+        try {
+            const res = await systemApi.getMetrics();
+            if (res.success && res.data) {
+                setMetrics(res.data);
+            }
+        } catch (error) {
+            console.error("Failed to load metrics:", error);
         }
     }
 

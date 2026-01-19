@@ -1,11 +1,25 @@
+import { useState, useEffect } from "react";
 import {
     LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
-    Activity, Megaphone, Settings
+    Activity, Megaphone, Settings, Bell, LogOut
 } from "lucide-react";
-import { Routes, Route, NavLink, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Dashboard } from "./pages/Dashboard";
+import { systemApi } from "./api-client";
 import { SemesterManagement } from "./pages/SemesterManagement";
 import { TeacherManagement } from "./pages/TeacherManagement";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -41,8 +55,35 @@ const pageTitles: Record<string, string> = {
 
 export function AdminApp() {
     const location = useLocation();
+    const navigate = useNavigate();
     const currentPath = location.pathname;
     const pageTitle = pageTitles[currentPath] ?? "管理后台";
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    useEffect(() => {
+        // Initial fetch
+        fetchNotifications();
+
+        // Poll every minute
+        const interval = setInterval(fetchNotifications, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await systemApi.getNotifications();
+            if (res.success && res.data) {
+                setUnreadCount(res.data.count);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleLogout = () => {
+        // Clear auth data if needed
+        window.location.href = "/";
+    };
 
     return (
         <div className="flex min-h-screen bg-muted/40">
@@ -95,9 +136,37 @@ export function AdminApp() {
             <main className="flex-1 flex flex-col overflow-hidden">
                 <header className="bg-background px-8 py-4 border-b flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-foreground">{pageTitle}</h2>
-                    <span className="text-sm text-muted-foreground">
-                        {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
-                    </span>
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm text-muted-foreground mr-2">
+                            {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
+                        </span>
+                        <Button variant="ghost" size="icon" className="relative">
+                            <Bell className="w-5 h-5 text-muted-foreground" />
+                            {unreadCount > 0 && (
+                                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                            )}
+                        </Button>
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" title="退出登录">
+                                    <LogOut className="w-5 h-5 text-muted-foreground" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>确认退出登录?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        您确定要退出当前账号吗？
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>取消</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleLogout}>退出</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                 </header>
                 <div className="flex-1 p-8 overflow-y-auto">
                     <Routes>

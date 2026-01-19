@@ -374,6 +374,7 @@ export interface SystemLog {
 export const systemApi = {
     getMetrics: () => request<SystemMetrics>("/api/admin/system/metrics"),
     getLogs: () => request<SystemLog[]>("/api/admin/system/logs"),
+    getNotifications: () => request<{ count: number; items: any[] }>("/api/admin/notifications"),
 };
 
 export const settingsApi = {
