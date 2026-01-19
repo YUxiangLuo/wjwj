@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, RotateCcw, Loader2 } from "lucide-react";
+import { Search, RotateCcw, Loader2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { studentApi, classApi, type Student, type Class } from "../api-client";
 
 export function StudentManagement() {
@@ -15,6 +23,11 @@ export function StudentManagement() {
     const [loading, setLoading] = useState(true);
     const [filterClass, setFilterClass] = useState("all");
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Transfer Modal State
+    const [transferStudent, setTransferStudent] = useState<Student | null>(null);
+    const [targetClassId, setTargetClassId] = useState<string>("");
+    const [transferReason, setTransferReason] = useState("");
 
     useEffect(() => {
         loadInitialData();
@@ -97,6 +110,34 @@ export function StudentManagement() {
         }
     }
 
+    function openTransferModal(student: Student) {
+        setTransferStudent(student);
+        setTargetClassId("");
+        setTransferReason("");
+    }
+
+    async function handleTransfer() {
+        if (!transferStudent || !targetClassId) return;
+
+        try {
+            const res = await studentApi.transfer(transferStudent.id, {
+                targetClassId: parseInt(targetClassId),
+                reason: transferReason,
+            });
+
+            if (res.success) {
+                setTransferStudent(null);
+                loadStudents();
+                alert("转班成功");
+            } else {
+                alert(res.error?.message ?? "转班失败");
+            }
+        } catch (error) {
+            console.error("Failed to transfer student:", error);
+            alert("转班失败");
+        }
+    }
+
     const getProgressColor = (progress: number) => {
         if (progress >= 80) return "[&>div]:bg-emerald-500";
         if (progress >= 50) return "[&>div]:bg-amber-500";
@@ -109,101 +150,164 @@ export function StudentManagement() {
     };
 
     return (
-        <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">学生列表</CardTitle>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                        placeholder="搜索学号或姓名..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                        className="pl-9 w-52"
-                    />
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="flex gap-3 mb-4">
-                    <Select value={filterClass} onValueChange={setFilterClass}>
-                        <SelectTrigger className="w-44">
-                            <SelectValue placeholder="全部班级" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">全部班级</SelectItem>
-                            {classes.map((c) => (
-                                <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <>
+            <Card>
+                <CardHeader className="flex-row items-center justify-between space-y-0">
+                    <CardTitle className="text-base">学生列表</CardTitle>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                            placeholder="搜索学号或姓名..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                            className="pl-9 w-52"
+                        />
                     </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>学号</TableHead>
-                                <TableHead>姓名</TableHead>
-                                <TableHead>班级</TableHead>
-                                <TableHead>状态</TableHead>
-                                <TableHead>实验进度</TableHead>
-                                <TableHead>最后活跃</TableHead>
-                                <TableHead>操作</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {students.map((student) => (
-                                <TableRow key={student.id}>
-                                    <TableCell className="font-medium">{student.studentId}</TableCell>
-                                    <TableCell>{student.name}</TableCell>
-                                    <TableCell>{student.className}</TableCell>
-                                    <TableCell>
-                                        {student.status === 1 ? (
-                                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
-                                        ) : (
-                                            <Badge variant="destructive">已停用</Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Progress value={student.progress} className={`w-20 h-2 ${getProgressColor(student.progress)}`} />
-                                            <span className="text-xs text-muted-foreground">{student.progress}%</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground">{formatDateTime(student.lastActive)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            <Button variant="ghost" size="sm" onClick={() => handleResetPassword(student)}>
-                                                <RotateCcw className="w-3 h-3 mr-1" />
-                                                重置密码
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleToggleStatus(student)}
-                                                className={student.status === 1 ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
-                                            >
-                                                {student.status === 1 ? "停用" : "启用"}
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {students.length === 0 && (
+                </CardHeader>
+                <CardContent>
+                    <div className="flex gap-3 mb-4">
+                        <Select value={filterClass} onValueChange={setFilterClass}>
+                            <SelectTrigger className="w-44">
+                                <SelectValue placeholder="全部班级" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部班级</SelectItem>
+                                {classes.map((c) => (
+                                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                                        暂无数据
-                                    </TableCell>
+                                    <TableHead>学号</TableHead>
+                                    <TableHead>姓名</TableHead>
+                                    <TableHead>班级</TableHead>
+                                    <TableHead>状态</TableHead>
+                                    <TableHead>实验进度</TableHead>
+                                    <TableHead>最后活跃</TableHead>
+                                    <TableHead>操作</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                )}
-            </CardContent>
-        </Card>
+                            </TableHeader>
+                            <TableBody>
+                                {students.map((student) => (
+                                    <TableRow key={student.id}>
+                                        <TableCell className="font-medium">{student.studentId}</TableCell>
+                                        <TableCell>{student.name}</TableCell>
+                                        <TableCell>{student.className}</TableCell>
+                                        <TableCell>
+                                            {student.status === 1 ? (
+                                                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
+                                            ) : (
+                                                <Badge variant="destructive">已停用</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Progress value={student.progress} className={`w-20 h-2 ${getProgressColor(student.progress)}`} />
+                                                <span className="text-xs text-muted-foreground">{student.progress}%</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">{formatDateTime(student.lastActive)}</TableCell>
+                                        <TableCell>
+                                            <div className="flex gap-2">
+                                                <Button variant="ghost" size="sm" onClick={() => handleResetPassword(student)}>
+                                                    <RotateCcw className="w-3 h-3 mr-1" />
+                                                    重置密码
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => openTransferModal(student)}
+                                                >
+                                                    <ArrowRight className="w-3 h-3 mr-1" />
+                                                    转班
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleToggleStatus(student)}
+                                                    className={student.status === 1 ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
+                                                >
+                                                    {student.status === 1 ? "停用" : "启用"}
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {students.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                                            暂无数据
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Dialog open={!!transferStudent} onOpenChange={(open) => !open && setTransferStudent(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>学生转班</DialogTitle>
+                        <DialogDescription>
+                            将学生 [{transferStudent?.studentId} {transferStudent?.name}] 从 [{transferStudent?.className}] 转至新班级。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">目标班级</label>
+                            <Select value={targetClassId} onValueChange={setTargetClassId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="选择新班级" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {classes
+                                        .filter((c) => c.id !== transferStudent?.classId)
+                                        .map((c) => (
+                                            <SelectItem key={c.id} value={String(c.id)}>
+                                                {c.name}
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">转班原因 (可选)</label>
+                            <Input
+                                value={transferReason}
+                                onChange={(e) => setTransferReason(e.target.value)}
+                                placeholder="例如：行政调班"
+                            />
+                        </div>
+                        <div className="bg-amber-50 text-amber-800 p-3 rounded-md text-sm">
+                            <p className="font-semibold mb-1">⚠️ 注意事项：</p>
+                            <ul className="list-disc pl-4 space-y-1">
+                                <li>学生在原班级的实验数据将被存档保留。</li>
+                                <li>学生需要在新班级重新开始实验（如适用）。</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setTransferStudent(null)}>
+                            取消
+                        </Button>
+                        <Button onClick={handleTransfer} disabled={!targetClassId}>
+                            确认转班
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

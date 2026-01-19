@@ -288,6 +288,12 @@ export const studentApi = {
         request<{ success: boolean }>(`/api/admin/students/${id}/reset-password`, {
             method: "POST",
         }),
+
+    transfer: (id: number, data: { targetClassId: number; reason?: string }) =>
+        request<{ success: boolean }>(`/api/admin/students/${id}/transfer`, {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
 };
 
 // ============================================================
@@ -323,4 +329,33 @@ export const announcementApi = {
         request<{ success: boolean }>(`/api/admin/announcements/${id}/unpublish`, {
             method: "PUT",
         }),
+
+    getStats: (id: number) =>
+        request<{ readCount: number; totalCount: number; readRate: number }>(`/api/admin/announcements/${id}/stats`),
+};
+
+// ============================================================
+// System API
+// ============================================================
+
+export interface SystemMetrics {
+    cpu: number;
+    memory: number;
+    disk: number;
+    network: number;
+    activeConnections: number;
+    requestsPerMinute: number;
+}
+
+export interface SystemLog {
+    id: string | number;
+    time: string;
+    level: string;
+    message: string;
+    source: string;
+}
+
+export const systemApi = {
+    getMetrics: () => request<SystemMetrics>("/api/admin/system/metrics"),
+    getLogs: () => request<SystemLog[]>("/api/admin/system/logs"),
 };

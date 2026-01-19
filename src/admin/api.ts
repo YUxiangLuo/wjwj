@@ -13,6 +13,11 @@ import {
     announcement,
     loginLog,
     assistantClass,
+    studentTransfer,
+    operationLog,
+    experiment,
+    submission,
+    announcementRead,
 } from "../db/schema";
 import { eq, desc, asc, sql, and, like, or, isNull, count } from "drizzle-orm";
 
@@ -53,35 +58,89 @@ function getSearchParams(req: Request) {
 // Stats API
 // ============================================================
 
-const statsRoutes: RouteDefinition = {
+const statsRoutes = {
     async GET() {
-        const [[semesterRow], [teacherCount], [classCount], [studentCount], [assistantCount]] =
-            await Promise.all([
-                db.select().from(semester).where(eq(semester.isCurrent, 1)).limit(1),
-                db.select({ count: count() }).from(teacher).where(eq(teacher.status, 1)),
-                db.select({ count: count() }).from(class_),
-                db.select({ count: count() }).from(student).where(isNull(student.deletedAt)),
-                db.select({ count: count() }).from(assistant).where(eq(assistant.status, 1)),
-            ]);
+        // Basic counts
+        const [semesterCount] = await db.select({ count: count() }).from(semester);
+        const [teacherCount] = await db.select({ count: count() }).from(teacher);
+        const [classCount] = await db.select({ count: count() }).from(class_);
+        const [studentCount] = await db.select({ count: count() }).from(student);
+        const [assistantCount] = await db.select({ count: count() }).from(assistant);
 
-        // 今日登录统计
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        // Current semester
+        const [currentSem] = await db
+            .select()
+            .from(semester)
+            .where(eq(semester.isCurrent, 1))
+            .limit(1);
 
+        // Today's Stats
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        // Today Logins
         const [todayLogins] = await db
             .select({ count: count() })
             .from(loginLog)
-            .where(sql`${loginLog.loginAt} >= ${today}`);
+            .where(sql`${loginLog.loginAt} >= ${startOfDay}`);
+
+        // Today Active Users (Distinct users who logged in)
+        // Using sql within select to ensure correct return type integration
+        const [activeUserStat] = await db
+            .select({
+                count: sql<number>`count(distinct ${loginLog.userType}, ${loginLog.userId})`
+            })
+            .from(loginLog)
+            .where(sql`${loginLog.loginAt} >= ${startOfDay}`);
+
+        // Pending Items (e.g. ungraded submissions)
+        const [pendingSubs] = await db
+            .select({ count: count() })
+            .from(submission)
+            .where(eq(submission.status, 1));
+
+        const pendingItems = pendingSubs?.count ?? 0;
 
         return json({
-            currentSemester: semesterRow?.name ?? "未设置",
+            currentSemester: currentSem?.name ?? "未设置",
             teacherCount: teacherCount?.count ?? 0,
             classCount: classCount?.count ?? 0,
             studentCount: studentCount?.count ?? 0,
             assistantCount: assistantCount?.count ?? 0,
             todayLogins: todayLogins?.count ?? 0,
-            todayActiveUsers: 0, // TODO: 从 session 表统计
-            pendingItems: 0, // TODO: 统计待处理事项
+            todayActiveUsers: Number(activeUserStat?.count ?? 0),
+            pendingItems: pendingItems,
+        });
+    },
+};
+
+// ============================================================
+// System Metrics API
+// ============================================================
+
+const systemMetricsRoutes = {
+    async GET() {
+        const os = await import("node:os");
+
+        // Memory
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usedMem = totalMem - freeMem;
+        const memUsage = Math.round((usedMem / totalMem) * 100);
+
+        // CPU (Approximation using loadavg)
+        const cpus = os.cpus();
+        const load = os.loadavg()[0] ?? 0; // 1 min load average
+        // Normalize load average to percentage (rough approximation)
+        const cpuUsage = Math.min(Math.round((load / cpus.length) * 100), 100);
+
+        return json({
+            cpu: cpuUsage,
+            memory: memUsage,
+            disk: 50, // Mock, node:os doesn't support disk usage directly
+            network: 0, // Mock
+            activeConnections: 0, // TODO
+            requestsPerMinute: 0, // TODO
         });
     },
 };
@@ -671,11 +730,35 @@ const studentRoutes: RouteDefinition = {
 
         const lastActiveMap = new Map(lastActives.map((l) => [l.userId, l.lastActive]));
 
+        // 获取实验进度
+        const experiments =
+            studentIds.length > 0
+                ? await db
+                    .select({
+                        studentId: experiment.studentId,
+                        currentStage: experiment.currentStage,
+                        status: experiment.status,
+                    })
+                    .from(experiment)
+                    .where(
+                        sql`${experiment.studentId} IN (${sql.join(studentIds, sql`, `)})`
+                    )
+                : [];
+
+        const progressMap = new Map();
+        experiments.forEach(e => {
+            const p = e.status === 1 ? 100 : Math.min(e.currentStage * 25, 100);
+            const current = progressMap.get(e.studentId) || 0;
+            if (p > current) {
+                progressMap.set(e.studentId, p);
+            }
+        });
+
         const result = rows.map((r) => ({
             ...r,
             isLocked: r.lockedUntil ? new Date(r.lockedUntil) > new Date() : false,
-            progress: 0, // TODO: 计算实验进度
-            lastActive: lastActiveMap.get(r.id) ?? null,
+            progress: progressMap.get(r.id) || 0,
+            lastActive: lastActiveMap.get(r.id) || null,
         }));
 
         return json(result);
@@ -699,6 +782,7 @@ const studentStatusRoutes = {
     },
 };
 
+
 const studentResetPasswordRoutes = {
     async POST(req: Request) {
         const url = new URL(req.url);
@@ -720,6 +804,54 @@ const studentResetPasswordRoutes = {
         await db
             .update(student)
             .set({ password: hashedPassword, isFirstLogin: 1 })
+            .where(eq(student.id, id));
+
+        return json({ success: true });
+    },
+};
+
+const studentTransferRoutes = {
+    async POST(req: Request) {
+        const url = new URL(req.url);
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[parts.length - 2] ?? "");
+        const body = await parseBody<{ targetClassId: number; reason?: string }>(req);
+
+        if (!id) {
+            return error("无效的学生ID", "INVALID_ID");
+        }
+        if (!body.targetClassId) {
+            return error("目标班级不能为空", "VALIDATION_ERROR");
+        }
+
+        const [s] = await db.select().from(student).where(eq(student.id, id));
+        if (!s) {
+            return error("学生不存在", "NOT_FOUND", 404);
+        }
+
+        // Check if target class exists
+        const [targetClass] = await db.select().from(class_).where(eq(class_.id, body.targetClassId));
+        if (!targetClass) {
+            return error("目标班级不存在", "NOT_FOUND", 404);
+        }
+
+        if (s.classId === body.targetClassId) {
+            return error("学生已在该班级", "SAME_CLASS");
+        }
+
+        // Record transfer
+        await db.insert(studentTransfer).values({
+            studentId: id,
+            fromClassId: s.classId,
+            toClassId: body.targetClassId,
+            reason: body.reason,
+            operatedBy: 1, // Mock Admin ID
+        });
+
+        // Update student class
+        await db
+            .update(student)
+            .set({ classId: body.targetClassId })
             .where(eq(student.id, id));
 
         return json({ success: true });
@@ -824,6 +956,91 @@ const announcementUnpublishRoutes = {
     },
 };
 
+const announcementStatsRoutes = {
+    async GET(req: Request) {
+        const url = new URL(req.url);
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[parts.length - 2] ?? "");
+
+        if (!id) {
+            return error("无效的公告ID", "INVALID_ID");
+        }
+
+        const [an] = await db.select().from(announcement).where(eq(announcement.id, id));
+        if (!an) {
+            return error("公告不存在", "NOT_FOUND", 404);
+        }
+
+        // Count total potential readers (Teachers + Assistants + Students)
+        // Note: In a real system you might want to cache this or filter by status
+        const [tCount] = await db.select({ count: count() }).from(teacher).where(eq(teacher.status, 1));
+        const [aCount] = await db.select({ count: count() }).from(assistant).where(eq(assistant.status, 1));
+        const [sCount] = await db.select({ count: count() }).from(student).where(eq(student.status, 1));
+
+        const totalCount = (tCount?.count ?? 0) + (aCount?.count ?? 0) + (sCount?.count ?? 0);
+
+        // Count reads
+        const [rCount] = await db
+            .select({ count: count() })
+            .from(announcementRead)
+            .where(eq(announcementRead.announcementId, id));
+
+        const readCount = rCount?.count ?? 0;
+        const readRate = totalCount > 0 ? Math.round((readCount / totalCount) * 100) : 0;
+
+        return json({
+            readCount,
+            totalCount,
+            readRate,
+        });
+    },
+};
+
+
+
+const systemLogsRoutes = {
+    async GET() {
+        // Fetch recent operation logs and login logs, combine and sort
+        const ops = await db
+            .select({
+                id: operationLog.id,
+                type: sql<string>`'OPERATION'`,
+                time: operationLog.createdAt,
+                message: operationLog.action,
+                detail: operationLog.detail,
+            })
+            .from(operationLog)
+            .orderBy(desc(operationLog.createdAt))
+            .limit(20);
+
+        const logins = await db
+            .select({
+                id: loginLog.id,
+                type: sql<string>`'LOGIN'`,
+                time: loginLog.loginAt,
+                message: sql<string>`concat('用户 ', ${loginLog.userId}, ' (', ${loginLog.userType}, ') 登录')`,
+                detail: sql<string>`''`,
+            })
+            .from(loginLog)
+            .orderBy(desc(loginLog.loginAt))
+            .limit(20);
+
+        // Combine and sort
+        const logs = [...ops, ...logins]
+            .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+            .slice(0, 20)
+            .map(log => ({
+                id: `${log.type}_${log.id}`,
+                time: log.time,
+                level: "INFO",
+                message: log.message,
+                source: log.type === 'LOGIN' ? 'AuthService' : 'Admin',
+            }));
+
+        return json(logs);
+    },
+};
+
 // ============================================================
 // Export Routes
 // ============================================================
@@ -858,10 +1075,16 @@ export const adminApiRoutes = {
     "/api/admin/students": studentRoutes,
     "/api/admin/students/:id/status": studentStatusRoutes,
     "/api/admin/students/:id/reset-password": studentResetPasswordRoutes,
+    "/api/admin/students/:id/transfer": studentTransferRoutes,
 
     // Announcements
     "/api/admin/announcements": announcementRoutes,
     "/api/admin/announcements/:id": announcementUpdateRoutes,
     "/api/admin/announcements/:id/publish": announcementPublishRoutes,
     "/api/admin/announcements/:id/unpublish": announcementUnpublishRoutes,
+    "/api/admin/announcements/:id/stats": announcementStatsRoutes,
+
+    // System
+    "/api/admin/system/metrics": systemMetricsRoutes,
+    "/api/admin/system/logs": systemLogsRoutes,
 };

@@ -1,27 +1,19 @@
 import { useState, useEffect } from "react";
-import { Cpu, HardDrive, Activity, Wifi, Users, Zap, Pause, Play } from "lucide-react";
+import { Cpu, HardDrive, Activity, Wifi, Users, Zap, Pause, Play, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { systemApi, type SystemMetrics, type SystemLog } from "../api-client";
 
-const generateMetrics = () => ({
-    cpu: Math.floor(Math.random() * 40) + 20,
-    memory: Math.floor(Math.random() * 30) + 50,
-    disk: Math.floor(Math.random() * 10) + 45,
-    network: Math.floor(Math.random() * 100) + 50,
-    activeConnections: Math.floor(Math.random() * 50) + 100,
-    requestsPerMinute: Math.floor(Math.random() * 200) + 300,
-});
-
-const mockLogs = [
-    { id: 1, time: "17:45:32", level: "INFO", message: "用户 admin 登录系统", source: "AuthService" },
-    { id: 2, time: "17:44:18", level: "INFO", message: "班级「统计学2024-1班」数据导出完成", source: "ExportService" },
-    { id: 3, time: "17:42:55", level: "WARN", message: "API请求响应时间超过阈值 (523ms)", source: "APIGateway" },
-    { id: 4, time: "17:40:12", level: "INFO", message: "学生 2024001 完成实验步骤3", source: "ExperimentService" },
-    { id: 5, time: "17:38:45", level: "ERROR", message: "数据库连接池达到上限，正在扩容", source: "DatabasePool" },
-    { id: 6, time: "17:35:20", level: "INFO", message: "定时任务：清理过期缓存完成", source: "SchedulerService" },
-];
+const defaultMetrics: SystemMetrics = {
+    cpu: 0,
+    memory: 0,
+    disk: 0,
+    network: 0,
+    activeConnections: 0,
+    requestsPerMinute: 0,
+};
 
 function MetricCard({ label, value, unit, icon: Icon, color }: {
     label: string;
@@ -48,12 +40,35 @@ function MetricCard({ label, value, unit, icon: Icon, color }: {
 }
 
 export function SystemMonitor() {
-    const [metrics, setMetrics] = useState(generateMetrics());
+    const [metrics, setMetrics] = useState<SystemMetrics>(defaultMetrics);
+    const [logs, setLogs] = useState<SystemLog[]>([]);
     const [isLive, setIsLive] = useState(true);
+    const [loading, setLoading] = useState(true);
+
+    const fetchData = async () => {
+        try {
+            const [metricsRes, logsRes] = await Promise.all([
+                systemApi.getMetrics(),
+                systemApi.getLogs(),
+            ]);
+
+            if (metricsRes.success && metricsRes.data) {
+                setMetrics(metricsRes.data);
+            }
+            if (logsRes.success && logsRes.data) {
+                setLogs(logsRes.data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch system data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
+        fetchData();
         if (!isLive) return;
-        const interval = setInterval(() => setMetrics(generateMetrics()), 3000);
+        const interval = setInterval(fetchData, 3000);
         return () => clearInterval(interval);
     }, [isLive]);
 
@@ -156,9 +171,11 @@ export function SystemMonitor() {
                     <CardTitle className="text-base">系统日志</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                    {mockLogs.map((log) => (
+                    {logs.map((log) => (
                         <div key={log.id} className="flex items-start gap-3 p-3 bg-muted rounded-lg text-sm">
-                            <span className="text-muted-foreground font-mono text-xs">{log.time}</span>
+                            <span className="text-muted-foreground font-mono text-xs">
+                                {new Date(log.time).toLocaleTimeString("zh-CN")}
+                            </span>
                             {getLevelBadge(log.level)}
                             <span className="text-foreground flex-1">{log.message}</span>
                             <span className="text-xs text-muted-foreground">{log.source}</span>

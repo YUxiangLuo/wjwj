@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Send, Archive, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Send, Archive, Loader2, BarChart3, Users, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { announcementApi, type Announcement } from "../api-client";
 
 export function AnnouncementManagement() {
@@ -14,10 +15,16 @@ export function AnnouncementManagement() {
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showStatsModal, setShowStatsModal] = useState(false);
+
     const [newAnnouncement, setNewAnnouncement] = useState({ title: "", content: "" });
     const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
     const [editForm, setEditForm] = useState({ title: "", content: "" });
     const [submitting, setSubmitting] = useState(false);
+
+    // Stats State
+    const [currentStats, setCurrentStats] = useState<{ readCount: number; totalCount: number; readRate: number } | null>(null);
+    const [statsLoading, setStatsLoading] = useState(false);
 
     useEffect(() => {
         loadAnnouncements();
@@ -135,6 +142,24 @@ export function AnnouncementManagement() {
         }
     }
 
+    async function handleViewStats(announcement: Announcement) {
+        setShowStatsModal(true);
+        setStatsLoading(true);
+        setCurrentStats(null);
+        try {
+            const res = await announcementApi.getStats(announcement.id);
+            if (res.success && res.data) {
+                setCurrentStats(res.data);
+            }
+        } catch (error) {
+            console.error("Failed to load stats:", error);
+            alert("加载统计失败");
+            setShowStatsModal(false);
+        } finally {
+            setStatsLoading(false);
+        }
+    }
+
     const formatDateTime = (dateStr: string) => {
         return new Date(dateStr).toLocaleString("zh-CN");
     };
@@ -191,6 +216,15 @@ export function AnnouncementManagement() {
                                                 发布
                                             </>
                                         )}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleViewStats(announcement)}
+                                        disabled={announcement.status !== 1} // Only published announcements have stats
+                                    >
+                                        <BarChart3 className="w-3 h-3 mr-1" />
+                                        统计
                                     </Button>
                                     <Button
                                         variant="ghost"
@@ -302,6 +336,49 @@ export function AnnouncementManagement() {
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 统计弹窗 */}
+            <Dialog open={showStatsModal} onOpenChange={setShowStatsModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>公告阅读统计</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-6">
+                        {statsLoading ? (
+                            <div className="flex justify-center">
+                                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : currentStats ? (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-muted p-4 rounded-lg flex flex-col items-center">
+                                        <Users className="w-5 h-5 text-muted-foreground mb-2" />
+                                        <span className="text-2xl font-bold">{currentStats.totalCount}</span>
+                                        <span className="text-xs text-muted-foreground">总人数</span>
+                                    </div>
+                                    <div className="bg-muted p-4 rounded-lg flex flex-col items-center">
+                                        <Eye className="w-5 h-5 text-muted-foreground mb-2" />
+                                        <span className="text-2xl font-bold text-emerald-600">{currentStats.readCount}</span>
+                                        <span className="text-xs text-muted-foreground">已阅读</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                        <span>阅读率</span>
+                                        <span className="font-bold">{currentStats.readRate}%</span>
+                                    </div>
+                                    <Progress value={currentStats.readRate} className="h-3" />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center text-muted-foreground">暂无统计数据</div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setShowStatsModal(false)}>关闭</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
