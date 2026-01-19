@@ -4,6 +4,7 @@ import teacherPage from "./teacher/teacher.html";
 import studentPage from "./student/student.html";
 import { adminApiRoutes } from "./admin/api";
 import { studentApiRoutes } from "./student/api";
+import { teacherApiRoutes } from "./teacher/api";
 
 const server = serve({
   routes: {
@@ -23,6 +24,9 @@ const server = serve({
 
     // Student API routes
     ...studentApiRoutes,
+
+    // Teacher API routes
+    ...teacherApiRoutes,
 
     // API endpoints (example)
     "/api/hello": {
