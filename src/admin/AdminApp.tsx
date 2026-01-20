@@ -64,8 +64,7 @@ export function AdminApp() {
     const isLoginPage = currentPath === "/login";
     const pageTitle = pageTitles[currentPath] ?? "管理后台";
     const [unreadCount, setUnreadCount] = useState(0);
-    const [isAuthed, setIsAuthed] = useState(false);
-    const [authChecked, setAuthChecked] = useState(false);
+    const [authState, setAuthState] = useState<"checking" | "authed" | "guest">("checking");
     const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -73,7 +72,7 @@ export function AdminApp() {
     const [passwordError, setPasswordError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (isLoginPage || !isAuthed) return;
+        if (isLoginPage || authState !== "authed") return;
 
         // Initial fetch
         fetchNotifications();
@@ -81,46 +80,46 @@ export function AdminApp() {
         // Poll every minute
         const interval = setInterval(fetchNotifications, 60000);
         return () => clearInterval(interval);
-    }, [isLoginPage, isAuthed]);
+    }, [isLoginPage, authState]);
 
     useEffect(() => {
         let cancelled = false;
-        if (isLoginPage) {
-            setAuthChecked(true);
-            return;
-        }
-
-        if (authChecked) return;
+        if (authState !== "checking") return;
 
         authApi
             .me()
             .then((res) => {
                 if (cancelled) return;
                 if (res.success) {
-                    setIsAuthed(true);
+                    setAuthState("authed");
                     setAdminUser(res.data ?? null);
                     if (res.data?.isFirstLogin) {
                         setShowPasswordModal(true);
                     }
                 } else {
-                    setIsAuthed(false);
-                    navigate("/login", { replace: true });
+                    setAuthState("guest");
+                    setAdminUser(null);
                 }
             })
             .catch(() => {
                 if (cancelled) return;
-                setIsAuthed(false);
+                setAuthState("guest");
                 setAdminUser(null);
-                navigate("/login", { replace: true });
-            })
-            .finally(() => {
-                if (!cancelled) setAuthChecked(true);
             });
 
         return () => {
             cancelled = true;
         };
-    }, [isLoginPage, navigate, authChecked]);
+    }, [authState]);
+
+    useEffect(() => {
+        if (isLoginPage || authState !== "guest") return;
+        const justLoggedIn = sessionStorage.getItem("admin_login_success") === "1";
+        if (justLoggedIn) {
+            sessionStorage.removeItem("admin_login_success");
+            setAuthState("checking");
+        }
+    }, [isLoginPage, authState]);
 
     const fetchNotifications = async () => {
         try {
@@ -136,6 +135,8 @@ export function AdminApp() {
     const handleLogout = async () => {
         try {
             await authApi.logout();
+            setAuthState("guest");
+            setAdminUser(null);
         } finally {
             navigate("/login", { replace: true });
         }
@@ -177,10 +178,20 @@ export function AdminApp() {
     };
 
     if (isLoginPage) {
+        if (authState === "checking") {
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+            );
+        }
+        if (authState === "authed") {
+            return <Navigate to="/" replace />;
+        }
         return <Login />;
     }
 
-    if (!authChecked) {
+    if (authState === "checking") {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -188,7 +199,7 @@ export function AdminApp() {
         );
     }
 
-    if (!isAuthed) {
+    if (authState !== "authed") {
         return <Navigate to="/login" replace />;
     }
 

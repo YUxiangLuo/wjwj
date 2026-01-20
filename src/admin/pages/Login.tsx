@@ -48,6 +48,7 @@ export function Login() {
                 password,
             });
             if (res.success) {
+                sessionStorage.setItem("admin_login_success", "1");
                 navigate("/", { replace: true });
             } else {
                 setError(res.error?.message ?? "登录失败");

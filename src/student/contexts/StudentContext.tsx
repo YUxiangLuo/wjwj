@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { meApi, notificationsApi, type CurrentStudent, type NotificationsResponse } from "../api-client";
 
 interface StudentContextValue {
@@ -22,20 +22,25 @@ export function StudentProvider({ children }: { children: ReactNode }) {
     const [currentUser, setCurrentUser] = useState<CurrentStudent | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [notifications, setNotifications] = useState<NotificationsResponse | null>(null);
+    const refreshSeq = useRef(0);
 
     // 获取当前用户
     const refreshUser = useCallback(async () => {
+        const seq = ++refreshSeq.current;
         setIsLoading(true);
         try {
             const res = await meApi.get();
+            if (seq !== refreshSeq.current) return;
             if (res.success && res.data) {
                 setCurrentUser(res.data);
             } else {
                 setCurrentUser(null);
             }
         } catch {
+            if (seq !== refreshSeq.current) return;
             setCurrentUser(null);
         } finally {
+            if (seq !== refreshSeq.current) return;
             setIsLoading(false);
         }
     }, []);

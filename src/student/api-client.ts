@@ -22,6 +22,7 @@ export interface CurrentStudent {
     name: string;
     classId: number;
     className: string | null;
+    isFirstLogin: number;
 }
 
 export type TaskStatus = "not_started" | "in_progress" | "submitted" | "grading" | "graded" | "rejected";
@@ -200,6 +201,25 @@ async function request<T>(
 
 export const meApi = {
     get: () => request<CurrentStudent>("/api/student/me"),
+};
+
+export const authApi = {
+    login: (data: { studentId: string; password: string }) =>
+        request<{ user: CurrentStudent; expiresAt: string }>("/api/student/login", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
+
+    logout: () =>
+        request<{ ok: boolean }>("/api/student/logout", {
+            method: "POST",
+        }),
+
+    changePassword: (data: { currentPassword: string; newPassword: string }) =>
+        request<{ success: boolean }>("/api/student/password", {
+            method: "PUT",
+            body: JSON.stringify(data),
+        }),
 };
 
 // ============================================================

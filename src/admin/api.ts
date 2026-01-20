@@ -78,14 +78,22 @@ function getClientIp(req: Request): string {
     return req.headers.get("x-real-ip") ?? "";
 }
 
-function buildSessionCookie(token: string, expiresAt: Date) {
-    const secure = process.env.NODE_ENV === "production" ? " Secure;" : "";
-    return `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Expires=${expiresAt.toUTCString()};${secure}`;
+function isSecureRequest(req: Request) {
+    const forwardedProto = req.headers.get("x-forwarded-proto");
+    if (forwardedProto) {
+        return forwardedProto.split(",")[0]?.trim() === "https";
+    }
+    return new URL(req.url).protocol === "https:";
 }
 
-function clearSessionCookie() {
-    const secure = process.env.NODE_ENV === "production" ? " Secure;" : "";
-    return `${ADMIN_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT;${secure}`;
+function buildSessionCookie(token: string, expiresAt: Date, secure: boolean) {
+    const secureFlag = secure ? " Secure;" : "";
+    return `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Expires=${expiresAt.toUTCString()};${secureFlag}`;
+}
+
+function clearSessionCookie(secure: boolean) {
+    const secureFlag = secure ? " Secure;" : "";
+    return `${ADMIN_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT;${secureFlag}`;
 }
 
 async function requireAdminAuth(req: Request) {
@@ -100,13 +108,18 @@ async function requireAdminAuth(req: Request) {
         .where(
             and(
                 eq(userSession.sessionToken, token),
-                eq(userSession.userType, ADMIN_USER_TYPE),
-                sql`${userSession.expiresAt} > NOW()`
+                eq(userSession.userType, ADMIN_USER_TYPE)
             )
         )
         .limit(1);
 
     if (!session) {
+        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+    }
+
+    const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
+    if (expiresAt && expiresAt <= new Date()) {
+        await db.delete(userSession).where(eq(userSession.sessionToken, token));
         return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
     }
 
@@ -226,13 +239,14 @@ const adminLoginRoutes: RouteDefinition = {
             userAgent: req.headers.get("user-agent") ?? "",
         });
 
+        const secure = isSecureRequest(req);
         return json(
             {
                 user: { id: adm.id, username: adm.username, isFirstLogin: adm.isFirstLogin },
                 expiresAt,
             },
             200,
-            { "Set-Cookie": buildSessionCookie(token, expiresAt) }
+            { "Set-Cookie": buildSessionCookie(token, expiresAt, secure) }
         );
     },
 };
@@ -251,7 +265,8 @@ const adminLogoutRoutes: RouteDefinition = {
         if (token) {
             await db.delete(userSession).where(eq(userSession.sessionToken, token));
         }
-        return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie() });
+        const secure = isSecureRequest(req);
+        return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie(secure) });
     },
 };
 

@@ -53,9 +53,7 @@ export function TeacherApp() {
     const basePath = "/" + (currentPath.split("/")[1] || "");
     const pageTitle = pageTitles[basePath] ?? "教师端";
 
-    const [authChecked, setAuthChecked] = useState(false);
-    const [authLoading, setAuthLoading] = useState(false);
-    const [isAuthed, setIsAuthed] = useState(false);
+    const [authState, setAuthState] = useState<"checking" | "authed" | "guest">("checking");
     const [teacherUser, setTeacherUser] = useState<TeacherUser | null>(null);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
@@ -64,50 +62,48 @@ export function TeacherApp() {
 
     useEffect(() => {
         let cancelled = false;
-        if (isLoginPage) {
-            setAuthChecked(false);
-            setAuthLoading(false);
-            return;
-        }
+        if (authState !== "checking") return;
 
-        if (authChecked && isAuthed) return;
-
-        setAuthLoading(true);
         authApi
             .me()
             .then((res) => {
                 if (cancelled) return;
                 if (res.success) {
-                    setIsAuthed(true);
+                    setAuthState("authed");
                     setTeacherUser(res.data ?? null);
                     if (res.data?.isFirstLogin) {
                         setShowPasswordModal(true);
                     }
                 } else {
-                    setIsAuthed(false);
-                    navigate("/login", { replace: true });
+                    setAuthState("guest");
+                    setTeacherUser(null);
                 }
             })
             .catch(() => {
                 if (cancelled) return;
-                setIsAuthed(false);
-                navigate("/login", { replace: true });
-            })
-            .finally(() => {
-                if (!cancelled) {
-                    setAuthChecked(true);
-                    setAuthLoading(false);
-                }
+                setAuthState("guest");
+                setTeacherUser(null);
             });
 
         return () => {
             cancelled = true;
         };
-    }, [isLoginPage, navigate, authChecked, isAuthed]);
+    }, [authState]);
+
+    useEffect(() => {
+        if (isLoginPage || authState !== "guest") return;
+        const justLoggedIn = sessionStorage.getItem("teacher_login_success") === "1";
+        if (justLoggedIn) {
+            sessionStorage.removeItem("teacher_login_success");
+            setAuthState("checking");
+        }
+    }, [isLoginPage, authState]);
 
     const handleLogout = async () => {
         try {
             await authApi.logout();
+            setAuthState("guest");
+            setTeacherUser(null);
         } finally {
             navigate("/login", { replace: true });
         }
@@ -149,10 +145,20 @@ export function TeacherApp() {
     };
 
     if (isLoginPage) {
+        if (authState === "checking") {
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+            );
+        }
+        if (authState === "authed") {
+            return <Navigate to="/" replace />;
+        }
         return <Login />;
     }
 
-    if (authLoading || !authChecked) {
+    if (authState === "checking") {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -160,7 +166,7 @@ export function TeacherApp() {
         );
     }
 
-    if (!isAuthed) {
+    if (authState !== "authed") {
         return <Navigate to="/login" replace />;
     }
 

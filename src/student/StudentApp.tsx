@@ -1,17 +1,36 @@
+import { useEffect, useState } from "react";
 import { Bell, LogOut, ArrowLeft, Loader2 } from "lucide-react";
-import { Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { TaskHall } from "./pages/TaskHall";
 import { TopicDetails } from "./pages/TopicDetails";
 import { ExperimentLayout } from "./pages/ExperimentLayout";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
+import { authApi } from "./api-client";
+import { Login } from "./pages/Login";
 import "./student.css";
 
 function StudentAppContent() {
     const location = useLocation();
+    const navigate = useNavigate();
     const isTaskHall = location.pathname === "/";
-    const { currentUser, isLoading, unreadCount } = useStudent();
+    const isLoginPage = location.pathname === "/login";
+    const { currentUser, isLoading, unreadCount, refreshUser } = useStudent();
+
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (currentUser?.isFirstLogin) {
+            setShowPasswordModal(true);
+        }
+    }, [currentUser]);
 
     // 显示加载状态
     if (isLoading) {
@@ -22,9 +41,68 @@ function StudentAppContent() {
         );
     }
 
+    if (isLoginPage) {
+        return <Login />;
+    }
+
+    if (!currentUser) {
+        return <Navigate to="/login" replace />;
+    }
+
     // 未登录时显示提示（实际应该跳转到登录页）
     const displayName = currentUser?.name ?? "访客";
     const displayInitial = displayName.charAt(0);
+
+    const handleLogout = async () => {
+        try {
+            await authApi.logout();
+        } finally {
+            navigate("/login", { replace: true });
+        }
+    };
+
+    const handleChangePassword = async () => {
+        setPasswordError(null);
+        if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+            setPasswordError("请填写完整信息");
+            return;
+        }
+        if (passwordForm.newPassword.length < 8) {
+            setPasswordError("新密码长度至少为8位");
+            return;
+        }
+        if (!/[A-Za-z]/.test(passwordForm.newPassword) || !/\d/.test(passwordForm.newPassword) || !/[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword)) {
+            setPasswordError("新密码需包含字母、数字和特殊字符");
+            return;
+        }
+        if (currentUser?.studentId && passwordForm.newPassword.includes(currentUser.studentId)) {
+            setPasswordError("新密码不能包含学号");
+            return;
+        }
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            setPasswordError("两次输入的新密码不一致");
+            return;
+        }
+
+        setPasswordSaving(true);
+        try {
+            const res = await authApi.changePassword({
+                currentPassword: passwordForm.currentPassword,
+                newPassword: passwordForm.newPassword,
+            });
+            if (res.success) {
+                setShowPasswordModal(false);
+                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                await refreshUser();
+            } else {
+                setPasswordError(res.error?.message ?? "修改失败");
+            }
+        } catch (err) {
+            setPasswordError(err instanceof Error ? err.message : "修改失败");
+        } finally {
+            setPasswordSaving(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-slate-50">
@@ -61,7 +139,7 @@ function StudentAppContent() {
                             </Avatar>
                             <span className="text-sm font-medium">{displayName}</span>
                         </div>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={handleLogout}>
                             <LogOut className="w-5 h-5" />
                         </Button>
                     </div>
@@ -80,11 +158,68 @@ function StudentAppContent() {
 
                 <Routes>
                     <Route index element={<TaskHall />} />
+                    <Route path="login" element={<Login />} />
                     <Route path="task/:taskId" element={<TopicDetails />} />
                     <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
+
+            <Dialog open={showPasswordModal} onOpenChange={(open) => {
+                if (currentUser?.isFirstLogin) return;
+                setShowPasswordModal(open);
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{currentUser?.isFirstLogin ? "首次登录请修改密码" : "修改密码"}</DialogTitle>
+                        <DialogDescription>为保证账号安全，请设置新密码。</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="currentPassword">当前密码</Label>
+                            <Input
+                                id="currentPassword"
+                                type="password"
+                                value={passwordForm.currentPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                autoComplete="current-password"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="newPassword">新密码</Label>
+                            <Input
+                                id="newPassword"
+                                type="password"
+                                value={passwordForm.newPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">确认新密码</Label>
+                            <Input
+                                id="confirmPassword"
+                                type="password"
+                                value={passwordForm.confirmPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        {passwordError && <div className="text-sm text-destructive">{passwordError}</div>}
+                    </div>
+                    <DialogFooter>
+                        {!currentUser?.isFirstLogin && (
+                            <Button variant="outline" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving}>
+                                取消
+                            </Button>
+                        )}
+                        <Button onClick={handleChangePassword} disabled={passwordSaving}>
+                            {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            保存
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
