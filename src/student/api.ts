@@ -962,7 +962,7 @@ async function readPopulationData(filePath: string): Promise<any[]> {
     }
 }
 
-async function writePdf(filePath: string, build: (doc: PDFDocument) => void) {
+async function writePdf(filePath: string, build: (doc: InstanceType<typeof PDFDocument>) => void) {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     return new Promise<void>((resolve, reject) => {
         const doc = new PDFDocument({ size: "A4", margin: 50 });
