@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { assistantApi, teacherApi, type Assistant, type Teacher } from "../api-client";
+import { toast } from "sonner";
 
 export function AssistantManagement() {
     const [assistants, setAssistants] = useState<Assistant[]>([]);
@@ -75,11 +76,11 @@ export function AssistantManagement() {
                 setShowAddModal(false);
                 loadAssistants();
             } else {
-                alert(res.error?.message ?? "添加失败");
+                toast.error(res.error?.message ?? "添加失败");
             }
         } catch (error) {
             console.error("Failed to create assistant:", error);
-            alert("添加失败");
+            toast.error("添加失败");
         } finally {
             setSubmitting(false);
         }
@@ -98,11 +99,11 @@ export function AssistantManagement() {
             if (res.success) {
                 loadAssistants();
             } else {
-                alert(res.error?.message ?? `${action}失败`);
+                toast.error(res.error?.message ?? `${action}失败`);
             }
         } catch (error) {
             console.error(`Failed to ${action} assistant:`, error);
-            alert(`${action}失败`);
+            toast.error(`${action}失败`);
         }
     }
 
@@ -114,13 +115,13 @@ export function AssistantManagement() {
         try {
             const res = await assistantApi.resetPassword(assistant.id);
             if (res.success) {
-                alert(`密码已重置为：${assistant.account}`);
+                toast.success(`密码已重置为：${assistant.account}`);
             } else {
-                alert(res.error?.message ?? "重置失败");
+                toast.error(res.error?.message ?? "重置失败");
             }
         } catch (error) {
             console.error("Failed to reset password:", error);
-            alert("重置失败");
+            toast.error("重置失败");
         }
     }
 
@@ -134,11 +135,11 @@ export function AssistantManagement() {
             if (res.success) {
                 loadAssistants();
             } else {
-                alert(res.error?.message ?? "删除失败");
+                toast.error(res.error?.message ?? "删除失败");
             }
         } catch (error) {
             console.error("Failed to delete assistant:", error);
-            alert("删除失败");
+            toast.error("删除失败");
         }
     }
 

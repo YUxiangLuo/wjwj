@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { classApi, semesterApi, teacherApi, type Class, type Semester, type Teacher } from "../api-client";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export function ClassManagement() {
     const navigate = useNavigate();
@@ -98,11 +99,11 @@ export function ClassManagement() {
                 setShowAddModal(false);
                 loadClasses();
             } else {
-                alert(res.error?.message ?? "创建失败");
+                toast.error(res.error?.message ?? "创建失败");
             }
         } catch (error) {
             console.error("Failed to create class:", error);
-            alert("创建失败");
+            toast.error("创建失败");
         } finally {
             setSubmitting(false);
         }
@@ -138,11 +139,11 @@ export function ClassManagement() {
                 setEditingClass(null);
                 loadClasses();
             } else {
-                alert(res.error?.message ?? "更新失败");
+                toast.error(res.error?.message ?? "更新失败");
             }
         } catch (error) {
             console.error("Failed to update class:", error);
-            alert("更新失败");
+            toast.error("更新失败");
         } finally {
             setSubmitting(false);
         }
@@ -162,11 +163,11 @@ export function ClassManagement() {
             if (res.success) {
                 loadClasses();
             } else {
-                alert(res.error?.message ?? "删除失败");
+                toast.error(res.error?.message ?? "删除失败");
             }
         } catch (error) {
             console.error("Failed to delete class:", error);
-            alert("删除失败");
+            toast.error("删除失败");
         }
     }
 

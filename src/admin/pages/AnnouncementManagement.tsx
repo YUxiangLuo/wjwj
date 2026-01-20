@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { announcementApi, type Announcement } from "../api-client";
+import { toast } from "sonner";
 
 export function AnnouncementManagement() {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -60,11 +61,11 @@ export function AnnouncementManagement() {
                 setShowAddModal(false);
                 loadAnnouncements();
             } else {
-                alert(res.error?.message ?? "创建失败");
+                toast.error(res.error?.message ?? "创建失败");
             }
         } catch (error) {
             console.error("Failed to create announcement:", error);
-            alert("创建失败");
+            toast.error("创建失败");
         } finally {
             setSubmitting(false);
         }
@@ -91,11 +92,11 @@ export function AnnouncementManagement() {
                 setEditingAnnouncement(null);
                 loadAnnouncements();
             } else {
-                alert(res.error?.message ?? "更新失败");
+                toast.error(res.error?.message ?? "更新失败");
             }
         } catch (error) {
             console.error("Failed to update announcement:", error);
-            alert("更新失败");
+            toast.error("更新失败");
         } finally {
             setSubmitting(false);
         }
@@ -116,11 +117,11 @@ export function AnnouncementManagement() {
             if (res.success) {
                 loadAnnouncements();
             } else {
-                alert(res.error?.message ?? `${action}失败`);
+                toast.error(res.error?.message ?? `${action}失败`);
             }
         } catch (error) {
             console.error(`Failed to ${action} announcement:`, error);
-            alert(`${action}失败`);
+            toast.error(`${action}失败`);
         }
     }
 
@@ -134,11 +135,11 @@ export function AnnouncementManagement() {
             if (res.success) {
                 loadAnnouncements();
             } else {
-                alert(res.error?.message ?? "删除失败");
+                toast.error(res.error?.message ?? "删除失败");
             }
         } catch (error) {
             console.error("Failed to delete announcement:", error);
-            alert("删除失败");
+            toast.error("删除失败");
         }
     }
 
@@ -153,7 +154,7 @@ export function AnnouncementManagement() {
             }
         } catch (error) {
             console.error("Failed to load stats:", error);
-            alert("加载统计失败");
+            toast.error("加载统计失败");
             setShowStatsModal(false);
         } finally {
             setStatsLoading(false);

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { studentApi, classApi, type Student, type Class, type StudentExperiment } from "../api-client";
 import { useLocation } from "react-router-dom";
+import { toast } from "sonner";
 
 export function StudentManagement() {
     const location = useLocation();
@@ -94,13 +95,13 @@ export function StudentManagement() {
         try {
             const res = await studentApi.resetPassword(student.id);
             if (res.success) {
-                alert(`密码已重置为：${student.studentId}`);
+                toast.success(`密码已重置为：${student.studentId}`);
             } else {
-                alert(res.error?.message ?? "重置失败");
+                toast.error(res.error?.message ?? "重置失败");
             }
         } catch (error) {
             console.error("Failed to reset password:", error);
-            alert("重置失败");
+            toast.error("重置失败");
         }
     }
 
@@ -117,11 +118,11 @@ export function StudentManagement() {
             if (res.success) {
                 loadStudents();
             } else {
-                alert(res.error?.message ?? `${action}失败`);
+                toast.error(res.error?.message ?? `${action}失败`);
             }
         } catch (error) {
             console.error(`Failed to ${action} student:`, error);
-            alert(`${action}失败`);
+            toast.error(`${action}失败`);
         }
     }
 
@@ -159,13 +160,13 @@ export function StudentManagement() {
             if (res.success) {
                 setTransferStudent(null);
                 loadStudents();
-                alert("转班成功");
+                toast.success("转班成功");
             } else {
-                alert(res.error?.message ?? "转班失败");
+                toast.error(res.error?.message ?? "转班失败");
             }
         } catch (error) {
             console.error("Failed to transfer student:", error);
-            alert("转班失败");
+            toast.error("转班失败");
         }
     }
 

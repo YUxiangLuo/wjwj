@@ -97,6 +97,16 @@ export interface AdminUser {
     id: number;
     username: string;
     isFirstLogin: number;
+    sessionExpiresAt?: string | null;
+}
+
+export interface AdminNotification {
+    id: number;
+    type: string;
+    title: string;
+    content: string;
+    isRead: number;
+    createdAt: string;
 }
 
 // ============================================================
@@ -116,6 +126,10 @@ async function request<T>(
             credentials: "include",
             ...options,
         });
+
+        if (res.status === 401 && typeof window !== "undefined" && !url.includes("/api/admin/login")) {
+            window.dispatchEvent(new CustomEvent("admin:session-expired"));
+        }
 
         const data = await res.json();
         return data as ApiResponse<T>;
@@ -398,7 +412,6 @@ export interface SystemMetrics {
     disk: number;
     network: number;
     activeConnections: number;
-    requestsPerMinute: number;
 }
 
 export interface SystemLog {
@@ -409,14 +422,30 @@ export interface SystemLog {
     source: string;
 }
 
+export interface BackupInfo {
+    backupId: string;
+    createdAt: string;
+    sqlPath: string;
+    zipPath: string;
+    hasZip: boolean;
+}
+
 export const systemApi = {
     getMetrics: () => request<SystemMetrics>("/api/admin/system/metrics"),
     getLogs: () => request<SystemLog[]>("/api/admin/system/logs"),
-    getNotifications: () => request<{ count: number; items: any[] }>("/api/admin/notifications"),
+    listBackups: () => request<BackupInfo[]>("/api/admin/backups"),
+    getNotifications: () => request<{ count: number; items: AdminNotification[]; sessionExpiresAt?: string | null }>("/api/admin/notifications"),
+    markNotificationRead: (id: number) => request<{ success: boolean }>(`/api/admin/notifications/${id}/read`, {
+        method: "PUT",
+    }),
+    markAllNotificationsRead: () => request<{ success: boolean }>("/api/admin/notifications/read-all", {
+        method: "PUT",
+    }),
     createBackup: () => request<{ backupId: string; createdAt: string }>("/api/admin/backup", { method: "POST" }),
-    restoreBackup: (backupId: string) => request<{ success: boolean; restoredFrom: string }>("/api/admin/restore", {
+    restoreBackup: (data: { backupId: string; password: string; confirmPassword: string }) =>
+        request<{ success: boolean; restoredFrom: string }>("/api/admin/restore", {
         method: "POST",
-        body: JSON.stringify({ backupId }),
+        body: JSON.stringify(data),
     }),
 };
 

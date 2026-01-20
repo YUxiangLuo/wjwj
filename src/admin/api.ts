@@ -4,6 +4,9 @@
  */
 
 import { db } from "../db";
+import { access, readdir, stat } from "node:fs/promises";
+import { join, extname } from "node:path";
+import { createBackupArtifacts } from "./backup";
 import {
     admin,
     semester,
@@ -62,14 +65,47 @@ function getSearchParams(req: Request) {
 
 const ADMIN_USER_TYPE = 1;
 const ADMIN_SESSION_COOKIE = "admin_session";
-const ADMIN_SESSION_TTL_DAYS = 7;
-const ADMIN_MAX_LOGIN_ATTEMPTS = 5;
-const ADMIN_LOCK_MINUTES = 15;
+const DEFAULT_ADMIN_SESSION_TTL_MINUTES = 30;
+const DEFAULT_ADMIN_MAX_LOGIN_ATTEMPTS = 5;
+const DEFAULT_ADMIN_LOCK_MINUTES = 30;
+
+let lastNetSample: { time: number; bytes: number } | null = null;
 
 function getCookieValue(req: Request, name: string): string | null {
     const cookie = req.headers.get("cookie") ?? "";
     const match = cookie.match(new RegExp(`(?:^|; )${name}=([^;]+)`));
     return match?.[1] ?? null;
+}
+
+function validateAdminPassword(password: string, username: string) {
+    const minLength = password.length >= 12;
+    const hasLetter = /[A-Za-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(password);
+    const containsUsername = username && password.includes(username);
+
+    return {
+        minLength,
+        hasLetter,
+        hasNumber,
+        hasSpecial,
+        containsUsername,
+        isValid: minLength && hasLetter && hasNumber && hasSpecial && !containsUsername,
+    };
+}
+
+async function getConfigNumber(key: string, fallback: number) {
+    const [row] = await db
+        .select({ value: systemConfig.configValue, valueType: systemConfig.valueType })
+        .from(systemConfig)
+        .where(eq(systemConfig.configKey, key))
+        .limit(1);
+
+    if (!row) return fallback;
+    if (row.valueType === "number") return Number(row.value);
+    if (row.valueType === "boolean") return row.value === "true" ? 1 : 0;
+    const parsed = Number(row.value);
+    return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function getClientIp(req: Request): string {
@@ -132,9 +168,16 @@ async function requireAdminAuth(req: Request) {
         return { admin: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
     }
 
-    await db.update(userSession).set({ lastActiveAt: new Date() }).where(eq(userSession.id, session.id));
+    const now = new Date();
+    const sessionTtlMinutes = await getConfigNumber("session.admin_timeout_minutes", DEFAULT_ADMIN_SESSION_TTL_MINUTES);
+    const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
 
-    return { admin: adm, error: null, session };
+    await db
+        .update(userSession)
+        .set({ lastActiveAt: now, expiresAt: newExpiresAt })
+        .where(eq(userSession.id, session.id));
+
+    return { admin: adm, error: null, session: { ...session, expiresAt: newExpiresAt } };
 }
 
 function withAdminAuth(routes: RouteDefinition): RouteDefinition {
@@ -191,6 +234,8 @@ const adminLoginRoutes: RouteDefinition = {
         }
 
         const now = new Date();
+        const maxAttempts = await getConfigNumber("login.max_fail_count", DEFAULT_ADMIN_MAX_LOGIN_ATTEMPTS);
+        const lockMinutes = await getConfigNumber("login.lock_duration_minutes", DEFAULT_ADMIN_LOCK_MINUTES);
         if (adm.lockedUntil && new Date(adm.lockedUntil) > now) {
             return error("账号已锁定，请稍后再试", "ACCOUNT_LOCKED", 403);
         }
@@ -200,16 +245,18 @@ const adminLoginRoutes: RouteDefinition = {
             const failCount = (adm.loginFailCount ?? 0) + 1;
             const updateData: any = { loginFailCount: failCount };
 
-            if (failCount >= ADMIN_MAX_LOGIN_ATTEMPTS) {
-                updateData.lockedUntil = new Date(now.getTime() + ADMIN_LOCK_MINUTES * 60 * 1000);
+            if (failCount >= maxAttempts) {
+                updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
             }
 
             await db.update(admin).set(updateData).where(eq(admin.id, adm.id));
 
+            const remainingAttempts = Math.max(maxAttempts - failCount, 0);
+
             return error(
-                failCount >= ADMIN_MAX_LOGIN_ATTEMPTS
-                    ? `密码错误次数过多，账号已锁定${ADMIN_LOCK_MINUTES}分钟`
-                    : "用户名或密码错误",
+                failCount >= maxAttempts
+                    ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
+                    : `用户名或密码错误，还剩${remainingAttempts}次尝试机会`,
                 "INVALID_CREDENTIALS",
                 401
             );
@@ -221,7 +268,13 @@ const adminLoginRoutes: RouteDefinition = {
             .where(eq(admin.id, adm.id));
 
         const token = crypto.randomUUID();
-        const expiresAt = new Date(now.getTime() + ADMIN_SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
+        const sessionTtlMinutes = await getConfigNumber("session.admin_timeout_minutes", DEFAULT_ADMIN_SESSION_TTL_MINUTES);
+        const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+
+        // Single-device login: clear existing sessions
+        await db
+            .delete(userSession)
+            .where(and(eq(userSession.userType, ADMIN_USER_TYPE), eq(userSession.userId, adm.id)));
 
         await db.insert(userSession).values({
             sessionToken: token,
@@ -242,7 +295,7 @@ const adminLoginRoutes: RouteDefinition = {
         const secure = isSecureRequest(req);
         return json(
             {
-                user: { id: adm.id, username: adm.username, isFirstLogin: adm.isFirstLogin },
+                user: { id: adm.id, username: adm.username, isFirstLogin: adm.isFirstLogin, sessionExpiresAt: expiresAt },
                 expiresAt,
             },
             200,
@@ -255,7 +308,10 @@ const adminMeRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAdminAuth(req);
         if (auth.error) return auth.error;
-        return json(auth.admin!);
+        return json({
+            ...auth.admin!,
+            sessionExpiresAt: auth.session?.expiresAt ?? null,
+        });
     },
 };
 
@@ -283,8 +339,8 @@ const adminPasswordRoutes: RouteDefinition = {
             return error("请输入当前密码和新密码", "VALIDATION_ERROR", 400);
         }
 
-        if (newPassword.length < 6) {
-            return error("新密码长度至少为6位", "VALIDATION_ERROR", 400);
+        if (newPassword === currentPassword) {
+            return error("新密码不能与当前密码相同", "VALIDATION_ERROR", 400);
         }
 
         const [adm] = await db.select().from(admin).where(eq(admin.id, auth.admin!.id));
@@ -295,6 +351,11 @@ const adminPasswordRoutes: RouteDefinition = {
         const isValid = await Bun.password.verify(currentPassword, adm.password);
         if (!isValid) {
             return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
+        }
+
+        const policy = validateAdminPassword(newPassword, adm.username ?? "");
+        if (!policy.isValid) {
+            return error("新密码需至少12位且包含字母、数字和特殊字符，且不包含用户名", "VALIDATION_ERROR", 400);
         }
 
         const hashed = await Bun.password.hash(newPassword);
@@ -396,6 +457,54 @@ const systemMetricsRoutes = {
         const load = os.loadavg()[0] ?? 0; // 1 min load average
         const cpuUsage = Math.min(Math.round((load / cpus.length) * 100), 100);
 
+        // Disk usage using df -Pk
+        let diskUsage = 0;
+        try {
+            const dfProcess = Bun.spawn({
+                cmd: ["df", "-Pk", "."],
+                stdout: "pipe",
+                stderr: "pipe",
+            });
+            const output = await new Response(dfProcess.stdout).text();
+            await dfProcess.exited;
+            const lines = output.trim().split("\n");
+            if (lines.length > 1 && lines[1]) {
+                const parts = lines[1].trim().split(/\s+/);
+                const usedPercent = parts[4] ?? "0%";
+                diskUsage = Math.min(Math.max(parseInt(usedPercent.replace("%", ""), 10) || 0, 0), 100);
+            }
+        } catch {
+            diskUsage = 0;
+        }
+
+        // Network throughput using /proc/net/dev (Mbps)
+        let networkMbps = 0;
+        try {
+            const netText = await Bun.file("/proc/net/dev").text();
+            const lines = netText.trim().split("\n").slice(2);
+            const totalBytes = lines.reduce((sum, line) => {
+                const [ifacePart, rest] = line.split(":");
+                const iface = ifacePart?.trim();
+                if (!iface || iface === "lo" || !rest) return sum;
+                const cols = rest.trim().split(/\s+/).map(Number);
+                const rx = cols[0] ?? 0;
+                const tx = cols[8] ?? 0;
+                return sum + rx + tx;
+            }, 0);
+
+            const now = Date.now();
+            if (lastNetSample) {
+                const deltaBytes = totalBytes - lastNetSample.bytes;
+                const deltaSeconds = (now - lastNetSample.time) / 1000;
+                if (deltaSeconds > 0 && deltaBytes >= 0) {
+                    networkMbps = Math.round((deltaBytes * 8) / (deltaSeconds * 1_000_000));
+                }
+            }
+            lastNetSample = { time: now, bytes: totalBytes };
+        } catch {
+            networkMbps = 0;
+        }
+
         // Active Connections (Approximation using recent login logs or session table)
         // Since we don't have a direct "active connection" counter in this stateless setup,
         // we can count distinct users who logged in or had activity in the last 15 minutes.
@@ -414,23 +523,12 @@ const systemMetricsRoutes = {
 
         const activeConnections = sessionCount?.count ?? 0;
 
-        // Requests per minute is hard to track without a middleware counter. 
-        // We can mock it or calculate from operationLog frequency.
-        // Let's count operations in the last minute.
-        const [opCount] = await db
-            .select({ count: count() })
-            .from(operationLog)
-            .where(sql`${operationLog.createdAt} > DATE_SUB(NOW(), INTERVAL 1 MINUTE)`);
-
-        const requestsPerMinute = (opCount?.count ?? 0) * 5; // Multiply by factor to account for reads (not logged)
-
         return json({
             cpu: cpuUsage,
             memory: memUsage,
-            disk: 45 + Math.floor(Math.random() * 5), // Mock disk usage with slight variation
-            network: Math.floor(Math.random() * 10), // Mock network traffic (Mbps)
+            disk: diskUsage,
+            network: networkMbps,
             activeConnections: activeConnections,
-            requestsPerMinute: requestsPerMinute,
         });
     },
 };
@@ -1424,7 +1522,59 @@ const notificationRoutes = {
             .orderBy(desc(notification.createdAt))
             .limit(5);
 
-        return json({ count: countRow?.count ?? 0, items });
+        return json({
+            count: countRow?.count ?? 0,
+            items,
+            sessionExpiresAt: auth.session?.expiresAt ?? null,
+        });
+    },
+};
+
+const notificationMarkReadRoutes = {
+    async PUT(req: Request) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
+        const url = new URL(req.url);
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[parts.length - 2] ?? "");
+
+        if (!id) {
+            return error("无效的通知ID", "INVALID_ID");
+        }
+
+        await db
+            .update(notification)
+            .set({ isRead: 1, readAt: new Date() })
+            .where(
+                and(
+                    eq(notification.id, id),
+                    eq(notification.receiverType, ADMIN_USER_TYPE),
+                    eq(notification.receiverId, auth.admin!.id)
+                )
+            );
+
+        return json({ success: true });
+    },
+};
+
+const notificationReadAllRoutes = {
+    async PUT(req: Request) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
+        await db
+            .update(notification)
+            .set({ isRead: 1, readAt: new Date() })
+            .where(
+                and(
+                    eq(notification.receiverType, ADMIN_USER_TYPE),
+                    eq(notification.receiverId, auth.admin!.id),
+                    eq(notification.isRead, 0)
+                )
+            );
+
+        return json({ success: true });
     },
 };
 
@@ -1465,18 +1615,36 @@ const backupCreateRoutes: RouteDefinition = {
         const auth = await requireAdminAuth(req);
         if (auth.error) return auth.error;
 
-        const backupId = `backup_${Date.now()}`;
+        const result = await createBackupArtifacts("backup");
+        if (!result.ok) {
+            await db.insert(notification).values({
+                receiverType: ADMIN_USER_TYPE,
+                receiverId: auth.admin!.id,
+                type: "BACKUP_FAILED",
+                title: "备份失败",
+                content: `备份失败：${result.error}`,
+            });
+            return error(result.error, result.code, 500);
+        }
 
         await db.insert(operationLog).values({
             userType: ADMIN_USER_TYPE,
             userId: auth.admin!.id,
             action: "CREATE_BACKUP",
             targetType: "system",
-            detail: { backupId },
+            detail: { backupId: result.backupId, sqlPath: result.sqlPath, zipPath: result.zipPath },
             ipAddress: getClientIp(req),
         });
 
-        return json({ backupId, createdAt: new Date().toISOString() });
+        await db.insert(notification).values({
+            receiverType: ADMIN_USER_TYPE,
+            receiverId: auth.admin!.id,
+            type: "BACKUP_CREATED",
+            title: "备份已完成",
+            content: `备份 ${result.backupId} 已创建成功。`,
+        });
+
+        return json({ backupId: result.backupId, createdAt: result.createdAt, sqlPath: result.sqlPath, zipPath: result.zipPath });
     },
 };
 
@@ -1485,11 +1653,105 @@ const backupRestoreRoutes: RouteDefinition = {
         const auth = await requireAdminAuth(req);
         if (auth.error) return auth.error;
 
-        const body = await parseBody<{ backupId?: string }>(req);
+        const body = await parseBody<{ backupId?: string; password?: string; confirmPassword?: string }>(req);
         const backupId = body.backupId?.trim();
+        const password = body.password ?? "";
+        const confirmPassword = body.confirmPassword ?? "";
+        const sessionToken = getCookieValue(req, ADMIN_SESSION_COOKIE) ?? req.headers.get("x-admin-session");
 
         if (!backupId) {
             return error("缺少备份ID", "VALIDATION_ERROR");
+        }
+
+        if (!password || !confirmPassword) {
+            return error("请输入管理员密码确认", "VALIDATION_ERROR");
+        }
+
+        if (password !== confirmPassword) {
+            return error("两次输入的密码不一致", "VALIDATION_ERROR");
+        }
+
+        const [adm] = await db.select().from(admin).where(eq(admin.id, auth.admin!.id));
+        if (!adm) {
+            return error("账户不存在", "ACCOUNT_NOT_FOUND", 401);
+        }
+
+        const passwordValid = await Bun.password.verify(password, adm.password);
+        if (!passwordValid) {
+            return error("管理员密码不正确", "INVALID_CREDENTIALS", 401);
+        }
+
+        if (!/^[a-zA-Z0-9_-]+$/.test(backupId)) {
+            return error("备份ID格式不合法", "INVALID_ID");
+        }
+
+        const backupDir = join(process.cwd(), "backups");
+        const sqlPath = join(backupDir, `${backupId}.sql`);
+        const zipPath = join(backupDir, `${backupId}.zip`);
+
+        try {
+            await access(sqlPath);
+            await access(zipPath);
+        } catch {
+            return error("备份文件不存在", "BACKUP_NOT_FOUND", 404);
+        }
+
+        const dbHost = process.env.DB_HOST || "localhost";
+        const dbUser = process.env.DB_USER || "root";
+        const dbPassword = process.env.DB_PASSWORD || "root";
+        const dbName = process.env.DB_NAME || "sampling_simulation";
+
+        const preBackup = await createBackupArtifacts("pre_restore");
+        if (!preBackup.ok) {
+            return error(preBackup.error, preBackup.code, 500);
+        }
+
+        const resetProcess = Bun.spawn({
+            cmd: [
+                "mariadb",
+                "-h",
+                dbHost,
+                "-u",
+                dbUser,
+                "-e",
+                `DROP DATABASE IF EXISTS \`${dbName}\`; CREATE DATABASE \`${dbName}\`;`,
+            ],
+            env: { ...process.env, MYSQL_PWD: dbPassword },
+            stdout: "ignore",
+            stderr: "pipe",
+        });
+
+        const resetExit = await resetProcess.exited;
+        if (resetExit !== 0) {
+            const errorText = await new Response(resetProcess.stderr).text();
+            return error(`数据库清空失败: ${errorText || "未知错误"}`, "DB_RESET_FAILED", 500);
+        }
+
+        const sqlFile = Bun.file(sqlPath);
+        const restoreProcess = Bun.spawn({
+            cmd: ["mariadb", "-h", dbHost, "-u", dbUser, dbName],
+            env: { ...process.env, MYSQL_PWD: dbPassword },
+            stdin: sqlFile,
+            stdout: "ignore",
+            stderr: "pipe",
+        });
+
+        const restoreExit = await restoreProcess.exited;
+        if (restoreExit !== 0) {
+            const errorText = await new Response(restoreProcess.stderr).text();
+            return error(`数据库恢复失败: ${errorText || "未知错误"}`, "DB_RESTORE_FAILED", 500);
+        }
+
+        const unzipProcess = Bun.spawn({
+            cmd: ["unzip", "-o", zipPath, "-d", process.cwd()],
+            stdout: "ignore",
+            stderr: "pipe",
+        });
+
+        const unzipExit = await unzipProcess.exited;
+        if (unzipExit !== 0) {
+            const errorText = await new Response(unzipProcess.stderr).text();
+            return error(`文件恢复失败: ${errorText || "未知错误"}`, "PUBLIC_RESTORE_FAILED", 500);
         }
 
         await db.insert(operationLog).values({
@@ -1497,11 +1759,58 @@ const backupRestoreRoutes: RouteDefinition = {
             userId: auth.admin!.id,
             action: "RESTORE_BACKUP",
             targetType: "system",
-            detail: { backupId },
+            detail: {
+                backupId,
+                preRestoreBackupId: preBackup.backupId,
+                preRestoreSqlPath: preBackup.sqlPath,
+                preRestoreZipPath: preBackup.zipPath,
+            },
             ipAddress: getClientIp(req),
         });
 
-        return json({ success: true, restoredFrom: backupId });
+        if (sessionToken) {
+            await db.delete(userSession).where(eq(userSession.sessionToken, sessionToken));
+        }
+
+        const secure = isSecureRequest(req);
+        return json({ success: true, restoredFrom: backupId }, 200, { "Set-Cookie": clearSessionCookie(secure) });
+    },
+};
+
+const backupListRoutes: RouteDefinition = {
+    async GET() {
+        const backupDir = join(process.cwd(), "backups");
+        try {
+            const entries = await readdir(backupDir);
+            const sqlFiles = entries.filter((file) => extname(file) === ".sql");
+            const items = await Promise.all(
+                sqlFiles.map(async (file) => {
+                    const backupId = file.replace(/\.sql$/, "");
+                    const sqlPath = join(backupDir, `${backupId}.sql`);
+                    const zipPath = join(backupDir, `${backupId}.zip`);
+                    let hasZip = false;
+                    try {
+                        await access(zipPath);
+                        hasZip = true;
+                    } catch {
+                        hasZip = false;
+                    }
+                    const fileStat = await stat(sqlPath);
+                    return {
+                        backupId,
+                        createdAt: fileStat.mtime.toISOString(),
+                        sqlPath,
+                        zipPath,
+                        hasZip,
+                    };
+                })
+            );
+
+            items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            return json(items);
+        } catch {
+            return json([] as Array<{ backupId: string; createdAt: string; sqlPath: string; zipPath: string; hasZip: boolean }>);
+        }
     },
 };
 
@@ -1562,6 +1871,8 @@ export const adminApiRoutes = {
     // Stats
     "/api/admin/stats": withAdminAuth(statsRoutes),
     "/api/admin/notifications": withAdminAuth(notificationRoutes),
+    "/api/admin/notifications/:id/read": withAdminAuth(notificationMarkReadRoutes),
+    "/api/admin/notifications/read-all": withAdminAuth(notificationReadAllRoutes),
 
     // Semesters
     "/api/admin/semesters": withAdminAuth(semesterRoutes),
@@ -1604,6 +1915,7 @@ export const adminApiRoutes = {
     "/api/admin/system/metrics": withAdminAuth(systemMetricsRoutes),
     "/api/admin/system/logs": withAdminAuth(systemLogsRoutes),
     "/api/admin/settings": withAdminAuth(systemSettingsRoutes),
+    "/api/admin/backups": withAdminAuth(backupListRoutes),
     "/api/admin/backup": withAdminAuth(backupCreateRoutes),
     "/api/admin/restore": withAdminAuth(backupRestoreRoutes),
 };

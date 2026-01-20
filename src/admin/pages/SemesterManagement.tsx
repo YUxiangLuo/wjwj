@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { semesterApi, type Semester } from "../api-client";
+import { toast } from "sonner";
 
 export function SemesterManagement() {
     const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -55,11 +56,11 @@ export function SemesterManagement() {
                 setShowAddModal(false);
                 loadSemesters();
             } else {
-                alert(res.error?.message ?? "创建失败");
+                toast.error(res.error?.message ?? "创建失败");
             }
         } catch (error) {
             console.error("Failed to create semester:", error);
-            alert("创建失败");
+            toast.error("创建失败");
         } finally {
             setSubmitting(false);
         }
@@ -71,11 +72,11 @@ export function SemesterManagement() {
             if (res.success) {
                 loadSemesters();
             } else {
-                alert(res.error?.message ?? "设置失败");
+                toast.error(res.error?.message ?? "设置失败");
             }
         } catch (error) {
             console.error("Failed to set current semester:", error);
-            alert("设置失败");
+            toast.error("设置失败");
         }
     }
 
@@ -96,11 +97,11 @@ export function SemesterManagement() {
                 setEditingSemester(null);
                 loadSemesters();
             } else {
-                alert(res.error?.message ?? "更新失败");
+                toast.error(res.error?.message ?? "更新失败");
             }
         } catch (error) {
             console.error("Failed to update semester:", error);
-            alert("更新失败");
+            toast.error("更新失败");
         } finally {
             setSubmitting(false);
         }
@@ -108,7 +109,7 @@ export function SemesterManagement() {
 
     async function handleDelete(semester: Semester) {
         if (semester.classCount > 0) {
-            alert("该学期下有班级，无法删除");
+            toast.error("该学期下有班级，无法删除");
             return;
         }
 
@@ -121,11 +122,11 @@ export function SemesterManagement() {
             if (res.success) {
                 loadSemesters();
             } else {
-                alert(res.error?.message ?? "删除失败");
+                toast.error(res.error?.message ?? "删除失败");
             }
         } catch (error) {
             console.error("Failed to delete semester:", error);
-            alert("删除失败");
+            toast.error("删除失败");
         }
     }
 

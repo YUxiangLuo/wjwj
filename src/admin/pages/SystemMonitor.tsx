@@ -12,7 +12,6 @@ const defaultMetrics: SystemMetrics = {
     disk: 0,
     network: 0,
     activeConnections: 0,
-    requestsPerMinute: 0,
 };
 
 function MetricCard({ label, value, unit, icon: Icon, color }: {
@@ -153,15 +152,6 @@ export function SystemMonitor() {
                             <span className="text-sm">活跃连接数</span>
                         </div>
                         <div className="text-2xl font-bold text-foreground">{metrics.activeConnections}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="pt-5">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <Zap className="w-4 h-4" />
-                            <span className="text-sm">请求数/分钟</span>
-                        </div>
-                        <div className="text-2xl font-bold text-foreground">{metrics.requestsPerMinute}</div>
                     </CardContent>
                 </Card>
             </div>

@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { teacherApi, type Teacher } from "../api-client";
+import { toast } from "sonner";
 
 export function TeacherManagement() {
     const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -54,11 +55,11 @@ export function TeacherManagement() {
                 setShowAddModal(false);
                 loadTeachers(searchTerm);
             } else {
-                alert(res.error?.message ?? "添加失败");
+                toast.error(res.error?.message ?? "添加失败");
             }
         } catch (error) {
             console.error("Failed to create teacher:", error);
-            alert("添加失败");
+            toast.error("添加失败");
         } finally {
             setSubmitting(false);
         }
@@ -77,11 +78,11 @@ export function TeacherManagement() {
             if (res.success) {
                 loadTeachers(searchTerm);
             } else {
-                alert(res.error?.message ?? `${action}失败`);
+                toast.error(res.error?.message ?? `${action}失败`);
             }
         } catch (error) {
             console.error(`Failed to ${action} teacher:`, error);
-            alert(`${action}失败`);
+            toast.error(`${action}失败`);
         }
     }
 
@@ -95,11 +96,11 @@ export function TeacherManagement() {
             if (res.success) {
                 loadTeachers(searchTerm);
             } else {
-                alert(res.error?.message ?? "解锁失败");
+                toast.error(res.error?.message ?? "解锁失败");
             }
         } catch (error) {
             console.error("Failed to unlock teacher:", error);
-            alert("解锁失败");
+            toast.error("解锁失败");
         }
     }
 
@@ -111,13 +112,13 @@ export function TeacherManagement() {
         try {
             const res = await teacherApi.resetPassword(teacher.id);
             if (res.success) {
-                alert(`密码已重置为：${teacher.employeeId}`);
+                toast.success(`密码已重置为：${teacher.employeeId}`);
             } else {
-                alert(res.error?.message ?? "重置失败");
+                toast.error(res.error?.message ?? "重置失败");
             }
         } catch (error) {
             console.error("Failed to reset password:", error);
-            alert("重置失败");
+            toast.error("重置失败");
         }
     }
 

@@ -22,7 +22,8 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dashboard } from "./pages/Dashboard";
-import { authApi, systemApi, type AdminUser } from "./api-client";
+import { authApi, systemApi, type AdminUser, type AdminNotification } from "./api-client";
+import { Toaster } from "sonner";
 import { SemesterManagement } from "./pages/SemesterManagement";
 import { TeacherManagement } from "./pages/TeacherManagement";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -64,8 +65,14 @@ export function AdminApp() {
     const isLoginPage = currentPath === "/login";
     const pageTitle = pageTitles[currentPath] ?? "管理后台";
     const [unreadCount, setUnreadCount] = useState(0);
+    const [notifications, setNotifications] = useState<AdminNotification[]>([]);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
     const [authState, setAuthState] = useState<"checking" | "authed" | "guest">("checking");
     const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+    const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
+    const [showSessionWarning, setShowSessionWarning] = useState(false);
+    const [showSessionExpired, setShowSessionExpired] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
     const [passwordSaving, setPasswordSaving] = useState(false);
@@ -93,18 +100,21 @@ export function AdminApp() {
                 if (res.success) {
                     setAuthState("authed");
                     setAdminUser(res.data ?? null);
+                    setSessionExpiresAt(res.data?.sessionExpiresAt ?? null);
                     if (res.data?.isFirstLogin) {
                         setShowPasswordModal(true);
                     }
                 } else {
                     setAuthState("guest");
                     setAdminUser(null);
+                    setSessionExpiresAt(null);
                 }
             })
             .catch(() => {
                 if (cancelled) return;
                 setAuthState("guest");
                 setAdminUser(null);
+                setSessionExpiresAt(null);
             });
 
         return () => {
@@ -122,23 +132,108 @@ export function AdminApp() {
     }, [isLoginPage, authState]);
 
     const fetchNotifications = async () => {
+        setNotificationsLoading(true);
         try {
             const res = await systemApi.getNotifications();
             if (res.success && res.data) {
                 setUnreadCount(res.data.count);
+                setNotifications(res.data.items ?? []);
+                if (res.data.sessionExpiresAt) {
+                    setSessionExpiresAt(res.data.sessionExpiresAt);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setNotificationsLoading(false);
+        }
+    };
+
+    const handleMarkNotificationRead = async (id: number) => {
+        try {
+            const res = await systemApi.markNotificationRead(id);
+            if (res.success) {
+                setNotifications(prev => prev.map(item => item.id === id ? { ...item, isRead: 1 } : item));
+                setUnreadCount(prev => Math.max(prev - 1, 0));
             }
         } catch (err) {
             console.error(err);
         }
     };
 
+    const handleMarkAllRead = async () => {
+        try {
+            const res = await systemApi.markAllNotificationsRead();
+            if (res.success) {
+                setNotifications(prev => prev.map(item => ({ ...item, isRead: 1 })));
+                setUnreadCount(0);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        if (authState !== "authed" || !sessionExpiresAt) return;
+
+        const interval = setInterval(() => {
+            const remainingMs = new Date(sessionExpiresAt).getTime() - Date.now();
+            if (remainingMs <= 0) {
+                setShowSessionWarning(false);
+                setAuthState("guest");
+                setAdminUser(null);
+                setSessionExpiresAt(null);
+                navigate("/login", { replace: true });
+                return;
+            }
+
+            if (remainingMs <= 5 * 60 * 1000) {
+                setShowSessionWarning(true);
+            }
+        }, 30000);
+
+        return () => clearInterval(interval);
+    }, [authState, sessionExpiresAt, navigate]);
+
+    useEffect(() => {
+        const handleSessionExpired = () => {
+            if (isLoginPage || authState !== "authed") {
+                return;
+            }
+            setShowSessionWarning(false);
+            setShowNotifications(false);
+            setAuthState("guest");
+            setAdminUser(null);
+            setSessionExpiresAt(null);
+            setShowSessionExpired(true);
+        };
+
+        window.addEventListener("admin:session-expired", handleSessionExpired as EventListener);
+        return () => {
+            window.removeEventListener("admin:session-expired", handleSessionExpired as EventListener);
+        };
+    }, [authState, isLoginPage]);
+
     const handleLogout = async () => {
         try {
             await authApi.logout();
             setAuthState("guest");
             setAdminUser(null);
+            setSessionExpiresAt(null);
         } finally {
             navigate("/login", { replace: true });
+        }
+    };
+
+    const handleExtendSession = async () => {
+        try {
+            const res = await authApi.me();
+            if (res.success && res.data?.sessionExpiresAt) {
+                setSessionExpiresAt(res.data.sessionExpiresAt);
+            }
+            setShowSessionWarning(false);
+        } catch (err) {
+            console.error(err);
         }
     };
 
@@ -148,8 +243,16 @@ export function AdminApp() {
             setPasswordError("请填写完整信息");
             return;
         }
-        if (passwordForm.newPassword.length < 6) {
-            setPasswordError("新密码长度至少为6位");
+        if (passwordForm.newPassword.length < 12) {
+            setPasswordError("新密码长度至少为12位");
+            return;
+        }
+        if (!/[A-Za-z]/.test(passwordForm.newPassword) || !/\d/.test(passwordForm.newPassword) || !/[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword)) {
+            setPasswordError("新密码需包含字母、数字和特殊字符");
+            return;
+        }
+        if (adminUser?.username && passwordForm.newPassword.includes(adminUser.username)) {
+            setPasswordError("新密码不能包含用户名");
             return;
         }
         if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -205,6 +308,7 @@ export function AdminApp() {
 
     return (
         <div className="flex min-h-screen bg-muted/40">
+            <Toaster richColors position="top-right" />
             {/* Sidebar */}
             <aside className="w-60 bg-slate-800 text-white flex flex-col shrink-0">
                 <div className="p-6 border-b border-white/10">
@@ -256,7 +360,12 @@ export function AdminApp() {
                         <span className="text-sm text-muted-foreground mr-2">
                             {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
                         </span>
-                        <Button variant="ghost" size="icon" className="relative">
+                        <Button variant="ghost" size="icon" className="relative" onClick={() => {
+                            setShowNotifications(true);
+                            if (!notifications.length) {
+                                fetchNotifications();
+                            }
+                        }}>
                             <Bell className="w-5 h-5 text-muted-foreground" />
                             {unreadCount > 0 && (
                                 <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -348,6 +457,81 @@ export function AdminApp() {
                             保存新密码
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>会话即将过期</DialogTitle>
+                        <DialogDescription>
+                            您的会话将在 5 分钟内过期，是否继续保持登录状态？
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleLogout}>退出登录</Button>
+                        <Button onClick={handleExtendSession}>继续</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showSessionExpired} onOpenChange={setShowSessionExpired}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>会话已过期</DialogTitle>
+                        <DialogDescription>
+                            您的会话已过期，请重新登录。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => navigate("/login", { replace: true })}>重新登录</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>通知</DialogTitle>
+                        <DialogDescription>
+                            查看系统通知与操作提醒
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">未读 {unreadCount} 条</span>
+                        <Button variant="ghost" size="sm" onClick={handleMarkAllRead} disabled={unreadCount === 0}>
+                            全部已读
+                        </Button>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto space-y-2">
+                        {notificationsLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : notifications.length > 0 ? (
+                            notifications.map(item => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => item.isRead ? null : handleMarkNotificationRead(item.id)}
+                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${item.isRead ? "bg-background" : "bg-muted/60"}`}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            {!item.isRead && <span className="w-2 h-2 rounded-full bg-red-500" />}
+                                            <span className="text-sm font-medium text-foreground">{item.title}</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">
+                                            {new Date(item.createdAt).toLocaleString("zh-CN")}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.content}</div>
+                                </button>
+                            ))
+                        ) : (
+                            <div className="text-center py-8 text-muted-foreground">暂无通知</div>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>
