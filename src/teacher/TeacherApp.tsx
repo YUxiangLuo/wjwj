@@ -120,7 +120,6 @@ export function TeacherApp() {
             cancelled = true;
         };
     }, [authState]);
-
     const handleLogout = async () => {
         try {
             await authApi.logout();
@@ -131,13 +130,37 @@ export function TeacherApp() {
         }
     };
 
-    const loadNotifications = async () => {
+    const loadNotifications = async (withList = true) => {
         const res = await teacherApi.getNotifications();
         if (res.success && res.data) {
-            setNotifications(res.data.notifications);
+            if (withList) {
+                setNotifications(res.data.notifications);
+            }
             setUnreadCount(res.data.unreadCount);
         }
     };
+
+    useEffect(() => {
+        if (authState !== "authed") return;
+        let cancelled = false;
+        const refreshUnread = async () => {
+            if (cancelled) return;
+            await loadNotifications(false);
+        };
+
+        refreshUnread();
+        const onFocus = () => {
+            refreshUnread();
+        };
+        window.addEventListener("focus", onFocus);
+        const timer = window.setInterval(refreshUnread, 60_000);
+
+        return () => {
+            cancelled = true;
+            window.removeEventListener("focus", onFocus);
+            window.clearInterval(timer);
+        };
+    }, [authState]);
 
     const handleChangePassword = async () => {
         setPasswordError(null);
