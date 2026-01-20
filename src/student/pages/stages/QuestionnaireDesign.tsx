@@ -14,10 +14,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronRight, Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy } from "lucide-react";
+import { ChevronRight, Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
-import type { Question, QuestionType, QuestionnaireData } from "../../api-client";
+import { tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
 
 interface QuestionnaireDesignProps {
     onNext: () => void;
@@ -59,8 +59,27 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
+    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
+    const [pendingDraft, setPendingDraft] = useState<QuestionnaireData | null>(null);
+    const [recommendQuestions, setRecommendQuestions] = useState<RecommendQuestion[]>([]);
+    const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
+    useEffect(() => {
+        async function loadRecommendQuestions() {
+            if (!experiment?.taskId) return;
+            try {
+                const res = await tasksApi.get(experiment.taskId);
+                if (res.success && res.data?.recommendQuestions) {
+                    setRecommendQuestions(res.data.recommendQuestions);
+                }
+            } catch {
+                // ignore
+            }
+        }
+        loadRecommendQuestions();
+    }, [experiment?.taskId]);
 
-    // Auto-save when data changes (debounced)
+
+    // Auto-save when data changes
     const saveData = useCallback(async () => {
         const questionnaireData: QuestionnaireData = {
             title,
@@ -71,16 +90,66 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         await saveExperiment({ questionnaire: questionnaireData });
     }, [title, welcomeText, endingText, questions, saveExperiment]);
 
-    // Save on data change with debounce
+    const persistDraft = useCallback(() => {
+        if (!draftKey) return;
+        const questionnaireData: QuestionnaireData = {
+            title,
+            welcomeText,
+            endingText,
+            questions,
+        };
+        const hasContent = title || welcomeText || endingText || questions.length > 0;
+        if (hasContent) {
+            localStorage.setItem(draftKey, JSON.stringify(questionnaireData));
+        }
+    }, [draftKey, title, welcomeText, endingText, questions]);
+
+    // Idle auto-save (3s)
     useEffect(() => {
         const timer = setTimeout(() => {
             if (title || welcomeText || endingText || questions.length > 0) {
                 saveData();
+                persistDraft();
             }
-        }, 2000); // 2 second debounce
+        }, 3000);
 
         return () => clearTimeout(timer);
-    }, [title, welcomeText, endingText, questions, saveData]);
+    }, [title, welcomeText, endingText, questions, saveData, persistDraft]);
+
+    // Interval auto-save (30s)
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (title || welcomeText || endingText || questions.length > 0) {
+                saveData();
+                persistDraft();
+            }
+        }, 30000);
+
+        return () => clearInterval(timer);
+    }, [title, welcomeText, endingText, questions, saveData, persistDraft]);
+
+    // Restore draft from localStorage
+    useEffect(() => {
+        if (!draftKey) return;
+        try {
+            const raw = localStorage.getItem(draftKey);
+            if (!raw) return;
+            const draft = JSON.parse(raw) as QuestionnaireData;
+            const hasServerData = Boolean(initialData?.title || initialData?.questions?.length);
+            if (hasServerData) {
+                const different = JSON.stringify(draft) !== JSON.stringify(initialData);
+                if (different) {
+                    setPendingDraft(draft);
+                    setRestoreDraftOpen(true);
+                }
+            } else {
+                setPendingDraft(draft);
+                setRestoreDraftOpen(true);
+            }
+        } catch {
+            // ignore invalid draft
+        }
+    }, [draftKey, initialData]);
 
     const steps = [
         { num: 1, title: "欢迎语设置" },
@@ -133,6 +202,46 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         const newQuestions = [...questions];
         newQuestions.splice(index + 1, 0, duplicate);
         setQuestions(newQuestions);
+    };
+
+    const moveQuestion = (index: number, direction: "up" | "down") => {
+        const nextIndex = direction === "up" ? index - 1 : index + 1;
+        if (nextIndex < 0 || nextIndex >= questions.length) return;
+        const newQuestions = [...questions];
+        const [item] = newQuestions.splice(index, 1);
+        if (!item) return;
+        newQuestions.splice(nextIndex, 0, item);
+        setQuestions(newQuestions);
+    };
+
+    const mapRecommendQuestion = (rq: RecommendQuestion): Question => {
+        const typeMap: Record<number, QuestionType> = {
+            1: "boolean",
+            2: "single",
+            3: "multiple",
+            4: "scale",
+        };
+        const mappedType = typeMap[rq.questionType] ?? "single";
+        const options = Array.isArray(rq.options)
+            ? (rq.options as string[])
+            : typeof rq.options === "string"
+                ? (() => { try { return JSON.parse(rq.options) as string[]; } catch { return []; } })()
+                : [];
+
+        return {
+            id: generateId(),
+            type: mappedType,
+            content: rq.content,
+            options: mappedType === "single" || mappedType === "multiple" ? options : undefined,
+            minSelect: mappedType === "multiple" ? 1 : undefined,
+            maxSelect: mappedType === "multiple" ? Math.min(3, Math.max(2, options.length)) : undefined,
+            scaleMin: mappedType === "scale" ? 1 : undefined,
+            scaleMax: mappedType === "scale" ? 10 : undefined,
+        };
+    };
+
+    const handleUseRecommend = (rq: RecommendQuestion) => {
+        setQuestions((prev) => [...prev, mapRecommendQuestion(rq)]);
     };
 
     // Validation
@@ -235,6 +344,24 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8"
+                                                        onClick={() => moveQuestion(index, "up")}
+                                                        disabled={index === 0}
+                                                    >
+                                                        <ArrowUp className="w-4 h-4 text-slate-400" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
+                                                        onClick={() => moveQuestion(index, "down")}
+                                                        disabled={index === questions.length - 1}
+                                                    >
+                                                        <ArrowDown className="w-4 h-4 text-slate-400" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8"
                                                         onClick={() => handleDuplicateQuestion(q)}
                                                     >
                                                         <Copy className="w-4 h-4 text-slate-400" />
@@ -269,6 +396,30 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 <AlertCircle className="w-4 h-4" />
                                 还需添加 {5 - questions.length} 道题目才能继续
                             </div>
+                        )}
+
+                        {recommendQuestions.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>推荐题目</CardTitle>
+                                    <CardDescription>可直接引用教师提供的推荐题目</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    {recommendQuestions.map((rq) => (
+                                        <div key={rq.id} className="flex items-center justify-between gap-3 p-3 border rounded-lg">
+                                            <div className="space-y-1">
+                                                <div className="text-sm font-medium">{rq.content}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    类型：{questionTypeLabels[{ 1: "boolean", 2: "single", 3: "multiple", 4: "scale" }[rq.questionType] as QuestionType]}
+                                                </div>
+                                            </div>
+                                            <Button size="sm" variant="outline" onClick={() => handleUseRecommend(rq)}>
+                                                使用
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
                         )}
                     </div>
                 );
@@ -460,6 +611,39 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmComplete}>确认完成</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>恢复草稿</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            检测到本地草稿，是否恢复？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            onClick={() => {
+                                if (draftKey) localStorage.removeItem(draftKey);
+                                setRestoreDraftOpen(false);
+                            }}
+                        >
+                            放弃草稿
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (!pendingDraft) return;
+                                setTitle(pendingDraft.title ?? "");
+                                setWelcomeText(pendingDraft.welcomeText ?? "");
+                                setEndingText(pendingDraft.endingText ?? "");
+                                setQuestions(pendingDraft.questions ?? []);
+                                setRestoreDraftOpen(false);
+                            }}
+                        >
+                            恢复草稿
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

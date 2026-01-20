@@ -4,7 +4,17 @@ import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { experimentApi, tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -16,6 +26,19 @@ const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     graded: { label: "已批改", color: "bg-emerald-100 text-emerald-700" },
     rejected: { label: "被驳回", color: "bg-red-100 text-red-700" },
 };
+
+function parseDeadline(deadline: string | null): Date | null {
+    if (!deadline) return null;
+    const withTime = deadline.includes("T") ? deadline : `${deadline}T23:59:00`;
+    const parsed = new Date(withTime);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isDeadlinePassed(deadline: string | null) {
+    const end = parseDeadline(deadline);
+    if (!end) return false;
+    return Date.now() > end.getTime();
+}
 
 function getFileIcon(type: string) {
     const lowerType = type.toLowerCase();
@@ -46,6 +69,7 @@ export function TopicDetails() {
     const [task, setTask] = useState<TaskDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [showRestartConfirm, setShowRestartConfirm] = useState(false);
 
     useEffect(() => {
         async function loadTask() {
@@ -85,7 +109,7 @@ export function TopicDetails() {
     }
 
     const status = statusConfig[task.status];
-    const deadlinePassed = task.deadline ? Date.now() > new Date(`${task.deadline}T23:59:59`).getTime() : false;
+    const deadlinePassed = isDeadlinePassed(task.deadline);
     const canStartExperiment = ["not_started", "in_progress", "rejected"].includes(task.status) && !deadlinePassed;
 
     const getActionButton = () => {
@@ -96,15 +120,35 @@ export function TopicDetails() {
                 return { text: "继续实验", link: `/task/${task.id}/experiment` };
             case "submitted":
             case "grading":
-                return { text: "查看提交内容", link: null };
+                return { text: "查看提交内容", link: `/task/${task.id}/history` };
             case "graded":
-                return { text: "查看成绩", link: null };
+                return { text: "查看成绩", link: `/task/${task.id}/history` };
             case "rejected":
-                return { text: "重新开始", link: `/task/${task.id}/experiment` };
+                return { text: "重新开始", link: null };
         }
     };
 
     const action = getActionButton();
+
+    const handleDownload = async (file: TopicAttachment) => {
+        try {
+            const res = await fetch(`/api/student/attachments/${file.id}/download`, {
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error("下载失败");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = file.name;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Failed to download attachment:", error);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -195,7 +239,7 @@ export function TopicDetails() {
                                             <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
                                         </div>
                                     </div>
-                                    <Button variant="ghost" size="sm">
+                                    <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
                                         <Download className="w-4 h-4" />
                                     </Button>
                                 </div>
@@ -234,7 +278,11 @@ export function TopicDetails() {
 
             {/* Action Button */}
             <div className="flex justify-end">
-                {action.link ? (
+                {task.status === "rejected" ? (
+                    <Button size="lg" disabled={!canStartExperiment} onClick={() => setShowRestartConfirm(true)}>
+                        {action.text}
+                    </Button>
+                ) : action.link ? (
                     <Link to={action.link}>
                         <Button size="lg" disabled={!canStartExperiment}>{action.text}</Button>
                     </Link>
@@ -245,6 +293,36 @@ export function TopicDetails() {
             {!canStartExperiment && ["not_started", "in_progress", "rejected"].includes(task.status) && (
                 <div className="text-sm text-muted-foreground text-right">任务已截止，无法继续操作</div>
             )}
+
+            <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>确认重新开始实验</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            重新开始将清空所有已有的实验数据，从问卷设计阶段重新开始。
+                            <br />
+                            确定继续吗？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={async () => {
+                                if (!taskId) return;
+                                const res = await experimentApi.reset(Number(taskId), {
+                                    resetToStage: 1,
+                                    clearQuestionnaire: true,
+                                });
+                                if (res.success) {
+                                    navigate(`/task/${taskId}/experiment`);
+                                }
+                            }}
+                        >
+                            确认重新开始
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

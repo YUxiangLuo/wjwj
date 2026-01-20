@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
-import { meApi, notificationsApi, type CurrentStudent, type NotificationsResponse } from "../api-client";
+import { meApi, notificationsApi, sessionApi, type CurrentStudent, type NotificationsResponse } from "../api-client";
 
 interface StudentContextValue {
     // 当前用户
@@ -7,6 +7,11 @@ interface StudentContextValue {
     isLoading: boolean;
     isAuthenticated: boolean;
     refreshUser: () => Promise<void>;
+    authErrorCode: string | null;
+
+    // 会话
+    sessionExpiresAt: string | null;
+    refreshSession: () => Promise<void>;
 
     // 通知
     notifications: NotificationsResponse | null;
@@ -22,6 +27,8 @@ export function StudentProvider({ children }: { children: ReactNode }) {
     const [currentUser, setCurrentUser] = useState<CurrentStudent | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [notifications, setNotifications] = useState<NotificationsResponse | null>(null);
+    const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
+    const [authErrorCode, setAuthErrorCode] = useState<string | null>(null);
     const refreshSeq = useRef(0);
 
     // 获取当前用户
@@ -33,15 +40,36 @@ export function StudentProvider({ children }: { children: ReactNode }) {
             if (seq !== refreshSeq.current) return;
             if (res.success && res.data) {
                 setCurrentUser(res.data);
+                setAuthErrorCode(null);
+                if (res.data.sessionExpiresAt) {
+                    setSessionExpiresAt(res.data.sessionExpiresAt);
+                }
             } else {
                 setCurrentUser(null);
+                setAuthErrorCode(res.error?.code ?? null);
+                setSessionExpiresAt(null);
             }
         } catch {
             if (seq !== refreshSeq.current) return;
             setCurrentUser(null);
+            setAuthErrorCode(null);
+            setSessionExpiresAt(null);
         } finally {
             if (seq !== refreshSeq.current) return;
             setIsLoading(false);
+        }
+    }, []);
+
+    const refreshSession = useCallback(async () => {
+        try {
+            const res = await sessionApi.get();
+            if (res.success) {
+                setSessionExpiresAt(res.data?.expiresAt ?? null);
+            } else {
+                setSessionExpiresAt(null);
+            }
+        } catch {
+            setSessionExpiresAt(null);
         }
     }, []);
 
@@ -109,6 +137,9 @@ export function StudentProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!currentUser,
         refreshUser,
+        authErrorCode,
+        sessionExpiresAt,
+        refreshSession,
         notifications,
         unreadCount: notifications?.unreadCount ?? 0,
         refreshNotifications,

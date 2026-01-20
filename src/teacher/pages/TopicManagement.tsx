@@ -119,9 +119,10 @@ export function TopicManagement() {
         }
 
         if (res.success) {
-            if (!editingTopicId && res.data?.id) {
-                setEditingTopicId(res.data.id);
-                await loadTopicDetail(res.data.id);
+            if (!editingTopicId && res.data && typeof res.data === "object" && "id" in res.data) {
+                const newId = (res.data as { id: number }).id;
+                setEditingTopicId(newId);
+                await loadTopicDetail(newId);
                 setCurrentStep(2);
             } else if (editingTopicId) {
                 await loadTopicDetail(editingTopicId);

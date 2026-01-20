@@ -53,8 +53,7 @@ export function Dashboard() {
         memory: 0,
         disk: 0,
         network: 0,
-        activeConnections: 0,
-        requestsPerMinute: 0
+        activeConnections: 0
     });
 
     useEffect(() => {

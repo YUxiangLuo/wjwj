@@ -29,35 +29,84 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
     const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
+    const [pendingDraft, setPendingDraft] = useState<string | null>(null);
+    const draftKey = experiment?.taskId ? `student_report_draft_${experiment.taskId}` : null;
 
     const minLength = 100;
     const maxLength = 5000;
     const isValidLength = reportContent.length >= minLength && reportContent.length <= maxLength;
 
-    // Auto-save report content
-    useEffect(() => {
+    const persistDraft = useCallback(() => {
+        if (!draftKey) return;
         if (reportContent) {
-            const timer = setTimeout(() => {
-                saveExperiment({ reportContent });
-            }, 2000); // 2 second debounce
-            return () => clearTimeout(timer);
+            localStorage.setItem(draftKey, reportContent);
         }
-    }, [reportContent, saveExperiment]);
+    }, [draftKey, reportContent]);
+
+    // Idle auto-save (3s)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (reportContent) {
+                saveExperiment({ reportContent });
+                persistDraft();
+            }
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [reportContent, saveExperiment, persistDraft]);
+
+    // Interval auto-save (30s)
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (reportContent) {
+                saveExperiment({ reportContent });
+                persistDraft();
+            }
+        }, 30000);
+        return () => clearInterval(timer);
+    }, [reportContent, saveExperiment, persistDraft]);
+
+    // Restore draft from localStorage
+    useEffect(() => {
+        if (!draftKey) return;
+        const raw = localStorage.getItem(draftKey);
+        if (!raw) return;
+        const hasServerData = Boolean(experiment?.reportContent);
+        if (hasServerData && raw === experiment?.reportContent) return;
+        setPendingDraft(raw);
+        setRestoreDraftOpen(true);
+    }, [draftKey, experiment?.reportContent]);
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            // Save final report content
-            await saveExperiment({ reportContent, currentStage: 5 });
+            // Save final report content before preview
+            await saveExperiment({ reportContent });
             onSubmit();
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Mock export functions (TODO: implement actual export)
-    const handleExport = (type: string) => {
-        alert(`导出 ${type} 功能即将上线`);
+    const handleExport = async (type: "simple" | "systematic" | "stratified" | "all") => {
+        if (!experiment?.taskId) return;
+        try {
+            const res = await fetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
+                credentials: "include",
+            });
+            if (!res.ok) throw new Error("导出失败");
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `sampling_${type}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Export failed:", error);
+        }
     };
 
     return (
@@ -125,19 +174,19 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("简单随机抽样")}>
+                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("simple")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 简单随机抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("系统抽样")}>
+                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("systematic")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 系统抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("分层抽样")}>
+                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("stratified")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 分层抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("全部数据")}>
+                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("all")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 导出全部数据
                             </Button>
@@ -231,6 +280,35 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             ) : (
                                 "确认提交"
                             )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>恢复草稿</AlertDialogTitle>
+                        <AlertDialogDescription>检测到本地草稿，是否恢复？</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            onClick={() => {
+                                if (draftKey) localStorage.removeItem(draftKey);
+                                setRestoreDraftOpen(false);
+                            }}
+                        >
+                            放弃草稿
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (pendingDraft !== null) {
+                                    setReportContent(pendingDraft);
+                                }
+                                setRestoreDraftOpen(false);
+                            }}
+                        >
+                            恢复草稿
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

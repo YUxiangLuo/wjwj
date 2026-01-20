@@ -1,8 +1,18 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { ArrowLeft, Save, CheckCircle, Loader2 } from "lucide-react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
     experimentApi,
     type ExperimentData,
@@ -46,12 +56,15 @@ export function useExperiment() {
 
 export function ExperimentLayout() {
     const { taskId } = useParams();
+    const navigate = useNavigate();
     const [experiment, setExperiment] = useState<ExperimentData | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [currentStage, setCurrentStage] = useState(1);
     const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [confirmRollbackOpen, setConfirmRollbackOpen] = useState(false);
+    const [targetStage, setTargetStage] = useState<number | null>(null);
 
     // Load experiment data
     useEffect(() => {
@@ -135,9 +148,36 @@ export function ExperimentLayout() {
 
     const handlePrevStage = useCallback(() => {
         if (currentStage > 1) {
-            setCurrentStage(currentStage - 1);
+            setTargetStage(currentStage - 1);
+            setConfirmRollbackOpen(true);
         }
     }, [currentStage]);
+
+    const applyRollback = useCallback(async () => {
+        if (!taskId || targetStage === null) return;
+        const res = await experimentApi.reset(Number(taskId), { resetToStage: targetStage });
+        if (res.success) {
+            setExperiment((prev) => {
+                if (!prev) return prev;
+                const next = { ...prev, currentStage: targetStage };
+                if (targetStage <= 1) {
+                    next.samplePlan = null;
+                    next.samplingResults = null;
+                    next.reportContent = null;
+                }
+                if (targetStage <= 2) {
+                    next.samplingResults = null;
+                    next.reportContent = null;
+                }
+                if (targetStage <= 3) {
+                    next.reportContent = null;
+                }
+                return next;
+            });
+            setCurrentStage(targetStage);
+        }
+        setConfirmRollbackOpen(false);
+    }, [taskId, targetStage]);
 
     if (loading) {
         return (
@@ -160,7 +200,11 @@ export function ExperimentLayout() {
             case 3:
                 return <SamplingExecution onNext={handleNextStage} onPrev={handlePrevStage} />;
             case 4:
-                return <AnalysisReport onPrev={handlePrevStage} onSubmit={() => { }} />;
+                return <AnalysisReport onPrev={handlePrevStage} onSubmit={() => {
+                    if (taskId) {
+                        navigate(`/task/${taskId}/preview`);
+                    }
+                }} />;
             default:
                 return null;
         }
@@ -214,7 +258,12 @@ export function ExperimentLayout() {
                                 return (
                                     <div key={stage} className="flex items-center flex-1">
                                         <button
-                                            onClick={() => stageNum <= currentStage && setCurrentStage(stageNum)}
+                                            onClick={() => {
+                                                if (stageNum > currentStage) return;
+                                                if (stageNum === currentStage) return;
+                                                setTargetStage(stageNum);
+                                                setConfirmRollbackOpen(true);
+                                            }}
                                             disabled={stageNum > currentStage}
                                             className="flex flex-col items-center"
                                         >
@@ -250,6 +299,29 @@ export function ExperimentLayout() {
                     {renderStage()}
                 </div>
             </div>
+
+            <AlertDialog open={confirmRollbackOpen} onOpenChange={setConfirmRollbackOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>确认返回阶段</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            返回到“{targetStage ? stageNames[targetStage - 1] : ""}”将清空以下数据：
+                            <br />
+                            - 样本量规划
+                            <br />
+                            - 抽样执行结果
+                            <br />
+                            - 分析报告内容
+                            <br />
+                            确认继续吗？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={applyRollback}>确认返回</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </ExperimentContext.Provider>
     );
 }

@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { TaskHall } from "./pages/TaskHall";
 import { TopicDetails } from "./pages/TopicDetails";
 import { ExperimentLayout } from "./pages/ExperimentLayout";
+import { SubmissionPreview } from "./pages/SubmissionPreview";
+import { SubmissionHistory } from "./pages/SubmissionHistory";
+import { SubmissionDetailPage } from "./pages/SubmissionDetail";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { authApi } from "./api-client";
 import { Login } from "./pages/Login";
@@ -19,18 +22,63 @@ function StudentAppContent() {
     const navigate = useNavigate();
     const isTaskHall = location.pathname === "/";
     const isLoginPage = location.pathname === "/login";
-    const { currentUser, isLoading, unreadCount, refreshUser } = useStudent();
+    const {
+        currentUser,
+        isLoading,
+        unreadCount,
+        refreshUser,
+        notifications,
+        refreshNotifications,
+        markAllNotificationsAsRead,
+        markNotificationAsRead,
+        refreshSession,
+        sessionExpiresAt,
+        authErrorCode,
+    } = useStudent();
 
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
     const [passwordSaving, setPasswordSaving] = useState(false);
     const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [showSessionWarning, setShowSessionWarning] = useState(false);
+    const [showSessionExpired, setShowSessionExpired] = useState(false);
+    const [showAuthDialog, setShowAuthDialog] = useState(false);
 
     useEffect(() => {
         if (currentUser?.isFirstLogin) {
             setShowPasswordModal(true);
         }
     }, [currentUser]);
+
+    useEffect(() => {
+        if (authErrorCode) {
+            setShowAuthDialog(true);
+        }
+    }, [authErrorCode]);
+
+    useEffect(() => {
+        if (!sessionExpiresAt) return;
+        const expiresAt = new Date(sessionExpiresAt).getTime();
+        if (!Number.isFinite(expiresAt)) return;
+        const now = Date.now();
+        const warnAt = expiresAt - 5 * 60 * 1000;
+
+        const warnDelay = Math.max(0, warnAt - now);
+        const expireDelay = Math.max(0, expiresAt - now);
+
+        const warnTimer = window.setTimeout(() => {
+            setShowSessionWarning(true);
+        }, warnDelay);
+        const expireTimer = window.setTimeout(() => {
+            setShowSessionExpired(true);
+        }, expireDelay);
+
+        return () => {
+            window.clearTimeout(warnTimer);
+            window.clearTimeout(expireTimer);
+        };
+    }, [sessionExpiresAt]);
 
     // 显示加载状态
     if (isLoading) {
@@ -46,6 +94,28 @@ function StudentAppContent() {
     }
 
     if (!currentUser) {
+        if (authErrorCode) {
+            return (
+                <>
+                    <Login />
+                    <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>登录状态已变更</DialogTitle>
+                                <DialogDescription>
+                                    {authErrorCode === "AUTH_005"
+                                        ? "您的账号已在其他设备登录。"
+                                        : "会话已过期，请重新登录。"}
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                                <Button onClick={() => navigate("/login", { replace: true })}>重新登录</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </>
+            );
+        }
         return <Navigate to="/login" replace />;
     }
 
@@ -123,7 +193,15 @@ function StudentAppContent() {
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" className="relative">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="relative"
+                            onClick={() => {
+                                setShowNotifications(true);
+                                refreshNotifications();
+                            }}
+                        >
                             <Bell className="w-5 h-5" />
                             {unreadCount > 0 && (
                                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
@@ -161,6 +239,9 @@ function StudentAppContent() {
                     <Route path="login" element={<Login />} />
                     <Route path="task/:taskId" element={<TopicDetails />} />
                     <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
+                    <Route path="task/:taskId/preview" element={<SubmissionPreview />} />
+                    <Route path="task/:taskId/history" element={<SubmissionHistory />} />
+                    <Route path="submissions/:submissionId" element={<SubmissionDetailPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
@@ -218,6 +299,94 @@ function StudentAppContent() {
                             保存
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center justify-between">
+                            通知
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => markAllNotificationsAsRead()}
+                                disabled={!notifications || notifications.unreadCount === 0}
+                            >
+                                全部已读
+                            </Button>
+                        </DialogTitle>
+                        <DialogDescription>查看任务与批改提醒</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                        {!notifications || notifications.notifications.length === 0 ? (
+                            <div className="text-sm text-muted-foreground text-center py-8">暂无通知</div>
+                        ) : (
+                            notifications.notifications.map((notice) => (
+                                <button
+                                    key={notice.id}
+                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${notice.isRead ? "bg-white" : "bg-red-50"}`}
+                                    onClick={() => {
+                                        if (!notice.isRead) {
+                                            markNotificationAsRead(notice.id);
+                                        }
+                                    }}
+                                >
+                        <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>会话即将过期</DialogTitle>
+                                    <DialogDescription>会话将在 5 分钟内过期，是否继续？</DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter>
+                                    <Button variant="outline" onClick={() => setShowSessionWarning(false)}>稍后</Button>
+                                    <Button
+                                        onClick={async () => {
+                                            await refreshUser();
+                                            await refreshSession();
+                                            setShowSessionWarning(false);
+                                        }}
+                                    >
+                                        继续使用
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
+                        <Dialog open={showSessionExpired} onOpenChange={setShowSessionExpired}>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>会话已过期</DialogTitle>
+                                    <DialogDescription>请重新登录以继续使用系统。</DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter>
+                                    <Button onClick={() => navigate("/login", { replace: true })}>重新登录</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <div className="text-sm font-medium">
+                                                {notice.title}
+                                                {!notice.isRead && <span className="ml-2 text-xs text-red-500">未读</span>}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground mt-1">
+                                                {notice.content}
+                                            </div>
+                                        </div>
+                                        <div className="text-[11px] text-muted-foreground whitespace-nowrap">
+                                            {new Date(notice.createdAt).toLocaleString("zh-CN", {
+                                                month: "2-digit",
+                                                day: "2-digit",
+                                                hour: "2-digit",
+                                                minute: "2-digit",
+                                            })}
+                                        </div>
+                                    </div>
+                                </button>
+                            ))
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

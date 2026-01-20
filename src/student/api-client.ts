@@ -23,6 +23,11 @@ export interface CurrentStudent {
     classId: number;
     className: string | null;
     isFirstLogin: number;
+    sessionExpiresAt?: string | null;
+}
+
+export interface SessionInfo {
+    expiresAt: string | null;
 }
 
 export type TaskStatus = "not_started" | "in_progress" | "submitted" | "grading" | "graded" | "rejected";
@@ -140,6 +145,11 @@ export interface ExperimentData {
     populationSize: number;
 }
 
+export interface ExperimentResetResponse {
+    success: boolean;
+    lastSavedAt: string;
+}
+
 export interface Notification {
     id: number;
     type: string;
@@ -162,6 +172,40 @@ export interface Announcement {
     content: string;
     createdAt: string;
     isRead: boolean;
+}
+
+export interface SubmissionSummary {
+    id: number;
+    submittedAt: string;
+    status: number;
+    totalScore: number | null;
+    gradedAt: string | null;
+    graderName: string | null;
+    rejectReason: string | null;
+}
+
+export interface SubmissionDetail {
+    id: number;
+    taskId: number;
+    topicId: number;
+    topicName: string;
+    submittedAt: string;
+    status: number;
+    scoreQuestionnaire: number | null;
+    scoreProcess: number | null;
+    scoreReport: number | null;
+    totalScore: number | null;
+    teacherComment: string | null;
+    rejectReason: string | null;
+    gradedAt: string | null;
+    graderName: string | null;
+    questionnairePdfPath: string | null;
+    reportPdfPath: string | null;
+    weights: {
+        questionnaire: number;
+        process: number;
+        report: number;
+    };
 }
 
 // ============================================================
@@ -201,6 +245,10 @@ async function request<T>(
 
 export const meApi = {
     get: () => request<CurrentStudent>("/api/student/me"),
+};
+
+export const sessionApi = {
+    get: () => request<SessionInfo>("/api/student/session"),
 };
 
 export const authApi = {
@@ -261,6 +309,12 @@ export const experimentApi = {
     submit: (taskId: number) =>
         request<{ success: boolean }>(`/api/student/tasks/${taskId}/submit`, {
             method: "POST",
+        }),
+
+    reset: (taskId: number, data: { resetToStage: number; clearQuestionnaire?: boolean }) =>
+        request<ExperimentResetResponse>(`/api/student/tasks/${taskId}/reset`, {
+            method: "POST",
+            body: JSON.stringify(data),
         }),
 
     executeSampling: (
@@ -328,4 +382,16 @@ export const attachmentsApi = {
             fileType: string;
             fileSize: number;
         }>(`/api/student/attachments/${attachmentId}/download`),
+};
+
+// ============================================================
+// Submissions API - 提交记录
+// ============================================================
+
+export const submissionsApi = {
+    listByTask: (taskId: number) =>
+        request<SubmissionSummary[]>(`/api/student/tasks/${taskId}/submissions`),
+
+    getDetail: (submissionId: number) =>
+        request<SubmissionDetail>(`/api/student/submissions/${submissionId}`),
 };

@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { tasksApi, type StudentTask, type TaskStatus } from "../api-client";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { tasksApi, announcementsApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
 
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
@@ -24,50 +25,63 @@ const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     rejected: { label: "被驳回", color: "bg-red-100 text-red-700" },
 };
 
-function getDaysRemaining(deadline: string | null): number | null {
+function parseDeadline(deadline: string | null): Date | null {
     if (!deadline) return null;
-    const now = new Date();
-    const end = new Date(`${deadline}T23:59:59`);
-    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diff;
+    const withTime = deadline.includes("T") ? deadline : `${deadline}T23:59:00`;
+    const parsed = new Date(withTime);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getRemainingMs(deadline: string | null): number | null {
+    const end = parseDeadline(deadline);
+    if (!end) return null;
+    return end.getTime() - Date.now();
 }
 
 function isDeadlinePassed(deadline: string | null) {
-    if (!deadline) return false;
-    const end = new Date(`${deadline}T23:59:59`).getTime();
-    return Date.now() > end;
+    const remaining = getRemainingMs(deadline);
+    if (remaining === null) return false;
+    return remaining <= 0;
 }
 
 function DeadlineDisplay({ deadline, status }: { deadline: string | null; status: TaskStatus }) {
     if (!deadline) return null;
     if (status === "graded") return null;
 
-    const daysRemaining = getDaysRemaining(deadline);
-    if (daysRemaining === null) return null;
-
-    if (daysRemaining <= 0) {
+    const remainingMs = getRemainingMs(deadline);
+    if (remainingMs === null) return null;
+    if (remainingMs <= 0) {
         return <span className="text-sm text-slate-500">已截止</span>;
     }
 
-    if (daysRemaining <= 1) {
+    const minuteMs = 60 * 1000;
+    const hourMs = 60 * minuteMs;
+    const dayMs = 24 * hourMs;
+
+    if (remainingMs <= dayMs) {
+        const hours = Math.floor(remainingMs / hourMs);
+        const minutes = Math.floor((remainingMs % hourMs) / minuteMs);
         return (
             <span className="text-sm text-red-500 font-medium flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
-                还剩 {daysRemaining * 24} 小时
+                还剩 {hours} 小时 {minutes} 分钟
             </span>
         );
     }
 
-    if (daysRemaining <= 7) {
+    if (remainingMs <= 7 * dayMs) {
+        const days = Math.floor(remainingMs / dayMs);
+        const hours = Math.floor((remainingMs % dayMs) / hourMs);
         return (
             <span className="text-sm text-amber-600 font-medium flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                还剩 {daysRemaining} 天
+                还剩 {days} 天 {hours} 小时
             </span>
         );
     }
 
-    return <span className="text-sm text-muted-foreground">还剩 {daysRemaining} 天</span>;
+    const days = Math.ceil(remainingMs / dayMs);
+    return <span className="text-sm text-muted-foreground">还剩 {days} 天</span>;
 }
 
 interface TaskCardProps {
@@ -96,6 +110,7 @@ function TaskCard({ task }: TaskCardProps) {
 
     const action = getActionButton();
     const disabled = deadlinePassed && ["not_started", "in_progress", "rejected"].includes(task.status);
+    const showHistory = ["submitted", "grading", "graded", "rejected"].includes(task.status);
 
     return (
         <Card className="hover:shadow-lg transition-shadow">
@@ -160,6 +175,13 @@ function TaskCard({ task }: TaskCardProps) {
                             <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                     </Link>
+                    {showHistory && (
+                        <Link to={`/task/${task.id}/history`} className="w-full">
+                            <Button className="w-full" variant="outline" size="sm">
+                                历史记录
+                            </Button>
+                        </Link>
+                    )}
                     {disabled && (
                         <div className="text-xs text-muted-foreground text-center">已截止，无法继续操作</div>
                     )}
@@ -175,6 +197,9 @@ export function TaskHall() {
     const [tasks, setTasks] = useState<StudentTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<FilterType>("all");
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [showAnnouncements, setShowAnnouncements] = useState(false);
+    const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
     // 加载任务列表
     useEffect(() => {
@@ -193,6 +218,33 @@ export function TaskHall() {
         }
         loadTasks();
     }, []);
+
+    useEffect(() => {
+        async function loadAnnouncements() {
+            try {
+                const res = await announcementsApi.list();
+                if (res.success && res.data) {
+                    setAnnouncements(res.data);
+                }
+            } catch (error) {
+                console.error("Failed to load announcements:", error);
+            }
+        }
+        loadAnnouncements();
+    }, []);
+
+    const unreadAnnouncements = announcements.filter((a) => !a.isRead);
+    const latestUnread = unreadAnnouncements[0] ?? null;
+
+    const handleOpenAnnouncement = async (announcement: Announcement) => {
+        setSelectedAnnouncement(announcement);
+        if (!announcement.isRead) {
+            await announcementsApi.markAsRead(announcement.id);
+            setAnnouncements((prev) =>
+                prev.map((a) => (a.id === announcement.id ? { ...a, isRead: true } : a))
+            );
+        }
+    };
 
     const filteredTasks = tasks.filter(task => {
         if (filter === "all") return true;
@@ -222,6 +274,20 @@ export function TaskHall() {
 
     return (
         <div className="space-y-6">
+            {latestUnread && (
+                <Card className="border-amber-200 bg-amber-50">
+                    <CardContent className="py-4 flex items-center justify-between gap-4">
+                        <div>
+                            <div className="text-sm text-amber-700 font-medium">最新公告</div>
+                            <div className="text-sm text-amber-800 mt-1 line-clamp-1">{latestUnread.title}</div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => setShowAnnouncements(true)}>
+                            查看全部 ({unreadAnnouncements.length})
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
@@ -307,6 +373,63 @@ export function TaskHall() {
                     <p className="text-muted-foreground">暂无任务</p>
                 </div>
             )}
+
+            <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>公告</DialogTitle>
+                        <DialogDescription>查看最新系统公告</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                            {announcements.length === 0 && (
+                                <div className="text-sm text-muted-foreground text-center py-8">暂无公告</div>
+                            )}
+                            {announcements.map((announcement) => (
+                                <button
+                                    key={announcement.id}
+                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${announcement.isRead ? "bg-white" : "bg-amber-50"}`}
+                                    onClick={() => handleOpenAnnouncement(announcement)}
+                                >
+                                    <div className="text-sm font-medium line-clamp-1">
+                                        {announcement.title}
+                                        {!announcement.isRead && <span className="ml-2 text-xs text-amber-600">未读</span>}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                        {new Date(announcement.createdAt).toLocaleString("zh-CN", {
+                                            month: "2-digit",
+                                            day: "2-digit",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="border rounded-lg p-4 max-h-[60vh] overflow-y-auto">
+                            {selectedAnnouncement ? (
+                                <div className="space-y-3">
+                                    <div className="text-base font-semibold">{selectedAnnouncement.title}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN", {
+                                            year: "numeric",
+                                            month: "2-digit",
+                                            day: "2-digit",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground whitespace-pre-line">
+                                        {selectedAnnouncement.content}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-sm text-muted-foreground text-center py-12">请选择一条公告查看详情</div>
+                            )}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

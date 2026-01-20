@@ -1876,9 +1876,6 @@ const gradingDetailRoutes: RouteDefinition = {
                 lockedById: currentTeacherId,
                 lockedAt: now,
             }).where(eq(submission.id, submissionId));
-            if (row.experimentStatus === 1) {
-                await db.update(experiment).set({ status: 2 }).where(eq(experiment.id, row.experimentId));
-            }
         }
 
         const weightConfig = typeof row.weightConfig === "string"
@@ -1988,7 +1985,7 @@ const gradingDetailRoutes: RouteDefinition = {
         }).where(eq(submission.id, submissionId));
 
         if (body.status === 2) {
-            await db.update(experiment).set({ status: 3 }).where(eq(experiment.id, detail.experimentId));
+            await db.update(experiment).set({ status: 2 }).where(eq(experiment.id, detail.experimentId));
             await notifyStudentById(detail.studentId, {
                 type: "GRADE_COMPLETED",
                 title: "作业已批改",
@@ -1998,7 +1995,7 @@ const gradingDetailRoutes: RouteDefinition = {
             });
         }
         if (body.status === 3) {
-            await db.update(experiment).set({ status: 4 }).where(eq(experiment.id, detail.experimentId));
+            await db.update(experiment).set({ status: 3 }).where(eq(experiment.id, detail.experimentId));
             await notifyStudentById(detail.studentId, {
                 type: "GRADE_REJECTED",
                 title: "作业被驳回",
