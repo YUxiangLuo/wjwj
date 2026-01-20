@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Star, Loader2 } from "lucide-react";
+import { Plus, Trash2, Star, Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,9 +14,12 @@ export function SemesterManagement() {
     const [semesters, setSemesters] = useState<Semester[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [newSemesterName, setNewSemesterName] = useState("");
     const [setAsCurrent, setSetAsCurrent] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [editingSemester, setEditingSemester] = useState<Semester | null>(null);
+    const [editName, setEditName] = useState("");
 
     useEffect(() => {
         loadSemesters();
@@ -73,6 +76,33 @@ export function SemesterManagement() {
         } catch (error) {
             console.error("Failed to set current semester:", error);
             alert("设置失败");
+        }
+    }
+
+    function openEdit(semester: Semester) {
+        setEditingSemester(semester);
+        setEditName(semester.name);
+        setShowEditModal(true);
+    }
+
+    async function handleEditSemester() {
+        if (!editingSemester || !editName.trim()) return;
+
+        setSubmitting(true);
+        try {
+            const res = await semesterApi.update(editingSemester.id, { name: editName.trim() });
+            if (res.success) {
+                setShowEditModal(false);
+                setEditingSemester(null);
+                loadSemesters();
+            } else {
+                alert(res.error?.message ?? "更新失败");
+            }
+        } catch (error) {
+            console.error("Failed to update semester:", error);
+            alert("更新失败");
+        } finally {
+            setSubmitting(false);
         }
     }
 
@@ -149,6 +179,10 @@ export function SemesterManagement() {
                                                     设为当前
                                                 </Button>
                                             )}
+                                            <Button variant="ghost" size="sm" onClick={() => openEdit(semester)}>
+                                                <Pencil className="w-3 h-3 mr-1" />
+                                                编辑
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -208,6 +242,35 @@ export function SemesterManagement() {
                         <Button onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()}>
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认创建
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>编辑学期</DialogTitle>
+                        <DialogDescription>修改学期名称</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="editSemesterName">学期名称</Label>
+                            <Input
+                                id="editSemesterName"
+                                placeholder="例如：2024-Fall"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={submitting}>
+                            取消
+                        </Button>
+                        <Button onClick={handleEditSemester} disabled={submitting || !editName.trim()}>
+                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            保存
                         </Button>
                     </DialogFooter>
                 </DialogContent>

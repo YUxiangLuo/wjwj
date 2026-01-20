@@ -93,6 +93,12 @@ export interface Announcement {
     updatedAt: string;
 }
 
+export interface AdminUser {
+    id: number;
+    username: string;
+    isFirstLogin: number;
+}
+
 // ============================================================
 // API Client
 // ============================================================
@@ -107,6 +113,7 @@ async function request<T>(
                 "Content-Type": "application/json",
                 ...options?.headers,
             },
+            credentials: "include",
             ...options,
         });
 
@@ -122,6 +129,31 @@ async function request<T>(
         };
     }
 }
+
+// ============================================================
+// Auth API
+// ============================================================
+
+export const authApi = {
+    login: (data: { username: string; password: string }) =>
+        request<{ user: AdminUser; expiresAt: string }>("/api/admin/login", {
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
+
+    me: () => request<AdminUser>("/api/admin/me"),
+
+    logout: () =>
+        request<{ ok: boolean }>("/api/admin/logout", {
+            method: "POST",
+        }),
+
+    changePassword: (data: { currentPassword: string; newPassword: string }) =>
+        request<{ success: boolean }>("/api/admin/password", {
+            method: "PUT",
+            body: JSON.stringify(data),
+        }),
+};
 
 // ============================================================
 // Stats API
@@ -152,6 +184,12 @@ export const semesterApi = {
     delete: (id: number) =>
         request<{ success: boolean }>(`/api/admin/semesters/${id}`, {
             method: "DELETE",
+        }),
+
+    update: (id: number, data: { name: string }) =>
+        request<{ success: boolean }>(`/api/admin/semesters/${id}/update`, {
+            method: "PUT",
+            body: JSON.stringify(data),
         }),
 };
 
@@ -375,6 +413,11 @@ export const systemApi = {
     getMetrics: () => request<SystemMetrics>("/api/admin/system/metrics"),
     getLogs: () => request<SystemLog[]>("/api/admin/system/logs"),
     getNotifications: () => request<{ count: number; items: any[] }>("/api/admin/notifications"),
+    createBackup: () => request<{ backupId: string; createdAt: string }>("/api/admin/backup", { method: "POST" }),
+    restoreBackup: (backupId: string) => request<{ success: boolean; restoredFrom: string }>("/api/admin/restore", {
+        method: "POST",
+        body: JSON.stringify({ backupId }),
+    }),
 };
 
 export const settingsApi = {

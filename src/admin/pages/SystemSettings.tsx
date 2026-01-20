@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, FlaskConical, Shield, Database, Save, Loader2 } from "lucide-react";
+import { Settings, FlaskConical, Shield, Database, Save, Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { settingsApi } from "../api-client";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { settingsApi, systemApi, authApi } from "../api-client";
 
 interface SettingSection {
     id: string;
@@ -26,6 +27,13 @@ export function SystemSettings() {
     const [activeSection, setActiveSection] = useState("general");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [backupLoading, setBackupLoading] = useState(false);
+    const [restoreLoading, setRestoreLoading] = useState(false);
+    const [lastBackupId, setLastBackupId] = useState<string | null>(null);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
     const [settings, setSettings] = useState({
         systemName: "抽样统计虚拟仿真系统",
         maintenanceMode: false,
@@ -109,6 +117,83 @@ export function SystemSettings() {
             alert("保存失败");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleCreateBackup = async () => {
+        setBackupLoading(true);
+        try {
+            const res = await systemApi.createBackup();
+            if (res.success && res.data) {
+                setLastBackupId(res.data.backupId);
+                alert(`备份已创建：${res.data.backupId}`);
+            } else {
+                alert(res.error?.message ?? "备份失败");
+            }
+        } catch (error) {
+            console.error("Failed to create backup:", error);
+            alert("备份失败");
+        } finally {
+            setBackupLoading(false);
+        }
+    };
+
+    const handleRestoreBackup = async () => {
+        const backupId = lastBackupId ?? window.prompt("请输入备份ID") ?? "";
+        if (!backupId.trim()) return;
+
+        if (!confirm(`确定从备份 ${backupId} 恢复吗？此操作可能覆盖当前数据。`)) {
+            return;
+        }
+
+        setRestoreLoading(true);
+        try {
+            const res = await systemApi.restoreBackup(backupId.trim());
+            if (res.success) {
+                alert("恢复操作已提交");
+            } else {
+                alert(res.error?.message ?? "恢复失败");
+            }
+        } catch (error) {
+            console.error("Failed to restore backup:", error);
+            alert("恢复失败");
+        } finally {
+            setRestoreLoading(false);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        setPasswordError(null);
+        if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+            setPasswordError("请填写完整信息");
+            return;
+        }
+        if (passwordForm.newPassword.length < 6) {
+            setPasswordError("新密码长度至少为6位");
+            return;
+        }
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            setPasswordError("两次输入的新密码不一致");
+            return;
+        }
+
+        setPasswordSaving(true);
+        try {
+            const res = await authApi.changePassword({
+                currentPassword: passwordForm.currentPassword,
+                newPassword: passwordForm.newPassword,
+            });
+            if (res.success) {
+                setShowPasswordModal(false);
+                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+            } else {
+                setPasswordError(res.error?.message ?? "修改失败");
+            }
+        } catch (error) {
+            console.error("Failed to change password:", error);
+            setPasswordError("修改失败");
+        } finally {
+            setPasswordSaving(false);
         }
     };
 
@@ -246,6 +331,12 @@ export function SystemSettings() {
                                         onChange={(e) => setSettings({ ...settings, sessionTimeout: parseInt(e.target.value) || 0 })}
                                     />
                                 </div>
+                                <div className="pt-2">
+                                    <Button variant="outline" onClick={() => setShowPasswordModal(true)}>
+                                        <Lock className="w-4 h-4 mr-2" />
+                                        修改管理员密码
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -281,12 +372,17 @@ export function SystemSettings() {
                                     </Select>
                                 </div>
                                 <div className="flex gap-3 pt-4">
-                                    <Button>
+                                    <Button onClick={handleCreateBackup} disabled={backupLoading}>
                                         <Database className="w-4 h-4" />
-                                        立即备份
+                                        {backupLoading ? "备份中..." : "立即备份"}
                                     </Button>
-                                    <Button variant="outline">恢复备份</Button>
+                                    <Button variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading}>
+                                        {restoreLoading ? "恢复中..." : "恢复备份"}
+                                    </Button>
                                 </div>
+                                {lastBackupId && (
+                                    <div className="text-xs text-muted-foreground">最近备份：{lastBackupId}</div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -301,6 +397,57 @@ export function SystemSettings() {
                     </div>
                 </CardContent>
             </Card>
+
+            <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>修改管理员密码</DialogTitle>
+                        <DialogDescription>请输入当前密码和新密码</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="currentPassword">当前密码</Label>
+                            <Input
+                                id="currentPassword"
+                                type="password"
+                                value={passwordForm.currentPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                autoComplete="current-password"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="newPassword">新密码</Label>
+                            <Input
+                                id="newPassword"
+                                type="password"
+                                value={passwordForm.newPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">确认新密码</Label>
+                            <Input
+                                id="confirmPassword"
+                                type="password"
+                                value={passwordForm.confirmPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        {passwordError && <div className="text-sm text-destructive">{passwordError}</div>}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving}>
+                            取消
+                        </Button>
+                        <Button onClick={handleChangePassword} disabled={passwordSaving}>
+                            {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            保存
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -9,8 +9,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { classApi, semesterApi, teacherApi, type Class, type Semester, type Teacher } from "../api-client";
+import { useNavigate } from "react-router-dom";
 
 export function ClassManagement() {
+    const navigate = useNavigate();
     const [classes, setClasses] = useState<Class[]>([]);
     const [semesters, setSemesters] = useState<Semester[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -237,7 +239,11 @@ export function ClassManagement() {
                                     <TableCell className="text-muted-foreground">{formatDate(cls.createdAt)}</TableCell>
                                     <TableCell>
                                         <div className="flex gap-2">
-                                            <Button variant="ghost" size="sm">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => navigate(`/student?classId=${cls.id}`)}
+                                            >
                                                 <Users className="w-3 h-3 mr-1" />
                                                 查看学生
                                             </Button>

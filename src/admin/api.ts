@@ -5,6 +5,7 @@
 
 import { db } from "../db";
 import {
+    admin,
     semester,
     teacher,
     assistant,
@@ -22,6 +23,7 @@ import {
     task,
     topic,
     userSession,
+    notification,
 } from "../db/schema";
 import { eq, desc, asc, sql, and, like, or, isNull, count } from "drizzle-orm";
 
@@ -42,8 +44,8 @@ interface RouteDefinition {
 // Helpers
 // ============================================================
 
-function json<T>(data: T, status = 200): Response {
-    return Response.json({ success: true, data }, { status });
+function json<T>(data: T, status = 200, headers?: HeadersInit): Response {
+    return Response.json({ success: true, data }, { status, headers });
 }
 
 function error(message: string, code: string, status = 400): Response {
@@ -57,6 +59,248 @@ async function parseBody<T>(req: Request): Promise<T> {
 function getSearchParams(req: Request) {
     return new URL(req.url).searchParams;
 }
+
+const ADMIN_USER_TYPE = 1;
+const ADMIN_SESSION_COOKIE = "admin_session";
+const ADMIN_SESSION_TTL_DAYS = 7;
+const ADMIN_MAX_LOGIN_ATTEMPTS = 5;
+const ADMIN_LOCK_MINUTES = 15;
+
+function getCookieValue(req: Request, name: string): string | null {
+    const cookie = req.headers.get("cookie") ?? "";
+    const match = cookie.match(new RegExp(`(?:^|; )${name}=([^;]+)`));
+    return match?.[1] ?? null;
+}
+
+function getClientIp(req: Request): string {
+    const forwarded = req.headers.get("x-forwarded-for");
+    if (forwarded) return forwarded.split(",")[0]?.trim() ?? "";
+    return req.headers.get("x-real-ip") ?? "";
+}
+
+function buildSessionCookie(token: string, expiresAt: Date) {
+    const secure = process.env.NODE_ENV === "production" ? " Secure;" : "";
+    return `${ADMIN_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Expires=${expiresAt.toUTCString()};${secure}`;
+}
+
+function clearSessionCookie() {
+    const secure = process.env.NODE_ENV === "production" ? " Secure;" : "";
+    return `${ADMIN_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT;${secure}`;
+}
+
+async function requireAdminAuth(req: Request) {
+    const token = getCookieValue(req, ADMIN_SESSION_COOKIE) ?? req.headers.get("x-admin-session");
+    if (!token) {
+        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+    }
+
+    const [session] = await db
+        .select()
+        .from(userSession)
+        .where(
+            and(
+                eq(userSession.sessionToken, token),
+                eq(userSession.userType, ADMIN_USER_TYPE),
+                sql`${userSession.expiresAt} > NOW()`
+            )
+        )
+        .limit(1);
+
+    if (!session) {
+        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+    }
+
+    const [adm] = await db
+        .select({ id: admin.id, username: admin.username, isFirstLogin: admin.isFirstLogin })
+        .from(admin)
+        .where(eq(admin.id, session.userId));
+
+    if (!adm) {
+        return { admin: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+    }
+
+    await db.update(userSession).set({ lastActiveAt: new Date() }).where(eq(userSession.id, session.id));
+
+    return { admin: adm, error: null, session };
+}
+
+function withAdminAuth(routes: RouteDefinition): RouteDefinition {
+    return {
+        GET: routes.GET
+            ? async (req) => {
+                const auth = await requireAdminAuth(req);
+                if (auth.error) return auth.error;
+                return routes.GET!(req);
+            }
+            : undefined,
+        POST: routes.POST
+            ? async (req) => {
+                const auth = await requireAdminAuth(req);
+                if (auth.error) return auth.error;
+                return routes.POST!(req);
+            }
+            : undefined,
+        PUT: routes.PUT
+            ? async (req) => {
+                const auth = await requireAdminAuth(req);
+                if (auth.error) return auth.error;
+                return routes.PUT!(req);
+            }
+            : undefined,
+        DELETE: routes.DELETE
+            ? async (req) => {
+                const auth = await requireAdminAuth(req);
+                if (auth.error) return auth.error;
+                return routes.DELETE!(req);
+            }
+            : undefined,
+    };
+}
+
+// ============================================================
+// Auth API
+// ============================================================
+
+const adminLoginRoutes: RouteDefinition = {
+    async POST(req) {
+        const body = await parseBody<{ username: string; password: string }>(req);
+        const username = body.username?.trim();
+        const password = body.password ?? "";
+
+        if (!username || !password) {
+            return error("请输入用户名和密码", "VALIDATION_ERROR", 400);
+        }
+
+        const [adm] = await db.select().from(admin).where(eq(admin.username, username));
+
+        if (!adm) {
+            return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
+        }
+
+        const now = new Date();
+        if (adm.lockedUntil && new Date(adm.lockedUntil) > now) {
+            return error("账号已锁定，请稍后再试", "ACCOUNT_LOCKED", 403);
+        }
+
+        const isValid = await Bun.password.verify(password, adm.password);
+        if (!isValid) {
+            const failCount = (adm.loginFailCount ?? 0) + 1;
+            const updateData: any = { loginFailCount: failCount };
+
+            if (failCount >= ADMIN_MAX_LOGIN_ATTEMPTS) {
+                updateData.lockedUntil = new Date(now.getTime() + ADMIN_LOCK_MINUTES * 60 * 1000);
+            }
+
+            await db.update(admin).set(updateData).where(eq(admin.id, adm.id));
+
+            return error(
+                failCount >= ADMIN_MAX_LOGIN_ATTEMPTS
+                    ? `密码错误次数过多，账号已锁定${ADMIN_LOCK_MINUTES}分钟`
+                    : "用户名或密码错误",
+                "INVALID_CREDENTIALS",
+                401
+            );
+        }
+
+        await db
+            .update(admin)
+            .set({ loginFailCount: 0, lockedUntil: null })
+            .where(eq(admin.id, adm.id));
+
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(now.getTime() + ADMIN_SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
+
+        await db.insert(userSession).values({
+            sessionToken: token,
+            userType: ADMIN_USER_TYPE,
+            userId: adm.id,
+            deviceInfo: req.headers.get("user-agent") ?? "",
+            expiresAt,
+            lastActiveAt: now,
+        });
+
+        await db.insert(loginLog).values({
+            userType: ADMIN_USER_TYPE,
+            userId: adm.id,
+            ipAddress: getClientIp(req),
+            userAgent: req.headers.get("user-agent") ?? "",
+        });
+
+        return json(
+            {
+                user: { id: adm.id, username: adm.username, isFirstLogin: adm.isFirstLogin },
+                expiresAt,
+            },
+            200,
+            { "Set-Cookie": buildSessionCookie(token, expiresAt) }
+        );
+    },
+};
+
+const adminMeRoutes: RouteDefinition = {
+    async GET(req) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+        return json(auth.admin!);
+    },
+};
+
+const adminLogoutRoutes: RouteDefinition = {
+    async POST(req) {
+        const token = getCookieValue(req, ADMIN_SESSION_COOKIE) ?? req.headers.get("x-admin-session");
+        if (token) {
+            await db.delete(userSession).where(eq(userSession.sessionToken, token));
+        }
+        return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie() });
+    },
+};
+
+const adminPasswordRoutes: RouteDefinition = {
+    async PUT(req) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
+        const body = await parseBody<{ currentPassword: string; newPassword: string }>(req);
+        const currentPassword = body.currentPassword ?? "";
+        const newPassword = body.newPassword ?? "";
+
+        if (!currentPassword || !newPassword) {
+            return error("请输入当前密码和新密码", "VALIDATION_ERROR", 400);
+        }
+
+        if (newPassword.length < 6) {
+            return error("新密码长度至少为6位", "VALIDATION_ERROR", 400);
+        }
+
+        const [adm] = await db.select().from(admin).where(eq(admin.id, auth.admin!.id));
+        if (!adm) {
+            return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
+        }
+
+        const isValid = await Bun.password.verify(currentPassword, adm.password);
+        if (!isValid) {
+            return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
+        }
+
+        const hashed = await Bun.password.hash(newPassword);
+        await db
+            .update(admin)
+            .set({ password: hashed, isFirstLogin: 0 })
+            .where(eq(admin.id, adm.id));
+
+        await db.insert(operationLog).values({
+            userType: ADMIN_USER_TYPE,
+            userId: adm.id,
+            action: "CHANGE_PASSWORD",
+            targetType: "admin",
+            targetId: adm.id,
+            detail: { by: "self" },
+            ipAddress: getClientIp(req),
+        });
+
+        return json({ success: true });
+    },
+};
 
 // ============================================================
 // Stats API
@@ -1129,8 +1373,120 @@ const announcementStatsRoutes = {
 
 
 const notificationRoutes = {
-    async GET() {
-        return json({ count: 0, items: [] });
+    async GET(req: Request) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
+        const adminId = auth.admin!.id;
+
+        const [countRow] = await db
+            .select({ count: count() })
+            .from(notification)
+            .where(
+                and(
+                    eq(notification.receiverType, ADMIN_USER_TYPE),
+                    eq(notification.receiverId, adminId),
+                    eq(notification.isRead, 0)
+                )
+            );
+
+        const items = await db
+            .select({
+                id: notification.id,
+                type: notification.type,
+                title: notification.title,
+                content: notification.content,
+                isRead: notification.isRead,
+                createdAt: notification.createdAt,
+            })
+            .from(notification)
+            .where(
+                and(
+                    eq(notification.receiverType, ADMIN_USER_TYPE),
+                    eq(notification.receiverId, adminId)
+                )
+            )
+            .orderBy(desc(notification.createdAt))
+            .limit(5);
+
+        return json({ count: countRow?.count ?? 0, items });
+    },
+};
+
+const semesterUpdateRoutes: RouteDefinition = {
+    async PUT(req: Request) {
+        const url = new URL(req.url);
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[parts.length - 2] ?? "");
+
+        if (!id) {
+            return error("无效的学期ID", "INVALID_ID");
+        }
+
+        const body = await parseBody<{ name?: string }>(req);
+        const name = body.name?.trim();
+
+        if (!name) {
+            return error("学期名称不能为空", "VALIDATION_ERROR");
+        }
+
+        const [existing] = await db
+            .select()
+            .from(semester)
+            .where(and(eq(semester.name, name), sql`${semester.id} <> ${id}`));
+
+        if (existing) {
+            return error("学期名称已存在", "DUPLICATE_NAME");
+        }
+
+        await db.update(semester).set({ name }).where(eq(semester.id, id));
+
+        return json({ success: true });
+    },
+};
+
+const backupCreateRoutes: RouteDefinition = {
+    async POST(req: Request) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
+        const backupId = `backup_${Date.now()}`;
+
+        await db.insert(operationLog).values({
+            userType: ADMIN_USER_TYPE,
+            userId: auth.admin!.id,
+            action: "CREATE_BACKUP",
+            targetType: "system",
+            detail: { backupId },
+            ipAddress: getClientIp(req),
+        });
+
+        return json({ backupId, createdAt: new Date().toISOString() });
+    },
+};
+
+const backupRestoreRoutes: RouteDefinition = {
+    async POST(req: Request) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
+        const body = await parseBody<{ backupId?: string }>(req);
+        const backupId = body.backupId?.trim();
+
+        if (!backupId) {
+            return error("缺少备份ID", "VALIDATION_ERROR");
+        }
+
+        await db.insert(operationLog).values({
+            userType: ADMIN_USER_TYPE,
+            userId: auth.admin!.id,
+            action: "RESTORE_BACKUP",
+            targetType: "system",
+            detail: { backupId },
+            ipAddress: getClientIp(req),
+        });
+
+        return json({ success: true, restoredFrom: backupId });
     },
 };
 
@@ -1182,48 +1538,57 @@ const systemLogsRoutes = {
 // ============================================================
 
 export const adminApiRoutes = {
+    // Auth
+    "/api/admin/login": adminLoginRoutes,
+    "/api/admin/me": adminMeRoutes,
+    "/api/admin/logout": adminLogoutRoutes,
+    "/api/admin/password": withAdminAuth(adminPasswordRoutes),
+
     // Stats
-    "/api/admin/stats": statsRoutes,
-    "/api/admin/notifications": notificationRoutes,
+    "/api/admin/stats": withAdminAuth(statsRoutes),
+    "/api/admin/notifications": withAdminAuth(notificationRoutes),
 
     // Semesters
-    "/api/admin/semesters": semesterRoutes,
-    "/api/admin/semesters/:id/current": semesterCurrentRoutes,
-    "/api/admin/semesters/:id": semesterDeleteRoutes,
+    "/api/admin/semesters": withAdminAuth(semesterRoutes),
+    "/api/admin/semesters/:id/current": withAdminAuth(semesterCurrentRoutes),
+    "/api/admin/semesters/:id": withAdminAuth(semesterDeleteRoutes),
+    "/api/admin/semesters/:id/update": withAdminAuth(semesterUpdateRoutes),
 
     // Teachers
-    "/api/admin/teachers": teacherRoutes,
-    "/api/admin/teachers/:id/status": teacherStatusRoutes,
-    "/api/admin/teachers/:id/unlock": teacherUnlockRoutes,
-    "/api/admin/teachers/:id/reset-password": teacherResetPasswordRoutes,
+    "/api/admin/teachers": withAdminAuth(teacherRoutes),
+    "/api/admin/teachers/:id/status": withAdminAuth(teacherStatusRoutes),
+    "/api/admin/teachers/:id/unlock": withAdminAuth(teacherUnlockRoutes),
+    "/api/admin/teachers/:id/reset-password": withAdminAuth(teacherResetPasswordRoutes),
 
     // Assistants
-    "/api/admin/assistants": assistantRoutes,
-    "/api/admin/assistants/:id/status": assistantStatusRoutes,
-    "/api/admin/assistants/:id/unlock": assistantUnlockRoutes,
-    "/api/admin/assistants/:id/reset-password": assistantResetPasswordRoutes,
-    "/api/admin/assistants/:id": assistantDeleteRoutes,
+    "/api/admin/assistants": withAdminAuth(assistantRoutes),
+    "/api/admin/assistants/:id/status": withAdminAuth(assistantStatusRoutes),
+    "/api/admin/assistants/:id/unlock": withAdminAuth(assistantUnlockRoutes),
+    "/api/admin/assistants/:id/reset-password": withAdminAuth(assistantResetPasswordRoutes),
+    "/api/admin/assistants/:id": withAdminAuth(assistantDeleteRoutes),
 
     // Classes
-    "/api/admin/classes": classRoutes,
-    "/api/admin/classes/:id": classUpdateRoutes,
+    "/api/admin/classes": withAdminAuth(classRoutes),
+    "/api/admin/classes/:id": withAdminAuth(classUpdateRoutes),
 
     // Students
-    "/api/admin/students": studentRoutes,
-    "/api/admin/students/:id/status": studentStatusRoutes,
-    "/api/admin/students/:id/reset-password": studentResetPasswordRoutes,
-    "/api/admin/students/:id/transfer": studentTransferRoutes,
-    "/api/admin/students/:id/experiments": studentExperimentsRoutes,
+    "/api/admin/students": withAdminAuth(studentRoutes),
+    "/api/admin/students/:id/status": withAdminAuth(studentStatusRoutes),
+    "/api/admin/students/:id/reset-password": withAdminAuth(studentResetPasswordRoutes),
+    "/api/admin/students/:id/transfer": withAdminAuth(studentTransferRoutes),
+    "/api/admin/students/:id/experiments": withAdminAuth(studentExperimentsRoutes),
 
     // Announcements
-    "/api/admin/announcements": announcementRoutes,
-    "/api/admin/announcements/:id": announcementUpdateRoutes,
-    "/api/admin/announcements/:id/publish": announcementPublishRoutes,
-    "/api/admin/announcements/:id/unpublish": announcementUnpublishRoutes,
-    "/api/admin/announcements/:id/stats": announcementStatsRoutes,
+    "/api/admin/announcements": withAdminAuth(announcementRoutes),
+    "/api/admin/announcements/:id": withAdminAuth(announcementUpdateRoutes),
+    "/api/admin/announcements/:id/publish": withAdminAuth(announcementPublishRoutes),
+    "/api/admin/announcements/:id/unpublish": withAdminAuth(announcementUnpublishRoutes),
+    "/api/admin/announcements/:id/stats": withAdminAuth(announcementStatsRoutes),
 
     // System
-    "/api/admin/system/metrics": systemMetricsRoutes,
-    "/api/admin/system/logs": systemLogsRoutes,
-    "/api/admin/settings": systemSettingsRoutes,
+    "/api/admin/system/metrics": withAdminAuth(systemMetricsRoutes),
+    "/api/admin/system/logs": withAdminAuth(systemLogsRoutes),
+    "/api/admin/settings": withAdminAuth(systemSettingsRoutes),
+    "/api/admin/backup": withAdminAuth(backupCreateRoutes),
+    "/api/admin/restore": withAdminAuth(backupRestoreRoutes),
 };

@@ -16,8 +16,10 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { studentApi, classApi, type Student, type Class, type StudentExperiment } from "../api-client";
+import { useLocation } from "react-router-dom";
 
 export function StudentManagement() {
+    const location = useLocation();
     const [students, setStudents] = useState<Student[]>([]);
     const [classes, setClasses] = useState<Class[]>([]);
     const [loading, setLoading] = useState(true);
@@ -37,6 +39,14 @@ export function StudentManagement() {
     useEffect(() => {
         loadInitialData();
     }, []);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const classId = params.get("classId");
+        if (classId) {
+            setFilterClass(classId);
+        }
+    }, [location.search]);
 
     useEffect(() => {
         loadStudents();
