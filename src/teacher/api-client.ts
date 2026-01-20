@@ -46,6 +46,32 @@ export interface Topic {
     createdAt: string;
 }
 
+export interface TopicAttachment {
+    id: number;
+    topicId: number;
+    fileName: string;
+    filePath: string;
+    fileType: string;
+    fileSize: number;
+    createdAt: string;
+}
+
+export interface TopicRecommendQuestion {
+    id: number;
+    topicId: number;
+    questionType: number;
+    content: string;
+    options?: any;
+    sortOrder: number;
+}
+
+export interface TopicDetail {
+    topic: any;
+    attachments: TopicAttachment[];
+    recommendQuestions: TopicRecommendQuestion[];
+    excelInfo?: { columns: string[]; preview: any[] } | null;
+}
+
 export interface Task {
     id: number;
     topic: string; // name
@@ -73,12 +99,18 @@ export interface SubmissionDetail extends GradingItem {
     reportContent: string;
     samplePlan: any;
     questionnaire: any;
+    samplingResults?: any;
+    questionnairePdfPath?: string | null;
+    reportPdfPath?: string | null;
     scoreQuestionnaire: number | null;
     scoreProcess: number | null;
     scoreReport: number | null;
     totalScore: number | null;
     teacherComment: string | null;
     gradedAt: string | null;
+    rejectReason?: string | null;
+    weights?: { questionnaire: number; process: number; report: number };
+    readonly?: boolean;
 }
 
 export interface Student {
@@ -97,6 +129,8 @@ export interface Assistant {
     email: string;
     assignedClasses: string[]; // names
     assignedClassIds: number[];
+    status?: number;
+    lastLogin?: string | null;
 }
 
 export interface TeacherUser {
@@ -104,6 +138,48 @@ export interface TeacherUser {
     employeeId: string;
     name: string;
     isFirstLogin: number;
+}
+
+export interface TeacherNotification {
+    id: number;
+    type: string;
+    title: string;
+    content: string;
+    isRead: number;
+    createdAt: string;
+    relatedType: string | null;
+    relatedId: number | null;
+}
+
+export interface TeacherNotificationsResponse {
+    notifications: TeacherNotification[];
+    unreadCount: number;
+}
+
+export interface GradeExportPreviewItem {
+    taskId: number;
+    topicId: number;
+    topic: string;
+    classId: number;
+    className: string;
+    graded: number;
+    total: number;
+    avgScore: number;
+}
+
+export interface GradeExportRow {
+    studentId: string;
+    name: string;
+    className: string;
+    topicName: string;
+    submittedAt: string;
+    scoreQuestionnaire: string | number;
+    scoreProcess: string | number;
+    scoreReport: string | number;
+    totalScore: string | number;
+    status: string;
+    gradedAt: string;
+    gradedBy: string;
 }
 
 // ============================================================
@@ -167,6 +243,7 @@ export const teacherApi = {
 
     // Topics
     getTopics: () => request<Topic[]>("/api/teacher/topics"),
+        getTopicDetail: (id: number) => request<TopicDetail>(`/api/teacher/topics/${id}/detail`),
     createTopic: (data: { name: string; description?: string }) =>
         request<{ id: number }>("/api/teacher/topics", {
             method: "POST",
@@ -181,6 +258,69 @@ export const teacherApi = {
         request<{ success: boolean }>(`/api/teacher/topics/${id}`, {
             method: "DELETE"
         }),
+        uploadTopicExcel: async (id: number, file: File) => {
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+                const res = await fetch(`/api/teacher/topics/${id}/excel`, {
+                    method: "POST",
+                    body: formData,
+                    credentials: "include",
+                });
+                const data = await res.json();
+                return data as ApiResponse<{ filePath: string; rowCount: number; colCount: number; columns: string[]; preview: any[] }>; 
+            } catch (error) {
+                return {
+                    success: false,
+                    error: {
+                        code: "NETWORK_ERROR",
+                        message: error instanceof Error ? error.message : "网络请求失败",
+                    },
+                };
+            }
+        },
+        updateFieldMapping: (id: number, fieldMapping: any) =>
+            request<{ success: boolean }>(`/api/teacher/topics/${id}/mapping`, {
+                method: "PUT",
+                body: JSON.stringify({ fieldMapping })
+            }),
+        uploadAttachment: async (id: number, file: File) => {
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+                const res = await fetch(`/api/teacher/topics/${id}/attachments`, {
+                    method: "POST",
+                    body: formData,
+                    credentials: "include",
+                });
+                const data = await res.json();
+                return data as ApiResponse<{ id: number; filePath: string }>; 
+            } catch (error) {
+                return {
+                    success: false,
+                    error: {
+                        code: "NETWORK_ERROR",
+                        message: error instanceof Error ? error.message : "网络请求失败",
+                    },
+                };
+            }
+        },
+        deleteAttachment: (topicId: number, attachmentId: number) =>
+            request<{ success: boolean }>(`/api/teacher/topics/${topicId}/attachments/${attachmentId}`, {
+                method: "DELETE"
+            }),
+        updateRecommendQuestions: (id: number, items: Array<{ questionType: number; content: string; options?: any; sortOrder?: number }>) =>
+            request<{ success: boolean }>(`/api/teacher/topics/${id}/recommend-questions`, {
+                method: "PUT",
+                body: JSON.stringify({ items })
+            }),
+        updateWeightConfig: (id: number, weightConfig: { questionnaire: number; process: number; report: number }) =>
+            request<{ success: boolean }>(`/api/teacher/topics/${id}/weights`, {
+                method: "PUT",
+                body: JSON.stringify({ weightConfig })
+            }),
+        copyTopic: (id: number) =>
+            request<{ id: number }>(`/api/teacher/topics/${id}/copy`, { method: "POST" }),
 
     // Tasks
     getTasks: () => request<Task[]>("/api/teacher/tasks"),
@@ -188,6 +328,11 @@ export const teacherApi = {
         request<{ success: boolean }>("/api/teacher/tasks", {
             method: "POST",
             body: JSON.stringify(data)
+        }),
+    extendTaskDeadline: (taskId: number, deadline: string) =>
+        request<{ success: boolean }>(`/api/teacher/tasks/${taskId}/extend`, {
+            method: "PUT",
+            body: JSON.stringify({ deadline })
         }),
 
     // Grading
@@ -263,14 +408,42 @@ export const teacherApi = {
             body: JSON.stringify(data)
         }),
 
+    updateAssistant: (id: number, data: { action: "reset_password" | "toggle_status" | "delete" }) =>
+        request<{ success: boolean }>(`/api/teacher/assistants/${id}`, {
+            method: "PUT",
+            body: JSON.stringify(data)
+        }),
+
     deleteAssistant: (id: number) =>
         request<{ success: boolean }>(`/api/teacher/assistants/${id}`, {
             method: "DELETE"
         }),
 
-    assignClasses: (id: number, classIds: number[]) =>
+    assignClasses: (id: number, classIds: number[], force?: boolean) =>
         request<{ success: boolean }>(`/api/teacher/assistants/${id}/classes`, {
             method: "POST",
-            body: JSON.stringify({ classIds })
+            body: JSON.stringify({ classIds, force })
         }),
+
+    // Notifications
+    getNotifications: () => request<TeacherNotificationsResponse>("/api/teacher/notifications"),
+    readNotification: (id: number) =>
+        request<{ success: boolean }>(`/api/teacher/notifications/${id}/read`, { method: "PUT" }),
+    readAllNotifications: () =>
+        request<{ success: boolean }>("/api/teacher/notifications/read-all", { method: "PUT" }),
+
+    // Grade export
+    getGradeExportPreview: (params: { classId?: number | string; topicId?: number | string }) => {
+        const search = new URLSearchParams();
+        if (params.classId !== undefined) search.set("classId", String(params.classId));
+        if (params.topicId !== undefined) search.set("topicId", String(params.topicId));
+        return request<GradeExportPreviewItem[]>(`/api/teacher/grade-export/preview?${search.toString()}`);
+    },
+    getGradeExportData: (params: { classId?: number | string; topicId?: number | string; taskId?: number | string }) => {
+        const search = new URLSearchParams();
+        if (params.classId !== undefined) search.set("classId", String(params.classId));
+        if (params.topicId !== undefined) search.set("topicId", String(params.topicId));
+        if (params.taskId !== undefined) search.set("taskId", String(params.taskId));
+        return request<GradeExportRow[]>(`/api/teacher/grade-export/data?${search.toString()}`);
+    },
 };

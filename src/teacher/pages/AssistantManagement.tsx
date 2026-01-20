@@ -24,6 +24,8 @@ export function AssistantManagement() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [showUnbindConfirm, setShowUnbindConfirm] = useState(false);
+    const [pendingAssign, setPendingAssign] = useState<{ assistantId: number; classIds: number[] } | null>(null);
 
     // Form states
     const [newAssistant, setNewAssistant] = useState({ name: "", studentId: "" });
@@ -67,8 +69,11 @@ export function AssistantManagement() {
         if (res.success) {
             setShowAssignModal(false);
             loadData();
+        } else if (res.error?.code === "HAS_DRAFTS") {
+            setPendingAssign({ assistantId: selectedAssistant.id, classIds: selectedClassIds });
+            setShowUnbindConfirm(true);
         } else {
-            alert("分配失败");
+            alert("分配失败: " + res.error?.message);
         }
     }
 
@@ -123,12 +128,44 @@ export function AssistantManagement() {
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
+                                    {ta.status === 1 ? (
+                                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
+                                    ) : (
+                                        <Badge variant="secondary">已停用</Badge>
+                                    )}
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex gap-2">
                                         <Button variant="ghost" size="sm" className="text-primary" onClick={() => openAssignModal(ta)}>
                                             分配班级
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={async () => {
+                                                const res = await teacherApi.updateAssistant(ta.id, { action: "reset_password" });
+                                                if (res.success) {
+                                                    alert("密码已重置为助教账号");
+                                                } else {
+                                                    alert("重置失败: " + res.error?.message);
+                                                }
+                                            }}
+                                        >
+                                            重置密码
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={async () => {
+                                                const res = await teacherApi.updateAssistant(ta.id, { action: "toggle_status" });
+                                                if (res.success) {
+                                                    loadData();
+                                                } else {
+                                                    alert("操作失败: " + res.error?.message);
+                                                }
+                                            }}
+                                        >
+                                            {ta.status === 1 ? "停用" : "启用"}
                                         </Button>
                                         <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteId(ta.id)}>
                                             移除
@@ -221,6 +258,36 @@ export function AssistantManagement() {
                     <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">确认移除</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={showUnbindConfirm} onOpenChange={(open) => !open && setShowUnbindConfirm(false)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>解绑确认</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            该助教在被移除的班级存在批改草稿，解绑后草稿将保留但无法继续批改。确定解绑吗？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setShowUnbindConfirm(false)}>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={async () => {
+                                if (!pendingAssign) return;
+                                const res = await teacherApi.assignClasses(pendingAssign.assistantId, pendingAssign.classIds, true);
+                                if (res.success) {
+                                    setShowUnbindConfirm(false);
+                                    setPendingAssign(null);
+                                    setShowAssignModal(false);
+                                    loadData();
+                                } else {
+                                    alert("操作失败: " + res.error?.message);
+                                }
+                            }}
+                        >
+                            确认解绑
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

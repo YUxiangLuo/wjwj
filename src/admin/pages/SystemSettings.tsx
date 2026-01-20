@@ -49,6 +49,8 @@ export function SystemSettings() {
         maxLoginAttempts: 5,
         lockDurationMinutes: 30,
         adminSessionTimeout: 30,
+        teacherSessionTimeout: 120,
+        studentSessionTimeout: 240,
         experimentTimeLimit: 120,
         autoSaveInterval: 5,
         requireApproval: true,
@@ -85,6 +87,8 @@ export function SystemSettings() {
                     maxLoginAttempts: data["login.max_fail_count"] ?? data.maxLoginAttempts ?? prev.maxLoginAttempts,
                     lockDurationMinutes: data["login.lock_duration_minutes"] ?? data.lockDurationMinutes ?? prev.lockDurationMinutes,
                     adminSessionTimeout: data["session.admin_timeout_minutes"] ?? data.adminSessionTimeout ?? prev.adminSessionTimeout,
+                    teacherSessionTimeout: data["session.teacher_timeout_minutes"] ?? data.teacherSessionTimeout ?? prev.teacherSessionTimeout,
+                    studentSessionTimeout: data["session.student_timeout_minutes"] ?? data.studentSessionTimeout ?? prev.studentSessionTimeout,
                     experimentTimeLimit: data.experiment_time_limit ?? data.experimentTimeLimit ?? prev.experimentTimeLimit,
                     autoSaveInterval: data.auto_save_interval ?? data.autoSaveInterval ?? prev.autoSaveInterval,
                     requireApproval: data.require_approval ?? data.requireApproval ?? prev.requireApproval,
@@ -112,6 +116,8 @@ export function SystemSettings() {
                 "login.max_fail_count": settings.maxLoginAttempts,
                 "login.lock_duration_minutes": settings.lockDurationMinutes,
                 "session.admin_timeout_minutes": settings.adminSessionTimeout,
+                "session.teacher_timeout_minutes": settings.teacherSessionTimeout,
+                "session.student_timeout_minutes": settings.studentSessionTimeout,
                 experiment_time_limit: settings.experimentTimeLimit,
                 auto_save_interval: settings.autoSaveInterval,
                 require_approval: settings.requireApproval,
@@ -402,6 +408,26 @@ export function SystemSettings() {
                                         className="w-32"
                                         value={settings.adminSessionTimeout}
                                         onChange={(e) => setSettings({ ...settings, adminSessionTimeout: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="teacherSessionTimeout">教师会话超时时间（分钟）</Label>
+                                    <Input
+                                        id="teacherSessionTimeout"
+                                        type="number"
+                                        className="w-32"
+                                        value={settings.teacherSessionTimeout}
+                                        onChange={(e) => setSettings({ ...settings, teacherSessionTimeout: parseInt(e.target.value) || 0 })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="studentSessionTimeout">学生会话超时时间（分钟）</Label>
+                                    <Input
+                                        id="studentSessionTimeout"
+                                        type="number"
+                                        className="w-32"
+                                        value={settings.studentSessionTimeout}
+                                        onChange={(e) => setSettings({ ...settings, studentSessionTimeout: parseInt(e.target.value) || 0 })}
                                     />
                                 </div>
                                 <div className="pt-2">

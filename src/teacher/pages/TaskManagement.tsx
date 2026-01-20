@@ -14,6 +14,9 @@ export function TaskManagement() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [showPublishModal, setShowPublishModal] = useState(false);
+    const [showExtendModal, setShowExtendModal] = useState(false);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [extendDeadline, setExtendDeadline] = useState("");
 
     // Data for modal
     const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
@@ -74,6 +77,19 @@ export function TaskManagement() {
         }
     }
 
+    async function handleExtendDeadline() {
+        if (!selectedTask || !extendDeadline) return;
+        const res = await teacherApi.extendTaskDeadline(selectedTask.id, extendDeadline);
+        if (res.success) {
+            setShowExtendModal(false);
+            setSelectedTask(null);
+            setExtendDeadline("");
+            loadTasks();
+        } else {
+            alert("延长失败: " + res.error?.message);
+        }
+    }
+
     const toggleClass = (id: number) => {
         setSelectedClassIds(prev =>
             prev.includes(id) ? prev.filter(cid => cid !== id) : [...prev, id]
@@ -121,7 +137,17 @@ export function TaskManagement() {
                                     <TableCell>
                                         <div className="flex gap-2">
                                             <Button variant="ghost" size="sm" className="text-primary">查看进度</Button>
-                                            <Button variant="ghost" size="sm">延长时间</Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedTask(task);
+                                                    setExtendDeadline("");
+                                                    setShowExtendModal(true);
+                                                }}
+                                            >
+                                                延长时间
+                                            </Button>
                                             <Button variant="ghost" size="sm" className="text-destructive">进入批改</Button>
                                         </div>
                                     </TableCell>
@@ -180,6 +206,32 @@ export function TaskManagement() {
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowPublishModal(false)}>取消</Button>
                         <Button onClick={handlePublish}>确认发布</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showExtendModal} onOpenChange={setShowExtendModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>延长截止时间</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="text-sm text-muted-foreground">
+                            {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="extendDeadline">新截止时间</Label>
+                            <Input
+                                id="extendDeadline"
+                                type="datetime-local"
+                                value={extendDeadline}
+                                onChange={e => setExtendDeadline(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowExtendModal(false)}>取消</Button>
+                        <Button onClick={handleExtendDeadline}>确认延长</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

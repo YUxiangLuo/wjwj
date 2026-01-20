@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import "./teacher.css";
-import { authApi, type TeacherUser } from "./api-client";
+import { authApi, teacherApi, type TeacherNotification, type TeacherUser } from "./api-client";
 
 import { Dashboard } from "./pages/Dashboard";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -29,7 +29,7 @@ const menuItems = [
     { path: "/class", label: "班级管理", icon: School },
     { path: "/topic", label: "课题管理", icon: BookOpen },
     { path: "/task", label: "任务管理", icon: ClipboardList },
-    { path: "/grading", label: "作业批改", icon: PenLine, badge: 12 },
+    { path: "/grading", label: "作业批改", icon: PenLine },
     { path: "/assistant", label: "助教管理", icon: Users },
     { path: "/export", label: "成绩导出", icon: Download },
 ];
@@ -59,6 +59,10 @@ export function TeacherApp() {
     const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
     const [passwordSaving, setPasswordSaving] = useState(false);
     const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState<TeacherNotification[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [pendingGradingCount, setPendingGradingCount] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -99,6 +103,24 @@ export function TeacherApp() {
         }
     }, [isLoginPage, authState]);
 
+    useEffect(() => {
+        if (authState !== "authed") return;
+        let cancelled = false;
+        teacherApi.getStats().then((res) => {
+            if (cancelled) return;
+            if (res.success && res.data?.stats) {
+                const pending = res.data.stats.find((item) => item.label === "待批改作业")?.value ?? 0;
+                setPendingGradingCount(pending);
+            }
+        }).catch(() => {
+            if (cancelled) return;
+            setPendingGradingCount(0);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [authState]);
+
     const handleLogout = async () => {
         try {
             await authApi.logout();
@@ -109,14 +131,30 @@ export function TeacherApp() {
         }
     };
 
+    const loadNotifications = async () => {
+        const res = await teacherApi.getNotifications();
+        if (res.success && res.data) {
+            setNotifications(res.data.notifications);
+            setUnreadCount(res.data.unreadCount);
+        }
+    };
+
     const handleChangePassword = async () => {
         setPasswordError(null);
         if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
             setPasswordError("请填写完整信息");
             return;
         }
-        if (passwordForm.newPassword.length < 6) {
-            setPasswordError("新密码长度至少为6位");
+        if (passwordForm.newPassword.length < 8) {
+            setPasswordError("新密码长度至少为8位");
+            return;
+        }
+        if (!/[A-Za-z]/.test(passwordForm.newPassword) || !/\d/.test(passwordForm.newPassword) || !/[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword)) {
+            setPasswordError("新密码需包含字母、数字和特殊字符");
+            return;
+        }
+        if (teacherUser?.employeeId && passwordForm.newPassword.includes(teacherUser.employeeId)) {
+            setPasswordError("新密码不能包含工号");
             return;
         }
         if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -196,8 +234,10 @@ export function TeacherApp() {
                             >
                                 <Icon className="w-4 h-4" />
                                 <span>{item.label}</span>
-                                {item.badge && (
-                                    <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5">{item.badge}</Badge>
+                                {item.path === "/grading" && pendingGradingCount > 0 && (
+                                    <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5">
+                                        {pendingGradingCount}
+                                    </Badge>
                                 )}
                             </NavLink>
                         );
@@ -225,9 +265,21 @@ export function TeacherApp() {
                 <header className="bg-background px-8 py-4 border-b flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-foreground">{pageTitle}</h2>
                     <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="sm" className="relative">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="relative"
+                            onClick={async () => {
+                                await loadNotifications();
+                                setShowNotifications(true);
+                            }}
+                        >
                             <Bell className="w-5 h-5" />
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-xs rounded-full flex items-center justify-center">2</span>
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-xs rounded-full flex items-center justify-center">
+                                    {Math.min(unreadCount, 9)}
+                                </span>
+                            )}
                         </Button>
                         <span className="text-sm text-muted-foreground">
                             {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}
@@ -311,6 +363,55 @@ export function TeacherApp() {
                             {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             保存
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>通知</DialogTitle>
+                        <DialogDescription>最近通知</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3 max-h-[360px] overflow-y-auto">
+                        {notifications.length === 0 ? (
+                            <div className="text-sm text-muted-foreground text-center py-6">暂无通知</div>
+                        ) : (
+                            notifications.map((item) => (
+                                <div key={item.id} className="border rounded-md p-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className={`text-sm font-medium ${item.isRead ? "text-foreground" : "text-primary"}`}>{item.title}</div>
+                                        <span className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</span>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground mt-1">{item.content}</div>
+                                    {!item.isRead && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="mt-2"
+                                            onClick={async () => {
+                                                await teacherApi.readNotification(item.id);
+                                                loadNotifications();
+                                            }}
+                                        >
+                                            标记已读
+                                        </Button>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                await teacherApi.readAllNotifications();
+                                loadNotifications();
+                            }}
+                        >
+                            全部已读
+                        </Button>
+                        <Button onClick={() => setShowNotifications(false)}>关闭</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

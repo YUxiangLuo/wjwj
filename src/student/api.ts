@@ -18,6 +18,7 @@ import {
     class_,
     userSession,
     loginLog,
+    systemConfig,
 } from "../db/schema";
 import { eq, desc, and, sql, isNull, count } from "drizzle-orm";
 
@@ -88,6 +89,20 @@ const STUDENT_SESSION_COOKIE = "student_session";
 const STUDENT_SESSION_TTL_MINUTES = 240; // 4 hours
 const STUDENT_MAX_LOGIN_ATTEMPTS = 5;
 const STUDENT_LOCK_MINUTES = 30;
+
+async function getConfigNumber(key: string, fallback: number) {
+    const [row] = await db
+        .select({ value: systemConfig.configValue, valueType: systemConfig.valueType })
+        .from(systemConfig)
+        .where(eq(systemConfig.configKey, key))
+        .limit(1);
+
+    if (!row) return fallback;
+    if (row.valueType === "number") return Number(row.value);
+    if (row.valueType === "boolean") return row.value === "true" ? 1 : 0;
+    const parsed = Number(row.value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
 
 function getCookieValue(req: Request, name: string): string | null {
     const cookie = req.headers.get("cookie") ?? "";
@@ -165,6 +180,12 @@ async function getCurrentStudent(req: Request) {
                 await db.delete(userSession).where(eq(userSession.sessionToken, sessionToken));
                 return null;
             }
+            const sessionTtlMinutes = await getConfigNumber("session.student_timeout_minutes", STUDENT_SESSION_TTL_MINUTES);
+            const now = new Date();
+            const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+            await db.update(userSession)
+                .set({ lastActiveAt: now, expiresAt: newExpiresAt })
+                .where(eq(userSession.id, session.id));
             // 查询学生信息
             const [s] = await db
                 .select({
@@ -205,6 +226,8 @@ const loginRoutes: RouteDefinition = {
         }
 
         const now = new Date();
+        const maxAttempts = await getConfigNumber("login.max_fail_count", STUDENT_MAX_LOGIN_ATTEMPTS);
+        const lockMinutes = await getConfigNumber("login.lock_duration_minutes", STUDENT_LOCK_MINUTES);
         if (s.lockedUntil && new Date(s.lockedUntil) > now) {
             return error("账号已被锁定，请稍后重试", "ACCOUNT_LOCKED", 403);
         }
@@ -213,13 +236,13 @@ const loginRoutes: RouteDefinition = {
         if (!isValid) {
             const failCount = (s.loginFailCount ?? 0) + 1;
             const updateData: any = { loginFailCount: failCount };
-            if (failCount >= STUDENT_MAX_LOGIN_ATTEMPTS) {
-                updateData.lockedUntil = new Date(now.getTime() + STUDENT_LOCK_MINUTES * 60 * 1000);
+            if (failCount >= maxAttempts) {
+                updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
             }
             await db.update(student).set(updateData).where(eq(student.id, s.id));
             return error(
-                failCount >= STUDENT_MAX_LOGIN_ATTEMPTS
-                    ? `账号或密码错误，已锁定${STUDENT_LOCK_MINUTES}分钟`
+                failCount >= maxAttempts
+                    ? `账号或密码错误，已锁定${lockMinutes}分钟`
                     : "账号或密码错误",
                 "INVALID_CREDENTIALS",
                 401
@@ -233,7 +256,8 @@ const loginRoutes: RouteDefinition = {
         await db.update(student).set({ loginFailCount: 0, lockedUntil: null }).where(eq(student.id, s.id));
 
         const token = crypto.randomUUID();
-        const expiresAt = new Date(now.getTime() + STUDENT_SESSION_TTL_MINUTES * 60 * 1000);
+        const sessionTtlMinutes = await getConfigNumber("session.student_timeout_minutes", STUDENT_SESSION_TTL_MINUTES);
+        const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
 
         // 单设备登录：清理旧 session
         await db.delete(userSession).where(and(eq(userSession.userType, STUDENT_USER_TYPE), eq(userSession.userId, s.id)));
@@ -740,9 +764,27 @@ const experimentRoutes: RouteDefinition = {
             return error("实验记录不存在", "NOT_FOUND", 404);
         }
 
+        // 检查任务开放与截止
+        const [taskInfo] = await db
+            .select({ openTime: task.openTime, deadline: task.deadline })
+            .from(task)
+            .where(eq(task.id, taskId));
+
+        if (taskInfo?.openTime && new Date(taskInfo.openTime) > new Date()) {
+            return error("任务尚未开放", "TASK_NOT_OPEN");
+        }
+
+        const deadline = taskInfo?.deadline ? new Date(taskInfo.deadline) : null;
+        const deadlinePassed = !!deadline && Date.now() > deadline.getTime();
+
         // 检查是否可以编辑（未提交或被驳回）
         if (exp.status !== ExperimentStatus.IN_PROGRESS && exp.status !== ExperimentStatus.REJECTED) {
             return error("实验已提交，无法修改", "ALREADY_SUBMITTED");
+        }
+
+        // 截止后被驳回不可继续修改
+        if (exp.status === ExperimentStatus.REJECTED && deadlinePassed) {
+            return error("任务已截止，无法重新提交", "TASK_DEADLINE");
         }
 
         // 构建更新数据
@@ -752,6 +794,9 @@ const experimentRoutes: RouteDefinition = {
         };
 
         if (body.currentStage !== undefined) {
+            if (deadlinePassed && body.currentStage > exp.currentStage) {
+                return error("任务已截止，无法进入下一阶段", "TASK_DEADLINE");
+            }
             updates.currentStage = body.currentStage;
 
             // 记录阶段完成时间
@@ -1073,6 +1118,25 @@ const submitRoutes: RouteDefinition = {
 
         if (!exp) {
             return error("实验记录不存在", "NOT_FOUND", 404);
+        }
+
+        // 检查任务开放与截止
+        const [taskInfo] = await db
+            .select({ openTime: task.openTime, deadline: task.deadline })
+            .from(task)
+            .where(eq(task.id, taskId));
+
+        if (taskInfo?.openTime && new Date(taskInfo.openTime) > new Date()) {
+            return error("任务尚未开放", "TASK_NOT_OPEN");
+        }
+
+        if (taskInfo?.deadline) {
+            const deadline = new Date(taskInfo.deadline).getTime();
+            const now = Date.now();
+            const grace = 30 * 1000;
+            if (now > deadline + grace) {
+                return error("任务已截止，无法提交", "TASK_DEADLINE");
+            }
         }
 
         // 检查是否可以提交

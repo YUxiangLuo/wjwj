@@ -27,9 +27,15 @@ const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
 function getDaysRemaining(deadline: string | null): number | null {
     if (!deadline) return null;
     const now = new Date();
-    const end = new Date(deadline);
+    const end = new Date(`${deadline}T23:59:59`);
     const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return diff;
+}
+
+function isDeadlinePassed(deadline: string | null) {
+    if (!deadline) return false;
+    const end = new Date(`${deadline}T23:59:59`).getTime();
+    return Date.now() > end;
 }
 
 function DeadlineDisplay({ deadline, status }: { deadline: string | null; status: TaskStatus }) {
@@ -70,6 +76,7 @@ interface TaskCardProps {
 
 function TaskCard({ task }: TaskCardProps) {
     const status = statusConfig[task.status];
+    const deadlinePassed = isDeadlinePassed(task.deadline);
 
     const getActionButton = () => {
         switch (task.status) {
@@ -88,6 +95,7 @@ function TaskCard({ task }: TaskCardProps) {
     };
 
     const action = getActionButton();
+    const disabled = deadlinePassed && ["not_started", "in_progress", "rejected"].includes(task.status);
 
     return (
         <Card className="hover:shadow-lg transition-shadow">
@@ -142,15 +150,19 @@ function TaskCard({ task }: TaskCardProps) {
                     </div>
 
                     {/* Action button */}
-                    <Link to={`/task/${task.id}`} className="w-full">
+                    <Link to={`/task/${task.id}`} className={`w-full ${disabled ? "pointer-events-none" : ""}`}>
                         <Button
                             className="w-full"
                             variant={action.variant}
+                            disabled={disabled}
                         >
                             {action.text}
                             <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                     </Link>
+                    {disabled && (
+                        <div className="text-xs text-muted-foreground text-center">已截止，无法继续操作</div>
+                    )}
                 </div>
             </CardContent>
         </Card>

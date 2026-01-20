@@ -85,7 +85,8 @@ export function TopicDetails() {
     }
 
     const status = statusConfig[task.status];
-    const canStartExperiment = ["not_started", "in_progress", "rejected"].includes(task.status);
+    const deadlinePassed = task.deadline ? Date.now() > new Date(`${task.deadline}T23:59:59`).getTime() : false;
+    const canStartExperiment = ["not_started", "in_progress", "rejected"].includes(task.status) && !deadlinePassed;
 
     const getActionButton = () => {
         switch (task.status) {
@@ -235,12 +236,15 @@ export function TopicDetails() {
             <div className="flex justify-end">
                 {action.link ? (
                     <Link to={action.link}>
-                        <Button size="lg">{action.text}</Button>
+                        <Button size="lg" disabled={!canStartExperiment}>{action.text}</Button>
                     </Link>
                 ) : (
                     <Button size="lg">{action.text}</Button>
                 )}
             </div>
+            {!canStartExperiment && ["not_started", "in_progress", "rejected"].includes(task.status) && (
+                <div className="text-sm text-muted-foreground text-right">任务已截止，无法继续操作</div>
+            )}
         </div>
     );
 }

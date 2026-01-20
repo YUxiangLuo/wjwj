@@ -44,7 +44,12 @@ async function seed() {
     const configs = [
         { key: "system_name", value: "Academic Research Platform", desc: "System Name" },
         { key: "allow_student_login", value: "true", valueType: "boolean", desc: "Allow student login switch" },
-        { key: "max_upload_size", value: "10", valueType: "number", desc: "Max upload size in MB" }
+        { key: "max_upload_size", value: "10", valueType: "number", desc: "Max upload size in MB" },
+        { key: "login.max_fail_count", value: "5", valueType: "number", desc: "Max login fail attempts" },
+        { key: "login.lock_duration_minutes", value: "30", valueType: "number", desc: "Account lock duration minutes" },
+        { key: "session.admin_timeout_minutes", value: "30", valueType: "number", desc: "Admin session timeout" },
+        { key: "session.teacher_timeout_minutes", value: "120", valueType: "number", desc: "Teacher session timeout" },
+        { key: "session.student_timeout_minutes", value: "240", valueType: "number", desc: "Student session timeout" }
     ];
 
     for (const c of configs) {
@@ -53,7 +58,7 @@ async function seed() {
             configValue: c.value,
             valueType: c.valueType,
             description: c.desc
-        }).onDuplicateKeyUpdate({ set: { configValue: c.value } });
+        }).onDuplicateKeyUpdate({ set: { configValue: c.value, valueType: c.valueType } });
     }
 
     // Admin
