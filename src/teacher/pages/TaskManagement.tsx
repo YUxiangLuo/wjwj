@@ -114,9 +114,8 @@ export function TaskManagement() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        {/* Mock pending count for now as API doesn't return it yet in list view efficiently */}
                                         <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-                                            0
+                                            {task.pending ?? 0}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>

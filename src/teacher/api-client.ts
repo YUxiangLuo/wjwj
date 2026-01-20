@@ -54,6 +54,7 @@ export interface Task {
     deadline: string | null;
     total: number;
     completed: number;
+    pending: number;
 }
 
 export interface GradingItem {
@@ -98,6 +99,13 @@ export interface Assistant {
     assignedClassIds: number[];
 }
 
+export interface TeacherUser {
+    id: number;
+    employeeId: string;
+    name: string;
+    isFirstLogin: number;
+}
+
 // ============================================================
 // API Client
 // ============================================================
@@ -112,6 +120,7 @@ async function request<T>(
                 "Content-Type": "application/json",
                 ...options?.headers,
             },
+            credentials: "include",
             ...options,
         });
 
@@ -127,6 +136,27 @@ async function request<T>(
         };
     }
 }
+
+export const authApi = {
+    login: (data: { employeeId: string; password: string }) =>
+        request<{ user: TeacherUser; expiresAt: string }>("/api/teacher/login", {
+            method: "POST",
+            body: JSON.stringify(data)
+        }),
+
+    me: () => request<TeacherUser>("/api/teacher/me"),
+
+    logout: () =>
+        request<{ ok: boolean }>("/api/teacher/logout", {
+            method: "POST",
+        }),
+
+    changePassword: (data: { currentPassword: string; newPassword: string }) =>
+        request<{ success: boolean }>("/api/teacher/password", {
+            method: "PUT",
+            body: JSON.stringify(data),
+        }),
+};
 
 export const teacherApi = {
     // Dashboard
@@ -199,6 +229,30 @@ export const teacherApi = {
         request<{ success: boolean }>(`/api/teacher/students/${studentId}`, {
             method: "DELETE"
         }),
+
+    importStudents: async (classId: number, file: File) => {
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch(`/api/teacher/classes/${classId}/students/import`, {
+                method: "POST",
+                body: formData,
+                credentials: "include",
+            });
+
+            const data = await res.json();
+            return data as ApiResponse<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> }>;
+        } catch (error) {
+            return {
+                success: false,
+                error: {
+                    code: "NETWORK_ERROR",
+                    message: error instanceof Error ? error.message : "网络请求失败",
+                },
+            };
+        }
+    },
 
     // Assistant Management
     getAssistants: () => request<Assistant[]>("/api/teacher/assistants"),

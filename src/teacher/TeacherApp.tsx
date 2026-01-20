@@ -1,12 +1,17 @@
+import { useEffect, useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2
 } from "lucide-react";
-import { Routes, Route, NavLink, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import "./teacher.css";
+import { authApi, type TeacherUser } from "./api-client";
 
 import { Dashboard } from "./pages/Dashboard";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -17,6 +22,7 @@ import { GradingManagement } from "./pages/GradingManagement";
 import { GradingDetail } from "./pages/GradingDetail";
 import { AssistantManagement } from "./pages/AssistantManagement";
 import { GradeExport } from "./pages/GradeExport";
+import { Login } from "./pages/Login";
 
 const menuItems = [
     { path: "/", label: "首页概览", icon: LayoutDashboard },
@@ -40,10 +46,123 @@ const pageTitles: Record<string, string> = {
 
 export function TeacherApp() {
     const location = useLocation();
+    const navigate = useNavigate();
     const currentPath = location.pathname;
+    const isLoginPage = currentPath === "/login";
     // Get base path for title (e.g., /class/1/students -> /class)
     const basePath = "/" + (currentPath.split("/")[1] || "");
     const pageTitle = pageTitles[basePath] ?? "教师端";
+
+    const [authChecked, setAuthChecked] = useState(false);
+    const [authLoading, setAuthLoading] = useState(false);
+    const [isAuthed, setIsAuthed] = useState(false);
+    const [teacherUser, setTeacherUser] = useState<TeacherUser | null>(null);
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    const [passwordSaving, setPasswordSaving] = useState(false);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        if (isLoginPage) {
+            setAuthChecked(false);
+            setAuthLoading(false);
+            return;
+        }
+
+        if (authChecked && isAuthed) return;
+
+        setAuthLoading(true);
+        authApi
+            .me()
+            .then((res) => {
+                if (cancelled) return;
+                if (res.success) {
+                    setIsAuthed(true);
+                    setTeacherUser(res.data ?? null);
+                    if (res.data?.isFirstLogin) {
+                        setShowPasswordModal(true);
+                    }
+                } else {
+                    setIsAuthed(false);
+                    navigate("/login", { replace: true });
+                }
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setIsAuthed(false);
+                navigate("/login", { replace: true });
+            })
+            .finally(() => {
+                if (!cancelled) {
+                    setAuthChecked(true);
+                    setAuthLoading(false);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [isLoginPage, navigate, authChecked, isAuthed]);
+
+    const handleLogout = async () => {
+        try {
+            await authApi.logout();
+        } finally {
+            navigate("/login", { replace: true });
+        }
+    };
+
+    const handleChangePassword = async () => {
+        setPasswordError(null);
+        if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+            setPasswordError("请填写完整信息");
+            return;
+        }
+        if (passwordForm.newPassword.length < 6) {
+            setPasswordError("新密码长度至少为6位");
+            return;
+        }
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            setPasswordError("两次输入的新密码不一致");
+            return;
+        }
+
+        setPasswordSaving(true);
+        try {
+            const res = await authApi.changePassword({
+                currentPassword: passwordForm.currentPassword,
+                newPassword: passwordForm.newPassword,
+            });
+            if (res.success) {
+                setShowPasswordModal(false);
+                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                setTeacherUser(prev => (prev ? { ...prev, isFirstLogin: 0 } : prev));
+            } else {
+                setPasswordError(res.error?.message ?? "修改失败");
+            }
+        } catch (err) {
+            setPasswordError(err instanceof Error ? err.message : "修改失败");
+        } finally {
+            setPasswordSaving(false);
+        }
+    };
+
+    if (isLoginPage) {
+        return <Login />;
+    }
+
+    if (authLoading || !authChecked) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
+
+    if (!isAuthed) {
+        return <Navigate to="/login" replace />;
+    }
 
     // Additional logic for dynamic titles could go here if needed
 
@@ -84,11 +203,13 @@ export function TeacherApp() {
                 <div className="p-4">
                     <div className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-primary text-primary-foreground text-sm">张</AvatarFallback>
+                            <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                                {teacherUser?.name?.charAt(0) ?? "师"}
+                            </AvatarFallback>
                         </Avatar>
                         <div>
-                            <div className="text-sm font-medium">张老师</div>
-                            <div className="text-xs text-white/70">T001</div>
+                            <div className="text-sm font-medium">{teacherUser?.name ?? "教师"}</div>
+                            <div className="text-xs text-white/70">{teacherUser?.employeeId ?? ""}</div>
                         </div>
                     </div>
                 </div>
@@ -105,11 +226,18 @@ export function TeacherApp() {
                         <span className="text-sm text-muted-foreground">
                             {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}
                         </span>
+                        <Button variant="ghost" size="sm" onClick={handleLogout} title="退出登录">
+                            <LogOut className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setShowPasswordModal(true)} title="修改密码">
+                            修改密码
+                        </Button>
                     </div>
                 </header>
                 <div className="flex-1 p-8 overflow-y-auto">
                     <Routes>
                         <Route index element={<Dashboard />} />
+                        <Route path="login" element={<Login />} />
                         <Route path="class" element={<ClassManagement />} />
                         <Route path="class/:classId/students" element={<StudentManagement />} />
                         <Route path="topic" element={<TopicManagement />} />
@@ -122,6 +250,64 @@ export function TeacherApp() {
                     </Routes>
                 </div>
             </main>
+
+            <Dialog open={showPasswordModal} onOpenChange={(open) => {
+                if (teacherUser?.isFirstLogin) return;
+                setShowPasswordModal(open);
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{teacherUser?.isFirstLogin ? "首次登录请修改密码" : "修改密码"}</DialogTitle>
+                        <DialogDescription>
+                            为保证账号安全，请设置新密码。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="currentPassword">当前密码</Label>
+                            <Input
+                                id="currentPassword"
+                                type="password"
+                                value={passwordForm.currentPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                autoComplete="current-password"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="newPassword">新密码</Label>
+                            <Input
+                                id="newPassword"
+                                type="password"
+                                value={passwordForm.newPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="confirmPassword">确认新密码</Label>
+                            <Input
+                                id="confirmPassword"
+                                type="password"
+                                value={passwordForm.confirmPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                autoComplete="new-password"
+                            />
+                        </div>
+                        {passwordError && <div className="text-sm text-destructive">{passwordError}</div>}
+                    </div>
+                    <DialogFooter>
+                        {!teacherUser?.isFirstLogin && (
+                            <Button variant="outline" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving}>
+                                取消
+                            </Button>
+                        )}
+                        <Button onClick={handleChangePassword} disabled={passwordSaving}>
+                            {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            保存
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

@@ -29,6 +29,9 @@ export function StudentManagement() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> } | null>(null);
 
     // Add Form State
     const [newStudent, setNewStudent] = useState({ id: "", name: "", email: "" });
@@ -86,6 +89,36 @@ export function StudentManagement() {
             alert("添加失败: " + res.error?.message);
         }
     }
+
+    const handleDownloadTemplate = () => {
+        const headers = ["studentId", "name", "email"];
+        const sample = ["20240001", "张三", "zhangsan@example.com"];
+        const content = `${headers.join(",")}\n${sample.join(",")}\n`;
+        const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "students-template.csv";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleImport = async () => {
+        if (!classId || !importFile) return;
+        setImporting(true);
+        setImportResult(null);
+        const res = await teacherApi.importStudents(Number(classId), importFile);
+        setImporting(false);
+
+        if (res.success && res.data) {
+            setImportResult(res.data);
+            loadData();
+        } else {
+            alert("导入失败: " + res.error?.message);
+        }
+    };
 
     function handleToggleStatus(student: Student) {
         setConfirmDialog({ open: true, type: "toggle", student });
@@ -270,19 +303,43 @@ export function StudentManagement() {
                         <DialogTitle>批量导入学生</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                        <div className="border-2 border-dashed rounded-lg p-6 text-center">
                             <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                            <p className="text-sm text-muted-foreground mb-2">点击或拖拽文件到此处上传</p>
+                            <p className="text-sm text-muted-foreground mb-2">选择文件上传</p>
                             <p className="text-xs text-muted-foreground">支持 .xlsx, .xls, .csv 格式</p>
+                            <Input
+                                type="file"
+                                accept=".xlsx,.xls,.csv"
+                                className="mt-4"
+                                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                            />
+                            {importFile && (
+                                <div className="text-xs text-muted-foreground mt-2">已选择：{importFile.name}</div>
+                            )}
                         </div>
-                        <Button variant="link" className="text-primary p-0 h-auto">
+                        <Button variant="link" className="text-primary p-0 h-auto" onClick={handleDownloadTemplate}>
                             <Download className="w-4 h-4 mr-1" />
                             下载导入模板
                         </Button>
+                        {importResult && (
+                            <div className="text-sm text-muted-foreground space-y-2">
+                                <div>成功导入：{importResult.successCount} 条</div>
+                                <div>失败：{importResult.failureCount} 条</div>
+                                {importResult.errors.length > 0 && (
+                                    <div className="max-h-32 overflow-y-auto text-xs">
+                                        {importResult.errors.map((err, idx) => (
+                                            <div key={idx}>行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setShowImportModal(false)}>取消</Button>
-                        <Button disabled>开始导入</Button>
+                        <Button onClick={handleImport} disabled={importing || !importFile}>
+                            {importing ? "导入中..." : "开始导入"}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
 
