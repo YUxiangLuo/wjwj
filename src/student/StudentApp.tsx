@@ -215,7 +215,7 @@ function StudentAppContent() {
         <div className="min-h-screen bg-background text-foreground">
             {/* Header */}
             <header className="sticky top-0 z-50 border-b border-white/60 bg-background/80 backdrop-blur">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+                <div className="w-full px-6 py-4 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         {!isTaskHall && (
                             <Link to="/">
@@ -294,7 +294,7 @@ function StudentAppContent() {
             </header>
 
             {/* Main Content */}
-            <main className="max-w-6xl mx-auto px-6 py-8">
+            <main className="w-full px-6 py-8">
 
                 <Routes>
                     <Route index element={<TaskHall />} />

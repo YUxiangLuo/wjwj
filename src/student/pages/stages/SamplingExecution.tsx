@@ -81,33 +81,46 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     // Update layers when stratifyBy changes or stats load
     useEffect(() => {
-        if (!populationStats[stratifyBy]) {
+        const stats = populationStats[stratifyBy];
+
+        if (!stats) {
+            if (initialResults?.stratified?.stratifyBy === stratifyBy && initialResults.stratified.layers?.length) {
+                const savedLayers = initialResults.stratified.layers.map((layer) => {
+                    const ratio = Number.isFinite(layer.ratio)
+                        ? layer.ratio
+                        : layer.count > 0
+                            ? parseFloat(((layer.count / N) * 100).toFixed(1))
+                            : 0;
+                    return {
+                        name: layer.name,
+                        count: layer.count,
+                        ratio,
+                    };
+                });
+                setLayers(savedLayers);
+                setLayerSampleCounts(savedLayers.map((layer) => layer.sampleCount ?? 0));
+                return;
+            }
             setLayers([]);
             return;
         }
 
-        const stats = populationStats[stratifyBy];
         const total = Object.values(stats).reduce((a, b) => a + b, 0);
-
         const newLayers = Object.entries(stats).map(([name, count]) => ({
             name,
             count,
-            ratio: total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0
+            ratio: total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0,
         }));
 
         setLayers(newLayers);
 
-        // If we have saved results, use them, otherwise init with 0 or proportional
         if (initialResults?.stratified?.stratifyBy === stratifyBy && initialResults.stratified.layers) {
-            // Map saved counts to new layers order
-            const savedMap = new Map(initialResults.stratified.layers.map(l => [l.name, l.sampleCount]));
-            setLayerSampleCounts(newLayers.map(l => savedMap.get(l.name) ?? 0));
+            const savedMap = new Map(initialResults.stratified.layers.map((l) => [l.name, l.sampleCount]));
+            setLayerSampleCounts(newLayers.map((l) => savedMap.get(l.name) ?? 0));
         } else {
-            // Default to proportional
-            setLayerSampleCounts(newLayers.map(l => Math.round(n * l.ratio / 100)));
+            setLayerSampleCounts(newLayers.map((l) => Math.round(n * l.ratio / 100)));
         }
-
-    }, [stratifyBy, populationStats, n, initialResults?.stratified]);
+    }, [stratifyBy, populationStats, n, N, initialResults?.stratified]);
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
@@ -129,13 +142,6 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         await saveExperiment({ samplingResults });
     }, [simpleResult, systematicResult, stratifiedResult, saveExperiment]);
 
-    // Auto-save when results change
-    useEffect(() => {
-        if (simpleResult || systematicResult || stratifiedResult) {
-            const timer = setTimeout(saveResults, 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [simpleResult, systematicResult, stratifiedResult, saveResults]);
 
     // Execute simple mock delay (removed)
     // Execute sampling with real API
@@ -236,21 +242,20 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     return (
         <div className="space-y-6">
-            {/* Info header */}
-            <Card>
+            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                 <CardContent className="py-4">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <span className="text-muted-foreground">目标样本量：</span>
-                            <span className="font-bold text-lg ml-1">{n}</span>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">目标样本量</span>
+                            <span className="rounded-full bg-teal-50 px-3 py-1 text-teal-700 font-semibold">{n}</span>
                         </div>
-                        <div>
-                            <span className="text-muted-foreground">总体规模：</span>
-                            <span className="font-bold text-lg ml-1">{N.toLocaleString()}</span>
+                        <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">总体规模</span>
+                            <span className="rounded-full bg-slate-50 px-3 py-1 text-slate-700 font-semibold">{N.toLocaleString()}</span>
                         </div>
-                        <div>
-                            <span className="text-muted-foreground">完成进度：</span>
-                            <span className="font-bold text-lg ml-1">
+                        <div className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">完成进度</span>
+                            <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700 font-semibold">
                                 {[simpleResult?.completed, systematicResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/3
                             </span>
                         </div>
@@ -260,16 +265,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="simple" className="gap-2">
+                <TabsList className="grid w-full grid-cols-3 rounded-full bg-white/80 p-1 shadow-sm">
+                    <TabsTrigger value="simple" className="gap-2 rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">
                         简单随机抽样
                         {simpleResult?.completed && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                     </TabsTrigger>
-                    <TabsTrigger value="systematic" className="gap-2">
+                    <TabsTrigger value="systematic" className="gap-2 rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">
                         系统抽样
                         {systematicResult?.completed && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                     </TabsTrigger>
-                    <TabsTrigger value="stratified" className="gap-2">
+                    <TabsTrigger value="stratified" className="gap-2 rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">
                         分层抽样
                         {stratifiedResult?.completed && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                     </TabsTrigger>
@@ -277,220 +282,280 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                 {/* Simple Random Sampling */}
                 <TabsContent value="simple">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>简单随机抽样</CardTitle>
-                            <CardDescription>
-                                从 {N.toLocaleString()} 个总体中随机抽取 {n} 个样本，每个个体被抽中的概率相等。
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {!simpleResult?.completed ? (
-                                <Button onClick={executeSimple} disabled={executing !== null}>
-                                    {executing === "simple" ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 space-y-4">
+                            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                                <CardHeader>
+                                    <CardTitle>简单随机抽样</CardTitle>
+                                    <CardDescription>
+                                        从 {N.toLocaleString()} 个总体中随机抽取 {n} 个样本，每个个体被抽中的概率相等。
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {!simpleResult?.completed ? (
+                                        <Button onClick={executeSimple} disabled={executing !== null}>
+                                            {executing === "simple" ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <Play className="w-4 h-4 mr-2" />
+                                            )}
+                                            开始随机抽样
+                                        </Button>
                                     ) : (
-                                        <Play className="w-4 h-4 mr-2" />
+                                        <>
+                                            <div className="p-4 bg-emerald-50 rounded-2xl">
+                                                <p className="text-emerald-700">✓ 抽样完成，共抽取 {simpleResult.sampleCount} 个样本</p>
+                                                {simpleResult.seed && (
+                                                    <p className="text-xs text-emerald-600 mt-1">随机种子: {simpleResult.seed}</p>
+                                                )}
+                                            </div>
+                                            <Button variant="outline" size="sm" onClick={executeSimple} disabled={executing !== null}>
+                                                <RefreshCw className="w-4 h-4 mr-1" />
+                                                重新抽样
+                                            </Button>
+                                        </>
                                     )}
-                                    执行抽样
-                                </Button>
-                            ) : (
-                                <>
-                                    <div className="p-4 bg-emerald-50 rounded-lg">
-                                        <p className="text-emerald-700">✓ 抽样完成，共抽取 {simpleResult.sampleCount} 个样本</p>
-                                        {simpleResult.seed && (
-                                            <p className="text-xs text-emerald-600 mt-1">随机种子: {simpleResult.seed}</p>
-                                        )}
-                                    </div>
-                                    <Button variant="outline" size="sm" onClick={executeSimple} disabled={executing !== null}>
-                                        <RefreshCw className="w-4 h-4 mr-1" />
-                                        重新抽样
-                                    </Button>
-                                    <SamplePreviewTable data={simpleResult.data ?? []} total={simpleResult.sampleCount} />
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="space-y-4">
+                            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                                <CardHeader>
+                                    <CardTitle>抽样预览</CardTitle>
+                                    <CardDescription>展示部分抽样结果</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {!simpleResult?.completed ? (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-muted-foreground">
+                                            完成抽样后展示样本预览
+                                        </div>
+                                    ) : (
+                                        <SamplePreviewTable data={simpleResult.data ?? []} total={simpleResult.sampleCount} />
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
                 </TabsContent>
 
                 {/* Systematic Sampling */}
                 <TabsContent value="systematic">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>系统抽样</CardTitle>
-                            <CardDescription>
-                                按固定间隔 K 从总体中抽取样本。建议 K 值：{Math.round(N / n)}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="kValue">间隔 K 值</Label>
-                                    <Input
-                                        id="kValue"
-                                        type="number"
-                                        value={kValue}
-                                        onChange={(e) => setKValue(parseInt(e.target.value) || 1)}
-                                        min={1}
-                                        max={N}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>预计抽取数量</Label>
-                                    <div className={`p-2 border rounded-md ${isKValid ? "" : "border-red-300 bg-red-50"}`}>
-                                        <span className={isKValid ? "" : "text-red-600"}>{expectedSystematicCount}</span>
-                                        {!isKValid && (
-                                            <span className="text-xs text-red-500 ml-2">
-                                                (应在 {Math.floor(n * 0.8)} - {Math.floor(n * 1.2)} 之间)
-                                            </span>
-                                        )}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 space-y-4">
+                            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                                <CardHeader>
+                                    <CardTitle>系统抽样</CardTitle>
+                                    <CardDescription>
+                                        按固定间隔 K 从总体中抽取样本。建议 K 值：{Math.round(N / n)}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="kValue">间隔 K 值</Label>
+                                            <Input
+                                                id="kValue"
+                                                type="number"
+                                                value={kValue}
+                                                onChange={(e) => setKValue(parseInt(e.target.value) || 1)}
+                                                min={1}
+                                                max={N}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>预计抽取数量</Label>
+                                            <div className={`p-2 border rounded-md ${isKValid ? "" : "border-red-300 bg-red-50"}`}>
+                                                <span className={isKValid ? "" : "text-red-600"}>{expectedSystematicCount}</span>
+                                                {!isKValid && (
+                                                    <span className="text-xs text-red-500 ml-2">
+                                                        (应在 {Math.floor(n * 0.8)} - {Math.floor(n * 1.2)} 之间)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
 
-                            {!systematicResult?.completed ? (
-                                <Button onClick={executeSystematic} disabled={executing !== null || !isKValid}>
-                                    {executing === "systematic" ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    {!systematicResult?.completed ? (
+                                        <Button onClick={executeSystematic} disabled={executing !== null || !isKValid}>
+                                            {executing === "systematic" ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <Play className="w-4 h-4 mr-2" />
+                                            )}
+                                            执行系统抽样
+                                        </Button>
                                     ) : (
-                                        <Play className="w-4 h-4 mr-2" />
+                                        <>
+                                            <div className="p-4 bg-emerald-50 rounded-2xl">
+                                                <p className="text-emerald-700">✓ 抽样完成，K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本</p>
+                                            </div>
+                                            <Button variant="outline" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid}>
+                                                <RefreshCw className="w-4 h-4 mr-1" />
+                                                重新抽样
+                                            </Button>
+                                        </>
                                     )}
-                                    执行抽样
-                                </Button>
-                            ) : (
-                                <>
-                                    <div className="p-4 bg-emerald-50 rounded-lg">
-                                        <p className="text-emerald-700">✓ 抽样完成，K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本</p>
-                                    </div>
-                                    <Button variant="outline" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid}>
-                                        <RefreshCw className="w-4 h-4 mr-1" />
-                                        重新抽样
-                                    </Button>
-                                    <SamplePreviewTable data={systematicResult.data ?? []} total={systematicResult.sampleCount} />
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="space-y-4">
+                            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                                <CardHeader>
+                                    <CardTitle>抽样预览</CardTitle>
+                                    <CardDescription>展示部分抽样结果</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {!systematicResult?.completed ? (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-muted-foreground">
+                                            完成抽样后展示样本预览
+                                        </div>
+                                    ) : (
+                                        <SamplePreviewTable data={systematicResult.data ?? []} total={systematicResult.sampleCount} />
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
                 </TabsContent>
 
                 {/* Stratified Sampling */}
                 <TabsContent value="stratified">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>分层抽样</CardTitle>
-                            <CardDescription>
-                                按分层变量将总体分层，然后从各层中抽取样本。
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>选择分层变量</Label>
-                                <Select value={stratifyBy} onValueChange={setStratifyBy}>
-                                    <SelectTrigger className="w-48">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {Object.keys(populationStats).length > 0 ? (
-                                            Object.keys(populationStats).map(key => (
-                                                <SelectItem key={key} value={key}>
-                                                    {FIELD_LABELS[key] || key}
-                                                </SelectItem>
-                                            ))
-                                        ) : (
-                                            <>
-                                                <SelectItem value="gender">性别</SelectItem>
-                                                <SelectItem value="education">学历</SelectItem>
-                                            </>
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
-                                    比例分配
-                                </Button>
-                                <Button variant="outline" size="sm" onClick={applyEqualAllocation} disabled={layers.length === 0}>
-                                    等额分配
-                                </Button>
-                            </div>
-
-                            <div className="border rounded-md">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>层</TableHead>
-                                            <TableHead>人数 (N_h)</TableHead>
-                                            <TableHead>占比</TableHead>
-                                            <TableHead>样本数 (n_h)</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {layers.map((layer, index) => (
-                                            <TableRow key={layer.name}>
-                                                <TableCell>{layer.name}</TableCell>
-                                                <TableCell>{layer.count.toLocaleString()}</TableCell>
-                                                <TableCell>{layer.ratio}%</TableCell>
-                                                <TableCell>
-                                                    <Input
-                                                        type="number"
-                                                        value={layerSampleCounts[index] ?? 0}
-                                                        onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
-                                                        className="w-20"
-                                                        min={0}
-                                                    />
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {layers.length === 0 && (
-                                            <TableRow>
-                                                <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
-                                                    正在加载统计数据或该变量无数据...
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="font-medium">合计</TableCell>
-                                            <TableCell>
-                                                <span className={Math.abs(stratifiedTotal - n) <= layers.length ? "text-emerald-600 font-medium" : "text-red-600"}>
-                                                    {stratifiedTotal}
-                                                </span>
-                                                <span className="text-muted-foreground"> / {n}</span>
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
-                            </div>
-
-                            {!isStratifiedValid && layers.length > 0 && (
-                                <div className="p-3 bg-amber-50 text-amber-700 rounded-lg text-sm">
-                                    各层样本数之和应接近目标样本量 {n}（当前：{stratifiedTotal}）
-                                </div>
-                            )}
-
-                            {!stratifiedResult?.completed ? (
-                                <Button onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0}>
-                                    {executing === "stratified" ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <Play className="w-4 h-4 mr-2" />
-                                    )}
-                                    执行抽样
-                                </Button>
-                            ) : (
-                                <>
-                                    <div className="p-4 bg-emerald-50 rounded-lg">
-                                        <p className="text-emerald-700">✓ 分层抽样完成，按 {stratifyBy === "education" ? "学历" : "性别"} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 space-y-4">
+                            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                                <CardHeader>
+                                    <CardTitle>分层抽样</CardTitle>
+                                    <CardDescription>
+                                        按分层变量将总体分层，然后从各层中抽取样本。
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label>选择分层变量</Label>
+                                        <Select value={stratifyBy} onValueChange={setStratifyBy}>
+                                            <SelectTrigger className="w-48">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {Object.keys(populationStats).length > 0 ? (
+                                                    Object.keys(populationStats).map(key => (
+                                                        <SelectItem key={key} value={key}>
+                                                            {FIELD_LABELS[key] || key}
+                                                        </SelectItem>
+                                                    ))
+                                                ) : (
+                                                    <>
+                                                        <SelectItem value="gender">性别</SelectItem>
+                                                        <SelectItem value="education">学历</SelectItem>
+                                                    </>
+                                                )}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
-                                    <Button variant="outline" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0}>
-                                        <RefreshCw className="w-4 h-4 mr-1" />
-                                        重新抽样
-                                    </Button>
-                                    <SamplePreviewTable data={stratifiedResult.data ?? []} total={stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0) ?? 0} />
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
+
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" className="rounded-full" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
+                                            比例分配
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="rounded-full" onClick={applyEqualAllocation} disabled={layers.length === 0}>
+                                            等额分配
+                                        </Button>
+                                    </div>
+
+                                    <div className="border rounded-md">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>层</TableHead>
+                                                    <TableHead>人数 (N_h)</TableHead>
+                                                    <TableHead>占比</TableHead>
+                                                    <TableHead>样本数 (n_h)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {layers.map((layer, index) => (
+                                                    <TableRow key={layer.name}>
+                                                        <TableCell>{layer.name}</TableCell>
+                                                        <TableCell>{layer.count.toLocaleString()}</TableCell>
+                                                        <TableCell>{layer.ratio}%</TableCell>
+                                                        <TableCell>
+                                                            <Input
+                                                                type="number"
+                                                                value={layerSampleCounts[index] ?? 0}
+                                                                onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
+                                                                className="w-20"
+                                                                min={0}
+                                                            />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {layers.length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
+                                                            正在加载统计数据或该变量无数据...
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                                <TableRow>
+                                                    <TableCell colSpan={3} className="font-medium">合计</TableCell>
+                                                    <TableCell>
+                                                        <span className={Math.abs(stratifiedTotal - n) <= layers.length ? "text-emerald-600 font-medium" : "text-red-600"}>
+                                                            {stratifiedTotal}
+                                                        </span>
+                                                        <span className="text-muted-foreground"> / {n}</span>
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+
+                                    {!isStratifiedValid && layers.length > 0 && (
+                                        <div className="p-3 bg-amber-50 text-amber-700 rounded-2xl text-sm">
+                                            各层样本数之和应接近目标样本量 {n}（当前：{stratifiedTotal}）
+                                        </div>
+                                    )}
+
+                                    {!stratifiedResult?.completed ? (
+                                        <Button onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0}>
+                                            {executing === "stratified" ? (
+                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <Play className="w-4 h-4 mr-2" />
+                                            )}
+                                            执行分层抽样
+                                        </Button>
+                                    ) : (
+                                        <>
+                                            <div className="p-4 bg-emerald-50 rounded-2xl">
+                                                <p className="text-emerald-700">✓ 分层抽样完成，按 {stratifyBy === "education" ? "学历" : "性别"} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本</p>
+                                            </div>
+                                            <Button variant="outline" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0}>
+                                                <RefreshCw className="w-4 h-4 mr-1" />
+                                                重新抽样
+                                            </Button>
+                                        </>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="space-y-4">
+                            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                                <CardHeader>
+                                    <CardTitle>抽样预览</CardTitle>
+                                    <CardDescription>展示部分抽样结果</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {!stratifiedResult?.completed ? (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-muted-foreground">
+                                            完成抽样后展示样本预览
+                                        </div>
+                                    ) : (
+                                        <SamplePreviewTable data={stratifiedResult.data ?? []} total={stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0) ?? 0} />
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
                 </TabsContent>
             </Tabs>
 

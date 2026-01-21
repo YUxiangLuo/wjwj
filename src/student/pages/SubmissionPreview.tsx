@@ -97,6 +97,7 @@ export function SubmissionPreview() {
     }
 
     const questionnaire = experiment.questionnaire;
+    const questionnaireQuestions = questionnaire?.questions ?? [];
     const reportContent = experiment.reportContent ?? "";
     const reportLengthValid = reportContent.length >= 100 && reportContent.length <= 5000;
 
@@ -134,7 +135,7 @@ export function SubmissionPreview() {
                         </CardHeader>
                         <CardContent>
                             {reportContent ? (
-                                <div className="whitespace-pre-line text-sm text-muted-foreground">
+                                <div className="whitespace-pre-line break-words text-sm text-muted-foreground">
                                     {reportContent}
                                 </div>
                             ) : (
@@ -161,9 +162,13 @@ export function SubmissionPreview() {
                                         </div>
                                     </div>
                                     <div className="space-y-4">
-                                        {questionnaire.questions.map((q, index) => (
-                                            <QuestionPreview key={q.id} question={q} index={index} />
-                                        ))}
+                                        {questionnaireQuestions.length === 0 ? (
+                                            <div className="text-sm text-muted-foreground">暂无题目</div>
+                                        ) : (
+                                            questionnaireQuestions.map((q, index) => (
+                                                <QuestionPreview key={q.id} question={q} index={index} />
+                                            ))
+                                        )}
                                     </div>
                                     <div className="text-sm text-muted-foreground whitespace-pre-line">
                                         {questionnaire.endingText}

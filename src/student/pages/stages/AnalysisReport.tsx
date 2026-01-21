@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,35 +36,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const minLength = 100;
     const maxLength = 5000;
     const isValidLength = reportContent.length >= minLength && reportContent.length <= maxLength;
-
-    const persistDraft = useCallback(() => {
-        if (!draftKey) return;
-        if (reportContent) {
-            localStorage.setItem(draftKey, reportContent);
-        }
-    }, [draftKey, reportContent]);
-
-    // Idle auto-save (3s)
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (reportContent) {
-                saveExperiment({ reportContent });
-                persistDraft();
-            }
-        }, 3000);
-        return () => clearTimeout(timer);
-    }, [reportContent, saveExperiment, persistDraft]);
-
-    // Interval auto-save (30s)
-    useEffect(() => {
-        const timer = setInterval(() => {
-            if (reportContent) {
-                saveExperiment({ reportContent });
-                persistDraft();
-            }
-        }, 30000);
-        return () => clearInterval(timer);
-    }, [reportContent, saveExperiment, persistDraft]);
 
     // Restore draft from localStorage
     useEffect(() => {
@@ -112,9 +83,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Charts area */}
                 <div className="lg:col-span-2 space-y-6">
-                    <Card>
+                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <BarChart3 className="w-5 h-5" />
@@ -124,14 +94,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </CardHeader>
                         <CardContent>
                             <Tabs defaultValue="mean">
-                                <TabsList>
-                                    <TabsTrigger value="mean">均值对比</TabsTrigger>
-                                    <TabsTrigger value="dist">分布对比</TabsTrigger>
-                                    <TabsTrigger value="error">误差分析</TabsTrigger>
+                                <TabsList className="rounded-full bg-white/80 p-1 shadow-sm">
+                                    <TabsTrigger value="mean" className="rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">均值对比</TabsTrigger>
+                                    <TabsTrigger value="dist" className="rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">分布对比</TabsTrigger>
+                                    <TabsTrigger value="error" className="rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">误差分析</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="mean" className="mt-4">
-                                    <div className="h-64 bg-slate-100 rounded-lg flex items-center justify-center">
+                                    <div className="h-64 bg-slate-100 rounded-2xl flex items-center justify-center">
                                         <div className="text-center text-muted-foreground">
                                             <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
                                             <p>均值对比柱状图</p>
@@ -141,7 +111,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 </TabsContent>
 
                                 <TabsContent value="dist" className="mt-4">
-                                    <div className="h-64 bg-slate-100 rounded-lg flex items-center justify-center">
+                                    <div className="h-64 bg-slate-100 rounded-2xl flex items-center justify-center">
                                         <div className="text-center text-muted-foreground">
                                             <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
                                             <p>分布对比图</p>
@@ -151,7 +121,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 </TabsContent>
 
                                 <TabsContent value="error" className="mt-4">
-                                    <div className="h-64 bg-slate-100 rounded-lg flex items-center justify-center">
+                                    <div className="h-64 bg-slate-100 rounded-2xl flex items-center justify-center">
                                         <div className="text-center text-muted-foreground">
                                             <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
                                             <p>抽样误差分析图</p>
@@ -164,9 +134,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </Card>
                 </div>
 
-                {/* Export area */}
                 <div className="space-y-6">
-                    <Card>
+                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Download className="w-5 h-5" />
@@ -192,11 +161,20 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </Button>
                         </CardContent>
                     </Card>
+
+                    <Card className="rounded-2xl border-white/70 bg-gradient-to-b from-teal-50 via-cyan-50 to-white shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                        <CardHeader>
+                            <CardTitle className="text-base">分析提示</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm text-muted-foreground">
+                            <p>建议先观察均值差异，再分析分布与误差。</p>
+                            <p>对比三种抽样方法，说明原因与适用场景。</p>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
 
-            {/* Report writing area */}
-            <Card>
+            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <FileText className="w-5 h-5" />
@@ -207,7 +185,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="p-4 bg-blue-50 rounded-lg text-sm text-blue-700">
+                    <div className="p-4 bg-amber-50 rounded-2xl text-sm text-amber-700">
                         <p className="font-medium mb-2">建议包含以下内容：</p>
                         <ol className="list-decimal list-inside space-y-1">
                             <li>抽样方法选择的理由</li>

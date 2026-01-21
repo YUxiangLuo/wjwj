@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
-import { ArrowLeft, Save, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2 } from "lucide-react";
 import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,8 +26,9 @@ import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
 import { SamplePlanning } from "./stages/SamplePlanning";
 import { SamplingExecution } from "./stages/SamplingExecution";
 import { AnalysisReport } from "./stages/AnalysisReport";
+import { SurveySimulation } from "./stages/SurveySimulation";
 
-const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
+const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告", "调查结果模拟"];
 
 // Context for experiment data
 interface ExperimentContextValue {
@@ -137,7 +138,7 @@ export function ExperimentLayout() {
     }, [saveExperiment, currentStage]);
 
     const handleNextStage = useCallback(async () => {
-        if (currentStage < 4) {
+        if (currentStage < 5) {
             const newStage = currentStage + 1;
             const success = await saveExperiment({ currentStage: newStage });
             if (success) {
@@ -200,7 +201,15 @@ export function ExperimentLayout() {
             case 3:
                 return <SamplingExecution onNext={handleNextStage} onPrev={handlePrevStage} />;
             case 4:
-                return <AnalysisReport onPrev={handlePrevStage} onSubmit={() => {
+                return <AnalysisReport onPrev={handlePrevStage} onSubmit={async () => {
+                    if (!taskId) return;
+                    const success = await saveExperiment({ currentStage: 5 });
+                    if (success) {
+                        setCurrentStage(5);
+                    }
+                }} />;
+            case 5:
+                return <SurveySimulation onPrev={handlePrevStage} onSubmit={() => {
                     if (taskId) {
                         navigate(`/task/${taskId}/preview`);
                     }
@@ -246,50 +255,74 @@ export function ExperimentLayout() {
                     </div>
                 </div>
 
-                {/* Stage Stepper */}
-                <Card>
-                    <CardContent className="py-4">
-                        <div className="flex items-center justify-between">
-                            {stageNames.map((stage, index) => {
-                                const stageNum = index + 1;
-                                const isCompleted = stageNum < currentStage;
-                                const isCurrent = stageNum === currentStage;
+                {/* Overall Progress */}
+                <Card className="rounded-3xl border-white/70 bg-gradient-to-r from-teal-50 via-cyan-50 to-indigo-50 shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
+                    <CardContent className="py-5">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <div className="text-xs text-muted-foreground">实验总进度</div>
+                                    <div className="text-base font-semibold text-foreground">当前阶段：{stageNames[currentStage - 1]}</div>
+                                </div>
+                                <div className="text-sm font-semibold text-teal-600">
+                                    {Math.round((currentStage / stageNames.length) * 100)}%
+                                </div>
+                            </div>
 
-                                return (
-                                    <div key={stage} className="flex items-center flex-1">
+                            <div className="relative h-3 w-full rounded-full bg-white/70 shadow-inner">
+                                <div
+                                    className="absolute left-0 top-0 h-3 rounded-full bg-gradient-to-r from-teal-400 via-cyan-400 to-indigo-400"
+                                    style={{ width: `${(currentStage / stageNames.length) * 100}%` }}
+                                />
+                                <div className="absolute inset-0 grid grid-cols-4 gap-2 px-1">
+                                    {stageNames.map((_, index) => (
+                                        <div key={index} className="h-full rounded-full bg-white/40" />
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex items-start justify-between gap-2">
+                                {stageNames.map((stage, index) => {
+                                    const stageNum = index + 1;
+                                    const isCompleted = stageNum < currentStage;
+                                    const isCurrent = stageNum === currentStage;
+                                    const Icon = [FileText, Ruler, Play, BarChart3][index] ?? FileText;
+
+                                    return (
                                         <button
+                                            key={stage}
                                             onClick={() => {
-                                                if (stageNum > currentStage) return;
-                                                if (stageNum === currentStage) return;
-                                                setTargetStage(stageNum);
-                                                setConfirmRollbackOpen(true);
+                                                if (stageNum < currentStage) {
+                                                    setTargetStage(stageNum);
+                                                    setConfirmRollbackOpen(true);
+                                                }
                                             }}
-                                            disabled={stageNum > currentStage}
-                                            className="flex flex-col items-center"
+                                            disabled={stageNum >= currentStage}
+                                            className="flex flex-col items-center gap-2 disabled:cursor-default"
                                         >
-                                            <div className={`
-                                                w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-colors
-                                                ${isCompleted ? "bg-emerald-500 text-white" :
-                                                    isCurrent ? "bg-blue-500 text-white" :
-                                                        "bg-slate-200 text-slate-400"}
-                                                ${stageNum <= currentStage ? "cursor-pointer hover:opacity-80" : "cursor-not-allowed"}
-                                            `}>
-                                                {isCompleted ? <CheckCircle className="w-5 h-5" /> : stageNum}
-                                            </div>
-                                            <span className={`text-xs mt-2 ${isCurrent ? "font-medium text-blue-600" :
-                                                    isCompleted ? "text-emerald-600" :
-                                                        "text-muted-foreground"
-                                                }`}>
+                                            <span
+                                                className={`relative flex h-11 w-11 items-center justify-center rounded-full border transition-all ${
+                                                    isCurrent
+                                                        ? "border-teal-300 bg-teal-500 text-white shadow-[0_0_0_4px_rgba(20,184,166,0.15)]"
+                                                        : isCompleted
+                                                            ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                                                            : "border-slate-200 bg-white text-slate-400"
+                                                }`}
+                                            >
+                                                <Icon className="w-5 h-5" />
+                                                {isCompleted && (
+                                                    <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 p-0.5 text-white">
+                                                        <CheckCircle2 className="h-3 w-3" />
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className={`text-xs ${isCurrent ? "font-medium text-teal-700" : isCompleted ? "text-emerald-600" : "text-slate-500"}`}>
                                                 {stage}
                                             </span>
                                         </button>
-                                        {index < stageNames.length - 1 && (
-                                            <div className={`flex-1 h-1 mx-2 ${stageNum < currentStage ? "bg-emerald-500" : "bg-slate-200"
-                                                }`} />
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
