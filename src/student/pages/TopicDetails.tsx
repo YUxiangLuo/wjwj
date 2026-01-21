@@ -19,12 +19,12 @@ import { experimentApi, tasksApi, type TaskDetail, type TaskStatus, type TopicAt
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
 const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
-    not_started: { label: "未开始", color: "bg-slate-100 text-slate-700" },
-    in_progress: { label: "进行中", color: "bg-blue-100 text-blue-700" },
-    submitted: { label: "已提交", color: "bg-amber-100 text-amber-700" },
-    grading: { label: "批改中", color: "bg-orange-100 text-orange-700" },
-    graded: { label: "已批改", color: "bg-emerald-100 text-emerald-700" },
-    rejected: { label: "被驳回", color: "bg-red-100 text-red-700" },
+    not_started: { label: "未开始", color: "bg-teal-50 text-teal-700" },
+    in_progress: { label: "进行中", color: "bg-cyan-50 text-cyan-700" },
+    submitted: { label: "已提交", color: "bg-amber-50 text-amber-700" },
+    grading: { label: "批改中", color: "bg-orange-50 text-orange-700" },
+    graded: { label: "已批改", color: "bg-emerald-50 text-emerald-700" },
+    rejected: { label: "被驳回", color: "bg-rose-50 text-rose-700" },
 };
 
 function parseDeadline(deadline: string | null): Date | null {
@@ -38,6 +38,16 @@ function isDeadlinePassed(deadline: string | null) {
     const end = parseDeadline(deadline);
     if (!end) return false;
     return Date.now() > end.getTime();
+}
+
+function getDeadlineLabel(deadline: string | null) {
+    const end = parseDeadline(deadline);
+    if (!end) return "暂无截止";
+    const remainingMs = end.getTime() - Date.now();
+    if (remainingMs <= 0) return "已截止";
+    const dayMs = 24 * 60 * 60 * 1000;
+    const days = Math.ceil(remainingMs / dayMs);
+    return days <= 1 ? "即将截止" : `剩余 ${days} 天`;
 }
 
 function getFileIcon(type: string) {
@@ -151,8 +161,7 @@ export function TopicDetails() {
     };
 
     return (
-        <div className="space-y-6">
-            {/* Back button */}
+        <div className="space-y-8">
             <Link to="/">
                 <Button variant="ghost" className="gap-2">
                     <ArrowLeft className="w-4 h-4" />
@@ -160,11 +169,10 @@ export function TopicDetails() {
                 </Button>
             </Link>
 
-            {/* Header */}
-            <div className="flex justify-between items-start">
+            <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold">{task.name}</h1>
-                    <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                    <h1 className="text-2xl font-bold text-foreground">{task.name}</h1>
+                    <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
                         <span>发布时间：{task.publishedAt}</span>
                         {task.deadline && <span>截止时间：{task.deadline}</span>}
                     </div>
@@ -172,8 +180,127 @@ export function TopicDetails() {
                 <Badge className={status.color + " text-sm px-3 py-1"}>{status.label}</Badge>
             </div>
 
-            {/* Progress Stepper */}
-            <Card>
+            <Card className="rounded-3xl border-white/70 bg-gradient-to-r from-teal-500/15 via-cyan-500/15 to-indigo-500/15 shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
+                <CardContent className="py-6">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-2">
+                            <p className="text-sm font-medium text-teal-700/80">实验目标</p>
+                            <p className="text-lg font-semibold text-foreground">完成抽样统计实验，形成完整报告。</p>
+                            <p className="text-sm text-muted-foreground">按步骤推进，及时提交，体验完整的数据分析流程。</p>
+                        </div>
+                        <div className="rounded-2xl bg-white/80 px-4 py-3 text-sm shadow-sm">
+                            <div className="text-xs text-muted-foreground">截止提醒</div>
+                            <div className="text-base font-semibold text-foreground">{getDeadlineLabel(task.deadline)}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{task.deadline ?? "未设置截止时间"}</div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-6">
+                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                        <CardHeader>
+                            <CardTitle className="text-base">课题介绍</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="prose prose-sm max-w-none">
+                                <div className="whitespace-pre-line">{task.description}</div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {task.attachments.length > 0 && (
+                        <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                            <CardHeader>
+                                <CardTitle className="text-base">相关资料 ({task.attachments.length})</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-2">
+                                    {task.attachments.map((file) => (
+                                        <div key={file.id} className="flex items-center justify-between rounded-2xl border border-white/60 bg-white/90 p-3">
+                                            <div className="flex items-center gap-3">
+                                                {getFileIcon(file.type)}
+                                                <div>
+                                                    <p className="text-sm font-medium">{file.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                                                </div>
+                                            </div>
+                                            <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
+                                                <Download className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {task.status === "rejected" && task.rejectReason && (
+                        <Card className="rounded-2xl border-rose-200 bg-rose-50">
+                            <CardHeader>
+                                <CardTitle className="text-base text-rose-700">驳回理由</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-rose-700">{task.rejectReason}</p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {task.status === "graded" && task.score !== undefined && (
+                        <Card className="rounded-2xl border-emerald-200 bg-emerald-50">
+                            <CardHeader>
+                                <CardTitle className="text-base text-emerald-700">实验成绩</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-4xl font-bold text-emerald-600">{task.score}</span>
+                                    <span className="text-emerald-600">分</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+
+                <div className="space-y-6">
+                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                        <CardHeader>
+                            <CardTitle className="text-base">任务提示</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3 text-sm text-muted-foreground">
+                            <div>当前阶段：{task.currentStage > 0 ? stageNames[task.currentStage - 1] : "尚未开始"}</div>
+                            <div>任务状态：{status.label}</div>
+                            <div>截止时间：{task.deadline ?? "未设置"}</div>
+                            <div>开始实验后，请按步骤完成并保存进度。</div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                        <CardHeader>
+                            <CardTitle className="text-base">继续实验</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="text-sm text-muted-foreground">准备好了就开始吧。</div>
+                            {task.status === "rejected" ? (
+                                <Button size="lg" className="w-full" disabled={!canStartExperiment} onClick={() => setShowRestartConfirm(true)}>
+                                    {action.text}
+                                </Button>
+                            ) : action.link ? (
+                                <Link to={action.link} className="w-full">
+                                    <Button size="lg" className="w-full" disabled={!canStartExperiment}>{action.text}</Button>
+                                </Link>
+                            ) : (
+                                <Button size="lg" className="w-full">{action.text}</Button>
+                            )}
+                            {!canStartExperiment && ["not_started", "in_progress", "rejected"].includes(task.status) && (
+                                <div className="text-xs text-muted-foreground">任务已截止，无法继续操作</div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+
+            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                 <CardHeader>
                     <CardTitle className="text-base">实验进度</CardTitle>
                 </CardHeader>
@@ -190,12 +317,12 @@ export function TopicDetails() {
                                         <div className={`
                                             w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium
                                             ${isCompleted ? "bg-emerald-500 text-white" :
-                                                isCurrent ? "bg-blue-500 text-white" :
+                                                isCurrent ? "bg-teal-500 text-white" :
                                                     "bg-slate-200 text-slate-500"}
                                         `}>
                                             {isCompleted ? <CheckCircle className="w-5 h-5" /> : stageNum}
                                         </div>
-                                        <span className={`text-xs mt-2 ${isCurrent ? "font-medium text-blue-600" : "text-muted-foreground"}`}>
+                                        <span className={`text-xs mt-2 ${isCurrent ? "font-medium text-teal-600" : "text-muted-foreground"}`}>
                                             {stage}
                                         </span>
                                     </div>
@@ -209,90 +336,6 @@ export function TopicDetails() {
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Description */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">课题介绍</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="prose prose-sm max-w-none">
-                        <div className="whitespace-pre-line">{task.description}</div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Attachments */}
-            {task.attachments.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base">相关资料 ({task.attachments.length})</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            {task.attachments.map((file) => (
-                                <div key={file.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        {getFileIcon(file.type)}
-                                        <div>
-                                            <p className="text-sm font-medium">{file.name}</p>
-                                            <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-                                        </div>
-                                    </div>
-                                    <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
-                                        <Download className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Reject reason */}
-            {task.status === "rejected" && task.rejectReason && (
-                <Card className="border-red-200 bg-red-50">
-                    <CardHeader>
-                        <CardTitle className="text-base text-red-700">驳回理由</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-red-700">{task.rejectReason}</p>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Score */}
-            {task.status === "graded" && task.score !== undefined && (
-                <Card className="border-emerald-200 bg-emerald-50">
-                    <CardHeader>
-                        <CardTitle className="text-base text-emerald-700">实验成绩</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-3">
-                            <span className="text-4xl font-bold text-emerald-600">{task.score}</span>
-                            <span className="text-emerald-600">分</span>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Action Button */}
-            <div className="flex justify-end">
-                {task.status === "rejected" ? (
-                    <Button size="lg" disabled={!canStartExperiment} onClick={() => setShowRestartConfirm(true)}>
-                        {action.text}
-                    </Button>
-                ) : action.link ? (
-                    <Link to={action.link}>
-                        <Button size="lg" disabled={!canStartExperiment}>{action.text}</Button>
-                    </Link>
-                ) : (
-                    <Button size="lg">{action.text}</Button>
-                )}
-            </div>
-            {!canStartExperiment && ["not_started", "in_progress", "rejected"].includes(task.status) && (
-                <div className="text-sm text-muted-foreground text-right">任务已截止，无法继续操作</div>
-            )}
 
             <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
                 <AlertDialogContent>

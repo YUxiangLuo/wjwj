@@ -1,17 +1,28 @@
-import { useEffect, useState } from "react";
-import { Bell, LogOut, ArrowLeft, Loader2 } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut } from "lucide-react";
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TaskHall } from "./pages/TaskHall";
 import { TopicDetails } from "./pages/TopicDetails";
 import { ExperimentLayout } from "./pages/ExperimentLayout";
 import { SubmissionPreview } from "./pages/SubmissionPreview";
 import { SubmissionHistory } from "./pages/SubmissionHistory";
 import { SubmissionDetailPage } from "./pages/SubmissionDetail";
+import { Profile } from "./pages/Profile";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { authApi } from "./api-client";
 import { Login } from "./pages/Login";
@@ -44,6 +55,9 @@ function StudentAppContent() {
     const [showSessionWarning, setShowSessionWarning] = useState(false);
     const [showSessionExpired, setShowSessionExpired] = useState(false);
     const [showAuthDialog, setShowAuthDialog] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const menuRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (currentUser?.isFirstLogin) {
@@ -86,6 +100,20 @@ function StudentAppContent() {
             window.clearTimeout(expireTimer);
         };
     }, [sessionExpiresAt]);
+
+    useEffect(() => {
+        if (!showUserMenu) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if (!menuRef.current) return;
+            if (!menuRef.current.contains(event.target as Node)) {
+                setShowUserMenu(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [showUserMenu]);
 
     // 显示加载状态
     if (isLoading) {
@@ -184,9 +212,9 @@ function StudentAppContent() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-background text-foreground">
             {/* Header */}
-            <header className="bg-white border-b sticky top-0 z-50">
+            <header className="sticky top-0 z-50 border-b border-white/60 bg-background/80 backdrop-blur">
                 <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         {!isTaskHall && (
@@ -196,16 +224,19 @@ function StudentAppContent() {
                                 </Button>
                             </Link>
                         )}
-                        <div>
-                            <h1 className="text-xl font-semibold text-slate-800">抽样统计虚拟仿真系统</h1>
-                            <p className="text-sm text-muted-foreground">学生端</p>
-                        </div>
+                        <Link to="/" className="flex items-center gap-3 rounded-2xl px-2 py-1 transition hover:bg-primary/10">
+                            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-teal-400 via-cyan-400 to-indigo-400 shadow-sm" />
+                            <div>
+                                <h1 className="text-xl font-semibold text-foreground">抽样统计虚拟仿真实验室</h1>
+                                <p className="text-xs text-muted-foreground">学生端 · Learning Lab</p>
+                            </div>
+                        </Link>
                     </div>
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="relative"
+                            className="relative hover:bg-primary/10"
                             onClick={() => {
                                 setShowNotifications(true);
                                 refreshNotifications();
@@ -213,35 +244,57 @@ function StudentAppContent() {
                         >
                             <Bell className="w-5 h-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">
+                                <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full text-[10px] text-white flex items-center justify-center">
                                     {unreadCount > 9 ? "9+" : unreadCount}
                                 </span>
                             )}
                         </Button>
-                        <div className="flex items-center gap-2">
-                            <Avatar className="w-8 h-8">
-                                <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                                    {displayInitial}
-                                </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium">{displayName}</span>
+                        <div className="relative" ref={menuRef}>
+                            <button
+                                type="button"
+                                className="flex items-center gap-2 rounded-full px-2 py-1 text-sm font-medium text-foreground hover:bg-primary/10"
+                                onClick={() => setShowUserMenu((prev) => !prev)}
+                            >
+                                <Avatar className="w-8 h-8">
+                                    <AvatarFallback className="bg-primary/15 text-primary text-sm">
+                                        {displayInitial}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <span>{displayName}</span>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                            </button>
+                            {showUserMenu && (
+                                <div className="absolute right-0 mt-2 w-44 rounded-2xl border border-white/70 bg-white/95 p-2 shadow-[0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur">
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start gap-2 rounded-xl"
+                                        onClick={() => {
+                                            setShowUserMenu(false);
+                                            navigate("/profile");
+                                        }}
+                                    >
+                                        个人信息
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start gap-2 rounded-xl"
+                                        onClick={() => {
+                                            setShowUserMenu(false);
+                                            setShowLogoutConfirm(true);
+                                        }}
+                                    >
+                                        <LogOut className="w-4 h-4" />
+                                        退出登录
+                                    </Button>
+                                </div>
+                            )}
                         </div>
-                        <Button variant="ghost" size="icon" onClick={handleLogout}>
-                            <LogOut className="w-5 h-5" />
-                        </Button>
                     </div>
                 </div>
             </header>
 
             {/* Main Content */}
             <main className="max-w-6xl mx-auto px-6 py-8">
-                {/* Welcome Section - only on task hall */}
-                {isTaskHall && (
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-slate-800">你好，{displayName}</h2>
-                        <p className="text-muted-foreground mt-1">欢迎回来，继续你的实验之旅吧</p>
-                    </div>
-                )}
 
                 <Routes>
                     <Route index element={<TaskHall />} />
@@ -251,6 +304,7 @@ function StudentAppContent() {
                     <Route path="task/:taskId/preview" element={<SubmissionPreview />} />
                     <Route path="task/:taskId/history" element={<SubmissionHistory />} />
                     <Route path="submissions/:submissionId" element={<SubmissionDetailPage />} />
+                    <Route path="profile" element={<Profile />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>
@@ -399,6 +453,28 @@ function StudentAppContent() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>确认退出登录？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            退出后需要重新登录才能继续使用实验系统。
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={async () => {
+                                setShowLogoutConfirm(false);
+                                await handleLogout();
+                            }}
+                        >
+                            退出登录
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

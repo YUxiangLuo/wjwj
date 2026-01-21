@@ -17,12 +17,12 @@ export type { TaskStatus, StudentTask };
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
 const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
-    not_started: { label: "未开始", color: "bg-slate-100 text-slate-700" },
-    in_progress: { label: "进行中", color: "bg-blue-100 text-blue-700" },
-    submitted: { label: "已提交", color: "bg-amber-100 text-amber-700" },
-    grading: { label: "批改中", color: "bg-orange-100 text-orange-700" },
-    graded: { label: "已批改", color: "bg-emerald-100 text-emerald-700" },
-    rejected: { label: "被驳回", color: "bg-red-100 text-red-700" },
+    not_started: { label: "未开始", color: "bg-teal-50 text-teal-700" },
+    in_progress: { label: "进行中", color: "bg-cyan-50 text-cyan-700" },
+    submitted: { label: "已提交", color: "bg-amber-50 text-amber-700" },
+    grading: { label: "批改中", color: "bg-orange-50 text-orange-700" },
+    graded: { label: "已批改", color: "bg-emerald-50 text-emerald-700" },
+    rejected: { label: "被驳回", color: "bg-rose-50 text-rose-700" },
 };
 
 function parseDeadline(deadline: string | null): Date | null {
@@ -113,7 +113,7 @@ function TaskCard({ task }: TaskCardProps) {
     const showHistory = ["submitted", "grading", "graded", "rejected"].includes(task.status);
 
     return (
-        <Card className="hover:shadow-lg transition-shadow">
+        <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(15,23,42,0.12)]">
             <CardHeader className="pb-3">
                 <div className="flex justify-between items-start gap-2">
                     <CardTitle className="text-lg line-clamp-1">{task.name}</CardTitle>
@@ -263,6 +263,7 @@ export function TaskHall() {
     const averageScore = tasks
         .filter(t => t.status === "graded" && t.score !== undefined)
         .reduce((acc, t, _, arr) => acc + (t.score || 0) / arr.length, 0);
+    const nextTask = tasks.find(t => ["not_started", "in_progress", "rejected"].includes(t.status)) ?? tasks[0];
 
     if (loading) {
         return (
@@ -273,15 +274,43 @@ export function TaskHall() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
+            <section className="rounded-3xl border border-white/70 bg-gradient-to-r from-teal-500/15 via-cyan-500/15 to-indigo-500/15 p-6 md:p-8 shadow-[0_12px_36px_rgba(15,23,42,0.08)]">
+                <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-2">
+                        <p className="text-sm font-medium text-teal-700/80">今天也要保持好奇心</p>
+                        <h2 className="text-3xl font-semibold text-foreground">欢迎回来，继续你的抽样探索</h2>
+                        <p className="text-muted-foreground">完成实验、提交报告，看看自己的进步。</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {nextTask ? (
+                            <Link to={`/task/${nextTask.id}`}>
+                                <Button size="lg" className="rounded-full px-6">
+                                    继续实验
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Button size="lg" className="rounded-full px-6" disabled>
+                                暂无实验
+                            </Button>
+                        )}
+                        <Link to="/">
+                            <Button variant="outline" size="lg" className="rounded-full px-6">
+                                浏览任务
+                            </Button>
+                        </Link>
+                    </div>
+                </div>
+            </section>
+
             {latestUnread && (
-                <Card className="border-amber-200 bg-amber-50">
+                <Card className="rounded-2xl border-orange-100 bg-gradient-to-r from-orange-50 to-amber-50">
                     <CardContent className="py-4 flex items-center justify-between gap-4">
                         <div>
-                            <div className="text-sm text-amber-700 font-medium">最新公告</div>
-                            <div className="text-sm text-amber-800 mt-1 line-clamp-1">{latestUnread.title}</div>
+                            <div className="text-sm text-orange-700 font-medium">最新公告</div>
+                            <div className="text-sm text-orange-900 mt-1 line-clamp-1">{latestUnread.title}</div>
                         </div>
-                        <Button variant="outline" size="sm" onClick={() => setShowAnnouncements(true)}>
+                        <Button variant="outline" size="sm" className="rounded-full" onClick={() => setShowAnnouncements(true)}>
                             查看全部 ({unreadAnnouncements.length})
                         </Button>
                     </CardContent>
@@ -290,11 +319,11 @@ export function TaskHall() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
+                <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-blue-100 rounded-lg">
-                                <FlaskConical className="w-6 h-6 text-blue-600" />
+                            <div className="p-3 bg-teal-100 rounded-2xl">
+                                <FlaskConical className="w-6 h-6 text-teal-600" />
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{inProgressCount}</p>
@@ -303,11 +332,11 @@ export function TaskHall() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-emerald-100 rounded-lg">
-                                <CheckCircle className="w-6 h-6 text-emerald-600" />
+                            <div className="p-3 bg-indigo-100 rounded-2xl">
+                                <CheckCircle className="w-6 h-6 text-indigo-600" />
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{completedCount}</p>
@@ -316,11 +345,11 @@ export function TaskHall() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-amber-100 rounded-lg">
-                                <FileText className="w-6 h-6 text-amber-600" />
+                            <div className="p-3 bg-orange-100 rounded-2xl">
+                                <FileText className="w-6 h-6 text-orange-600" />
                             </div>
                             <div>
                                 <p className="text-2xl font-bold">{averageScore.toFixed(0) || "-"}</p>
@@ -332,12 +361,13 @@ export function TaskHall() {
             </div>
 
             {/* Filter Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold">我的任务</h3>
-                <div className="flex gap-2">
+                <div className="flex gap-2 rounded-full border border-white/70 bg-white/70 p-1 shadow-sm">
                     <Button
                         variant={filter === "all" ? "default" : "outline"}
                         size="sm"
+                        className="rounded-full"
                         onClick={() => setFilter("all")}
                     >
                         全部 ({tasks.length})
@@ -345,6 +375,7 @@ export function TaskHall() {
                     <Button
                         variant={filter === "in_progress" ? "default" : "outline"}
                         size="sm"
+                        className="rounded-full"
                         onClick={() => setFilter("in_progress")}
                     >
                         进行中 ({inProgressCount})
@@ -352,6 +383,7 @@ export function TaskHall() {
                     <Button
                         variant={filter === "completed" ? "default" : "outline"}
                         size="sm"
+                        className="rounded-full"
                         onClick={() => setFilter("completed")}
                     >
                         已完成 ({completedCount})

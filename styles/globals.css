@@ -49,6 +49,7 @@
   --ring: #2563eb;
 }
 
+
 @layer base {
   * {
     @apply border-border;
