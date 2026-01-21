@@ -52,8 +52,15 @@ function StudentAppContent() {
     }, [currentUser]);
 
     useEffect(() => {
-        if (authErrorCode) {
+        if (!authErrorCode) return;
+        const hasLoginFlag = sessionStorage.getItem("student_login_success") === "1";
+        if (hasLoginFlag) {
             setShowAuthDialog(true);
+        } else {
+            setShowAuthDialog(false);
+        }
+        if (authErrorCode === "AUTH_004" || authErrorCode === "AUTH_005") {
+            sessionStorage.removeItem("student_login_success");
         }
     }, [authErrorCode]);
 
@@ -94,7 +101,8 @@ function StudentAppContent() {
     }
 
     if (!currentUser) {
-        if (authErrorCode) {
+        const hasLoginFlag = sessionStorage.getItem("student_login_success") === "1";
+        if (authErrorCode && hasLoginFlag) {
             return (
                 <>
                     <Login />
@@ -127,6 +135,7 @@ function StudentAppContent() {
         try {
             await authApi.logout();
         } finally {
+            sessionStorage.removeItem("student_login_success");
             navigate("/login", { replace: true });
         }
     };
@@ -332,38 +341,6 @@ function StudentAppContent() {
                                         }
                                     }}
                                 >
-                        <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>会话即将过期</DialogTitle>
-                                    <DialogDescription>会话将在 5 分钟内过期，是否继续？</DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setShowSessionWarning(false)}>稍后</Button>
-                                    <Button
-                                        onClick={async () => {
-                                            await refreshUser();
-                                            await refreshSession();
-                                            setShowSessionWarning(false);
-                                        }}
-                                    >
-                                        继续使用
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-
-                        <Dialog open={showSessionExpired} onOpenChange={setShowSessionExpired}>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>会话已过期</DialogTitle>
-                                    <DialogDescription>请重新登录以继续使用系统。</DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <Button onClick={() => navigate("/login", { replace: true })}>重新登录</Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
                                             <div className="text-sm font-medium">
@@ -387,6 +364,39 @@ function StudentAppContent() {
                             ))
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>会话即将过期</DialogTitle>
+                        <DialogDescription>会话将在 5 分钟内过期，是否继续？</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowSessionWarning(false)}>稍后</Button>
+                        <Button
+                            onClick={async () => {
+                                await refreshUser();
+                                await refreshSession();
+                                setShowSessionWarning(false);
+                            }}
+                        >
+                            继续使用
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showSessionExpired} onOpenChange={setShowSessionExpired}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>会话已过期</DialogTitle>
+                        <DialogDescription>请重新登录以继续使用系统。</DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => navigate("/login", { replace: true })}>重新登录</Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

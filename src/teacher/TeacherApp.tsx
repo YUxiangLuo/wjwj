@@ -48,7 +48,7 @@ export function TeacherApp() {
     const location = useLocation();
     const navigate = useNavigate();
     const currentPath = location.pathname;
-    const isLoginPage = currentPath === "/login";
+    const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
     // Get base path for title (e.g., /class/1/students -> /class)
     const basePath = "/" + (currentPath.split("/")[1] || "");
     const pageTitle = pageTitles[basePath] ?? "教师端";

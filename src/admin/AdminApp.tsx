@@ -62,7 +62,7 @@ export function AdminApp() {
     const location = useLocation();
     const navigate = useNavigate();
     const currentPath = location.pathname;
-    const isLoginPage = currentPath === "/login";
+    const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
     const pageTitle = pageTitles[currentPath] ?? "管理后台";
     const [unreadCount, setUnreadCount] = useState(0);
     const [notifications, setNotifications] = useState<AdminNotification[]>([]);
