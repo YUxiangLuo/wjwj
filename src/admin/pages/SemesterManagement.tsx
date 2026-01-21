@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Trash2, Star, Loader2, Pencil } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Trash2, Star, Loader2, Pencil, CalendarDays, School, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { semesterApi, type Semester } from "../api-client";
 import { toast } from "sonner";
 
@@ -21,6 +22,8 @@ export function SemesterManagement() {
     const [submitting, setSubmitting] = useState(false);
     const [editingSemester, setEditingSemester] = useState<Semester | null>(null);
     const [editName, setEditName] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"all" | "current" | "history">("all");
 
     useEffect(() => {
         loadSemesters();
@@ -134,81 +137,182 @@ export function SemesterManagement() {
         return new Date(dateStr).toLocaleDateString("zh-CN");
     };
 
+    const summary = useMemo(() => {
+        const total = semesters.length;
+        const current = semesters.find((item) => item.isCurrent);
+        const history = total - (current ? 1 : 0);
+        const withClasses = semesters.filter((item) => item.classCount > 0).length;
+        return {
+            total,
+            currentName: current?.name ?? "暂无",
+            history,
+            withClasses,
+        };
+    }, [semesters]);
+
+    const filteredSemesters = useMemo(() => {
+        const keyword = searchTerm.trim().toLowerCase();
+        return semesters.filter((semester) => {
+            const matchesKeyword = !keyword || semester.name.toLowerCase().includes(keyword);
+            const matchesStatus =
+                statusFilter === "all" ||
+                (statusFilter === "current" ? semester.isCurrent : !semester.isCurrent);
+            return matchesKeyword && matchesStatus;
+        });
+    }, [semesters, searchTerm, statusFilter]);
+
     return (
-        <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">学期列表</CardTitle>
+        <div className="space-y-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">学期管理</h2>
+                    <p className="text-sm text-slate-500 mt-1">维护学期信息并标记当前学期。</p>
+                </div>
                 <Button onClick={() => setShowAddModal(true)}>
                     <Plus className="w-4 h-4" />
                     创建学期
                 </Button>
-            </CardHeader>
-            <CardContent>
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">学期总数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <CalendarDays className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">当前学期</p>
+                            <p className="text-sm font-medium text-slate-900">{loading ? "-" : summary.currentName}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <Star className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">历史学期</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.history}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+                            <CheckCircle className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">含班级学期</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.withClasses}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                            <School className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <CardTitle className="text-base">学期列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredSemesters.length} 条</p>
                     </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>学期名称</TableHead>
-                                <TableHead>状态</TableHead>
-                                <TableHead>班级数量</TableHead>
-                                <TableHead>创建时间</TableHead>
-                                <TableHead>操作</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {semesters.map((semester) => (
-                                <TableRow key={semester.id}>
-                                    <TableCell className="font-medium">{semester.name}</TableCell>
-                                    <TableCell>
-                                        {semester.isCurrent ? (
-                                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">当前学期</Badge>
-                                        ) : (
-                                            <Badge variant="secondary">历史学期</Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{semester.classCount}</TableCell>
-                                    <TableCell className="text-muted-foreground">{formatDate(semester.createdAt)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            {!semester.isCurrent && (
-                                                <Button variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)}>
-                                                    <Star className="w-3 h-3 mr-1" />
-                                                    设为当前
-                                                </Button>
-                                            )}
-                                            <Button variant="ghost" size="sm" onClick={() => openEdit(semester)}>
-                                                <Pencil className="w-3 h-3 mr-1" />
-                                                编辑
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleDelete(semester)}
-                                                className="text-destructive hover:text-destructive"
-                                                disabled={semester.classCount > 0}
-                                            >
-                                                <Trash2 className="w-3 h-3 mr-1" />
-                                                删除
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {semesters.length === 0 && (
+                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <Input
+                            placeholder="搜索学期名称"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="sm:w-64"
+                        />
+                        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "current" | "history")}>
+                            <SelectTrigger className="sm:w-36">
+                                <SelectValue placeholder="状态筛选" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部状态</SelectItem>
+                                <SelectItem value="current">当前学期</SelectItem>
+                                <SelectItem value="history">历史学期</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                                        暂无数据
-                                    </TableCell>
+                                    <TableHead>学期名称</TableHead>
+                                    <TableHead>状态</TableHead>
+                                    <TableHead>班级数量</TableHead>
+                                    <TableHead>创建时间</TableHead>
+                                    <TableHead>操作</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                )}
-            </CardContent>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredSemesters.map((semester) => (
+                                    <TableRow key={semester.id}>
+                                        <TableCell className="font-medium text-slate-900">{semester.name}</TableCell>
+                                        <TableCell>
+                                            {semester.isCurrent ? (
+                                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">当前学期</Badge>
+                                            ) : (
+                                                <Badge variant="secondary" className="bg-slate-100 text-slate-600">历史学期</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>{semester.classCount}</TableCell>
+                                        <TableCell className="text-slate-500">{formatDate(semester.createdAt)}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-wrap gap-2">
+                                                {!semester.isCurrent && (
+                                                    <Button variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)}>
+                                                        <Star className="w-3 h-3 mr-1" />
+                                                        设为当前
+                                                    </Button>
+                                                )}
+                                                <Button variant="ghost" size="sm" onClick={() => openEdit(semester)}>
+                                                    <Pencil className="w-3 h-3 mr-1" />
+                                                    编辑
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(semester)}
+                                                    className="text-destructive hover:text-destructive"
+                                                    disabled={semester.classCount > 0}
+                                                >
+                                                    <Trash2 className="w-3 h-3 mr-1" />
+                                                    删除
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {filteredSemesters.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                                            暂无符合条件的数据
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </CardContent>
+            </Card>
 
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
                 <DialogContent>
@@ -276,6 +380,6 @@ export function SemesterManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </Card>
+        </div>
     );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
     LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
-    Activity, Megaphone, Settings, Bell, LogOut, Loader2
+    Activity, Megaphone, Settings, Bell, LogOut, Loader2, Search
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -307,16 +307,23 @@ export function AdminApp() {
     }
 
     return (
-        <div className="flex min-h-screen bg-muted/40">
+        <div className="flex min-h-screen bg-slate-50">
             <Toaster richColors position="top-right" />
             {/* Sidebar */}
-            <aside className="w-60 bg-slate-800 text-white flex flex-col shrink-0">
-                <div className="p-6 border-b border-white/10">
-                    <h1 className="text-lg font-semibold">抽样统计系统</h1>
-                    <p className="text-xs text-white/70 mt-1">管理后台</p>
+            <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
+                <div className="h-20 px-6 border-b border-slate-200 flex items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                            <LayoutDashboard className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h1 className="text-base font-semibold text-slate-900">抽样统计系统</h1>
+                            <p className="text-xs text-slate-500">管理后台</p>
+                        </div>
+                    </div>
                 </div>
 
-                <nav className="flex-1 py-4 overflow-y-auto">
+                <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
                     {menuItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
@@ -324,29 +331,31 @@ export function AdminApp() {
                             <NavLink
                                 key={item.path}
                                 to={item.path}
-                                className={`flex items-center gap-3 px-6 py-3 text-sm font-normal border-l-[3px] transition-colors
+                                className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
                                     ${isActive
-                                        ? "bg-primary/20 text-primary border-primary"
-                                        : "text-white/70 hover:bg-white/10 hover:text-white border-transparent"
+                                        ? "bg-primary text-primary-foreground shadow-sm"
+                                        : "text-slate-600 hover:bg-slate-100"
                                     }`}
                             >
-                                <Icon className="w-4 h-4" />
-                                <span>{item.label}</span>
+                                <Icon className={`w-4 h-4 ${isActive ? "text-primary-foreground" : "text-slate-500"}`} />
+                                <span className="font-medium">{item.label}</span>
                             </NavLink>
                         );
                     })}
                 </nav>
 
-                <Separator className="bg-white/10" />
+                <Separator className="bg-slate-200" />
 
                 <div className="p-4">
                     <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-white/20 text-white text-sm">管</AvatarFallback>
+                        <Avatar className="w-9 h-9">
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                                {adminUser?.username?.charAt(0)?.toUpperCase() ?? "A"}
+                            </AvatarFallback>
                         </Avatar>
-                        <div>
-                            <div className="text-sm font-medium">管理员</div>
-                            <div className="text-xs text-white/70">Administrator</div>
+                        <div className="flex-1">
+                            <div className="text-sm font-medium text-slate-900">{adminUser?.username ?? "管理员"}</div>
+                            <div className="text-xs text-slate-500">Administrator</div>
                         </div>
                     </div>
                 </div>
@@ -354,28 +363,36 @@ export function AdminApp() {
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden">
-                <header className="bg-background px-8 py-4 border-b flex justify-between items-center">
-                    <h2 className="text-xl font-semibold text-foreground">{pageTitle}</h2>
+                <header className="bg-white px-8 h-20 border-b border-slate-200 flex items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
-                        <span className="text-sm text-muted-foreground mr-2">
+                        <h2 className="text-xl font-semibold text-slate-900">{pageTitle}</h2>
+                        <span className="text-sm text-slate-500">
                             {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
                         </span>
+                    </div>
+                    <div className="flex items-center gap-3 flex-1 justify-end">
+                        <div className="hidden md:flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 w-72">
+                            <Search className="w-4 h-4 text-slate-500" />
+                            <input
+                                className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none w-full"
+                                placeholder="搜索功能或数据"
+                            />
+                        </div>
                         <Button variant="ghost" size="icon" className="relative" onClick={() => {
                             setShowNotifications(true);
                             if (!notifications.length) {
                                 fetchNotifications();
                             }
                         }}>
-                            <Bell className="w-5 h-5 text-muted-foreground" />
+                            <Bell className="w-5 h-5 text-slate-600" />
                             {unreadCount > 0 && (
                                 <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
                             )}
                         </Button>
-
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" title="退出登录">
-                                    <LogOut className="w-5 h-5 text-muted-foreground" />
+                                    <LogOut className="w-5 h-5 text-slate-600" />
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>

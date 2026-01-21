@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Trash2, Users, Pencil, Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Trash2, Users, Pencil, Loader2, School, CalendarDays, UserCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ export function ClassManagement() {
     const [editingClass, setEditingClass] = useState<Class | null>(null);
     const [editForm, setEditForm] = useState({ name: "", teacherId: "" });
     const [submitting, setSubmitting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         loadInitialData();
@@ -175,107 +176,191 @@ export function ClassManagement() {
         return new Date(dateStr).toLocaleDateString("zh-CN");
     };
 
+    const summary = useMemo(() => {
+        const total = classes.length;
+        const studentTotal = classes.reduce((sum, cls) => sum + cls.studentCount, 0);
+        const currentSemesterName = semesters.find((s) => s.isCurrent)?.name ?? "暂无";
+        const teacherCount = new Set(classes.map((cls) => cls.teacherId)).size;
+        return { total, studentTotal, currentSemesterName, teacherCount };
+    }, [classes, semesters]);
+
+    const filteredClasses = useMemo(() => {
+        const keyword = searchTerm.trim().toLowerCase();
+        return classes.filter((cls) => {
+            if (!keyword) return true;
+            return (
+                cls.name.toLowerCase().includes(keyword) ||
+                cls.semesterName.toLowerCase().includes(keyword) ||
+                cls.teacherName.toLowerCase().includes(keyword)
+            );
+        });
+    }, [classes, searchTerm]);
+
     return (
-        <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">班级列表</CardTitle>
+        <div className="space-y-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">班级管理</h2>
+                    <p className="text-sm text-slate-500 mt-1">管理班级、授课教师与学生规模。</p>
+                </div>
                 <Button onClick={() => setShowAddModal(true)}>
                     <Plus className="w-4 h-4" />
                     创建班级
                 </Button>
-            </CardHeader>
-            <CardContent>
-                <div className="flex gap-3 mb-4">
-                    <Select value={filterSemester} onValueChange={setFilterSemester}>
-                        <SelectTrigger className="w-40">
-                            <SelectValue placeholder="全部学期" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">全部学期</SelectItem>
-                            {semesters.map((s) => (
-                                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-                        <SelectTrigger className="w-40">
-                            <SelectValue placeholder="全部教师" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">全部教师</SelectItem>
-                            {teachers.map((t) => (
-                                <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
+            </div>
 
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">班级总数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <School className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">学生总数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.studentTotal}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <Users className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">当前学期</p>
+                            <p className="text-sm font-medium text-slate-900">{loading ? "-" : summary.currentSemesterName}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <CalendarDays className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">授课教师</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.teacherCount}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                            <UserCircle2 className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <CardTitle className="text-base">班级列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredClasses.length} 条</p>
                     </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>班级名称</TableHead>
-                                <TableHead>学期</TableHead>
-                                <TableHead>授课教师</TableHead>
-                                <TableHead>学生人数</TableHead>
-                                <TableHead>创建时间</TableHead>
-                                <TableHead>操作</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {classes.map((cls) => (
-                                <TableRow key={cls.id}>
-                                    <TableCell className="font-medium">{cls.name}</TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                                            {cls.semesterName}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>{cls.teacherName}</TableCell>
-                                    <TableCell>{cls.studentCount}</TableCell>
-                                    <TableCell className="text-muted-foreground">{formatDate(cls.createdAt)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => navigate(`/student?classId=${cls.id}`)}
-                                            >
-                                                <Users className="w-3 h-3 mr-1" />
-                                                查看学生
-                                            </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => openEditModal(cls)}>
-                                                <Pencil className="w-3 h-3 mr-1" />
-                                                编辑
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleDelete(cls)}
-                                                className="text-destructive hover:text-destructive"
-                                            >
-                                                <Trash2 className="w-3 h-3 mr-1" />
-                                                删除
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {classes.length === 0 && (
+                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <Input
+                            placeholder="搜索班级 / 学期 / 教师"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="sm:w-64"
+                        />
+                        <Select value={filterSemester} onValueChange={setFilterSemester}>
+                            <SelectTrigger className="sm:w-40">
+                                <SelectValue placeholder="全部学期" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部学期</SelectItem>
+                                {semesters.map((s) => (
+                                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={filterTeacher} onValueChange={setFilterTeacher}>
+                            <SelectTrigger className="sm:w-40">
+                                <SelectValue placeholder="全部教师" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部教师</SelectItem>
+                                {teachers.map((t) => (
+                                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                                        暂无数据
-                                    </TableCell>
+                                    <TableHead>班级名称</TableHead>
+                                    <TableHead>学期</TableHead>
+                                    <TableHead>授课教师</TableHead>
+                                    <TableHead>学生人数</TableHead>
+                                    <TableHead>创建时间</TableHead>
+                                    <TableHead>操作</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                )}
-            </CardContent>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredClasses.map((cls) => (
+                                    <TableRow key={cls.id}>
+                                        <TableCell className="font-medium text-slate-900">{cls.name}</TableCell>
+                                        <TableCell>
+                                            <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-100">
+                                                {cls.semesterName}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{cls.teacherName}</TableCell>
+                                        <TableCell>{cls.studentCount}</TableCell>
+                                        <TableCell className="text-slate-500">{formatDate(cls.createdAt)}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => navigate(`/student?classId=${cls.id}`)}
+                                                >
+                                                    <Users className="w-3 h-3 mr-1" />
+                                                    查看学生
+                                                </Button>
+                                                <Button variant="ghost" size="sm" onClick={() => openEditModal(cls)}>
+                                                    <Pencil className="w-3 h-3 mr-1" />
+                                                    编辑
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(cls)}
+                                                    className="text-destructive hover:text-destructive"
+                                                >
+                                                    <Trash2 className="w-3 h-3 mr-1" />
+                                                    删除
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {filteredClasses.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                                            暂无符合条件的数据
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </CardContent>
+            </Card>
 
             {/* 创建班级弹窗 */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
@@ -384,6 +469,6 @@ export function ClassManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </Card>
+        </div>
     );
 }

@@ -25,6 +25,13 @@ const sections: SettingSection[] = [
     { id: "backup", title: "备份恢复", icon: Database },
 ];
 
+const sectionDescriptions: Record<string, string> = {
+    general: "系统名称、维护模式与注册策略",
+    experiment: "实验时长、自动保存与审批流程",
+    security: "登录保护与会话超时策略",
+    backup: "自动备份、保留周期与恢复操作",
+};
+
 export function SystemSettings() {
     const navigate = useNavigate();
     const [activeSection, setActiveSection] = useState("general");
@@ -58,6 +65,9 @@ export function SystemSettings() {
         backupFrequency: "daily",
         backupRetentionDays: 30,
     });
+
+    const activeMeta = sections.find((section) => section.id === activeSection) ?? sections[0];
+    const SectionIcon = activeMeta.icon;
 
     useEffect(() => {
         loadSettings();
@@ -267,37 +277,54 @@ export function SystemSettings() {
     };
 
     return (
-        <div className="flex gap-6">
-            <div className="w-56 shrink-0">
-                <Card className="p-2">
-                    {sections.map((section) => {
-                        const Icon = section.icon;
-                        return (
-                            <Button
-                                key={section.id}
-                                variant="ghost"
-                                onClick={() => setActiveSection(section.id)}
-                                className={`w-full justify-start gap-3 ${activeSection === section.id
-                                    ? "bg-primary/10 text-primary"
-                                    : "text-muted-foreground"
-                                    }`}
-                            >
-                                <Icon className="w-4 h-4" />
-                                <span>{section.title}</span>
-                            </Button>
-                        );
-                    })}
-                </Card>
+        <div className="space-y-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">系统设置</h2>
+                    <p className="text-sm text-slate-500 mt-1">集中管理系统参数、安全策略与备份方案。</p>
+                </div>
             </div>
 
-            <Card className="flex-1">
-                <CardContent className="pt-6">
+            <div className="flex flex-col gap-6 xl:flex-row">
+                <div className="xl:w-64 shrink-0">
+                    <Card className="border-slate-200 shadow-sm">
+                        <CardContent className="p-2 space-y-1">
+                            {sections.map((section) => {
+                                const Icon = section.icon;
+                                const isActive = activeSection === section.id;
+                                return (
+                                    <Button
+                                        key={section.id}
+                                        variant="ghost"
+                                        onClick={() => setActiveSection(section.id)}
+                                        className={`w-full justify-start gap-3 ${isActive
+                                            ? "bg-blue-50 text-blue-600"
+                                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                            }`}
+                                    >
+                                        <Icon className="w-4 h-4" />
+                                        <span>{section.title}</span>
+                                    </Button>
+                                );
+                            })}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card className="flex-1 border-slate-200 shadow-sm">
+                    <CardContent className="pt-6 space-y-6">
+                        <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <SectionIcon className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-900">{activeMeta.title}</h3>
+                                <p className="text-sm text-slate-500 mt-1">{sectionDescriptions[activeMeta.id]}</p>
+                            </div>
+                        </div>
                     {activeSection === "general" && (
                         <div className="space-y-6">
-                            <div>
-                                <h3 className="text-lg font-semibold text-foreground">基本设置</h3>
-                                <Separator className="mt-4" />
-                            </div>
+                            <Separator className="bg-slate-200" />
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="systemName">系统名称</Label>
@@ -307,20 +334,20 @@ export function SystemSettings() {
                                         onChange={(e) => setSettings({ ...settings, systemName: e.target.value })}
                                     />
                                 </div>
-                                <div className="flex items-center justify-between py-3 border-b">
+                                <div className="flex items-center justify-between py-3 border-b border-slate-200">
                                     <div>
-                                        <div className="text-sm font-medium text-foreground">维护模式</div>
-                                        <div className="text-xs text-muted-foreground">开启后仅管理员可访问系统</div>
+                                        <div className="text-sm font-medium text-slate-900">维护模式</div>
+                                        <div className="text-xs text-slate-500">开启后仅管理员可访问系统</div>
                                     </div>
                                     <Switch
                                         checked={settings.maintenanceMode}
                                         onCheckedChange={(checked) => setSettings({ ...settings, maintenanceMode: checked })}
                                     />
                                 </div>
-                                <div className="flex items-center justify-between py-3 border-b">
+                                <div className="flex items-center justify-between py-3 border-b border-slate-200">
                                     <div>
-                                        <div className="text-sm font-medium text-foreground">开放注册</div>
-                                        <div className="text-xs text-muted-foreground">允许新用户自行注册账号</div>
+                                        <div className="text-sm font-medium text-slate-900">开放注册</div>
+                                        <div className="text-xs text-slate-500">允许新用户自行注册账号</div>
                                     </div>
                                     <Switch
                                         checked={settings.allowRegistration}
@@ -333,10 +360,7 @@ export function SystemSettings() {
 
                     {activeSection === "experiment" && (
                         <div className="space-y-6">
-                            <div>
-                                <h3 className="text-lg font-semibold text-foreground">实验设置</h3>
-                                <Separator className="mt-4" />
-                            </div>
+                            <Separator className="bg-slate-200" />
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="experimentTimeLimit">实验时间限制（分钟）</Label>
@@ -358,10 +382,10 @@ export function SystemSettings() {
                                         onChange={(e) => setSettings({ ...settings, autoSaveInterval: parseInt(e.target.value) || 0 })}
                                     />
                                 </div>
-                                <div className="flex items-center justify-between py-3 border-b">
+                                <div className="flex items-center justify-between py-3 border-b border-slate-200">
                                     <div>
-                                        <div className="text-sm font-medium text-foreground">提交需审批</div>
-                                        <div className="text-xs text-muted-foreground">学生提交实验后需要教师审批</div>
+                                        <div className="text-sm font-medium text-slate-900">提交需审批</div>
+                                        <div className="text-xs text-slate-500">学生提交实验后需要教师审批</div>
                                     </div>
                                     <Switch
                                         checked={settings.requireApproval}
@@ -374,10 +398,7 @@ export function SystemSettings() {
 
                     {activeSection === "security" && (
                         <div className="space-y-6">
-                            <div>
-                                <h3 className="text-lg font-semibold text-foreground">安全设置</h3>
-                                <Separator className="mt-4" />
-                            </div>
+                            <Separator className="bg-slate-200" />
                             <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="maxLoginAttempts">最大登录尝试次数</Label>
@@ -388,7 +409,7 @@ export function SystemSettings() {
                                         value={settings.maxLoginAttempts}
                                         onChange={(e) => setSettings({ ...settings, maxLoginAttempts: parseInt(e.target.value) || 0 })}
                                     />
-                                    <p className="text-xs text-muted-foreground">超过次数后账号将被锁定</p>
+                                    <p className="text-xs text-slate-500">超过次数后账号将被锁定</p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="lockDurationMinutes">锁定时长（分钟）</Label>
@@ -442,15 +463,12 @@ export function SystemSettings() {
 
                     {activeSection === "backup" && (
                         <div className="space-y-6">
-                            <div>
-                                <h3 className="text-lg font-semibold text-foreground">备份恢复</h3>
-                                <Separator className="mt-4" />
-                            </div>
+                            <Separator className="bg-slate-200" />
                             <div className="space-y-4">
-                                <div className="flex items-center justify-between py-3 border-b">
+                                <div className="flex items-center justify-between py-3 border-b border-slate-200">
                                     <div>
-                                        <div className="text-sm font-medium text-foreground">自动备份</div>
-                                        <div className="text-xs text-muted-foreground">定期自动备份数据库和文件</div>
+                                        <div className="text-sm font-medium text-slate-900">自动备份</div>
+                                        <div className="text-xs text-slate-500">定期自动备份数据库和文件</div>
                                     </div>
                                     <Switch
                                         checked={settings.enableBackup}
@@ -479,7 +497,7 @@ export function SystemSettings() {
                                         value={settings.backupRetentionDays}
                                         onChange={(e) => setSettings({ ...settings, backupRetentionDays: parseInt(e.target.value) || 0 })}
                                     />
-                                    <div className="text-xs text-muted-foreground">超过天数的备份会被自动清理</div>
+                                    <div className="text-xs text-slate-500">超过天数的备份会被自动清理</div>
                                 </div>
                                 <div className="flex gap-3 pt-4">
                                     <Button onClick={handleCreateBackup} disabled={backupLoading}>
@@ -491,13 +509,13 @@ export function SystemSettings() {
                                     </Button>
                                 </div>
                                 {lastBackupId && (
-                                    <div className="text-xs text-muted-foreground">最近备份：{lastBackupId}</div>
+                                    <div className="text-xs text-slate-500">最近备份：{lastBackupId}</div>
                                 )}
                             </div>
                         </div>
                     )}
 
-                    <Separator className="my-8" />
+                    <Separator className="my-8 bg-slate-200" />
 
                     <div className="flex justify-end">
                         <Button onClick={handleSave} disabled={saving}>
@@ -505,8 +523,9 @@ export function SystemSettings() {
                             保存设置
                         </Button>
                     </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
 
             <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
                 <DialogContent>

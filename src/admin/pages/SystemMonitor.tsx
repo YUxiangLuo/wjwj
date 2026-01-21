@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Cpu, HardDrive, Activity, Wifi, Users, Zap, Pause, Play, RefreshCw } from "lucide-react";
+import { Cpu, HardDrive, Activity, Wifi, Users, Pause, Play, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -22,15 +22,17 @@ function MetricCard({ label, value, unit, icon: Icon, color }: {
     color: string;
 }) {
     return (
-        <Card>
-            <CardContent className="pt-5">
+        <Card className="border-slate-200 shadow-sm">
+            <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm text-muted-foreground">{label}</span>
-                    <Icon className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-slate-500">{label}</span>
+                    <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+                        <Icon className="w-4 h-4" />
+                    </div>
                 </div>
                 <div className="flex items-end gap-1 mb-3">
-                    <span className={`text-3xl font-bold ${color}`}>{value}</span>
-                    <span className="text-sm text-muted-foreground mb-1">{unit}</span>
+                    <span className={`text-3xl font-semibold ${color}`}>{value}</span>
+                    <span className="text-sm text-slate-500 mb-1">{unit}</span>
                 </div>
                 <Progress value={Math.min(value, 100)} className={`h-2 ${color.replace("text-", "[&>div]:bg-")}`} />
             </CardContent>
@@ -90,27 +92,37 @@ export function SystemMonitor() {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <span className={`w-3 h-3 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
-                    <span className="text-sm text-muted-foreground">{isLive ? "实时监控中" : "监控已暂停"}</span>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h2 className="text-lg font-semibold text-slate-900">系统监控</h2>
+                    <p className="text-sm text-slate-500 mt-1">查看系统资源占用与日志动态。</p>
                 </div>
-                <Button
-                    variant={isLive ? "secondary" : "default"}
-                    onClick={() => setIsLive(!isLive)}
-                >
-                    {isLive ? (
-                        <>
-                            <Pause className="w-4 h-4" />
-                            暂停
-                        </>
-                    ) : (
-                        <>
-                            <Play className="w-4 h-4" />
-                            恢复监控
-                        </>
-                    )}
-                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <span className={`w-2.5 h-2.5 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-slate-300"}`} />
+                        {isLive ? "实时监控中" : "监控已暂停"}
+                    </div>
+                    <Button variant="outline" onClick={fetchData} disabled={loading}>
+                        <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                        刷新数据
+                    </Button>
+                    <Button
+                        variant={isLive ? "secondary" : "default"}
+                        onClick={() => setIsLive(!isLive)}
+                    >
+                        {isLive ? (
+                            <>
+                                <Pause className="w-4 h-4" />
+                                暂停
+                            </>
+                        ) : (
+                            <>
+                                <Play className="w-4 h-4" />
+                                恢复监控
+                            </>
+                        )}
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -140,35 +152,36 @@ export function SystemMonitor() {
                     value={metrics.network}
                     unit="Mbps"
                     icon={Wifi}
-                    color="text-primary"
+                    color="text-blue-600"
                 />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <Card>
-                    <CardContent className="pt-5">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4">
+                        <div className="flex items-center gap-2 text-slate-500 mb-1">
                             <Users className="w-4 h-4" />
                             <span className="text-sm">活跃连接数</span>
                         </div>
-                        <div className="text-2xl font-bold text-foreground">{metrics.activeConnections}</div>
+                        <div className="text-2xl font-semibold text-slate-900">{metrics.activeConnections}</div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card>
-                <CardHeader>
+            <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-base">系统日志</CardTitle>
+                    <span className="text-xs text-slate-500">最近 {logs.length} 条</span>
                 </CardHeader>
                 <CardContent className="space-y-2">
                     {logs.map((log) => (
-                        <div key={log.id} className="flex items-start gap-3 p-3 bg-muted rounded-lg text-sm">
-                            <span className="text-muted-foreground font-mono text-xs">
+                        <div key={log.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm sm:flex-row sm:items-start">
+                            <div className="text-xs text-slate-500 font-mono sm:w-20">
                                 {new Date(log.time).toLocaleTimeString("zh-CN")}
-                            </span>
+                            </div>
                             {getLevelBadge(log.level)}
-                            <span className="text-foreground flex-1">{log.message}</span>
-                            <span className="text-xs text-muted-foreground">{log.source}</span>
+                            <span className="text-slate-800 flex-1">{log.message}</span>
+                            <span className="text-xs text-slate-400">{log.source}</span>
                         </div>
                     ))}
                 </CardContent>
