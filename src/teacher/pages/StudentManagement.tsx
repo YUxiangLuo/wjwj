@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Download } from "lucide-react";
+import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Download, Users, CheckCircle2, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -162,33 +162,85 @@ export function StudentManagement() {
         s.name.includes(searchQuery) || s.studentId.includes(searchQuery) || (s.email && s.email.includes(searchQuery))
     );
 
+    const summary = useMemo(() => {
+        const total = students.length;
+        const active = students.filter((student) => student.status === 1).length;
+        const disabled = total - active;
+        return { total, active, disabled };
+    }, [students]);
+
     if (loading) return <div className="p-8 text-center">加载中...</div>;
     if (!classInfo && !loading) return <div className="p-8 text-center">未找到班级</div>;
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             <div className="flex items-center gap-3">
                 <Link to="/class">
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="text-slate-600">
                         <ArrowLeft className="w-4 h-4 mr-1" />
                         返回
                     </Button>
                 </Link>
-                <span className="text-muted-foreground">/</span>
-                <span className="font-medium">{classInfo?.name}</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-sm text-slate-500">班级</span>
+                <span className="text-sm font-medium text-slate-900">{classInfo?.name}</span>
             </div>
 
-            <Card>
-                <CardHeader className="flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">学生列表（{filteredStudents.length}人）</CardTitle>
-                    <div className="flex gap-3">
-                        <div className="relative">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">学生管理</h2>
+                <p className="text-sm text-slate-500 mt-1">维护班级学生名单与账号状态。</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">学生总数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{summary.total}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <Users className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">正常账号</p>
+                            <p className="text-2xl font-semibold text-slate-900">{summary.active}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">已禁用</p>
+                            <p className="text-2xl font-semibold text-slate-900">{summary.disabled}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <PauseCircle className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <CardTitle className="text-base">学生列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredStudents.length} 人</p>
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <div className="relative sm:w-52">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <Input
-                                placeholder="搜索学生..."
+                                placeholder="搜索学生"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 w-48"
+                                className="pl-9"
                             />
                         </div>
                         <Button variant="outline" onClick={() => setShowImportModal(true)}>
@@ -216,15 +268,15 @@ export function StudentManagement() {
                         <TableBody>
                             {filteredStudents.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center py-6 text-slate-500">
                                         暂无学生
                                     </TableCell>
                                 </TableRow>
                             ) : filteredStudents.map((student) => (
                                 <TableRow key={student.id}>
-                                    <TableCell className="font-mono">{student.studentId}</TableCell>
-                                    <TableCell className="font-medium">{student.name}</TableCell>
-                                    <TableCell className="text-muted-foreground">{student.email || "-"}</TableCell>
+                                    <TableCell className="font-mono text-slate-900">{student.studentId}</TableCell>
+                                    <TableCell className="font-medium text-slate-900">{student.name}</TableCell>
+                                    <TableCell className="text-slate-500">{student.email || "-"}</TableCell>
                                     <TableCell>
                                         {student.status === 1 ? (
                                             <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
@@ -232,14 +284,14 @@ export function StudentManagement() {
                                             <Badge variant="secondary">已禁用</Badge>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-muted-foreground">{student.lastLogin ? new Date(student.lastLogin).toLocaleString() : "-"}</TableCell>
+                                    <TableCell className="text-slate-500">{student.lastLogin ? new Date(student.lastLogin).toLocaleString() : "-"}</TableCell>
                                     <TableCell>
                                         <div className="flex gap-1">
                                             <Button variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)}>
                                                 <RotateCcw className="w-4 h-4" />
                                             </Button>
                                             <Button variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)}>
-                                                <UserX className={`w-4 h-4 ${student.status === 0 ? "text-muted-foreground" : ""}`} />
+                                                <UserX className={`w-4 h-4 ${student.status === 0 ? "text-slate-400" : ""}`} />
                                             </Button>
                                             <Button variant="ghost" size="sm" className="text-destructive" title="删除" onClick={() => handleDelete(student)}>
                                                 <Trash2 className="w-4 h-4" />

@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
-import { UserPlus } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { UserPlus, Users, CheckCircle2, PauseCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -26,6 +29,8 @@ export function AssistantManagement() {
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [showUnbindConfirm, setShowUnbindConfirm] = useState(false);
     const [pendingAssign, setPendingAssign] = useState<{ assistantId: number; classIds: number[] } | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"all" | "active" | "disabled">("all");
 
     // Form states
     const [newAssistant, setNewAssistant] = useState({ name: "", studentId: "" });
@@ -88,95 +93,192 @@ export function AssistantManagement() {
         }
     }
 
-    return (
-        <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">助教列表</CardTitle>
-                <Button onClick={() => setShowAddModal(true)}>
-                    <UserPlus className="w-4 h-4" />
-                    添加助教
-                </Button>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>姓名</TableHead>
-                            <TableHead>工号</TableHead>
-                            <TableHead>邮箱</TableHead>
-                            <TableHead>负责班级</TableHead>
-                            <TableHead>状态</TableHead>
-                            <TableHead>操作</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
+    const summary = useMemo(() => {
+        const total = assistants.length;
+        const active = assistants.filter((ta) => ta.status === 1).length;
+        const disabled = total - active;
+        const classCount = new Set(assistants.flatMap((ta) => ta.assignedClasses)).size;
+        return { total, active, disabled, classCount };
+    }, [assistants]);
 
-                        {assistants.length === 0 ? (
+    const filteredAssistants = useMemo(() => {
+        const keyword = searchTerm.trim().toLowerCase();
+        return assistants.filter((ta) => {
+            const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? ta.status === 1 : ta.status !== 1);
+            const matchesKeyword = !keyword ||
+                ta.name.toLowerCase().includes(keyword) ||
+                ta.studentId.toLowerCase().includes(keyword) ||
+                (ta.email?.toLowerCase().includes(keyword) ?? false);
+            return matchesStatus && matchesKeyword;
+        });
+    }, [assistants, searchTerm, statusFilter]);
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">助教管理</h2>
+                <p className="text-sm text-slate-500 mt-1">维护助教账号与负责班级。</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">助教总数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{summary.total}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <Users className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">正常账号</p>
+                            <p className="text-2xl font-semibold text-slate-900">{summary.active}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">已停用</p>
+                            <p className="text-2xl font-semibold text-slate-900">{summary.disabled}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <PauseCircle className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">覆盖班级</p>
+                            <p className="text-2xl font-semibold text-slate-900">{summary.classCount}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                            <Users className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <CardTitle className="text-base">助教列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredAssistants.length} 条</p>
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <div className="relative sm:w-56">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                placeholder="搜索姓名/工号/邮箱"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
+                            <SelectTrigger className="sm:w-28">
+                                <SelectValue placeholder="全部状态" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部状态</SelectItem>
+                                <SelectItem value="active">正常</SelectItem>
+                                <SelectItem value="disabled">已停用</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={() => setShowAddModal(true)}>
+                            <UserPlus className="w-4 h-4" />
+                            添加助教
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">暂无助教</TableCell>
+                                <TableHead>姓名</TableHead>
+                                <TableHead>工号</TableHead>
+                                <TableHead>邮箱</TableHead>
+                                <TableHead>负责班级</TableHead>
+                                <TableHead>状态</TableHead>
+                                <TableHead>操作</TableHead>
                             </TableRow>
-                        ) : assistants.map((ta) => (
-                            <TableRow key={ta.id}>
-                                <TableCell className="font-medium">{ta.name}</TableCell>
-                                <TableCell className="font-mono">{ta.studentId}</TableCell>
-                                <TableCell className="text-muted-foreground">{ta.email || "-"}</TableCell>
-                                <TableCell>
-                                    <div className="flex gap-1 flex-wrap">
-                                        {ta.assignedClasses.map((cls) => (
-                                            <Badge key={cls} variant="secondary" className="text-xs">{cls}</Badge>
-                                        ))}
-                                    </div>
-                                </TableCell>
-                                <TableCell>
-                                    {ta.status === 1 ? (
-                                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
-                                    ) : (
-                                        <Badge variant="secondary">已停用</Badge>
-                                    )}
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex gap-2">
-                                        <Button variant="ghost" size="sm" className="text-primary" onClick={() => openAssignModal(ta)}>
-                                            分配班级
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={async () => {
-                                                const res = await teacherApi.updateAssistant(ta.id, { action: "reset_password" });
-                                                if (res.success) {
-                                                    alert("密码已重置为助教账号");
-                                                } else {
-                                                    alert("重置失败: " + res.error?.message);
-                                                }
-                                            }}
-                                        >
-                                            重置密码
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={async () => {
-                                                const res = await teacherApi.updateAssistant(ta.id, { action: "toggle_status" });
-                                                if (res.success) {
-                                                    loadData();
-                                                } else {
-                                                    alert("操作失败: " + res.error?.message);
-                                                }
-                                            }}
-                                        >
-                                            {ta.status === 1 ? "停用" : "启用"}
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteId(ta.id)}>
-                                            移除
-                                        </Button>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredAssistants.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-6 text-slate-500">暂无助教</TableCell>
+                                </TableRow>
+                            ) : filteredAssistants.map((ta) => (
+                                <TableRow key={ta.id}>
+                                    <TableCell className="font-medium text-slate-900">{ta.name}</TableCell>
+                                    <TableCell className="font-mono text-slate-900">{ta.studentId}</TableCell>
+                                    <TableCell className="text-slate-500">{ta.email || "-"}</TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-1 flex-wrap">
+                                            {ta.assignedClasses.map((cls) => (
+                                                <Badge key={cls} variant="secondary" className="text-xs">{cls}</Badge>
+                                            ))}
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        {ta.status === 1 ? (
+                                            <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
+                                        ) : (
+                                            <Badge variant="secondary">已停用</Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => openAssignModal(ta)}>
+                                                分配班级
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={async () => {
+                                                    const res = await teacherApi.updateAssistant(ta.id, { action: "reset_password" });
+                                                    if (res.success) {
+                                                        alert("密码已重置为助教账号");
+                                                    } else {
+                                                        alert("重置失败: " + res.error?.message);
+                                                    }
+                                                }}
+                                            >
+                                                重置密码
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={async () => {
+                                                    const res = await teacherApi.updateAssistant(ta.id, { action: "toggle_status" });
+                                                    if (res.success) {
+                                                        loadData();
+                                                    } else {
+                                                        alert("操作失败: " + res.error?.message);
+                                                    }
+                                                }}
+                                            >
+                                                {ta.status === 1 ? "停用" : "启用"}
+                                            </Button>
+                                            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteId(ta.id)}>
+                                                移除
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
 
             <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
                 <DialogContent>
@@ -221,19 +323,18 @@ export function AssistantManagement() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            {/* Reusing Label and Input components, need to make sure they are imported? Yes they are at top. */}
-                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">工号</label>
-                            <input
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            <Label htmlFor="assistantStudentId">工号</Label>
+                            <Input
+                                id="assistantStudentId"
                                 placeholder="请输入工号"
                                 value={newAssistant.studentId}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, studentId: e.target.value })}
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">姓名</label>
-                            <input
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            <Label htmlFor="assistantName">姓名</Label>
+                            <Input
+                                id="assistantName"
                                 placeholder="请输入姓名"
                                 value={newAssistant.name}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, name: e.target.value })}
@@ -291,6 +392,6 @@ export function AssistantManagement() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </Card>
+        </div>
     );
 }

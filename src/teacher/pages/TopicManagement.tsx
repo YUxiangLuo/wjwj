@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { BookOpen } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { BookOpen, Search, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,8 @@ export function TopicManagement() {
     const [weightConfig, setWeightConfig] = useState({ questionnaire: 30, process: 30, report: 40 });
     const [uploadingExcel, setUploadingExcel] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
+    const [searchTerm, setSearchTerm] = useState("");
 
     // Form state
     const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
@@ -256,79 +258,164 @@ export function TopicManagement() {
         }
     }
 
+    const summary = useMemo(() => {
+        const total = topics.length;
+        const published = topics.filter((topic) => topic.status === 1).length;
+        const draft = total - published;
+        const totalRows = topics.reduce((sum, topic) => sum + (topic.dataRows || 0), 0);
+        return { total, published, draft, totalRows };
+    }, [topics]);
+
+    const filteredTopics = useMemo(() => {
+        const keyword = searchTerm.trim().toLowerCase();
+        return topics.filter((topic) => {
+            const matchesKeyword = !keyword || topic.name.toLowerCase().includes(keyword);
+            const matchesStatus =
+                statusFilter === "all" ||
+                (statusFilter === "published" ? topic.status === 1 : topic.status === 0);
+            return matchesKeyword && matchesStatus;
+        });
+    }, [topics, searchTerm, statusFilter]);
+
     return (
-        <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">课题列表</CardTitle>
-                <div className="flex gap-3">
-                    <Select defaultValue="all">
-                        <SelectTrigger className="w-28">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">全部状态</SelectItem>
-                            <SelectItem value="draft">草稿</SelectItem>
-                            <SelectItem value="published">已发布</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Button onClick={openCreateModal}>+ 创建课题</Button>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                {loading ? <div className="text-center py-4">加载中...</div> : topics.map((topic) => (
-                    <div key={topic.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                        <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-3">
-                                <BookOpen className="w-5 h-5 text-primary" />
-                                <div>
-                                    <h4 className="font-medium text-foreground">{topic.name}</h4>
-                                    <div className="text-xs text-muted-foreground mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString()}</div>
-                                </div>
-                            </div>
-                            {topic.status === 1 ? (
-                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">已发布</Badge>
-                            ) : (
-                                <Badge variant="secondary">草稿</Badge>
-                            )}
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">课题管理</h2>
+                <p className="text-sm text-slate-500 mt-1">配置课题信息、数据与评分权重。</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">课题总数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                            <span>数据行数：{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
-                            {/* Attachments not yet in API, hidden or mock */}
-                            {/* <span>附件：{topic.attachments}个</span> */}
+                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <BookOpen className="w-5 h-5" />
                         </div>
-                        <div className="flex gap-2">
-                            {topic.status === 0 ? (
-                                <>
-                                    <Button variant="ghost" size="sm" className="text-primary" onClick={() => openEditModal(topic)}>编辑</Button>
-                                    <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
-                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
-                                </>
-                            ) : (
-                                <>
-                                    <Button variant="ghost" size="sm" className="text-primary">查看</Button>
-                                    <Button variant="ghost" size="sm" onClick={() => openEditModal(topic)}>编辑</Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-blue-500"
-                                        onClick={async () => {
-                                            const res = await teacherApi.copyTopic(topic.id);
-                                            if (res.success) {
-                                                loadTopics();
-                                            } else {
-                                                alert("复制失败: " + res.error?.message);
-                                            }
-                                        }}
-                                    >
-                                        复制
-                                    </Button>
-                                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
-                                </>
-                            )}
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">已发布</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.published}</p>
                         </div>
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <Layers className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">草稿</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.draft}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <BookOpen className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">数据行数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                            <Layers className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <CardTitle className="text-base">课题列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredTopics.length} 条</p>
                     </div>
-                ))}
-            </CardContent>
+                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <div className="relative sm:w-56">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                placeholder="搜索课题名称"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
+                            <SelectTrigger className="sm:w-28">
+                                <SelectValue placeholder="全部状态" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部状态</SelectItem>
+                                <SelectItem value="draft">草稿</SelectItem>
+                                <SelectItem value="published">已发布</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={openCreateModal}>+ 创建课题</Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {loading ? <div className="text-center py-4 text-slate-500">加载中...</div> : filteredTopics.map((topic) => (
+                        <div key={topic.id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-2">
+                                <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                        <BookOpen className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-medium text-slate-900">{topic.name}</h4>
+                                        <div className="text-xs text-slate-500 mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString()}</div>
+                                    </div>
+                                </div>
+                                {topic.status === 1 ? (
+                                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">已发布</Badge>
+                                ) : (
+                                    <Badge variant="secondary" className="bg-amber-50 text-amber-700">草稿</Badge>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-slate-500 mb-3">
+                                <span>数据行数：{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {topic.status === 0 ? (
+                                    <>
+                                        <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => openEditModal(topic)}>编辑</Button>
+                                        <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
+                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Button variant="ghost" size="sm" className="text-blue-600">查看</Button>
+                                        <Button variant="ghost" size="sm" onClick={() => openEditModal(topic)}>编辑</Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-blue-500"
+                                            onClick={async () => {
+                                                const res = await teacherApi.copyTopic(topic.id);
+                                                if (res.success) {
+                                                    loadTopics();
+                                                } else {
+                                                    alert("复制失败: " + res.error?.message);
+                                                }
+                                            }}
+                                        >
+                                            复制
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
 
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
                 <DialogContent className="sm:max-w-2xl">
@@ -594,6 +681,6 @@ export function TopicManagement() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </Card>
+        </div>
     );
 }

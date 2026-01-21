@@ -183,16 +183,16 @@ export function GradingDetail() {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden bg-slate-50">
             {/* Header */}
-            <div className="flex items-center gap-4 p-4 bg-background border-b shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => navigate("/grading")}>
+            <div className="flex items-center gap-4 px-6 h-20 bg-white border-b border-slate-200 shrink-0">
+                <Button variant="ghost" size="sm" className="text-slate-600" onClick={() => navigate("/grading")}> 
                     <ArrowLeft className="w-4 h-4 mr-1" />
                     返回列表
                 </Button>
                 <div>
-                    <h2 className="text-lg font-semibold">{data.topic}</h2>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <h2 className="text-lg font-semibold text-slate-900">{data.topic}</h2>
+                    <div className="flex items-center gap-2 text-sm text-slate-500">
                         <span>{data.studentName} ({data.studentId})</span>
                         <span>·</span>
                         <span>{data.className}</span>
@@ -205,7 +205,7 @@ export function GradingDetail() {
                 </div>
             </div>
             {isReadOnly && (
-                <div className="px-6 py-2 text-sm text-destructive bg-destructive/10 border-b">
+                <div className="px-6 py-2 text-sm text-destructive bg-rose-50 border-b border-rose-200">
                     该作业正在被他人批改中，当前为只读模式。
                 </div>
             )}
@@ -213,8 +213,8 @@ export function GradingDetail() {
             {/* Main Content */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Left: Submission Content */}
-                <div className="flex-1 overflow-y-auto p-6 bg-slate-50/50">
-                    <Card className="min-h-full shadow-sm border-0 bg-transparent">
+                <div className="flex-1 overflow-y-auto p-6">
+                    <Card className="min-h-full shadow-sm border border-slate-200 bg-white">
                         <Tabs defaultValue="report">
                             <TabsList className="mb-4">
                                 <TabsTrigger value="report">实验报告</TabsTrigger>
@@ -222,9 +222,9 @@ export function GradingDetail() {
                                 <TabsTrigger value="data">样本数据</TabsTrigger>
                             </TabsList>
 
-                            <TabsContent value="report" className="bg-white rounded-lg border p-6 min-h-[500px]">
+                            <TabsContent value="report" className="bg-white rounded-lg border border-slate-200 p-6 min-h-[500px]">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold">实验报告详情</h3>
+                                    <h3 className="text-lg font-semibold text-slate-900">实验报告详情</h3>
                                     {data.reportPdfPath && (
                                         <div className="flex items-center gap-2">
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/report`} target="_blank" rel="noreferrer">
@@ -246,14 +246,14 @@ export function GradingDetail() {
                                     {data.reportContent ? (
                                         <pre className="whitespace-pre-wrap font-sans text-sm">{data.reportContent}</pre>
                                     ) : (
-                                        <div className="text-muted-foreground text-center py-12">暂无报告内容</div>
+                                        <div className="text-slate-500 text-center py-12">暂无报告内容</div>
                                     )}
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="questionnaire" className="bg-white rounded-lg border p-6 min-h-[500px]">
+                            <TabsContent value="questionnaire" className="bg-white rounded-lg border border-slate-200 p-6 min-h-[500px]">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-bold">问卷设计</h3>
+                                    <h3 className="text-lg font-semibold text-slate-900">问卷设计</h3>
                                     {data.questionnairePdfPath && (
                                         <div className="flex items-center gap-2">
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/questionnaire`} target="_blank" rel="noreferrer">
@@ -274,9 +274,9 @@ export function GradingDetail() {
                                 <div className="space-y-4">
                                     {questionnaire && questionnaire.title ? (
                                         <div className="space-y-3">
-                                            <div className="font-medium text-lg">{questionnaire.title}</div>
+                                            <div className="font-medium text-lg text-slate-900">{questionnaire.title}</div>
                                             {questionnaire.welcomeText && (
-                                                <div className="text-sm text-muted-foreground">{questionnaire.welcomeText}</div>
+                                                <div className="text-sm text-slate-500">{questionnaire.welcomeText}</div>
                                             )}
                                             <div className="space-y-4">
                                                 {(questionnaire.questions ?? []).map((q: any, idx: number) => (
@@ -286,17 +286,17 @@ export function GradingDetail() {
                                                 ))}
                                             </div>
                                             {questionnaire.endingText && (
-                                                <div className="text-sm text-muted-foreground">{questionnaire.endingText}</div>
+                                                <div className="text-sm text-slate-500">{questionnaire.endingText}</div>
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="text-muted-foreground text-center py-12">未设计问卷</div>
+                                        <div className="text-slate-500 text-center py-12">未设计问卷</div>
                                     )}
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="data" className="bg-white rounded-lg border p-6 min-h-[500px]">
-                                <h3 className="text-lg font-bold mb-4">样本数据概览</h3>
+                            <TabsContent value="data" className="bg-white rounded-lg border border-slate-200 p-6 min-h-[500px]">
+                                <h3 className="text-lg font-semibold text-slate-900 mb-4">样本数据概览</h3>
                                 <div className="space-y-6">
                                     {renderSamplingPreview("简单随机抽样", samplingResults?.simple?.data)}
                                     {renderSamplingPreview("系统抽样", samplingResults?.systematic?.data)}
@@ -308,8 +308,8 @@ export function GradingDetail() {
                 </div>
 
                 {/* Right: Grading Form */}
-                <div className="w-80 bg-background border-l shrink-0 flex flex-col">
-                    <div className="p-4 border-b font-medium">评分</div>
+                <div className="w-80 bg-white border-l border-slate-200 shrink-0 flex flex-col">
+                    <div className="p-4 border-b border-slate-200 font-medium text-slate-900">评分</div>
                     <div className="flex-1 p-4 overflow-y-auto">
                         <div className="space-y-6">
                             <div className="space-y-2">
@@ -360,8 +360,8 @@ export function GradingDetail() {
                             <Separator />
 
                             <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg">
-                                <span className="font-semibold">总分</span>
-                                <span className="text-2xl font-bold text-primary">{totalScore.toFixed(1)}</span>
+                                <span className="font-semibold text-slate-900">总分</span>
+                                <span className="text-2xl font-bold text-blue-600">{totalScore.toFixed(1)}</span>
                             </div>
 
                             <div className="space-y-2">
@@ -377,7 +377,7 @@ export function GradingDetail() {
                         </div>
                     </div>
 
-                    <div className="p-4 border-t space-y-2 bg-slate-50">
+                    <div className="p-4 border-t border-slate-200 space-y-2 bg-slate-50">
                         <Button className="w-full" onClick={() => handleSubmit(2)} disabled={saving || isReadOnly}>
                             <CheckCircle className="w-4 h-4 mr-2" />
                             {saving ? "提交中..." : "确认评分"}

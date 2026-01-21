@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search } from "lucide-react";
 import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
 
 export function TaskManagement() {
@@ -26,6 +27,8 @@ export function TaskManagement() {
     const [selectedTopicId, setSelectedTopicId] = useState<string>("");
     const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
     const [deadline, setDeadline] = useState("");
+    const [classFilter, setClassFilter] = useState("all");
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         loadTasks();
@@ -96,67 +99,170 @@ export function TaskManagement() {
         );
     };
 
+    const summary = useMemo(() => {
+        const total = tasks.length;
+        const pendingTotal = tasks.reduce((sum, task) => sum + (task.pending ?? 0), 0);
+        const completedTotal = tasks.reduce((sum, task) => sum + task.completed, 0);
+        const totalSubmissions = tasks.reduce((sum, task) => sum + task.total, 0);
+        return { total, pendingTotal, completedTotal, totalSubmissions };
+    }, [tasks]);
+
+    const filteredTasks = useMemo(() => {
+        const keyword = searchTerm.trim().toLowerCase();
+        return tasks.filter((task) => {
+            const matchesClass = classFilter === "all" || task.className === classFilter;
+            const matchesKeyword = !keyword || task.topic.toLowerCase().includes(keyword);
+            return matchesClass && matchesKeyword;
+        });
+    }, [tasks, classFilter, searchTerm]);
+
     return (
-        <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0">
-                <CardTitle className="text-base">任务列表</CardTitle>
-                <Button onClick={() => setShowPublishModal(true)}>+ 发布任务</Button>
-            </CardHeader>
-            <CardContent>
-                {loading ? <div>加载中...</div> : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>课题</TableHead>
-                                <TableHead>班级</TableHead>
-                                <TableHead>发布时间</TableHead>
-                                <TableHead>截止时间</TableHead>
-                                <TableHead>完成进度</TableHead>
-                                <TableHead>待批改</TableHead>
-                                <TableHead>操作</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {tasks.map((task) => (
-                                <TableRow key={task.id}>
-                                    <TableCell className="font-medium">{task.topic}</TableCell>
-                                    <TableCell>{task.className}</TableCell>
-                                    <TableCell className="text-muted-foreground">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString() : "-"}</TableCell>
-                                    <TableCell className="text-muted-foreground">{task.deadline ? new Date(task.deadline).toLocaleDateString() : "无"}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-16 h-2" />
-                                            <span className="text-xs text-muted-foreground">{task.completed}/{task.total}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-                                            {task.pending ?? 0}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-2">
-                                            <Button variant="ghost" size="sm" className="text-primary">查看进度</Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setSelectedTask(task);
-                                                    setExtendDeadline("");
-                                                    setShowExtendModal(true);
-                                                }}
-                                            >
-                                                延长时间
-                                            </Button>
-                                            <Button variant="ghost" size="sm" className="text-destructive">进入批改</Button>
-                                        </div>
-                                    </TableCell>
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-lg font-semibold text-slate-900">任务管理</h2>
+                <p className="text-sm text-slate-500 mt-1">管理发布任务与批改进度。</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">任务总数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <ClipboardList className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">待批改</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.pendingTotal}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+                            <AlertTriangle className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">已完成</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.completedTotal}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-200 shadow-sm">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500">总提交数</p>
+                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.totalSubmissions}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <CalendarDays className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <CardTitle className="text-base">任务列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredTasks.length} 条</p>
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <div className="relative sm:w-56">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                placeholder="搜索课题"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <Select value={classFilter} onValueChange={setClassFilter}>
+                            <SelectTrigger className="sm:w-40">
+                                <SelectValue placeholder="全部班级" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部班级</SelectItem>
+                                {Array.from(new Set(tasks.map((task) => task.className))).map((name) => (
+                                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button onClick={() => setShowPublishModal(true)}>+ 发布任务</Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {loading ? <div className="text-center py-6 text-slate-500">加载中...</div> : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>课题</TableHead>
+                                    <TableHead>班级</TableHead>
+                                    <TableHead>发布时间</TableHead>
+                                    <TableHead>截止时间</TableHead>
+                                    <TableHead>完成进度</TableHead>
+                                    <TableHead>待批改</TableHead>
+                                    <TableHead>操作</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
-            </CardContent>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredTasks.map((task) => (
+                                    <TableRow key={task.id}>
+                                        <TableCell className="font-medium text-slate-900">{task.topic}</TableCell>
+                                        <TableCell>{task.className}</TableCell>
+                                        <TableCell className="text-slate-500">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString() : "-"}</TableCell>
+                                        <TableCell className="text-slate-500">{task.deadline ? new Date(task.deadline).toLocaleDateString() : "无"}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-2" />
+                                                <span className="text-xs text-slate-500">{task.completed}/{task.total}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                                                {task.pending ?? 0}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button variant="ghost" size="sm" className="text-blue-600">查看进度</Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedTask(task);
+                                                        setExtendDeadline("");
+                                                        setShowExtendModal(true);
+                                                    }}
+                                                >
+                                                    延长时间
+                                                </Button>
+                                                <Button variant="ghost" size="sm" className="text-rose-600">进入批改</Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {filteredTasks.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center py-10 text-slate-500">
+                                            暂无任务
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </CardContent>
+            </Card>
 
             <Dialog open={showPublishModal} onOpenChange={setShowPublishModal}>
                 <DialogContent>
@@ -235,6 +341,6 @@ export function TaskManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </Card>
+        </div>
     );
 }
