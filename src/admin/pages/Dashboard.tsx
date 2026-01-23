@@ -16,24 +16,27 @@ function KpiCard({ icon: Icon, value, label, trend, trendUp, loading }: {
     loading?: boolean;
 }) {
     return (
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-lg shadow-black/20 border-slate-800 bg-slate-900 hover:border-indigo-500/30 transition-all duration-300 group">
             <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                    <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                        <Icon className="w-5 h-5" />
+                    <div className="w-12 h-12 rounded-xl bg-slate-800/50 text-indigo-400 flex items-center justify-center border border-slate-700/50 group-hover:bg-indigo-500/10 group-hover:text-indigo-300 transition-colors">
+                        <Icon className="w-6 h-6" />
                     </div>
                     {trend ? (
-                        <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${trendUp ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}`}>
+                        <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${trendUp
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                            }`}>
                             {trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                             {trend}
                         </div>
                     ) : null}
                 </div>
-                <div className="mt-4">
-                    <div className="text-2xl font-semibold text-slate-900">
-                        {loading ? "加载中" : value}
+                <div className="mt-5">
+                    <div className="text-3xl font-bold text-slate-100 tracking-tight">
+                        {loading ? <div className="h-8 w-16 bg-slate-800 rounded animate-pulse" /> : value}
                     </div>
-                    <div className="text-sm text-slate-500 mt-1">{label}</div>
+                    <div className="text-sm text-slate-500 mt-1 font-medium">{label}</div>
                 </div>
             </CardContent>
         </Card>
@@ -42,14 +45,14 @@ function KpiCard({ icon: Icon, value, label, trend, trendUp, loading }: {
 
 function RoleCountCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number }) {
     return (
-        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
-            <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
-                    <Icon className="w-4 h-4" />
+        <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-5 py-4 hover:border-slate-700 hover:bg-slate-900 transition-all">
+            <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-700/50">
+                    <Icon className="w-5 h-5" />
                 </div>
-                <div className="text-sm text-slate-600">{label}</div>
+                <div className="text-sm font-medium text-slate-400">{label}</div>
             </div>
-            <div className="text-lg font-semibold text-slate-900">{value}</div>
+            <div className="text-xl font-bold text-slate-100">{value}</div>
         </div>
     );
 }
@@ -69,7 +72,6 @@ export function Dashboard() {
 
     useEffect(() => {
         loadData();
-        // Refresh metrics every 5 seconds
         const interval = setInterval(loadMetrics, 5000);
         return () => clearInterval(interval);
     }, []);
@@ -87,7 +89,6 @@ export function Dashboard() {
             }
 
             if (announcementsRes.success && announcementsRes.data) {
-                // 只显示已发布的最近 5 条公告
                 setAnnouncements(
                     announcementsRes.data
                         .filter(a => a.status === 1)
@@ -120,10 +121,6 @@ export function Dashboard() {
     };
 
     const totalUsers = (stats?.studentCount ?? 0) + (stats?.teacherCount ?? 0) + (stats?.assistantCount ?? 0);
-    const completionRate = stats?.todayLogins
-        ? Math.max(0, Math.min(100, Math.round((stats.todayLogins / (stats.todayLogins + stats.pendingItems + 1)) * 100)))
-        : 0;
-    const systemHealth = Math.max(0, Math.round(100 - (metrics.cpu + metrics.memory + metrics.disk) / 3));
 
     const quickActions = [
         { label: "发布公告", to: "/announcement" },
@@ -133,7 +130,7 @@ export function Dashboard() {
     ];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                 <KpiCard
                     icon={Calendar}
@@ -203,90 +200,98 @@ export function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <Card className="xl:col-span-2 border-slate-200 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between">
+                <Card className="xl:col-span-2 border-slate-800 bg-slate-900 shadow-lg shadow-black/20">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                         <div>
-                            <CardTitle className="text-base text-slate-900">角色数量概览</CardTitle>
+                            <CardTitle className="text-lg text-slate-100">角色数量概览</CardTitle>
                             <p className="text-xs text-slate-500 mt-1">管理员可直接查看人数分布</p>
                         </div>
-                        <div className="text-sm text-slate-500">总人数 {totalUsers}</div>
+                        <div className="text-sm font-mono text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
+                            Total: <span className="text-indigo-400 font-bold">{totalUsers}</span>
+                        </div>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                         <RoleCountCard icon={GraduationCap} label="学生" value={stats?.studentCount ?? 0} />
                         <RoleCountCard icon={School} label="教师" value={stats?.teacherCount ?? 0} />
                         <RoleCountCard icon={UserCheck} label="助教" value={stats?.assistantCount ?? 0} />
                     </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-base text-slate-900">系统状态</CardTitle>
-                        <ShieldCheck className="w-4 h-4 text-slate-400" />
+                <Card className="border-slate-800 bg-slate-900 shadow-lg shadow-black/20">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+                        <CardTitle className="text-lg text-slate-100">系统状态</CardTitle>
+                        <ShieldCheck className="w-5 h-5 text-emerald-500" />
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">CPU 使用率</span>
-                            <span className="text-sm font-medium text-slate-900">{metrics.cpu}%</span>
+                    <CardContent className="space-y-6 pt-6">
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-400">CPU 使用率</span>
+                                <span className="text-sm font-medium text-slate-200 font-mono">{metrics.cpu}%</span>
+                            </div>
+                            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                                <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(metrics.cpu, 100)}%` }} />
+                            </div>
                         </div>
-                        <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                            <div className="h-full bg-emerald-500" style={{ width: `${Math.min(metrics.cpu, 100)}%` }} />
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-400">内存使用率</span>
+                                <span className="text-sm font-medium text-slate-200 font-mono">{metrics.memory}%</span>
+                            </div>
+                            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                                <div className="h-full bg-sky-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(metrics.memory, 100)}%` }} />
+                            </div>
                         </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">内存使用率</span>
-                            <span className="text-sm font-medium text-slate-900">{metrics.memory}%</span>
-                        </div>
-                        <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                            <div className="h-full bg-amber-500" style={{ width: `${Math.min(metrics.memory, 100)}%` }} />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">磁盘使用率</span>
-                            <span className="text-sm font-medium text-slate-900">{metrics.disk}%</span>
-                        </div>
-                        <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                            <div className="h-full bg-rose-500" style={{ width: `${Math.min(metrics.disk, 100)}%` }} />
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-400">磁盘使用率</span>
+                                <span className="text-sm font-medium text-slate-200 font-mono">{metrics.disk}%</span>
+                            </div>
+                            <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+                                <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(metrics.disk, 100)}%` }} />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <Card className="xl:col-span-2 border-slate-200 shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-base text-slate-900">最近动态</CardTitle>
-                        <Button variant="outline" size="sm" asChild>
+                <Card className="xl:col-span-2 border-slate-800 bg-slate-900 shadow-lg shadow-black/20">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+                        <CardTitle className="text-lg text-slate-100">最近动态</CardTitle>
+                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-white">
                             <Link to="/announcement">查看全部</Link>
                         </Button>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 pt-6">
                         {loading ? (
-                            <div className="text-sm text-slate-500">加载中...</div>
+                            <div className="text-sm text-slate-500 flex items-center justify-center py-4">加载中...</div>
                         ) : announcements.length > 0 ? (
                             announcements.map((item) => (
-                                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-white">
+                                <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-800/50 hover:border-slate-700 transition-all group">
                                     <div>
-                                        <div className="text-sm font-medium text-slate-900">{item.title}</div>
+                                        <div className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">{item.title}</div>
                                         <div className="text-xs text-slate-500 mt-1">发布于 {formatDate(item.createdAt)}</div>
                                     </div>
-                                    <span className="text-xs text-slate-400">公告</span>
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 border border-slate-800 px-2 py-0.5 rounded bg-slate-900">公告</span>
                                 </div>
                             ))
                         ) : (
-                            <div className="text-sm text-slate-500">暂无动态</div>
+                            <div className="text-sm text-slate-500 text-center py-6">暂无动态</div>
                         )}
                     </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader>
-                        <CardTitle className="text-base text-slate-900">快速操作</CardTitle>
+                <Card className="border-slate-800 bg-slate-900 shadow-lg shadow-black/20">
+                    <CardHeader className="border-b border-slate-800 pb-4">
+                        <CardTitle className="text-lg text-slate-100">快速操作</CardTitle>
                         <p className="text-xs text-slate-500 mt-1">常用管理入口</p>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 pt-6">
                         {quickActions.map((action) => (
-                            <Button key={action.to} variant="outline" className="w-full justify-between" asChild>
+                            <Button key={action.to} variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all" asChild>
                                 <Link to={action.to}>
                                     {action.label}
-                                    <ArrowUpRight className="w-4 h-4" />
+                                    <ArrowUpRight className="w-4 h-4 opacity-50" />
                                 </Link>
                             </Button>
                         ))}

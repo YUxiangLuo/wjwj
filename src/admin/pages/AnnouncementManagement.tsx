@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Pencil, Trash2, Send, Archive, Loader2, BarChart3, Users, Eye, Megaphone } from "lucide-react";
+import { Plus, Pencil, Trash2, Send, Archive, Loader2, BarChart3, Users, Eye, Megaphone, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,6 +63,7 @@ export function AnnouncementManagement() {
                 setNewAnnouncement({ title: "", content: "" });
                 setShowAddModal(false);
                 loadAnnouncements();
+                toast.success(publish ? "公告已发布" : "草稿已保存");
             } else {
                 toast.error(res.error?.message ?? "创建失败");
             }
@@ -94,6 +95,7 @@ export function AnnouncementManagement() {
                 setShowEditModal(false);
                 setEditingAnnouncement(null);
                 loadAnnouncements();
+                toast.success("更新成功");
             } else {
                 toast.error(res.error?.message ?? "更新失败");
             }
@@ -119,6 +121,7 @@ export function AnnouncementManagement() {
                 : await announcementApi.publish(announcement.id);
             if (res.success) {
                 loadAnnouncements();
+                toast.success(`公告已${action}`);
             } else {
                 toast.error(res.error?.message ?? `${action}失败`);
             }
@@ -137,6 +140,7 @@ export function AnnouncementManagement() {
             const res = await announcementApi.delete(announcement.id);
             if (res.success) {
                 loadAnnouncements();
+                toast.success("删除成功");
             } else {
                 toast.error(res.error?.message ?? "删除失败");
             }
@@ -196,88 +200,89 @@ export function AnnouncementManagement() {
     }, [announcements, searchTerm, statusFilter]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-900">公告管理</h2>
-                    <p className="text-sm text-slate-500 mt-1">统一发布系统通知，支持草稿与阅读统计。</p>
+                    <h2 className="text-lg font-semibold text-slate-100">公告管理</h2>
+                    <p className="text-sm text-slate-400 mt-1">统一发布系统通知，支持草稿与阅读统计。</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                    <Button onClick={() => setShowAddModal(true)}>
-                        <Plus className="w-4 h-4" />
-                        发布公告
-                    </Button>
-                </div>
+                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                    <Plus className="w-4 h-4 mr-1" />
+                    发布公告
+                </Button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">公告总数</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                             <Megaphone className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">已发布</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.published}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Published</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                             <Send className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">草稿</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.draft}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Drafts</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
                             <Archive className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">最近发布</p>
-                            <p className="text-sm font-medium text-slate-900">
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Latest</p>
+                            <p className="text-sm font-bold text-slate-100 mt-2">
                                 {loading
                                     ? "-"
                                     : summary.latestPublished
-                                      ? formatDateTime(summary.latestPublished)
-                                      : "暂无"}
+                                        ? formatDateTime(summary.latestPublished)
+                                        : "暂无"}
                             </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                            <Send className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 shadow-sm">
-                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4">
                     <div>
-                        <CardTitle className="text-base">公告列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredAnnouncements.length} 条</p>
+                        <CardTitle className="text-base text-slate-100">公告列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredAnnouncements.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <Input
                             placeholder="搜索标题或内容"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="sm:w-64"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "published" | "draft")}>
-                            <SelectTrigger className="sm:w-36">
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
                                 <SelectValue placeholder="状态筛选" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="published">已发布</SelectItem>
                                 <SelectItem value="draft">草稿</SelectItem>
@@ -285,46 +290,46 @@ export function AnnouncementManagement() {
                         </Select>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-4">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                            <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
                         </div>
                     ) : (
                         <>
                             {filteredAnnouncements.map((announcement) => (
-                                <div key={announcement.id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                                <div key={announcement.id} className="border border-slate-800 rounded-lg p-4 bg-slate-950/30 hover:bg-slate-900 transition-colors">
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-2">
                                         <div className="flex items-center gap-2">
-                                            <h4 className="font-medium text-slate-900">{announcement.title}</h4>
+                                            <h4 className="font-medium text-slate-200">{announcement.title}</h4>
                                             {announcement.status === 1 ? (
-                                                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">已发布</Badge>
+                                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">已发布</Badge>
                                             ) : (
-                                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">草稿</Badge>
+                                                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20">草稿</Badge>
                                             )}
                                         </div>
                                         <span className="text-xs text-slate-500">{formatDateTime(announcement.createdAt)}</span>
                                     </div>
-                                    <p className="text-sm text-slate-600 mb-3 line-clamp-2">{announcement.content}</p>
+                                    <p className="text-sm text-slate-400 mb-4 line-clamp-2">{announcement.content}</p>
                                     <div className="flex flex-wrap gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => openEditModal(announcement)}>
-                                            <Pencil className="w-3 h-3 mr-1" />
+                                        <Button variant="ghost" size="sm" onClick={() => openEditModal(announcement)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                            <Pencil className="w-3.5 h-3.5 mr-1" />
                                             编辑
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleTogglePublish(announcement)}
-                                            className={announcement.status === 1 ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
+                                            className={`h-8 ${announcement.status === 1 ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
                                         >
                                             {announcement.status === 1 ? (
                                                 <>
-                                                    <Archive className="w-3 h-3 mr-1" />
+                                                    <Archive className="w-3.5 h-3.5 mr-1" />
                                                     撤回
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Send className="w-3 h-3 mr-1" />
+                                                    <Send className="w-3.5 h-3.5 mr-1" />
                                                     发布
                                                 </>
                                             )}
@@ -334,17 +339,18 @@ export function AnnouncementManagement() {
                                             size="sm"
                                             onClick={() => handleViewStats(announcement)}
                                             disabled={announcement.status !== 1}
+                                            className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
                                         >
-                                            <BarChart3 className="w-3 h-3 mr-1" />
+                                            <BarChart3 className="w-3.5 h-3.5 mr-1" />
                                             统计
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => handleDelete(announcement)}
-                                            className="text-destructive hover:text-destructive"
+                                            className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
                                         >
-                                            <Trash2 className="w-3 h-3 mr-1" />
+                                            <Trash2 className="w-3.5 h-3.5 mr-1" />
                                             删除
                                         </Button>
                                     </div>
@@ -352,7 +358,10 @@ export function AnnouncementManagement() {
                             ))}
 
                             {filteredAnnouncements.length === 0 && (
-                                <div className="text-center py-12 text-slate-500">暂无符合条件的公告</div>
+                                <div className="text-center py-12 text-slate-500 flex flex-col items-center gap-2">
+                                    <Search className="w-8 h-8 text-slate-700" />
+                                    <p>暂无符合条件的公告</p>
+                                </div>
                             )}
                         </>
                     )}
@@ -361,50 +370,53 @@ export function AnnouncementManagement() {
 
             {/* 创建公告弹窗 */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>发布公告</DialogTitle>
+                        <DialogTitle className="text-slate-100">发布公告</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="title">标题</Label>
+                            <Label htmlFor="title" className="text-slate-300">标题</Label>
                             <Input
                                 id="title"
                                 placeholder="请输入公告标题"
                                 value={newAnnouncement.title}
                                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="content">内容</Label>
+                            <Label htmlFor="content" className="text-slate-300">内容</Label>
                             <Textarea
                                 id="content"
                                 placeholder="请输入公告内容"
                                 value={newAnnouncement.content}
                                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
-                                className="min-h-32 resize-none"
+                                className="min-h-32 resize-none bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                     </div>
                     <DialogFooter className="gap-2">
-                        <Button variant="outline" onClick={() => setShowAddModal(false)} disabled={submitting}>
+                        <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
                         <Button
                             variant="outline"
                             onClick={() => handleAddAnnouncement(false)}
                             disabled={submitting || !newAnnouncement.title.trim()}
+                            className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            <Archive className="w-4 h-4" />
+                            <Archive className="w-4 h-4 mr-1" />
                             保存草稿
                         </Button>
                         <Button
                             onClick={() => handleAddAnnouncement(true)}
                             disabled={submitting || !newAnnouncement.title.trim()}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            <Send className="w-4 h-4" />
+                            <Send className="w-4 h-4 mr-1" />
                             立即发布
                         </Button>
                     </DialogFooter>
@@ -413,38 +425,40 @@ export function AnnouncementManagement() {
 
             {/* 编辑公告弹窗 */}
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>编辑公告</DialogTitle>
+                        <DialogTitle className="text-slate-100">编辑公告</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="editTitle">标题</Label>
+                            <Label htmlFor="editTitle" className="text-slate-300">标题</Label>
                             <Input
                                 id="editTitle"
                                 placeholder="请输入公告标题"
                                 value={editForm.title}
                                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="editContent">内容</Label>
+                            <Label htmlFor="editContent" className="text-slate-300">内容</Label>
                             <Textarea
                                 id="editContent"
                                 placeholder="请输入公告内容"
                                 value={editForm.content}
                                 onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
-                                className="min-h-32 resize-none"
+                                className="min-h-32 resize-none bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={submitting}>
+                        <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
                         <Button
                             onClick={handleEditAnnouncement}
                             disabled={submitting || !editForm.title.trim()}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存
@@ -455,43 +469,43 @@ export function AnnouncementManagement() {
 
             {/* 统计弹窗 */}
             <Dialog open={showStatsModal} onOpenChange={setShowStatsModal}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>公告阅读统计</DialogTitle>
+                        <DialogTitle className="text-slate-100">公告阅读统计</DialogTitle>
                     </DialogHeader>
                     <div className="py-6">
                         {statsLoading ? (
                             <div className="flex justify-center">
-                                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                                <Loader2 className="w-8 h-8 animate-spin text-slate-500" />
                             </div>
                         ) : currentStats ? (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-muted p-4 rounded-lg flex flex-col items-center">
-                                        <Users className="w-5 h-5 text-muted-foreground mb-2" />
-                                        <span className="text-2xl font-bold">{currentStats.totalCount}</span>
-                                        <span className="text-xs text-muted-foreground">总人数</span>
+                                    <div className="bg-slate-950 p-4 rounded-lg flex flex-col items-center border border-slate-800">
+                                        <Users className="w-5 h-5 text-slate-500 mb-2" />
+                                        <span className="text-2xl font-bold text-slate-200">{currentStats.totalCount}</span>
+                                        <span className="text-xs text-slate-500">总人数</span>
                                     </div>
-                                    <div className="bg-muted p-4 rounded-lg flex flex-col items-center">
-                                        <Eye className="w-5 h-5 text-muted-foreground mb-2" />
-                                        <span className="text-2xl font-bold text-emerald-600">{currentStats.readCount}</span>
-                                        <span className="text-xs text-muted-foreground">已阅读</span>
+                                    <div className="bg-slate-950 p-4 rounded-lg flex flex-col items-center border border-slate-800">
+                                        <Eye className="w-5 h-5 text-slate-500 mb-2" />
+                                        <span className="text-2xl font-bold text-emerald-400">{currentStats.readCount}</span>
+                                        <span className="text-xs text-slate-500">已阅读</span>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
-                                        <span>阅读率</span>
-                                        <span className="font-bold">{currentStats.readRate}%</span>
+                                        <span className="text-slate-400">阅读率</span>
+                                        <span className="font-bold text-slate-200">{currentStats.readRate}%</span>
                                     </div>
-                                    <Progress value={currentStats.readRate} className="h-3" />
+                                    <Progress value={currentStats.readRate} className="h-3 bg-slate-800 [&>div]:bg-emerald-500" />
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center text-muted-foreground">暂无统计数据</div>
+                            <div className="text-center text-slate-500">暂无统计数据</div>
                         )}
                     </div>
                     <DialogFooter>
-                        <Button onClick={() => setShowStatsModal(false)}>关闭</Button>
+                        <Button onClick={() => setShowStatsModal(false)} className="bg-slate-800 text-slate-300 hover:bg-slate-700">关闭</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

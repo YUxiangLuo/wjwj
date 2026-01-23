@@ -15,7 +15,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calculator } from "lucide-react";
+import { Calculator, Users, Info, CheckCircle, RotateCcw } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
 
@@ -61,7 +61,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     const isValidSize = finalSampleSize >= minSize && finalSampleSize <= maxSize;
 
-    // Auto-update final sample size when recommended changes (only if user hasn't modified it)
+    // Auto-update final sample size when recommended changes (only if user hasn't modified it - simplified logic for now: update if no initial data)
     useEffect(() => {
         if (!initialData) {
             setFinalSampleSize(recommendedSize);
@@ -82,74 +82,93 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Calculator className="w-5 h-5" />
+                    <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                        <CardHeader className="border-b border-slate-800 pb-4">
+                            <CardTitle className="flex items-center gap-2 text-slate-100">
+                                <Users className="w-5 h-5 text-indigo-500" />
                                 总体信息
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <p className="text-lg">
-                                本次调查的总体规模为 <span className="font-bold text-teal-600">N = {N.toLocaleString()}</span> 人
-                            </p>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-950/50 border border-slate-800">
+                                <span className="text-slate-400">总体规模 (N)</span>
+                                <span className="text-2xl font-bold text-indigo-400">{N.toLocaleString()} <span className="text-sm font-normal text-slate-500">人</span></span>
+                            </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                        <CardHeader>
-                            <CardTitle>参数设置</CardTitle>
-                            <CardDescription>调整置信水平和允许误差来计算建议样本量</CardDescription>
+                    <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                        <CardHeader className="border-b border-slate-800 pb-4">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2 text-slate-100">
+                                    <Calculator className="w-5 h-5 text-teal-500" />
+                                    参数设置
+                                </CardTitle>
+                            </div>
+                            <CardDescription className="text-slate-400 mt-1">
+                                调整置信水平和允许误差来计算建议样本量
+                            </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <Label>置信水平</Label>
+                        <CardContent className="space-y-8 pt-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between">
+                                        <Label className="text-slate-300">置信水平</Label>
+                                        <span className="text-xs font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">Z = {zValues[confidenceLevel]}</span>
+                                    </div>
                                     <Select value={confidenceLevel} onValueChange={setConfidenceLevel}>
-                                        <SelectTrigger>
+                                        <SelectTrigger className="bg-slate-950/50 border-slate-800 text-slate-200 focus:ring-teal-500/50">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="90">90%</SelectItem>
-                                            <SelectItem value="95">95%</SelectItem>
-                                            <SelectItem value="99">99%</SelectItem>
+                                        <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                            <SelectItem value="90">90% (宽松)</SelectItem>
+                                            <SelectItem value="95">95% (标准)</SelectItem>
+                                            <SelectItem value="99">99% (严谨)</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    <p className="text-xs text-muted-foreground">
-                                        Z = {zValues[confidenceLevel]}
+                                    <p className="text-xs text-slate-500">
+                                        置信水平越高，结果的可信度越高，但所需样本量也越大。
                                     </p>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label>允许误差: {marginOfError[0]}%</Label>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between">
+                                        <Label className="text-slate-300">允许误差 (Margin of Error)</Label>
+                                        <span className="text-sm font-bold text-teal-400">{marginOfError[0]}%</span>
+                                    </div>
                                     <Slider
                                         value={marginOfError}
                                         onValueChange={setMarginOfError}
                                         min={1}
                                         max={10}
                                         step={1}
+                                        className="py-4 [&>.relative>.absolute]:bg-teal-500"
                                     />
-                                    <p className="text-xs text-muted-foreground">
-                                        范围: 1% - 10%
+                                    <p className="text-xs text-slate-500 flex justify-between">
+                                        <span>1% (精确)</span>
+                                        <span>10% (粗略)</span>
                                     </p>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                        <CardHeader>
-                            <CardTitle>最终样本量</CardTitle>
-                            <CardDescription>您可以根据实际情况调整最终样本量</CardDescription>
+                    <Card className={`rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm transition-colors ${!isValidSize ? "border-rose-500/50 ring-1 ring-rose-500/20" : ""}`}>
+                        <CardHeader className="border-b border-slate-800 pb-4">
+                            <CardTitle className="text-slate-100 flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                最终样本量
+                            </CardTitle>
+                            <CardDescription className="text-slate-400">您可以根据实际情况微调最终样本量</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-4">
-                                    <div className="flex-1 space-y-2">
-                                        <Label htmlFor="finalSize">最终样本量</Label>
+                        <CardContent className="pt-6 space-y-6">
+                            <div className="flex flex-col md:flex-row items-end gap-4">
+                                <div className="flex-1 w-full space-y-2">
+                                    <Label htmlFor="finalSize" className="text-slate-300">设定样本量</Label>
+                                    <div className="relative">
                                         <Input
                                             id="finalSize"
                                             type="number"
@@ -157,24 +176,30 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                             onChange={(e) => setFinalSampleSize(parseInt(e.target.value) || 0)}
                                             min={minSize}
                                             max={maxSize}
+                                            className={`bg-slate-950/50 border-slate-800 text-lg font-bold ${!isValidSize ? "text-rose-500 border-rose-500/50 focus-visible:ring-rose-500" : "text-emerald-400 focus-visible:ring-emerald-500"}`}
                                         />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">人</span>
                                     </div>
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setFinalSampleSize(recommendedSize)}
-                                        className="mt-6"
-                                    >
-                                        使用建议值
-                                    </Button>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                    有效范围: {minSize} - {maxSize.toLocaleString()}（总体的50%）
-                                </p>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setFinalSampleSize(recommendedSize)}
+                                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                >
+                                    <RotateCcw className="w-4 h-4 mr-2" />
+                                    重置为建议值
+                                </Button>
                             </div>
 
-                            {!isValidSize && (
-                                <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
-                                    样本量超出有效范围，请调整
+                            {!isValidSize ? (
+                                <div className="p-3 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl text-sm flex items-center gap-2">
+                                    <Info className="w-4 h-4" />
+                                    样本量超出有效范围，建议在 {minSize} - {maxSize.toLocaleString()} 之间
+                                </div>
+                            ) : (
+                                <div className="p-3 bg-slate-950/50 text-slate-500 border border-slate-800 rounded-xl text-xs flex justify-between">
+                                    <span>最小建议: {minSize}</span>
+                                    <span>最大建议 (总体50%): {maxSize.toLocaleString()}</span>
                                 </div>
                             )}
                         </CardContent>
@@ -182,57 +207,64 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="rounded-2xl border-white/70 bg-gradient-to-b from-indigo-50 via-slate-50 to-white shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                    <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
                         <CardHeader>
-                            <CardTitle>学习指南</CardTitle>
-                            <CardDescription>理解公式与参数含义</CardDescription>
+                            <CardTitle className="text-base text-indigo-300">学习指南</CardTitle>
+                            <CardDescription className="text-indigo-300/60">理解公式与参数含义</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4 text-sm text-muted-foreground">
-                            <div className="rounded-xl bg-white/80 p-3">
-                                <p className="text-xs text-slate-500">样本量公式</p>
-                                <p className="font-mono text-sm text-slate-700">n = n₀ / (1 + (n₀ - 1) / N)</p>
-                                <p className="font-mono text-sm text-slate-700">n₀ = Z² × p × (1-p) / E²</p>
+                        <CardContent className="space-y-4 text-sm text-indigo-200/70">
+                            <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/10 p-4 font-mono text-xs text-indigo-300 space-y-1">
+                                <p className="opacity-50 mb-2">// 样本量计算公式</p>
+                                <p>n₀ = (Z² × p × (1-p)) / E²</p>
+                                <p>n = n₀ / (1 + (n₀ - 1) / N)</p>
                             </div>
-                            <p>置信水平越高，样本量越大；允许误差越小，样本量越大。</p>
-                            <div className="rounded-xl bg-white/80 p-3">
-                                <p className="text-xs text-slate-500">参考值</p>
-                                <div className="flex justify-between text-xs text-slate-600">
-                                    <span>90% → Z=1.645</span>
-                                    <span>95% → Z=1.96</span>
-                                    <span>99% → Z=2.576</span>
+                            <div className="space-y-2 text-xs leading-relaxed">
+                                <p>• <strong className="text-indigo-300">置信水平 (Z)</strong>：结果的可信程度。95% 意味着如果重复调查 100 次，有 95 次的结果都在误差范围内。</p>
+                                <p>• <strong className="text-indigo-300">允许误差 (E)</strong>：结果与真实值的最大允许偏差。</p>
+                            </div>
+                            <div className="rounded-xl bg-slate-900/50 p-3 border border-slate-800">
+                                <p className="text-xs text-slate-500 mb-2 font-medium">常用 Z 值参考</p>
+                                <div className="grid grid-cols-3 gap-2 text-xs text-slate-400 text-center">
+                                    <div className="bg-slate-950 rounded p-1">90%<br /><span className="text-slate-600">1.645</span></div>
+                                    <div className="bg-slate-950 rounded p-1 text-emerald-400 font-medium ring-1 ring-emerald-500/20">95%<br /><span className="text-emerald-600">1.96</span></div>
+                                    <div className="bg-slate-950 rounded p-1">99%<br /><span className="text-slate-600">2.576</span></div>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-white/70 bg-amber-50/70 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                        <CardHeader>
-                            <CardTitle className="text-base">参数摘要</CardTitle>
+                    <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm sticky top-24">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-base text-slate-200">参数摘要</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-2 text-sm text-slate-700">
-                            <div className="flex justify-between"><span>置信水平</span><span>{confidenceLevel}%</span></div>
-                            <div className="flex justify-between"><span>允许误差</span><span>{marginOfError[0]}%</span></div>
-                            <div className="flex justify-between"><span>总体规模</span><span>{N.toLocaleString()}</span></div>
-                            <div className="flex justify-between font-semibold text-slate-900">
-                                <span>建议样本量</span><span>{recommendedSize}</span>
+                        <CardContent className="space-y-4 pt-4">
+                            <div className="flex justify-between text-sm py-1 border-b border-slate-800/50">
+                                <span className="text-slate-500">置信水平</span>
+                                <span className="text-slate-200 font-mono">{confidenceLevel}%</span>
+                            </div>
+                            <div className="flex justify-between text-sm py-1 border-b border-slate-800/50">
+                                <span className="text-slate-500">允许误差</span>
+                                <span className="text-slate-200 font-mono">{marginOfError[0]}%</span>
+                            </div>
+                            <div className="flex justify-between text-sm py-1 border-b border-slate-800/50">
+                                <span className="text-slate-500">建议样本量</span>
+                                <span className="text-teal-400 font-mono font-bold">{recommendedSize}</span>
+                            </div>
+                            <div className="flex justify-between text-sm py-1 pt-2">
+                                <span className="text-slate-500">最终设定</span>
+                                <span className="text-indigo-400 font-mono font-bold text-lg">{finalSampleSize}</span>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
             </div>
 
-            <div className="flex justify-between">
-                <Button variant="outline" onClick={onPrev}>
-                    上一阶段
+            <div className="flex justify-between pt-6 border-t border-slate-800/50">
+                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+                    上一步
                 </Button>
                 <div className="flex gap-3">
-                    <Button
-                        variant="outline"
-                        onClick={() => setFinalSampleSize(recommendedSize)}
-                    >
-                        重新计算
-                    </Button>
-                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize}>
+                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                         保存并进入下一阶段
                     </Button>
                 </div>
@@ -240,18 +272,18 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
             {/* Confirm Next Stage Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>确认样本量规划</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            您设定的最终样本量为 <strong>{finalSampleSize}</strong>。
+                        <AlertDialogTitle className="text-slate-100">确认样本量规划</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400 text-base">
+                            您设定的最终样本量为 <strong className="text-emerald-400 text-lg">{finalSampleSize}</strong>。
                             <br /><br />
                             确认后将进入抽样执行阶段。如需修改，您可以返回本阶段。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmNext}>确认</AlertDialogAction>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmNext} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

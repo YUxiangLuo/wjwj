@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, RotateCcw, Loader2, ArrowRight, Users, CheckCircle2, PauseCircle } from "lucide-react";
+import { Search, RotateCcw, Loader2, ArrowRight, Users, CheckCircle2, PauseCircle, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -174,7 +174,7 @@ export function StudentManagement() {
     const getProgressColor = (progress: number) => {
         if (progress >= 80) return "[&>div]:bg-emerald-500";
         if (progress >= 50) return "[&>div]:bg-amber-500";
-        return "[&>div]:bg-destructive";
+        return "[&>div]:bg-rose-500";
     };
 
     const formatDateTime = (dateStr: string | null) => {
@@ -200,87 +200,87 @@ export function StudentManagement() {
 
     return (
         <>
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in duration-500">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <h2 className="text-lg font-semibold text-slate-900">学生管理</h2>
-                        <p className="text-sm text-slate-500 mt-1">查看学生档案、实验进度与班级调整。</p>
+                        <h2 className="text-lg font-semibold text-slate-100">学生管理</h2>
+                        <p className="text-sm text-slate-400 mt-1">查看学生档案、实验进度与班级调整。</p>
                     </div>
-                    <Button variant="outline" onClick={handleSearch} disabled={loading}>
-                        <Search className="w-4 h-4" />
+                    <Button variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                        <Search className="w-4 h-4 mr-2" />
                         刷新结果
                     </Button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <Card className="border-slate-200 shadow-sm">
+                    <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-slate-500">学生总数</p>
-                                <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Students</p>
+                                <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                                 <Users className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-slate-200 shadow-sm">
+                    <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-slate-500">正常账号</p>
-                                <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.active}</p>
+                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Active</p>
+                                <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.active}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                                 <CheckCircle2 className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-slate-200 shadow-sm">
+                    <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-slate-500">已停用</p>
-                                <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.disabled}</p>
+                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Disabled</p>
+                                <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.disabled}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
                                 <PauseCircle className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-slate-200 shadow-sm">
+                    <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-slate-500">平均进度</p>
-                                <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : `${summary.avgProgress}%`}</p>
+                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Avg Progress</p>
+                                <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : `${summary.avgProgress}%`}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
-                                <Search className="w-5 h-5" />
+                            <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                                <GraduationCap className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                <Card className="border-slate-200 shadow-sm">
-                    <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                    <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4">
                         <div>
-                            <CardTitle className="text-base">学生列表</CardTitle>
-                            <p className="text-xs text-slate-500 mt-1">共 {filteredStudents.length} 条</p>
+                            <CardTitle className="text-base text-slate-100">学生列表</CardTitle>
+                            <p className="text-xs text-slate-500 mt-1">共 {filteredStudents.length} 条数据</p>
                         </div>
-                        <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                        <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                             <div className="relative sm:w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                                 <Input
                                     placeholder="搜索学号或姓名"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                    className="pl-9"
+                                    className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                                 />
                             </div>
                             <Select value={filterClass} onValueChange={setFilterClass}>
-                                <SelectTrigger className="sm:w-44">
+                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-44">
                                     <SelectValue placeholder="全部班级" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                     <SelectItem value="all">全部班级</SelectItem>
                                     {classes.map((c) => (
                                         <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
@@ -288,10 +288,10 @@ export function StudentManagement() {
                                 </SelectContent>
                             </Select>
                             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
-                                <SelectTrigger className="sm:w-36">
+                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
                                     <SelectValue placeholder="状态筛选" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                     <SelectItem value="all">全部状态</SelectItem>
                                     <SelectItem value="active">正常</SelectItem>
                                     <SelectItem value="disabled">已停用</SelectItem>
@@ -299,71 +299,73 @@ export function StudentManagement() {
                             </Select>
                         </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-0">
                         {loading ? (
                             <div className="flex items-center justify-center py-12">
-                                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                                <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
                             </div>
                         ) : (
                             <Table>
                                 <TableHeader>
-                                    <TableRow>
-                                        <TableHead>学号</TableHead>
-                                        <TableHead>姓名</TableHead>
-                                        <TableHead>班级</TableHead>
-                                        <TableHead>状态</TableHead>
-                                        <TableHead>实验进度</TableHead>
-                                        <TableHead>最后活跃</TableHead>
-                                        <TableHead>操作</TableHead>
+                                    <TableRow className="border-slate-800 hover:bg-slate-900/50">
+                                        <TableHead className="text-slate-400">学号</TableHead>
+                                        <TableHead className="text-slate-400">姓名</TableHead>
+                                        <TableHead className="text-slate-400">班级</TableHead>
+                                        <TableHead className="text-slate-400">状态</TableHead>
+                                        <TableHead className="text-slate-400">实验进度</TableHead>
+                                        <TableHead className="text-slate-400">最后活跃</TableHead>
+                                        <TableHead className="text-slate-400 text-right">操作</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredStudents.map((student) => (
-                                        <TableRow key={student.id}>
-                                            <TableCell className="font-medium text-slate-900">{student.studentId}</TableCell>
-                                            <TableCell>{student.name}</TableCell>
-                                            <TableCell>{student.className}</TableCell>
+                                        <TableRow key={student.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                            <TableCell className="font-mono text-indigo-300">{student.studentId}</TableCell>
+                                            <TableCell className="font-medium text-slate-200">{student.name}</TableCell>
+                                            <TableCell className="text-slate-300">{student.className}</TableCell>
                                             <TableCell>
                                                 {student.status === 1 ? (
-                                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
+                                                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">正常</Badge>
                                                 ) : (
-                                                    <Badge variant="destructive">已停用</Badge>
+                                                    <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已停用</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Progress value={student.progress} className={`w-20 h-2 ${getProgressColor(student.progress)}`} />
-                                                    <span className="text-xs text-slate-500">{student.progress}%</span>
+                                                <div className="flex items-center gap-3">
+                                                    <Progress value={student.progress} className={`w-24 h-1.5 bg-slate-800 ${getProgressColor(student.progress)}`} />
+                                                    <span className="text-xs text-slate-400 w-8">{student.progress}%</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-slate-500">{formatDateTime(student.lastActive)}</TableCell>
-                                            <TableCell>
-                                                <div className="flex flex-wrap gap-2">
+                                            <TableCell className="text-slate-500 text-xs">{formatDateTime(student.lastActive)}</TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-2">
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => openExperimentsModal(student)}
+                                                        className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
                                                     >
-                                                        <Search className="w-3 h-3 mr-1" />
-                                                        实验记录
+                                                        <Search className="w-3.5 h-3.5 mr-1" />
+                                                        实验
                                                     </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => handleResetPassword(student)}>
-                                                        <RotateCcw className="w-3 h-3 mr-1" />
-                                                        重置密码
+                                                    <Button variant="ghost" size="sm" onClick={() => handleResetPassword(student)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                        <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                                        重置
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => openTransferModal(student)}
+                                                        className="h-8 text-slate-400 hover:text-purple-400 hover:bg-purple-500/10"
                                                     >
-                                                        <ArrowRight className="w-3 h-3 mr-1" />
+                                                        <ArrowRight className="w-3.5 h-3.5 mr-1" />
                                                         转班
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => handleToggleStatus(student)}
-                                                        className={student.status === 1 ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
+                                                        className={`h-8 ${student.status === 1 ? "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
                                                     >
                                                         {student.status === 1 ? "停用" : "启用"}
                                                     </Button>
@@ -373,8 +375,13 @@ export function StudentManagement() {
                                     ))}
                                     {filteredStudents.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center py-12 text-slate-500">
-                                                暂无符合条件的数据
+                                            <TableCell colSpan={7} className="text-center py-16 text-slate-500">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
+                                                        <Search className="w-5 h-5 text-slate-600" />
+                                                    </div>
+                                                    <p>暂无符合条件的数据</p>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -386,21 +393,21 @@ export function StudentManagement() {
             </div>
 
             <Dialog open={!!transferStudent} onOpenChange={(open) => !open && setTransferStudent(null)}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>学生转班</DialogTitle>
-                        <DialogDescription>
-                            将学生 [{transferStudent?.studentId} {transferStudent?.name}] 从 [{transferStudent?.className}] 转至新班级。
+                        <DialogTitle className="text-slate-100">学生转班</DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            将学生 <span className="text-indigo-400 font-mono">{transferStudent?.studentId}</span> <span className="text-slate-200 font-medium">{transferStudent?.name}</span> 从 <span className="text-amber-400">{transferStudent?.className}</span> 转至新班级。
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">目标班级</label>
+                            <label className="text-sm font-medium text-slate-300">目标班级</label>
                             <Select value={targetClassId} onValueChange={setTargetClassId}>
-                                <SelectTrigger>
+                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder="选择新班级" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                     {classes
                                         .filter((c) => c.id !== transferStudent?.classId)
                                         .map((c) => (
@@ -412,76 +419,83 @@ export function StudentManagement() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">转班原因 (可选)</label>
+                            <label className="text-sm font-medium text-slate-300">转班原因 (可选)</label>
                             <Input
                                 value={transferReason}
                                 onChange={(e) => setTransferReason(e.target.value)}
                                 placeholder="例如：行政调班"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600"
                             />
                         </div>
-                        <div className="bg-amber-50 text-amber-800 p-3 rounded-md text-sm">
-                            <p className="font-semibold mb-1">⚠️ 注意事项：</p>
-                            <ul className="list-disc pl-4 space-y-1">
+                        <div className="bg-amber-500/10 text-amber-400 p-3 rounded-md text-sm border border-amber-500/20">
+                            <p className="font-semibold mb-1 flex items-center gap-1.5"><PauseCircle className="w-3.5 h-3.5" /> 注意事项：</p>
+                            <ul className="list-disc pl-4 space-y-1 opacity-90">
                                 <li>学生在原班级的实验数据将被存档保留。</li>
                                 <li>学生需要在新班级重新开始实验（如适用）。</li>
                             </ul>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setTransferStudent(null)}>
+                        <Button variant="ghost" onClick={() => setTransferStudent(null)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleTransfer} disabled={!targetClassId}>
+                        <Button onClick={handleTransfer} disabled={!targetClassId} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             确认转班
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
             <Dialog open={!!selectedStudentForExp} onOpenChange={(open) => !open && setSelectedStudentForExp(null)}>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="max-w-3xl bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>实验记录 - {selectedStudentForExp?.name} ({selectedStudentForExp?.studentId})</DialogTitle>
+                        <DialogTitle className="text-slate-100 flex items-center gap-2">
+                            实验记录
+                            <span className="text-sm font-normal text-slate-400 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700">
+                                {selectedStudentForExp?.name} ({selectedStudentForExp?.studentId})
+                            </span>
+                        </DialogTitle>
                     </DialogHeader>
 
                     {loadingExperiments ? (
                         <div className="flex justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                            <Loader2 className="w-8 h-8 animate-spin text-slate-500" />
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead>实验/任务名称</TableHead>
-                                    <TableHead>当前阶段</TableHead>
-                                    <TableHead>状态</TableHead>
-                                    <TableHead>进度</TableHead>
-                                    <TableHead>得分</TableHead>
-                                    <TableHead>提交时间</TableHead>
+                                <TableRow className="border-slate-800 hover:bg-slate-900/50">
+                                    <TableHead className="text-slate-400">实验/任务名称</TableHead>
+                                    <TableHead className="text-slate-400">当前阶段</TableHead>
+                                    <TableHead className="text-slate-400">状态</TableHead>
+                                    <TableHead className="text-slate-400">进度</TableHead>
+                                    <TableHead className="text-slate-400">得分</TableHead>
+                                    <TableHead className="text-slate-400">提交时间</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {experiments.map((exp) => (
-                                    <TableRow key={exp.id}>
-                                        <TableCell>{exp.taskName || "未命名任务"}</TableCell>
-                                        <TableCell>第 {exp.currentStage} 阶段</TableCell>
+                                    <TableRow key={exp.id} className="border-slate-800 hover:bg-slate-800/50">
+                                        <TableCell className="text-slate-200">{exp.taskName || "未命名任务"}</TableCell>
+                                        <TableCell className="text-slate-400">第 {exp.currentStage} 阶段</TableCell>
                                         <TableCell>
-                                            <Badge variant={exp.status >= 1 ? "default" : "secondary"}>
+                                            <Badge variant={exp.status >= 1 ? "default" : "secondary"} className={exp.status >= 1 ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20" : "bg-slate-800 text-slate-400"}>
                                                 {exp.statusText}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress value={exp.progress} className={`w-16 h-2 ${getProgressColor(exp.progress)}`} />
-                                                <span className="text-xs">{exp.progress}%</span>
+                                                <Progress value={exp.progress} className={`w-16 h-1.5 bg-slate-800 ${getProgressColor(exp.progress)}`} />
+                                                <span className="text-xs text-slate-500">{exp.progress}%</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell>{exp.score !== null ? exp.score : "-"}</TableCell>
-                                        <TableCell>{formatDateTime(exp.submitTime)}</TableCell>
+                                        <TableCell className="font-mono text-indigo-300">{exp.score !== null ? exp.score : "-"}</TableCell>
+                                        <TableCell className="text-slate-500 text-xs">{formatDateTime(exp.submitTime)}</TableCell>
                                     </TableRow>
                                 ))}
                                 {experiments.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                                             暂无实验记录
                                         </TableCell>
                                     </TableRow>

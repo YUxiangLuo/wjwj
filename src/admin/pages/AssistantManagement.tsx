@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, RotateCcw, Loader2, Users, CheckCircle2, PauseCircle, UserRound } from "lucide-react";
+import { Plus, Trash2, RotateCcw, Loader2, Users, CheckCircle2, PauseCircle, UserRound, Search, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -152,7 +152,7 @@ export function AssistantManagement() {
         const total = assistants.length;
         const active = assistants.filter((assistant) => assistant.status === 1).length;
         const disabled = total - active;
-        const teacherCount = new Set(assistants.map((assistant) => assistant.teacherId)).size;
+        const teacherCount = new Set(assistants.map((assistant) => assistant.creatorTeacherId)).size;
         return { total, active, disabled, teacherCount };
     }, [assistants]);
 
@@ -162,88 +162,88 @@ export function AssistantManagement() {
         return assistants.filter((assistant) =>
             assistant.account.toLowerCase().includes(keyword) ||
             assistant.name.toLowerCase().includes(keyword) ||
-            assistant.teacherName.toLowerCase().includes(keyword)
+            (assistant.teacherName?.toLowerCase() ?? "").includes(keyword)
         );
     }, [assistants, searchTerm]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-900">助教管理</h2>
-                    <p className="text-sm text-slate-500 mt-1">维护助教账号与所绑定教师信息。</p>
+                    <h2 className="text-lg font-semibold text-slate-100">助教管理</h2>
+                    <p className="text-sm text-slate-400 mt-1">维护助教账号与所绑定教师信息。</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4" />
+                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                    <Plus className="w-4 h-4 mr-1" />
                     添加助教
                 </Button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">助教总数</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Assistants</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">正常账号</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.active}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Active</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">已停用</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.disabled}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Disabled</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">关联教师</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.teacherCount}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Linked Teachers</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
                             <UserRound className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 shadow-sm">
-                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4">
                     <div>
-                        <CardTitle className="text-base">助教列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredAssistants.length} 条</p>
+                        <CardTitle className="text-base text-slate-100">助教列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredAssistants.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <Input
                             placeholder="搜索账号 / 姓名 / 教师"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="sm:w-60"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50"
                         />
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-                            <SelectTrigger className="sm:w-40">
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all">全部教师</SelectItem>
                                 {teachers.map((t) => (
                                     <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
@@ -252,48 +252,48 @@ export function AssistantManagement() {
                         </Select>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                            <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead>账号</TableHead>
-                                    <TableHead>姓名</TableHead>
-                                    <TableHead>所属教师</TableHead>
-                                    <TableHead>状态</TableHead>
-                                    <TableHead>创建时间</TableHead>
-                                    <TableHead>操作</TableHead>
+                                <TableRow className="border-slate-800 hover:bg-slate-900/50">
+                                    <TableHead className="text-slate-400">账号</TableHead>
+                                    <TableHead className="text-slate-400">姓名</TableHead>
+                                    <TableHead className="text-slate-400">所属教师</TableHead>
+                                    <TableHead className="text-slate-400">状态</TableHead>
+                                    <TableHead className="text-slate-400">创建时间</TableHead>
+                                    <TableHead className="text-slate-400 text-right">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredAssistants.map((assistant) => (
-                                    <TableRow key={assistant.id}>
-                                        <TableCell className="font-medium text-slate-900">{assistant.account}</TableCell>
-                                        <TableCell>{assistant.name}</TableCell>
-                                        <TableCell>{assistant.teacherName}</TableCell>
+                                    <TableRow key={assistant.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                        <TableCell className="font-mono text-indigo-300">{assistant.account}</TableCell>
+                                        <TableCell className="font-medium text-slate-200">{assistant.name}</TableCell>
+                                        <TableCell className="text-slate-300">{assistant.teacherName}</TableCell>
                                         <TableCell>
                                             {assistant.status === 1 ? (
-                                                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>
+                                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">正常</Badge>
                                             ) : (
-                                                <Badge variant="destructive">已停用</Badge>
+                                                <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已停用</Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-slate-500">{formatDate(assistant.createdAt)}</TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-2">
-                                                <Button variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)}>
-                                                    <RotateCcw className="w-3 h-3 mr-1" />
-                                                    重置密码
+                                        <TableCell className="text-slate-500 text-xs">{formatDate(assistant.createdAt)}</TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                                    重置
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleToggleStatus(assistant)}
-                                                    className={assistant.status === 1 ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
+                                                    className={`h-8 ${assistant.status === 1 ? "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
                                                 >
                                                     {assistant.status === 1 ? "停用" : "启用"}
                                                 </Button>
@@ -301,9 +301,9 @@ export function AssistantManagement() {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleDelete(assistant)}
-                                                    className="text-destructive hover:text-destructive"
+                                                    className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
                                                 >
-                                                    <Trash2 className="w-3 h-3 mr-1" />
+                                                    <Trash2 className="w-3.5 h-3.5 mr-1" />
                                                     删除
                                                 </Button>
                                             </div>
@@ -312,8 +312,13 @@ export function AssistantManagement() {
                                 ))}
                                 {filteredAssistants.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-12 text-slate-500">
-                                            暂无符合条件的数据
+                                        <TableCell colSpan={6} className="text-center py-16 text-slate-500">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
+                                                    <Search className="w-5 h-5 text-slate-600" />
+                                                </div>
+                                                <p>暂无符合条件的数据</p>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -324,51 +329,56 @@ export function AssistantManagement() {
             </Card>
 
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>添加助教</DialogTitle>
+                        <DialogTitle className="text-slate-100">添加助教</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="account">账号</Label>
+                            <Label htmlFor="account" className="text-slate-300">账号</Label>
                             <Input
                                 id="account"
                                 placeholder="请输入账号"
                                 value={newAssistant.account}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, account: e.target.value })}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="assistantName">姓名</Label>
+                            <Label htmlFor="assistantName" className="text-slate-300">姓名</Label>
                             <Input
                                 id="assistantName"
                                 placeholder="请输入姓名"
                                 value={newAssistant.name}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, name: e.target.value })}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>所属教师</Label>
+                            <Label className="text-slate-300">所属教师</Label>
                             <Select value={newAssistant.teacherId} onValueChange={(v) => setNewAssistant({ ...newAssistant, teacherId: v })}>
-                                <SelectTrigger>
+                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                     {teachers.map((t) => (
                                         <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                        <p className="text-xs text-muted-foreground">初始密码为账号</p>
+                        <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                            <ShieldAlert className="w-3 h-3" /> 初始密码默认为账号
+                        </p>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowAddModal(false)} disabled={submitting}>
+                        <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
                         <Button
                             onClick={handleAddAssistant}
                             disabled={submitting || !newAssistant.account.trim() || !newAssistant.name.trim() || !newAssistant.teacherId}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认添加

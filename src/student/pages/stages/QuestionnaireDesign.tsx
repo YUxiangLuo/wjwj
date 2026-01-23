@@ -14,7 +14,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
@@ -31,10 +32,10 @@ const questionTypeLabels: Record<QuestionType, string> = {
 };
 
 const questionTypeColors: Record<QuestionType, string> = {
-    boolean: "bg-indigo-100 text-indigo-700",
-    single: "bg-teal-100 text-teal-700",
-    multiple: "bg-emerald-100 text-emerald-700",
-    scale: "bg-amber-100 text-amber-700",
+    boolean: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+    single: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+    multiple: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    scale: "bg-amber-500/10 text-amber-400 border-amber-500/20",
 };
 
 function generateId(): string {
@@ -65,6 +66,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [recommendQuestions, setRecommendQuestions] = useState<RecommendQuestion[]>([]);
     const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
+
     useEffect(() => {
         async function loadRecommendQuestions() {
             if (!experiment?.taskId) return;
@@ -91,8 +93,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         };
         await saveExperiment({ questionnaire: questionnaireData });
     }, [title, welcomeText, endingText, questions, saveExperiment]);
-
-
 
     // Restore draft from localStorage
     useEffect(() => {
@@ -185,6 +185,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         setDragOverId(null);
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", id);
+        // Create drag ghost image if needed, or let browser handle it
     };
 
     const handleDragOver = (id: string) => (event: React.DragEvent<HTMLDivElement>) => {
@@ -280,26 +281,30 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         switch (step) {
             case 1:
                 return (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <Card className="lg:col-span-2 rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <Card className="lg:col-span-2 rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                             <CardHeader>
-                                <CardTitle>欢迎语设置</CardTitle>
-                                <CardDescription>设置问卷的标题和欢迎语，让受访者了解调查目的</CardDescription>
+                                <CardTitle className="flex items-center gap-2 text-slate-100">
+                                    <MessageSquare className="w-5 h-5 text-indigo-500" />
+                                    欢迎语设置
+                                </CardTitle>
+                                <CardDescription className="text-slate-400">设置问卷的标题和欢迎语，让受访者了解调查目的</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent className="space-y-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="title">问卷标题 *</Label>
+                                    <Label htmlFor="title" className="text-slate-300">问卷标题 *</Label>
                                     <Input
                                         id="title"
                                         placeholder="请输入问卷标题"
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
                                         maxLength={100}
+                                        className="bg-slate-950/50 border-slate-800 focus:border-indigo-500"
                                     />
-                                    <p className="text-xs text-muted-foreground text-right">{title.length}/100</p>
+                                    <p className="text-xs text-slate-500 text-right">{title.length}/100</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="welcome">欢迎语 *（至少20字）</Label>
+                                    <Label htmlFor="welcome" className="text-slate-300">欢迎语 *（至少20字）</Label>
                                     <Textarea
                                         id="welcome"
                                         placeholder="请输入欢迎语，说明调查目的、预计用时等"
@@ -307,26 +312,31 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         onChange={(e) => setWelcomeText(e.target.value)}
                                         rows={8}
                                         maxLength={1000}
+                                        className="bg-slate-950/50 border-slate-800 focus:border-indigo-500 resize-none"
                                     />
                                     <div className="flex justify-between text-xs">
-                                        <span className={welcomeText.length < 20 ? "text-red-500" : "text-muted-foreground"}>
+                                        <span className={welcomeText.length < 20 ? "text-rose-400" : "text-emerald-400"}>
                                             {welcomeText.length < 20 ? `还需 ${20 - welcomeText.length} 字` : "✓ 符合要求"}
                                         </span>
-                                        <span className="text-muted-foreground">{welcomeText.length}/1000</span>
+                                        <span className="text-slate-500">{welcomeText.length}/1000</span>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="rounded-2xl border-white/70 bg-gradient-to-b from-teal-50 via-cyan-50 to-white shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                        <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm h-fit">
                             <CardHeader>
-                                <CardTitle className="text-base">小贴士</CardTitle>
-                                <CardDescription>好的欢迎语能提高数据质量。</CardDescription>
+                                <CardTitle className="text-base text-indigo-300 flex items-center gap-2">
+                                    <HelpCircle className="w-4 h-4" />
+                                    小贴士
+                                </CardTitle>
+                                <CardDescription className="text-indigo-300/70">好的欢迎语能提高数据质量。</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-3 text-sm text-muted-foreground">
+                            <CardContent className="space-y-4 text-sm text-indigo-200/80 leading-relaxed">
                                 <p>建议说明调查目的、预计用时与隐私保护方式。</p>
                                 <p>保持简洁友好，最好控制在 200 字以内。</p>
-                                <div className="rounded-xl bg-white/80 p-3 text-xs text-slate-600">
-                                    示例：感谢参与本次调查，本问卷约 3 分钟完成，数据仅用于教学分析。
+                                <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/20 p-3 text-xs text-indigo-300">
+                                    <span className="font-semibold block mb-1">示例：</span>
+                                    感谢参与本次调查，本问卷约 3 分钟完成，数据仅用于教学分析。
                                 </div>
                             </CardContent>
                         </Card>
@@ -335,36 +345,38 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             case 2:
                 return (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
                         <div className="lg:col-span-2 space-y-4">
-                            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                                <CardHeader className="flex flex-row items-center justify-between">
+                            <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                                     <div>
-                                        <CardTitle>题目列表</CardTitle>
-                                        <CardDescription>
+                                        <CardTitle className="text-slate-100 flex items-center gap-2">
+                                            <List className="w-5 h-5 text-indigo-500" />
+                                            题目列表
+                                        </CardTitle>
+                                        <CardDescription className="text-slate-400 mt-1">
                                             已添加 {questions.length} 道题目（最少5题，最多50题）
                                         </CardDescription>
                                     </div>
-                                    <Button onClick={handleAddQuestion} disabled={questions.length >= 50}>
+                                    <Button onClick={handleAddQuestion} disabled={questions.length >= 50} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                                         <Plus className="w-4 h-4 mr-1" />
                                         添加题目
                                     </Button>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="space-y-4 pt-6">
                                     {questions.length === 0 ? (
-                                        <div className="text-center py-12 text-muted-foreground">
+                                        <div className="text-center py-16 text-slate-500 bg-slate-950/30 rounded-xl border border-dashed border-slate-800">
                                             <p>暂无题目，点击「添加题目」开始设计问卷</p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             {questions.map((q, index) => (
                                                 <div
                                                     key={q.id}
-                                                    className={`flex items-center gap-2 p-3 rounded-2xl border bg-white/90 transition-colors group hover:bg-white ${
-                                                        dragOverId === q.id && draggingId !== q.id
-                                                            ? "border-teal-300 ring-2 ring-teal-200"
-                                                            : "border-white/60"
-                                                    } ${draggingId === q.id ? "opacity-60" : ""}`}
+                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all group hover:bg-slate-800 ${dragOverId === q.id && draggingId !== q.id
+                                                        ? "border-indigo-500 ring-1 ring-indigo-500/50 bg-indigo-500/10"
+                                                        : "border-slate-800 bg-slate-950/50"
+                                                        } ${draggingId === q.id ? "opacity-50" : ""}`}
                                                     draggable
                                                     onDragStart={handleDragStart(q.id)}
                                                     onDragOver={handleDragOver(q.id)}
@@ -372,54 +384,54 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                     onDrop={handleDrop(q.id)}
                                                     onDragEnd={handleDragEnd}
                                                 >
-                                                    <GripVertical className="w-4 h-4 text-slate-400 cursor-grab" />
-                                                    <span className="text-sm font-medium w-8">Q{index + 1}</span>
-                                                    <span className={`text-xs px-2 py-0.5 rounded ${questionTypeColors[q.type]}`}>
+                                                    <GripVertical className="w-4 h-4 text-slate-600 cursor-grab hover:text-slate-400" />
+                                                    <span className="text-sm font-bold text-slate-400 w-8">Q{index + 1}</span>
+                                                    <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-xs whitespace-nowrap`}>
                                                         {questionTypeLabels[q.type]}
-                                                    </span>
-                                                    <span className="flex-1 text-sm truncate">{q.content}</span>
+                                                    </Badge>
+                                                    <span className="flex-1 text-sm text-slate-300 truncate font-medium">{q.content}</span>
                                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8"
+                                                            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
                                                             onClick={() => moveQuestion(index, "up")}
                                                             disabled={index === 0}
                                                         >
-                                                            <ArrowUp className="w-4 h-4 text-slate-400" />
+                                                            <ArrowUp className="w-4 h-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8"
+                                                            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
                                                             onClick={() => moveQuestion(index, "down")}
                                                             disabled={index === questions.length - 1}
                                                         >
-                                                            <ArrowDown className="w-4 h-4 text-slate-400" />
+                                                            <ArrowDown className="w-4 h-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8"
+                                                            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
                                                             onClick={() => handleDuplicateQuestion(q)}
                                                         >
-                                                            <Copy className="w-4 h-4 text-slate-400" />
+                                                            <Copy className="w-4 h-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8"
+                                                            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
-                                                            <Edit2 className="w-4 h-4 text-slate-400" />
+                                                            <Edit2 className="w-4 h-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8"
+                                                            className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
                                                             onClick={() => handleDeleteQuestion(q.id)}
                                                         >
-                                                            <Trash2 className="w-4 h-4 text-red-400" />
+                                                            <Trash2 className="w-4 h-4" />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -430,46 +442,47 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             </Card>
 
                             {questions.length < 5 && (
-                                <div className="p-3 bg-amber-50 text-amber-700 rounded-2xl text-sm flex items-center gap-2">
+                                <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl text-sm flex items-center gap-2">
                                     <AlertCircle className="w-4 h-4" />
                                     还需添加 {5 - questions.length} 道题目才能继续
                                 </div>
                             )}
                         </div>
                         <div className="space-y-4">
-                            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                            <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                                 <CardHeader>
-                                    <CardTitle>推荐题目</CardTitle>
-                                    <CardDescription>可直接引用教师提供的推荐题目</CardDescription>
+                                    <CardTitle className="text-base text-slate-200">推荐题目</CardTitle>
+                                    <CardDescription className="text-slate-400">可直接引用教师提供的推荐题目</CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-3">
+                                <CardContent className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                     {recommendQuestions.length === 0 && (
-                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-4 text-sm text-muted-foreground">
-                                            暂无推荐题目，可先创建自己的题目。
+                                        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-500 text-center">
+                                            暂无推荐题目
                                         </div>
                                     )}
                                     {recommendQuestions.map((rq) => (
-                                        <div key={rq.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-white/60 bg-white/90">
+                                        <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-900 transition-colors">
                                             <div className="space-y-1">
-                                                <div className="text-sm font-medium">{rq.content}</div>
-                                                <div className="text-xs text-muted-foreground">
+                                                <div className="text-sm font-medium text-slate-300 line-clamp-2">{rq.content}</div>
+                                                <div className="text-xs text-slate-500">
                                                     类型：{questionTypeLabels[{ 1: "boolean", 2: "single", 3: "multiple", 4: "scale" }[rq.questionType] as QuestionType]}
                                                 </div>
                                             </div>
-                                            <Button size="sm" variant="outline" onClick={() => handleUseRecommend(rq)}>
-                                                使用
+                                            <Button size="sm" variant="outline" className="w-full mt-1 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" onClick={() => handleUseRecommend(rq)}>
+                                                使用此题
                                             </Button>
                                         </div>
                                     ))}
                                 </CardContent>
                             </Card>
-                            <Card className="rounded-2xl border-white/70 bg-gradient-to-b from-orange-50 via-amber-50 to-white shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                            <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                                 <CardHeader>
-                                    <CardTitle className="text-base">设计建议</CardTitle>
+                                    <CardTitle className="text-base text-slate-200">设计建议</CardTitle>
                                 </CardHeader>
-                                <CardContent className="text-sm text-muted-foreground space-y-2">
-                                    <p>建议至少包含 2 种题型，提升回答质量。</p>
-                                    <p>同一类型的题目控制在 10 题以内。</p>
+                                <CardContent className="text-sm text-slate-400 space-y-2">
+                                    <p>• 建议至少包含 2 种题型，提升回答质量。</p>
+                                    <p>• 同一类型的题目控制在 10 题以内。</p>
+                                    <p>• 题目表述应清晰无歧义。</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -478,15 +491,15 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             case 3:
                 return (
-                    <div className="flex justify-center">
-                        <Card className="w-full max-w-2xl rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                    <div className="flex justify-center animate-in fade-in slide-in-from-right-4 duration-300">
+                        <Card className="w-full max-w-2xl rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                             <CardHeader>
-                                <CardTitle>结束语设置</CardTitle>
-                                <CardDescription>设置问卷的结束语，感谢受访者参与</CardDescription>
+                                <CardTitle className="text-slate-100">结束语设置</CardTitle>
+                                <CardDescription className="text-slate-400">设置问卷的结束语，感谢受访者参与</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent className="space-y-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="ending">结束语 *（至少20字）</Label>
+                                    <Label htmlFor="ending" className="text-slate-300">结束语 *（至少20字）</Label>
                                     <Textarea
                                         id="ending"
                                         placeholder="请输入结束语，如致谢词等"
@@ -494,16 +507,18 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         onChange={(e) => setEndingText(e.target.value)}
                                         rows={8}
                                         maxLength={1000}
+                                        className="bg-slate-950/50 border-slate-800 focus:border-indigo-500 resize-none"
                                     />
                                     <div className="flex justify-between text-xs">
-                                        <span className={endingText.length < 20 ? "text-red-500" : "text-muted-foreground"}>
+                                        <span className={endingText.length < 20 ? "text-rose-400" : "text-emerald-400"}>
                                             {endingText.length < 20 ? `还需 ${20 - endingText.length} 字` : "✓ 符合要求"}
                                         </span>
-                                        <span className="text-muted-foreground">{endingText.length}/1000</span>
+                                        <span className="text-slate-500">{endingText.length}/1000</span>
                                     </div>
                                 </div>
-                                <div className="rounded-xl bg-slate-50 p-3 text-xs text-muted-foreground">
-                                    小提示：感谢语中可以提示下一步操作或后续联系信息。
+                                <div className="rounded-xl bg-indigo-900/20 border border-indigo-500/20 p-3 text-xs text-indigo-300 flex items-start gap-2">
+                                    <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                    提示：感谢语中可以提示下一步操作或后续联系信息。
                                 </div>
                             </CardContent>
                         </Card>
@@ -512,84 +527,95 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             case 4:
                 return (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                             <CardHeader>
-                                <CardTitle>问卷预览</CardTitle>
-                                <CardDescription>展示给受访者的效果预览</CardDescription>
+                                <CardTitle className="text-slate-100">问卷预览</CardTitle>
+                                <CardDescription className="text-slate-400">展示给受访者的效果预览</CardDescription>
                             </CardHeader>
-                            <CardContent>
-                                <div className="mx-auto w-full max-w-xs rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                                    <div className="text-sm font-semibold text-foreground">{title || "问卷标题"}</div>
-                                    <div className="mt-2 text-xs text-muted-foreground whitespace-pre-line">
+                            <CardContent className="flex justify-center bg-slate-950/30 py-8 rounded-xl inner-shadow">
+                                <div className="w-full max-w-xs rounded-3xl border border-slate-200 bg-white p-5 shadow-xl text-slate-800">
+                                    <div className="text-base font-bold text-slate-900 text-center">{title || "问卷标题"}</div>
+                                    <div className="mt-3 text-xs text-slate-600 whitespace-pre-line leading-relaxed">
                                         {welcomeText || "欢迎语将在这里展示"}
                                     </div>
-                                    <div className="mt-4 space-y-2">
-                                        {questions.slice(0, 4).map((q, index) => (
-                                            <div key={q.id} className="rounded-2xl bg-slate-50 p-2 text-xs text-muted-foreground">
-                                                Q{index + 1}. {q.content}
+                                    <div className="mt-5 space-y-3">
+                                        {questions.slice(0, 3).map((q, index) => (
+                                            <div key={q.id} className="rounded-xl bg-slate-50 p-3 text-xs border border-slate-100">
+                                                <span className="font-semibold text-slate-700">Q{index + 1}.</span> <span className="text-slate-600">{q.content}</span>
                                             </div>
                                         ))}
+                                        {questions.length > 3 && (
+                                            <div className="text-center text-xs text-slate-400 py-1">... 更多题目 ...</div>
+                                        )}
                                         {questions.length === 0 && (
-                                            <div className="rounded-2xl bg-slate-50 p-2 text-xs text-muted-foreground">
+                                            <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-400 text-center italic">
                                                 还没有题目
                                             </div>
                                         )}
                                     </div>
-                                    <div className="mt-4 text-[11px] text-muted-foreground whitespace-pre-line">
+                                    <div className="mt-5 pt-3 border-t border-slate-100 text-[10px] text-slate-500 whitespace-pre-line text-center">
                                         {endingText || "结束语将在这里展示"}
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm h-fit">
                             <CardHeader>
-                                <CardTitle>校验清单</CardTitle>
-                                <CardDescription>确认问卷信息完善后再进入下一阶段</CardDescription>
+                                <CardTitle className="text-slate-100">校验清单</CardTitle>
+                                <CardDescription className="text-slate-400">确认问卷信息完善后再进入下一阶段</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-2">
-                                <div className={`flex items-center gap-2 p-3 rounded-2xl ${validation.title ? "bg-emerald-50" : "bg-red-50"}`}>
+                            <CardContent className="space-y-3">
+                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.title ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.title ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
                                     ) : (
-                                        <AlertCircle className="w-4 h-4 text-red-500" />
+                                        <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className="text-sm">问卷标题：{title || "(未填写)"}</span>
+                                    <span className={`text-sm ${validation.title ? "text-emerald-400" : "text-rose-400"}`}>
+                                        问卷标题：{title ? "已填写" : "未填写"}
+                                    </span>
                                 </div>
-                                <div className={`flex items-center gap-2 p-3 rounded-2xl ${validation.welcomeText ? "bg-emerald-50" : "bg-red-50"}`}>
+                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.welcomeText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.welcomeText ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
                                     ) : (
-                                        <AlertCircle className="w-4 h-4 text-red-500" />
+                                        <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className="text-sm">欢迎语：{welcomeText.length} 字 {validation.welcomeText ? "" : "(至少20字)"}</span>
+                                    <span className={`text-sm ${validation.welcomeText ? "text-emerald-400" : "text-rose-400"}`}>
+                                        欢迎语：{welcomeText.length} 字 {validation.welcomeText ? "" : "(至少20字)"}
+                                    </span>
                                 </div>
-                                <div className={`flex items-center gap-2 p-3 rounded-2xl ${validation.questionCount ? "bg-emerald-50" : "bg-red-50"}`}>
+                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.questionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.questionCount ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
                                     ) : (
-                                        <AlertCircle className="w-4 h-4 text-red-500" />
+                                        <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className="text-sm">题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}</span>
+                                    <span className={`text-sm ${validation.questionCount ? "text-emerald-400" : "text-rose-400"}`}>
+                                        题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}
+                                    </span>
                                 </div>
-                                <div className={`flex items-center gap-2 p-3 rounded-2xl ${validation.questionTypes ? "bg-emerald-50" : "bg-amber-50"}`}>
+                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.questionTypes ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
                                     {validation.questionTypes ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
                                     ) : (
-                                        <AlertCircle className="w-4 h-4 text-amber-500" />
+                                        <AlertCircle className="w-5 h-5 text-amber-500" />
                                     )}
-                                    <span className="text-sm">
+                                    <span className={`text-sm ${validation.questionTypes ? "text-emerald-400" : "text-amber-400"}`}>
                                         题型多样性：{new Set(questions.map((q) => q.type)).size} 种题型
                                         {validation.questionTypes ? "" : " (建议至少2种)"}
                                     </span>
                                 </div>
-                                <div className={`flex items-center gap-2 p-3 rounded-2xl ${validation.endingText ? "bg-emerald-50" : "bg-red-50"}`}>
+                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.endingText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.endingText ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
                                     ) : (
-                                        <AlertCircle className="w-4 h-4 text-red-500" />
+                                        <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className="text-sm">结束语：{endingText.length} 字 {validation.endingText ? "" : "(至少20字)"}</span>
+                                    <span className={`text-sm ${validation.endingText ? "text-emerald-400" : "text-rose-400"}`}>
+                                        结束语：{endingText.length} 字 {validation.endingText ? "" : "(至少20字)"}
+                                    </span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -599,27 +625,29 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     };
 
     return (
-        <div className="space-y-6">
-            <Card className="rounded-3xl border-white/70 bg-gradient-to-r from-white via-slate-50 to-white shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
-                <CardContent className="py-5">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="space-y-8 pb-12">
+            <Card className="rounded-3xl border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/20 shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-teal-500 opacity-20"></div>
+                <CardContent className="py-6 px-8">
+                    <div className="flex flex-col gap-6">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
                             <div>
-                                <div className="text-xs text-muted-foreground">问卷设计进度</div>
-                                <div className="text-base font-semibold text-foreground">第 {step} 步：{steps[step - 1]?.title}</div>
+                                <div className="text-xs text-indigo-400 uppercase tracking-widest font-semibold mb-1">问卷设计进度</div>
+                                <div className="text-xl font-bold text-slate-100 flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-lg shadow-indigo-500/30">
+                                        {step}
+                                    </span>
+                                    {steps[step - 1]?.title}
+                                </div>
                             </div>
-                            <div className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
-                                {Math.round((step / 4) * 100)}%
+                            <div className="rounded-full bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 text-sm font-semibold text-indigo-400 shadow-sm">
+                                {Math.round((step / 4) * 100)}% 完成度
                             </div>
                         </div>
 
-                        <div className="relative">
-                            <div className="absolute left-6 right-6 top-4 h-1 rounded-full bg-slate-200" />
-                            <div
-                                className="absolute left-6 top-4 h-1 rounded-full bg-gradient-to-r from-teal-400 to-indigo-400"
-                                style={{ width: `calc(${(step / 4) * 100}% - 12px)` }}
-                            />
-                            <div className="relative flex items-start justify-between">
+                        <div className="relative pt-2">
+                            <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-0.5 bg-slate-800 -z-10" />
+                            <div className="flex items-start justify-between relative">
                                 {steps.map((s) => {
                                     const isCompleted = step > s.num;
                                     const isCurrent = step === s.num;
@@ -628,20 +656,19 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         <button
                                             key={s.num}
                                             onClick={() => setStep(s.num as 1 | 2 | 3 | 4)}
-                                            className="flex flex-col items-center gap-2"
+                                            className="flex flex-col items-center gap-2 group"
                                         >
                                             <span
-                                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-all ${
-                                                    isCurrent
-                                                        ? "bg-teal-500 text-white shadow-[0_0_0_4px_rgba(20,184,166,0.15)]"
-                                                        : isCompleted
-                                                            ? "bg-emerald-100 text-emerald-700"
-                                                            : "bg-slate-100 text-slate-500"
-                                                }`}
+                                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${isCurrent
+                                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/40 scale-110 ring-4 ring-slate-900"
+                                                    : isCompleted
+                                                        ? "bg-emerald-500 text-white ring-4 ring-slate-900"
+                                                        : "bg-slate-800 text-slate-500 border border-slate-700 ring-4 ring-slate-900"
+                                                    }`}
                                             >
-                                                {s.num}
+                                                {isCompleted ? <CheckCircle className="w-4 h-4" /> : s.num}
                                             </span>
-                                            <span className={`text-xs ${isCurrent ? "font-medium text-teal-700" : isCompleted ? "text-emerald-600" : "text-slate-500"}`}>
+                                            <span className={`text-xs font-medium transition-colors duration-200 ${isCurrent ? "text-indigo-400" : isCompleted ? "text-emerald-500" : "text-slate-500 group-hover:text-slate-400"}`}>
                                                 {s.title}
                                             </span>
                                         </button>
@@ -655,20 +682,22 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             {renderStep()}
 
-            <div className="flex justify-between">
+            <div className="flex justify-between pt-4 border-t border-slate-800/50">
                 <Button
                     variant="outline"
                     onClick={() => step > 1 && setStep((step - 1) as 1 | 2 | 3 | 4)}
                     disabled={step === 1}
+                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
                 >
                     上一步
                 </Button>
                 {step < 4 ? (
-                    <Button onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)}>
+                    <Button onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                         下一步
                     </Button>
                 ) : (
-                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!canProceed}>
+                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!canProceed} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                        <CheckCircle className="w-4 h-4 mr-2" />
                         确认完成，进入下一阶段
                     </Button>
                 )}
@@ -684,48 +713,49 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>确认删除</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-slate-100">确认删除</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
                             确定要删除这道题目吗？此操作无法撤销。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete}>删除</AlertDialogAction>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-rose-600 hover:bg-rose-700 text-white">删除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             {/* Confirm Next Stage Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>确认完成问卷设计</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            确认后问卷设计将被锁定。如需修改，您需要返回本阶段重新设计，届时后续阶段的数据将被清空。
+                        <AlertDialogTitle className="text-slate-100">确认完成问卷设计</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
+                            确认后问卷设计将被<strong className="text-indigo-400">锁定</strong>。如需修改，您需要返回本阶段重新设计，届时后续阶段的数据将被<strong className="text-rose-400">清空</strong>。
                             <br /><br />
                             确定继续吗？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmComplete}>确认完成</AlertDialogAction>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmComplete} className="bg-emerald-600 hover:bg-emerald-700 text-white">确认完成</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>恢复草稿</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-slate-100">恢复草稿</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
                             检测到本地草稿，是否恢复？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
+                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
                             onClick={() => {
                                 if (draftKey) localStorage.removeItem(draftKey);
                                 setRestoreDraftOpen(false);
@@ -734,6 +764,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             放弃草稿
                         </AlertDialogCancel>
                         <AlertDialogAction
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             onClick={() => {
                                 if (!pendingDraft) return;
                                 setTitle(pendingDraft.title ?? "");

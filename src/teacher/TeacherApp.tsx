@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -49,9 +49,15 @@ export function TeacherApp() {
     const navigate = useNavigate();
     const currentPath = location.pathname;
     const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
+
     // Get base path for title (e.g., /class/1/students -> /class)
-    const basePath = "/" + (currentPath.split("/")[1] || "");
+    // Handle root path separately to avoid empty string
+    const segment = currentPath.split("/")[1];
+    const basePath = segment ? "/" + segment : "/";
     const pageTitle = pageTitles[basePath] ?? "教师端";
+
+    // Mobile sidebar state
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const [authState, setAuthState] = useState<"checking" | "authed" | "guest">("checking");
     const [teacherUser, setTeacherUser] = useState<TeacherUser | null>(null);
@@ -120,6 +126,7 @@ export function TeacherApp() {
             cancelled = true;
         };
     }, [authState]);
+
     const handleLogout = async () => {
         try {
             await authApi.logout();
@@ -208,8 +215,8 @@ export function TeacherApp() {
     if (isLoginPage) {
         if (authState === "checking") {
             return (
-                <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                    <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
                 </div>
             );
         }
@@ -221,8 +228,8 @@ export function TeacherApp() {
 
     if (authState === "checking") {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
             </div>
         );
     }
@@ -231,36 +238,47 @@ export function TeacherApp() {
         return <Navigate to="/login" replace />;
     }
 
-    // Additional logic for dynamic titles could go here if needed
-
     return (
-        <div className="flex min-h-screen bg-slate-50">
-            <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
-                <div className="h-20 px-6 border-b border-slate-200 flex items-center">
-                    <div>
-                        <h1 className="text-base font-semibold text-slate-900">抽样统计系统</h1>
-                        <p className="text-xs text-slate-500 mt-1">教师端</p>
+        <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden">
+            {/* Sidebar */}
+            <aside className={`
+                fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 flex flex-col
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            `}>
+                <div className="h-16 px-6 border-b border-slate-800 flex items-center shrink-0">
+                    <div className="flex items-center gap-2 font-semibold text-lg text-slate-100">
+                        <div className="bg-indigo-600 p-1.5 rounded-lg">
+                            <LayoutDashboard className="w-4 h-4 text-white" />
+                        </div>
+                        抽样统计系统
                     </div>
                 </div>
 
-                <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+                    <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Main Menu
+                    </div>
                     {menuItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
+
                         return (
                             <NavLink
                                 key={item.path}
                                 to={item.path}
-                                className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
+                                onClick={() => setIsSidebarOpen(false)}
+                                className={`flex items-center justify-between px-3 py-2.5 text-sm rounded-lg transition-all duration-200 group
                                     ${isActive
-                                        ? "bg-blue-50 text-blue-600"
-                                        : "text-slate-600 hover:bg-slate-100"
+                                        ? "bg-indigo-500/10 text-indigo-400"
+                                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                                     }`}
                             >
-                                <Icon className={`w-4 h-4 ${isActive ? "text-blue-600" : "text-slate-500"}`} />
-                                <span className="font-medium">{item.label}</span>
+                                <div className="flex items-center gap-3">
+                                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-indigo-400" : "text-slate-500 group-hover:text-slate-300"}`} />
+                                    <span className="font-medium">{item.label}</span>
+                                </div>
                                 {item.path === "/grading" && pendingGradingCount > 0 && (
-                                    <Badge variant="destructive" className="ml-auto text-xs px-2 py-0.5">
+                                    <Badge className="bg-rose-500/20 text-rose-400 border-none hover:bg-rose-500/30">
                                         {pendingGradingCount}
                                     </Badge>
                                 )}
@@ -269,79 +287,118 @@ export function TeacherApp() {
                     })}
                 </nav>
 
-                <Separator className="bg-slate-200" />
-
-                <div className="p-4">
-                    <div className="flex items-center gap-3">
-                        <Avatar className="w-9 h-9">
-                            <AvatarFallback className="bg-blue-50 text-blue-600 text-sm">
+                <div className="p-4 border-t border-slate-800">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50 border border-slate-800">
+                        <Avatar className="w-9 h-9 border border-slate-700">
+                            <AvatarFallback className="bg-indigo-950 text-indigo-400 text-xs font-semibold">
                                 {teacherUser?.name?.charAt(0) ?? "师"}
                             </AvatarFallback>
                         </Avatar>
-                        <div>
-                            <div className="text-sm font-medium text-slate-900">{teacherUser?.name ?? "教师"}</div>
-                            <div className="text-xs text-slate-500">{teacherUser?.employeeId ?? ""}</div>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-slate-200 truncate">{teacherUser?.name ?? "教师"}</div>
+                            <div className="text-xs text-slate-500 truncate">{teacherUser?.employeeId ?? ""}</div>
                         </div>
                     </div>
                 </div>
             </aside>
 
-            <main className="flex-1 flex flex-col overflow-hidden">
-                <header className="bg-white px-8 h-20 border-b border-slate-200 flex items-center justify-between gap-6">
+            {/* Mobile Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col min-w-0 bg-slate-950 relative z-0">
+                <header className="h-16 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
                     <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-semibold text-slate-900">{pageTitle}</h2>
-                        <span className="text-sm text-slate-500">
-                            {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-3">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="relative"
+                            className="lg:hidden text-slate-400 hover:text-white"
+                            onClick={() => setIsSidebarOpen(true)}
+                        >
+                            <Menu className="w-5 h-5" />
+                        </Button>
+                        <div>
+                            <h2 className="text-lg font-semibold text-slate-100">{pageTitle}</h2>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <span className="hidden sm:block text-xs text-slate-500 font-mono bg-slate-900 px-2 py-1 rounded border border-slate-800">
+                            {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}
+                        </span>
+
+                        <div className="h-4 w-px bg-slate-800 hidden sm:block"></div>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="relative text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10"
                             onClick={async () => {
                                 await loadNotifications();
                                 setShowNotifications(true);
                             }}
                         >
-                            <Bell className="w-5 h-5 text-slate-600" />
+                            <Bell className="w-5 h-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full"></span>
+                                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-slate-900"></span>
                             )}
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setShowPasswordModal(true)} title="修改密码">
-                            修改密码
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={handleLogout} title="退出登录">
-                            <LogOut className="w-5 h-5 text-slate-600" />
-                        </Button>
+
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowPasswordModal(true)}
+                                className="text-slate-400 hover:text-slate-200"
+                            >
+                                修改密码
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleLogout}
+                                className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                                title="退出登录"
+                            >
+                                <LogOut className="w-5 h-5" />
+                            </Button>
+                        </div>
                     </div>
                 </header>
-                <div className="flex-1 p-8 overflow-y-auto">
-                    <Routes>
-                        <Route index element={<Dashboard />} />
-                        <Route path="login" element={<Login />} />
-                        <Route path="class" element={<ClassManagement />} />
-                        <Route path="class/:classId/students" element={<StudentManagement />} />
-                        <Route path="topic" element={<TopicManagement />} />
-                        <Route path="task" element={<TaskManagement />} />
-                        <Route path="grading" element={<GradingManagement />} />
-                        <Route path="grading/:submissionId" element={<GradingDetail />} />
-                        <Route path="assistant" element={<AssistantManagement />} />
-                        <Route path="export" element={<GradeExport />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
+
+                <div className="flex-1 p-4 lg:p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                    <div className="max-w-7xl mx-auto space-y-6">
+                        <Routes>
+                            <Route index element={<Dashboard />} />
+                            <Route path="login" element={<Login />} />
+                            <Route path="class" element={<ClassManagement />} />
+                            <Route path="class/:classId/students" element={<StudentManagement />} />
+                            <Route path="topic" element={<TopicManagement />} />
+                            <Route path="task" element={<TaskManagement />} />
+                            <Route path="grading" element={<GradingManagement />} />
+                            <Route path="grading/:submissionId" element={<GradingDetail />} />
+                            <Route path="assistant" element={<AssistantManagement />} />
+                            <Route path="export" element={<GradeExport />} />
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                    </div>
                 </div>
             </main>
 
+            {/* Password Modal */}
             <Dialog open={showPasswordModal} onOpenChange={(open) => {
                 if (teacherUser?.isFirstLogin) return;
                 setShowPasswordModal(open);
             }}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>{teacherUser?.isFirstLogin ? "首次登录请修改密码" : "修改密码"}</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-slate-100">{teacherUser?.isFirstLogin ? "首次登录请修改密码" : "修改密码"}</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             为保证账号安全，请设置新密码。
                         </DialogDescription>
                     </DialogHeader>
@@ -354,6 +411,7 @@ export function TeacherApp() {
                                 value={passwordForm.currentPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                                 autoComplete="current-password"
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
                             />
                         </div>
                         <div className="space-y-2">
@@ -364,6 +422,7 @@ export function TeacherApp() {
                                 value={passwordForm.newPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                 autoComplete="new-password"
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
                             />
                         </div>
                         <div className="space-y-2">
@@ -374,17 +433,18 @@ export function TeacherApp() {
                                 value={passwordForm.confirmPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                                 autoComplete="new-password"
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
                             />
                         </div>
-                        {passwordError && <div className="text-sm text-destructive">{passwordError}</div>}
+                        {passwordError && <div className="text-sm text-rose-500 bg-rose-500/10 p-2 rounded">{passwordError}</div>}
                     </div>
                     <DialogFooter>
                         {!teacherUser?.isFirstLogin && (
-                            <Button variant="outline" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving}>
+                            <Button variant="ghost" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                                 取消
                             </Button>
                         )}
-                        <Button onClick={handleChangePassword} disabled={passwordSaving}>
+                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             保存
                         </Button>
@@ -392,28 +452,32 @@ export function TeacherApp() {
                 </DialogContent>
             </Dialog>
 
+            {/* Notifications Modal */}
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>通知</DialogTitle>
-                        <DialogDescription>最近通知</DialogDescription>
+                        <DialogTitle className="text-slate-100">通知</DialogTitle>
+                        <DialogDescription className="text-slate-400">最近通知</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-3 max-h-[360px] overflow-y-auto">
+                    <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
                         {notifications.length === 0 ? (
-                            <div className="text-sm text-muted-foreground text-center py-6">暂无通知</div>
+                            <div className="text-sm text-slate-500 text-center py-8">暂无通知</div>
                         ) : (
                             notifications.map((item) => (
-                                <div key={item.id} className="border rounded-md p-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className={`text-sm font-medium ${item.isRead ? "text-foreground" : "text-primary"}`}>{item.title}</div>
-                                        <span className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</span>
+                                <div key={item.id} className="border border-slate-800 rounded-lg p-4 bg-slate-950 hover:bg-slate-800/30 transition-colors">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className={`text-sm font-medium ${item.isRead ? "text-slate-400" : "text-indigo-400"}`}>
+                                            {item.title}
+                                            {!item.isRead && <span className="ml-2 w-1.5 h-1.5 inline-block rounded-full bg-indigo-500"></span>}
+                                        </div>
+                                        <span className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</span>
                                     </div>
-                                    <div className="text-sm text-muted-foreground mt-1">{item.content}</div>
+                                    <div className="text-sm text-slate-400 leading-relaxed">{item.content}</div>
                                     {!item.isRead && (
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="mt-2"
+                                            className="mt-3 h-7 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
                                             onClick={async () => {
                                                 await teacherApi.readNotification(item.id);
                                                 loadNotifications();
@@ -428,15 +492,16 @@ export function TeacherApp() {
                     </div>
                     <DialogFooter>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             onClick={async () => {
                                 await teacherApi.readAllNotifications();
                                 loadNotifications();
                             }}
+                            className="text-slate-400 hover:text-slate-200 hover:bg-slate-800"
                         >
                             全部已读
                         </Button>
-                        <Button onClick={() => setShowNotifications(false)}>关闭</Button>
+                        <Button onClick={() => setShowNotifications(false)} className="bg-slate-800 hover:bg-slate-700 text-slate-200">关闭</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

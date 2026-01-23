@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock } from "lucide-react";
+import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -129,12 +129,12 @@ export function TeacherManagement() {
 
     const getStatusBadge = (teacher: Teacher) => {
         if (teacher.isLocked) {
-            return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">已锁定</Badge>;
+            return <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20">已锁定</Badge>;
         }
         if (teacher.status === 1) {
-            return <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">正常</Badge>;
+            return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">正常</Badge>;
         }
-        return <Badge variant="destructive">已停用</Badge>;
+        return <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已停用</Badge>;
     };
 
     const summary = useMemo(() => {
@@ -146,132 +146,137 @@ export function TeacherManagement() {
     }, [teachers]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-900">教师管理</h2>
-                    <p className="text-sm text-slate-500 mt-1">管理教师账号、锁定状态与登录安全。</p>
+                    <h2 className="text-lg font-semibold text-slate-100">教师管理</h2>
+                    <p className="text-sm text-slate-400 mt-1">管理教师账号、锁定状态与登录安全。</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4" />
+                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                    <Plus className="w-4 h-4 mr-1" />
                     添加教师
                 </Button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">教师总数</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">正常账号</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.active}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Active</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">已停用</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.disabled}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Disabled</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">锁定账号</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.locked}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Locked</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.locked}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
                             <Lock className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 shadow-sm">
-                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4">
                     <div>
-                        <CardTitle className="text-base">教师列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {teachers.length} 条</p>
+                        <CardTitle className="text-base text-slate-100">教师列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {teachers.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                             <Input
                                 placeholder="搜索工号或姓名"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                className="pl-9"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
-                        <Button variant="outline" onClick={handleSearch} disabled={loading}>
-                            <Search className="w-4 h-4" />
+                        <Button variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                            <Search className="w-4 h-4 mr-2" />
                             搜索
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                            <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead>工号</TableHead>
-                                    <TableHead>姓名</TableHead>
-                                    <TableHead>状态</TableHead>
-                                    <TableHead>班级数</TableHead>
-                                    <TableHead>最后登录</TableHead>
-                                    <TableHead>创建时间</TableHead>
-                                    <TableHead>操作</TableHead>
+                                <TableRow className="border-slate-800 hover:bg-slate-900/50">
+                                    <TableHead className="text-slate-400">工号</TableHead>
+                                    <TableHead className="text-slate-400">姓名</TableHead>
+                                    <TableHead className="text-slate-400">状态</TableHead>
+                                    <TableHead className="text-slate-400">班级数</TableHead>
+                                    <TableHead className="text-slate-400">最后登录</TableHead>
+                                    <TableHead className="text-slate-400">创建时间</TableHead>
+                                    <TableHead className="text-slate-400 text-right">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {teachers.map((teacher) => (
-                                    <TableRow key={teacher.id}>
-                                        <TableCell className="font-medium text-slate-900">{teacher.employeeId}</TableCell>
-                                        <TableCell>{teacher.name}</TableCell>
+                                    <TableRow key={teacher.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                        <TableCell className="font-mono text-indigo-300">{teacher.employeeId}</TableCell>
+                                        <TableCell className="font-medium text-slate-200">{teacher.name}</TableCell>
                                         <TableCell>{getStatusBadge(teacher)}</TableCell>
-                                        <TableCell>{teacher.classCount}</TableCell>
-                                        <TableCell className="text-slate-500">{formatDate(teacher.lastLogin)}</TableCell>
-                                        <TableCell className="text-slate-500">{formatDate(teacher.createdAt)}</TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-2">
+                                        <TableCell className="text-slate-300">
+                                            <div className="flex items-center gap-1">
+                                                <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
+                                                {teacher.classCount}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-slate-500 text-xs">{formatDate(teacher.lastLogin)}</TableCell>
+                                        <TableCell className="text-slate-500 text-xs">{formatDate(teacher.createdAt)}</TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-2">
                                                 {teacher.isLocked && (
-                                                    <Button variant="ghost" size="sm" onClick={() => handleUnlock(teacher)}>
-                                                        <Unlock className="w-3 h-3 mr-1" />
+                                                    <Button variant="ghost" size="sm" onClick={() => handleUnlock(teacher)} className="h-8 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10">
+                                                        <Unlock className="w-3.5 h-3.5 mr-1" />
                                                         解锁
                                                     </Button>
                                                 )}
-                                                <Button variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)}>
-                                                    <RotateCcw className="w-3 h-3 mr-1" />
-                                                    重置密码
+                                                <Button variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                                    重置
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleToggleStatus(teacher)}
-                                                    className={teacher.status === 1 ? "text-orange-500 hover:text-orange-600" : "text-emerald-600 hover:text-emerald-700"}
+                                                    className={`h-8 ${teacher.status === 1 ? "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
                                                 >
                                                     {teacher.status === 1 ? "停用" : "启用"}
                                                 </Button>
@@ -281,8 +286,13 @@ export function TeacherManagement() {
                                 ))}
                                 {teachers.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-12 text-slate-500">
-                                            暂无数据
+                                        <TableCell colSpan={7} className="text-center py-16 text-slate-500">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
+                                                    <Search className="w-5 h-5 text-slate-600" />
+                                                </div>
+                                                <p>暂无数据</p>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -293,38 +303,43 @@ export function TeacherManagement() {
             </Card>
 
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>添加教师</DialogTitle>
+                        <DialogTitle className="text-slate-100">添加教师</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="employeeId">工号</Label>
+                            <Label htmlFor="employeeId" className="text-slate-300">工号</Label>
                             <Input
                                 id="employeeId"
                                 placeholder="请输入工号"
                                 value={newTeacher.employeeId}
                                 onChange={(e) => setNewTeacher({ ...newTeacher, employeeId: e.target.value })}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="name">姓名</Label>
+                            <Label htmlFor="name" className="text-slate-300">姓名</Label>
                             <Input
                                 id="name"
                                 placeholder="请输入姓名"
                                 value={newTeacher.name}
                                 onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
-                        <p className="text-xs text-muted-foreground">初始密码为工号</p>
+                        <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                            <Lock className="w-3 h-3" /> 初始密码默认为工号
+                        </p>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowAddModal(false)} disabled={submitting}>
+                        <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
                         <Button
                             onClick={handleAddTeacher}
                             disabled={submitting || !newTeacher.employeeId.trim() || !newTeacher.name.trim()}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认添加

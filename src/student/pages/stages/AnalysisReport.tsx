@@ -14,7 +14,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { BarChart3, Download, FileText, Send, Loader2 } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, AlertCircle } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 
 interface AnalysisReportProps {
@@ -81,51 +81,54 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <BarChart3 className="w-5 h-5" />
+                    <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                        <CardHeader className="border-b border-slate-800 pb-4">
+                            <CardTitle className="flex items-center gap-2 text-slate-100">
+                                <BarChart3 className="w-5 h-5 text-indigo-500" />
                                 图表分析
                             </CardTitle>
-                            <CardDescription>系统自动生成的统计图表</CardDescription>
+                            <CardDescription className="text-slate-400">系统自动生成的统计图表</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-6">
                             <Tabs defaultValue="mean">
-                                <TabsList className="rounded-full bg-white/80 p-1 shadow-sm">
-                                    <TabsTrigger value="mean" className="rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">均值对比</TabsTrigger>
-                                    <TabsTrigger value="dist" className="rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">分布对比</TabsTrigger>
-                                    <TabsTrigger value="error" className="rounded-full data-[state=active]:bg-teal-500 data-[state=active]:text-white">误差分析</TabsTrigger>
+                                <TabsList className="bg-slate-950 border border-slate-800 p-1 rounded-xl w-full flex h-auto">
+                                    <TabsTrigger value="mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">均值对比</TabsTrigger>
+                                    <TabsTrigger value="dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">分布对比</TabsTrigger>
+                                    <TabsTrigger value="error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">误差分析</TabsTrigger>
                                 </TabsList>
 
-                                <TabsContent value="mean" className="mt-4">
-                                    <div className="h-64 bg-slate-100 rounded-2xl flex items-center justify-center">
-                                        <div className="text-center text-muted-foreground">
-                                            <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                            <p>均值对比柱状图</p>
-                                            <p className="text-sm">（展示三种抽样方法的均值对比）</p>
+                                <TabsContent value="mean" className="mt-6">
+                                    <div className="h-64 bg-slate-950/30 border border-slate-800 rounded-2xl flex items-center justify-center relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-grid-slate-800/[0.2] [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
+                                        <div className="text-center text-slate-500 relative z-10 group-hover:scale-105 transition-transform duration-500">
+                                            <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30 text-indigo-400" />
+                                            <p className="font-medium">均值对比柱状图</p>
+                                            <p className="text-xs mt-1 text-slate-600">（展示三种抽样方法的均值对比）</p>
                                         </div>
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="dist" className="mt-4">
-                                    <div className="h-64 bg-slate-100 rounded-2xl flex items-center justify-center">
-                                        <div className="text-center text-muted-foreground">
-                                            <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                            <p>分布对比图</p>
-                                            <p className="text-sm">（展示样本分布与总体分布对比）</p>
+                                <TabsContent value="dist" className="mt-6">
+                                    <div className="h-64 bg-slate-950/30 border border-slate-800 rounded-2xl flex items-center justify-center relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-grid-slate-800/[0.2] [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
+                                        <div className="text-center text-slate-500 relative z-10 group-hover:scale-105 transition-transform duration-500">
+                                            <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30 text-teal-400" />
+                                            <p className="font-medium">分布对比图</p>
+                                            <p className="text-xs mt-1 text-slate-600">（展示样本分布与总体分布对比）</p>
                                         </div>
                                     </div>
                                 </TabsContent>
 
-                                <TabsContent value="error" className="mt-4">
-                                    <div className="h-64 bg-slate-100 rounded-2xl flex items-center justify-center">
-                                        <div className="text-center text-muted-foreground">
-                                            <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                            <p>抽样误差分析图</p>
-                                            <p className="text-sm">（展示三种方法的抽样标准误对比）</p>
+                                <TabsContent value="error" className="mt-6">
+                                    <div className="h-64 bg-slate-950/30 border border-slate-800 rounded-2xl flex items-center justify-center relative overflow-hidden group">
+                                        <div className="absolute inset-0 bg-grid-slate-800/[0.2] [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))]"></div>
+                                        <div className="text-center text-slate-500 relative z-10 group-hover:scale-105 transition-transform duration-500">
+                                            <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-30 text-amber-400" />
+                                            <p className="font-medium">抽样误差分析图</p>
+                                            <p className="text-xs mt-1 text-slate-600">（展示三种方法的抽样标准误对比）</p>
                                         </div>
                                     </div>
                                 </TabsContent>
@@ -135,95 +138,103 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Download className="w-5 h-5" />
+                    <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                        <CardHeader className="border-b border-slate-800 pb-4">
+                            <CardTitle className="flex items-center gap-2 text-slate-100">
+                                <Download className="w-5 h-5 text-teal-500" />
                                 数据导出
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-2">
-                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("simple")}>
+                        <CardContent className="space-y-3 pt-6">
+                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white" onClick={() => handleExport("simple")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 简单随机抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("systematic")}>
+                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white" onClick={() => handleExport("systematic")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 系统抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("stratified")}>
+                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white" onClick={() => handleExport("stratified")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 分层抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start" onClick={() => handleExport("all")}>
+                            <div className="h-px bg-slate-800 my-2"></div>
+                            <Button variant="default" className="w-full justify-start bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" onClick={() => handleExport("all")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 导出全部数据
                             </Button>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-white/70 bg-gradient-to-b from-teal-50 via-cyan-50 to-white shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
+                    <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
                         <CardHeader>
-                            <CardTitle className="text-base">分析提示</CardTitle>
+                            <CardTitle className="text-base text-indigo-300 flex items-center gap-2">
+                                <Sparkles className="w-4 h-4" />
+                                分析提示
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-2 text-sm text-muted-foreground">
-                            <p>建议先观察均值差异，再分析分布与误差。</p>
-                            <p>对比三种抽样方法，说明原因与适用场景。</p>
+                        <CardContent className="space-y-3 text-sm text-indigo-200/70">
+                            <p>• 建议先观察均值差异，再分析分布与误差。</p>
+                            <p>• 对比三种抽样方法，说明原因与适用场景。</p>
+                            <p>• 结合图表数据，论证您的观点。</p>
                         </CardContent>
                     </Card>
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-white/70 bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.08)]">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <FileText className="w-5 h-5" />
+            <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                <CardHeader className="border-b border-slate-800 pb-4">
+                    <CardTitle className="flex items-center gap-2 text-slate-100">
+                        <FileText className="w-5 h-5 text-indigo-500" />
                         撰写报告
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-slate-400">
                         请根据实验结果撰写分析报告（{minLength}-{maxLength}字）
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="p-4 bg-amber-50 rounded-2xl text-sm text-amber-700">
-                        <p className="font-medium mb-2">建议包含以下内容：</p>
-                        <ol className="list-decimal list-inside space-y-1">
+                <CardContent className="space-y-6 pt-6">
+                    <div className="p-4 bg-slate-950/50 border border-slate-800 rounded-xl text-sm text-slate-400">
+                        <p className="font-semibold text-slate-300 mb-2">建议包含以下内容：</p>
+                        <ul className="list-disc list-inside space-y-1.5 pl-2">
                             <li>抽样方法选择的理由</li>
                             <li>各方法执行结果的对比分析</li>
                             <li>抽样误差的分析</li>
                             <li>对调查结论可靠性的评估</li>
                             <li>改进建议（可选）</li>
-                        </ol>
+                        </ul>
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="report">报告内容</Label>
-                        <Textarea
-                            id="report"
-                            placeholder="请在此撰写您的分析报告..."
-                            value={reportContent}
-                            onChange={(e) => setReportContent(e.target.value)}
-                            rows={12}
-                            maxLength={maxLength}
-                        />
-                        <div className="flex justify-between text-sm">
-                            <span className={reportContent.length < minLength ? "text-red-500" : "text-muted-foreground"}>
-                                {reportContent.length < minLength
-                                    ? `还需 ${minLength - reportContent.length} 字`
-                                    : "✓ 字数符合要求"}
-                            </span>
-                            <span className="text-muted-foreground">{reportContent.length}/{maxLength}</span>
+                    <div className="space-y-3">
+                        <Label htmlFor="report" className="text-slate-300">报告内容</Label>
+                        <div className="relative">
+                            <Textarea
+                                id="report"
+                                placeholder="请在此撰写您的分析报告..."
+                                value={reportContent}
+                                onChange={(e) => setReportContent(e.target.value)}
+                                rows={16}
+                                maxLength={maxLength}
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500 min-h-[400px] p-4 leading-relaxed resize-none"
+                            />
+                            <div className="absolute bottom-4 right-4 text-xs">
+                                <span className={reportContent.length < minLength ? "text-rose-400" : "text-emerald-400"}>
+                                    {reportContent.length < minLength
+                                        ? `还需 ${minLength - reportContent.length} 字`
+                                        : "✓ 字数符合要求"}
+                                </span>
+                                <span className="text-slate-500 ml-2">{reportContent.length}/{maxLength}</span>
+                            </div>
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
             {/* Navigation */}
-            <div className="flex justify-between">
-                <Button variant="outline" onClick={onPrev}>
+            <div className="flex justify-between pt-6 border-t border-slate-800/50">
+                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmSubmitOpen(true)} disabled={!isValidLength}>
+                <Button onClick={() => setConfirmSubmitOpen(true)} disabled={!isValidLength} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
                     <Send className="w-4 h-4 mr-2" />
                     完成并预览提交
                 </Button>
@@ -231,25 +242,40 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             {/* Confirm Submit Dialog */}
             <AlertDialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>确认提交实验</AlertDialogTitle>
+                        <AlertDialogTitle className="text-slate-100">确认提交实验</AlertDialogTitle>
                         <AlertDialogDescription asChild>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-slate-400">
                                 您即将提交本次实验，包括：
-                                <ul className="list-disc list-inside mt-2">
-                                    <li>问卷设计</li>
-                                    <li>样本量规划</li>
-                                    <li>抽样执行结果</li>
-                                    <li>分析报告（{reportContent.length} 字）</li>
-                                </ul>
-                                <p className="mt-2"><strong>提交后将无法修改。</strong>确定提交吗？</p>
+                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mt-3 mb-3 space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                        <span>问卷设计</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                        <span>样本量规划</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                        <span>抽样执行结果</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                        <span>分析报告（{reportContent.length} 字）</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-amber-400 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+                                    <AlertCircle className="w-4 h-4 shrink-0" />
+                                    <span>提交后将无法修改。确定提交吗？</span>
+                                </div>
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isSubmitting}>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSubmit} disabled={isSubmitting}>
+                        <AlertDialogCancel disabled={isSubmitting} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleSubmit} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                             {isSubmitting ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -264,13 +290,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </AlertDialog>
 
             <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>恢复草稿</AlertDialogTitle>
-                        <AlertDialogDescription>检测到本地草稿，是否恢复？</AlertDialogDescription>
+                        <AlertDialogTitle className="text-slate-100">恢复草稿</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">检测到本地草稿，是否恢复？</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
+                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
                             onClick={() => {
                                 if (draftKey) localStorage.removeItem(draftKey);
                                 setRestoreDraftOpen(false);
@@ -279,6 +306,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             放弃草稿
                         </AlertDialogCancel>
                         <AlertDialogAction
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             onClick={() => {
                                 if (pendingDraft !== null) {
                                     setReportContent(pendingDraft);

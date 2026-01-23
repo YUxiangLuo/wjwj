@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { submissionsApi, type SubmissionSummary } from "../api-client";
+import { cn } from "@/lib/utils";
 
-const statusLabels: Record<number, { label: string; color: string }> = {
-    0: { label: "批改草稿", color: "bg-slate-100 text-slate-700" },
-    1: { label: "待批改", color: "bg-amber-100 text-amber-700" },
-    2: { label: "已批改", color: "bg-emerald-100 text-emerald-700" },
-    3: { label: "被驳回", color: "bg-red-100 text-red-700" },
+const statusConfig: Record<number, { label: string; color: string; icon: any }> = {
+    0: { label: "批改草稿", color: "bg-slate-500/10 text-slate-400 border-slate-500/20", icon: FileText },
+    1: { label: "待批改", color: "bg-amber-500/10 text-amber-400 border-amber-500/20", icon: Clock },
+    2: { label: "已批改", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
+    3: { label: "被驳回", color: "bg-red-500/10 text-red-400 border-red-500/20", icon: XCircle },
 };
 
 export function SubmissionHistory() {
@@ -36,62 +37,121 @@ export function SubmissionHistory() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="flex items-center justify-center py-24">
+                <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
-            <Link to={`/task/${taskId}`}>
-                <Button variant="ghost" className="gap-2">
-                    <ArrowLeft className="w-4 h-4" />
-                    返回任务详情
-                </Button>
-            </Link>
+        <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                        提交记录
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1">查看该任务的历史提交与批改状态</p>
+                </div>
+                <Link to={`/task/${taskId}`}>
+                    <Button variant="outline" className="gap-2 border-slate-700 hover:bg-slate-800 text-slate-300">
+                        <ArrowLeft className="w-4 h-4" />
+                        返回任务详情
+                    </Button>
+                </Link>
+            </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>历史提交记录</CardTitle>
-                    <CardDescription>查看该任务的所有提交情况</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                    {submissions.length === 0 && (
-                        <div className="text-sm text-muted-foreground text-center py-8">暂无提交记录</div>
-                    )}
-                    {submissions.map((sub) => {
-                        const status = statusLabels[sub.status] ?? statusLabels[1] ?? { label: "待批改", color: "bg-amber-100 text-amber-700" };
-                        return (
-                            <div key={sub.id} className="flex items-center justify-between gap-4 border rounded-lg p-3">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <Badge className={status.color}>{status.label}</Badge>
-                                        <span className="text-sm text-muted-foreground">
-                                            提交时间：{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN") : "-"}
-                                        </span>
-                                    </div>
-                                    {sub.totalScore !== null && (
-                                        <div className="text-sm font-medium">得分：{sub.totalScore}</div>
-                                    )}
-                                    {sub.rejectReason && (
-                                        <div className="text-sm text-red-600">驳回原因：{sub.rejectReason}</div>
-                                    )}
-                                    {sub.graderName && (
-                                        <div className="text-xs text-muted-foreground">批改人：{sub.graderName}</div>
-                                    )}
-                                </div>
-                                <Link to={`/submissions/${sub.id}`}>
-                                    <Button variant="outline" size="sm" className="gap-1">
-                                        <FileText className="w-4 h-4" />
-                                        查看详情
-                                    </Button>
-                                </Link>
+            <div className="space-y-4">
+                {submissions.length === 0 ? (
+                    <Card className="border-dashed border-slate-700 bg-slate-900/30">
+                        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                                <FileText className="w-6 h-6 text-slate-500" />
                             </div>
+                            <h3 className="text-lg font-medium text-slate-300">暂无提交记录</h3>
+                            <p className="text-slate-500 mt-2 max-w-sm">
+                                当你完成实验并提交报告后，这里将显示你的提交历史和老师的反馈。
+                            </p>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    submissions.map((sub) => {
+                        const status = statusConfig[sub.status] ?? statusConfig[1];
+                        const StatusIcon = status.icon;
+
+                        return (
+                            <Card
+                                key={sub.id}
+                                className="group border-slate-700/50 bg-slate-900/50 hover:bg-slate-800/50 hover:border-indigo-500/30 transition-all duration-300 backdrop-blur-sm overflow-hidden"
+                            >
+                                <CardContent className="p-0">
+                                    <div className="flex flex-col md:flex-row items-stretch">
+                                        {/* Left Status Strip */}
+                                        <div className={cn("w-full md:w-1.5 min-h-[4px]",
+                                            sub.status === 2 ? "bg-emerald-500" :
+                                                sub.status === 3 ? "bg-red-500" :
+                                                    "bg-amber-500"
+                                        )} />
+
+                                        <div className="flex-1 p-5 flex flex-col md:flex-row items-start md:items-center gap-4">
+                                            <div className="flex-1 space-y-2">
+                                                <div className="flex items-center gap-3">
+                                                    <Badge variant="outline" className={cn("px-2.5 py-0.5 border flex items-center gap-1.5", status.color)}>
+                                                        <StatusIcon className="w-3.5 h-3.5" />
+                                                        {status.label}
+                                                    </Badge>
+                                                    <span className="text-sm text-slate-500">
+                                                        提交时间：<span className="text-slate-300 font-mono">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN") : "-"}</span>
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-6 mt-2">
+                                                    {sub.totalScore !== null ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-slate-400 text-sm">得分</span>
+                                                            <span className={cn("text-xl font-bold font-mono",
+                                                                sub.totalScore >= 90 ? "text-emerald-400" :
+                                                                    sub.totalScore >= 60 ? "text-cyan-400" :
+                                                                        "text-red-400"
+                                                            )}>
+                                                                {sub.totalScore}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-sm text-slate-500">等待评分...</div>
+                                                    )}
+
+                                                    {sub.graderName && (
+                                                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                                                            <span>批改人:</span>
+                                                            <span className="text-slate-300">{sub.graderName}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {sub.rejectReason && (
+                                                    <div className="flex items-start gap-2 text-sm text-red-400/90 bg-red-400/5 px-3 py-2 rounded-md border border-red-500/10 mt-2">
+                                                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                                        <span>驳回原因：{sub.rejectReason}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="w-full md:w-auto flex flex-row md:flex-col gap-2">
+                                                <Link to={`/submissions/${sub.id}`} className="w-full md:w-auto">
+                                                    <Button variant="outline" size="sm" className="w-full gap-2 border-slate-700 bg-slate-800/50 text-slate-300 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all">
+                                                        <FileText className="w-4 h-4" />
+                                                        查看详情
+                                                    </Button>
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         );
-                    })}
-                </CardContent>
-            </Card>
+                    })
+                )}
+            </div>
         </div>
     );
 }

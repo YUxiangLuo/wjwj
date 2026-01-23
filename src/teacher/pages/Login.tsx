@@ -56,14 +56,14 @@ export function Login() {
 
     if (checking) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
             </div>
         );
     }
 
     return (
-        <UnifiedLogin 
+        <UnifiedLogin
             role="teacher"
             onLogin={handleLogin}
             loading={loading}

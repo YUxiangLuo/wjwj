@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, AlertTriangle, ClipboardList, Search } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ClipboardList, Search, FileEdit, XCircle, Clock } from "lucide-react";
 import { teacherApi, type GradingItem } from "../api-client";
 
 export function GradingManagement() {
@@ -23,11 +23,7 @@ export function GradingManagement() {
 
     async function loadGradingList() {
         setLoading(true);
-        // Map UI filter to API status needed? 
-        // Currently API supports 'pending' or all. Frontend filtering might be better for now if API is simple.
-        // Or if filterStatus is passed directly.
         const effectiveStatus = filterStatus === "all-status" ? undefined : filterStatus;
-
         const res = await teacherApi.getGradingList(effectiveStatus);
         if (res.success && res.data) {
             setSubmissions(res.data);
@@ -36,12 +32,12 @@ export function GradingManagement() {
     }
 
     const getStatusBadge = (status: number, score?: number | null) => {
-        switch (status) { // 0=draft(unsubmitted?), 1=pending, 2=graded, 3=rejected
-            case 1: return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">待批改</Badge>;
-            case 0: return <Badge variant="secondary">草稿</Badge>; // Wait, 0 usually means draft (not submitted) or editing
-            case 2: return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">已批改 ({score ?? 0}分)</Badge>;
-            case 3: return <Badge variant="destructive">已驳回</Badge>;
-            default: return <Badge variant="outline">未知状态</Badge>;
+        switch (status) {
+            case 1: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"><Clock className="w-3 h-3 mr-1" /> 待批改</Badge>;
+            // case 0: return <Badge variant="outline" className="text-slate-400 border-slate-700">草稿</Badge>;
+            case 2: return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</Badge>;
+            case 3: return <Badge variant="destructive" className="bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"><XCircle className="w-3 h-3 mr-1" /> 已驳回</Badge>;
+            default: return <Badge variant="outline" className="text-slate-400 border-slate-700">未知状态</Badge>;
         }
     };
 
@@ -71,80 +67,80 @@ export function GradingManagement() {
     }, [submissions, filterClass, searchTerm]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-900">作业批改</h2>
-                <p className="text-sm text-slate-500 mt-1">查看待批改列表并快速进入评分。</p>
+                <h2 className="text-lg font-semibold text-slate-100">作业批改</h2>
+                <p className="text-sm text-slate-400 mt-1">查看待批改列表并快速进入评分。</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">提交总数</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">提交总数</p>
+                            <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                             <ClipboardList className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">待批改</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.pending}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">待批改</p>
+                            <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.pending}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                            <AlertTriangle className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                            <Clock className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">已批改</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.graded}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已批改</p>
+                            <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.graded}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">已驳回</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.rejected}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已驳回</p>
+                            <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.rejected}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
                             <AlertTriangle className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 shadow-sm">
-                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4">
                     <div>
-                        <CardTitle className="text-base">批改列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredSubmissions.length} 条</p>
+                        <CardTitle className="text-base text-slate-100">批改列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredSubmissions.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                                 placeholder="搜索学生/课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                         <Select value={filterClass} onValueChange={setFilterClass}>
-                            <SelectTrigger className="sm:w-40">
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all-class">全部班级</SelectItem>
                                 {classOptions.map((name) => (
                                     <SelectItem key={name} value={name}>{name}</SelectItem>
@@ -152,10 +148,10 @@ export function GradingManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className="sm:w-28">
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all-status">全部状态</SelectItem>
                                 <SelectItem value="pending">待批改</SelectItem>
                                 <SelectItem value="graded">已批改</SelectItem>
@@ -163,33 +159,53 @@ export function GradingManagement() {
                         </Select>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                    {loading ? <div className="text-center py-6 text-slate-500">加载中...</div> : (
-                        filteredSubmissions.length === 0 ? <div className="text-center text-slate-500 py-6">暂无待批改作业</div> :
+                <CardContent className="space-y-3 pt-4">
+                    {loading ? <div className="text-center py-12 text-slate-500">加载中...</div> : (
+                        filteredSubmissions.length === 0 ?
+                            <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                                <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mb-3">
+                                    <ClipboardList className="w-6 h-6 text-slate-600" />
+                                </div>
+                                <p>暂无待批改作业</p>
+                            </div>
+                            :
                             filteredSubmissions.map((sub) => (
-                                <div key={sub.id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                                <div key={sub.id} className="border border-slate-800 rounded-lg p-5 bg-slate-950 hover:bg-slate-900 hover:border-slate-700 transition-all">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="w-10 h-10">
-                                                <AvatarFallback className="bg-slate-200 text-slate-600">{sub.studentName[0]}</AvatarFallback>
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="w-10 h-10 border border-slate-700">
+                                                <AvatarFallback className="bg-slate-800 text-slate-300">{sub.studentName[0]}</AvatarFallback>
                                             </Avatar>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-slate-900">{sub.studentName}</span>
-                                                    <span className="text-xs text-slate-500">({sub.studentId})</span>
+                                                    <span className="font-semibold text-slate-200">{sub.studentName}</span>
+                                                    <span className="text-xs font-mono text-slate-500">({sub.studentId})</span>
                                                 </div>
-                                                <div className="text-xs text-slate-500">{sub.className} · {sub.topic}</div>
+                                                <div className="text-sm text-slate-400 mt-1">{sub.className} · <span className="text-indigo-400">{sub.topic}</span></div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="flex flex-col items-end gap-1">
                                             {getStatusBadge(sub.status, sub.score)}
                                             <div className="text-xs text-slate-500 mt-1">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : "-"}</div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end mt-3">
-                                        {sub.status === 1 && <Button size="sm" onClick={() => navigate(`/grading/${sub.id}`)}>开始批改</Button>}
-                                        {sub.status === 2 && <Button variant="outline" size="sm" onClick={() => navigate(`/grading/${sub.id}`)}>查看详情</Button>}
-                                        {sub.status === 3 && <Button variant="outline" size="sm" onClick={() => navigate(`/grading/${sub.id}`)}>查看原因</Button>}
+                                    <div className="flex justify-end mt-4 pt-3 border-t border-slate-800/50">
+                                        {sub.status === 1 && (
+                                            <Button size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                                                <FileEdit className="w-3.5 h-3.5 mr-2" />
+                                                开始批改
+                                            </Button>
+                                        )}
+                                        {sub.status === 2 && (
+                                            <Button variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-white hover:bg-slate-800">
+                                                查看详情
+                                            </Button>
+                                        )}
+                                        {sub.status === 3 && (
+                                            <Button variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10">
+                                                查看原因
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             ))

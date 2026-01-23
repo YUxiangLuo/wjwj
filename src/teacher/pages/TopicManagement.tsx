@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { BookOpen, Search, Layers } from "lucide-react";
+import { BookOpen, Search, Layers, Loader2, FileText, CheckCircle2, ChevronRight, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -278,139 +278,149 @@ export function TopicManagement() {
     }, [topics, searchTerm, statusFilter]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-900">课题管理</h2>
-                <p className="text-sm text-slate-500 mt-1">配置课题信息、数据与评分权重。</p>
+                <h2 className="text-lg font-semibold text-slate-100">课题管理</h2>
+                <p className="text-sm text-slate-400 mt-1">配置课题信息、数据与评分权重。</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">课题总数</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">课题总数</p>
+                            <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                             <BookOpen className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">已发布</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.published}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已发布</p>
+                            <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                             <Layers className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">草稿</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.draft}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">草稿</p>
+                            <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                            <BookOpen className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                            <FileText className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">数据行数</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">数据行数</p>
+                            <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
                             <Layers className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 shadow-sm">
-                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4">
                     <div>
-                        <CardTitle className="text-base">课题列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredTopics.length} 条</p>
+                        <CardTitle className="text-base text-slate-100">课题列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredTopics.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
                                 placeholder="搜索课题名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger className="sm:w-28">
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="draft">草稿</SelectItem>
                                 <SelectItem value="published">已发布</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button onClick={openCreateModal}>+ 创建课题</Button>
+                        <Button onClick={openCreateModal} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                            + 创建课题
+                        </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    {loading ? <div className="text-center py-4 text-slate-500">加载中...</div> : filteredTopics.map((topic) => (
-                        <div key={topic.id} className="border border-slate-200 rounded-lg p-4 hover:bg-slate-50 transition-colors">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-2">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                                        <BookOpen className="w-5 h-5" />
+                <CardContent className="space-y-4 pt-4">
+                    {loading ? <div className="text-center py-12 text-slate-500">加载中...</div> : filteredTopics.map((topic) => (
+                        <div key={topic.id} className="border border-slate-800 rounded-lg p-5 bg-slate-950 hover:bg-slate-900 hover:border-slate-700 transition-all">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-12 h-12 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                                        <BookOpen className="w-6 h-6" />
                                     </div>
                                     <div>
-                                        <h4 className="font-medium text-slate-900">{topic.name}</h4>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-semibold text-slate-100 text-lg">{topic.name}</h4>
+                                            {topic.status === 1 ? (
+                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20">已发布</Badge>
+                                            ) : (
+                                                <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20">草稿</Badge>
+                                            )}
+                                        </div>
                                         <div className="text-xs text-slate-500 mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString()}</div>
+                                        <div className="text-sm text-slate-400 mt-2 line-clamp-2 max-w-2xl">{topic.description || "暂无描述"}</div>
                                     </div>
                                 </div>
-                                {topic.status === 1 ? (
-                                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">已发布</Badge>
-                                ) : (
-                                    <Badge variant="secondary" className="bg-amber-50 text-amber-700">草稿</Badge>
-                                )}
                             </div>
-                            <div className="flex items-center gap-4 text-sm text-slate-500 mb-3">
-                                <span>数据行数：{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                {topic.status === 0 ? (
-                                    <>
-                                        <Button variant="ghost" size="sm" className="text-blue-600" onClick={() => openEditModal(topic)}>编辑</Button>
-                                        <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
-                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Button variant="ghost" size="sm" className="text-blue-600">查看</Button>
-                                        <Button variant="ghost" size="sm" onClick={() => openEditModal(topic)}>编辑</Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="text-blue-500"
-                                            onClick={async () => {
-                                                const res = await teacherApi.copyTopic(topic.id);
-                                                if (res.success) {
-                                                    loadTopics();
-                                                } else {
-                                                    alert("复制失败: " + res.error?.message);
-                                                }
-                                            }}
-                                        >
-                                            复制
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
-                                    </>
-                                )}
+                            <div className="flex items-center justify-between border-t border-slate-800 pt-4 mt-2">
+                                <div className="flex items-center gap-6 text-sm text-slate-500">
+                                    <span className="flex items-center gap-2">
+                                        <Layers className="w-4 h-4" />
+                                        数据行数：<span className="text-slate-300">{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {topic.status === 0 ? (
+                                        <>
+                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
+                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10">查看</Button>
+                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
+                                                onClick={async () => {
+                                                    const res = await teacherApi.copyTopic(topic.id);
+                                                    if (res.success) {
+                                                        loadTopics();
+                                                    } else {
+                                                        alert("复制失败: " + res.error?.message);
+                                                    }
+                                                }}
+                                            >
+                                                复制
+                                            </Button>
+                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -418,243 +428,330 @@ export function TopicManagement() {
             </Card>
 
             <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-                <DialogContent className="sm:max-w-2xl">
+                <DialogContent className="sm:max-w-3xl bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>{editingTopicId ? "编辑课题" : "创建新课题"}</DialogTitle>
+                        <DialogTitle className="text-slate-100">{editingTopicId ? "编辑课题" : "创建新课题"}</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="flex items-center gap-2 mb-6">
-                            {/* Wizard steps visual only for now */}
+                    <div className="space-y-6 py-4">
+                        <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700">
                             {["基本信息", "上传数据", "字段映射", "辅助资料", "推荐题目", "评分权重"].map((step, idx) => (
-                                <div key={step} className="flex items-center">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${idx + 1 === currentStep ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+                                <div key={step} className="flex items-center shrink-0">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${idx + 1 === currentStep ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-400 border border-slate-700"}`}>
                                         {idx + 1}
                                     </div>
-                                    <span className={`text-xs ml-1 ${idx + 1 === currentStep ? "text-primary font-medium" : "text-muted-foreground"}`}>{step}</span>
-                                    {idx < 5 && <span className="mx-2 text-muted-foreground">→</span>}
+                                    <span className={`text-xs ml-2 ${idx + 1 === currentStep ? "text-indigo-400 font-medium" : "text-slate-500"}`}>{step}</span>
+                                    {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-slate-700" />}
                                 </div>
                             ))}
                         </div>
-                        {currentStep === 1 && (
-                            <>
-                                <div className="space-y-2">
-                                    <Label htmlFor="topicName">课题名称</Label>
-                                    <Input
-                                        id="topicName"
-                                        placeholder="请输入课题名称"
-                                        value={newTopicName}
-                                        onChange={e => setNewTopicName(e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="topicDesc">背景描述</Label>
-                                    <Textarea
-                                        id="topicDesc"
-                                        placeholder="请输入课题背景描述"
-                                        className="min-h-32 resize-none"
-                                        value={newTopicDesc}
-                                        onChange={e => setNewTopicDesc(e.target.value)}
-                                    />
-                                </div>
-                            </>
-                        )}
 
-                        {currentStep === 2 && (
-                            <div className="space-y-3">
-                                <Label>上传总体数据（Excel）</Label>
-                                <Input
-                                    type="file"
-                                    accept=".xlsx,.xls"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) handleExcelUpload(file);
-                                    }}
-                                />
-                                {uploadingExcel && <div className="text-sm text-muted-foreground">上传中...</div>}
-                                {excelInfo && (
-                                    <div className="text-sm text-muted-foreground">
-                                        已上传：{excelInfo.rowCount} 行 / {excelInfo.colCount} 列
+                        <div className="min-h-[300px]">
+                            {currentStep === 1 && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="topicName" className="text-slate-300">课题名称</Label>
+                                        <Input
+                                            id="topicName"
+                                            placeholder="请输入课题名称"
+                                            value={newTopicName}
+                                            onChange={e => setNewTopicName(e.target.value)}
+                                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600"
+                                        />
                                     </div>
-                                )}
-                            </div>
-                        )}
-
-                        {currentStep === 3 && (
-                            <div className="space-y-4">
-                                <div className="text-sm text-muted-foreground">请选择字段类型</div>
-                                <div className="space-y-2">
-                                    <Label>标识符（必选 1 个）</Label>
-                                    <Select value={fieldMapping.identifier ?? ""} onValueChange={(v) => setFieldMapping(prev => ({ ...prev, identifier: v }))}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="选择标识符" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {columns.map((c) => (
-                                                <SelectItem key={c} value={c}>{c}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>分层变量</Label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {columns.map((c) => (
-                                            <label key={c} className="flex items-center gap-2 text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={fieldMapping.stratified.includes(c)}
-                                                    onChange={(e) => {
-                                                        setFieldMapping(prev => ({
-                                                            ...prev,
-                                                            stratified: e.target.checked
-                                                                ? [...prev.stratified, c]
-                                                                : prev.stratified.filter(x => x !== c)
-                                                        }));
-                                                    }}
-                                                />
-                                                {c}
-                                            </label>
-                                        ))}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="topicDesc" className="text-slate-300">背景描述</Label>
+                                        <Textarea
+                                            id="topicDesc"
+                                            placeholder="请输入课题背景描述"
+                                            className="min-h-40 resize-none bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600"
+                                            value={newTopicDesc}
+                                            onChange={e => setNewTopicDesc(e.target.value)}
+                                        />
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>数值变量</Label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {columns.map((c) => (
-                                            <label key={c} className="flex items-center gap-2 text-sm">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={fieldMapping.numeric.includes(c)}
-                                                    onChange={(e) => {
-                                                        setFieldMapping(prev => ({
-                                                            ...prev,
-                                                            numeric: e.target.checked
-                                                                ? [...prev.numeric, c]
-                                                                : prev.numeric.filter(x => x !== c)
-                                                        }));
-                                                    }}
-                                                />
-                                                {c}
-                                            </label>
-                                        ))}
+                            )}
+
+                            {currentStep === 2 && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <Label className="text-slate-300">上传总体数据（Excel）</Label>
+                                    <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
+                                        <Upload className="w-10 h-10 mx-auto text-slate-600 mb-4" />
+                                        <p className="text-sm text-slate-400 mb-2">点击或拖拽上传 Excel 文件</p>
+                                        <Input
+                                            type="file"
+                                            accept=".xlsx,.xls"
+                                            className="hidden"
+                                            id="excel-upload"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) handleExcelUpload(file);
+                                            }}
+                                        />
+                                        <Button variant="outline" onClick={() => document.getElementById('excel-upload')?.click()} className="mt-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-white">
+                                            选择文件
+                                        </Button>
                                     </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {currentStep === 4 && (
-                            <div className="space-y-3">
-                                <Label>附件上传</Label>
-                                <Input
-                                    type="file"
-                                    onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) handleUploadAttachment(file);
-                                    }}
-                                />
-                                {uploadingAttachment && <div className="text-sm text-muted-foreground">上传中...</div>}
-                                <div className="space-y-2">
-                                    {attachments.map((a) => (
-                                        <div key={a.id} className="flex items-center justify-between text-sm">
-                                            <span>{a.fileName}</span>
-                                            <Button variant="ghost" size="sm" onClick={() => teacherApi.deleteAttachment(editingTopicId!, a.id).then(() => loadTopicDetail(editingTopicId!))}>删除</Button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {currentStep === 5 && (
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <Label>推荐题目</Label>
-                                    <Button variant="outline" size="sm" onClick={() => setRecommendQuestions(prev => ([...prev, { id: Date.now(), topicId: editingTopicId ?? 0, questionType: 1, content: "", options: "", sortOrder: prev.length }]))}>添加题目</Button>
-                                </div>
-                                <div className="space-y-3">
-                                    {recommendQuestions.map((q, idx) => (
-                                        <div key={q.id} className="border rounded-md p-3 space-y-2">
-                                            <div className="flex items-center gap-2">
-                                                <Select value={String(q.questionType)} onValueChange={(v) => {
-                                                    const next = [...recommendQuestions];
-                                                    next[idx] = { ...q, questionType: Number(v) };
-                                                    setRecommendQuestions(next);
-                                                }}>
-                                                    <SelectTrigger className="w-36">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="1">判断题</SelectItem>
-                                                        <SelectItem value="2">单选题</SelectItem>
-                                                        <SelectItem value="3">多选题</SelectItem>
-                                                        <SelectItem value="4">量表题</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setRecommendQuestions(prev => prev.filter((_, i) => i !== idx))}>删除</Button>
+                                    {uploadingExcel && <div className="flex items-center gap-2 text-sm text-indigo-400"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
+                                    {excelInfo && (
+                                        <div className="bg-slate-950 border border-slate-800 rounded p-4 text-sm text-slate-300">
+                                            <div className="flex items-center gap-2 text-emerald-400 mb-2">
+                                                <CheckCircle2 className="w-4 h-4" />
+                                                上传成功
                                             </div>
-                                            <Input
-                                                placeholder="题目内容"
-                                                value={q.content}
-                                                onChange={(e) => {
-                                                    const next = [...recommendQuestions];
-                                                    next[idx] = { ...q, content: e.target.value };
-                                                    setRecommendQuestions(next);
-                                                }}
-                                            />
-                                            <Input
-                                                placeholder="选项（逗号分隔）"
-                                                value={typeof q.options === "string" ? q.options : (q.options ? JSON.stringify(q.options) : "")}
-                                                onChange={(e) => {
-                                                    const next = [...recommendQuestions];
-                                                    next[idx] = { ...q, options: e.target.value };
-                                                    setRecommendQuestions(next);
-                                                }}
-                                            />
+                                            <div>已解析：{excelInfo.rowCount} 行 / {excelInfo.colCount} 列</div>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {currentStep === 6 && (
-                            <div className="space-y-3">
-                                <div className="grid grid-cols-3 gap-4">
+                            {currentStep === 3 && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div className="space-y-2">
-                                        <Label>问卷设计</Label>
-                                        <Input type="number" min={0} max={100} value={weightConfig.questionnaire} onChange={(e) => setWeightConfig(prev => ({ ...prev, questionnaire: Number(e.target.value) }))} />
+                                        <Label className="text-slate-300">标识符（必选 1 个）</Label>
+                                        <Select value={fieldMapping.identifier ?? ""} onValueChange={(v) => setFieldMapping(prev => ({ ...prev, identifier: v }))}>
+                                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                                <SelectValue placeholder="选择标识符字段" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                                {columns.map((c) => (
+                                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-slate-500">用于唯一标识每条数据的字段，如“编号”、“ID”等</p>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>实验过程</Label>
-                                        <Input type="number" min={0} max={100} value={weightConfig.process} onChange={(e) => setWeightConfig(prev => ({ ...prev, process: Number(e.target.value) }))} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>实验报告</Label>
-                                        <Input type="number" min={0} max={100} value={weightConfig.report} onChange={(e) => setWeightConfig(prev => ({ ...prev, report: Number(e.target.value) }))} />
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-300">分层变量</Label>
+                                            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                                                {columns.map((c) => (
+                                                    <label key={c} className="flex items-center gap-2 text-sm text-slate-300 hover:bg-slate-900 p-1.5 rounded cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                                            checked={fieldMapping.stratified.includes(c)}
+                                                            onChange={(e) => {
+                                                                setFieldMapping(prev => ({
+                                                                    ...prev,
+                                                                    stratified: e.target.checked
+                                                                        ? [...prev.stratified, c]
+                                                                        : prev.stratified.filter(x => x !== c)
+                                                                }));
+                                                            }}
+                                                        />
+                                                        {c}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-slate-300">数值变量</Label>
+                                            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                                                {columns.map((c) => (
+                                                    <label key={c} className="flex items-center gap-2 text-sm text-slate-300 hover:bg-slate-900 p-1.5 rounded cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                                            checked={fieldMapping.numeric.includes(c)}
+                                                            onChange={(e) => {
+                                                                setFieldMapping(prev => ({
+                                                                    ...prev,
+                                                                    numeric: e.target.checked
+                                                                        ? [...prev.numeric, c]
+                                                                        : prev.numeric.filter(x => x !== c)
+                                                                }));
+                                                            }}
+                                                        />
+                                                        {c}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="text-sm text-muted-foreground">权重总和必须等于 100</div>
-                            </div>
-                        )}
+                            )}
+
+                            {currentStep === 4 && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <Label className="text-slate-300">附件上传</Label>
+                                    <Input
+                                        type="file"
+                                        className="bg-slate-950 border-slate-800 text-slate-300 file:bg-slate-800 file:text-slate-300"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleUploadAttachment(file);
+                                        }}
+                                    />
+                                    {uploadingAttachment && <div className="flex items-center gap-2 text-sm text-indigo-400"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
+                                    <div className="space-y-2 mt-4">
+                                        {attachments.map((a) => (
+                                            <div key={a.id} className="flex items-center justify-between text-sm p-3 bg-slate-950 border border-slate-800 rounded-lg group">
+                                                <div className="flex items-center gap-3">
+                                                    <FileText className="w-4 h-4 text-indigo-400" />
+                                                    <span className="text-slate-300">{a.fileName}</span>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                                                    onClick={() => teacherApi.deleteAttachment(editingTopicId!, a.id).then(() => loadTopicDetail(editingTopicId!))}
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                        {attachments.length === 0 && <div className="text-sm text-slate-500 text-center py-4">暂无附件</div>}
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentStep === 5 && (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="flex justify-between items-center">
+                                        <Label className="text-slate-300">推荐题目</Label>
+                                        <Button size="sm" onClick={() => setRecommendQuestions(prev => ([...prev, { id: Date.now(), topicId: editingTopicId ?? 0, questionType: 1, content: "", options: "", sortOrder: prev.length }]))} className="bg-indigo-600 hover:bg-indigo-700">
+                                            + 添加题目
+                                        </Button>
+                                    </div>
+                                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                                        {recommendQuestions.map((q, idx) => (
+                                            <div key={q.id} className="border border-slate-800 bg-slate-950 rounded-lg p-4 space-y-3 relative group">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-slate-500 text-xs font-mono w-6">{idx + 1}.</span>
+                                                    <Select value={String(q.questionType)} onValueChange={(v) => {
+                                                        const next = [...recommendQuestions];
+                                                        next[idx] = { ...q, questionType: Number(v) };
+                                                        setRecommendQuestions(next);
+                                                    }}>
+                                                        <SelectTrigger className="w-32 bg-slate-900 border-slate-800 text-slate-300 h-8 text-xs">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                                            <SelectItem value="1">判断题</SelectItem>
+                                                            <SelectItem value="2">单选题</SelectItem>
+                                                            <SelectItem value="3">多选题</SelectItem>
+                                                            <SelectItem value="4">量表题</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="absolute top-2 right-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 h-8 w-8 p-0"
+                                                        onClick={() => setRecommendQuestions(prev => prev.filter((_, i) => i !== idx))}
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                                <Input
+                                                    placeholder="题目内容"
+                                                    value={q.content}
+                                                    onChange={(e) => {
+                                                        const next = [...recommendQuestions];
+                                                        next[idx] = { ...q, content: e.target.value };
+                                                        setRecommendQuestions(next);
+                                                    }}
+                                                    className="bg-slate-900 border-slate-800 text-slate-200 placeholder:text-slate-600"
+                                                />
+                                                <Input
+                                                    placeholder="选项（逗号分隔，判断题无需填写）"
+                                                    value={typeof q.options === "string" ? q.options : (q.options ? JSON.stringify(q.options) : "")}
+                                                    onChange={(e) => {
+                                                        const next = [...recommendQuestions];
+                                                        next[idx] = { ...q, options: e.target.value };
+                                                        setRecommendQuestions(next);
+                                                    }}
+                                                    className="bg-slate-900 border-slate-800 text-slate-200 placeholder:text-slate-600 text-sm"
+                                                    disabled={q.questionType === 1 || q.questionType === 4}
+                                                />
+                                            </div>
+                                        ))}
+                                        {recommendQuestions.length === 0 && <div className="text-center text-slate-500 py-8">暂无推荐题目</div>}
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentStep === 6 && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 space-y-4">
+                                            <Label className="text-slate-300 text-lg">问卷设计权重</Label>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    max={100}
+                                                    value={weightConfig.questionnaire}
+                                                    onChange={(e) => setWeightConfig(prev => ({ ...prev, questionnaire: Number(e.target.value) }))}
+                                                    className="bg-slate-900 border-slate-800 text-slate-200 text-2xl font-bold h-16 text-center"
+                                                />
+                                                <span className="text-slate-500 font-bold text-xl">%</span>
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 space-y-4">
+                                            <Label className="text-slate-300 text-lg">实验过程权重</Label>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    max={100}
+                                                    value={weightConfig.process}
+                                                    onChange={(e) => setWeightConfig(prev => ({ ...prev, process: Number(e.target.value) }))}
+                                                    className="bg-slate-900 border-slate-800 text-slate-200 text-2xl font-bold h-16 text-center"
+                                                />
+                                                <span className="text-slate-500 font-bold text-xl">%</span>
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 space-y-4">
+                                            <Label className="text-slate-300 text-lg">实验报告权重</Label>
+                                            <div className="flex items-center gap-2">
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    max={100}
+                                                    value={weightConfig.report}
+                                                    onChange={(e) => setWeightConfig(prev => ({ ...prev, report: Number(e.target.value) }))}
+                                                    className="bg-slate-900 border-slate-800 text-slate-200 text-2xl font-bold h-16 text-center"
+                                                />
+                                                <span className="text-slate-500 font-bold text-xl">%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-950/50 p-4 rounded-lg flex justify-between items-center border border-slate-800">
+                                        <span className="text-slate-400">当前总权重</span>
+                                        <span className={`text-2xl font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-emerald-400" : "text-rose-400"}`}>
+                                            {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowCreateModal(false)}>取消</Button>
-                        {currentStep === 1 && (
-                            <Button onClick={handleSubmitTopic}>{editingTopicId ? "保存并继续" : "下一步"}</Button>
-                        )}
-                        {currentStep === 2 && (
-                            <Button onClick={() => setCurrentStep(3)} disabled={!excelInfo}>下一步</Button>
-                        )}
-                        {currentStep === 3 && (
-                            <Button onClick={handleSaveFieldMapping} disabled={!fieldMapping.identifier}>保存并继续</Button>
-                        )}
-                        {currentStep === 4 && (
-                            <Button onClick={() => setCurrentStep(5)}>下一步</Button>
-                        )}
-                        {currentStep === 5 && (
-                            <Button onClick={handleSaveRecommendQuestions}>保存并继续</Button>
-                        )}
-                        {currentStep === 6 && (
-                            <Button onClick={handleSaveWeights}>完成</Button>
-                        )}
+                        <Button variant="ghost" onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
+                        <div className="flex gap-2">
+                            {currentStep > 1 && (
+                                <Button variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700">上一步</Button>
+                            )}
+                            {currentStep === 1 && (
+                                <Button onClick={handleSubmitTopic} className="bg-indigo-600 hover:bg-indigo-700 text-white">{editingTopicId ? "保存并继续" : "下一步"}</Button>
+                            )}
+                            {currentStep === 2 && (
+                                <Button onClick={() => setCurrentStep(3)} disabled={!excelInfo} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
+                            )}
+                            {currentStep === 3 && (
+                                <Button onClick={handleSaveFieldMapping} disabled={!fieldMapping.identifier} className="bg-indigo-600 hover:bg-indigo-700 text-white">保存并继续</Button>
+                            )}
+                            {currentStep === 4 && (
+                                <Button onClick={() => setCurrentStep(5)} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
+                            )}
+                            {currentStep === 5 && (
+                                <Button onClick={handleSaveRecommendQuestions} className="bg-indigo-600 hover:bg-indigo-700 text-white">保存并继续</Button>
+                            )}
+                            {currentStep === 6 && (
+                                <Button onClick={handleSaveWeights} className="bg-indigo-600 hover:bg-indigo-700 text-white">完成</Button>
+                            )}
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -663,19 +760,19 @@ export function TopicManagement() {
                 open={confirmDialog.open}
                 onOpenChange={(open) => !open && setConfirmDialog(markdown => ({ ...markdown, open: false }))}
             >
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>确认操作</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-slate-100">确认操作</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
                             {confirmDialog.type === "delete" && "确认删除该课题吗？删除后无法恢复。"}
                             {confirmDialog.type === "publish" && "确认发布该课题吗？发布后学生将可见。"}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })}>
+                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">
                             取消
                         </AlertDialogCancel>
-                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-destructive hover:bg-destructive/90" : ""}>
+                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}>
                             确认
                         </AlertDialogAction>
                     </AlertDialogFooter>

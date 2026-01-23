@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, FlaskConical, Shield, Database, Save, Loader2, Lock } from "lucide-react";
+import { Settings, FlaskConical, Shield, Database, Save, Loader2, Lock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,7 +66,7 @@ export function SystemSettings() {
         backupRetentionDays: 30,
     });
 
-    const activeMeta = sections.find((section) => section.id === activeSection) ?? sections[0];
+    const activeMeta = sections.find((section) => section.id === activeSection) ?? sections[0]!;
     const SectionIcon = activeMeta.icon;
 
     useEffect(() => {
@@ -77,17 +77,6 @@ export function SystemSettings() {
         try {
             const res = await settingsApi.get();
             if (res.success && res.data) {
-                // Merge remote settings with default/local state
-                // Note: Keys in DB might be snake_case if we strictly followed DB schema but 
-                // in our API implementation we used whatever key was sent in body (which is camelCase from here).
-                // So if we save camelCase, we get camelCase.
-                // However, Seed script used snake_case. So we might need to handle both or migrate.
-                // For now, let's assume we want to support both or verify what API returns.
-                // The API logic: settings[c.configKey] = c.configValue.
-                // If seed has "system_name", we get "system_name".
-                // Our state has "systemName".
-                // We should map them.
-
                 const data = res.data;
                 setSettings(prev => ({
                     ...prev,
@@ -117,8 +106,6 @@ export function SystemSettings() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            // We save back as snake_case to match standard DB convention (if we care) or consistent with seed.
-            // Let's use snake_case for persistence.
             const payload = {
                 system_name: settings.systemName,
                 maintenance_mode: settings.maintenanceMode,
@@ -265,6 +252,7 @@ export function SystemSettings() {
             if (res.success) {
                 setShowPasswordModal(false);
                 setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                toast.success("密码修改成功");
             } else {
                 setPasswordError(res.error?.message ?? "修改失败");
             }
@@ -277,17 +265,18 @@ export function SystemSettings() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-900">系统设置</h2>
-                    <p className="text-sm text-slate-500 mt-1">集中管理系统参数、安全策略与备份方案。</p>
+                    <h2 className="text-lg font-semibold text-slate-100">系统设置</h2>
+                    <p className="text-sm text-slate-400 mt-1">集中管理系统参数、安全策略与备份方案。</p>
                 </div>
             </div>
 
             <div className="flex flex-col gap-6 xl:flex-row">
+                {/* Navigation Sidebar */}
                 <div className="xl:w-64 shrink-0">
-                    <Card className="border-slate-200 shadow-sm">
+                    <Card className="border-slate-800 bg-slate-900 shadow-sm overflow-hidden">
                         <CardContent className="p-2 space-y-1">
                             {sections.map((section) => {
                                 const Icon = section.icon;
@@ -297,9 +286,9 @@ export function SystemSettings() {
                                         key={section.id}
                                         variant="ghost"
                                         onClick={() => setActiveSection(section.id)}
-                                        className={`w-full justify-start gap-3 ${isActive
-                                            ? "bg-blue-50 text-blue-600"
-                                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                        className={`w-full justify-start gap-3 transition-all duration-200 ${isActive
+                                            ? "bg-indigo-600/10 text-indigo-400 font-medium border border-indigo-500/10"
+                                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
                                             }`}
                                     >
                                         <Icon className="w-4 h-4" />
@@ -311,339 +300,373 @@ export function SystemSettings() {
                     </Card>
                 </div>
 
-                <Card className="flex-1 border-slate-200 shadow-sm">
+                {/* Main Content Area */}
+                <Card className="flex-1 border-slate-800 bg-slate-900 shadow-sm relative">
                     <CardContent className="pt-6 space-y-6">
                         <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-                                <SectionIcon className="w-5 h-5" />
+                            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shadow-inner">
+                                <SectionIcon className="w-6 h-6" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-semibold text-slate-900">{activeMeta.title}</h3>
+                                <h3 className="text-xl font-semibold text-slate-100">{activeMeta.title}</h3>
                                 <p className="text-sm text-slate-500 mt-1">{sectionDescriptions[activeMeta.id]}</p>
                             </div>
                         </div>
-                    {activeSection === "general" && (
-                        <div className="space-y-6">
-                            <Separator className="bg-slate-200" />
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="systemName">系统名称</Label>
-                                    <Input
-                                        id="systemName"
-                                        value={settings.systemName}
-                                        onChange={(e) => setSettings({ ...settings, systemName: e.target.value })}
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between py-3 border-b border-slate-200">
-                                    <div>
-                                        <div className="text-sm font-medium text-slate-900">维护模式</div>
-                                        <div className="text-xs text-slate-500">开启后仅管理员可访问系统</div>
+
+                        <Separator className="bg-slate-800" />
+
+                        {activeSection === "general" && (
+                            <div className="space-y-6">
+                                <div className="grid gap-6 max-w-2xl">
+                                    <div className="space-y-3">
+                                        <Label htmlFor="systemName" className="text-slate-300">系统名称</Label>
+                                        <Input
+                                            id="systemName"
+                                            value={settings.systemName}
+                                            onChange={(e) => setSettings({ ...settings, systemName: e.target.value })}
+                                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                        />
+                                        <p className="text-xs text-slate-500">显示在浏览器标题栏和登录页</p>
                                     </div>
-                                    <Switch
-                                        checked={settings.maintenanceMode}
-                                        onCheckedChange={(checked) => setSettings({ ...settings, maintenanceMode: checked })}
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between py-3 border-b border-slate-200">
-                                    <div>
-                                        <div className="text-sm font-medium text-slate-900">开放注册</div>
-                                        <div className="text-xs text-slate-500">允许新用户自行注册账号</div>
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                                        <div className="space-y-0.5">
+                                            <div className="text-sm font-medium text-slate-200">维护模式</div>
+                                            <div className="text-xs text-slate-500">开启后仅管理员可访问系统，其他用户将看到维护提示</div>
+                                        </div>
+                                        <Switch
+                                            checked={settings.maintenanceMode}
+                                            onCheckedChange={(checked) => setSettings({ ...settings, maintenanceMode: checked })}
+                                            className="data-[state=checked]:bg-indigo-600"
+                                        />
                                     </div>
-                                    <Switch
-                                        checked={settings.allowRegistration}
-                                        onCheckedChange={(checked) => setSettings({ ...settings, allowRegistration: checked })}
-                                    />
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                                        <div className="space-y-0.5">
+                                            <div className="text-sm font-medium text-slate-200">开放注册</div>
+                                            <div className="text-xs text-slate-500">允许新用户自行注册账号，关闭后仅管理员可添加</div>
+                                        </div>
+                                        <Switch
+                                            checked={settings.allowRegistration}
+                                            onCheckedChange={(checked) => setSettings({ ...settings, allowRegistration: checked })}
+                                            className="data-[state=checked]:bg-indigo-600"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {activeSection === "experiment" && (
-                        <div className="space-y-6">
-                            <Separator className="bg-slate-200" />
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="experimentTimeLimit">实验时间限制（分钟）</Label>
-                                    <Input
-                                        id="experimentTimeLimit"
-                                        type="number"
-                                        className="w-32"
-                                        value={settings.experimentTimeLimit}
-                                        onChange={(e) => setSettings({ ...settings, experimentTimeLimit: parseInt(e.target.value) || 0 })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="autoSaveInterval">自动保存间隔（分钟）</Label>
-                                    <Input
-                                        id="autoSaveInterval"
-                                        type="number"
-                                        className="w-32"
-                                        value={settings.autoSaveInterval}
-                                        onChange={(e) => setSettings({ ...settings, autoSaveInterval: parseInt(e.target.value) || 0 })}
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between py-3 border-b border-slate-200">
-                                    <div>
-                                        <div className="text-sm font-medium text-slate-900">提交需审批</div>
-                                        <div className="text-xs text-slate-500">学生提交实验后需要教师审批</div>
+                        {activeSection === "experiment" && (
+                            <div className="space-y-6">
+                                <div className="grid gap-6 max-w-2xl">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <Label htmlFor="experimentTimeLimit" className="text-slate-300">实验时间限制 (分钟)</Label>
+                                            <Input
+                                                id="experimentTimeLimit"
+                                                type="number"
+                                                value={settings.experimentTimeLimit}
+                                                onChange={(e) => setSettings({ ...settings, experimentTimeLimit: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label htmlFor="autoSaveInterval" className="text-slate-300">自动保存间隔 (分钟)</Label>
+                                            <Input
+                                                id="autoSaveInterval"
+                                                type="number"
+                                                value={settings.autoSaveInterval}
+                                                onChange={(e) => setSettings({ ...settings, autoSaveInterval: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                        </div>
                                     </div>
-                                    <Switch
-                                        checked={settings.requireApproval}
-                                        onCheckedChange={(checked) => setSettings({ ...settings, requireApproval: checked })}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeSection === "security" && (
-                        <div className="space-y-6">
-                            <Separator className="bg-slate-200" />
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="maxLoginAttempts">最大登录尝试次数</Label>
-                                    <Input
-                                        id="maxLoginAttempts"
-                                        type="number"
-                                        className="w-32"
-                                        value={settings.maxLoginAttempts}
-                                        onChange={(e) => setSettings({ ...settings, maxLoginAttempts: parseInt(e.target.value) || 0 })}
-                                    />
-                                    <p className="text-xs text-slate-500">超过次数后账号将被锁定</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="lockDurationMinutes">锁定时长（分钟）</Label>
-                                    <Input
-                                        id="lockDurationMinutes"
-                                        type="number"
-                                        className="w-32"
-                                        value={settings.lockDurationMinutes}
-                                        onChange={(e) => setSettings({ ...settings, lockDurationMinutes: parseInt(e.target.value) || 0 })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="adminSessionTimeout">管理员会话超时时间（分钟）</Label>
-                                    <Input
-                                        id="adminSessionTimeout"
-                                        type="number"
-                                        className="w-32"
-                                        value={settings.adminSessionTimeout}
-                                        onChange={(e) => setSettings({ ...settings, adminSessionTimeout: parseInt(e.target.value) || 0 })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="teacherSessionTimeout">教师会话超时时间（分钟）</Label>
-                                    <Input
-                                        id="teacherSessionTimeout"
-                                        type="number"
-                                        className="w-32"
-                                        value={settings.teacherSessionTimeout}
-                                        onChange={(e) => setSettings({ ...settings, teacherSessionTimeout: parseInt(e.target.value) || 0 })}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="studentSessionTimeout">学生会话超时时间（分钟）</Label>
-                                    <Input
-                                        id="studentSessionTimeout"
-                                        type="number"
-                                        className="w-32"
-                                        value={settings.studentSessionTimeout}
-                                        onChange={(e) => setSettings({ ...settings, studentSessionTimeout: parseInt(e.target.value) || 0 })}
-                                    />
-                                </div>
-                                <div className="pt-2">
-                                    <Button variant="outline" onClick={() => setShowPasswordModal(true)}>
-                                        <Lock className="w-4 h-4 mr-2" />
-                                        修改管理员密码
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeSection === "backup" && (
-                        <div className="space-y-6">
-                            <Separator className="bg-slate-200" />
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between py-3 border-b border-slate-200">
-                                    <div>
-                                        <div className="text-sm font-medium text-slate-900">自动备份</div>
-                                        <div className="text-xs text-slate-500">定期自动备份数据库和文件</div>
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                                        <div className="space-y-0.5">
+                                            <div className="text-sm font-medium text-slate-200">提交需审批</div>
+                                            <div className="text-xs text-slate-500">学生提交实验报告后需要教师审批才能获得成绩</div>
+                                        </div>
+                                        <Switch
+                                            checked={settings.requireApproval}
+                                            onCheckedChange={(checked) => setSettings({ ...settings, requireApproval: checked })}
+                                            className="data-[state=checked]:bg-indigo-600"
+                                        />
                                     </div>
-                                    <Switch
-                                        checked={settings.enableBackup}
-                                        onCheckedChange={(checked) => setSettings({ ...settings, enableBackup: checked })}
-                                    />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>备份频率</Label>
-                                    <Select value={settings.backupFrequency} onValueChange={(v) => setSettings({ ...settings, backupFrequency: v })}>
-                                        <SelectTrigger className="w-48">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="hourly">每小时</SelectItem>
-                                            <SelectItem value="daily">每天</SelectItem>
-                                            <SelectItem value="weekly">每周</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="backupRetentionDays">备份保留天数</Label>
-                                    <Input
-                                        id="backupRetentionDays"
-                                        type="number"
-                                        className="w-32"
-                                        value={settings.backupRetentionDays}
-                                        onChange={(e) => setSettings({ ...settings, backupRetentionDays: parseInt(e.target.value) || 0 })}
-                                    />
-                                    <div className="text-xs text-slate-500">超过天数的备份会被自动清理</div>
-                                </div>
-                                <div className="flex gap-3 pt-4">
-                                    <Button onClick={handleCreateBackup} disabled={backupLoading}>
-                                        <Database className="w-4 h-4" />
-                                        {backupLoading ? "备份中..." : "立即备份"}
-                                    </Button>
-                                    <Button variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading}>
-                                        {restoreLoading ? "恢复中..." : "恢复备份"}
-                                    </Button>
-                                </div>
-                                {lastBackupId && (
-                                    <div className="text-xs text-slate-500">最近备份：{lastBackupId}</div>
-                                )}
                             </div>
+                        )}
+
+                        {activeSection === "security" && (
+                            <div className="space-y-6">
+                                <div className="grid gap-6 max-w-2xl">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <Label htmlFor="maxLoginAttempts" className="text-slate-300">最大登录尝试次数</Label>
+                                            <Input
+                                                id="maxLoginAttempts"
+                                                type="number"
+                                                value={settings.maxLoginAttempts}
+                                                onChange={(e) => setSettings({ ...settings, maxLoginAttempts: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                            <p className="text-xs text-slate-500">连续失败后账号将被临时锁定</p>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label htmlFor="lockDurationMinutes" className="text-slate-300">锁定自动解锁 (分钟)</Label>
+                                            <Input
+                                                id="lockDurationMinutes"
+                                                type="number"
+                                                value={settings.lockDurationMinutes}
+                                                onChange={(e) => setSettings({ ...settings, lockDurationMinutes: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 pt-2">
+                                        <h4 className="text-sm font-medium text-slate-400 border-b border-slate-800 pb-2">会话超时设置</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="adminSessionTimeout" className="text-slate-300 text-xs">管理员 (分钟)</Label>
+                                                <Input
+                                                    id="adminSessionTimeout"
+                                                    type="number"
+                                                    value={settings.adminSessionTimeout}
+                                                    onChange={(e) => setSettings({ ...settings, adminSessionTimeout: parseInt(e.target.value) || 0 })}
+                                                    className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="teacherSessionTimeout" className="text-slate-300 text-xs">教师 (分钟)</Label>
+                                                <Input
+                                                    id="teacherSessionTimeout"
+                                                    type="number"
+                                                    value={settings.teacherSessionTimeout}
+                                                    onChange={(e) => setSettings({ ...settings, teacherSessionTimeout: parseInt(e.target.value) || 0 })}
+                                                    className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="studentSessionTimeout" className="text-slate-300 text-xs">学生 (分钟)</Label>
+                                                <Input
+                                                    id="studentSessionTimeout"
+                                                    type="number"
+                                                    value={settings.studentSessionTimeout}
+                                                    onChange={(e) => setSettings({ ...settings, studentSessionTimeout: parseInt(e.target.value) || 0 })}
+                                                    className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-slate-800 mt-2">
+                                        <Button variant="outline" onClick={() => setShowPasswordModal(true)} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 w-full sm:w-auto">
+                                            <Lock className="w-4 h-4 mr-2" />
+                                            修改管理员密码
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === "backup" && (
+                            <div className="space-y-6">
+                                <div className="grid gap-6 max-w-2xl">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                                        <div className="space-y-0.5">
+                                            <div className="text-sm font-medium text-slate-200">自动备份</div>
+                                            <div className="text-xs text-slate-500">定期自动备份数据库和文件，防止数据丢失</div>
+                                        </div>
+                                        <Switch
+                                            checked={settings.enableBackup}
+                                            onCheckedChange={(checked) => setSettings({ ...settings, enableBackup: checked })}
+                                            className="data-[state=checked]:bg-indigo-600"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <Label className="text-slate-300">备份频率</Label>
+                                            <Select value={settings.backupFrequency} onValueChange={(v) => setSettings({ ...settings, backupFrequency: v })}>
+                                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                                    <SelectItem value="hourly">每小时</SelectItem>
+                                                    <SelectItem value="daily">每天</SelectItem>
+                                                    <SelectItem value="weekly">每周</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label htmlFor="backupRetentionDays" className="text-slate-300">保留天数</Label>
+                                            <Input
+                                                id="backupRetentionDays"
+                                                type="number"
+                                                value={settings.backupRetentionDays}
+                                                onChange={(e) => setSettings({ ...settings, backupRetentionDays: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-950/30 border border-slate-800 rounded-lg p-4 space-y-4 mt-2">
+                                        <h4 className="text-sm font-medium text-slate-300">手动备份与恢复</h4>
+                                        <div className="flex flex-col sm:flex-row gap-3">
+                                            <Button onClick={handleCreateBackup} disabled={backupLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                                                {backupLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
+                                                立即备份
+                                            </Button>
+                                            <Button variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                                                <ArrowLeft className="w-4 h-4 mr-2" />
+                                                恢复备份
+                                            </Button>
+                                        </div>
+                                        {lastBackupId && (
+                                            <div className="text-xs text-emerald-400 font-mono flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                                                最近备份ID：{lastBackupId}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="pt-6 mt-6 border-t border-slate-800 flex justify-end">
+                            <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                                保存设置
+                            </Button>
                         </div>
-                    )}
-
-                    <Separator className="my-8 bg-slate-200" />
-
-                    <div className="flex justify-end">
-                        <Button onClick={handleSave} disabled={saving}>
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                            保存设置
-                        </Button>
-                    </div>
                     </CardContent>
                 </Card>
             </div>
 
             <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>修改管理员密码</DialogTitle>
-                        <DialogDescription>请输入当前密码和新密码</DialogDescription>
+                        <DialogTitle className="text-slate-100">修改管理员密码</DialogTitle>
+                        <DialogDescription className="text-slate-400">为了账号安全，建议定期更改密码。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2">
+                    <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="currentPassword">当前密码</Label>
+                            <Label htmlFor="currentPassword" className="text-slate-300">当前密码</Label>
                             <Input
                                 id="currentPassword"
                                 type="password"
                                 value={passwordForm.currentPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                                 autoComplete="current-password"
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="newPassword">新密码</Label>
+                            <Label htmlFor="newPassword" className="text-slate-300">新密码</Label>
                             <Input
                                 id="newPassword"
                                 type="password"
                                 value={passwordForm.newPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                 autoComplete="new-password"
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="confirmPassword">确认新密码</Label>
+                            <Label htmlFor="confirmPassword" className="text-slate-300">确认新密码</Label>
                             <Input
                                 id="confirmPassword"
                                 type="password"
                                 value={passwordForm.confirmPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                                 autoComplete="new-password"
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
                             />
                         </div>
-                        {passwordError && <div className="text-sm text-destructive">{passwordError}</div>}
+                        {passwordError && <div className="text-sm text-rose-400 bg-rose-500/10 p-2 rounded border border-rose-500/20">{passwordError}</div>}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving}>
+                        <Button variant="ghost" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleChangePassword} disabled={passwordSaving}>
+                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                            保存
+                            确认修改
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showRestoreModal} onOpenChange={setShowRestoreModal}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>恢复备份</DialogTitle>
-                        <DialogDescription>
-                            恢复将清空当前数据库并覆盖 public 文件，请确认并输入管理员密码。
+                        <DialogTitle className="text-slate-100 flex items-center gap-2">
+                            <Database className="w-5 h-5 text-amber-500" />
+                            恢复备份
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            恢复将清空当前数据库并覆盖数据，这是一个不可逆的操作。
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2">
+                    <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="restoreBackupId">选择备份</Label>
+                            <Label htmlFor="restoreBackupId" className="text-slate-300">选择备份</Label>
                             <Select
                                 value={restoreForm.backupId}
                                 onValueChange={(value) => setRestoreForm({ ...restoreForm, backupId: value })}
                             >
-                                <SelectTrigger id="restoreBackupId">
+                                <SelectTrigger id="restoreBackupId" className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder={backupListLoading ? "加载中..." : "请选择备份"} />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                     {backupList.map((item) => (
                                         <SelectItem key={item.backupId} value={item.backupId}>
-                                            {item.backupId} {item.hasZip ? "" : "(缺少ZIP)"}
+                                            <span className="font-mono">{item.backupId}</span> {item.hasZip ? "" : "(不可用)"}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             {backupListLoading ? (
-                                <div className="text-xs text-muted-foreground">正在加载备份列表...</div>
+                                <div className="text-xs text-slate-500">正在加载备份列表...</div>
                             ) : backupList.length > 0 ? (
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-xs text-slate-500">
                                     {backupList.find(item => item.backupId === restoreForm.backupId)?.createdAt ?
                                         `备份时间：${new Date(backupList.find(item => item.backupId === restoreForm.backupId)!.createdAt).toLocaleString("zh-CN")}`
                                         : ""
                                     }
                                 </div>
                             ) : (
-                                <div className="text-xs text-muted-foreground">暂无备份</div>
+                                <div className="text-xs text-slate-500">暂无可用备份</div>
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="restorePassword">管理员密码</Label>
+                            <Label htmlFor="restorePassword" className="text-slate-300">管理员密码</Label>
                             <Input
                                 id="restorePassword"
                                 type="password"
                                 value={restoreForm.password}
                                 onChange={(e) => setRestoreForm({ ...restoreForm, password: e.target.value })}
                                 autoComplete="current-password"
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-red-500/50 focus:ring-red-500/20"
+                                placeholder="输入密码以确认操作"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="restoreConfirmPassword">确认管理员密码</Label>
+                            <Label htmlFor="restoreConfirmPassword" className="text-slate-300">确认管理员密码</Label>
                             <Input
                                 id="restoreConfirmPassword"
                                 type="password"
                                 value={restoreForm.confirmPassword}
                                 onChange={(e) => setRestoreForm({ ...restoreForm, confirmPassword: e.target.value })}
                                 autoComplete="current-password"
+                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-red-500/50 focus:ring-red-500/20"
+                                placeholder="再次输入密码"
                             />
                         </div>
-                        {restoreError && <div className="text-sm text-destructive">{restoreError}</div>}
+                        {restoreError && <div className="text-sm text-rose-400 bg-rose-500/10 p-2 rounded border border-rose-500/20">{restoreError}</div>}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowRestoreModal(false)} disabled={restoreLoading}>
+                        <Button variant="ghost" onClick={() => setShowRestoreModal(false)} disabled={restoreLoading} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleConfirmRestore} disabled={restoreLoading}>
+                        <Button onClick={handleConfirmRestore} disabled={restoreLoading} className="bg-rose-600 hover:bg-rose-700 text-white">
                             {restoreLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             确认恢复
                         </Button>

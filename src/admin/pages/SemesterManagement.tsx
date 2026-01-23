@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, Star, Loader2, Pencil, CalendarDays, School, CheckCircle } from "lucide-react";
+import { Plus, Trash2, Star, Loader2, Pencil, CalendarDays, School, CheckCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -162,83 +162,83 @@ export function SemesterManagement() {
     }, [semesters, searchTerm, statusFilter]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-900">学期管理</h2>
-                    <p className="text-sm text-slate-500 mt-1">维护学期信息并标记当前学期。</p>
+                    <h2 className="text-lg font-semibold text-slate-100">学期管理</h2>
+                    <p className="text-sm text-slate-400 mt-1">维护学期信息并标记当前学期。</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4" />
+                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                    <Plus className="w-4 h-4 mr-1" />
                     创建学期
                 </Button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">学期总数</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.total}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Semesters</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
                             <CalendarDays className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">当前学期</p>
-                            <p className="text-sm font-medium text-slate-900">{loading ? "-" : summary.currentName}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Current Semester</p>
+                            <p className="text-sm font-bold text-slate-100 mt-2">{loading ? "-" : summary.currentName}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
                             <Star className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">历史学期</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.history}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">History</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.history}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center border border-slate-700">
                             <CheckCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 shadow-sm">
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500">含班级学期</p>
-                            <p className="text-2xl font-semibold text-slate-900">{loading ? "-" : summary.withClasses}</p>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">With Classes</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.withClasses}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
                             <School className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 shadow-sm">
-                <CardHeader className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4">
                     <div>
-                        <CardTitle className="text-base">学期列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredSemesters.length} 条</p>
+                        <CardTitle className="text-base text-slate-100">学期列表</CardTitle>
+                        <p className="text-xs text-slate-500 mt-1">共 {filteredSemesters.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <Input
-                            placeholder="搜索学期名称"
+                            placeholder="搜索学期名称..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="sm:w-64"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50 focus:ring-indigo-500/20"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "current" | "history")}>
-                            <SelectTrigger className="sm:w-36">
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36 focus:ring-indigo-500/20">
                                 <SelectValue placeholder="状态筛选" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="current">当前学期</SelectItem>
                                 <SelectItem value="history">历史学期</SelectItem>
@@ -246,55 +246,60 @@ export function SemesterManagement() {
                         </Select>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                            <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead>学期名称</TableHead>
-                                    <TableHead>状态</TableHead>
-                                    <TableHead>班级数量</TableHead>
-                                    <TableHead>创建时间</TableHead>
-                                    <TableHead>操作</TableHead>
+                                <TableRow className="border-slate-800 hover:bg-slate-900/50">
+                                    <TableHead className="text-slate-400">学期名称</TableHead>
+                                    <TableHead className="text-slate-400">状态</TableHead>
+                                    <TableHead className="text-slate-400">班级数量</TableHead>
+                                    <TableHead className="text-slate-400">创建时间</TableHead>
+                                    <TableHead className="text-slate-400 text-right">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredSemesters.map((semester) => (
-                                    <TableRow key={semester.id}>
-                                        <TableCell className="font-medium text-slate-900">{semester.name}</TableCell>
+                                    <TableRow key={semester.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                        <TableCell className="font-medium text-slate-200">{semester.name}</TableCell>
                                         <TableCell>
                                             {semester.isCurrent ? (
-                                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">当前学期</Badge>
+                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20">当前学期</Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="bg-slate-100 text-slate-600">历史学期</Badge>
+                                                <Badge variant="secondary" className="bg-slate-800 text-slate-400 hover:bg-slate-700">历史学期</Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell>{semester.classCount}</TableCell>
+                                        <TableCell className="text-slate-300">
+                                            <div className="flex items-center gap-2">
+                                                <School className="w-3.5 h-3.5 text-slate-500" />
+                                                {semester.classCount}
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="text-slate-500">{formatDate(semester.createdAt)}</TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-wrap gap-2">
+                                        <TableCell className="text-right">
+                                            <div className="flex items-center justify-end gap-2">
                                                 {!semester.isCurrent && (
-                                                    <Button variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)}>
-                                                        <Star className="w-3 h-3 mr-1" />
+                                                    <Button variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 h-8">
+                                                        <Star className="w-3.5 h-3.5 mr-1.5" />
                                                         设为当前
                                                     </Button>
                                                 )}
-                                                <Button variant="ghost" size="sm" onClick={() => openEdit(semester)}>
-                                                    <Pencil className="w-3 h-3 mr-1" />
+                                                <Button variant="ghost" size="sm" onClick={() => openEdit(semester)} className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 h-8">
+                                                    <Pencil className="w-3.5 h-3.5 mr-1.5" />
                                                     编辑
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleDelete(semester)}
-                                                    className="text-destructive hover:text-destructive"
+                                                    className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-8"
                                                     disabled={semester.classCount > 0}
                                                 >
-                                                    <Trash2 className="w-3 h-3 mr-1" />
+                                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                                                     删除
                                                 </Button>
                                             </div>
@@ -303,8 +308,13 @@ export function SemesterManagement() {
                                 ))}
                                 {filteredSemesters.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center py-12 text-slate-500">
-                                            暂无符合条件的数据
+                                        <TableCell colSpan={5} className="text-center py-16 text-slate-500">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
+                                                    <Search className="w-5 h-5 text-slate-600" />
+                                                </div>
+                                                <p>暂无符合条件的数据</p>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -315,36 +325,41 @@ export function SemesterManagement() {
             </Card>
 
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>创建学期</DialogTitle>
-                        <DialogDescription>创建一个新的学期用于组织班级和教学任务</DialogDescription>
+                        <DialogTitle className="text-slate-100">创建学期</DialogTitle>
+                        <DialogDescription className="text-slate-400">创建一个新的学期用于组织班级和教学任务</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-5 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="semesterName">学期名称</Label>
+                            <Label htmlFor="semesterName" className="text-slate-300">学期名称</Label>
                             <Input
                                 id="semesterName"
                                 placeholder="例如：2024-Fall"
                                 value={newSemesterName}
                                 onChange={(e) => setNewSemesterName(e.target.value)}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
-                            <p className="text-xs text-muted-foreground">格式：YYYY-Spring 或 YYYY-Fall</p>
+                            <p className="text-xs text-slate-500">建议格式：YYYY-Spring 或 YYYY-Fall</p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950/50">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="setAsCurrent" className="text-base text-slate-200 cursor-pointer">设为当前学期</Label>
+                                <p className="text-xs text-slate-500">创建后立即生效为默认学期</p>
+                            </div>
                             <Switch
                                 id="setAsCurrent"
                                 checked={setAsCurrent}
                                 onCheckedChange={setSetAsCurrent}
+                                className="data-[state=checked]:bg-indigo-600"
                             />
-                            <Label htmlFor="setAsCurrent" className="cursor-pointer">设为当前学期</Label>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowAddModal(false)} disabled={submitting}>
+                        <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()}>
+                        <Button onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认创建
                         </Button>
@@ -353,27 +368,28 @@ export function SemesterManagement() {
             </Dialog>
 
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle>编辑学期</DialogTitle>
-                        <DialogDescription>修改学期名称</DialogDescription>
+                        <DialogTitle className="text-slate-100">编辑学期</DialogTitle>
+                        <DialogDescription className="text-slate-400">修改学期名称</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="editSemesterName">学期名称</Label>
+                            <Label htmlFor="editSemesterName" className="text-slate-300">学期名称</Label>
                             <Input
                                 id="editSemesterName"
                                 placeholder="例如：2024-Fall"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={submitting}>
+                        <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleEditSemester} disabled={submitting || !editName.trim()}>
+                        <Button onClick={handleEditSemester} disabled={submitting || !editName.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存
                         </Button>

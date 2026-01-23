@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import {
     LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
-    Activity, Megaphone, Settings, Bell, LogOut, Loader2, Search
+    Activity, Megaphone, Settings, Bell, LogOut, Loader2, Search,
+    Menu, X
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -77,14 +78,11 @@ export function AdminApp() {
     const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
     const [passwordSaving, setPasswordSaving] = useState(false);
     const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     useEffect(() => {
         if (isLoginPage || authState !== "authed") return;
-
-        // Initial fetch
         fetchNotifications();
-
-        // Poll every minute
         const interval = setInterval(fetchNotifications, 60000);
         return () => clearInterval(interval);
     }, [isLoginPage, authState]);
@@ -93,17 +91,14 @@ export function AdminApp() {
         let cancelled = false;
         if (authState !== "checking") return;
 
-        authApi
-            .me()
+        authApi.me()
             .then((res) => {
                 if (cancelled) return;
                 if (res.success) {
                     setAuthState("authed");
                     setAdminUser(res.data ?? null);
                     setSessionExpiresAt(res.data?.sessionExpiresAt ?? null);
-                    if (res.data?.isFirstLogin) {
-                        setShowPasswordModal(true);
-                    }
+                    if (res.data?.isFirstLogin) setShowPasswordModal(true);
                 } else {
                     setAuthState("guest");
                     setAdminUser(null);
@@ -117,9 +112,7 @@ export function AdminApp() {
                 setSessionExpiresAt(null);
             });
 
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [authState]);
 
     useEffect(() => {
@@ -138,9 +131,7 @@ export function AdminApp() {
             if (res.success && res.data) {
                 setUnreadCount(res.data.count);
                 setNotifications(res.data.items ?? []);
-                if (res.data.sessionExpiresAt) {
-                    setSessionExpiresAt(res.data.sessionExpiresAt);
-                }
+                if (res.data.sessionExpiresAt) setSessionExpiresAt(res.data.sessionExpiresAt);
             }
         } catch (err) {
             console.error(err);
@@ -175,7 +166,6 @@ export function AdminApp() {
 
     useEffect(() => {
         if (authState !== "authed" || !sessionExpiresAt) return;
-
         const interval = setInterval(() => {
             const remainingMs = new Date(sessionExpiresAt).getTime() - Date.now();
             if (remainingMs <= 0) {
@@ -186,20 +176,14 @@ export function AdminApp() {
                 navigate("/login", { replace: true });
                 return;
             }
-
-            if (remainingMs <= 5 * 60 * 1000) {
-                setShowSessionWarning(true);
-            }
+            if (remainingMs <= 5 * 60 * 1000) setShowSessionWarning(true);
         }, 30000);
-
         return () => clearInterval(interval);
     }, [authState, sessionExpiresAt, navigate]);
 
     useEffect(() => {
         const handleSessionExpired = () => {
-            if (isLoginPage || authState !== "authed") {
-                return;
-            }
+            if (isLoginPage || authState !== "authed") return;
             setShowSessionWarning(false);
             setShowNotifications(false);
             setAuthState("guest");
@@ -207,11 +191,8 @@ export function AdminApp() {
             setSessionExpiresAt(null);
             setShowSessionExpired(true);
         };
-
         window.addEventListener("admin:session-expired", handleSessionExpired as EventListener);
-        return () => {
-            window.removeEventListener("admin:session-expired", handleSessionExpired as EventListener);
-        };
+        return () => { window.removeEventListener("admin:session-expired", handleSessionExpired as EventListener); };
     }, [authState, isLoginPage]);
 
     const handleLogout = async () => {
@@ -228,9 +209,7 @@ export function AdminApp() {
     const handleExtendSession = async () => {
         try {
             const res = await authApi.me();
-            if (res.success && res.data?.sessionExpiresAt) {
-                setSessionExpiresAt(res.data.sessionExpiresAt);
-            }
+            if (res.success && res.data?.sessionExpiresAt) setSessionExpiresAt(res.data.sessionExpiresAt);
             setShowSessionWarning(false);
         } catch (err) {
             console.error(err);
@@ -283,47 +262,51 @@ export function AdminApp() {
     if (isLoginPage) {
         if (authState === "checking") {
             return (
-                <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                    <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
                 </div>
             );
         }
-        if (authState === "authed") {
-            return <Navigate to="/" replace />;
-        }
+        if (authState === "authed") return <Navigate to="/" replace />;
         return <Login />;
     }
 
     if (authState === "checking") {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
             </div>
         );
     }
 
-    if (authState !== "authed") {
-        return <Navigate to="/login" replace />;
-    }
+    if (authState !== "authed") return <Navigate to="/login" replace />;
 
     return (
-        <div className="flex min-h-screen bg-slate-50">
-            <Toaster richColors position="top-right" />
+        <div className="flex min-h-screen bg-slate-950 text-slate-200 font-sans antialiased">
+            <Toaster richColors position="top-right" theme="dark" />
+
             {/* Sidebar */}
-            <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0">
-                <div className="h-20 px-6 border-b border-slate-200 flex items-center">
+            <aside
+                className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:flex lg:flex-col ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    }`}
+            >
+                <div className="h-16 px-6 border-b border-slate-800 flex items-center justify-between lg:justify-start">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
                             <LayoutDashboard className="w-5 h-5" />
                         </div>
                         <div>
-                            <h1 className="text-base font-semibold text-slate-900">抽样统计系统</h1>
-                            <p className="text-xs text-slate-500">管理后台</p>
+                            <h1 className="text-sm font-bold text-slate-100 tracking-tight">抽样统计系统</h1>
+                            <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Admin Portal</p>
                         </div>
                     </div>
+                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-100">
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
 
-                <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
+                    <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Main Menu</div>
                     {menuItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
@@ -331,145 +314,180 @@ export function AdminApp() {
                             <NavLink
                                 key={item.path}
                                 to={item.path}
-                                className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-colors
-                                    ${isActive
-                                        ? "bg-primary text-primary-foreground shadow-sm"
-                                        : "text-slate-600 hover:bg-slate-100"
-                                    }`}
+                                className={({ isActive: activeLink }) => `
+                                    flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-200 group
+                                    ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
+                                        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
+                                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100"
+                                    }
+                                `}
                             >
-                                <Icon className={`w-4 h-4 ${isActive ? "text-primary-foreground" : "text-slate-500"}`} />
+                                <Icon className={`w-4 h-4 transition-colors ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
+                                        ? "text-white"
+                                        : "text-slate-500 group-hover:text-slate-300"
+                                    }`} />
                                 <span className="font-medium">{item.label}</span>
                             </NavLink>
                         );
                     })}
                 </nav>
 
-                <Separator className="bg-slate-200" />
-
-                <div className="p-4">
+                <div className="p-4 border-t border-slate-800 bg-slate-900/50">
                     <div className="flex items-center gap-3">
-                        <Avatar className="w-9 h-9">
-                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                        <Avatar className="w-9 h-9 border border-slate-700 ring-2 ring-slate-900">
+                            <AvatarFallback className="bg-slate-800 text-indigo-400 text-sm font-medium">
                                 {adminUser?.username?.charAt(0)?.toUpperCase() ?? "A"}
                             </AvatarFallback>
                         </Avatar>
-                        <div className="flex-1">
-                            <div className="text-sm font-medium text-slate-900">{adminUser?.username ?? "管理员"}</div>
-                            <div className="text-xs text-slate-500">Administrator</div>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-slate-200 truncate">{adminUser?.username ?? "管理员"}</div>
+                            <div className="text-xs text-slate-500 truncate">Administrator</div>
                         </div>
                     </div>
                 </div>
             </aside>
 
+            {/* Overlay for mobile sidebar */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden">
-                <header className="bg-white px-8 h-20 border-b border-slate-200 flex items-center justify-between gap-6">
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
+                <header className="h-16 px-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-semibold text-slate-900">{pageTitle}</h2>
-                        <span className="text-sm text-slate-500">
-                            {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
-                        </span>
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-100 rounded-md hover:bg-slate-800"
+                        >
+                            <Menu className="w-5 h-5" />
+                        </button>
+                        <div>
+                            <h2 className="text-lg font-semibold text-slate-100">{pageTitle}</h2>
+                            <p className="hidden md:block text-xs text-slate-500">
+                                {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
+                            </p>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3 flex-1 justify-end">
-                        <div className="hidden md:flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 w-72">
+
+                    <div className="flex items-center gap-4 flex-1 justify-end">
+                        <div className="hidden md:flex items-center gap-2 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-1.5 w-64 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/50 transition-all">
                             <Search className="w-4 h-4 text-slate-500" />
                             <input
-                                className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none w-full"
-                                placeholder="搜索功能或数据"
+                                className="bg-transparent text-sm text-slate-200 placeholder:text-slate-500 outline-none w-full"
+                                placeholder="搜索功能或数据..."
                             />
                         </div>
-                        <Button variant="ghost" size="icon" className="relative" onClick={() => {
-                            setShowNotifications(true);
-                            if (!notifications.length) {
-                                fetchNotifications();
-                            }
-                        }}>
-                            <Bell className="w-5 h-5 text-slate-600" />
-                            {unreadCount > 0 && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                            )}
-                        </Button>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" title="退出登录">
-                                    <LogOut className="w-5 h-5 text-slate-600" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>确认退出登录?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        您确定要退出当前账号吗？
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>取消</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleLogout}>退出</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                                onClick={() => {
+                                    setShowNotifications(true);
+                                    if (!notifications.length) fetchNotifications();
+                                }}
+                            >
+                                <Bell className="w-5 h-5" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 ring-2 ring-slate-900 rounded-full animate-pulse"></span>
+                                )}
+                            </Button>
+
+                            <Separator orientation="vertical" className="h-6 bg-slate-800" />
+
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" title="退出登录">
+                                        <LogOut className="w-5 h-5" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="text-slate-100">确认退出登录?</AlertDialogTitle>
+                                        <AlertDialogDescription className="text-slate-400">
+                                            您确定要退出当前账号吗？未保存的内容可能会丢失。
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-slate-100">取消</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleLogout} className="bg-rose-600 hover:bg-rose-700 text-white border-none">退出</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                     </div>
                 </header>
-                <div className="flex-1 p-8 overflow-y-auto">
-                    <Routes>
-                        <Route index element={<Dashboard />} />
-                        <Route path="login" element={<Login />} />
-                        <Route path="semester" element={<SemesterManagement />} />
-                        <Route path="teacher" element={<TeacherManagement />} />
-                        <Route path="assistant" element={<AssistantManagement />} />
-                        <Route path="class" element={<ClassManagement />} />
-                        <Route path="student" element={<StudentManagement />} />
-                        <Route path="monitor" element={<SystemMonitor />} />
-                        <Route path="announcement" element={<AnnouncementManagement />} />
-                        <Route path="settings" element={<SystemSettings />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
+
+                <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+                    <div className="max-w-7xl mx-auto space-y-6">
+                        <Routes>
+                            <Route index element={<Dashboard />} />
+                            <Route path="login" element={<Login />} />
+                            <Route path="semester" element={<SemesterManagement />} />
+                            <Route path="teacher" element={<TeacherManagement />} />
+                            <Route path="assistant" element={<AssistantManagement />} />
+                            <Route path="class" element={<ClassManagement />} />
+                            <Route path="student" element={<StudentManagement />} />
+                            <Route path="monitor" element={<SystemMonitor />} />
+                            <Route path="announcement" element={<AnnouncementManagement />} />
+                            <Route path="settings" element={<SystemSettings />} />
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                    </div>
                 </div>
             </main>
 
             <Dialog open={showPasswordModal} onOpenChange={() => { }}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle>首次登录请修改密码</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-slate-100">首次登录请修改密码</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             为保证账号安全，请先修改管理员密码。
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2">
+                    <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="currentPassword">当前密码</Label>
+                            <Label htmlFor="currentPassword" className="text-slate-300">当前密码</Label>
                             <Input
                                 id="currentPassword"
                                 type="password"
+                                className="bg-slate-950 border-slate-800 focus:ring-indigo-500/20"
                                 value={passwordForm.currentPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                                 autoComplete="current-password"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="newPassword">新密码</Label>
+                            <Label htmlFor="newPassword" className="text-slate-300">新密码</Label>
                             <Input
                                 id="newPassword"
                                 type="password"
+                                className="bg-slate-950 border-slate-800 focus:ring-indigo-500/20"
                                 value={passwordForm.newPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                 autoComplete="new-password"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="confirmPassword">确认新密码</Label>
+                            <Label htmlFor="confirmPassword" className="text-slate-300">确认新密码</Label>
                             <Input
                                 id="confirmPassword"
                                 type="password"
+                                className="bg-slate-950 border-slate-800 focus:ring-indigo-500/20"
                                 value={passwordForm.confirmPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                                 autoComplete="new-password"
                             />
                         </div>
-                        {passwordError && <div className="text-sm text-destructive">{passwordError}</div>}
+                        {passwordError && <div className="text-sm text-rose-400 flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-rose-500" />{passwordError}</div>}
                     </div>
                     <DialogFooter>
-                        <Button onClick={handleChangePassword} disabled={passwordSaving}>
+                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
                             {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             保存新密码
                         </Button>
@@ -478,52 +496,52 @@ export function AdminApp() {
             </Dialog>
 
             <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>会话即将过期</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-slate-100">会话即将过期</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             您的会话将在 5 分钟内过期，是否继续保持登录状态？
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleLogout}>退出登录</Button>
-                        <Button onClick={handleExtendSession}>继续</Button>
+                        <Button variant="outline" onClick={handleLogout} className="border-slate-700 hover:bg-slate-800 text-slate-300">退出登录</Button>
+                        <Button onClick={handleExtendSession} className="bg-indigo-600 hover:bg-indigo-700">继续</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showSessionExpired} onOpenChange={setShowSessionExpired}>
-                <DialogContent>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle>会话已过期</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-slate-100">会话已过期</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             您的会话已过期，请重新登录。
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button onClick={() => navigate("/login", { replace: true })}>重新登录</Button>
+                        <Button onClick={() => navigate("/login", { replace: true })} className="bg-indigo-600 hover:bg-indigo-700">重新登录</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>通知</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-slate-100">通知</DialogTitle>
+                        <DialogDescription className="text-slate-400">
                             查看系统通知与操作提醒
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">未读 {unreadCount} 条</span>
-                        <Button variant="ghost" size="sm" onClick={handleMarkAllRead} disabled={unreadCount === 0}>
+                    <div className="flex justify-between items-center my-2">
+                        <span className="text-sm text-slate-400">未读 {unreadCount} 条</span>
+                        <Button variant="ghost" size="sm" onClick={handleMarkAllRead} disabled={unreadCount === 0} className="text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10">
                             全部已读
                         </Button>
                     </div>
-                    <div className="max-h-80 overflow-y-auto space-y-2">
+                    <div className="max-h-[60vh] overflow-y-auto space-y-2 -mx-2 px-2 custom-scrollbar">
                         {notificationsLoading ? (
                             <div className="flex items-center justify-center py-8">
-                                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
                             </div>
                         ) : notifications.length > 0 ? (
                             notifications.map(item => (
@@ -531,22 +549,26 @@ export function AdminApp() {
                                     key={item.id}
                                     type="button"
                                     onClick={() => item.isRead ? null : handleMarkNotificationRead(item.id)}
-                                    className={`w-full text-left p-3 rounded-lg border transition-colors ${item.isRead ? "bg-background" : "bg-muted/60"}`}
+                                    className={`w-full text-left p-4 rounded-lg border transition-all duration-200 hover:border-slate-700 ${item.isRead ? "bg-slate-950/50 border-transparent opacity-70" : "bg-slate-800/50 border-slate-700/50 shadow-sm"
+                                        }`}
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between mb-1">
                                         <div className="flex items-center gap-2">
-                                            {!item.isRead && <span className="w-2 h-2 rounded-full bg-red-500" />}
-                                            <span className="text-sm font-medium text-foreground">{item.title}</span>
+                                            {!item.isRead && <span className="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-indigo-500/20" />}
+                                            <span className={`text-sm font-medium ${item.isRead ? "text-slate-400" : "text-slate-200"}`}>{item.title}</span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground">
-                                            {new Date(item.createdAt).toLocaleString("zh-CN")}
+                                        <span className="text-xs text-slate-500 font-mono">
+                                            {new Date(item.createdAt).toLocaleString("zh-CN", { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
-                                    <div className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.content}</div>
+                                    <div className="text-sm text-slate-400 line-clamp-2 pl-4 border-l-2 border-slate-800">{item.content}</div>
                                 </button>
                             ))
                         ) : (
-                            <div className="text-center py-8 text-muted-foreground">暂无通知</div>
+                            <div className="text-center py-12 text-slate-500 bg-slate-950/30 rounded-lg border border-dashed border-slate-800">
+                                <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                                暂无通知
+                            </div>
                         )}
                     </div>
                 </DialogContent>
