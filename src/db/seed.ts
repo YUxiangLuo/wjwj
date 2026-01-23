@@ -1,5 +1,5 @@
 /**
- * Enhanced Database Seed Script
+ * Enhanced Database Seed Script (Chinese Localization)
  * Covers all system tables with realistic relationship data and user flows.
  * Run with: bun run src/db/seed.ts
  */
@@ -30,26 +30,26 @@ import {
 import { eq, and } from "drizzle-orm";
 
 async function seed() {
-    console.log("🌱 Starting comprehensive database seed...\n");
+    console.log("🌱 开始初始化数据库数据...\n");
 
-    const defaultPassword = "password123";
+    const defaultPassword = "123456";
     const hashedPassword = await Bun.password.hash(defaultPassword);
 
     // ==========================================
-    // 1. System Config & Admin
+    // 1. 系统配置 & 管理员
     // ==========================================
-    console.log("🔧 Seeding System Config & Admin...");
+    console.log("🔧 初始化系统配置与管理员...");
 
     // System Config
     const configs = [
-        { key: "system_name", value: "Academic Research Platform", desc: "System Name" },
-        { key: "allow_student_login", value: "true", valueType: "boolean", desc: "Allow student login switch" },
-        { key: "max_upload_size", value: "10", valueType: "number", desc: "Max upload size in MB" },
-        { key: "login.max_fail_count", value: "5", valueType: "number", desc: "Max login fail attempts" },
-        { key: "login.lock_duration_minutes", value: "30", valueType: "number", desc: "Account lock duration minutes" },
-        { key: "session.admin_timeout_minutes", value: "30", valueType: "number", desc: "Admin session timeout" },
-        { key: "session.teacher_timeout_minutes", value: "120", valueType: "number", desc: "Teacher session timeout" },
-        { key: "session.student_timeout_minutes", value: "240", valueType: "number", desc: "Student session timeout" }
+        { key: "system_name", value: "抽样统计虚拟仿真实验教学系统", desc: "系统名称" },
+        { key: "allow_student_login", value: "true", valueType: "boolean", desc: "允许学生登录开关" },
+        { key: "max_upload_size", value: "10", valueType: "number", desc: "最大上传限制(MB)" },
+        { key: "login.max_fail_count", value: "5", valueType: "number", desc: "最大登录失败次数" },
+        { key: "login.lock_duration_minutes", value: "30", valueType: "number", desc: "账号锁定时间(分钟)" },
+        { key: "session.admin_timeout_minutes", value: "30", valueType: "number", desc: "管理员会话超时时间" },
+        { key: "session.teacher_timeout_minutes", value: "120", valueType: "number", desc: "教师会话超时时间" },
+        { key: "session.student_timeout_minutes", value: "240", valueType: "number", desc: "学生会话超时时间" }
     ];
 
     for (const c of configs) {
@@ -69,35 +69,35 @@ async function seed() {
     }).onDuplicateKeyUpdate({ set: { username: "admin" } });
 
     // ==========================================
-    // 2. Semesters
+    // 2. 学期
     // ==========================================
-    console.log("📅 Seeding Semesters...");
+    console.log("📅 初始化学期数据...");
 
     // Previous Semester
-    let [prevSem] = await db.select().from(semester).where(eq(semester.name, "2023-2024 Spring"));
+    let [prevSem] = await db.select().from(semester).where(eq(semester.name, "2023-2024学年 第二学期"));
     if (!prevSem) {
-        const [res] = await db.insert(semester).values({ name: "2023-2024 Spring", isCurrent: 0 });
-        prevSem = { id: res.insertId, name: "2023-2024 Spring" } as any;
+        const [res] = await db.insert(semester).values({ name: "2023-2024学年 第二学期", isCurrent: 0 });
+        prevSem = { id: res.insertId, name: "2023-2024学年 第二学期" } as any;
     }
 
     // Current Semester
-    let [currSem] = await db.select().from(semester).where(eq(semester.name, "2024-2025 Fall"));
+    let [currSem] = await db.select().from(semester).where(eq(semester.name, "2024-2025学年 第一学期"));
     if (!currSem) {
-        const [res] = await db.insert(semester).values({ name: "2024-2025 Fall", isCurrent: 1 });
-        currSem = { id: res.insertId, name: "2024-2025 Fall" } as any;
+        const [res] = await db.insert(semester).values({ name: "2024-2025学年 第一学期", isCurrent: 1 });
+        currSem = { id: res.insertId, name: "2024-2025学年 第一学期" } as any;
     }
 
-    if (!prevSem || !currSem) throw new Error("Failed to initialize semesters");
+    if (!prevSem || !currSem) throw new Error("学期初始化失败");
 
     // ==========================================
-    // 3. Teachers & Assistants
+    // 3. 教师 & 助教
     // ==========================================
-    console.log("👨‍🏫 Seeding Teachers & Assistants...");
+    console.log("👨‍🏫 初始化教师与助教数据...");
 
     const teachersData = [
-        { id: "T001", name: "Prof. Zhang" },
-        { id: "T002", name: "Dr. Li" },
-        { id: "T003", name: "Instructor Wang" }
+        { id: "teacher", name: "演示教师" },
+        { id: "T002", name: "李博士" },
+        { id: "T003", name: "王讲师" }
     ];
 
     const teacherIds: number[] = [];
@@ -120,8 +120,8 @@ async function seed() {
 
     // Assistants for T001
     const assistantsData = [
-        { account: "A001", name: "Assistant Xiao" },
-        { account: "A002", name: "Assistant Chen" }
+        { account: "assistant", name: "演示助教" },
+        { account: "A002", name: "助教小陈" }
     ];
 
     const assistantIds: number[] = [];
@@ -133,7 +133,7 @@ async function seed() {
                 account: a.account,
                 name: a.name,
                 password: hashedPassword,
-                creatorTeacherId: teacherIds[0]!, // Linked to Prof. Zhang
+                creatorTeacherId: teacherIds[0]!, // Linked to Demo Teacher
                 isFirstLogin: 0
             });
             assistantIds.push(res.insertId);
@@ -143,14 +143,14 @@ async function seed() {
     }
 
     // ==========================================
-    // 4. Classes
+    // 4. 班级
     // ==========================================
-    console.log("🏫 Seeding Classes...");
+    console.log("🏫 初始化班级数据...");
 
     const classesData = [
-        { name: "Statistics 101-A", sem: currSem.id, teacher: teacherIds[0]! },
-        { name: "Statistics 101-B", sem: currSem.id, teacher: teacherIds[1]! },
-        { name: "Market Research 202", sem: prevSem.id, teacher: teacherIds[0]! }
+        { name: "统计学原理 A班", sem: currSem.id, teacher: teacherIds[0]! },
+        { name: "统计学原理 B班", sem: currSem.id, teacher: teacherIds[1]! },
+        { name: "市场调研实务", sem: prevSem.id, teacher: teacherIds[0]! }
     ];
 
     const classIds: number[] = [];
@@ -180,20 +180,22 @@ async function seed() {
     }).onDuplicateKeyUpdate({ set: { assistantId: assistantIds[0]! } });
 
     // ==========================================
-    // 5. Students
+    // 5. 学生
     // ==========================================
-    console.log("👨‍🎓 Seeding Students...");
+    console.log("👨‍🎓 初始化学生数据...");
 
     const studentIds: number[] = [];
+    const studentNames = ["演示学生", "钱二", "孙三", "李四", "周五", "吴六", "郑七", "王八", "冯九", "陈十"];
 
     // Create 10 students for Class A (Current)
     for (let i = 1; i <= 10; i++) {
-        const sid = `202400${i}`;
+        // First student uses "student", others use "202400x"
+        const sid = i === 1 ? "student" : `202400${i}`;
         let [exist] = await db.select().from(student).where(eq(student.studentId, sid));
         if (!exist) {
             const [res] = await db.insert(student).values({
                 studentId: sid,
-                name: `Student ${i}`,
+                name: studentNames[i - 1] ?? "Student",
                 password: hashedPassword,
                 classId: classIds[0]!,
                 isFirstLogin: 0,
@@ -211,22 +213,22 @@ async function seed() {
         studentId: studentIds[9]!,
         fromClassId: classIds[1]!,
         toClassId: classIds[0]!,
-        reason: "Schedule conflict",
+        reason: "课程时间冲突",
         operatedBy: 1, // Admin ID
         transferredAt: new Date()
     });
 
     // ==========================================
-    // 6. Topics & Resources
+    // 6. 课题 & 资源
     // ==========================================
-    console.log("📚 Seeding Topics & Resources...");
+    console.log("📚 初始化课题与资源...");
 
     const topicsData = [
-        { name: "Consumer Behavior Analysis", teacher: teacherIds[0]!, status: 1 },
-        { name: "Online Shopping Trends", teacher: teacherIds[1]!, status: 1 },
-        { name: "Market Research Basics", teacher: teacherIds[0]!, status: 1 },
-        { name: "Data Analysis Fundamentals", teacher: teacherIds[1]!, status: 1 },
-        { name: "Social Media Impact (Draft)", teacher: teacherIds[0]!, status: 0 }
+        { name: "消费者行为分析实验", teacher: teacherIds[0]!, status: 1 },
+        { name: "大学生网购趋势调查", teacher: teacherIds[1]!, status: 1 },
+        { name: "市场调研基础方法", teacher: teacherIds[0]!, status: 1 },
+        { name: "数据分析基础实战", teacher: teacherIds[1]!, status: 1 },
+        { name: "社交媒体影响力分析(草稿)", teacher: teacherIds[0]!, status: 0 }
     ];
 
     const topicIds: number[] = [];
@@ -235,7 +237,7 @@ async function seed() {
         const [res] = await db.insert(topic).values({
             teacherId: t.teacher,
             name: t.name,
-            description: `# ${t.name}\n\nObjective: Understand the core factors...`,
+            description: `# ${t.name}\n\n**实验目标**：\n1. 掌握基本的抽样调查方法\n2. 学会设计有效的调查问卷\n3. 能够对收集到的数据进行初步分析\n\n**实验要求**：\n请根据给定的背景资料，设计一份不少于10道题目的调查问卷，并完成后续的抽样与分析报告。`,
             status: t.status,
             excelRowCount: 10000,
             excelFilePath: "/uploads/population.xlsx",
@@ -251,7 +253,7 @@ async function seed() {
         // Add dummy attachments
         await db.insert(topicAttachment).values({
             topicId: res.insertId,
-            fileName: "guidelines.pdf",
+            fileName: "实验指导书.pdf",
             filePath: "/uploads/guidelines.pdf",
             fileType: "application/pdf",
             fileSize: 1024 * 1024
@@ -259,15 +261,15 @@ async function seed() {
 
         // Add recommended questions
         await db.insert(topicRecommendQuestion).values([
-            { topicId: res.insertId, questionType: 1, content: "What is your age range?", options: ["18-25", "26-35", "36+"], sortOrder: 1 },
-            { topicId: res.insertId, questionType: 2, content: "Which products do you prefer?", options: ["Electronics", "Fashion", "Home"], sortOrder: 2 }
+            { topicId: res.insertId, questionType: 1, content: "您的年龄段是？", options: ["18-25岁", "26-35岁", "36岁及以上"], sortOrder: 1 },
+            { topicId: res.insertId, questionType: 2, content: "您平时更倾向于购买哪类产品？", options: ["电子数码", "服饰鞋包", "家居生活", "美妆护肤"], sortOrder: 2 }
         ]);
     }
 
     // ==========================================
-    // 7. Tasks (Topic -> Class)
+    // 7. 任务 (课题 -> 班级)
     // ==========================================
-    console.log("📋 Seeding Tasks...");
+    console.log("📋 初始化任务分配...");
 
     const now = new Date();
     const deadline = new Date(now);
@@ -288,13 +290,12 @@ async function seed() {
         }).onDuplicateKeyUpdate({ set: { deadline: deadline } });
 
         taskIds.push(taskRes.insertId);
-        console.log(`   Assigned Topic ${tid} to Class ${classIds[0]} -> Task ${taskRes.insertId}`);
     }
 
     // ==========================================
-    // 8. Experiments & Submissions
+    // 8. 实验 & 提交记录
     // ==========================================
-    console.log("🧪 Seeding Experiments & Submissions...");
+    console.log("🧪 初始化实验记录与提交...");
 
     // Scenario A: Student 1 - Just Started
     await db.insert(experiment).values({
@@ -302,7 +303,7 @@ async function seed() {
         taskId: taskIds[0]!,
         currentStage: 1,
         status: 0,
-        questionnaire: { title: "My Survey", questions: [] }
+        questionnaire: { title: "我的调查问卷", questions: [] }
     }).onDuplicateKeyUpdate({ set: { currentStage: 1 } });
 
     // Scenario B: Student 2 - Completed & Submitted
@@ -311,9 +312,9 @@ async function seed() {
         taskId: taskIds[0]!,
         currentStage: 4,
         status: 1, // Submitted
-        questionnaire: { title: "Finished Survey", count: 10 },
-        samplePlan: { method: "Random", size: 100 },
-        reportContent: "## Final Report\n\nResult analysis...",
+        questionnaire: { title: "已完成的问卷", count: 10 },
+        samplePlan: { method: "简单随机抽样", size: 100 },
+        reportContent: "## 实验总结报告\n\n本次实验通过对目标人群的随机抽样调查，发现...\n\n### 1. 数据分析\n大部分受访者倾向于...\n\n### 2. 结论与建议\n建议后续...",
         stage1CompletedAt: new Date(),
         stage2CompletedAt: new Date(),
         stage3CompletedAt: new Date(),
@@ -335,7 +336,7 @@ async function seed() {
                 scoreProcess: "85.50",
                 scoreReport: "88.00",
                 totalScore: "87.83",
-                teacherComment: "Good job!",
+                teacherComment: "实验设计规范，分析深入，做得很好！",
                 status: 2, // Graded
                 gradedByType: 1, // Teacher
                 gradedById: teacherIds[0]!,
@@ -345,14 +346,14 @@ async function seed() {
     }
 
     // ==========================================
-    // 9. System Logs & Notifications
+    // 9. 系统日志 & 通知
     // ==========================================
-    console.log("📢 Seeding Logs & Notifications...");
+    console.log("📢 初始化日志与通知...");
 
     // Announcements
     const [annoRes] = await db.insert(announcement).values({
-        title: "System Maintenance Notice",
-        content: "The system will be updated tonight.",
+        title: "系统维护通知",
+        content: "系统将于今晚24:00进行即行维护升级，预计耗时2小时，请各位师生提前保存数据。",
         status: 1
     });
 
@@ -368,8 +369,8 @@ async function seed() {
         receiverType: 2, // Student
         receiverId: studentIds[0]!,
         type: "TASK_ASSIGNED",
-        title: "New Task Available",
-        content: "You have a new task: Consumer Behavior Analysis",
+        title: "新任务发布",
+        content: "您有一个新的实验任务：消费者行为分析实验，请及时完成。",
         isRead: 0
     });
 
@@ -389,22 +390,22 @@ async function seed() {
         action: "CREATE_TOPIC",
         targetType: "topic",
         targetId: topicIds[0]!,
-        detail: { name: "Consumer Behavior Analysis" },
+        detail: { name: "消费者行为分析实验" },
         ipAddress: "127.0.0.1"
     });
 
-    console.log("\n✅ Comprehensive Seed Completed Successfully!");
+    console.log("\n✅ 数据库初始化完成 (演示版)!");
     console.log("==========================================");
-    console.log(`🔑 Default Password: ${defaultPassword}`);
-    console.log(`👤 Admin: admin`);
-    console.log(`👨‍🏫 Teachers: ${teachersData.map(t => t.id).join(", ")}`);
-    console.log(`👨‍🎓 Students: 2024001 - 2024010`);
+    console.log(`🔑 通用密码: ${defaultPassword}`);
+    console.log(`👤 管理员: admin`);
+    console.log(`👨‍🏫 演示教师: teacher (其他: T002...)`);
+    console.log(`👨‍🎓 演示学生: student (其他: 2024002...)`);
     console.log("==========================================");
 
     process.exit(0);
 }
 
 seed().catch((err) => {
-    console.error("❌ Seed Failed:", err);
+    console.error("❌ 初始化失败:", err);
     process.exit(1);
 });

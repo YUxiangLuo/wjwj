@@ -60,7 +60,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
             <BarChart3 className="w-6 h-6 text-white" />
           </div>
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-            Sampling Stats Sim
+            统计学虚拟仿真实验平台
           </span>
         </div>
 

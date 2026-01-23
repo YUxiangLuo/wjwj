@@ -411,7 +411,7 @@ export function TaskHall() {
             </div>
 
             {/* Task Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-h-[300px] gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]">
                 {filteredTasks.length > 0 ? (
                     filteredTasks.map(task => (
                         <TaskCard key={task.id} task={task} />

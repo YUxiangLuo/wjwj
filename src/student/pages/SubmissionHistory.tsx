@@ -75,7 +75,7 @@ export function SubmissionHistory() {
                     </Card>
                 ) : (
                     submissions.map((sub) => {
-                        const status = statusConfig[sub.status] ?? statusConfig[1];
+                        const status = statusConfig[sub.status] ?? statusConfig[1]!;
                         const StatusIcon = status.icon;
 
                         return (

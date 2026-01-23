@@ -68,7 +68,7 @@ export function SubmissionDetailPage() {
         return <div className="text-center text-slate-500 mt-20">未找到提交记录</div>;
     }
 
-    const status = statusConfig[detail.status] ?? statusConfig[1];
+    const status = statusConfig[detail.status] ?? statusConfig[1]!;
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
