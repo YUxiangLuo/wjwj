@@ -240,7 +240,7 @@ export function GradingDetail() {
                                 </div>
                                 <div className="prose prose-invert max-w-none">
                                     {data.reportContent ? (
-                                        <pre className="whitespace-pre-wrap font-sans text-sm text-slate-300 leading-relaxed bg-slate-950/50 p-6 rounded-lg border border-slate-800/50">{data.reportContent}</pre>
+                                        <pre className="whitespace-pre-wrap break-all font-sans text-sm text-slate-300 leading-relaxed bg-slate-950/50 p-6 rounded-lg border border-slate-800/50">{data.reportContent}</pre>
                                     ) : (
                                         <div className="text-slate-500 text-center py-20 bg-slate-950/30 rounded-lg border border-dashed border-slate-800">
                                             暂无报告内容

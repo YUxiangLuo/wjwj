@@ -61,7 +61,7 @@ export function Login() {
                         <div className="h-10 w-10 rounded-xl bg-indigo-500 shadow-lg shadow-indigo-500/30 flex items-center justify-center text-white">
                             <FlaskConical className="h-6 w-6" />
                         </div>
-                        <h1 className="text-xl font-bold text-white tracking-tight">Virtual Lab</h1>
+                        <h1 className="text-xl font-bold text-white tracking-tight">统计学虚拟仿真实验平台</h1>
                     </div>
                 </div>
 
@@ -151,9 +151,9 @@ export function Login() {
                     </form>
 
                     <div className="mt-8 text-center text-sm text-slate-500">
-                        <Link to="/admin" className="hover:text-indigo-400 transition-colors mx-2">管理员登录</Link>
+                        <a href="/admin/login" className="hover:text-indigo-400 transition-colors mx-2">管理员登录</a>
                         <span>|</span>
-                        <Link to="/teacher" className="hover:text-indigo-400 transition-colors mx-2">教师登录</Link>
+                        <a href="/teacher/login" className="hover:text-indigo-400 transition-colors mx-2">教师登录</a>
                     </div>
                 </div>
             </div>

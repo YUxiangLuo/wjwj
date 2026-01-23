@@ -11,52 +11,54 @@ import { inArray } from "drizzle-orm";
 import { readdir, stat, unlink } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { createBackupArtifacts } from "./admin/backup";
+import { redirect } from "react-router-dom";
 
 type RouteRequest = Request & { params: Record<string, string> };
 
 const routes = {
-    "/student": studentPage,
-    "/student/*": studentPage,
+  "/": redirect("/student"),
+  "/student": studentPage,
+  "/student/*": studentPage,
 
-    // Admin panel
-    "/admin": adminPage,
-    "/admin/*": adminPage,
+  // Admin panel
+  "/admin": adminPage,
+  "/admin/*": adminPage,
 
-    // Teacher panel
-    "/teacher": teacherPage,
-    "/teacher/*": teacherPage,
+  // Teacher panel
+  "/teacher": teacherPage,
+  "/teacher/*": teacherPage,
 
-    // Admin API routes
-    ...adminApiRoutes,
+  // Admin API routes
+  ...adminApiRoutes,
 
-    // Student API routes
-    ...studentApiRoutes,
+  // Student API routes
+  ...studentApiRoutes,
 
-    // Teacher API routes
-    ...teacherApiRoutes,
+  // Teacher API routes
+  ...teacherApiRoutes,
 
-    // API endpoints (example)
-    "/api/hello": {
-      async GET(req: Request) {
-        return Response.json({
-          message: "Hello, world!",
-          method: "GET",
-        });
-      },
-      async PUT(req: Request) {
-        return Response.json({
-          message: "Hello, world!",
-          method: "PUT",
-        });
-      },
-    },
-
-    "/api/hello/:name": async (req: RouteRequest) => {
-      const name = req.params.name;
+  // API endpoints (example)
+  "/api/hello": {
+    async GET(req: Request) {
       return Response.json({
-        message: `Hello, ${name}!`,
+        message: "Hello, world!",
+        method: "GET",
       });
     },
+    async PUT(req: Request) {
+      return Response.json({
+        message: "Hello, world!",
+        method: "PUT",
+      });
+    },
+  },
+
+  "/api/hello/:name": async (req: RouteRequest) => {
+    const name = req.params.name;
+    return Response.json({
+      message: `Hello, ${name}!`,
+    });
+  },
 };
 
 const server = serve({
