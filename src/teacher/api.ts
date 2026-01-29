@@ -172,12 +172,24 @@ async function notifyStudentById(
     });
 }
 
-async function requireTeacherAuth(req: Request) {
+// 用户类型：教师或助教
+interface AuthUser {
+    id: number;
+    type: "teacher" | "assistant";
+    name: string;
+    employeeId?: string;
+    account?: string;
+    isFirstLogin: number;
+    creatorTeacherId?: number; // 仅助教有此字段
+}
+
+async function requireTeacherAuth(req: Request): Promise<{ user: AuthUser | null; error: Response | null; session?: any }> {
     const token = getCookieValue(req, TEACHER_SESSION_COOKIE) ?? req.headers.get("x-teacher-session");
     if (!token) {
-        return { teacher: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+        return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
     }
 
+    // 先尝试查找教师会话
     const [session] = await db
         .select()
         .from(userSession)
@@ -189,53 +201,105 @@ async function requireTeacherAuth(req: Request) {
         )
         .limit(1);
 
-    if (!session) {
-        return { teacher: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+    if (session) {
+        const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
+        if (expiresAt && expiresAt <= new Date()) {
+            await db.delete(userSession).where(eq(userSession.sessionToken, token));
+            return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+        }
+
+        const [t] = await db
+            .select({ id: teacher.id, employeeId: teacher.employeeId, name: teacher.name, isFirstLogin: teacher.isFirstLogin })
+            .from(teacher)
+            .where(eq(teacher.id, session.userId));
+
+        if (!t) {
+            return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+        }
+
+        const now = new Date();
+        const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
+        const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+        await db.update(userSession).set({ lastActiveAt: now, expiresAt: newExpiresAt }).where(eq(userSession.id, session.id));
+
+        return {
+            user: {
+                id: t.id,
+                type: "teacher",
+                name: t.name,
+                employeeId: t.employeeId,
+                isFirstLogin: t.isFirstLogin,
+            },
+            error: null,
+            session: { ...session, expiresAt: newExpiresAt }
+        };
     }
 
-    const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
-    if (expiresAt && expiresAt <= new Date()) {
-        await db.delete(userSession).where(eq(userSession.sessionToken, token));
-        return { teacher: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
-    }
-
-    const [t] = await db
-        .select({ id: teacher.id, employeeId: teacher.employeeId, name: teacher.name, isFirstLogin: teacher.isFirstLogin })
-        .from(teacher)
-        .where(eq(teacher.id, session.userId));
-
-    if (!t) {
-        return { teacher: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
-    }
-
-    const now = new Date();
-    const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
-    const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-    await db.update(userSession).set({ lastActiveAt: now, expiresAt: newExpiresAt }).where(eq(userSession.id, session.id));
-
-    return { teacher: t, error: null, session: { ...session, expiresAt: newExpiresAt } };
-}
-
-async function getCurrentTeacherId(req: Request): Promise<number | null> {
-    const token = getCookieValue(req, TEACHER_SESSION_COOKIE) ?? req.headers.get("x-teacher-session");
-    if (!token) return null;
-    const [session] = await db
-        .select({ userId: userSession.userId, expiresAt: userSession.expiresAt })
+    // 再尝试查找助教会话
+    const [assistantSession] = await db
+        .select()
         .from(userSession)
         .where(
             and(
                 eq(userSession.sessionToken, token),
-                eq(userSession.userType, TEACHER_USER_TYPE)
+                eq(userSession.userType, ASSISTANT_USER_TYPE)
             )
         )
         .limit(1);
-    if (!session) return null;
-    const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
-    if (expiresAt && expiresAt <= new Date()) {
-        await db.delete(userSession).where(eq(userSession.sessionToken, token));
-        return null;
+
+    if (assistantSession) {
+        const expiresAt = assistantSession.expiresAt ? new Date(assistantSession.expiresAt) : null;
+        if (expiresAt && expiresAt <= new Date()) {
+            await db.delete(userSession).where(eq(userSession.sessionToken, token));
+            return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+        }
+
+        const [a] = await db
+            .select({ id: assistant.id, account: assistant.account, name: assistant.name, isFirstLogin: assistant.isFirstLogin, creatorTeacherId: assistant.creatorTeacherId })
+            .from(assistant)
+            .where(eq(assistant.id, assistantSession.userId));
+
+        if (!a) {
+            return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+        }
+
+        const now = new Date();
+        const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
+        const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+        await db.update(userSession).set({ lastActiveAt: now, expiresAt: newExpiresAt }).where(eq(userSession.id, assistantSession.id));
+
+        return {
+            user: {
+                id: a.id,
+                type: "assistant",
+                name: a.name,
+                account: a.account,
+                isFirstLogin: a.isFirstLogin,
+                creatorTeacherId: a.creatorTeacherId,
+            },
+            error: null,
+            session: { ...assistantSession, expiresAt: newExpiresAt }
+        };
     }
-    return session.userId ?? null;
+
+    return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+}
+
+async function getCurrentUser(req: Request): Promise<AuthUser | null> {
+    const auth = await requireTeacherAuth(req);
+    return auth.user;
+}
+
+async function getCurrentTeacherId(req: Request): Promise<number | null> {
+    const user = await getCurrentUser(req);
+    if (user?.type === "teacher") return user.id;
+    if (user?.type === "assistant") return user.creatorTeacherId ?? null;
+    return null;
+}
+
+async function getCurrentAssistantId(req: Request): Promise<number | null> {
+    const user = await getCurrentUser(req);
+    return user?.type === "assistant" ? user.id : null;
 }
 
 function withTeacherAuth(routes: RouteDefinition): RouteDefinition {
@@ -285,77 +349,156 @@ const teacherLoginRoutes: RouteDefinition = {
             return error("请输入工号和密码", "VALIDATION_ERROR", 400);
         }
 
+        // 先尝试查找教师
         const [t] = await db.select().from(teacher).where(eq(teacher.employeeId, employeeId));
-        if (!t) {
-            return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
+        if (t) {
+            return handleTeacherLogin(req, t, password);
         }
 
-        const now = new Date();
-        const maxAttempts = await getConfigNumber("login.max_fail_count", TEACHER_MAX_LOGIN_ATTEMPTS);
-        const lockMinutes = await getConfigNumber("login.lock_duration_minutes", TEACHER_LOCK_MINUTES);
-        if (t.lockedUntil && new Date(t.lockedUntil) > now) {
-            return error("账号已锁定，请稍后再试", "ACCOUNT_LOCKED", 403);
+        // 再尝试查找助教（使用 account 字段）
+        const [a] = await db.select().from(assistant).where(eq(assistant.account, employeeId));
+        if (a) {
+            return handleAssistantLogin(req, a, password);
         }
 
-        const isValid = await Bun.password.verify(password, t.password);
-        if (!isValid) {
-            const failCount = (t.loginFailCount ?? 0) + 1;
-            const updateData: any = { loginFailCount: failCount };
-            if (failCount >= maxAttempts) {
-                updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
-            }
-            await db.update(teacher).set(updateData).where(eq(teacher.id, t.id));
-            return error(
-                failCount >= maxAttempts
-                    ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
-                    : "工号或密码错误",
-                "INVALID_CREDENTIALS",
-                401
-            );
-        }
-
-        await db.update(teacher).set({ loginFailCount: 0, lockedUntil: null }).where(eq(teacher.id, t.id));
-
-        const token = crypto.randomUUID();
-        const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
-        const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-
-        // 单设备登录：清理旧 session
-        await db.delete(userSession).where(and(eq(userSession.userType, TEACHER_USER_TYPE), eq(userSession.userId, t.id)));
-
-        await db.insert(userSession).values({
-            sessionToken: token,
-            userType: TEACHER_USER_TYPE,
-            userId: t.id,
-            deviceInfo: req.headers.get("user-agent") ?? "",
-            expiresAt,
-            lastActiveAt: now,
-        });
-
-        await db.insert(loginLog).values({
-            userType: TEACHER_USER_TYPE,
-            userId: t.id,
-            ipAddress: getClientIp(req),
-            userAgent: req.headers.get("user-agent") ?? "",
-        });
-
-        const secure = isSecureRequest(req);
-        return json(
-            {
-                user: { id: t.id, employeeId: t.employeeId, name: t.name, isFirstLogin: t.isFirstLogin },
-                expiresAt,
-            },
-            200,
-            { "Set-Cookie": buildSessionCookie(token, expiresAt, secure) }
-        );
+        return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
     },
 };
+
+async function handleTeacherLogin(req: Request, t: typeof teacher.$inferSelect, password: string): Promise<Response> {
+    const now = new Date();
+    const maxAttempts = await getConfigNumber("login.max_fail_count", TEACHER_MAX_LOGIN_ATTEMPTS);
+    const lockMinutes = await getConfigNumber("login.lock_duration_minutes", TEACHER_LOCK_MINUTES);
+
+    if (t.lockedUntil && new Date(t.lockedUntil) > now) {
+        return error("账号已锁定，请稍后再试", "ACCOUNT_LOCKED", 403);
+    }
+
+    const isValid = await Bun.password.verify(password, t.password);
+    if (!isValid) {
+        const failCount = (t.loginFailCount ?? 0) + 1;
+        const updateData: any = { loginFailCount: failCount };
+        if (failCount >= maxAttempts) {
+            updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
+        }
+        await db.update(teacher).set(updateData).where(eq(teacher.id, t.id));
+        return error(
+            failCount >= maxAttempts
+                ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
+                : "工号或密码错误",
+            "INVALID_CREDENTIALS",
+            401
+        );
+    }
+
+    await db.update(teacher).set({ loginFailCount: 0, lockedUntil: null }).where(eq(teacher.id, t.id));
+
+    const token = crypto.randomUUID();
+    const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
+    const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+
+    // 单设备登录：清理旧 session
+    await db.delete(userSession).where(and(eq(userSession.userType, TEACHER_USER_TYPE), eq(userSession.userId, t.id)));
+
+    await db.insert(userSession).values({
+        sessionToken: token,
+        userType: TEACHER_USER_TYPE,
+        userId: t.id,
+        deviceInfo: req.headers.get("user-agent") ?? "",
+        expiresAt,
+        lastActiveAt: now,
+    });
+
+    await db.insert(loginLog).values({
+        userType: TEACHER_USER_TYPE,
+        userId: t.id,
+        ipAddress: getClientIp(req),
+        userAgent: req.headers.get("user-agent") ?? "",
+    });
+
+    const secure = isSecureRequest(req);
+    return json(
+        {
+            user: { id: t.id, employeeId: t.employeeId, name: t.name, isFirstLogin: t.isFirstLogin, type: "teacher" },
+            expiresAt,
+        },
+        200,
+        { "Set-Cookie": buildSessionCookie(token, expiresAt, secure) }
+    );
+}
+
+async function handleAssistantLogin(req: Request, a: typeof assistant.$inferSelect, password: string): Promise<Response> {
+    const now = new Date();
+    const maxAttempts = await getConfigNumber("login.max_fail_count", TEACHER_MAX_LOGIN_ATTEMPTS);
+    const lockMinutes = await getConfigNumber("login.lock_duration_minutes", TEACHER_LOCK_MINUTES);
+
+    if (a.lockedUntil && new Date(a.lockedUntil) > now) {
+        return error("账号已锁定，请稍后再试", "ACCOUNT_LOCKED", 403);
+    }
+
+    // 检查助教状态
+    if (a.status !== 1) {
+        return error("账号已被停用，请联系教师", "ACCOUNT_DISABLED", 403);
+    }
+
+    const isValid = await Bun.password.verify(password, a.password);
+    if (!isValid) {
+        const failCount = (a.loginFailCount ?? 0) + 1;
+        const updateData: any = { loginFailCount: failCount };
+        if (failCount >= maxAttempts) {
+            updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
+        }
+        await db.update(assistant).set(updateData).where(eq(assistant.id, a.id));
+        return error(
+            failCount >= maxAttempts
+                ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
+                : "工号或密码错误",
+            "INVALID_CREDENTIALS",
+            401
+        );
+    }
+
+    await db.update(assistant).set({ loginFailCount: 0, lockedUntil: null }).where(eq(assistant.id, a.id));
+
+    const token = crypto.randomUUID();
+    const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
+    const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+
+    // 单设备登录：清理旧 session
+    await db.delete(userSession).where(and(eq(userSession.userType, ASSISTANT_USER_TYPE), eq(userSession.userId, a.id)));
+
+    await db.insert(userSession).values({
+        sessionToken: token,
+        userType: ASSISTANT_USER_TYPE,
+        userId: a.id,
+        deviceInfo: req.headers.get("user-agent") ?? "",
+        expiresAt,
+        lastActiveAt: now,
+    });
+
+    await db.insert(loginLog).values({
+        userType: ASSISTANT_USER_TYPE,
+        userId: a.id,
+        ipAddress: getClientIp(req),
+        userAgent: req.headers.get("user-agent") ?? "",
+    });
+
+    const secure = isSecureRequest(req);
+    return json(
+        {
+            user: { id: a.id, account: a.account, name: a.name, isFirstLogin: a.isFirstLogin, type: "assistant", creatorTeacherId: a.creatorTeacherId },
+            expiresAt,
+        },
+        200,
+        { "Set-Cookie": buildSessionCookie(token, expiresAt, secure) }
+    );
+}
 
 const teacherMeRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireTeacherAuth(req);
         if (auth.error) return auth.error;
-        return json(auth.teacher!);
+        return json(auth.user!);
     },
 };
 
@@ -387,26 +530,32 @@ const teacherPasswordRoutes: RouteDefinition = {
             return error("新密码不能与当前密码相同", "VALIDATION_ERROR", 400);
         }
 
-        const policy = validateTeacherPassword(newPassword, auth.teacher!.employeeId ?? "");
+        const user = auth.user!;
+        const accountId = user.type === "teacher" ? user.employeeId : user.account;
+        const policy = validateTeacherPassword(newPassword, accountId ?? "");
         if (!policy.isValid) {
             return error("新密码需至少8位且包含字母、数字、特殊字符，且不包含工号", "VALIDATION_ERROR", 400);
         }
 
-        const [t] = await db.select().from(teacher).where(eq(teacher.id, auth.teacher!.id));
-        if (!t) {
-            return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
-        }
+        if (user.type === "teacher") {
+            const [t] = await db.select().from(teacher).where(eq(teacher.id, user.id));
+            if (!t) return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
 
-        const isValid = await Bun.password.verify(currentPassword, t.password);
-        if (!isValid) {
-            return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
-        }
+            const isValid = await Bun.password.verify(currentPassword, t.password);
+            if (!isValid) return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
 
-        const hashed = await Bun.password.hash(newPassword);
-        await db
-            .update(teacher)
-            .set({ password: hashed, isFirstLogin: 0 })
-            .where(eq(teacher.id, t.id));
+            const hashed = await Bun.password.hash(newPassword);
+            await db.update(teacher).set({ password: hashed, isFirstLogin: 0 }).where(eq(teacher.id, t.id));
+        } else {
+            const [a] = await db.select().from(assistant).where(eq(assistant.id, user.id));
+            if (!a) return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
+
+            const isValid = await Bun.password.verify(currentPassword, a.password);
+            if (!isValid) return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
+
+            const hashed = await Bun.password.hash(newPassword);
+            await db.update(assistant).set({ password: hashed, isFirstLogin: 0 }).where(eq(assistant.id, a.id));
+        }
 
         return json({ success: true });
     },
@@ -1764,20 +1913,38 @@ const taskExtendRoutes: RouteDefinition = {
 // Grading API
 // ============================================================
 
+// 获取当前用户可以访问的班级ID列表（教师是所有班级，助教是分配的班级）
+async function getAccessibleClassIds(req: Request): Promise<{ classIds: number[]; isAssistant: boolean; userId: number } | null> {
+    const user = await getCurrentUser(req);
+    if (!user) return null;
+
+    if (user.type === "teacher") {
+        const classes = await db
+            .select({ id: class_.id })
+            .from(class_)
+            .where(eq(class_.teacherId, user.id));
+        return { classIds: classes.map(c => c.id), isAssistant: false, userId: user.id };
+    } else {
+        const assignedClasses = await db
+            .select({ classId: assistantClass.classId })
+            .from(assistantClass)
+            .where(eq(assistantClass.assistantId, user.id));
+        return { classIds: assignedClasses.map(c => c.classId), isAssistant: true, userId: user.id };
+    }
+}
+
 const gradingRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const access = await getAccessibleClassIds(req);
+        if (!access) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const { classIds, isAssistant, userId } = access;
+
+        if (classIds.length === 0) {
+            return json([]); // 无权限访问任何班级
+        }
+
         const params = getSearchParams(req);
-
-        // Check if ID is provided in URL path (handled by router wrapper usually, but here we might need to parse from URL if using simple objects)
-        // Wait, the current router implementation (server.ts) likely matches prefixes.
-        // If we want /api/teacher/grading/:id, we need to handle it.
-        // For simplicity with the current map-based router, we might need a separate route entry or regex matching in server.ts.
-        // BUT, looking at server.ts (assumed), it matches exact paths.
-        // Let's add a new route entry for details.
-
-        const status = params.get("status"); // 'pending', 'graded', etc.
+        const status = params.get("status");
 
         let query = db
             .select({
@@ -1788,7 +1955,10 @@ const gradingRoutes: RouteDefinition = {
                 className: class_.name,
                 submittedAt: submission.submittedAt,
                 status: submission.status,
-                score: submission.totalScore
+                score: submission.totalScore,
+                gradedByType: submission.gradedByType,
+                gradedById: submission.gradedById,
+                gradedAt: submission.gradedAt,
             })
             .from(submission)
             .innerJoin(experiment, eq(submission.experimentId, experiment.id))
@@ -1796,28 +1966,62 @@ const gradingRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(eq(class_.teacherId, currentTeacherId))
+            .where(sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`)
             .orderBy(desc(submission.submittedAt))
             .$dynamic();
 
         if (status === "pending") {
-            // 1 = Pending
             query = query.where(eq(submission.status, 1));
         } else if (status === "graded") {
-            // 2 = Graded
             query = query.where(eq(submission.status, 2));
         }
 
         const rows = await query;
-        return json(rows);
+
+        // 获取批改人信息
+        const graderIds = rows
+            .filter(r => r.gradedByType === 2 && r.gradedById)
+            .map(r => r.gradedById!)
+            .filter((id, idx, arr) => arr.indexOf(id) === idx);
+
+        const assistantIds = rows
+            .filter(r => r.gradedByType === 3 && r.gradedById)
+            .map(r => r.gradedById!)
+            .filter((id, idx, arr) => arr.indexOf(id) === idx);
+
+        const teachers = graderIds.length > 0
+            ? await db.select({ id: teacher.id, name: teacher.name }).from(teacher).where(sql`${teacher.id} IN (${sql.join(graderIds, sql`, `)})`)
+            : [];
+
+        const assistants = assistantIds.length > 0
+            ? await db.select({ id: assistant.id, name: assistant.name }).from(assistant).where(sql`${assistant.id} IN (${sql.join(assistantIds, sql`, `)})`)
+            : [];
+
+        const teacherMap = new Map(teachers.map(t => [t.id, t.name]));
+        const assistantMap = new Map(assistants.map(a => [a.id, a.name]));
+
+        // 组装结果，添加批改人名称
+        const result = rows.map(row => ({
+            ...row,
+            gradedByName: row.gradedByType === 2
+                ? teacherMap.get(row.gradedById ?? 0) ?? "教师"
+                : row.gradedByType === 3
+                    ? assistantMap.get(row.gradedById ?? 0) ?? "助教"
+                    : null,
+        }));
+
+        return json(result);
     }
 };
 
 const gradingDetailRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
-        // Parse ID from URL: /api/teacher/grading/123
+        const access = await getAccessibleClassIds(req);
+        if (!access) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const { classIds, isAssistant, userId } = access;
+
+        if (classIds.length === 0) return error("无权限访问", "FORBIDDEN", 403);
+
         const urlForId = new URL(req.url);
         const pathParts = urlForId.pathname.split("/");
         const submissionId = Number(pathParts[pathParts.length - 1]);
@@ -1840,12 +2044,10 @@ const gradingDetailRoutes: RouteDefinition = {
                 lockedAt: submission.lockedAt,
                 experimentId: experiment.id,
                 experimentStatus: experiment.status,
-                // Experiment Data
                 reportContent: experiment.reportContent,
                 samplePlan: experiment.samplePlan,
                 questionnaire: experiment.questionnaire,
                 samplingResults: experiment.samplingResults,
-                // Grading Info
                 questionnairePdfPath: submission.questionnairePdfPath,
                 reportPdfPath: submission.reportPdfPath,
                 scoreQuestionnaire: submission.scoreQuestionnaire,
@@ -1854,7 +2056,9 @@ const gradingDetailRoutes: RouteDefinition = {
                 totalScore: submission.totalScore,
                 teacherComment: submission.teacherComment,
                 rejectReason: submission.rejectReason,
-                gradedAt: submission.gradedAt
+                gradedAt: submission.gradedAt,
+                gradedByType: submission.gradedByType,
+                gradedById: submission.gradedById,
             })
             .from(submission)
             .innerJoin(experiment, eq(submission.experimentId, experiment.id))
@@ -1862,18 +2066,20 @@ const gradingDetailRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(eq(submission.id, submissionId), eq(class_.teacherId, currentTeacherId)));
+            .where(and(eq(submission.id, submissionId), sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`));
 
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
 
         const now = new Date();
         const lockExpired = isLockExpired(row.lockedAt);
-        const lockedByOther = row.lockedById && row.lockedById !== currentTeacherId && !lockExpired;
+        // 检查是否被其他人锁定
+        const myUserType = isAssistant ? ASSISTANT_USER_TYPE : TEACHER_USER_TYPE;
+        const lockedByOther = row.lockedById && (row.lockedByType !== myUserType || row.lockedById !== userId) && !lockExpired;
 
         if (!lockedByOther && row.status === 1) {
             await db.update(submission).set({
-                lockedByType: 2,
-                lockedById: currentTeacherId,
+                lockedByType: myUserType,
+                lockedById: userId,
                 lockedAt: now,
             }).where(eq(submission.id, submissionId));
         }
@@ -1888,16 +2094,32 @@ const gradingDetailRoutes: RouteDefinition = {
             report: weightConfig?.report ?? 40,
         };
 
+        // 获取批改人名称
+        let gradedByName = null;
+        if (row.gradedByType === 2 && row.gradedById) {
+            const [t] = await db.select({ name: teacher.name }).from(teacher).where(eq(teacher.id, row.gradedById));
+            gradedByName = t?.name ?? "教师";
+        } else if (row.gradedByType === 3 && row.gradedById) {
+            const [a] = await db.select({ name: assistant.name }).from(assistant).where(eq(assistant.id, row.gradedById));
+            gradedByName = a?.name ?? "助教";
+        }
+
         return json({
             ...row,
             weights,
             readonly: lockedByOther,
+            isAssistant,
+            gradedByName,
         });
     },
 
     async POST(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const access = await getAccessibleClassIds(req);
+        if (!access) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const { classIds, isAssistant, userId } = access;
+
+        if (classIds.length === 0) return error("无权限访问", "FORBIDDEN", 403);
+
         const urlForId = new URL(req.url);
         const pathParts = urlForId.pathname.split("/");
         const submissionId = Number(pathParts[pathParts.length - 1]);
@@ -1939,12 +2161,13 @@ const gradingDetailRoutes: RouteDefinition = {
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
             .innerJoin(student, eq(experiment.studentId, student.id))
-            .where(and(eq(submission.id, submissionId), eq(class_.teacherId, currentTeacherId)));
+            .where(and(eq(submission.id, submissionId), sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`));
 
         if (!detail) return error("提交记录不存在", "NOT_FOUND", 404);
 
+        const myUserType = isAssistant ? ASSISTANT_USER_TYPE : TEACHER_USER_TYPE;
         const lockExpired = isLockExpired(detail.lockedAt);
-        if (detail.lockedById && detail.lockedById !== currentTeacherId && !lockExpired) {
+        if (detail.lockedById && (detail.lockedByType !== myUserType || detail.lockedById !== userId) && !lockExpired) {
             return error("该作业正在被他人批改", "LOCKED", 423);
         }
 
@@ -1977,8 +2200,8 @@ const gradingDetailRoutes: RouteDefinition = {
             rejectReason: body.status === 3 ? (body.rejectReason ?? "") : null,
             status: body.status,
             gradedAt: new Date(),
-            gradedById: currentTeacherId,
-            gradedByType: 2,
+            gradedById: userId,
+            gradedByType: myUserType,
             lockedById: null,
             lockedByType: null,
             lockedAt: null,
@@ -2057,14 +2280,16 @@ const teacherPdfDownloadRoutes: RouteDefinition = {
 };
 
 // ============================================================
-// Notifications API - Teacher
+// Notifications API - Teacher & Assistant
 // ============================================================
 
 const teacherNotificationsRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireTeacherAuth(req);
         if (auth.error) return auth.error;
-        const currentTeacher = auth.teacher!;
+        const currentUser = auth.user!;
+
+        const receiverType = currentUser.type === "teacher" ? 2 : 3;
 
         const items = await db
             .select({
@@ -2078,7 +2303,7 @@ const teacherNotificationsRoutes: RouteDefinition = {
                 relatedId: notification.relatedId,
             })
             .from(notification)
-            .where(and(eq(notification.receiverType, 2), eq(notification.receiverId, currentTeacher.id)))
+            .where(and(eq(notification.receiverType, receiverType), eq(notification.receiverId, currentUser.id)))
             .orderBy(desc(notification.createdAt))
             .limit(50);
 
@@ -2086,8 +2311,8 @@ const teacherNotificationsRoutes: RouteDefinition = {
             .select({ count: count() })
             .from(notification)
             .where(and(
-                eq(notification.receiverType, 2),
-                eq(notification.receiverId, currentTeacher.id),
+                eq(notification.receiverType, receiverType),
+                eq(notification.receiverId, currentUser.id),
                 eq(notification.isRead, 0)
             ));
 
@@ -2099,16 +2324,18 @@ const teacherNotificationReadRoutes: RouteDefinition = {
     async PUT(req) {
         const auth = await requireTeacherAuth(req);
         if (auth.error) return auth.error;
-        const currentTeacher = auth.teacher!;
+        const currentUser = auth.user!;
 
         const url = new URL(req.url);
         const parts = url.pathname.split("/");
         const id = Number(parts[parts.length - 2]);
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
+        const receiverType = currentUser.type === "teacher" ? 2 : 3;
+
         await db.update(notification)
             .set({ isRead: 1, readAt: new Date() })
-            .where(and(eq(notification.id, id), eq(notification.receiverType, 2), eq(notification.receiverId, currentTeacher.id)));
+            .where(and(eq(notification.id, id), eq(notification.receiverType, receiverType), eq(notification.receiverId, currentUser.id)));
 
         return json({ success: true });
     }
@@ -2118,11 +2345,13 @@ const teacherNotificationReadAllRoutes: RouteDefinition = {
     async PUT(req) {
         const auth = await requireTeacherAuth(req);
         if (auth.error) return auth.error;
-        const currentTeacher = auth.teacher!;
+        const currentUser = auth.user!;
+
+        const receiverType = currentUser.type === "teacher" ? 2 : 3;
 
         await db.update(notification)
             .set({ isRead: 1, readAt: new Date() })
-            .where(and(eq(notification.receiverType, 2), eq(notification.receiverId, currentTeacher.id), eq(notification.isRead, 0)));
+            .where(and(eq(notification.receiverType, receiverType), eq(notification.receiverId, currentUser.id), eq(notification.isRead, 0)));
 
         return json({ success: true });
     }

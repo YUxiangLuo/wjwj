@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, AlertTriangle, ClipboardList, Search, FileEdit, XCircle, Clock } from "lucide-react";
-import { teacherApi, type GradingItem } from "../api-client";
+import { CheckCircle2, AlertTriangle, ClipboardList, Search, FileEdit, XCircle, Clock, UserCheck } from "lucide-react";
+import { teacherApi, type GradingItem, type TeacherUser } from "../api-client";
 
 export function GradingManagement() {
     const navigate = useNavigate();
@@ -16,6 +16,16 @@ export function GradingManagement() {
     const [filterStatus, setFilterStatus] = useState("all-status");
     const [filterClass, setFilterClass] = useState("all-class");
     const [searchTerm, setSearchTerm] = useState("");
+    const [currentUser, setCurrentUser] = useState<TeacherUser | null>(null);
+
+    useEffect(() => {
+        // 获取当前用户信息
+        teacherApi.getStats().then(res => {
+            if (res.success && res.data) {
+                // 从 stats API 可以推断用户类型，或者单独调用 me
+            }
+        });
+    }, []);
 
     useEffect(() => {
         loadGradingList();
@@ -34,11 +44,27 @@ export function GradingManagement() {
     const getStatusBadge = (status: number, score?: number | null) => {
         switch (status) {
             case 1: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"><Clock className="w-3 h-3 mr-1" /> 待批改</Badge>;
-            // case 0: return <Badge variant="outline" className="text-slate-400 border-slate-700">草稿</Badge>;
             case 2: return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</Badge>;
             case 3: return <Badge variant="destructive" className="bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"><XCircle className="w-3 h-3 mr-1" /> 已驳回</Badge>;
             default: return <Badge variant="outline" className="text-slate-400 border-slate-700">未知状态</Badge>;
         }
+    };
+
+    // 获取批改人显示
+    const getGraderBadge = (item: GradingItem) => {
+        if (item.status !== 2 && item.status !== 3) return null;
+        if (!item.gradedByName) return null;
+        
+        const isTeacher = item.gradedByType === 2;
+        return (
+            <Badge 
+                variant="outline" 
+                className={`text-xs ${isTeacher ? 'text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-purple-400 border-purple-500/30 bg-purple-500/10'}`}
+            >
+                <UserCheck className="w-3 h-3 mr-1" />
+                {isTeacher ? '教师' : '助教'}: {item.gradedByName}
+            </Badge>
+        );
     };
 
     const summary = useMemo(() => {
@@ -184,8 +210,9 @@ export function GradingManagement() {
                                                 <div className="text-sm text-slate-400 mt-1">{sub.className} · <span className="text-indigo-400">{sub.topic}</span></div>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end gap-1">
+                                        <div className="flex flex-col items-end gap-2">
                                             {getStatusBadge(sub.status, sub.score)}
+                                            {getGraderBadge(sub)}
                                             <div className="text-xs text-slate-500 mt-1">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : "-"}</div>
                                         </div>
                                     </div>

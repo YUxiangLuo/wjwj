@@ -92,6 +92,10 @@ export interface GradingItem {
     submittedAt: string;
     status: number; // 0=draft, 1=pending, 2=graded, 3=rejected
     score: number | null;
+    gradedByType?: number | null; // 2=教师, 3=助教
+    gradedById?: number | null;
+    gradedByName?: string | null; // 批改人名称
+    gradedAt?: string | null;
 }
 
 export interface SubmissionDetail extends GradingItem {
@@ -107,10 +111,10 @@ export interface SubmissionDetail extends GradingItem {
     scoreReport: number | null;
     totalScore: number | null;
     teacherComment: string | null;
-    gradedAt: string | null;
     rejectReason?: string | null;
     weights?: { questionnaire: number; process: number; report: number };
     readonly?: boolean;
+    isAssistant?: boolean; // 当前用户是否是助教
 }
 
 export interface Student {
@@ -135,9 +139,12 @@ export interface Assistant {
 
 export interface TeacherUser {
     id: number;
-    employeeId: string;
+    employeeId?: string;
+    account?: string;
     name: string;
     isFirstLogin: number;
+    type: "teacher" | "assistant";
+    creatorTeacherId?: number; // 仅助教有此字段
 }
 
 export interface TeacherNotification {

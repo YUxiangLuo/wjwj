@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { BookOpen, Search, Layers, Loader2, FileText, CheckCircle2, ChevronRight, Upload, X } from "lucide-react";
+import { BookOpen, Search, Layers, Loader2, FileText, CheckCircle2, ChevronRight, Upload, X, Download, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -473,13 +473,35 @@ export function TopicManagement() {
 
                             {currentStep === 2 && (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                    <Label className="text-slate-300">上传总体数据（Excel）</Label>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-slate-300">上传总体数据（Excel）</Label>
+                                        <div className="flex items-center gap-3">
+                                            <a 
+                                                href="/templates/数据上传说明.md" 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                                            >
+                                                <HelpCircle className="w-3 h-3" />
+                                                数据规范
+                                            </a>
+                                            <a 
+                                                href="/templates/空白模板.csv" 
+                                                download
+                                                className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                                            >
+                                                <Download className="w-3 h-3" />
+                                                下载模板
+                                            </a>
+                                        </div>
+                                    </div>
                                     <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
                                         <Upload className="w-10 h-10 mx-auto text-slate-600 mb-4" />
                                         <p className="text-sm text-slate-400 mb-2">点击或拖拽上传 Excel 文件</p>
+                                        <p className="text-xs text-slate-500 mb-4">支持 .xlsx, .xls, .csv 格式，数据行数 1-100,000</p>
                                         <Input
                                             type="file"
-                                            accept=".xlsx,.xls"
+                                            accept=".xlsx,.xls,.csv"
                                             className="hidden"
                                             id="excel-upload"
                                             onChange={(e) => {
@@ -487,9 +509,11 @@ export function TopicManagement() {
                                                 if (file) handleExcelUpload(file);
                                             }}
                                         />
-                                        <Button variant="outline" onClick={() => document.getElementById('excel-upload')?.click()} className="mt-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-white">
-                                            选择文件
-                                        </Button>
+                                        <div className="flex items-center justify-center gap-3">
+                                            <Button variant="outline" onClick={() => document.getElementById('excel-upload')?.click()} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-white">
+                                                选择文件
+                                            </Button>
+                                        </div>
                                     </div>
                                     {uploadingExcel && <div className="flex items-center gap-2 text-sm text-indigo-400"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                     {excelInfo && (

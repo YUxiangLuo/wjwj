@@ -24,7 +24,7 @@ import { AssistantManagement } from "./pages/AssistantManagement";
 import { GradeExport } from "./pages/GradeExport";
 import { Login } from "./pages/Login";
 
-const menuItems = [
+const teacherMenuItems = [
     { path: "/", label: "首页概览", icon: LayoutDashboard },
     { path: "/class", label: "班级管理", icon: School },
     { path: "/topic", label: "课题管理", icon: BookOpen },
@@ -32,6 +32,11 @@ const menuItems = [
     { path: "/grading", label: "作业批改", icon: PenLine },
     { path: "/assistant", label: "助教管理", icon: Users },
     { path: "/export", label: "成绩导出", icon: Download },
+];
+
+const assistantMenuItems = [
+    { path: "/", label: "首页概览", icon: LayoutDashboard },
+    { path: "/grading", label: "作业批改", icon: PenLine },
 ];
 
 const pageTitles: Record<string, string> = {
@@ -183,8 +188,9 @@ export function TeacherApp() {
             setPasswordError("新密码需包含字母、数字和特殊字符");
             return;
         }
-        if (teacherUser?.employeeId && passwordForm.newPassword.includes(teacherUser.employeeId)) {
-            setPasswordError("新密码不能包含工号");
+        const accountId = teacherUser?.type === "teacher" ? teacherUser.employeeId : teacherUser?.account;
+        if (accountId && passwordForm.newPassword.includes(accountId)) {
+            setPasswordError("新密码不能包含工号/账号");
             return;
         }
         if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -256,9 +262,9 @@ export function TeacherApp() {
 
                 <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
                     <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        Main Menu
+                        {teacherUser?.type === "assistant" ? "助教菜单" : "教师菜单"}
                     </div>
-                    {menuItems.map((item) => {
+                    {(teacherUser?.type === "assistant" ? assistantMenuItems : teacherMenuItems).map((item) => {
                         const Icon = item.icon;
                         const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
 
@@ -290,13 +296,19 @@ export function TeacherApp() {
                 <div className="p-4 border-t border-slate-800">
                     <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50 border border-slate-800">
                         <Avatar className="w-9 h-9 border border-slate-700">
-                            <AvatarFallback className="bg-indigo-950 text-indigo-400 text-xs font-semibold">
-                                {teacherUser?.name?.charAt(0) ?? "师"}
+                            <AvatarFallback className={`text-xs font-semibold ${teacherUser?.type === "assistant" ? "bg-purple-950 text-purple-400" : "bg-indigo-950 text-indigo-400"}`}>
+                                {teacherUser?.name?.charAt(0) ?? (teacherUser?.type === "assistant" ? "助" : "师")}
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-slate-200 truncate">{teacherUser?.name ?? "教师"}</div>
-                            <div className="text-xs text-slate-500 truncate">{teacherUser?.employeeId ?? ""}</div>
+                            <div className="text-sm font-medium text-slate-200 truncate">{teacherUser?.name ?? (teacherUser?.type === "assistant" ? "助教" : "教师")}</div>
+                            <div className="text-xs text-slate-500 truncate">
+                                {teacherUser?.type === "assistant" ? (
+                                    <span className="text-purple-400">助教 · {teacherUser?.account ?? ""}</span>
+                                ) : (
+                                    teacherUser?.employeeId ?? ""
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -374,16 +386,16 @@ export function TeacherApp() {
                 <div className="flex-1 p-4 lg:p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
                     <div className="max-w-7xl mx-auto space-y-6">
                         <Routes>
-                            <Route index element={<Dashboard />} />
+                            <Route index element={teacherUser?.type === "assistant" ? <GradingManagement /> : <Dashboard />} />
                             <Route path="login" element={<Login />} />
-                            <Route path="class" element={<ClassManagement />} />
-                            <Route path="class/:classId/students" element={<StudentManagement />} />
-                            <Route path="topic" element={<TopicManagement />} />
-                            <Route path="task" element={<TaskManagement />} />
+                            <Route path="class" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <ClassManagement />} />
+                            <Route path="class/:classId/students" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <StudentManagement />} />
+                            <Route path="topic" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <TopicManagement />} />
+                            <Route path="task" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <TaskManagement />} />
                             <Route path="grading" element={<GradingManagement />} />
                             <Route path="grading/:submissionId" element={<GradingDetail />} />
-                            <Route path="assistant" element={<AssistantManagement />} />
-                            <Route path="export" element={<GradeExport />} />
+                            <Route path="assistant" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <AssistantManagement />} />
+                            <Route path="export" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <GradeExport />} />
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </div>

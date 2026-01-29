@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -185,6 +185,12 @@ export function GradingDetail() {
                     </div>
                 </div>
                 <div className="ml-auto flex items-center gap-3">
+                    {data.isAssistant && (
+                        <Badge variant="outline" className="text-purple-400 border-purple-500/30 bg-purple-500/10">
+                            <ShieldAlert className="w-3 h-3 mr-1" />
+                            助教模式
+                        </Badge>
+                    )}
                     {data.status === 1 && <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20">待批改</Badge>}
                     {data.status === 2 && <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">已批改</Badge>}
                     {data.status === 3 && <Badge className="bg-rose-500/10 text-rose-400 border-rose-500/20">已驳回</Badge>}
@@ -194,6 +200,13 @@ export function GradingDetail() {
                 <div className="px-6 py-2 text-sm text-rose-300 bg-rose-900/20 border-b border-rose-900/30 flex items-center justify-center">
                     <XCircle className="w-4 h-4 mr-2" />
                     该作业正在被他人批改中，当前为只读模式。
+                </div>
+            )}
+            {(data.status === 2 || data.status === 3) && data.gradedByName && (
+                <div className="px-6 py-2 text-sm text-blue-300 bg-blue-900/20 border-b border-blue-900/30 flex items-center justify-center">
+                    <UserCheck className="w-4 h-4 mr-2" />
+                    由 {data.gradedByType === 2 ? '教师' : '助教'} <span className="font-medium mx-1">{data.gradedByName}</span> 
+                    于 {data.gradedAt ? new Date(data.gradedAt).toLocaleString() : '-'} 批改
                 </div>
             )}
 
@@ -318,7 +331,7 @@ export function GradingDetail() {
                 {/* Right: Grading Form */}
                 <div className="w-96 bg-slate-900 border-l border-slate-800 shrink-0 flex flex-col shadow-xl z-10">
                     <div className="p-4 border-b border-slate-800 font-medium text-slate-100 bg-slate-900/50 flex items-center justify-between">
-                        <span>评分</span>
+                        <span>{data.isAssistant ? '助教评分' : '评分'}</span>
                         <div className="text-xs text-slate-500">权重总和: {weights.questionnaire + weights.process + weights.report}%</div>
                     </div>
                     <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
@@ -385,7 +398,7 @@ export function GradingDetail() {
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-slate-300">教师评语</Label>
+                                <Label className="text-slate-300">{data.isAssistant ? '助教评语' : '教师评语'}</Label>
                                 <Textarea
                                     rows={8}
                                     placeholder="请输入评语..."

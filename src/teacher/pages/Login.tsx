@@ -31,7 +31,7 @@ export function Login() {
     const handleLogin = async (credentials: { username: string; password: string }) => {
         setError(null);
         if (!credentials.username.trim() || !credentials.password) {
-            setError("请输入工号和密码");
+            setError("请输入工号/账号和密码");
             return;
         }
 
@@ -43,7 +43,12 @@ export function Login() {
             });
             if (res.success) {
                 sessionStorage.setItem("teacher_login_success", "1");
-                navigate("/", { replace: true });
+                // 如果是助教，直接跳转到批改页面
+                if (res.data?.user?.type === "assistant") {
+                    navigate("/grading", { replace: true });
+                } else {
+                    navigate("/", { replace: true });
+                }
             } else {
                 setError(res.error?.message ?? "登录失败");
             }

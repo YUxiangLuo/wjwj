@@ -37,7 +37,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
   const getRoleLabel = () => {
     switch (role) {
       case "student": return "学号";
-      case "teacher": return "工号";
+      case "teacher": return "工号/助教账号";
       case "admin": return "用户名";
       default: return "账号";
     }
@@ -140,7 +140,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
                 <Label htmlFor="username" className="text-slate-300 text-sm font-medium ml-1">{getRoleLabel()}</Label>
                 <Input
                   id="username"
-                  placeholder={`请输入${getRoleLabel()}`}
+                  placeholder={role === "teacher" ? "请输入工号或助教账号" : `请输入${getRoleLabel()}`}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
