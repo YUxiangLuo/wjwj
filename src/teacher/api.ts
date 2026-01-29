@@ -1413,7 +1413,7 @@ const topicDetailRoutes: RouteDefinition = {
         let excelInfo = null as null | { columns: string[]; preview: any[] };
         if (topicInfo?.excelFilePath) {
             try {
-                const buffer = await Bun.file(`${process.cwd()}/public/${topicInfo.excelFilePath}`).arrayBuffer();
+                const buffer = await Bun.file(`${process.cwd()}${topicInfo.excelFilePath}`).arrayBuffer();
                 const parsed = await parseExcelFile(buffer);
                 excelInfo = { columns: parsed.columns, preview: parsed.preview };
             } catch {
@@ -1475,8 +1475,8 @@ const topicExcelUploadRoutes: RouteDefinition = {
         }
 
         const fileName = `${Date.now()}_${file.name}`;
-        const filePath = `uploads/${fileName}`;
-        await Bun.write(`${process.cwd()}/public/${filePath}`, buffer);
+        const filePath = `/storage/uploads/${fileName}`;
+        await Bun.write(`${process.cwd()}${filePath}`, buffer);
 
         await db.update(topic).set({
             excelFilePath: filePath,
@@ -1530,7 +1530,7 @@ const topicFieldMappingRoutes: RouteDefinition = {
         const [topicInfo] = await db.select({ excelFilePath: topic.excelFilePath }).from(topic).where(eq(topic.id, id));
         if (!topicInfo?.excelFilePath) return error("请先上传总体数据", "VALIDATION_ERROR", 400);
 
-        const buffer = await Bun.file(`${process.cwd()}/public/${topicInfo.excelFilePath}`).arrayBuffer();
+        const buffer = await Bun.file(`${process.cwd()}${topicInfo.excelFilePath}`).arrayBuffer();
         const parsed = await parseExcelFile(buffer);
 
         for (const field of stratified) {
@@ -1590,8 +1590,8 @@ const topicAttachmentRoutes: RouteDefinition = {
 
         const buffer = await file.arrayBuffer();
         const fileName = `${Date.now()}_${file.name}`;
-        const filePath = `uploads/${fileName}`;
-        await Bun.write(`${process.cwd()}/public/${filePath}`, buffer);
+        const filePath = `/storage/uploads/${fileName}`;
+        await Bun.write(`${process.cwd()}${filePath}`, buffer);
 
         const [result] = await db.insert(topicAttachment).values({
             topicId: id,
@@ -2266,7 +2266,7 @@ const teacherPdfDownloadRoutes: RouteDefinition = {
         if (!path) return error("文件不存在", "NOT_FOUND", 404);
 
         const filePath = path.startsWith("/") ? path.slice(1) : path;
-        const file = Bun.file(`${process.cwd()}/public/${filePath}`);
+        const file = Bun.file(`${process.cwd()}${filePath}`);
         const exists = await file.exists();
         if (!exists) return error("文件不存在", "NOT_FOUND", 404);
 

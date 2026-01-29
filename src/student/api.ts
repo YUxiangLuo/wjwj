@@ -947,7 +947,7 @@ import { createWriteStream } from "node:fs";
 import PDFDocument from "pdfkit";
 
 async function readPopulationData(filePath: string): Promise<any[]> {
-    const fullPath = path.join(process.cwd(), "public", filePath);
+    const fullPath = path.join(process.cwd(), filePath);
     try {
         const fileBuffer = await fs.readFile(fullPath);
         const workbook = XLSX.read(fileBuffer, { type: "buffer" });
@@ -1073,7 +1073,7 @@ function schedulePdfGeneration(params: {
 
     const attempt = async (count: number) => {
         try {
-            const outputDir = path.join(process.cwd(), "public", "uploads", "submissions");
+            const outputDir = path.join(process.cwd(), "storage", "uploads", "submissions");
             const baseName = `submission-${params.submissionId}`;
             const questionnairePath = path.join(outputDir, `${baseName}-questionnaire.pdf`);
             const reportPath = path.join(outputDir, `${baseName}-report.pdf`);
@@ -1094,7 +1094,7 @@ function schedulePdfGeneration(params: {
                         submittedAt: new Date(),
                     },
                 });
-                questionnairePdfPath = `/uploads/submissions/${baseName}-questionnaire.pdf`;
+                questionnairePdfPath = `/storage/uploads/submissions/${baseName}-questionnaire.pdf`;
             }
 
             if (params.reportContent) {
@@ -1107,7 +1107,7 @@ function schedulePdfGeneration(params: {
                         submittedAt: new Date(),
                     },
                 });
-                reportPdfPath = `/uploads/submissions/${baseName}-report.pdf`;
+                reportPdfPath = `/storage/uploads/submissions/${baseName}-report.pdf`;
             }
 
             await db.update(submission).set({
@@ -1940,7 +1940,7 @@ const submissionDownloadRoutes: RouteDefinition = {
         const filePath = type === "questionnaire" ? row.questionnairePdfPath : row.reportPdfPath;
         if (!filePath) return error("文件不存在", "NOT_FOUND", 404);
 
-        const baseDir = path.join(process.cwd(), "public");
+        const baseDir = path.join(process.cwd(), "storage");
         const normalizedPath = path.normalize(filePath).replace(/^([/\\])+/, "");
         const fullPath = path.join(baseDir, normalizedPath);
 
@@ -1986,7 +1986,7 @@ const attachmentDownloadRoutes: RouteDefinition = {
             return error("附件不存在", "NOT_FOUND", 404);
         }
 
-        const baseDir = path.join(process.cwd(), "public");
+        const baseDir = path.join(process.cwd(), "storage");
         const normalizedPath = path.normalize(att.filePath).replace(/^([/\\])+/, "");
         const fullPath = path.join(baseDir, normalizedPath);
 

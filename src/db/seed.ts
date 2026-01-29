@@ -240,7 +240,7 @@ async function seed() {
             description: `# ${t.name}\n\n**实验目标**：\n1. 掌握基本的抽样调查方法\n2. 学会设计有效的调查问卷\n3. 能够对收集到的数据进行初步分析\n\n**实验要求**：\n请根据给定的背景资料，设计一份不少于10道题目的调查问卷，并完成后续的抽样与分析报告。`,
             status: t.status,
             excelRowCount: 10000,
-            excelFilePath: "/uploads/population.xlsx",
+            excelFilePath: "/storage/uploads/population.xlsx",
             fieldMapping: {
                 "id": "id",
                 "stratified": ["gender", "education"],
@@ -254,7 +254,7 @@ async function seed() {
         await db.insert(topicAttachment).values({
             topicId: res.insertId,
             fileName: "实验指导书.pdf",
-            filePath: "/uploads/guidelines.pdf",
+            filePath: "/storage/uploads/guidelines.pdf",
             fileType: "application/pdf",
             fileSize: 1024 * 1024
         });

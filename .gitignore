@@ -36,6 +36,6 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 *.xlsx
 
 backups/
-public/
+storage/
 .vscode/
 .playwright-mcp/
