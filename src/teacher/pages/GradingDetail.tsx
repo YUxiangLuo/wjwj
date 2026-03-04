@@ -528,25 +528,27 @@ export function GradingDetail() {
 
                     <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900/50">
                         {data.status === 1 && !isReadOnly && (
-                            <div className="flex gap-2">
-                                <Button data-testid="teacher-grading-save-draft" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 h-11" onClick={handleSaveDraft} disabled={saving || savingDraft}>
-                                    <Save className="w-4 h-4 mr-2" />
-                                    {savingDraft ? "保存中..." : "保存草稿"}
+                            <>
+                                <div className="flex gap-2">
+                                    <Button data-testid="teacher-grading-save-draft" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 h-11" onClick={handleSaveDraft} disabled={saving || savingDraft}>
+                                        <Save className="w-4 h-4 mr-2" />
+                                        {savingDraft ? "保存中..." : "保存草稿"}
+                                    </Button>
+                                    <Button data-testid="teacher-grading-next" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-indigo-400 hover:bg-indigo-500/10 h-11" onClick={handleNextStudent} disabled={saving || savingDraft}>
+                                        <SkipForward className="w-4 h-4 mr-2" />
+                                        {savingDraft ? "保存中..." : "下一位"}
+                                    </Button>
+                                </div>
+                                <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => handleSubmit(2)} disabled={saving}>
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    {saving ? "提交中..." : "确认评分"}
                                 </Button>
-                                <Button data-testid="teacher-grading-next" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-indigo-400 hover:bg-indigo-500/10 h-11" onClick={handleNextStudent} disabled={saving || savingDraft}>
-                                    <SkipForward className="w-4 h-4 mr-2" />
-                                    {savingDraft ? "保存中..." : "下一位"}
+                                <Button data-testid="teacher-grading-reject-open" variant="outline" className="w-full border-slate-700 bg-transparent text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-11" onClick={() => setShowRejectModal(true)} disabled={saving}>
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    {saving ? "提交中..." : "驳回重做"}
                                 </Button>
-                            </div>
+                            </>
                         )}
-                        <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => handleSubmit(2)} disabled={saving || isReadOnly}>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            {saving ? "提交中..." : "确认评分"}
-                        </Button>
-                        <Button data-testid="teacher-grading-reject-open" variant="outline" className="w-full border-slate-700 bg-transparent text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-11" onClick={() => setShowRejectModal(true)} disabled={saving || isReadOnly}>
-                            <XCircle className="w-4 h-4 mr-2" />
-                            {saving ? "提交中..." : "驳回重做"}
-                        </Button>
                     </div>
                 </div>
             </div>

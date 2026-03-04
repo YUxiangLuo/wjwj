@@ -251,6 +251,12 @@ const gradingDetailRoutes: RouteDefinition = {
 
         const isDraft = body.action === "draft";
 
+        // Validate score ranges before touching the DB
+        const scores = [body.scoreQuestionnaire, body.scoreProcess, body.scoreReport];
+        if (scores.some((s) => !Number.isFinite(s) || s < 0 || s > 100)) {
+            return error("分项分数需在 0-100 之间", "VALIDATION_ERROR", 400);
+        }
+
         if (!isDraft && body.status === 3) {
             const reason = (body.rejectReason ?? "").trim();
             if (reason.length < 10 || reason.length > 1000) {
@@ -279,6 +285,11 @@ const gradingDetailRoutes: RouteDefinition = {
             .where(and(eq(submission.id, submissionId), sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`));
 
         if (!detail) return error("提交记录不存在", "NOT_FOUND", 404);
+
+        // Prevent modifying already-finalized submissions
+        if (!isDraft && detail.status !== 1) {
+            return error("该提交已批改完成，无法修改", "ALREADY_GRADED", 409);
+        }
 
         const myUserType = isAssistant ? ASSISTANT_USER_TYPE : TEACHER_USER_TYPE;
         const lockExpired = isLockExpired(detail.lockedAt);

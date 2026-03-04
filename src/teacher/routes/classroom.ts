@@ -315,7 +315,7 @@ const assistantRoutes: RouteDefinition = {
         const [exist] = await db.select().from(assistant).where(eq(assistant.account, body.studentId));
         if (exist) return error("Account already exists", "DUPLICATE_ERROR");
 
-        const defaultPassword = await Bun.password.hash("123456");
+        const defaultPassword = await Bun.password.hash(body.studentId);
 
         await db.insert(assistant).values({
             name: body.name,
