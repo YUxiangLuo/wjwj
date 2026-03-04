@@ -134,7 +134,27 @@ test.describe("Admin System Settings", () => {
 
         for (const section of ["general", "experiment", "security", "file-limits", "notifications", "backup"]) {
             await page.getByTestId(`settings-section-${section}`).click();
-            await expect(page.getByTestId(`settings-section-${section}`)).toBeVisible();
+
+            switch (section) {
+                case "general":
+                    await expect(page.getByTestId("settings-system-name")).toBeVisible();
+                    break;
+                case "experiment":
+                    await expect(page.locator("#experimentTimeLimit")).toBeVisible();
+                    break;
+                case "security":
+                    await expect(page.locator("#adminSessionTimeout")).toBeVisible();
+                    break;
+                case "file-limits":
+                    await expect(page.locator("#excelMaxRows")).toBeVisible();
+                    break;
+                case "notifications":
+                    await expect(page.locator("#deadlineReminderHours")).toBeVisible();
+                    break;
+                case "backup":
+                    await expect(page.getByTestId("settings-backup-create")).toBeVisible();
+                    break;
+            }
         }
     });
 });
