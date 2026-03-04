@@ -156,6 +156,10 @@ const teacherStatusRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ status: number }>(req);
         if (!id) return error("无效的教师ID", "INVALID_ID");
+        if (body.status !== 0 && body.status !== 1) return error("无效的状态值", "VALIDATION_ERROR");
+
+        const [t] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, id));
+        if (!t) return error("教师不存在", "NOT_FOUND", 404);
 
         await db.update(teacher).set({ status: body.status }).where(eq(teacher.id, id));
         return json({ success: true });
@@ -241,6 +245,10 @@ const assistantStatusRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ status: number }>(req);
         if (!id) return error("无效的助教ID", "INVALID_ID");
+        if (body.status !== 0 && body.status !== 1) return error("无效的状态值", "VALIDATION_ERROR");
+
+        const [a] = await db.select({ id: assistant.id }).from(assistant).where(eq(assistant.id, id));
+        if (!a) return error("助教不存在", "NOT_FOUND", 404);
 
         await db.update(assistant).set({ status: body.status }).where(eq(assistant.id, id));
         return json({ success: true });
@@ -366,7 +374,6 @@ const studentRoutes: RouteDefinition = {
             })
             .from(student)
             .leftJoin(class_, eq(student.classId, class_.id))
-            .where(isNull(student.deletedAt))
             .orderBy(desc(student.createdAt))
             .$dynamic();
 
@@ -434,6 +441,10 @@ const studentStatusRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ status: number }>(req);
         if (!id) return error("无效的学生ID", "INVALID_ID");
+        if (body.status !== 0 && body.status !== 1) return error("无效的状态值", "VALIDATION_ERROR");
+
+        const [s] = await db.select({ id: student.id }).from(student).where(eq(student.id, id));
+        if (!s) return error("学生不存在", "NOT_FOUND", 404);
 
         await db.update(student).set({ status: body.status }).where(eq(student.id, id));
         return json({ success: true });
@@ -556,9 +567,20 @@ const announcementStatsRoutes = {
         const [an] = await db.select().from(announcement).where(eq(announcement.id, id));
         if (!an) return error("公告不存在", "NOT_FOUND", 404);
 
-        const [tCount] = await db.select({ count: count() }).from(teacher).where(eq(teacher.status, 1));
-        const [aCount] = await db.select({ count: count() }).from(assistant).where(eq(assistant.status, 1));
-        const [sCount] = await db.select({ count: count() }).from(student).where(eq(student.status, 1));
+        const scope = an.targetScope ?? "all";
+        const includeTeacher = scope === "all" || scope === "teacher";
+        const includeAssistant = scope === "all" || scope === "assistant";
+        const includeStudent = scope === "all" || scope === "student";
+
+        const [tCount] = includeTeacher
+            ? await db.select({ count: count() }).from(teacher).where(eq(teacher.status, 1))
+            : [{ count: 0 }];
+        const [aCount] = includeAssistant
+            ? await db.select({ count: count() }).from(assistant).where(eq(assistant.status, 1))
+            : [{ count: 0 }];
+        const [sCount] = includeStudent
+            ? await db.select({ count: count() }).from(student).where(eq(student.status, 1))
+            : [{ count: 0 }];
         const totalCount = (tCount?.count ?? 0) + (aCount?.count ?? 0) + (sCount?.count ?? 0);
 
         const [rCount] = await db.select({ count: count() }).from(announcementRead).where(eq(announcementRead.announcementId, id));
@@ -574,11 +596,10 @@ const announcementStatsRoutes = {
 
         const roleReadMap = new Map(roleReads.map(r => [r.userType, r.count]));
 
-        const byRole = [
-            { role: "教师", readCount: roleReadMap.get(2) ?? 0, totalCount: tCount?.count ?? 0 },
-            { role: "助教", readCount: roleReadMap.get(3) ?? 0, totalCount: aCount?.count ?? 0 },
-            { role: "学生", readCount: roleReadMap.get(4) ?? 0, totalCount: sCount?.count ?? 0 },
-        ];
+        const byRole: { role: string; readCount: number; totalCount: number }[] = [];
+        if (includeTeacher) byRole.push({ role: "教师", readCount: roleReadMap.get(2) ?? 0, totalCount: tCount?.count ?? 0 });
+        if (includeAssistant) byRole.push({ role: "助教", readCount: roleReadMap.get(3) ?? 0, totalCount: aCount?.count ?? 0 });
+        if (includeStudent) byRole.push({ role: "学生", readCount: roleReadMap.get(4) ?? 0, totalCount: sCount?.count ?? 0 });
 
         return json({ readCount, totalCount, readRate, byRole });
     },

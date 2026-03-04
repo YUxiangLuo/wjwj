@@ -86,28 +86,28 @@ export function SystemSettings() {
         try {
             const res = await settingsApi.get();
             if (res.success && res.data) {
-                const data = res.data;
+                const data = res.data as Record<string, string | number | boolean | undefined>;
                 setSettings(prev => ({
                     ...prev,
-                    systemName: data.system_name ?? data.systemName ?? prev.systemName,
-                    maintenanceMode: data.maintenance_mode ?? data.maintenanceMode ?? prev.maintenanceMode,
-                    allowRegistration: data.allow_registration ?? data.allowRegistration ?? prev.allowRegistration,
-                    maxLoginAttempts: data["login.max_fail_count"] ?? data.maxLoginAttempts ?? prev.maxLoginAttempts,
-                    lockDurationMinutes: data["login.lock_duration_minutes"] ?? data.lockDurationMinutes ?? prev.lockDurationMinutes,
-                    adminSessionTimeout: data["session.admin_timeout_minutes"] ?? data.adminSessionTimeout ?? prev.adminSessionTimeout,
-                    teacherSessionTimeout: data["session.teacher_timeout_minutes"] ?? data.teacherSessionTimeout ?? prev.teacherSessionTimeout,
-                    studentSessionTimeout: data["session.student_timeout_minutes"] ?? data.studentSessionTimeout ?? prev.studentSessionTimeout,
-                    experimentTimeLimit: data.experiment_time_limit ?? data.experimentTimeLimit ?? prev.experimentTimeLimit,
-                    autoSaveInterval: data.auto_save_interval ?? data.autoSaveInterval ?? prev.autoSaveInterval,
-                    requireApproval: data.require_approval ?? data.requireApproval ?? prev.requireApproval,
-                    enableBackup: data.enable_backup ?? data.enableBackup ?? prev.enableBackup,
-                    backupFrequency: data.backup_frequency ?? data.backupFrequency ?? prev.backupFrequency,
-                    backupRetentionDays: data["backup.retention_days"] ?? data.backupRetentionDays ?? prev.backupRetentionDays,
-                    excelMaxRows: data["file.excel_max_rows"] ?? data.excelMaxRows ?? prev.excelMaxRows,
-                    maxAttachmentSizeMb: data["file.max_attachment_size_mb"] ?? data.maxAttachmentSizeMb ?? prev.maxAttachmentSizeMb,
-                    batchImportMaxRows: data["file.batch_import_max_rows"] ?? data.batchImportMaxRows ?? prev.batchImportMaxRows,
-                    deadlineReminderHours: data["notification.deadline_reminder_hours"] ?? data.deadlineReminderHours ?? prev.deadlineReminderHours,
-                    notificationRetentionDays: data["notification.retention_days"] ?? data.notificationRetentionDays ?? prev.notificationRetentionDays,
+                    systemName: (data.system_name as string) ?? prev.systemName,
+                    maintenanceMode: (data.maintenance_mode as boolean) ?? prev.maintenanceMode,
+                    allowRegistration: (data.allow_registration as boolean) ?? prev.allowRegistration,
+                    maxLoginAttempts: (data["login.max_fail_count"] as number) ?? prev.maxLoginAttempts,
+                    lockDurationMinutes: (data["login.lock_duration_minutes"] as number) ?? prev.lockDurationMinutes,
+                    adminSessionTimeout: (data["session.admin_timeout_minutes"] as number) ?? prev.adminSessionTimeout,
+                    teacherSessionTimeout: (data["session.teacher_timeout_minutes"] as number) ?? prev.teacherSessionTimeout,
+                    studentSessionTimeout: (data["session.student_timeout_minutes"] as number) ?? prev.studentSessionTimeout,
+                    experimentTimeLimit: (data.experiment_time_limit as number) ?? prev.experimentTimeLimit,
+                    autoSaveInterval: (data.auto_save_interval as number) ?? prev.autoSaveInterval,
+                    requireApproval: (data.require_approval as boolean) ?? prev.requireApproval,
+                    enableBackup: (data.enable_backup as boolean) ?? prev.enableBackup,
+                    backupFrequency: (data.backup_frequency as string) ?? prev.backupFrequency,
+                    backupRetentionDays: (data["backup.retention_days"] as number) ?? prev.backupRetentionDays,
+                    excelMaxRows: (data["file.excel_max_rows"] as number) ?? prev.excelMaxRows,
+                    maxAttachmentSizeMb: (data["file.max_attachment_size_mb"] as number) ?? prev.maxAttachmentSizeMb,
+                    batchImportMaxRows: (data["file.batch_import_max_rows"] as number) ?? prev.batchImportMaxRows,
+                    deadlineReminderHours: (data["notification.deadline_reminder_hours"] as number) ?? prev.deadlineReminderHours,
+                    notificationRetentionDays: (data["notification.retention_days"] as number) ?? prev.notificationRetentionDays,
                 }));
             }
         } catch (error) {

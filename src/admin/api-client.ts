@@ -467,8 +467,8 @@ export const systemApi = {
 };
 
 export const settingsApi = {
-    get: () => request<Record<string, any>>("/api/admin/settings"),
-    update: (data: Record<string, any>) => request<{ success: boolean }>("/api/admin/settings", {
+    get: () => request<Record<string, unknown>>("/api/admin/settings"),
+    update: (data: Record<string, unknown>) => request<{ success: boolean }>("/api/admin/settings", {
         method: "PUT",
         body: JSON.stringify(data),
     }),

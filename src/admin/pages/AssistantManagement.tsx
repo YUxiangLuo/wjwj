@@ -168,9 +168,9 @@ export function AssistantManagement() {
 
     const summary = useMemo(() => {
         const total = assistants.length;
-        const active = assistants.filter((assistant) => assistant.status === 1).length;
-        const disabled = total - active;
         const locked = assistants.filter((assistant) => assistant.isLocked).length;
+        const active = assistants.filter((assistant) => assistant.status === 1 && !assistant.isLocked).length;
+        const disabled = total - active - locked;
         const teacherCount = new Set(assistants.map((assistant) => assistant.creatorTeacherId)).size;
         return { total, active, disabled, locked, teacherCount };
     }, [assistants]);
