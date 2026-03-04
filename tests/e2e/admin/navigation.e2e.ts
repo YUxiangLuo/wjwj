@@ -43,7 +43,7 @@ test.describe("Admin Navigation", () => {
 
         await page.getByTestId("admin-nav-monitor").click();
         await expect(page).toHaveURL(/\/admin\/monitor$/);
-        await expect(page.getByText("系统监控")).toBeVisible();
+        await expect(page.locator("header").getByRole("heading", { name: "系统监控" })).toBeVisible();
     });
 
     test("can navigate to announcement management", async ({ page }) => {
@@ -59,7 +59,7 @@ test.describe("Admin Navigation", () => {
 
         await page.getByTestId("admin-nav-settings").click();
         await expect(page).toHaveURL(/\/admin\/settings$/);
-        await expect(page.getByText("基本设置")).toBeVisible();
+        await expect(page.locator("header").getByRole("heading", { name: "系统设置" })).toBeVisible();
     });
 
     test("can return to dashboard", async ({ page }) => {

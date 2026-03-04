@@ -58,6 +58,7 @@ test.describe("Admin Student Management", () => {
         await loginAsAdmin(page);
         await page.getByTestId("admin-nav-student").click();
 
-        await expect(page.getByText("学生总数")).toBeVisible();
+        await expect(page.getByText("Total Students")).toBeVisible();
+        await expect(page.getByText("Active")).toBeVisible();
     });
 });

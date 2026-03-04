@@ -64,8 +64,8 @@ test.describe("Admin Teacher and Assistant Management", () => {
         await loginAsAdmin(page);
         await page.getByTestId("admin-nav-teacher").click();
 
-        await expect(page.getByText("教师总数")).toBeVisible();
-        await expect(page.getByText("正常", { exact: false }).first()).toBeVisible();
+        await expect(page.getByText("Total")).toBeVisible();
+        await expect(page.getByText("Active")).toBeVisible();
     });
 
     test("reset teacher password", async ({ page }) => {
@@ -79,9 +79,9 @@ test.describe("Admin Teacher and Assistant Management", () => {
         await expect(teacherRow.first()).toBeVisible();
 
         page.once("dialog", (dialog) => dialog.accept());
-        await teacherRow.first().getByRole("button", { name: "重置密码" }).click();
+        await teacherRow.first().getByRole("button", { name: "重置" }).click();
 
-        await expect(page.getByText(/密码已重置|重置成功/).first()).toBeVisible();
+        await expect(page.getByText(/密码已重置为/).first()).toBeVisible();
     });
 
     test("assistant toggle status (disable/enable)", async ({ page }) => {
@@ -118,6 +118,7 @@ test.describe("Admin Teacher and Assistant Management", () => {
         await loginAsAdmin(page);
         await page.getByTestId("admin-nav-assistant").click();
 
-        await expect(page.getByText("助教总数")).toBeVisible();
+        await expect(page.getByText("Total Assistants")).toBeVisible();
+        await expect(page.getByText("Active")).toBeVisible();
     });
 });
