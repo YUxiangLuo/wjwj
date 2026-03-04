@@ -41,4 +41,24 @@ test.describe("Admin Student Management", () => {
         await transferredRow.getByRole("button", { name: "启用" }).click();
         await expect(transferredRow.getByText("正常")).toBeVisible();
     });
+
+    test("search student by student ID", async ({ page }) => {
+        await loginAsAdmin(page);
+        await page.getByTestId("admin-nav-student").click();
+
+        await page.getByTestId("student-search-input").fill("student");
+        await page.getByTestId("student-search-refresh").click();
+
+        const studentRow = page.locator("tbody tr", { hasText: "student" }).first();
+        await expect(studentRow).toBeVisible();
+        await expect(studentRow).toContainText("E2E学生");
+    });
+
+    test("student page shows summary stats", async ({ page }) => {
+        await loginAsAdmin(page);
+        await page.getByTestId("admin-nav-student").click();
+
+        await expect(page.getByText("Total Students")).toBeVisible();
+        await expect(page.getByText("Active")).toBeVisible();
+    });
 });

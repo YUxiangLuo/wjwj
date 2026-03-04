@@ -27,4 +27,24 @@ test.describe("Admin Auth", () => {
         await expect(page).toHaveURL(/\/admin\/login$/);
         await expect(page.getByTestId("admin-login-submit")).toBeVisible();
     });
+
+    test("submit with empty username is ignored and stays on login", async ({ page }) => {
+        await page.goto("/admin/login");
+        await page.getByTestId("admin-login-password").fill("somepassword");
+
+        const submitBtn = page.getByTestId("admin-login-submit");
+        await submitBtn.click();
+
+        // Submit handler no-ops when username is empty: no navigation, no error, stays on login
+        await expect(page).toHaveURL(/\/admin\/login$/);
+        await expect(submitBtn).toBeVisible();
+        await expect(submitBtn).toBeEnabled();
+    });
+
+    test("redirects to login when accessing admin without auth", async ({ page }) => {
+        await page.goto("/admin/semester");
+
+        await expect(page).toHaveURL(/\/admin\/login/);
+        await expect(page.getByTestId("admin-login-submit")).toBeVisible();
+    });
 });
