@@ -111,6 +111,7 @@ const topicItemRoutes: RouteDefinition = {
 
         const updateData: any = {};
         if (body.name !== undefined) {
+            if (typeof body.name !== "string") return error("课题名称格式无效", "VALIDATION_ERROR", 400);
             const trimmedName = body.name.trim();
             if (!trimmedName) return error("课题名称不能为空", "VALIDATION_ERROR", 400);
             updateData.name = trimmedName;
@@ -475,12 +476,14 @@ const taskRoutes: RouteDefinition = {
                     SELECT COUNT(*)
                     FROM submission s
                     INNER JOIN experiment e ON s.experiment_id = e.id
+                    INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
                     WHERE e.task_id = ${task.id} AND s.status IN (1, 2, 3)
                 )`,
                 pending: sql<number>`(
                     SELECT COUNT(*)
                     FROM submission s
                     INNER JOIN experiment e ON s.experiment_id = e.id
+                    INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
                     WHERE e.task_id = ${task.id} AND s.status = 1
                 )`,
             })
@@ -488,7 +491,7 @@ const taskRoutes: RouteDefinition = {
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
             .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
-            .where(eq(class_.teacherId, currentTeacherId))
+            .where(and(eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt)))
             .groupBy(task.id)
             .orderBy(desc(task.createdAt));
 

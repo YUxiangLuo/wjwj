@@ -286,8 +286,8 @@ const gradingDetailRoutes: RouteDefinition = {
 
         if (!detail) return error("提交记录不存在", "NOT_FOUND", 404);
 
-        // Prevent modifying already-finalized submissions
-        if (!isDraft && detail.status !== 1) {
+        // Prevent any modification (draft or final) of already-finalized submissions
+        if (detail.status !== 1) {
             return error("该提交已批改完成，无法修改", "ALREADY_GRADED", 409);
         }
 
