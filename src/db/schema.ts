@@ -416,6 +416,7 @@ export const announcement = mysqlTable(
         id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
         title: varchar("title", { length: 100 }).notNull(),
         content: text("content").notNull(),
+        targetScope: varchar("target_scope", { length: 20 }).notNull().default("all"),
         status: tinyint("status").notNull().default(1),
         createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
         updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),

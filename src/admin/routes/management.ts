@@ -136,6 +136,21 @@ const teacherRoutes: RouteDefinition = {
     },
 };
 
+const teacherUpdateRoutes = {
+    async PUT(req: Request) {
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        const body = await parseBody<{ name?: string }>(req);
+        if (!id) return error("无效的教师ID", "INVALID_ID");
+        if (!body.name?.trim()) return error("姓名不能为空", "VALIDATION_ERROR");
+
+        const [t] = await db.select().from(teacher).where(eq(teacher.id, id));
+        if (!t) return error("教师不存在", "NOT_FOUND", 404);
+
+        await db.update(teacher).set({ name: body.name.trim() }).where(eq(teacher.id, id));
+        return json({ success: true });
+    },
+};
+
 const teacherStatusRoutes = {
     async PUT(req: Request) {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
@@ -425,6 +440,16 @@ const studentStatusRoutes = {
     },
 };
 
+const studentUnlockRoutes = {
+    async PUT(req: Request) {
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        if (!id) return error("无效的学生ID", "INVALID_ID");
+
+        await db.update(student).set({ lockedUntil: null, loginFailCount: 0 }).where(eq(student.id, id));
+        return json({ success: true });
+    },
+};
+
 const studentResetPasswordRoutes = {
     async POST(req: Request) {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
@@ -465,10 +490,18 @@ const announcementRoutes: RouteDefinition = {
     },
 
     async POST(req) {
-        const body = await parseBody<{ title: string; content: string; publish?: boolean }>(req);
+        const body = await parseBody<{ title: string; content: string; publish?: boolean; targetScope?: string }>(req);
         if (!body.title?.trim() || !body.content?.trim()) return error("标题和内容不能为空", "VALIDATION_ERROR");
 
-        const [result] = await db.insert(announcement).values({ title: body.title.trim(), content: body.content.trim(), status: body.publish ? 1 : 0 });
+        const validScopes = ["all", "teacher", "student", "assistant"];
+        const scope = body.targetScope && validScopes.includes(body.targetScope) ? body.targetScope : "all";
+
+        const [result] = await db.insert(announcement).values({
+            title: body.title.trim(),
+            content: body.content.trim(),
+            targetScope: scope,
+            status: body.publish ? 1 : 0,
+        });
         return json({ id: result.insertId }, 201);
     },
 };
@@ -532,7 +565,22 @@ const announcementStatsRoutes = {
         const readCount = rCount?.count ?? 0;
         const readRate = totalCount > 0 ? Math.round((readCount / totalCount) * 100) : 0;
 
-        return json({ readCount, totalCount, readRate });
+        // Per-role read counts: userType 2=teacher, 3=assistant, 4=student
+        const roleReads = await db
+            .select({ userType: announcementRead.userType, count: count() })
+            .from(announcementRead)
+            .where(eq(announcementRead.announcementId, id))
+            .groupBy(announcementRead.userType);
+
+        const roleReadMap = new Map(roleReads.map(r => [r.userType, r.count]));
+
+        const byRole = [
+            { role: "教师", readCount: roleReadMap.get(2) ?? 0, totalCount: tCount?.count ?? 0 },
+            { role: "助教", readCount: roleReadMap.get(3) ?? 0, totalCount: aCount?.count ?? 0 },
+            { role: "学生", readCount: roleReadMap.get(4) ?? 0, totalCount: sCount?.count ?? 0 },
+        ];
+
+        return json({ readCount, totalCount, readRate, byRole });
     },
 };
 
@@ -557,8 +605,10 @@ export {
     studentRoutes,
     studentStatusRoutes,
     studentTransferRoutes,
+    studentUnlockRoutes,
     teacherResetPasswordRoutes,
     teacherRoutes,
     teacherStatusRoutes,
     teacherUnlockRoutes,
+    teacherUpdateRoutes,
 };

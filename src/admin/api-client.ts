@@ -88,6 +88,7 @@ export interface Announcement {
     id: number;
     title: string;
     content: string;
+    targetScope: string;
     status: number;
     createdAt: string;
     updatedAt: string;
@@ -223,6 +224,12 @@ export const teacherApi = {
             body: JSON.stringify(data),
         }),
 
+    update: (id: number, data: { name: string }) =>
+        request<{ success: boolean }>(`/api/admin/teachers/${id}`, {
+            method: "PUT",
+            body: JSON.stringify(data),
+        }),
+
     updateStatus: (id: number, status: number) =>
         request<{ success: boolean }>(`/api/admin/teachers/${id}/status`, {
             method: "PUT",
@@ -336,6 +343,11 @@ export const studentApi = {
             body: JSON.stringify({ status }),
         }),
 
+    unlock: (id: number) =>
+        request<{ success: boolean }>(`/api/admin/students/${id}/unlock`, {
+            method: "PUT",
+        }),
+
     resetPassword: (id: number) =>
         request<{ success: boolean }>(`/api/admin/students/${id}/reset-password`, {
             method: "POST",
@@ -371,7 +383,7 @@ export interface StudentExperiment {
 export const announcementApi = {
     list: () => request<Announcement[]>("/api/admin/announcements"),
 
-    create: (data: { title: string; content: string; publish?: boolean }) =>
+    create: (data: { title: string; content: string; publish?: boolean; targetScope?: string }) =>
         request<{ id: number }>("/api/admin/announcements", {
             method: "POST",
             body: JSON.stringify(data),
@@ -399,7 +411,12 @@ export const announcementApi = {
         }),
 
     getStats: (id: number) =>
-        request<{ readCount: number; totalCount: number; readRate: number }>(`/api/admin/announcements/${id}/stats`),
+        request<{
+            readCount: number;
+            totalCount: number;
+            readRate: number;
+            byRole: { role: string; readCount: number; totalCount: number }[];
+        }>(`/api/admin/announcements/${id}/stats`),
 };
 
 // ============================================================

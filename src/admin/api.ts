@@ -53,10 +53,12 @@ import {
     studentRoutes,
     studentStatusRoutes,
     studentTransferRoutes,
+    studentUnlockRoutes,
     teacherResetPasswordRoutes,
     teacherRoutes,
     teacherStatusRoutes,
     teacherUnlockRoutes,
+    teacherUpdateRoutes,
 } from "./routes/management";
 import { notificationMarkReadRoutes, notificationReadAllRoutes, notificationRoutes } from "./routes/notifications";
 import { semesterUpdateRoutes } from "./routes/semester";
@@ -354,6 +356,7 @@ export const adminApiRoutes = {
 
     // Teachers
     "/api/admin/teachers": withAdminAuth(teacherRoutes),
+    "/api/admin/teachers/:id": withAdminAuth(teacherUpdateRoutes),
     "/api/admin/teachers/:id/status": withAdminAuth(teacherStatusRoutes),
     "/api/admin/teachers/:id/unlock": withAdminAuth(teacherUnlockRoutes),
     "/api/admin/teachers/:id/reset-password": withAdminAuth(teacherResetPasswordRoutes),
@@ -372,6 +375,7 @@ export const adminApiRoutes = {
     // Students
     "/api/admin/students": withAdminAuth(studentRoutes),
     "/api/admin/students/:id/status": withAdminAuth(studentStatusRoutes),
+    "/api/admin/students/:id/unlock": withAdminAuth(studentUnlockRoutes),
     "/api/admin/students/:id/reset-password": withAdminAuth(studentResetPasswordRoutes),
     "/api/admin/students/:id/transfer": withAdminAuth(studentTransferRoutes),
     "/api/admin/students/:id/experiments": withAdminAuth(studentExperimentsRoutes),
