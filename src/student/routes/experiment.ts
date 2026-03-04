@@ -39,6 +39,10 @@ function isValidStage(stage: number) {
     return Number.isInteger(stage) && stage >= 0 && stage <= 4;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 function getAffectedRows(result: unknown) {
     if (!result || typeof result !== "object") return 0;
     const value = (result as { affectedRows?: unknown }).affectedRows;
@@ -755,7 +759,7 @@ const samplingActionRoutes: RouteDefinition = {
         if (!["simple", "systematic", "stratified"].includes(body.method)) {
             return error("无效的抽样方法", "VALIDATION_ERROR", 400);
         }
-        const params = body.params !== null && typeof body.params === "object" && !Array.isArray(body.params) ? body.params : {};
+        const params = isPlainObject(body.params) ? body.params : {};
 
         const [exp] = await db
             .select({ samplePlan: experiment.samplePlan })
