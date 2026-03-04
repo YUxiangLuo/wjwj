@@ -110,19 +110,19 @@ export function Profile() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-slate-400">姓名</Label>
-                                <div className="px-3 py-2 rounded-md bg-slate-800/50 border border-slate-700/50 text-slate-200">
+                                <div className="px-3 py-2 rounded-md bg-slate-800/50 border border-slate-700/50 text-slate-200" data-testid="student-profile-name">
                                     {currentUser?.name ?? "-"}
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-slate-400">学号</Label>
-                                <div className="px-3 py-2 rounded-md bg-slate-800/50 border border-slate-700/50 text-slate-200 font-mono">
+                                <div className="px-3 py-2 rounded-md bg-slate-800/50 border border-slate-700/50 text-slate-200 font-mono" data-testid="student-profile-id">
                                     {currentUser?.studentId ?? "-"}
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-slate-400">班级</Label>
-                                <div className="px-3 py-2 rounded-md bg-slate-800/50 border border-slate-700/50 text-slate-200">
+                                <div className="px-3 py-2 rounded-md bg-slate-800/50 border border-slate-700/50 text-slate-200" data-testid="student-profile-class">
                                     {currentUser?.className ?? "-"}
                                 </div>
                             </div>
@@ -160,6 +160,7 @@ export function Profile() {
                                 value={passwordForm.currentPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                                 autoComplete="current-password"
+                                data-testid="student-profile-password-current"
                                 className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
@@ -171,6 +172,7 @@ export function Profile() {
                                 value={passwordForm.newPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                 autoComplete="new-password"
+                                data-testid="student-profile-password-new"
                                 className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
@@ -182,6 +184,7 @@ export function Profile() {
                                 value={passwordForm.confirmPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                                 autoComplete="new-password"
+                                data-testid="student-profile-password-confirm"
                                 className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
@@ -210,6 +213,7 @@ export function Profile() {
                             className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 mt-2"
                             onClick={handleChangePassword}
                             disabled={saving}
+                            data-testid="student-profile-password-save"
                         >
                             {saving ? "保存中..." : "保存新密码"}
                         </Button>

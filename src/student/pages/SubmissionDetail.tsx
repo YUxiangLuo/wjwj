@@ -71,7 +71,7 @@ export function SubmissionDetailPage() {
     const status = statusConfig[detail.status] ?? statusConfig[1]!;
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-detail">
             <div className="flex items-center justify-between">
                 <Link to={`/task/${detail.taskId}/history`}>
                     <Button variant="ghost" className="gap-2 text-slate-400 hover:text-white hover:bg-slate-800">

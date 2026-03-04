@@ -54,7 +54,7 @@ export function SubmissionHistory() {
     }
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="space-y-6 max-w-5xl mx-auto" data-testid="student-submission-history">
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
@@ -91,6 +91,7 @@ export function SubmissionHistory() {
                         return (
                             <Card
                                 key={sub.id}
+                                data-testid={`student-submission-row-${sub.id}`}
                                 className="group border-slate-700/50 bg-slate-900/50 hover:bg-slate-800/50 hover:border-indigo-500/30 transition-all duration-300 backdrop-blur-sm overflow-hidden"
                             >
                                 <CardContent className="p-0">

@@ -140,7 +140,7 @@ function TaskCard({ task }: TaskCardProps) {
     const showHistory = ["submitted", "grading", "graded", "rejected"].includes(task.status);
 
     return (
-        <Card className="rounded-2xl border-slate-800 bg-slate-900/60 backdrop-blur-sm shadow-lg hover:shadow-indigo-500/10 transition-all hover:-translate-y-1">
+        <Card className="rounded-2xl border-slate-800 bg-slate-900/60 backdrop-blur-sm shadow-lg hover:shadow-indigo-500/10 transition-all hover:-translate-y-1" data-testid={`student-task-card-${task.id}`}>
             <CardHeader className="pb-3 text-slate-200">
                 <div className="flex justify-between items-start gap-2">
                     <CardTitle className="text-lg line-clamp-1 text-slate-100">{task.name}</CardTitle>
@@ -377,8 +377,8 @@ export function TaskHall() {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="student-stats-section">
+                <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group" data-testid="student-stat-in-progress">
                     <CardContent className="p-6 flex items-center gap-5">
                         <div className="p-4 bg-indigo-500/10 rounded-2xl text-indigo-400 group-hover:bg-indigo-500/20 group-hover:scale-110 transition-all duration-300">
                             <FlaskConical className="w-6 h-6" />
@@ -389,7 +389,7 @@ export function TaskHall() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group">
+                <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group" data-testid="student-stat-graded">
                     <CardContent className="p-6 flex items-center gap-5">
                         <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all duration-300">
                             <CheckCircle className="w-6 h-6" />
@@ -400,7 +400,7 @@ export function TaskHall() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group">
+                <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group" data-testid="student-stat-average">
                     <CardContent className="p-6 flex items-center gap-5">
                         <div className="p-4 bg-purple-500/10 rounded-2xl text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all duration-300">
                             <Trophy className="w-6 h-6" />
@@ -422,24 +422,28 @@ export function TaskHall() {
                 <div className="flex p-1 bg-slate-900 border border-slate-800 rounded-lg self-start sm:self-auto">
                     <button
                         onClick={() => setFilter("all")}
+                        data-testid="student-filter-all"
                         className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "all" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
                         全部
                     </button>
                     <button
                         onClick={() => setFilter("in_progress")}
+                        data-testid="student-filter-in-progress"
                         className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "in_progress" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
                         进行中
                     </button>
                     <button
                         onClick={() => setFilter("submitted")}
+                        data-testid="student-filter-submitted"
                         className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "submitted" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
                         已提交
                     </button>
                     <button
                         onClick={() => setFilter("graded")}
+                        data-testid="student-filter-graded"
                         className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "graded" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
                         已批改
@@ -448,7 +452,7 @@ export function TaskHall() {
             </div>
 
             {/* Task Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
                 {filteredTasks.length > 0 ? (
                     filteredTasks.map(task => (
                         <TaskCard key={task.id} task={task} />
