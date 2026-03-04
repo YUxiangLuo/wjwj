@@ -19,6 +19,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { teacherApi, type Topic, type TopicDetail, type TopicRecommendQuestion } from "../api-client";
+import { toast } from "sonner";
 
 export function TopicManagement() {
     const [topics, setTopics] = useState<Topic[]>([]);
@@ -132,7 +133,7 @@ export function TopicManagement() {
             }
             loadTopics();
         } else {
-            alert((editingTopicId ? "更新" : "创建") + "失败: " + (res.error?.message || "未知错误"));
+            toast.error((editingTopicId ? "更新" : "创建") + "失败: " + (res.error?.message || "未知错误"));
         }
     }
 
@@ -174,7 +175,7 @@ export function TopicManagement() {
         if (res?.success) {
             loadTopics();
         } else {
-            alert("操作失败");
+            toast.error("操作失败");
         }
         setConfirmDialog({ open: false, type: null, topic: null });
     }
@@ -188,25 +189,25 @@ export function TopicManagement() {
             setExcelInfo(res.data);
             setColumns(res.data.columns ?? []);
         } else {
-            alert("上传失败: " + res.error?.message);
+            toast.error("上传失败: " + res.error?.message);
         }
     }
 
     async function handleSaveFieldMapping() {
         if (!editingTopicId) return;
         if (!fieldMapping.identifier) {
-            alert("请选择标识符字段");
+            toast.error("请选择标识符字段");
             return;
         }
         if (fieldMapping.stratified.length === 0 || fieldMapping.numeric.length === 0) {
-            alert("至少选择1个分层变量和1个数值变量");
+            toast.error("至少选择1个分层变量和1个数值变量");
             return;
         }
         const res = await teacherApi.updateFieldMapping(editingTopicId, fieldMapping);
         if (res.success) {
             setCurrentStep(4);
         } else {
-            alert("保存失败: " + res.error?.message);
+            toast.error("保存失败: " + res.error?.message);
         }
     }
 
@@ -218,7 +219,7 @@ export function TopicManagement() {
         if (res.success) {
             await loadTopicDetail(editingTopicId);
         } else {
-            alert("上传失败: " + res.error?.message);
+            toast.error("上传失败: " + res.error?.message);
         }
     }
 
@@ -234,7 +235,7 @@ export function TopicManagement() {
         if (res.success) {
             setCurrentStep(6);
         } else {
-            alert("保存失败: " + res.error?.message);
+            toast.error("保存失败: " + res.error?.message);
         }
     }
 
@@ -242,7 +243,7 @@ export function TopicManagement() {
         if (!editingTopicId) return;
         const total = weightConfig.questionnaire + weightConfig.process + weightConfig.report;
         if (total !== 100) {
-            alert("权重总和必须等于100");
+            toast.error("权重总和必须等于100");
             return;
         }
         const res = await teacherApi.updateWeightConfig(editingTopicId, weightConfig);
@@ -254,7 +255,7 @@ export function TopicManagement() {
             setNewTopicDesc("");
             loadTopics();
         } else {
-            alert("保存失败: " + res.error?.message);
+            toast.error("保存失败: " + res.error?.message);
         }
     }
 
@@ -400,7 +401,7 @@ export function TopicManagement() {
                                         </>
                                     ) : (
                                         <>
-                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10">查看</Button>
+                                            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => openEditModal(topic)}>查看</Button>
                                             <Button variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button
                                                 variant="ghost"
@@ -411,7 +412,7 @@ export function TopicManagement() {
                                                     if (res.success) {
                                                         loadTopics();
                                                     } else {
-                                                        alert("复制失败: " + res.error?.message);
+                                                        toast.error("复制失败: " + res.error?.message);
                                                     }
                                                 }}
                                             >

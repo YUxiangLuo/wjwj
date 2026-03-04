@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus } from "lucide-react";
 import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 export function TaskManagement() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -59,7 +60,7 @@ export function TaskManagement() {
 
     async function handlePublish() {
         if (!selectedTopicId || selectedClassIds.length === 0) {
-            alert("请选择课题和班级");
+            toast.error("请选择课题和班级");
             return;
         }
 
@@ -77,7 +78,7 @@ export function TaskManagement() {
             setSelectedClassIds([]);
             setDeadline("");
         } else {
-            alert("发布失败: " + res.error?.message);
+            toast.error("发布失败: " + res.error?.message);
         }
     }
 
@@ -90,7 +91,7 @@ export function TaskManagement() {
             setExtendDeadline("");
             loadTasks();
         } else {
-            alert("延长失败: " + res.error?.message);
+            toast.error("延长失败: " + res.error?.message);
         }
     }
 

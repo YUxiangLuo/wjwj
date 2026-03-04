@@ -19,6 +19,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { teacherApi, type Assistant, type TeacherClass } from "../api-client";
+import { toast } from "sonner";
 
 export function AssistantManagement() {
     const [assistants, setAssistants] = useState<Assistant[]>([]);
@@ -58,7 +59,7 @@ export function AssistantManagement() {
             setNewAssistant({ name: "", studentId: "" });
             loadData();
         } else {
-            alert("添加失败: " + res.error?.message);
+            toast.error("添加失败: " + res.error?.message);
         }
     }
 
@@ -78,7 +79,7 @@ export function AssistantManagement() {
             setPendingAssign({ assistantId: selectedAssistant.id, classIds: selectedClassIds });
             setShowUnbindConfirm(true);
         } else {
-            alert("分配失败: " + res.error?.message);
+            toast.error("分配失败: " + res.error?.message);
         }
     }
 
@@ -89,7 +90,7 @@ export function AssistantManagement() {
             setDeleteId(null);
             loadData();
         } else {
-            alert("删除失败");
+            toast.error("删除失败");
         }
     }
 
@@ -255,9 +256,9 @@ export function AssistantManagement() {
                                                 onClick={async () => {
                                                     const res = await teacherApi.updateAssistant(ta.id, { action: "reset_password" });
                                                     if (res.success) {
-                                                        alert("密码已重置为助教账号");
+                                                        toast.success("密码已重置为助教账号");
                                                     } else {
-                                                        alert("重置失败: " + res.error?.message);
+                                                        toast.error("重置失败: " + res.error?.message);
                                                     }
                                                 }}
                                             >
@@ -272,7 +273,7 @@ export function AssistantManagement() {
                                                     if (res.success) {
                                                         loadData();
                                                     } else {
-                                                        alert("操作失败: " + res.error?.message);
+                                                        toast.error("操作失败: " + res.error?.message);
                                                     }
                                                 }}
                                             >
@@ -395,7 +396,7 @@ export function AssistantManagement() {
                                     setShowAssignModal(false);
                                     loadData();
                                 } else {
-                                    alert("操作失败: " + res.error?.message);
+                                    toast.error("操作失败: " + res.error?.message);
                                 }
                             }}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"

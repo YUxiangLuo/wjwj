@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { teacherApi, type SubmissionDetail } from "../api-client";
+import { toast } from "sonner";
 
 export function GradingDetail() {
     const { submissionId } = useParams();
@@ -77,10 +78,10 @@ export function GradingDetail() {
 
         setSaving(false);
         if (res.success) {
-            alert("提交成功");
+            toast.success("提交成功");
             navigate("/grading");
         } else {
-            alert("提交失败: " + res.error?.message);
+            toast.error("提交失败: " + res.error?.message);
         }
     }
 
@@ -445,7 +446,7 @@ export function GradingDetail() {
                             className="bg-rose-600 hover:bg-rose-700 text-white"
                             onClick={() => {
                                 if (rejectReason.trim().length < 10) {
-                                    alert("驳回理由至少10字");
+                                    toast.error("驳回理由至少10字");
                                     return;
                                 }
                                 setShowRejectModal(false);

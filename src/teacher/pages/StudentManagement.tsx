@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Download, Users, CheckCircle2, PauseCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,10 +19,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { teacherApi, type Student, type TeacherClass } from "../api-client";
+import { toast } from "sonner";
 
 export function StudentManagement() {
     const { classId } = useParams();
-    const navigate = useNavigate();
     const [classInfo, setClassInfo] = useState<TeacherClass | null>(null);
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(true);
@@ -84,7 +84,7 @@ export function StudentManagement() {
             setNewStudent({ id: "", name: "", email: "" });
             loadData();
         } else {
-            alert("添加失败: " + res.error?.message);
+            toast.error("添加失败: " + res.error?.message);
         }
     }
 
@@ -114,7 +114,7 @@ export function StudentManagement() {
             setImportResult(res.data);
             loadData();
         } else {
-            alert("导入失败: " + res.error?.message);
+            toast.error("导入失败: " + res.error?.message);
         }
     };
 
@@ -148,10 +148,10 @@ export function StudentManagement() {
         }
 
         if (res?.success) {
-            if (type === "reset") alert("密码已重置为 123456");
+            if (type === "reset") toast.success("密码已重置为 123456");
             loadData();
         } else {
-            alert("操作失败: " + res?.error?.message);
+            toast.error("操作失败: " + res?.error?.message);
         }
         setConfirmDialog({ open: false, type: null, student: null });
     }

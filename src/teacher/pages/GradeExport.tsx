@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { teacherApi, type GradeExportPreviewItem, type TeacherClass, type Topic } from "../api-client";
+import { toast } from "sonner";
 
 export function GradeExport() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -81,7 +82,7 @@ export function GradeExport() {
         });
 
         if (!res.ok) {
-            alert("导出失败");
+            toast.error("导出失败");
             return;
         }
 

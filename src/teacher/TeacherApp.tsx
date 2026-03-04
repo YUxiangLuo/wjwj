@@ -115,22 +115,36 @@ export function TeacherApp() {
     }, [isLoginPage, authState]);
 
     useEffect(() => {
-        if (authState !== "authed") return;
+        if (authState !== "authed" || !teacherUser) return;
         let cancelled = false;
-        teacherApi.getStats().then((res) => {
-            if (cancelled) return;
-            if (res.success && res.data?.stats) {
-                const pending = res.data.stats.find((item) => item.label === "待批改作业")?.value ?? 0;
-                setPendingGradingCount(pending);
-            }
-        }).catch(() => {
-            if (cancelled) return;
-            setPendingGradingCount(0);
-        });
+
+        if (teacherUser.type === "assistant") {
+            teacherApi.getGradingList("pending").then((res) => {
+                if (cancelled) return;
+                if (res.success && res.data) {
+                    setPendingGradingCount(res.data.length);
+                }
+            }).catch(() => {
+                if (cancelled) return;
+                setPendingGradingCount(0);
+            });
+        } else {
+            teacherApi.getStats().then((res) => {
+                if (cancelled) return;
+                if (res.success && res.data?.stats) {
+                    const pending = res.data.stats.find((item) => item.label === "待批改作业")?.value ?? 0;
+                    setPendingGradingCount(pending);
+                }
+            }).catch(() => {
+                if (cancelled) return;
+                setPendingGradingCount(0);
+            });
+        }
+
         return () => {
             cancelled = true;
         };
-    }, [authState]);
+    }, [authState, teacherUser]);
 
     const handleLogout = async () => {
         try {

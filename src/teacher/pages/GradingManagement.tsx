@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, AlertTriangle, ClipboardList, Search, FileEdit, XCircle, Clock, UserCheck } from "lucide-react";
-import { teacherApi, type GradingItem, type TeacherUser } from "../api-client";
+import { teacherApi, type GradingItem } from "../api-client";
 
 export function GradingManagement() {
     const navigate = useNavigate();
@@ -16,16 +16,6 @@ export function GradingManagement() {
     const [filterStatus, setFilterStatus] = useState("all-status");
     const [filterClass, setFilterClass] = useState("all-class");
     const [searchTerm, setSearchTerm] = useState("");
-    const [currentUser, setCurrentUser] = useState<TeacherUser | null>(null);
-
-    useEffect(() => {
-        // 获取当前用户信息
-        teacherApi.getStats().then(res => {
-            if (res.success && res.data) {
-                // 从 stats API 可以推断用户类型，或者单独调用 me
-            }
-        });
-    }, []);
 
     useEffect(() => {
         loadGradingList();
