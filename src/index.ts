@@ -235,5 +235,7 @@ async function cleanupExpiredBackups(retentionDays: number) {
   }
 }
 
-setInterval(checkAndRunAutoBackup, AUTO_BACKUP_CHECK_INTERVAL_MS);
-checkAndRunAutoBackup();
+if (process.env.DISABLE_AUTO_BACKUP !== "1") {
+  setInterval(checkAndRunAutoBackup, AUTO_BACKUP_CHECK_INTERVAL_MS);
+  checkAndRunAutoBackup();
+}

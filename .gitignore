@@ -40,3 +40,5 @@ backups/
 storage/
 .vscode/
 .playwright-mcp/
+playwright-report/
+test-results/
