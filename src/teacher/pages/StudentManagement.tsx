@@ -139,7 +139,7 @@ export function StudentManagement() {
         }
 
         if (res?.success) {
-            if (type === "reset") toast.success("密码已重置为 123456");
+            if (type === "reset") toast.success("密码已重置为学号");
             loadData();
         } else {
             toast.error("操作失败: " + res?.error?.message);
@@ -250,7 +250,8 @@ export function StudentManagement() {
                                 <TableHead className="text-slate-400">学号</TableHead>
                                 <TableHead className="text-slate-400">姓名</TableHead>
                                 <TableHead className="text-slate-400">邮箱</TableHead>
-                                <TableHead className="text-slate-400">状态</TableHead>
+                                <TableHead className="text-slate-400">账号状态</TableHead>
+                                <TableHead className="text-slate-400">首次登录</TableHead>
                                 <TableHead className="text-slate-400">最后登录</TableHead>
                                 <TableHead className="text-slate-400 text-right">操作</TableHead>
                             </TableRow>
@@ -258,7 +259,7 @@ export function StudentManagement() {
                         <TableBody>
                             {filteredStudents.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                                    <TableCell colSpan={7} className="text-center py-12 text-slate-500">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
                                                 <Search className="w-5 h-5 text-slate-600" />
@@ -277,6 +278,13 @@ export function StudentManagement() {
                                             <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">正常</Badge>
                                         ) : (
                                             <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已禁用</Badge>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        {student.isFirstLogin === 1 ? (
+                                            <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10">是</Badge>
+                                        ) : (
+                                            <span className="text-slate-500 text-xs">否</span>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-slate-500 text-xs">{student.lastLogin ? new Date(student.lastLogin).toLocaleString() : "-"}</TableCell>

@@ -110,7 +110,12 @@ const topicItemRoutes: RouteDefinition = {
         const body = await parseBody<{ name?: string; description?: string; status?: number }>(req);
 
         const updateData: any = {};
-        if (body.name !== undefined) updateData.name = body.name;
+        if (body.name !== undefined) {
+            if (typeof body.name !== "string") return error("课题名称格式无效", "VALIDATION_ERROR", 400);
+            const trimmedName = body.name.trim();
+            if (!trimmedName) return error("课题名称不能为空", "VALIDATION_ERROR", 400);
+            updateData.name = trimmedName;
+        }
         if (body.description !== undefined) updateData.description = body.description;
         if (body.status !== undefined) updateData.status = body.status;
 
@@ -471,20 +476,22 @@ const taskRoutes: RouteDefinition = {
                     SELECT COUNT(*)
                     FROM submission s
                     INNER JOIN experiment e ON s.experiment_id = e.id
+                    INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
                     WHERE e.task_id = ${task.id} AND s.status IN (1, 2, 3)
                 )`,
                 pending: sql<number>`(
                     SELECT COUNT(*)
                     FROM submission s
                     INNER JOIN experiment e ON s.experiment_id = e.id
+                    INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
                     WHERE e.task_id = ${task.id} AND s.status = 1
                 )`,
             })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .leftJoin(student, eq(student.classId, class_.id))
-            .where(eq(class_.teacherId, currentTeacherId))
+            .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
+            .where(and(eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt)))
             .groupBy(task.id)
             .orderBy(desc(task.createdAt));
 
@@ -622,7 +629,7 @@ const taskProgressRoutes: RouteDefinition = {
             .from(student)
             .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, taskId)))
             .leftJoin(latestSub, eq(latestSub.experimentId, experiment.id))
-            .where(eq(student.classId, taskRow.classId))
+            .where(and(eq(student.classId, taskRow.classId), isNull(student.deletedAt)))
             .orderBy(asc(student.studentId));
 
         const counts = { not_started: 0, stage1: 0, stage2: 0, stage3: 0, stage4: 0, submitted: 0, graded: 0, rejected: 0 };

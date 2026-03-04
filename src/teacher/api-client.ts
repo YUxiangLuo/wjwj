@@ -137,6 +137,7 @@ export interface Student {
     name: string;
     email: string | null;
     status: number; // 1=active, 0=disabled
+    isFirstLogin: number; // 1=first login, 0=already logged in
     lastLogin: string | null;
 }
 

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, submission, task, topic } from "../../db/schema";
 import { json } from "../../server/http";
@@ -13,14 +13,14 @@ const dashboardRoutes: RouteDefinition = {
 
         const [[myClasses], [myTopics], [pendingGrading], [activeTasks]] = await Promise.all([
             db.select({ count: count() }).from(class_).where(eq(class_.teacherId, currentTeacherId)),
-            db.select({ count: count() }).from(topic).where(eq(topic.teacherId, currentTeacherId)),
+            db.select({ count: count() }).from(topic).where(and(eq(topic.teacherId, currentTeacherId), eq(topic.isDeleted, 0))),
             db.select({ count: count() })
                 .from(submission)
                 .innerJoin(experiment, eq(submission.experimentId, experiment.id))
                 .innerJoin(task, eq(experiment.taskId, task.id))
                 .innerJoin(class_, eq(task.classId, class_.id))
                 .where(and(eq(submission.status, 1), eq(class_.teacherId, currentTeacherId))),
-            db.select({ count: count() }).from(task).innerJoin(class_, eq(task.classId, class_.id)).where(eq(class_.teacherId, currentTeacherId)),
+            db.select({ count: count() }).from(task).innerJoin(class_, eq(task.classId, class_.id)).where(and(eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt))),
         ]);
 
         const recentSubs = await db
