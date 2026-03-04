@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, RotateCcw, Loader2, ArrowRight, Users, CheckCircle2, PauseCircle, GraduationCap } from "lucide-react";
+import { Search, RotateCcw, Loader2, ArrowRight, Users, CheckCircle2, PauseCircle, GraduationCap, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -106,6 +106,24 @@ export function StudentManagement() {
         }
     }
 
+    async function handleUnlock(student: Student) {
+        if (!confirm(`确定解锁学生「${student.name}」吗？`)) {
+            return;
+        }
+
+        try {
+            const res = await studentApi.unlock(student.id);
+            if (res.success) {
+                loadStudents();
+            } else {
+                toast.error(res.error?.message ?? "解锁失败");
+            }
+        } catch (error) {
+            console.error("Failed to unlock student:", error);
+            toast.error("解锁失败");
+        }
+    }
+
     async function handleToggleStatus(student: Student) {
         const newStatus = student.status === 1 ? 0 : 1;
         const action = newStatus === 0 ? "停用" : "启用";
@@ -184,12 +202,13 @@ export function StudentManagement() {
 
     const summary = useMemo(() => {
         const total = students.length;
-        const active = students.filter((student) => student.status === 1).length;
-        const disabled = total - active;
+        const locked = students.filter((student) => student.isLocked).length;
+        const active = students.filter((student) => student.status === 1 && !student.isLocked).length;
+        const disabled = total - active - locked;
         const avgProgress = total === 0
             ? 0
             : Math.round(students.reduce((sum, student) => sum + (student.progress || 0), 0) / total);
-        return { total, active, disabled, avgProgress };
+        return { total, active, disabled, locked, avgProgress };
     }, [students]);
 
     const filteredStudents = useMemo(() => {
@@ -325,7 +344,9 @@ export function StudentManagement() {
                                             <TableCell className="font-medium text-slate-200">{student.name}</TableCell>
                                             <TableCell className="text-slate-300">{student.className}</TableCell>
                                             <TableCell>
-                                                {student.status === 1 ? (
+                                                {student.isLocked ? (
+                                                    <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20">已锁定</Badge>
+                                                ) : student.status === 1 ? (
                                                     <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">正常</Badge>
                                                 ) : (
                                                     <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已停用</Badge>
@@ -340,6 +361,12 @@ export function StudentManagement() {
                                             <TableCell className="text-slate-500 text-xs">{formatDateTime(student.lastActive)}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
+                                                    {student.isLocked && (
+                                                        <Button variant="ghost" size="sm" onClick={() => handleUnlock(student)} className="h-8 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10">
+                                                            <Unlock className="w-3.5 h-3.5 mr-1" />
+                                                            解锁
+                                                        </Button>
+                                                    )}
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
