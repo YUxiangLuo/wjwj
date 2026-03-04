@@ -35,25 +35,25 @@ test.describe("Teacher Dashboard", () => {
     test("quick action buttons navigate correctly", async ({ page }) => {
         await loginAsTeacher(page);
 
-        const gradingBtn = page.getByRole("button", { name: "进入批改" });
-        await expect(gradingBtn).toBeVisible();
-        await gradingBtn.click();
+        const gradingLink = page.getByRole("link", { name: "进入批改" });
+        await expect(gradingLink).toBeVisible();
+        await gradingLink.click();
         await expect(page).toHaveURL(/\/teacher\/grading$/);
 
         await page.goto("/teacher");
         await expect(page.getByRole("heading", { name: "首页概览" })).toBeVisible();
 
-        const topicBtn = page.getByRole("button", { name: "创建新课题" });
-        await expect(topicBtn).toBeVisible();
-        await topicBtn.click();
+        const topicLink = page.getByRole("link", { name: "创建新课题" });
+        await expect(topicLink).toBeVisible();
+        await topicLink.click();
         await expect(page).toHaveURL(/\/teacher\/topic$/);
 
         await page.goto("/teacher");
         await expect(page.getByRole("heading", { name: "首页概览" })).toBeVisible();
 
-        const exportBtn = page.getByRole("button", { name: "导出成绩" });
-        await expect(exportBtn).toBeVisible();
-        await exportBtn.click();
+        const exportLink = page.getByRole("link", { name: "导出成绩" });
+        await expect(exportLink).toBeVisible();
+        await exportLink.click();
         await expect(page).toHaveURL(/\/teacher\/export$/);
     });
 

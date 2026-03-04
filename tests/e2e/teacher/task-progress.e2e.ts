@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { loginAsTeacher } from "./helpers";
 
 type ApiResponse<T> = { success: boolean; data?: T; error?: { code: string; message: string } };
-type TaskItem = { id: number; topicName: string; className: string };
+type TaskItem = { id: number; topic: string; className: string };
 
 test.describe("Teacher Task Progress", () => {
     test("can navigate to task progress page and view student list", async ({ page }) => {
@@ -17,7 +17,7 @@ test.describe("Teacher Task Progress", () => {
         await page.goto(`/teacher/task/${task.id}/progress`);
 
         await expect(page.getByText("返回列表")).toBeVisible();
-        await expect(page.getByText(task.topicName)).toBeVisible();
+        await expect(page.getByText(task.topic)).toBeVisible();
         await expect(page.getByText(task.className)).toBeVisible();
     });
 
