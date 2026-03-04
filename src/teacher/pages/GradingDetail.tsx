@@ -198,7 +198,7 @@ export function GradingDetail() {
                 </div>
             </div>
             {isReadOnly && (
-                <div className="px-6 py-2 text-sm text-rose-300 bg-rose-900/20 border-b border-rose-900/30 flex items-center justify-center">
+                <div data-testid="teacher-grading-readonly-banner" className="px-6 py-2 text-sm text-rose-300 bg-rose-900/20 border-b border-rose-900/30 flex items-center justify-center">
                     <XCircle className="w-4 h-4 mr-2" />
                     该作业正在被他人批改中，当前为只读模式。
                 </div>
@@ -344,6 +344,7 @@ export function GradingDetail() {
                                 </Label>
                                 <div className="flex items-center gap-3">
                                     <Input
+                                        data-testid="teacher-grading-score-questionnaire"
                                         type="number"
                                         min="0" max="100"
                                         value={scores.questionnaire}
@@ -362,6 +363,7 @@ export function GradingDetail() {
                                 </Label>
                                 <div className="flex items-center gap-3">
                                     <Input
+                                        data-testid="teacher-grading-score-process"
                                         type="number"
                                         min="0" max="100"
                                         value={scores.process}
@@ -380,6 +382,7 @@ export function GradingDetail() {
                                 </Label>
                                 <div className="flex items-center gap-3">
                                     <Input
+                                        data-testid="teacher-grading-score-report"
                                         type="number"
                                         min="0" max="100"
                                         value={scores.report}
@@ -401,6 +404,7 @@ export function GradingDetail() {
                             <div className="space-y-3">
                                 <Label className="text-slate-300">{data.isAssistant ? '助教评语' : '教师评语'}</Label>
                                 <Textarea
+                                    data-testid="teacher-grading-comment"
                                     rows={8}
                                     placeholder="请输入评语..."
                                     value={comment}
@@ -413,11 +417,11 @@ export function GradingDetail() {
                     </div>
 
                     <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900/50">
-                        <Button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => handleSubmit(2)} disabled={saving || isReadOnly}>
+                        <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => handleSubmit(2)} disabled={saving || isReadOnly}>
                             <CheckCircle className="w-4 h-4 mr-2" />
                             {saving ? "提交中..." : "确认评分"}
                         </Button>
-                        <Button variant="outline" className="w-full border-slate-700 bg-transparent text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-11" onClick={() => setShowRejectModal(true)} disabled={saving || isReadOnly}>
+                        <Button data-testid="teacher-grading-reject-open" variant="outline" className="w-full border-slate-700 bg-transparent text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-11" onClick={() => setShowRejectModal(true)} disabled={saving || isReadOnly}>
                             <XCircle className="w-4 h-4 mr-2" />
                             {saving ? "提交中..." : "驳回重做"}
                         </Button>
@@ -433,6 +437,7 @@ export function GradingDetail() {
                     <div className="space-y-3 py-4">
                         <Label className="text-slate-300">驳回理由（学生可见，至少10字）</Label>
                         <Textarea
+                            data-testid="teacher-grading-reject-reason"
                             rows={4}
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
@@ -443,6 +448,7 @@ export function GradingDetail() {
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowRejectModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
                         <Button
+                            data-testid="teacher-grading-reject-submit"
                             className="bg-rose-600 hover:bg-rose-700 text-white"
                             onClick={() => {
                                 if (rejectReason.trim().length < 10) {

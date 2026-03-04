@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus } from "lucide-react";
 import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
+import { TaskExtendDialog } from "../components/TaskExtendDialog";
+import { TaskPublishDialog } from "../components/TaskPublishDialog";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -182,6 +182,7 @@ export function TaskManagement() {
                         <div className="relative sm:w-56">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
+                                data-testid="teacher-task-search"
                                 placeholder="搜索课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -189,7 +190,7 @@ export function TaskManagement() {
                             />
                         </div>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-task-class-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -199,7 +200,7 @@ export function TaskManagement() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button onClick={() => setShowPublishModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                             <Plus className="w-4 h-4 mr-1" /> 发布任务
                         </Button>
                     </div>
@@ -220,7 +221,7 @@ export function TaskManagement() {
                             </TableHeader>
                             <TableBody>
                                 {filteredTasks.map((task) => (
-                                    <TableRow key={task.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                    <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                         <TableCell className="font-medium text-slate-200">{task.topic}</TableCell>
                                         <TableCell className="text-slate-300">{task.className}</TableCell>
                                         <TableCell className="text-slate-500 text-xs">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString() : "-"}</TableCell>
@@ -243,6 +244,7 @@ export function TaskManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button
+                                                    data-testid={`teacher-task-extend-open-${task.id}`}
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => {
@@ -280,87 +282,28 @@ export function TaskManagement() {
                 </CardContent>
             </Card>
 
-            <Dialog open={showPublishModal} onOpenChange={setShowPublishModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">发布任务</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label className="text-slate-300">选择课题</Label>
-                            <Select onValueChange={setSelectedTopicId} value={selectedTopicId}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
-                                    <SelectValue placeholder="请选择课题" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                                    {availableTopics.length === 0 ? <SelectItem value="none" disabled>暂无已发布课题</SelectItem> :
-                                        availableTopics.map(t => (
-                                            <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
-                                        ))
-                                    }
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-slate-300">选择班级</Label>
-                            <div className="space-y-2 border border-slate-800 bg-slate-950 rounded-md p-3 max-h-40 overflow-y-auto">
-                                {availableClasses.length === 0 ? <div className="text-sm text-slate-500">无班级</div> : availableClasses.map((cls) => (
-                                    <label key={cls.id} className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer hover:bg-slate-900 p-1.5 rounded">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
-                                            checked={selectedClassIds.includes(cls.id)}
-                                            onChange={() => toggleClass(cls.id)}
-                                        />
-                                        {cls.name}
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="deadline" className="text-slate-300">截止时间（可选）</Label>
-                            <Input
-                                id="deadline"
-                                type="datetime-local"
-                                value={deadline}
-                                onChange={e => setDeadline(e.target.value)}
-                                className="bg-slate-950 border-slate-800 text-slate-200"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowPublishModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
-                        <Button onClick={handlePublish} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认发布</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <TaskPublishDialog
+                open={showPublishModal}
+                onOpenChange={setShowPublishModal}
+                availableTopics={availableTopics}
+                availableClasses={availableClasses}
+                selectedTopicId={selectedTopicId}
+                onSelectedTopicIdChange={setSelectedTopicId}
+                selectedClassIds={selectedClassIds}
+                onToggleClass={toggleClass}
+                deadline={deadline}
+                onDeadlineChange={setDeadline}
+                onPublish={handlePublish}
+            />
 
-            <Dialog open={showExtendModal} onOpenChange={setShowExtendModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">延长截止时间</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="text-sm text-slate-500">
-                            {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="extendDeadline" className="text-slate-300">新截止时间</Label>
-                            <Input
-                                id="extendDeadline"
-                                type="datetime-local"
-                                value={extendDeadline}
-                                onChange={e => setExtendDeadline(e.target.value)}
-                                className="bg-slate-950 border-slate-800 text-slate-200"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowExtendModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
-                        <Button onClick={handleExtendDeadline} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认延长</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <TaskExtendDialog
+                open={showExtendModal}
+                onOpenChange={setShowExtendModal}
+                selectedTask={selectedTask}
+                extendDeadline={extendDeadline}
+                onExtendDeadlineChange={setExtendDeadline}
+                onConfirm={handleExtendDeadline}
+            />
         </div>
     );
 }

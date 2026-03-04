@@ -1,23 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Download, Users, CheckCircle2, PauseCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Users, CheckCircle2, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { StudentAddDialog } from "../components/StudentAddDialog";
+import { StudentConfirmDialog } from "../components/StudentConfirmDialog";
+import { StudentImportDialog } from "../components/StudentImportDialog";
 import { teacherApi, type Student, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
 
@@ -235,17 +226,18 @@ export function StudentManagement() {
                         <div className="relative sm:w-52">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
+                                data-testid="teacher-student-search"
                                 placeholder="搜索学生"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
-                        <Button variant="outline" onClick={() => setShowImportModal(true)} className="border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-white">
+                        <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-white">
                             <Upload className="w-4 h-4 mr-2" />
                             批量导入
                         </Button>
-                        <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             <UserPlus className="w-4 h-4 mr-2" />
                             添加学生
                         </Button>
@@ -276,7 +268,7 @@ export function StudentManagement() {
                                     </TableCell>
                                 </TableRow>
                             ) : filteredStudents.map((student) => (
-                                <TableRow key={student.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                <TableRow data-testid={`teacher-student-row-${student.id}`} key={student.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                     <TableCell className="font-mono text-indigo-300">{student.studentId}</TableCell>
                                     <TableCell className="font-medium text-slate-200">{student.name}</TableCell>
                                     <TableCell className="text-slate-400">{student.email || "-"}</TableCell>
@@ -290,13 +282,13 @@ export function StudentManagement() {
                                     <TableCell className="text-slate-500 text-xs">{student.lastLogin ? new Date(student.lastLogin).toLocaleString() : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                 <RotateCcw className="w-4 h-4" />
                                             </Button>
-                                            <Button variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" : "text-slate-400 hover:text-white"}`}>
+                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" : "text-slate-400 hover:text-white"}`}>
                                                 <UserX className={`w-4 h-4 ${student.status === 0 ? "text-slate-500" : ""}`} />
                                             </Button>
-                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" title="删除" onClick={() => handleDelete(student)}>
+                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" title="删除" onClick={() => handleDelete(student)}>
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>
@@ -308,125 +300,32 @@ export function StudentManagement() {
                 </CardContent>
             </Card>
 
-            <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">添加学生</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="studentId" className="text-slate-300">学号</Label>
-                            <Input
-                                id="studentId"
-                                placeholder="请输入学号"
-                                value={newStudent.id}
-                                onChange={(e) => setNewStudent({ ...newStudent, id: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="studentName" className="text-slate-300">姓名</Label>
-                            <Input
-                                id="studentName"
-                                placeholder="请输入姓名"
-                                value={newStudent.name}
-                                onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="studentEmail" className="text-slate-300">邮箱（可选）</Label>
-                            <Input
-                                id="studentEmail"
-                                type="email"
-                                placeholder="请输入邮箱"
-                                value={newStudent.email}
-                                onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
-                        <Button onClick={handleAddStudent} disabled={submitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "确认添加"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <StudentAddDialog
+                open={showAddModal}
+                onOpenChange={setShowAddModal}
+                form={newStudent}
+                onFormChange={setNewStudent}
+                submitting={submitting}
+                onSubmit={handleAddStudent}
+            />
 
-            <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">批量导入学生</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
-                            <Upload className="w-12 h-12 mx-auto text-slate-600 mb-4" />
-                            <p className="text-sm text-slate-400 mb-2">选择文件上传</p>
-                            <p className="text-xs text-slate-600">支持 .xlsx, .xls, .csv 格式</p>
-                            <Input
-                                type="file"
-                                accept=".xlsx,.xls,.csv"
-                                className="mt-6 bg-slate-900/50 border-slate-700 text-slate-300 text-sm file:bg-slate-800 file:text-slate-300 file:border-0 file:rounded-md file:mr-4 file:px-3 file:py-1 cursor-pointer"
-                                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-                            />
-                            {importFile && (
-                                <div className="text-xs text-emerald-400 mt-3 font-mono">已选择：{importFile.name}</div>
-                            )}
-                        </div>
-                        <Button variant="link" className="text-indigo-400 hover:text-indigo-300 p-0 h-auto" onClick={handleDownloadTemplate}>
-                            <Download className="w-4 h-4 mr-1" />
-                            下载导入模板
-                        </Button>
-                        {importResult && (
-                            <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-400 space-y-2">
-                                <div className="flex gap-4">
-                                    <span className="text-emerald-400">成功：{importResult.successCount} 条</span>
-                                    <span className={importResult.failureCount > 0 ? "text-rose-400" : ""}>失败：{importResult.failureCount} 条</span>
-                                </div>
-                                {importResult.errors.length > 0 && (
-                                    <div className="max-h-32 overflow-y-auto text-xs space-y-1 bg-slate-900 p-2 rounded border border-slate-800">
-                                        {importResult.errors.map((err, idx) => (
-                                            <div key={idx} className="text-rose-400">行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
-                        <Button onClick={handleImport} disabled={importing || !importFile} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                            {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : "开始导入"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <StudentImportDialog
+                open={showImportModal}
+                onOpenChange={setShowImportModal}
+                importFile={importFile}
+                onImportFileChange={setImportFile}
+                importing={importing}
+                importResult={importResult}
+                onDownloadTemplate={handleDownloadTemplate}
+                onImport={handleImport}
+            />
 
-            <AlertDialog
-                open={confirmDialog.open}
-                onOpenChange={(open) => !open && setConfirmDialog(markdown => ({ ...markdown, open: false }))}
-            >
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">确认操作</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
-                            {confirmDialog.type === "delete" && "确认删除该学生吗？此操作不可恢复。"}
-                            {confirmDialog.type === "reset" && "确认重置该学生的密码为 123456 吗？"}
-                            {confirmDialog.type === "toggle" && `确认${confirmDialog.student?.status === 1 ? "禁用" : "启用"}该学生账号吗？`}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, student: null })} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">
-                            取消
-                        </AlertDialogCancel>
-                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}>
-                            确认
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <StudentConfirmDialog
+                state={confirmDialog}
+                onOpenChange={(open) => !open && setConfirmDialog((prev) => ({ ...prev, open: false }))}
+                onCancel={() => setConfirmDialog({ open: false, type: null, student: null })}
+                onConfirm={executeConfirmAction}
+            />
         </div>
     );
 }

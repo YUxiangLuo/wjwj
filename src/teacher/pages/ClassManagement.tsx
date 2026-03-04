@@ -101,6 +101,7 @@ export function ClassManagement() {
                         <div className="relative">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
+                                data-testid="teacher-class-search"
                                 placeholder="搜索班级名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -108,7 +109,7 @@ export function ClassManagement() {
                             />
                         </div>
                         <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-44">
+                            <SelectTrigger data-testid="teacher-class-semester-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-44">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -138,7 +139,7 @@ export function ClassManagement() {
                             </TableHeader>
                             <TableBody>
                                 {filteredClasses.map((cls) => (
-                                    <TableRow key={cls.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                    <TableRow data-testid={`teacher-class-row-${cls.id}`} key={cls.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                         <TableCell className="font-medium text-slate-200">{cls.name}</TableCell>
                                         <TableCell className="text-slate-300">{cls.semester || "-"}</TableCell>
                                         <TableCell>
@@ -149,7 +150,7 @@ export function ClassManagement() {
                                         <TableCell className="text-slate-500 text-xs">{new Date(cls.createdAt).toLocaleDateString()}</TableCell>
                                         <TableCell className="text-right">
                                             <Link to={`/class/${cls.id}/students`}>
-                                                <Button variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                     <Users className="w-3.5 h-3.5 mr-1" />
                                                     管理学生
                                                 </Button>

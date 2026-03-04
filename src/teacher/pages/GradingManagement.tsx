@@ -146,6 +146,7 @@ export function GradingManagement() {
                         <div className="relative sm:w-56">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
+                                data-testid="teacher-grading-search"
                                 placeholder="搜索学生/课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -153,7 +154,7 @@ export function GradingManagement() {
                             />
                         </div>
                         <Select value={filterClass} onValueChange={setFilterClass}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-grading-class-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -164,7 +165,7 @@ export function GradingManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-28">
+                            <SelectTrigger data-testid="teacher-grading-status-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -186,7 +187,7 @@ export function GradingManagement() {
                             </div>
                             :
                             filteredSubmissions.map((sub) => (
-                                <div key={sub.id} className="border border-slate-800 rounded-lg p-5 bg-slate-950 hover:bg-slate-900 hover:border-slate-700 transition-all">
+                                <div data-testid={`teacher-grading-card-${sub.id}`} key={sub.id} className="border border-slate-800 rounded-lg p-5 bg-slate-950 hover:bg-slate-900 hover:border-slate-700 transition-all">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="flex items-center gap-4">
                                             <Avatar className="w-10 h-10 border border-slate-700">
@@ -208,18 +209,18 @@ export function GradingManagement() {
                                     </div>
                                     <div className="flex justify-end mt-4 pt-3 border-t border-slate-800/50">
                                         {sub.status === 1 && (
-                                            <Button size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                                                 <FileEdit className="w-3.5 h-3.5 mr-2" />
                                                 开始批改
                                             </Button>
                                         )}
                                         {sub.status === 2 && (
-                                            <Button variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-white hover:bg-slate-800">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-white hover:bg-slate-800">
                                                 查看详情
                                             </Button>
                                         )}
                                         {sub.status === 3 && (
-                                            <Button variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10">
                                                 查看原因
                                             </Button>
                                         )}

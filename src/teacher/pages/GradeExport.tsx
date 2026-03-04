@@ -159,7 +159,7 @@ export function GradeExport() {
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-class-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -170,7 +170,7 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Select value={topicFilter} onValueChange={setTopicFilter}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-topic-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部课题" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -181,6 +181,7 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Button
+                            data-testid="teacher-export-batch"
                             variant="outline"
                             disabled={selectedCount === 0}
                             onClick={() => exportExcel()}
@@ -197,6 +198,7 @@ export function GradeExport() {
                             <TableRow className="border-slate-800 hover:bg-slate-900/50">
                                 <TableHead className="w-12 text-center text-slate-400">
                                     <input
+                                        data-testid="teacher-export-check-all"
                                         type="checkbox"
                                         className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
                                         checked={selectedTaskIds.length > 0 && selectedTaskIds.length === preview.length}
@@ -233,9 +235,10 @@ export function GradeExport() {
                                     </TableCell>
                                 </TableRow>
                             ) : preview.map((task) => (
-                                <TableRow key={task.taskId} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                     <TableCell className="text-center">
                                         <input
+                                            data-testid={`teacher-export-check-${task.taskId}`}
                                             type="checkbox"
                                             className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
                                             checked={selectedTaskIds.includes(task.taskId)}
@@ -256,6 +259,7 @@ export function GradeExport() {
                                     <TableCell className="font-medium font-mono text-slate-200">{task.avgScore ? task.avgScore.toFixed(1) : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <Button
+                                            data-testid={`teacher-export-single-${task.taskId}`}
                                             variant="ghost"
                                             size="sm"
                                             className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10"

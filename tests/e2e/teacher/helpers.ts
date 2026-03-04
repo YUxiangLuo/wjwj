@@ -14,6 +14,6 @@ export async function loginAsAssistant(page: Page) {
     await page.getByTestId("teacher-login-username").fill("assistant");
     await page.getByTestId("teacher-login-password").fill("123456");
     await page.getByTestId("teacher-login-submit").click();
-    await expect(page).toHaveURL(/\/teacher\/grading\/?$/);
-    await expect(page.getByRole("heading", { name: "作业批改" })).toBeVisible();
+    await expect(page).toHaveURL(/\/teacher(?:\/grading)?\/?$/);
+    await expect(page.getByTestId("teacher-grading-search")).toBeVisible();
 }

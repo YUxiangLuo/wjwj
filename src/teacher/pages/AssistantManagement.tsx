@@ -3,10 +3,8 @@ import { UserPlus, Users, CheckCircle2, PauseCircle, Search, Trash2, KeyRound, U
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AlertDialog,
@@ -18,6 +16,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AssistantAddDialog } from "../components/AssistantAddDialog";
+import { AssistantAssignDialog } from "../components/AssistantAssignDialog";
 import { teacherApi, type Assistant, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
 
@@ -178,6 +178,7 @@ export function AssistantManagement() {
                         <div className="relative sm:w-56">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                             <Input
+                                data-testid="teacher-assistant-search"
                                 placeholder="搜索姓名/工号/邮箱"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -185,7 +186,7 @@ export function AssistantManagement() {
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-28">
+                            <SelectTrigger data-testid="teacher-assistant-status-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -194,7 +195,7 @@ export function AssistantManagement() {
                                 <SelectItem value="disabled">已停用</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                        <Button data-testid="teacher-assistant-add-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                             <UserPlus className="w-4 h-4 mr-2" />
                             添加助教
                         </Button>
@@ -225,7 +226,7 @@ export function AssistantManagement() {
                                     </TableCell>
                                 </TableRow>
                             ) : filteredAssistants.map((ta) => (
-                                <TableRow key={ta.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                <TableRow data-testid={`teacher-assistant-row-${ta.id}`} key={ta.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                     <TableCell className="font-medium text-slate-200">{ta.name}</TableCell>
                                     <TableCell className="font-mono text-slate-300">{ta.studentId}</TableCell>
                                     <TableCell className="text-slate-400">{ta.email || "-"}</TableCell>
@@ -246,10 +247,11 @@ export function AssistantManagement() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex flex-wrap justify-end gap-2">
-                                            <Button variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openAssignModal(ta)}>
+                                            <Button data-testid={`teacher-assistant-assign-open-${ta.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openAssignModal(ta)}>
                                                 <UserCog className="w-3.5 h-3.5 mr-1" />分配班级
                                             </Button>
                                             <Button
+                                                data-testid={`teacher-assistant-reset-${ta.id}`}
                                                 variant="ghost"
                                                 size="sm"
                                                 className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
@@ -265,6 +267,7 @@ export function AssistantManagement() {
                                                 <KeyRound className="w-3.5 h-3.5 mr-1" />重置密码
                                             </Button>
                                             <Button
+                                                data-testid={`teacher-assistant-toggle-${ta.id}`}
                                                 variant="ghost"
                                                 size="sm"
                                                 className={`h-8 ${ta.status === 1 ? "text-slate-400 hover:text-amber-400 hover:bg-amber-500/10" : "text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10"}`}
@@ -279,7 +282,7 @@ export function AssistantManagement() {
                                             >
                                                 {ta.status === 1 ? <><PauseCircle className="w-3.5 h-3.5 mr-1" />停用</> : <><CheckCircle2 className="w-3.5 h-3.5 mr-1" />启用</>}
                                             </Button>
-                                            <Button variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" onClick={() => setDeleteId(ta.id)}>
+                                            <Button data-testid={`teacher-assistant-delete-${ta.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" onClick={() => setDeleteId(ta.id)}>
                                                 <Trash2 className="w-3.5 h-3.5 mr-1" />移除
                                             </Button>
                                         </div>
@@ -291,75 +294,23 @@ export function AssistantManagement() {
                 </CardContent>
             </Card>
 
-            <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">分配班级 - {selectedAssistant?.name}</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                            {classes.map((cls) => (
-                                <label key={cls.id} className="flex items-center gap-3 p-3 border border-slate-800 rounded-lg cursor-pointer hover:bg-slate-800 transition-colors bg-slate-950">
-                                    <input
-                                        type="checkbox"
-                                        className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20 w-4 h-4"
-                                        checked={selectedClassIds.includes(cls.id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setSelectedClassIds([...selectedClassIds, cls.id]);
-                                            } else {
-                                                setSelectedClassIds(selectedClassIds.filter(id => id !== cls.id));
-                                            }
-                                        }}
-                                    />
-                                    <div>
-                                        <div className="font-medium text-slate-200">{cls.name}</div>
-                                        <div className="text-xs text-slate-500">{cls.studentCount}人 · {cls.semester}</div>
-                                    </div>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
-                        <Button onClick={handleAssignClasses} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认分配</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <AssistantAssignDialog
+                open={showAssignModal}
+                onOpenChange={setShowAssignModal}
+                assistant={selectedAssistant}
+                classes={classes}
+                selectedClassIds={selectedClassIds}
+                onSelectedClassIdsChange={setSelectedClassIds}
+                onSubmit={handleAssignClasses}
+            />
 
-            <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">添加助教</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="assistantStudentId" className="text-slate-300">工号</Label>
-                            <Input
-                                id="assistantStudentId"
-                                placeholder="请输入工号"
-                                value={newAssistant.studentId}
-                                onChange={(e) => setNewAssistant({ ...newAssistant, studentId: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="assistantName" className="text-slate-300">姓名</Label>
-                            <Input
-                                id="assistantName"
-                                placeholder="请输入姓名"
-                                value={newAssistant.name}
-                                onChange={(e) => setNewAssistant({ ...newAssistant, name: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
-                        <Button onClick={handleAddAssistant} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认添加</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <AssistantAddDialog
+                open={showAddModal}
+                onOpenChange={setShowAddModal}
+                form={newAssistant}
+                onFormChange={setNewAssistant}
+                onSubmit={handleAddAssistant}
+            />
 
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -387,6 +338,7 @@ export function AssistantManagement() {
                     <AlertDialogFooter>
                         <AlertDialogCancel onClick={() => setShowUnbindConfirm(false)} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
                         <AlertDialogAction
+                            data-testid="teacher-assistant-force-unbind-submit"
                             onClick={async () => {
                                 if (!pendingAssign) return;
                                 const res = await teacherApi.assignClasses(pendingAssign.assistantId, pendingAssign.classIds, true);

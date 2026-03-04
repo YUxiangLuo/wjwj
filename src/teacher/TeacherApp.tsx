@@ -286,6 +286,7 @@ export function TeacherApp() {
                             <NavLink
                                 key={item.path}
                                 to={item.path}
+                                data-testid={`teacher-nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
                                 onClick={() => setIsSidebarOpen(false)}
                                 className={`flex items-center justify-between px-3 py-2.5 text-sm rounded-lg transition-all duration-200 group
                                     ${isActive
@@ -363,6 +364,7 @@ export function TeacherApp() {
                         <Button
                             variant="ghost"
                             size="icon"
+                            data-testid="teacher-open-notifications"
                             className="relative text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10"
                             onClick={async () => {
                                 await loadNotifications();
@@ -379,6 +381,7 @@ export function TeacherApp() {
                             <Button
                                 variant="ghost"
                                 size="sm"
+                                data-testid="teacher-change-password-open"
                                 onClick={() => setShowPasswordModal(true)}
                                 className="text-slate-400 hover:text-slate-200"
                             >
@@ -387,6 +390,7 @@ export function TeacherApp() {
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                data-testid="teacher-logout"
                                 onClick={handleLogout}
                                 className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
                                 title="退出登录"
@@ -470,7 +474,7 @@ export function TeacherApp() {
                                 取消
                             </Button>
                         )}
-                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button data-testid="teacher-password-submit" onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             保存
                         </Button>
@@ -519,6 +523,7 @@ export function TeacherApp() {
                     <DialogFooter>
                         <Button
                             variant="ghost"
+                            data-testid="teacher-notification-read-all"
                             onClick={async () => {
                                 await teacherApi.readAllNotifications();
                                 loadNotifications();

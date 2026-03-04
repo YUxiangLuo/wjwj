@@ -25,6 +25,16 @@ test.describe("Teacher Auth", () => {
         await expect(page).toHaveURL(/\/teacher\/login$/);
     });
 
+    test("disabled assistant cannot login", async ({ page }) => {
+        await page.goto("/teacher/login");
+        await page.getByTestId("teacher-login-username").fill("assistant2");
+        await page.getByTestId("teacher-login-password").fill("123456");
+        await page.getByTestId("teacher-login-submit").click();
+
+        await expect(page.getByText(/账号已被停用/)).toBeVisible();
+        await expect(page).toHaveURL(/\/teacher\/login$/);
+    });
+
     test("logout returns to login page", async ({ page }) => {
         await loginAsTeacher(page);
         await page.getByTitle("退出登录").click();
