@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock, GraduationCap } from "lucide-react";
+import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock, GraduationCap, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,9 @@ export function TeacherManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [newTeacher, setNewTeacher] = useState({ employeeId: "", name: "" });
     const [submitting, setSubmitting] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+    const [editName, setEditName] = useState("");
 
     useEffect(() => {
         loadTeachers();
@@ -119,6 +122,37 @@ export function TeacherManagement() {
         } catch (error) {
             console.error("Failed to reset password:", error);
             toast.error("重置失败");
+        }
+    }
+
+    function openEditModal(teacher: Teacher) {
+        setEditingTeacher(teacher);
+        setEditName(teacher.name);
+        setShowEditModal(true);
+    }
+
+    async function handleEditTeacher() {
+        if (!editingTeacher || !editName.trim()) return;
+
+        setSubmitting(true);
+        try {
+            const res = await teacherApi.update(editingTeacher.id, {
+                name: editName.trim(),
+            });
+
+            if (res.success) {
+                setShowEditModal(false);
+                setEditingTeacher(null);
+                setEditName("");
+                loadTeachers(searchTerm);
+            } else {
+                toast.error(res.error?.message ?? "编辑失败");
+            }
+        } catch (error) {
+            console.error("Failed to update teacher:", error);
+            toast.error("编辑失败");
+        } finally {
+            setSubmitting(false);
         }
     }
 
@@ -269,6 +303,10 @@ export function TeacherManagement() {
                                                         解锁
                                                     </Button>
                                                 )}
+                                                    <Button variant="ghost" size="sm" onClick={() => openEditModal(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                        <Pencil className="w-3.5 h-3.5 mr-1" />
+                                                        编辑
+                                                    </Button>
                                                     <Button data-testid={`teacher-reset-${teacher.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置
@@ -348,6 +386,48 @@ export function TeacherManagement() {
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认添加
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-slate-100">编辑教师</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="editEmployeeId" className="text-slate-300">工号</Label>
+                            <Input
+                                id="editEmployeeId"
+                                value={editingTeacher?.employeeId ?? ""}
+                                disabled
+                                className="bg-slate-950 border-slate-800 text-slate-500 placeholder:text-slate-600"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="editName" className="text-slate-300">姓名</Label>
+                            <Input
+                                id="editName"
+                                placeholder="请输入姓名"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                            取消
+                        </Button>
+                        <Button
+                            onClick={handleEditTeacher}
+                            disabled={submitting || !editName.trim()}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                        >
+                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            确认修改
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, RotateCcw, Loader2, Users, CheckCircle2, PauseCircle, UserRound, Search, ShieldAlert } from "lucide-react";
+import { Plus, Trash2, RotateCcw, Loader2, Users, CheckCircle2, PauseCircle, UserRound, Search, ShieldAlert, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,6 +126,24 @@ export function AssistantManagement() {
         }
     }
 
+    async function handleUnlock(assistant: Assistant) {
+        if (!confirm(`确定解锁助教「${assistant.name}」吗？`)) {
+            return;
+        }
+
+        try {
+            const res = await assistantApi.unlock(assistant.id);
+            if (res.success) {
+                loadAssistants();
+            } else {
+                toast.error(res.error?.message ?? "解锁失败");
+            }
+        } catch (error) {
+            console.error("Failed to unlock assistant:", error);
+            toast.error("解锁失败");
+        }
+    }
+
     async function handleDelete(assistant: Assistant) {
         if (!confirm(`确定删除助教「${assistant.name}」吗？`)) {
             return;
@@ -150,10 +168,11 @@ export function AssistantManagement() {
 
     const summary = useMemo(() => {
         const total = assistants.length;
-        const active = assistants.filter((assistant) => assistant.status === 1).length;
-        const disabled = total - active;
+        const locked = assistants.filter((assistant) => assistant.isLocked).length;
+        const active = assistants.filter((assistant) => assistant.status === 1 && !assistant.isLocked).length;
+        const disabled = total - active - locked;
         const teacherCount = new Set(assistants.map((assistant) => assistant.creatorTeacherId)).size;
-        return { total, active, disabled, teacherCount };
+        return { total, active, disabled, locked, teacherCount };
     }, [assistants]);
 
     const filteredAssistants = useMemo(() => {
@@ -179,7 +198,7 @@ export function AssistantManagement() {
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
                 <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -210,6 +229,17 @@ export function AssistantManagement() {
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
                             <PauseCircle className="w-5 h-5" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Locked</p>
+                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.locked}</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+                            <Unlock className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -277,7 +307,9 @@ export function AssistantManagement() {
                                         <TableCell className="font-medium text-slate-200">{assistant.name}</TableCell>
                                         <TableCell className="text-slate-300">{assistant.teacherName}</TableCell>
                                         <TableCell>
-                                            {assistant.status === 1 ? (
+                                            {assistant.isLocked ? (
+                                                <Badge variant="destructive" className="bg-rose-500/10 text-rose-400 hover:bg-rose-500/20">已锁定</Badge>
+                                            ) : assistant.status === 1 ? (
                                                 <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">正常</Badge>
                                             ) : (
                                                 <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已停用</Badge>
@@ -286,6 +318,12 @@ export function AssistantManagement() {
                                         <TableCell className="text-slate-500 text-xs">{formatDate(assistant.createdAt)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                {assistant.isLocked && (
+                                                    <Button data-testid={`assistant-unlock-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleUnlock(assistant)} className="h-8 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10">
+                                                        <Unlock className="w-3.5 h-3.5 mr-1" />
+                                                        解锁
+                                                    </Button>
+                                                )}
                                                 <Button data-testid={`assistant-reset-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置

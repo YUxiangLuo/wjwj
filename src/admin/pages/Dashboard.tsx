@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-    Users, Activity, TrendingUp, ShieldCheck, ArrowUpRight, ArrowDownRight, GraduationCap, School, UserCheck, Calendar, LogOut
+    Users, Activity, TrendingUp, ShieldCheck, ArrowUpRight, ArrowDownRight, GraduationCap, School, UserCheck, Calendar, LogOut, Briefcase
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -129,6 +129,20 @@ export function Dashboard() {
         { label: "系统设置", to: "/settings" },
     ];
 
+    function getStatusColor(value: number, warnThreshold: number, criticalThreshold: number) {
+        if (value > criticalThreshold) return "bg-rose-500";
+        if (value > warnThreshold) return "bg-amber-500";
+        return "bg-emerald-500";
+    }
+
+    function getStatusIndicator(value: number, warnThreshold: number, criticalThreshold: number) {
+        if (value > criticalThreshold) return "text-rose-400";
+        if (value > warnThreshold) return "text-amber-400";
+        return "text-emerald-400";
+    }
+
+    const hasAlert = metrics.cpu > 70 || metrics.memory > 75 || metrics.disk > 80;
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -141,10 +155,10 @@ export function Dashboard() {
                     loading={loading}
                 />
                 <KpiCard
-                    icon={Users}
-                    value={loading ? "-" : totalUsers}
-                    label="用户总数"
-                    trend="+6.2%"
+                    icon={Briefcase}
+                    value={loading ? "-" : stats?.teacherCount ?? 0}
+                    label="教师总数"
+                    trend="稳定"
                     trendUp
                     loading={loading}
                 />
@@ -220,34 +234,43 @@ export function Dashboard() {
                 <Card className="border-slate-800 bg-slate-900 shadow-lg shadow-black/20">
                     <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                         <CardTitle className="text-lg text-slate-100">系统状态</CardTitle>
-                        <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                        <ShieldCheck className={`w-5 h-5 ${hasAlert ? "text-amber-500" : "text-emerald-500"}`} />
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-400">CPU 使用率</span>
-                                <span className="text-sm font-medium text-slate-200 font-mono">{metrics.cpu}%</span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${getStatusColor(metrics.cpu, 70, 90)}`} />
+                                    <span className="text-sm text-slate-400">CPU 使用率</span>
+                                </div>
+                                <span className={`text-sm font-medium font-mono ${getStatusIndicator(metrics.cpu, 70, 90)}`}>{metrics.cpu}%</span>
                             </div>
                             <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                                <div className="h-full bg-indigo-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(metrics.cpu, 100)}%` }} />
+                                <div className={`h-full rounded-full transition-all duration-500 ${getStatusColor(metrics.cpu, 70, 90)}`} style={{ width: `${Math.min(metrics.cpu, 100)}%` }} />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-400">内存使用率</span>
-                                <span className="text-sm font-medium text-slate-200 font-mono">{metrics.memory}%</span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${getStatusColor(metrics.memory, 75, 90)}`} />
+                                    <span className="text-sm text-slate-400">内存使用率</span>
+                                </div>
+                                <span className={`text-sm font-medium font-mono ${getStatusIndicator(metrics.memory, 75, 90)}`}>{metrics.memory}%</span>
                             </div>
                             <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                                <div className="h-full bg-sky-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(metrics.memory, 100)}%` }} />
+                                <div className={`h-full rounded-full transition-all duration-500 ${getStatusColor(metrics.memory, 75, 90)}`} style={{ width: `${Math.min(metrics.memory, 100)}%` }} />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-slate-400">磁盘使用率</span>
-                                <span className="text-sm font-medium text-slate-200 font-mono">{metrics.disk}%</span>
+                                <div className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full ${getStatusColor(metrics.disk, 80, 95)}`} />
+                                    <span className="text-sm text-slate-400">磁盘使用率</span>
+                                </div>
+                                <span className={`text-sm font-medium font-mono ${getStatusIndicator(metrics.disk, 80, 95)}`}>{metrics.disk}%</span>
                             </div>
                             <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                                <div className="h-full bg-rose-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(metrics.disk, 100)}%` }} />
+                                <div className={`h-full rounded-full transition-all duration-500 ${getStatusColor(metrics.disk, 80, 95)}`} style={{ width: `${Math.min(metrics.disk, 100)}%` }} />
                             </div>
                         </div>
                     </CardContent>

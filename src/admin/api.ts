@@ -21,6 +21,7 @@ import {
     error,
     getClientIp,
     json,
+    parseBody,
 } from "../server/http";
 import {
     ADMIN_USER_TYPE,
@@ -53,10 +54,12 @@ import {
     studentRoutes,
     studentStatusRoutes,
     studentTransferRoutes,
+    studentUnlockRoutes,
     teacherResetPasswordRoutes,
     teacherRoutes,
     teacherStatusRoutes,
     teacherUnlockRoutes,
+    teacherUpdateRoutes,
 } from "./routes/management";
 import { notificationMarkReadRoutes, notificationReadAllRoutes, notificationRoutes } from "./routes/notifications";
 import { semesterUpdateRoutes } from "./routes/semester";
@@ -221,12 +224,34 @@ const systemMetricsRoutes = {
     },
 };
 
+const ALLOWED_SETTING_KEYS = new Set([
+    "system_name",
+    "maintenance_mode",
+    "allow_registration",
+    "login.max_fail_count",
+    "login.lock_duration_minutes",
+    "session.admin_timeout_minutes",
+    "session.teacher_timeout_minutes",
+    "session.student_timeout_minutes",
+    "experiment_time_limit",
+    "auto_save_interval",
+    "require_approval",
+    "enable_backup",
+    "backup_frequency",
+    "backup.retention_days",
+    "file.excel_max_rows",
+    "file.max_attachment_size_mb",
+    "file.batch_import_max_rows",
+    "notification.deadline_reminder_hours",
+    "notification.retention_days",
+]);
+
 const systemSettingsRoutes = {
     async GET() {
         const configs = await db.select().from(systemConfig);
 
         // Convert array to key-value object
-        const settings: Record<string, any> = {};
+        const settings: Record<string, string | number | boolean> = {};
 
         configs.forEach(c => {
             if (c.valueType === 'boolean') {
@@ -245,10 +270,12 @@ const systemSettingsRoutes = {
         const auth = await requireAdminAuth(req);
         if (auth.error) return auth.error;
 
-        const body = await req.json();
+        const body = await parseBody<Record<string, unknown>>(req);
 
-        // Loop through keys and upsert
+        // Loop through keys and upsert (only allowed keys)
         for (const [key, value] of Object.entries(body)) {
+            if (!ALLOWED_SETTING_KEYS.has(key)) continue;
+
             let valStr = String(value);
             let valType = "string";
 
@@ -272,7 +299,6 @@ const systemSettingsRoutes = {
         }
 
         // Log operation
-        // (Simplified, normally get real user ID)
         await db.insert(operationLog).values({
             userType: ADMIN_USER_TYPE,
             userId: auth.admin!.id,
@@ -354,6 +380,7 @@ export const adminApiRoutes = {
 
     // Teachers
     "/api/admin/teachers": withAdminAuth(teacherRoutes),
+    "/api/admin/teachers/:id": withAdminAuth(teacherUpdateRoutes),
     "/api/admin/teachers/:id/status": withAdminAuth(teacherStatusRoutes),
     "/api/admin/teachers/:id/unlock": withAdminAuth(teacherUnlockRoutes),
     "/api/admin/teachers/:id/reset-password": withAdminAuth(teacherResetPasswordRoutes),
@@ -372,6 +399,7 @@ export const adminApiRoutes = {
     // Students
     "/api/admin/students": withAdminAuth(studentRoutes),
     "/api/admin/students/:id/status": withAdminAuth(studentStatusRoutes),
+    "/api/admin/students/:id/unlock": withAdminAuth(studentUnlockRoutes),
     "/api/admin/students/:id/reset-password": withAdminAuth(studentResetPasswordRoutes),
     "/api/admin/students/:id/transfer": withAdminAuth(studentTransferRoutes),
     "/api/admin/students/:id/experiments": withAdminAuth(studentExperimentsRoutes),

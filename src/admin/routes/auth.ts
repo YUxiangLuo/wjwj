@@ -152,7 +152,7 @@ const adminLoginRoutes: RouteDefinition = {
         const isValid = await Bun.password.verify(password, adm.password);
         if (!isValid) {
             const failCount = (adm.loginFailCount ?? 0) + 1;
-            const updateData: any = { loginFailCount: failCount };
+            const updateData: { loginFailCount: number; lockedUntil?: Date } = { loginFailCount: failCount };
 
             if (failCount >= maxAttempts) {
                 updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);

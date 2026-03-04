@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, FlaskConical, Shield, Database, Save, Loader2, Lock, ArrowLeft } from "lucide-react";
+import { Settings, FlaskConical, Shield, Database, Save, Loader2, Lock, ArrowLeft, FileText, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,8 @@ const sections: SettingSection[] = [
     { id: "general", title: "基本设置", icon: Settings },
     { id: "experiment", title: "实验设置", icon: FlaskConical },
     { id: "security", title: "安全设置", icon: Shield },
+    { id: "file-limits", title: "文件限制", icon: FileText },
+    { id: "notifications", title: "通知设置", icon: Bell },
     { id: "backup", title: "备份恢复", icon: Database },
 ];
 
@@ -29,6 +31,8 @@ const sectionDescriptions: Record<string, string> = {
     general: "系统名称、维护模式与注册策略",
     experiment: "实验时长、自动保存与审批流程",
     security: "登录保护与会话超时策略",
+    "file-limits": "Excel行数、附件大小与批量导入限制",
+    notifications: "截止提醒与通知保留策略",
     backup: "自动备份、保留周期与恢复操作",
 };
 
@@ -64,6 +68,11 @@ export function SystemSettings() {
         enableBackup: true,
         backupFrequency: "daily",
         backupRetentionDays: 30,
+        excelMaxRows: 100000,
+        maxAttachmentSizeMb: 10,
+        batchImportMaxRows: 500,
+        deadlineReminderHours: 24,
+        notificationRetentionDays: 90,
     });
 
     const activeMeta = sections.find((section) => section.id === activeSection) ?? sections[0]!;
@@ -77,23 +86,28 @@ export function SystemSettings() {
         try {
             const res = await settingsApi.get();
             if (res.success && res.data) {
-                const data = res.data;
+                const data = res.data as Record<string, string | number | boolean | undefined>;
                 setSettings(prev => ({
                     ...prev,
-                    systemName: data.system_name ?? data.systemName ?? prev.systemName,
-                    maintenanceMode: data.maintenance_mode ?? data.maintenanceMode ?? prev.maintenanceMode,
-                    allowRegistration: data.allow_registration ?? data.allowRegistration ?? prev.allowRegistration,
-                    maxLoginAttempts: data["login.max_fail_count"] ?? data.maxLoginAttempts ?? prev.maxLoginAttempts,
-                    lockDurationMinutes: data["login.lock_duration_minutes"] ?? data.lockDurationMinutes ?? prev.lockDurationMinutes,
-                    adminSessionTimeout: data["session.admin_timeout_minutes"] ?? data.adminSessionTimeout ?? prev.adminSessionTimeout,
-                    teacherSessionTimeout: data["session.teacher_timeout_minutes"] ?? data.teacherSessionTimeout ?? prev.teacherSessionTimeout,
-                    studentSessionTimeout: data["session.student_timeout_minutes"] ?? data.studentSessionTimeout ?? prev.studentSessionTimeout,
-                    experimentTimeLimit: data.experiment_time_limit ?? data.experimentTimeLimit ?? prev.experimentTimeLimit,
-                    autoSaveInterval: data.auto_save_interval ?? data.autoSaveInterval ?? prev.autoSaveInterval,
-                    requireApproval: data.require_approval ?? data.requireApproval ?? prev.requireApproval,
-                    enableBackup: data.enable_backup ?? data.enableBackup ?? prev.enableBackup,
-                    backupFrequency: data.backup_frequency ?? data.backupFrequency ?? prev.backupFrequency,
-                    backupRetentionDays: data["backup.retention_days"] ?? data.backupRetentionDays ?? prev.backupRetentionDays,
+                    systemName: (data.system_name as string) ?? prev.systemName,
+                    maintenanceMode: (data.maintenance_mode as boolean) ?? prev.maintenanceMode,
+                    allowRegistration: (data.allow_registration as boolean) ?? prev.allowRegistration,
+                    maxLoginAttempts: (data["login.max_fail_count"] as number) ?? prev.maxLoginAttempts,
+                    lockDurationMinutes: (data["login.lock_duration_minutes"] as number) ?? prev.lockDurationMinutes,
+                    adminSessionTimeout: (data["session.admin_timeout_minutes"] as number) ?? prev.adminSessionTimeout,
+                    teacherSessionTimeout: (data["session.teacher_timeout_minutes"] as number) ?? prev.teacherSessionTimeout,
+                    studentSessionTimeout: (data["session.student_timeout_minutes"] as number) ?? prev.studentSessionTimeout,
+                    experimentTimeLimit: (data.experiment_time_limit as number) ?? prev.experimentTimeLimit,
+                    autoSaveInterval: (data.auto_save_interval as number) ?? prev.autoSaveInterval,
+                    requireApproval: (data.require_approval as boolean) ?? prev.requireApproval,
+                    enableBackup: (data.enable_backup as boolean) ?? prev.enableBackup,
+                    backupFrequency: (data.backup_frequency as string) ?? prev.backupFrequency,
+                    backupRetentionDays: (data["backup.retention_days"] as number) ?? prev.backupRetentionDays,
+                    excelMaxRows: (data["file.excel_max_rows"] as number) ?? prev.excelMaxRows,
+                    maxAttachmentSizeMb: (data["file.max_attachment_size_mb"] as number) ?? prev.maxAttachmentSizeMb,
+                    batchImportMaxRows: (data["file.batch_import_max_rows"] as number) ?? prev.batchImportMaxRows,
+                    deadlineReminderHours: (data["notification.deadline_reminder_hours"] as number) ?? prev.deadlineReminderHours,
+                    notificationRetentionDays: (data["notification.retention_days"] as number) ?? prev.notificationRetentionDays,
                 }));
             }
         } catch (error) {
@@ -121,6 +135,11 @@ export function SystemSettings() {
                 enable_backup: settings.enableBackup,
                 backup_frequency: settings.backupFrequency,
                 "backup.retention_days": settings.backupRetentionDays,
+                "file.excel_max_rows": settings.excelMaxRows,
+                "file.max_attachment_size_mb": settings.maxAttachmentSizeMb,
+                "file.batch_import_max_rows": settings.batchImportMaxRows,
+                "notification.deadline_reminder_hours": settings.deadlineReminderHours,
+                "notification.retention_days": settings.notificationRetentionDays,
             };
 
             const res = await settingsApi.update(payload);
@@ -473,6 +492,79 @@ export function SystemSettings() {
                                             <Lock className="w-4 h-4 mr-2" />
                                             修改管理员密码
                                         </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === "file-limits" && (
+                            <div className="space-y-6">
+                                <div className="grid gap-6 max-w-2xl">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <Label htmlFor="excelMaxRows" className="text-slate-300">Excel 最大行数</Label>
+                                            <Input
+                                                id="excelMaxRows"
+                                                type="number"
+                                                value={settings.excelMaxRows}
+                                                onChange={(e) => setSettings({ ...settings, excelMaxRows: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                            <p className="text-xs text-slate-500">允许上传的 Excel 文件最大行数（10,000 - 500,000）</p>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label htmlFor="maxAttachmentSizeMb" className="text-slate-300">单个附件最大 (MB)</Label>
+                                            <Input
+                                                id="maxAttachmentSizeMb"
+                                                type="number"
+                                                value={settings.maxAttachmentSizeMb}
+                                                onChange={(e) => setSettings({ ...settings, maxAttachmentSizeMb: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                            <p className="text-xs text-slate-500">单个上传附件的最大文件大小</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <Label htmlFor="batchImportMaxRows" className="text-slate-300">批量导入最大行数</Label>
+                                        <Input
+                                            id="batchImportMaxRows"
+                                            type="number"
+                                            value={settings.batchImportMaxRows}
+                                            onChange={(e) => setSettings({ ...settings, batchImportMaxRows: parseInt(e.target.value) || 0 })}
+                                            className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50 max-w-xs"
+                                        />
+                                        <p className="text-xs text-slate-500">批量导入学生/数据时允许的最大行数（100 - 1,000）</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === "notifications" && (
+                            <div className="space-y-6">
+                                <div className="grid gap-6 max-w-2xl">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <Label htmlFor="deadlineReminderHours" className="text-slate-300">截止提醒提前时间 (小时)</Label>
+                                            <Input
+                                                id="deadlineReminderHours"
+                                                type="number"
+                                                value={settings.deadlineReminderHours}
+                                                onChange={(e) => setSettings({ ...settings, deadlineReminderHours: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                            <p className="text-xs text-slate-500">在任务截止前多少小时发送提醒通知</p>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label htmlFor="notificationRetentionDays" className="text-slate-300">通知保留天数</Label>
+                                            <Input
+                                                id="notificationRetentionDays"
+                                                type="number"
+                                                value={settings.notificationRetentionDays}
+                                                onChange={(e) => setSettings({ ...settings, notificationRetentionDays: parseInt(e.target.value) || 0 })}
+                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                            />
+                                            <p className="text-xs text-slate-500">系统通知的保留天数，过期自动清理</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
