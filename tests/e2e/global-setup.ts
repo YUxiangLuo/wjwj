@@ -13,10 +13,11 @@ function run(command: string, args: string[]) {
 
 export default async function globalSetup() {
     const shouldResetDb = process.env.E2E_RESET_DB !== "0";
+    const resetScript = process.env.E2E_RESET_SCRIPT?.trim() || "db:reset";
 
     if (!shouldResetDb) {
         return;
     }
 
-    run("bun", ["run", "db:reset"]);
+    run("bun", ["run", resetScript]);
 }
