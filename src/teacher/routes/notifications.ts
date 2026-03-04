@@ -1,7 +1,7 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { notification } from "../../db/schema";
-import { error, json } from "../../server/http";
+import { error, getRouteParam, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireTeacherAuth } from "./auth";
 
@@ -44,9 +44,7 @@ const teacherNotificationReadRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentUser = auth.user!;
 
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const id = Number(parts[parts.length - 2]);
+        const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
         const receiverType = currentUser.type === "teacher" ? 2 : 3;

@@ -3,15 +3,9 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { db } from "../../db";
 import { experiment, topicAttachment } from "../../db/schema";
-import { error, getSearchParams } from "../../server/http";
+import { error, getRouteParam, getSearchParams } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireAuth } from "./auth";
-
-function getPathParam(req: Request, position: number): string {
-    const url = new URL(req.url);
-    const parts = url.pathname.split("/");
-    return parts[parts.length - position] ?? "";
-}
 
 function toCsv(data: Record<string, unknown>[], extraHeaders: string[] = []) {
     if (data.length === 0) return "";
@@ -40,7 +34,7 @@ const attachmentDownloadRoutes: RouteDefinition = {
         const auth = await requireAuth(req);
         if (auth.error) return auth.error;
 
-        const attachmentId = parseInt(getPathParam(req, 2));
+        const attachmentId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!attachmentId) {
             return error("无效的附件ID", "INVALID_ID");
         }
@@ -79,7 +73,7 @@ const exportRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const taskId = parseInt(getPathParam(req, 2));
+        const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
 
         const type = getSearchParams(req).get("type") ?? "all";

@@ -1,15 +1,9 @@
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { announcement, announcementRead, notification } from "../../db/schema";
-import { error, json } from "../../server/http";
+import { error, getRouteParam, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireAuth } from "./auth";
-
-function getPathParam(req: Request, position: number): string {
-    const url = new URL(req.url);
-    const parts = url.pathname.split("/");
-    return parts[parts.length - position] ?? "";
-}
 
 const notificationsRoutes: RouteDefinition = {
     async GET(req) {
@@ -51,7 +45,7 @@ const notificationReadRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const notificationId = parseInt(getPathParam(req, 2));
+        const notificationId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!notificationId) {
             return error("无效的通知ID", "INVALID_ID");
         }
@@ -130,7 +124,7 @@ const announcementReadRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const announcementId = parseInt(getPathParam(req, 2));
+        const announcementId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!announcementId) {
             return error("无效的公告ID", "INVALID_ID");
         }

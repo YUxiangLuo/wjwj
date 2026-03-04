@@ -6,8 +6,14 @@ import PDFDocument from "pdfkit";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { class_, experiment, notification, submission, task, topic } from "../../db/schema";
-import { error, json, parseBody } from "../../server/http";
+import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import {
+    createSeededRandom,
+    performSimpleSampling,
+    performStratifiedSampling,
+    performSystematicSampling,
+} from "../sampling";
 import { getConfigNumber, requireAuth } from "./auth";
 
 const ExperimentStatus = {
@@ -24,10 +30,8 @@ function getZValue(p: number): number {
     return 1.96;
 }
 
-function getPathParam(req: Request, position: number): string {
-    const url = new URL(req.url);
-    const parts = url.pathname.split("/");
-    return parts[parts.length - position] ?? "";
+function getTaskId(req: Request): number {
+    return Number.parseInt(getRouteParam(req, "id") ?? "", 10);
 }
 
 async function notifyUser(
@@ -250,52 +254,6 @@ function schedulePdfGeneration(params: {
     }, 0);
 }
 
-async function performSimpleSampling(data: any[], n: number, seed?: number): Promise<any[]> {
-    const indices = Array.from({ length: data.length }, (_, i) => i);
-
-    for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        const temp = indices[i]!;
-        indices[i] = indices[j]!;
-        indices[j] = temp;
-    }
-
-    const selectedIndices = indices.slice(0, n);
-    return selectedIndices.map((i) => data[i]);
-}
-
-async function performSystematicSampling(data: any[], k: number, n: number): Promise<any[]> {
-    const start = Math.floor(Math.random() * k);
-    const result = [];
-
-    for (let i = start; i < data.length; i += k) {
-        result.push(data[i]);
-    }
-
-    return result;
-}
-
-async function performStratifiedSampling(data: any[], stratifyBy: string, layers: any[]): Promise<any[]> {
-    const result: any[] = [];
-    const groups: Record<string, any[]> = {};
-    for (const item of data) {
-        const val = String(item[stratifyBy]);
-        if (!groups[val]) groups[val] = [];
-        groups[val].push(item);
-    }
-
-    for (const layer of layers) {
-        const groupData = groups[layer.name] || [];
-        const sampleCount = layer.sampleCount;
-
-        if (sampleCount > 0 && groupData.length > 0) {
-            const sampled = await performSimpleSampling(groupData, sampleCount);
-            result.push(...sampled);
-        }
-    }
-
-    return result;
-}
 
 const experimentRoutes: RouteDefinition = {
     async GET(req) {
@@ -303,7 +261,7 @@ const experimentRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const taskId = parseInt(getPathParam(req, 2));
+        const taskId = getTaskId(req);
         if (!taskId) {
             return error("无效的任务ID", "INVALID_ID");
         }
@@ -369,7 +327,7 @@ const experimentRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const taskId = parseInt(getPathParam(req, 2));
+        const taskId = getTaskId(req);
         if (!taskId) {
             return error("无效的任务ID", "INVALID_ID");
         }
@@ -473,7 +431,7 @@ const statsRoutes: RouteDefinition = {
         const auth = await requireAuth(req);
         if (auth.error) return auth.error;
 
-        const taskId = parseInt(getPathParam(req, 2));
+        const taskId = getTaskId(req);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
 
         const [taskInfo] = await db
@@ -527,7 +485,7 @@ const samplingActionRoutes: RouteDefinition = {
         const auth = await requireAuth(req);
         if (auth.error) return auth.error;
 
-        const taskId = parseInt(getPathParam(req, 2));
+        const taskId = getTaskId(req);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
 
         const body = await parseBody<{
@@ -553,27 +511,29 @@ const samplingActionRoutes: RouteDefinition = {
             return error("总体数据为空或读取失败", "READ_FAILED");
         }
 
+        const random = createSeededRandom(body.params?.seed);
+
         let sampledData: any[] = [];
         let resultParams: any = {};
 
         switch (body.method) {
             case "simple": {
                 const n = body.params.sampleSize || 100;
-                sampledData = await performSimpleSampling(population, n, body.params.seed);
+                sampledData = await performSimpleSampling(population, n, random);
                 resultParams = { completed: true, sampleCount: sampledData.length, seed: body.params.seed, data: sampledData };
                 break;
             }
             case "systematic": {
                 const k = body.params.kValue || 10;
-                sampledData = await performSystematicSampling(population, k, 0);
-                resultParams = { completed: true, kValue: k, sampleCount: sampledData.length, data: sampledData };
+                sampledData = await performSystematicSampling(population, k, random);
+                resultParams = { completed: true, kValue: k, sampleCount: sampledData.length, seed: body.params.seed, data: sampledData };
                 break;
             }
             case "stratified": {
                 const stratifyBy = body.params.stratifyBy;
                 const layers = body.params.layers;
-                sampledData = await performStratifiedSampling(population, stratifyBy, layers);
-                resultParams = { completed: true, stratifyBy, layers, stratifiedData: [], data: sampledData };
+                sampledData = await performStratifiedSampling(population, stratifyBy, layers, random);
+                resultParams = { completed: true, stratifyBy, layers, stratifiedData: [], seed: body.params.seed, data: sampledData };
                 break;
             }
         }
@@ -588,7 +548,7 @@ const submitRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const taskId = parseInt(getPathParam(req, 2));
+        const taskId = getTaskId(req);
         if (!taskId) {
             return error("无效的任务ID", "INVALID_ID");
         }
@@ -663,7 +623,7 @@ const resetRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const taskId = parseInt(getPathParam(req, 2));
+        const taskId = getTaskId(req);
         if (!taskId) {
             return error("无效的任务ID", "INVALID_ID");
         }

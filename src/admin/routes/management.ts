@@ -16,7 +16,7 @@ import {
     teacher,
     topic,
 } from "../../db/schema";
-import { error, getSearchParams, json, parseBody } from "../../server/http";
+import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 
 const semesterRoutes: RouteDefinition = {
@@ -51,8 +51,7 @@ const semesterRoutes: RouteDefinition = {
 
 const semesterCurrentRoutes = {
     async PUT(req: Request) {
-        const url = new URL(req.url);
-        const id = parseInt(url.pathname.split("/").pop() ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的学期ID", "INVALID_ID");
 
         await db.update(semester).set({ isCurrent: 0 });
@@ -64,8 +63,7 @@ const semesterCurrentRoutes = {
 
 const semesterDeleteRoutes = {
     async DELETE(req: Request) {
-        const url = new URL(req.url);
-        const id = parseInt(url.pathname.split("/").pop() ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的学期ID", "INVALID_ID");
 
         const [classCount] = await db.select({ count: count() }).from(class_).where(eq(class_.semesterId, id));
@@ -130,8 +128,7 @@ const teacherRoutes: RouteDefinition = {
 
 const teacherStatusRoutes = {
     async PUT(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ status: number }>(req);
         if (!id) return error("无效的教师ID", "INVALID_ID");
 
@@ -142,8 +139,7 @@ const teacherStatusRoutes = {
 
 const teacherUnlockRoutes = {
     async PUT(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的教师ID", "INVALID_ID");
 
         await db.update(teacher).set({ lockedUntil: null, loginFailCount: 0 }).where(eq(teacher.id, id));
@@ -153,8 +149,7 @@ const teacherUnlockRoutes = {
 
 const teacherResetPasswordRoutes = {
     async POST(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的教师ID", "INVALID_ID");
 
         const [t] = await db.select().from(teacher).where(eq(teacher.id, id));
@@ -218,8 +213,7 @@ const assistantRoutes: RouteDefinition = {
 
 const assistantStatusRoutes = {
     async PUT(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ status: number }>(req);
         if (!id) return error("无效的助教ID", "INVALID_ID");
 
@@ -230,7 +224,7 @@ const assistantStatusRoutes = {
 
 const assistantDeleteRoutes = {
     async DELETE(req: Request) {
-        const id = parseInt(new URL(req.url).pathname.split("/").pop() ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的助教ID", "INVALID_ID");
 
         await db.delete(assistantClass).where(eq(assistantClass.assistantId, id));
@@ -241,8 +235,7 @@ const assistantDeleteRoutes = {
 
 const assistantUnlockRoutes = {
     async PUT(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的助教ID", "INVALID_ID");
 
         await db.update(assistant).set({ lockedUntil: null, loginFailCount: 0 }).where(eq(assistant.id, id));
@@ -252,8 +245,7 @@ const assistantUnlockRoutes = {
 
 const assistantResetPasswordRoutes = {
     async POST(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的助教ID", "INVALID_ID");
 
         const [a] = await db.select().from(assistant).where(eq(assistant.id, id));
@@ -308,7 +300,7 @@ const classRoutes: RouteDefinition = {
 
 const classUpdateRoutes = {
     async PUT(req: Request) {
-        const id = parseInt(new URL(req.url).pathname.split("/").pop() ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ name?: string; teacherId?: number }>(req);
         if (!id) return error("无效的班级ID", "INVALID_ID");
 
@@ -321,7 +313,7 @@ const classUpdateRoutes = {
     },
 
     async DELETE(req: Request) {
-        const id = parseInt(new URL(req.url).pathname.split("/").pop() ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的班级ID", "INVALID_ID");
 
         await db.update(student).set({ deletedAt: new Date() }).where(eq(student.classId, id));
@@ -388,8 +380,7 @@ const studentRoutes: RouteDefinition = {
 
 const studentExperimentsRoutes = {
     async GET(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的学生ID", "INVALID_ID");
 
         const rows = await db
@@ -415,8 +406,7 @@ const studentExperimentsRoutes = {
 
 const studentStatusRoutes = {
     async PUT(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ status: number }>(req);
         if (!id) return error("无效的学生ID", "INVALID_ID");
 
@@ -427,8 +417,7 @@ const studentStatusRoutes = {
 
 const studentResetPasswordRoutes = {
     async POST(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的学生ID", "INVALID_ID");
 
         const [s] = await db.select().from(student).where(eq(student.id, id));
@@ -442,8 +431,7 @@ const studentResetPasswordRoutes = {
 
 const studentTransferRoutes = {
     async POST(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ targetClassId: number; reason?: string }>(req);
         if (!id) return error("无效的学生ID", "INVALID_ID");
         if (!body.targetClassId) return error("目标班级不能为空", "VALIDATION_ERROR");
@@ -477,7 +465,7 @@ const announcementRoutes: RouteDefinition = {
 
 const announcementUpdateRoutes = {
     async PUT(req: Request) {
-        const id = parseInt(new URL(req.url).pathname.split("/").pop() ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ title?: string; content?: string }>(req);
         if (!id) return error("无效的公告ID", "INVALID_ID");
 
@@ -489,7 +477,7 @@ const announcementUpdateRoutes = {
     },
 
     async DELETE(req: Request) {
-        const id = parseInt(new URL(req.url).pathname.split("/").pop() ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的公告ID", "INVALID_ID");
 
         await db.delete(announcement).where(eq(announcement.id, id));
@@ -499,8 +487,7 @@ const announcementUpdateRoutes = {
 
 const announcementPublishRoutes = {
     async PUT(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的公告ID", "INVALID_ID");
 
         await db.update(announcement).set({ status: 1 }).where(eq(announcement.id, id));
@@ -510,8 +497,7 @@ const announcementPublishRoutes = {
 
 const announcementUnpublishRoutes = {
     async PUT(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的公告ID", "INVALID_ID");
 
         await db.update(announcement).set({ status: 0 }).where(eq(announcement.id, id));
@@ -521,8 +507,7 @@ const announcementUnpublishRoutes = {
 
 const announcementStatsRoutes = {
     async GET(req: Request) {
-        const parts = new URL(req.url).pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的公告ID", "INVALID_ID");
 
         const [an] = await db.select().from(announcement).where(eq(announcement.id, id));

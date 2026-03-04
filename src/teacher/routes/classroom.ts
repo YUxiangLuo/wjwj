@@ -2,7 +2,7 @@ import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, loginLog, semester, student, submission, task } from "../../db/schema";
-import { error, json, parseBody } from "../../server/http";
+import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { ASSISTANT_USER_TYPE, getCurrentTeacherId } from "./auth";
 
@@ -31,9 +31,7 @@ const classRoutes: RouteDefinition = {
 
 const classStudentsRoutes: RouteDefinition = {
     async GET(req) {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const classId = Number(parts[4]);
+        const classId = Number(getRouteParam(req, "classId"));
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
@@ -62,9 +60,7 @@ const classStudentsRoutes: RouteDefinition = {
     },
 
     async POST(req) {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const classId = Number(parts[4]);
+        const classId = Number(getRouteParam(req, "classId"));
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
@@ -101,9 +97,7 @@ const classStudentsRoutes: RouteDefinition = {
 
 const classStudentsImportRoutes: RouteDefinition = {
     async POST(req) {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const classId = Number(parts[4]);
+        const classId = Number(getRouteParam(req, "classId"));
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
@@ -195,9 +189,7 @@ const classStudentsImportRoutes: RouteDefinition = {
 
 const studentRoutes: RouteDefinition = {
     async PUT(req) {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const studentId = Number(parts[parts.length - 1]);
+        const studentId = Number(getRouteParam(req, "id"));
 
         const currentTeacherId = await getCurrentTeacherId(req);
         if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
@@ -227,9 +219,7 @@ const studentRoutes: RouteDefinition = {
     },
 
     async DELETE(req) {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const studentId = Number(parts[parts.length - 1]);
+        const studentId = Number(getRouteParam(req, "id"));
 
         const currentTeacherId = await getCurrentTeacherId(req);
         if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
@@ -317,9 +307,7 @@ const assistantRoutes: RouteDefinition = {
 
 const assistantItemRoutes: RouteDefinition = {
     async PUT(req) {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const id = Number(parts[parts.length - 1]);
+        const id = Number(getRouteParam(req, "id"));
 
         const currentTeacherId = await getCurrentTeacherId(req);
         if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
@@ -347,9 +335,7 @@ const assistantItemRoutes: RouteDefinition = {
         return json({ success: true });
     },
     async DELETE(req) {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const id = Number(parts[parts.length - 1]);
+        const id = Number(getRouteParam(req, "id"));
 
         const currentTeacherId = await getCurrentTeacherId(req);
         if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
@@ -371,9 +357,7 @@ const assistantItemRoutes: RouteDefinition = {
 
 const assistantClassAssignRoutes: RouteDefinition = {
     async POST(req) {
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const assistantId = Number(parts[4]);
+        const assistantId = Number(getRouteParam(req, "id"));
 
         const currentTeacherId = await getCurrentTeacherId(req);
         if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);

@@ -1,7 +1,7 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { notification } from "../../db/schema";
-import { error, json } from "../../server/http";
+import { error, getRouteParam, json } from "../../server/http";
 import { ADMIN_USER_TYPE, requireAdminAuth } from "./auth";
 
 const notificationRoutes = {
@@ -43,9 +43,7 @@ const notificationMarkReadRoutes = {
         const auth = await requireAdminAuth(req);
         if (auth.error) return auth.error;
 
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const id = parseInt(parts[parts.length - 2] ?? "");
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
 
         if (!id) {
             return error("无效的通知ID", "INVALID_ID");

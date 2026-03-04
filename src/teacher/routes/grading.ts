@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, student, submission, task, teacher, topic } from "../../db/schema";
-import { error, getSearchParams, json, parseBody } from "../../server/http";
+import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import {
     ASSISTANT_USER_TYPE,
@@ -118,9 +118,7 @@ const gradingDetailRoutes: RouteDefinition = {
 
         if (classIds.length === 0) return error("无权限访问", "FORBIDDEN", 403);
 
-        const urlForId = new URL(req.url);
-        const pathParts = urlForId.pathname.split("/");
-        const submissionId = Number(pathParts[pathParts.length - 1]);
+        const submissionId = Number(getRouteParam(req, "id"));
 
         if (isNaN(submissionId)) return error("Invalid ID", "INVALID_ID");
 
@@ -220,9 +218,7 @@ const gradingDetailRoutes: RouteDefinition = {
 
         if (classIds.length === 0) return error("无权限访问", "FORBIDDEN", 403);
 
-        const urlForId = new URL(req.url);
-        const pathParts = urlForId.pathname.split("/");
-        const submissionId = Number(pathParts[pathParts.length - 1]);
+        const submissionId = Number(getRouteParam(req, "id"));
 
         if (isNaN(submissionId)) return error("Invalid ID", "INVALID_ID");
 
@@ -339,10 +335,8 @@ const teacherPdfDownloadRoutes: RouteDefinition = {
         const currentTeacherId = await getCurrentTeacherId(req);
         if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
 
-        const url = new URL(req.url);
-        const parts = url.pathname.split("/");
-        const submissionId = Number(parts[parts.length - 2]);
-        const type = parts[parts.length - 1];
+        const submissionId = Number(getRouteParam(req, "id"));
+        const type = getRouteParam(req, "type");
 
         if (isNaN(submissionId)) return error("Invalid ID", "INVALID_ID");
         if (type !== "questionnaire" && type !== "report") return error("Invalid type", "INVALID_TYPE");

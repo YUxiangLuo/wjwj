@@ -1,13 +1,21 @@
 import type { Config } from "drizzle-kit";
 
+function requireEnv(name: string) {
+    const value = process.env[name]?.trim();
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
+
 export default {
     schema: "./src/db/schema.ts",
     out: "./drizzle",
     dialect: "mysql",
     dbCredentials: {
-        host: process.env.DB_HOST || "localhost",
-        user: process.env.DB_USER || "root",
-        password: process.env.DB_PASSWORD || "root",
-        database: process.env.DB_NAME || "sampling_simulation",
+        host: requireEnv("DB_HOST"),
+        user: requireEnv("DB_USER"),
+        password: requireEnv("DB_PASSWORD"),
+        database: requireEnv("DB_NAME"),
     },
 } satisfies Config;

@@ -5,6 +5,14 @@ type BackupResult =
     | { ok: true; backupId: string; createdAt: string; sqlPath: string; zipPath: string }
     | { ok: false; error: string; code: string };
 
+function requireEnv(name: string) {
+    const value = process.env[name]?.trim();
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
+
 export async function createBackupArtifacts(prefix = "backup"): Promise<BackupResult> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const backupId = `${prefix}_${timestamp}`;
@@ -13,10 +21,10 @@ export async function createBackupArtifacts(prefix = "backup"): Promise<BackupRe
     const backupDir = join(process.cwd(), "backups");
     await mkdir(backupDir, { recursive: true });
 
-    const dbHost = process.env.DB_HOST || "localhost";
-    const dbUser = process.env.DB_USER || "root";
-    const dbPassword = process.env.DB_PASSWORD || "root";
-    const dbName = process.env.DB_NAME || "sampling_simulation";
+    const dbHost = requireEnv("DB_HOST");
+    const dbUser = requireEnv("DB_USER");
+    const dbPassword = requireEnv("DB_PASSWORD");
+    const dbName = requireEnv("DB_NAME");
 
     const sqlPath = join(backupDir, `${backupId}.sql`);
     const zipPath = join(backupDir, `${backupId}.zip`);

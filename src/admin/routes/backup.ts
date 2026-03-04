@@ -8,6 +8,14 @@ import type { RouteDefinition } from "../../server/route-types";
 import { createBackupArtifacts } from "../backup";
 import { ADMIN_SESSION_COOKIE, ADMIN_USER_TYPE, requireAdminAuth } from "./auth";
 
+function requireEnv(name: string) {
+    const value = process.env[name]?.trim();
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+}
+
 const backupCreateRoutes: RouteDefinition = {
     async POST(req: Request) {
         const auth = await requireAdminAuth(req);
@@ -94,10 +102,10 @@ const backupRestoreRoutes: RouteDefinition = {
             return error("备份文件不存在", "BACKUP_NOT_FOUND", 404);
         }
 
-        const dbHost = process.env.DB_HOST || "localhost";
-        const dbUser = process.env.DB_USER || "root";
-        const dbPassword = process.env.DB_PASSWORD || "root";
-        const dbName = process.env.DB_NAME || "sampling_simulation";
+        const dbHost = requireEnv("DB_HOST");
+        const dbUser = requireEnv("DB_USER");
+        const dbPassword = requireEnv("DB_PASSWORD");
+        const dbName = requireEnv("DB_NAME");
 
         const preBackup = await createBackupArtifacts("pre_restore");
         if (!preBackup.ok) {

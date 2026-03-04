@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, submission, task, topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
-import { error, json } from "../../server/http";
+import { error, getRouteParam, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getConfigNumber, requireAuth } from "./auth";
 
@@ -16,12 +16,6 @@ function isLockActive(lockedAt: Date | null, lockTimeoutMinutes: number) {
     if (!lockedAt) return false;
     const expiresAt = lockedAt.getTime() + lockTimeoutMinutes * 60 * 1000;
     return Date.now() < expiresAt;
-}
-
-function getPathParam(req: Request, position: number): string {
-    const url = new URL(req.url);
-    const parts = url.pathname.split("/");
-    return parts[parts.length - position] ?? "";
 }
 
 const tasksRoutes: RouteDefinition = {
@@ -147,7 +141,7 @@ const taskDetailRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const taskId = parseInt(getPathParam(req, 1));
+        const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!taskId) {
             return error("无效的任务ID", "INVALID_ID");
         }

@@ -14,6 +14,11 @@ export function getSearchParams(req: Request) {
     return new URL(req.url).searchParams;
 }
 
+export function getRouteParam(req: Request, name: string): string | null {
+    const routedReq = req as Request & { params?: Record<string, string> };
+    return routedReq.params?.[name] ?? null;
+}
+
 export function getCookieValue(req: Request, name: string): string | null {
     const cookie = req.headers.get("cookie") ?? "";
     const match = cookie.match(new RegExp(`(?:^|; )${name}=([^;]+)`));

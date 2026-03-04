@@ -3,15 +3,9 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { db } from "../../db";
 import { assistant, experiment, submission, task, teacher, topic } from "../../db/schema";
-import { error, getSearchParams, json } from "../../server/http";
+import { error, getRouteParam, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireAuth } from "./auth";
-
-function getPathParam(req: Request, position: number): string {
-    const url = new URL(req.url);
-    const parts = url.pathname.split("/");
-    return parts[parts.length - position] ?? "";
-}
 
 const submissionsByTaskRoutes: RouteDefinition = {
     async GET(req) {
@@ -19,7 +13,7 @@ const submissionsByTaskRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const taskId = parseInt(getPathParam(req, 2));
+        const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
 
         const [exp] = await db
@@ -90,7 +84,7 @@ const submissionDetailRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const submissionId = parseInt(getPathParam(req, 1));
+        const submissionId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!submissionId) return error("无效的提交ID", "INVALID_ID");
 
         const [row] = await db
@@ -177,7 +171,7 @@ const submissionDownloadRoutes: RouteDefinition = {
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 
-        const submissionId = parseInt(getPathParam(req, 2));
+        const submissionId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!submissionId) return error("无效的提交ID", "INVALID_ID");
 
         const type = getSearchParams(req).get("type") ?? "report";
