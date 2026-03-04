@@ -29,6 +29,20 @@ function toCsv(data: Record<string, unknown>[], extraHeaders: string[] = []) {
     return lines.join("\n");
 }
 
+export function resolveAttachmentPath(filePath: string) {
+    const baseDir = path.resolve(process.cwd(), "storage");
+    const normalized = filePath.replace(/\\/g, "/").replace(/^\/+/, "");
+    const relativePath = normalized.startsWith("storage/") ? normalized.slice("storage/".length) : normalized;
+    const fullPath = path.resolve(baseDir, relativePath);
+
+    const isInsideStorage = fullPath === baseDir || fullPath.startsWith(`${baseDir}${path.sep}`);
+    if (!isInsideStorage) {
+        throw new Error("INVALID_PATH");
+    }
+
+    return fullPath;
+}
+
 const attachmentDownloadRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -45,11 +59,10 @@ const attachmentDownloadRoutes: RouteDefinition = {
             return error("附件不存在", "NOT_FOUND", 404);
         }
 
-        const baseDir = path.join(process.cwd(), "storage");
-        const normalizedPath = path.normalize(att.filePath).replace(/^([/\\])+/, "");
-        const fullPath = path.join(baseDir, normalizedPath);
-
-        if (!fullPath.startsWith(baseDir)) {
+        let fullPath: string;
+        try {
+            fullPath = resolveAttachmentPath(att.filePath);
+        } catch {
             return error("无效的文件路径", "INVALID_PATH", 400);
         }
 
