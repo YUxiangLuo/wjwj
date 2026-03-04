@@ -56,6 +56,7 @@ const classStudentsRoutes: RouteDefinition = {
                 name: student.name,
                 email: student.email,
                 status: student.status,
+                isFirstLogin: student.isFirstLogin,
                 lastLogin: sql<string>`(select max(login_at) from login_log where user_id = ${student.id} and user_type = ${STUDENT_USER_TYPE})`,
             })
             .from(student)
@@ -86,7 +87,7 @@ const classStudentsRoutes: RouteDefinition = {
         const [exist] = await db.select().from(student).where(eq(student.studentId, body.studentId));
         if (exist) return error("Student ID already exists", "DUPLICATE_ERROR");
 
-        const defaultPassword = await Bun.password.hash("123456");
+        const defaultPassword = await Bun.password.hash(body.studentId);
 
         await db.insert(student).values({
             studentId: body.studentId,
@@ -139,6 +140,10 @@ const classStudentsImportRoutes: RouteDefinition = {
             return error("文件内容为空", "VALIDATION_ERROR", 400);
         }
 
+        if (rows.length > 500) {
+            return error("单次导入最多500行", "VALIDATION_ERROR", 400);
+        }
+
         const errors: Array<{ row: number; reason: string }> = [];
         const toInsert: Array<{ studentId: string; name: string; email?: string }> = [];
 
@@ -172,16 +177,20 @@ const classStudentsImportRoutes: RouteDefinition = {
             errors.push({ row: -1, reason: `学号已存在: ${id}` });
         });
 
-        const defaultPassword = await Bun.password.hash("123456");
+        // Pre-compute hashed passwords before the transaction to minimise lock time
+        const hashedPasswords = await Promise.all(
+            finalInsert.map((item) => Bun.password.hash(item.studentId))
+        );
 
         await db.transaction(async (tx) => {
-            for (const item of finalInsert) {
+            for (let i = 0; i < finalInsert.length; i++) {
+                const item = finalInsert[i]!;
                 await tx.insert(student).values({
                     studentId: item.studentId,
                     name: item.name,
                     email: item.email ?? null,
                     classId,
-                    password: defaultPassword,
+                    password: hashedPasswords[i]!,
                     status: 1,
                     isFirstLogin: 1,
                 });
@@ -206,7 +215,7 @@ const studentRoutes: RouteDefinition = {
         const currentTeacherId = auth.teacherId!;
 
         const [owned] = await db
-            .select({ id: student.id })
+            .select({ id: student.id, studentId: student.studentId })
             .from(student)
             .innerJoin(class_, eq(student.classId, class_.id))
             .where(and(eq(student.id, studentId), eq(class_.teacherId, currentTeacherId)));
@@ -216,7 +225,7 @@ const studentRoutes: RouteDefinition = {
         const body = await parseBody<{ action: "reset_password" | "toggle_status" }>(req);
 
         if (body.action === "reset_password") {
-            const newPassword = await Bun.password.hash("123456");
+            const newPassword = await Bun.password.hash(owned.studentId);
             await db.update(student).set({ password: newPassword, isFirstLogin: 1 }).where(eq(student.id, studentId));
         } else if (body.action === "toggle_status") {
             const [current] = await db.select({ status: student.status }).from(student).where(eq(student.id, studentId));

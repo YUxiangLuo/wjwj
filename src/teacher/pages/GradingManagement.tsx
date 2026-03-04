@@ -172,6 +172,7 @@ export function GradingManagement() {
                                 <SelectItem value="all-status">全部状态</SelectItem>
                                 <SelectItem value="pending">待批改</SelectItem>
                                 <SelectItem value="graded">已批改</SelectItem>
+                                <SelectItem value="rejected">被驳回</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

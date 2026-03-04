@@ -83,6 +83,8 @@ const gradingRoutes: RouteDefinition = {
             query = query.where(eq(submission.status, 1));
         } else if (status === "graded") {
             query = query.where(eq(submission.status, 2));
+        } else if (status === "rejected") {
+            query = query.where(eq(submission.status, 3));
         }
 
         const rows = await query;
