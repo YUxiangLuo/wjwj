@@ -110,8 +110,12 @@ export function SystemMonitor() {
         const a = document.createElement("a");
         a.href = url;
         a.download = `monitor-report-${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+        setTimeout(() => {
+            URL.revokeObjectURL(url);
+        }, 0);
         toast.success("监控报告已导出");
     }
 

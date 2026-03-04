@@ -171,6 +171,9 @@ const teacherUnlockRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的教师ID", "INVALID_ID");
 
+        const [t] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, id));
+        if (!t) return error("教师不存在", "NOT_FOUND", 404);
+
         await db.update(teacher).set({ lockedUntil: null, loginFailCount: 0 }).where(eq(teacher.id, id));
         return json({ success: true });
     },
@@ -270,6 +273,9 @@ const assistantUnlockRoutes = {
     async PUT(req: Request) {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的助教ID", "INVALID_ID");
+
+        const [a] = await db.select({ id: assistant.id }).from(assistant).where(eq(assistant.id, id));
+        if (!a) return error("助教不存在", "NOT_FOUND", 404);
 
         await db.update(assistant).set({ lockedUntil: null, loginFailCount: 0 }).where(eq(assistant.id, id));
         return json({ success: true });
@@ -455,6 +461,9 @@ const studentUnlockRoutes = {
     async PUT(req: Request) {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的学生ID", "INVALID_ID");
+
+        const [s] = await db.select({ id: student.id }).from(student).where(eq(student.id, id));
+        if (!s) return error("学生不存在", "NOT_FOUND", 404);
 
         await db.update(student).set({ lockedUntil: null, loginFailCount: 0 }).where(eq(student.id, id));
         return json({ success: true });
