@@ -19,7 +19,7 @@ export function AnnouncementManagement() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [showStatsModal, setShowStatsModal] = useState(false);
 
-    const [newAnnouncement, setNewAnnouncement] = useState({ title: "", content: "" });
+    const [newAnnouncement, setNewAnnouncement] = useState({ title: "", content: "", targetScope: "all" });
     const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
     const [editForm, setEditForm] = useState({ title: "", content: "" });
     const [submitting, setSubmitting] = useState(false);
@@ -27,7 +27,12 @@ export function AnnouncementManagement() {
     const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
 
     // Stats State
-    const [currentStats, setCurrentStats] = useState<{ readCount: number; totalCount: number; readRate: number } | null>(null);
+    const [currentStats, setCurrentStats] = useState<{
+        readCount: number;
+        totalCount: number;
+        readRate: number;
+        byRole: { role: string; readCount: number; totalCount: number }[];
+    } | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
 
     useEffect(() => {
@@ -57,10 +62,11 @@ export function AnnouncementManagement() {
                 title: newAnnouncement.title.trim(),
                 content: newAnnouncement.content.trim(),
                 publish: publish,
+                targetScope: newAnnouncement.targetScope,
             });
 
             if (res.success) {
-                setNewAnnouncement({ title: "", content: "" });
+                setNewAnnouncement({ title: "", content: "", targetScope: "all" });
                 setShowAddModal(false);
                 loadAnnouncements();
                 toast.success(publish ? "公告已发布" : "草稿已保存");
@@ -199,6 +205,13 @@ export function AnnouncementManagement() {
         });
     }, [announcements, searchTerm, statusFilter]);
 
+    const targetScopeLabels: Record<string, string> = {
+        all: "全体用户",
+        teacher: "仅教师",
+        student: "仅学生",
+        assistant: "仅助教",
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -307,6 +320,9 @@ export function AnnouncementManagement() {
                                             ) : (
                                                 <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20">草稿</Badge>
                                             )}
+                                            <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
+                                                {targetScopeLabels[announcement.targetScope] ?? "全体用户"}
+                                            </Badge>
                                         </div>
                                         <span className="text-xs text-slate-500">{formatDateTime(announcement.createdAt)}</span>
                                     </div>
@@ -399,6 +415,20 @@ export function AnnouncementManagement() {
                                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
                                 className="min-h-32 resize-none bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-slate-300">发布范围</Label>
+                            <Select value={newAnnouncement.targetScope} onValueChange={(v) => setNewAnnouncement({ ...newAnnouncement, targetScope: v })}>
+                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                    <SelectValue placeholder="选择发布范围" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                    <SelectItem value="all">全体用户</SelectItem>
+                                    <SelectItem value="teacher">仅教师</SelectItem>
+                                    <SelectItem value="student">仅学生</SelectItem>
+                                    <SelectItem value="assistant">仅助教</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                     <DialogFooter className="gap-2">
@@ -509,6 +539,22 @@ export function AnnouncementManagement() {
                                     </div>
                                     <Progress value={currentStats.readRate} className="h-3 bg-slate-800 [&>div]:bg-emerald-500" />
                                 </div>
+                                {currentStats.byRole && currentStats.byRole.length > 0 && (
+                                    <div className="space-y-3">
+                                        <h4 className="text-sm font-medium text-slate-400 border-b border-slate-800 pb-2">按角色分类</h4>
+                                        {currentStats.byRole.map((role) => (
+                                            <div key={role.role} className="flex items-center justify-between text-sm bg-slate-950/50 p-3 rounded-lg border border-slate-800">
+                                                <span className="text-slate-300">{role.role}</span>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-slate-400">{role.readCount} / {role.totalCount}</span>
+                                                    <span className="text-xs text-slate-500 font-mono w-12 text-right">
+                                                        {role.totalCount > 0 ? Math.round((role.readCount / role.totalCount) * 100) : 0}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="text-center text-slate-500">暂无统计数据</div>
