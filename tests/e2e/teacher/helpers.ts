@@ -1,5 +1,34 @@
 import { expect, type Page } from "@playwright/test";
 
+type ApiResponse<T> = { success: boolean; data?: T; error?: { code: string; message: string } };
+type GradingItem = { id: number; status: number };
+
+export async function ensurePendingSubmissionId(page: Page) {
+    const allRes = await page.request.get("/api/teacher/grading");
+    const allJson = (await allRes.json()) as ApiResponse<GradingItem[]>;
+    expect(allJson.success).toBe(true);
+    const all = allJson.data ?? [];
+    const pending = all.find((item) => item.status === 1);
+    if (pending) return pending.id;
+
+    expect(all.length).toBeGreaterThan(0);
+    const target = all[0]!;
+    await page.request.get(`/api/teacher/grading/${target.id}`);
+    const toPendingRes = await page.request.post(`/api/teacher/grading/${target.id}`, {
+        data: {
+            scoreQuestionnaire: 60,
+            scoreProcess: 60,
+            scoreReport: 60,
+            totalScore: 60,
+            comment: "E2E reset pending",
+            status: 1,
+        },
+    });
+    const toPendingJson = (await toPendingRes.json()) as ApiResponse<{ success: boolean }>;
+    expect(toPendingJson.success).toBe(true);
+    return target.id;
+}
+
 export async function loginAsTeacher(page: Page) {
     await page.goto("/teacher/login");
     await page.getByTestId("teacher-login-username").fill("teacher");
