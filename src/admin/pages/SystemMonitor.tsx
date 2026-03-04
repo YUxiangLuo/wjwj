@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
-import { Cpu, HardDrive, Activity, Wifi, Users, Pause, Play, RefreshCw, TerminalSquare } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Cpu, HardDrive, Activity, Wifi, Users, Pause, Play, RefreshCw, TerminalSquare, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { systemApi, type SystemMetrics, type SystemLog } from "../api-client";
+import { toast } from "sonner";
 
 const defaultMetrics: SystemMetrics = {
     cpu: 0,
@@ -73,6 +74,47 @@ export function SystemMonitor() {
         return () => clearInterval(interval);
     }, [isLive]);
 
+    const alerts = useMemo(() => {
+        const items: { level: "warning" | "critical"; message: string }[] = [];
+        if (metrics.cpu > 90) items.push({ level: "critical", message: `CPU 使用率过高：${metrics.cpu}%` });
+        else if (metrics.cpu > 70) items.push({ level: "warning", message: `CPU 使用率偏高：${metrics.cpu}%` });
+        if (metrics.memory > 90) items.push({ level: "critical", message: `内存使用率过高：${metrics.memory}%` });
+        else if (metrics.memory > 75) items.push({ level: "warning", message: `内存使用率偏高：${metrics.memory}%` });
+        if (metrics.disk > 95) items.push({ level: "critical", message: `磁盘使用率过高：${metrics.disk}%` });
+        else if (metrics.disk > 80) items.push({ level: "warning", message: `磁盘使用率偏高：${metrics.disk}%` });
+        return items;
+    }, [metrics]);
+
+    function handleExportReport() {
+        const now = new Date().toLocaleString("zh-CN");
+        const lines = [
+            `系统监控报告 - ${now}`,
+            "",
+            "=== 系统资源 ===",
+            `CPU 使用率: ${metrics.cpu}%`,
+            `内存使用率: ${metrics.memory}%`,
+            `磁盘使用率: ${metrics.disk}%`,
+            `网络带宽: ${metrics.network} Mbps`,
+            `活跃在线用户: ${metrics.activeConnections}`,
+            "",
+            "=== 告警信息 ===",
+            alerts.length > 0
+                ? alerts.map(a => `[${a.level === "critical" ? "严重" : "警告"}] ${a.message}`).join("\n")
+                : "无告警",
+            "",
+            "=== 最近日志 ===",
+            ...logs.slice(0, 20).map(l => `[${new Date(l.time).toLocaleString("zh-CN")}] [${l.level}] ${l.message} (${l.source})`),
+        ];
+        const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `monitor-report-${new Date().toISOString().slice(0, 10)}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("监控报告已导出");
+    }
+
     const getLevelBadge = (level: string) => {
         switch (level) {
             case "ERROR":
@@ -102,6 +144,10 @@ export function SystemMonitor() {
                         <span className={`w-2 h-2 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-slate-600"}`} />
                         {isLive ? "实时监控中" : "监控已暂停"}
                     </div>
+                    <Button variant="outline" onClick={handleExportReport} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                        <Download className="w-4 h-4 mr-2" />
+                        导出报告
+                    </Button>
                     <Button variant="outline" onClick={fetchData} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                         刷新
@@ -168,6 +214,41 @@ export function SystemMonitor() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* 告警区域 */}
+            {alerts.length > 0 && (
+                <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                    <CardHeader className="flex flex-row items-center gap-2 border-b border-slate-800 pb-4">
+                        <AlertTriangle className="w-5 h-5 text-amber-400" />
+                        <CardTitle className="text-base text-slate-100">系统告警</CardTitle>
+                        <Badge variant="outline" className="ml-auto bg-amber-500/10 text-amber-400 border-amber-500/20">{alerts.length} 条</Badge>
+                    </CardHeader>
+                    <CardContent className="space-y-2 pt-4">
+                        {alerts.map((alert, i) => (
+                            <div
+                                key={i}
+                                className={`flex items-center gap-3 p-3 rounded-lg border ${
+                                    alert.level === "critical"
+                                        ? "border-rose-500/30 bg-rose-500/5"
+                                        : "border-amber-500/30 bg-amber-500/5"
+                                }`}
+                            >
+                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                    alert.level === "critical" ? "bg-rose-500" : "bg-amber-500"
+                                }`} />
+                                <Badge variant="outline" className={
+                                    alert.level === "critical"
+                                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                }>
+                                    {alert.level === "critical" ? "严重" : "警告"}
+                                </Badge>
+                                <span className="text-sm text-slate-300">{alert.message}</span>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            )}
 
             <Card className="border-slate-800 bg-slate-900 shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
