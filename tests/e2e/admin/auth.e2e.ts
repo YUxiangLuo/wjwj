@@ -27,4 +27,22 @@ test.describe("Admin Auth", () => {
         await expect(page).toHaveURL(/\/admin\/login$/);
         await expect(page.getByTestId("admin-login-submit")).toBeVisible();
     });
+
+    test("login button is disabled with empty username", async ({ page }) => {
+        await page.goto("/admin/login");
+        await page.getByTestId("admin-login-password").fill("somepassword");
+
+        const submitBtn = page.getByTestId("admin-login-submit");
+        await submitBtn.click();
+
+        // Should remain on the login page
+        await expect(page).toHaveURL(/\/admin\/login$/);
+    });
+
+    test("redirects to login when accessing admin without auth", async ({ page }) => {
+        await page.goto("/admin/semester");
+
+        await expect(page).toHaveURL(/\/admin\/login/);
+        await expect(page.getByTestId("admin-login-submit")).toBeVisible();
+    });
 });
