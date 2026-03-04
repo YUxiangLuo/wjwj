@@ -81,15 +81,14 @@ test.describe("Student Submission History", () => {
         // Navigate to rejected task's history (rejected shows in "in_progress" filter)
         await page.getByTestId("student-filter-in-progress").click();
         const rejectedCard = page.locator('[data-testid^="student-task-card-"]', { hasText: "被驳回" }).first();
-        if (await rejectedCard.isVisible()) {
-            await rejectedCard.getByTitle("历史记录").click();
-            await expect(page.getByTestId("student-submission-history")).toBeVisible();
+        await expect(rejectedCard).toBeVisible();
+        await rejectedCard.getByTitle("历史记录").click();
+        await expect(page.getByTestId("student-submission-history")).toBeVisible();
 
-            const submissionRow = page.locator('[data-testid^="student-submission-row-"]').first();
-            await expect(submissionRow).toBeVisible();
-            await expect(submissionRow.getByText("被驳回")).toBeVisible();
-            await expect(page.getByText(/驳回原因/)).toBeVisible();
-        }
+        const submissionRow = page.locator('[data-testid^="student-submission-row-"]').first();
+        await expect(submissionRow).toBeVisible();
+        await expect(submissionRow.getByText("被驳回")).toBeVisible();
+        await expect(page.getByText(/驳回原因/)).toBeVisible();
     });
 
     test("submission detail back button returns to history", async ({ page }) => {

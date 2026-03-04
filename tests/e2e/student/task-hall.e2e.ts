@@ -58,10 +58,10 @@ test.describe("Student Task Hall", () => {
 
         // Should show an announcement banner for the unread announcement
         const banner = page.getByText("最新公告");
-        if (await banner.isVisible()) {
-            await page.getByRole("button", { name: "查看详情" }).click();
-            await expect(page.getByText("系统公告")).toBeVisible();
-            await expect(page.getByText("E2E 系统通知公告")).toBeVisible();
-        }
+        await expect(banner).toBeVisible();
+
+        await page.getByRole("button", { name: "查看详情" }).click();
+        await expect(page.getByText("系统公告")).toBeVisible();
+        await expect(page.getByText("E2E 系统通知公告")).toBeVisible();
     });
 });

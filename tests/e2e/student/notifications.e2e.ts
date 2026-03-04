@@ -46,6 +46,9 @@ test.describe("Student Notifications", () => {
             .poll(async () => {
                 const afterRes = await page.request.get("/api/student/notifications");
                 const afterJson = (await afterRes.json()) as ApiResponse<NotificationsData>;
+                if (!afterJson.success) {
+                    throw new Error(`Failed to fetch notifications: ${afterJson.error?.code ?? "UNKNOWN_ERROR"} - ${afterJson.error?.message ?? "No error message provided"}`);
+                }
                 return afterJson.data?.unreadCount ?? 0;
             })
             .toBe(0);
