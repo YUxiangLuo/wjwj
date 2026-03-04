@@ -1,0 +1,281 @@
+import { and, eq } from "drizzle-orm";
+import { db } from "../../db";
+import { admin, loginLog, operationLog, systemConfig, userSession } from "../../db/schema";
+import {
+    buildSessionCookie,
+    clearSessionCookie,
+    error,
+    getClientIp,
+    getCookieValue,
+    isSecureRequest,
+    json,
+    parseBody,
+} from "../../server/http";
+import type { RouteDefinition } from "../../server/route-types";
+
+export const ADMIN_USER_TYPE = 1;
+export const ADMIN_SESSION_COOKIE = "admin_session";
+const DEFAULT_ADMIN_SESSION_TTL_MINUTES = 30;
+const DEFAULT_ADMIN_MAX_LOGIN_ATTEMPTS = 5;
+const DEFAULT_ADMIN_LOCK_MINUTES = 30;
+
+function validateAdminPassword(password: string, username: string) {
+    const minLength = password.length >= 12;
+    const hasLetter = /[A-Za-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(password);
+    const containsUsername = username && password.includes(username);
+
+    return {
+        minLength,
+        hasLetter,
+        hasNumber,
+        hasSpecial,
+        containsUsername,
+        isValid: minLength && hasLetter && hasNumber && hasSpecial && !containsUsername,
+    };
+}
+
+export async function getConfigNumber(key: string, fallback: number) {
+    const [row] = await db
+        .select({ value: systemConfig.configValue, valueType: systemConfig.valueType })
+        .from(systemConfig)
+        .where(eq(systemConfig.configKey, key))
+        .limit(1);
+
+    if (!row) return fallback;
+    if (row.valueType === "number") return Number(row.value);
+    if (row.valueType === "boolean") return row.value === "true" ? 1 : 0;
+    const parsed = Number(row.value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export async function requireAdminAuth(req: Request) {
+    const token = getCookieValue(req, ADMIN_SESSION_COOKIE) ?? req.headers.get("x-admin-session");
+    if (!token) {
+        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+    }
+
+    const [session] = await db
+        .select()
+        .from(userSession)
+        .where(and(eq(userSession.sessionToken, token), eq(userSession.userType, ADMIN_USER_TYPE)))
+        .limit(1);
+
+    if (!session) {
+        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+    }
+
+    const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
+    if (expiresAt && expiresAt <= new Date()) {
+        await db.delete(userSession).where(eq(userSession.sessionToken, token));
+        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+    }
+
+    const [adm] = await db
+        .select({ id: admin.id, username: admin.username, isFirstLogin: admin.isFirstLogin })
+        .from(admin)
+        .where(eq(admin.id, session.userId));
+
+    if (!adm) {
+        return { admin: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+    }
+
+    const now = new Date();
+    const sessionTtlMinutes = await getConfigNumber("session.admin_timeout_minutes", DEFAULT_ADMIN_SESSION_TTL_MINUTES);
+    const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+
+    await db
+        .update(userSession)
+        .set({ lastActiveAt: now, expiresAt: newExpiresAt })
+        .where(eq(userSession.id, session.id));
+
+    return { admin: adm, error: null, session: { ...session, expiresAt: newExpiresAt } };
+}
+
+export function withAdminAuth(routes: RouteDefinition): RouteDefinition {
+    return {
+        GET: routes.GET
+            ? async (req) => {
+                const auth = await requireAdminAuth(req);
+                if (auth.error) return auth.error;
+                return routes.GET!(req);
+            }
+            : undefined,
+        POST: routes.POST
+            ? async (req) => {
+                const auth = await requireAdminAuth(req);
+                if (auth.error) return auth.error;
+                return routes.POST!(req);
+            }
+            : undefined,
+        PUT: routes.PUT
+            ? async (req) => {
+                const auth = await requireAdminAuth(req);
+                if (auth.error) return auth.error;
+                return routes.PUT!(req);
+            }
+            : undefined,
+        DELETE: routes.DELETE
+            ? async (req) => {
+                const auth = await requireAdminAuth(req);
+                if (auth.error) return auth.error;
+                return routes.DELETE!(req);
+            }
+            : undefined,
+    };
+}
+
+const adminLoginRoutes: RouteDefinition = {
+    async POST(req) {
+        const body = await parseBody<{ username: string; password: string }>(req);
+        const username = body.username?.trim();
+        const password = body.password ?? "";
+
+        if (!username || !password) {
+            return error("请输入用户名和密码", "VALIDATION_ERROR", 400);
+        }
+
+        const [adm] = await db.select().from(admin).where(eq(admin.username, username));
+
+        if (!adm) {
+            return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
+        }
+
+        const now = new Date();
+        const maxAttempts = await getConfigNumber("login.max_fail_count", DEFAULT_ADMIN_MAX_LOGIN_ATTEMPTS);
+        const lockMinutes = await getConfigNumber("login.lock_duration_minutes", DEFAULT_ADMIN_LOCK_MINUTES);
+        if (adm.lockedUntil && new Date(adm.lockedUntil) > now) {
+            return error("账号已锁定，请稍后再试", "ACCOUNT_LOCKED", 403);
+        }
+
+        const isValid = await Bun.password.verify(password, adm.password);
+        if (!isValid) {
+            const failCount = (adm.loginFailCount ?? 0) + 1;
+            const updateData: any = { loginFailCount: failCount };
+
+            if (failCount >= maxAttempts) {
+                updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
+            }
+
+            await db.update(admin).set(updateData).where(eq(admin.id, adm.id));
+
+            const remainingAttempts = Math.max(maxAttempts - failCount, 0);
+
+            return error(
+                failCount >= maxAttempts
+                    ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
+                    : `用户名或密码错误，还剩${remainingAttempts}次尝试机会`,
+                "INVALID_CREDENTIALS",
+                401
+            );
+        }
+
+        await db.update(admin).set({ loginFailCount: 0, lockedUntil: null }).where(eq(admin.id, adm.id));
+
+        const token = crypto.randomUUID();
+        const sessionTtlMinutes = await getConfigNumber("session.admin_timeout_minutes", DEFAULT_ADMIN_SESSION_TTL_MINUTES);
+        const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+
+        await db.delete(userSession).where(and(eq(userSession.userType, ADMIN_USER_TYPE), eq(userSession.userId, adm.id)));
+
+        await db.insert(userSession).values({
+            sessionToken: token,
+            userType: ADMIN_USER_TYPE,
+            userId: adm.id,
+            deviceInfo: req.headers.get("user-agent") ?? "",
+            expiresAt,
+            lastActiveAt: now,
+        });
+
+        await db.insert(loginLog).values({
+            userType: ADMIN_USER_TYPE,
+            userId: adm.id,
+            ipAddress: getClientIp(req),
+            userAgent: req.headers.get("user-agent") ?? "",
+        });
+
+        const secure = isSecureRequest(req);
+        return json(
+            {
+                user: { id: adm.id, username: adm.username, isFirstLogin: adm.isFirstLogin, sessionExpiresAt: expiresAt },
+                expiresAt,
+            },
+            200,
+            { "Set-Cookie": buildSessionCookie(ADMIN_SESSION_COOKIE, token, expiresAt, secure) }
+        );
+    },
+};
+
+const adminMeRoutes: RouteDefinition = {
+    async GET(req) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+        return json({
+            ...auth.admin!,
+            sessionExpiresAt: auth.session?.expiresAt ?? null,
+        });
+    },
+};
+
+const adminLogoutRoutes: RouteDefinition = {
+    async POST(req) {
+        const token = getCookieValue(req, ADMIN_SESSION_COOKIE) ?? req.headers.get("x-admin-session");
+        if (token) {
+            await db.delete(userSession).where(eq(userSession.sessionToken, token));
+        }
+        const secure = isSecureRequest(req);
+        return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie(ADMIN_SESSION_COOKIE, secure) });
+    },
+};
+
+const adminPasswordRoutes: RouteDefinition = {
+    async PUT(req) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
+        const body = await parseBody<{ currentPassword: string; newPassword: string }>(req);
+        const currentPassword = body.currentPassword ?? "";
+        const newPassword = body.newPassword ?? "";
+
+        if (!currentPassword || !newPassword) {
+            return error("请输入当前密码和新密码", "VALIDATION_ERROR", 400);
+        }
+
+        if (newPassword === currentPassword) {
+            return error("新密码不能与当前密码相同", "VALIDATION_ERROR", 400);
+        }
+
+        const [adm] = await db.select().from(admin).where(eq(admin.id, auth.admin!.id));
+        if (!adm) {
+            return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
+        }
+
+        const isValid = await Bun.password.verify(currentPassword, adm.password);
+        if (!isValid) {
+            return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
+        }
+
+        const policy = validateAdminPassword(newPassword, adm.username ?? "");
+        if (!policy.isValid) {
+            return error("新密码需至少12位且包含字母、数字和特殊字符，且不包含用户名", "VALIDATION_ERROR", 400);
+        }
+
+        const hashed = await Bun.password.hash(newPassword);
+        await db.update(admin).set({ password: hashed, isFirstLogin: 0 }).where(eq(admin.id, adm.id));
+
+        await db.insert(operationLog).values({
+            userType: ADMIN_USER_TYPE,
+            userId: adm.id,
+            action: "CHANGE_PASSWORD",
+            targetType: "admin",
+            targetId: adm.id,
+            detail: { by: "self" },
+            ipAddress: getClientIp(req),
+        });
+
+        return json({ success: true });
+    },
+};
+
+export { adminLoginRoutes, adminLogoutRoutes, adminMeRoutes, adminPasswordRoutes };
