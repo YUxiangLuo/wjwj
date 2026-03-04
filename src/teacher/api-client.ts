@@ -27,6 +27,14 @@ export interface TeacherStats {
         topic: string;
         time: string;
     }[];
+    recentGradings: {
+        student: string;
+        class: string;
+        topic: string;
+        score: string | null;
+        rejected: boolean;
+        time: string;
+    }[];
 }
 
 export interface TeacherClass {
@@ -81,6 +89,12 @@ export interface Task {
     total: number;
     completed: number;
     pending: number;
+}
+
+export interface TaskProgressData {
+    task: { topicName: string; className: string; deadline: string | null };
+    counts: { not_started: number; stage1: number; stage2: number; stage3: number; stage4: number; submitted: number; graded: number; rejected: number };
+    students: { studentId: string; name: string; status: string; stage: number | null; lastActivity: string | null }[];
 }
 
 export interface GradingItem {
@@ -145,6 +159,7 @@ export interface TeacherUser {
     isFirstLogin: number;
     type: "teacher" | "assistant";
     creatorTeacherId?: number; // 仅助教有此字段
+    sessionExpiresAt?: string | null;
 }
 
 export interface TeacherNotification {
@@ -160,6 +175,19 @@ export interface TeacherNotification {
 
 export interface TeacherNotificationsResponse {
     notifications: TeacherNotification[];
+    unreadCount: number;
+}
+
+export interface TeacherAnnouncement {
+    id: number;
+    title: string;
+    content: string;
+    createdAt: string;
+    isRead: number;
+}
+
+export interface TeacherAnnouncementsResponse {
+    announcements: TeacherAnnouncement[];
     unreadCount: number;
 }
 
@@ -341,6 +369,8 @@ export const teacherApi = {
             method: "PUT",
             body: JSON.stringify({ deadline })
         }),
+    getTaskProgress: (taskId: number) =>
+        request<TaskProgressData>(`/api/teacher/tasks/${taskId}/progress`),
 
     // Grading
     getGradingList: (status?: string) =>
@@ -356,6 +386,8 @@ export const teacherApi = {
         totalScore: number;
         comment: string;
         status: number;
+        rejectReason?: string;
+        action?: string;
     }) => request<{ success: boolean }>(`/api/teacher/grading/${id}`, {
         method: "POST",
         body: JSON.stringify(data)
@@ -438,6 +470,11 @@ export const teacherApi = {
         request<{ success: boolean }>(`/api/teacher/notifications/${id}/read`, { method: "PUT" }),
     readAllNotifications: () =>
         request<{ success: boolean }>("/api/teacher/notifications/read-all", { method: "PUT" }),
+
+    // Announcements
+    getAnnouncements: () => request<TeacherAnnouncementsResponse>("/api/teacher/announcements"),
+    markAnnouncementRead: (id: number) =>
+        request<{ success: boolean }>(`/api/teacher/announcements/${id}/read`, { method: "PUT" }),
 
     // Grade export
     getGradeExportPreview: (params: { classId?: number | string; topicId?: number | string }) => {

@@ -410,7 +410,7 @@ const teacherMeRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireTeacherAuth(req);
         if (auth.error) return auth.error;
-        return json(auth.user!);
+        return json({ ...auth.user!, sessionExpiresAt: auth.session?.expiresAt ?? null });
     },
 };
 

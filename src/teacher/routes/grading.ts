@@ -244,9 +244,12 @@ const gradingDetailRoutes: RouteDefinition = {
             comment: string;
             status: number;
             rejectReason?: string;
+            action?: string; // "draft" = save without finalizing
         }>(req);
 
-        if (body.status === 3) {
+        const isDraft = body.action === "draft";
+
+        if (!isDraft && body.status === 3) {
             const reason = (body.rejectReason ?? "").trim();
             if (reason.length < 10 || reason.length > 1000) {
                 return error("驳回理由长度需在10-1000字之间", "VALIDATION_ERROR", 400);
@@ -302,6 +305,25 @@ const gradingDetailRoutes: RouteDefinition = {
         const totalScore =
             (body.scoreQuestionnaire * weights.questionnaire + body.scoreProcess * weights.process + body.scoreReport * weights.report) /
             100;
+
+        if (isDraft) {
+            // Save draft: store scores/comment without changing submission status, keep lock
+            await db.update(submission).set({
+                scoreQuestionnaire: String(body.scoreQuestionnaire),
+                scoreProcess: String(body.scoreProcess),
+                scoreReport: String(body.scoreReport),
+                totalScore: String(Number(totalScore.toFixed(2))),
+                teacherComment: body.comment,
+                rejectReason: body.rejectReason ?? null,
+                gradedById: userId,
+                gradedByType: myUserType,
+                lockedById: userId,
+                lockedByType: myUserType,
+                lockedAt: new Date(), // refresh lock
+            }).where(eq(submission.id, submissionId));
+
+            return json({ success: true });
+        }
 
         await db.update(submission).set({
             scoreQuestionnaire: String(body.scoreQuestionnaire),

@@ -12,7 +12,7 @@ import {
 } from "./routes/auth";
 import { gradeExportDataRoutes, gradeExportExcelRoutes, gradeExportPreviewRoutes } from "./routes/export";
 import { gradingDetailRoutes, gradingRoutes, teacherPdfDownloadRoutes } from "./routes/grading";
-import { teacherNotificationReadAllRoutes, teacherNotificationReadRoutes, teacherNotificationsRoutes } from "./routes/notifications";
+import { teacherNotificationReadAllRoutes, teacherNotificationReadRoutes, teacherNotificationsRoutes, teacherAnnouncementsRoutes, teacherAnnouncementReadRoutes } from "./routes/notifications";
 import { dashboardRoutes } from "./routes/dashboard";
 import {
     assistantClassAssignRoutes,
@@ -25,6 +25,7 @@ import {
 } from "./routes/classroom";
 import {
     taskExtendRoutes,
+    taskProgressRoutes,
     taskRoutes,
     topicAttachmentDeleteRoutes,
     topicAttachmentRoutes,
@@ -59,11 +60,14 @@ export const teacherApiRoutes = {
     "/api/teacher/topics/:id/copy": withTeacherAuth(topicCopyRoutes),
     "/api/teacher/tasks": withTeacherAuth(taskRoutes),
     "/api/teacher/tasks/:id/extend": withTeacherAuth(taskExtendRoutes),
+    "/api/teacher/tasks/:id/progress": withTeacherAuth(taskProgressRoutes),
     "/api/teacher/grading": withTeacherAuth(gradingRoutes),
     "/api/teacher/grading/:id": withTeacherAuth(gradingDetailRoutes),
     "/api/teacher/notifications": withTeacherAuth(teacherNotificationsRoutes),
     "/api/teacher/notifications/read-all": withTeacherAuth(teacherNotificationReadAllRoutes),
     "/api/teacher/notifications/:id/read": withTeacherAuth(teacherNotificationReadRoutes),
+    "/api/teacher/announcements": withTeacherAuth(teacherAnnouncementsRoutes),
+    "/api/teacher/announcements/:id/read": withTeacherAuth(teacherAnnouncementReadRoutes),
     "/api/teacher/grade-export/preview": withTeacherAuth(gradeExportPreviewRoutes),
     "/api/teacher/grade-export/data": withTeacherAuth(gradeExportDataRoutes),
     "/api/teacher/grade-export/excel": withTeacherAuth(gradeExportExcelRoutes),

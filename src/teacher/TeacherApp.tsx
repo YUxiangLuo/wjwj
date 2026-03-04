@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { GradingManagement } from "./pages/GradingManagement";
 import { GradingDetail } from "./pages/GradingDetail";
 import { AssistantManagement } from "./pages/AssistantManagement";
 import { GradeExport } from "./pages/GradeExport";
+import { TaskProgressDetail } from "./pages/TaskProgressDetail";
 import { Login } from "./pages/Login";
 
 const teacherMenuItems = [
@@ -74,6 +75,9 @@ export function TeacherApp() {
     const [notifications, setNotifications] = useState<TeacherNotification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [pendingGradingCount, setPendingGradingCount] = useState(0);
+    const [showSessionWarning, setShowSessionWarning] = useState(false);
+    const [sessionExpired, setSessionExpired] = useState(false);
+    const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -86,6 +90,7 @@ export function TeacherApp() {
                 if (res.success) {
                     setAuthState("authed");
                     setTeacherUser(res.data ?? null);
+                    setSessionExpiresAt(res.data?.sessionExpiresAt ?? null);
                     if (res.data?.isFirstLogin) {
                         setShowPasswordModal(true);
                     }
@@ -187,6 +192,34 @@ export function TeacherApp() {
             window.clearInterval(timer);
         };
     }, [authState]);
+
+    // Session timeout monitoring
+    useEffect(() => {
+        if (authState !== "authed" || !sessionExpiresAt) return;
+
+        const check = () => {
+            const remaining = new Date(sessionExpiresAt).getTime() - Date.now();
+            if (remaining <= 0) {
+                setSessionExpired(true);
+                setShowSessionWarning(false);
+            } else if (remaining <= 5 * 60 * 1000) {
+                setShowSessionWarning(true);
+            }
+        };
+
+        check();
+        const timer = window.setInterval(check, 30_000);
+        return () => window.clearInterval(timer);
+    }, [authState, sessionExpiresAt]);
+
+    const handleExtendSession = async () => {
+        const res = await authApi.me();
+        if (res.success && res.data) {
+            setSessionExpiresAt(res.data.sessionExpiresAt ?? null);
+            setShowSessionWarning(false);
+            setSessionExpired(false);
+        }
+    };
 
     const handleChangePassword = async () => {
         setPasswordError(null);
@@ -410,6 +443,7 @@ export function TeacherApp() {
                             <Route path="class/:classId/students" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <StudentManagement />} />
                             <Route path="topic" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <TopicManagement />} />
                             <Route path="task" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <TaskManagement />} />
+                            <Route path="task/:taskId/progress" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <TaskProgressDetail />} />
                             <Route path="grading" element={<GradingManagement />} />
                             <Route path="grading/:submissionId" element={<GradingDetail />} />
                             <Route path="assistant" element={teacherUser?.type === "assistant" ? <Navigate to="/grading" replace /> : <AssistantManagement />} />
@@ -533,6 +567,49 @@ export function TeacherApp() {
                             全部已读
                         </Button>
                         <Button onClick={() => setShowNotifications(false)} className="bg-slate-800 hover:bg-slate-700 text-slate-200">关闭</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Session Warning Dialog */}
+            <Dialog open={showSessionWarning && !sessionExpired} onOpenChange={setShowSessionWarning}>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                    <DialogHeader>
+                        <DialogTitle className="text-amber-400 flex items-center gap-2">
+                            <Clock className="w-5 h-5" />
+                            会话即将过期
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            您的登录会话即将过期，请选择继续使用或退出登录。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={handleLogout} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                            退出登录
+                        </Button>
+                        <Button onClick={handleExtendSession} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                            继续使用
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Session Expired Dialog */}
+            <Dialog open={sessionExpired}>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200" onInteractOutside={(e) => e.preventDefault()}>
+                    <DialogHeader>
+                        <DialogTitle className="text-rose-400 flex items-center gap-2">
+                            <Clock className="w-5 h-5" />
+                            会话已过期
+                        </DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            您的登录会话已过期，请重新登录。
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button onClick={() => { setSessionExpired(false); navigate("/login", { replace: true }); }} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                            重新登录
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, Save, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,6 +13,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type SubmissionDetail } from "../api-client";
 import { toast } from "sonner";
+
+const COMMENT_TEMPLATES = [
+    "总体完成较好",
+    "问卷设计合理",
+    "抽样方法选择恰当",
+    "报告分析深入",
+    "数据对比清晰",
+    "实验过程规范",
+    "问卷题目需增加多样性",
+    "抽样误差分析不够充分",
+    "报告结构需优化",
+    "建议加强方法对比",
+];
 
 export function GradingDetail() {
     const { submissionId } = useParams();
@@ -31,6 +44,8 @@ export function GradingDetail() {
     const [weights, setWeights] = useState({ questionnaire: 30, process: 30, report: 40 });
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
+    const [showTemplates, setShowTemplates] = useState(false);
+    const [savingDraft, setSavingDraft] = useState(false);
 
     useEffect(() => {
         if (!submissionId) return;
@@ -83,6 +98,64 @@ export function GradingDetail() {
             navigate("/grading");
         } else {
             toast.error("提交失败: " + res.error?.message);
+        }
+    }
+
+    async function handleSaveDraft() {
+        if (!submissionId || data?.readonly) return;
+        setSavingDraft(true);
+
+        const payload = {
+            scoreQuestionnaire: parseFloat(scores.questionnaire) || 0,
+            scoreProcess: parseFloat(scores.process) || 0,
+            scoreReport: parseFloat(scores.report) || 0,
+            totalScore: parseFloat(totalScore.toFixed(2)),
+            comment: comment,
+            status: 1,
+            action: "draft",
+        };
+
+        const res = await teacherApi.submitGrade(Number(submissionId), payload);
+        setSavingDraft(false);
+
+        if (res.success) {
+            toast.success("草稿已保存");
+        } else {
+            toast.error("保存失败: " + res.error?.message);
+        }
+        return res.success;
+    }
+
+    async function handleNextStudent() {
+        if (!submissionId) return;
+        setSavingDraft(true);
+
+        // Save current work first
+        const payload = {
+            scoreQuestionnaire: parseFloat(scores.questionnaire) || 0,
+            scoreProcess: parseFloat(scores.process) || 0,
+            scoreReport: parseFloat(scores.report) || 0,
+            totalScore: parseFloat(totalScore.toFixed(2)),
+            comment: comment,
+            status: 1,
+            action: "draft",
+        };
+        await teacherApi.submitGrade(Number(submissionId), payload);
+
+        // Find next pending submission
+        const listRes = await teacherApi.getGradingList("pending");
+        setSavingDraft(false);
+
+        if (listRes.success && listRes.data) {
+            const next = listRes.data.find(item => item.id !== Number(submissionId));
+            if (next) {
+                navigate(`/grading/${next.id}`, { replace: true });
+            } else {
+                toast.info("没有更多待批改作业");
+                navigate("/grading");
+            }
+        } else {
+            toast.error("获取列表失败");
         }
     }
 
@@ -412,7 +485,34 @@ export function GradingDetail() {
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-slate-300">{data.isAssistant ? '助教评语' : '教师评语'}</Label>
+                                <Label className="text-slate-300 flex items-center justify-between">
+                                    <span>{data.isAssistant ? '助教评语' : '教师评语'}</span>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 px-2"
+                                        onClick={() => setShowTemplates(!showTemplates)}
+                                        disabled={saving || isReadOnly}
+                                    >
+                                        <MessageSquarePlus className="w-3 h-3 mr-1" />
+                                        常用评语
+                                        {showTemplates ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
+                                    </Button>
+                                </Label>
+                                {showTemplates && (
+                                    <div className="flex flex-wrap gap-1.5 p-3 bg-slate-950 border border-slate-800 rounded-lg">
+                                        {COMMENT_TEMPLATES.map((tpl, idx) => (
+                                            <button
+                                                key={idx}
+                                                className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-300 hover:border-indigo-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
+                                                disabled={saving || isReadOnly}
+                                                onClick={() => setComment(prev => prev ? `${prev}，${tpl}` : tpl)}
+                                            >
+                                                {tpl}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                                 <Textarea
                                     data-testid="teacher-grading-comment"
                                     rows={8}
@@ -427,6 +527,18 @@ export function GradingDetail() {
                     </div>
 
                     <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900/50">
+                        {data.status === 1 && !isReadOnly && (
+                            <div className="flex gap-2">
+                                <Button data-testid="teacher-grading-save-draft" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 h-11" onClick={handleSaveDraft} disabled={saving || savingDraft}>
+                                    <Save className="w-4 h-4 mr-2" />
+                                    {savingDraft ? "保存中..." : "保存草稿"}
+                                </Button>
+                                <Button data-testid="teacher-grading-next" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-indigo-400 hover:bg-indigo-500/10 h-11" onClick={handleNextStudent} disabled={saving || savingDraft}>
+                                    <SkipForward className="w-4 h-4 mr-2" />
+                                    {savingDraft ? "保存中..." : "下一位"}
+                                </Button>
+                            </div>
+                        )}
                         <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => handleSubmit(2)} disabled={saving || isReadOnly}>
                             <CheckCircle className="w-4 h-4 mr-2" />
                             {saving ? "提交中..." : "确认评分"}

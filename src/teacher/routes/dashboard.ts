@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, submission, task, topic } from "../../db/schema";
 import { json } from "../../server/http";
@@ -40,6 +40,25 @@ const dashboardRoutes: RouteDefinition = {
             .orderBy(desc(submission.submittedAt))
             .limit(5);
 
+        const recentGradings = await db
+            .select({
+                studentName: student.name,
+                className: class_.name,
+                topicName: topic.name,
+                totalScore: submission.totalScore,
+                status: submission.status,
+                gradedAt: submission.gradedAt,
+            })
+            .from(submission)
+            .innerJoin(experiment, eq(submission.experimentId, experiment.id))
+            .innerJoin(student, eq(experiment.studentId, student.id))
+            .innerJoin(task, eq(experiment.taskId, task.id))
+            .innerJoin(topic, eq(task.topicId, topic.id))
+            .innerJoin(class_, eq(task.classId, class_.id))
+            .where(and(eq(class_.teacherId, currentTeacherId), sql`${submission.status} IN (2, 3)`))
+            .orderBy(desc(submission.gradedAt))
+            .limit(5);
+
         return json({
             stats: [
                 { label: "我的班级", value: myClasses?.count ?? 0 },
@@ -52,6 +71,14 @@ const dashboardRoutes: RouteDefinition = {
                 class: sub.className,
                 topic: sub.topicName,
                 time: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : "未知时间",
+            })),
+            recentGradings: recentGradings.map((g) => ({
+                student: g.studentName,
+                class: g.className,
+                topic: g.topicName,
+                score: g.status === 2 ? g.totalScore : null,
+                rejected: g.status === 3,
+                time: g.gradedAt ? new Date(g.gradedAt).toLocaleString() : "未知时间",
             })),
         });
     },

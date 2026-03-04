@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus } from "lucide-react";
+import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus, BarChart3 } from "lucide-react";
 import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
 import { TaskExtendDialog } from "../components/TaskExtendDialog";
 import { TaskPublishDialog } from "../components/TaskPublishDialog";
@@ -243,6 +243,12 @@ export function TaskManagement() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10">
+                                                    <Link to={`/task/${task.id}/progress`}>
+                                                        <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                                                        进度
+                                                    </Link>
+                                                </Button>
                                                 <Button
                                                     data-testid={`teacher-task-extend-open-${task.id}`}
                                                     variant="ghost"

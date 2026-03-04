@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { basename } from "node:path";
 import { db } from "../../db";
-import { class_, student, task, topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
+import { class_, experiment, student, submission, task, topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { notifyStudentsByClassIds, requirePrimaryTeacher } from "./auth";
@@ -575,8 +575,101 @@ const taskExtendRoutes: RouteDefinition = {
     }
 };
 
+const taskProgressRoutes: RouteDefinition = {
+    async GET(req) {
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
+        const taskId = Number(getRouteParam(req, "id"));
+        if (isNaN(taskId)) return error("Invalid ID", "INVALID_ID");
+
+        const [taskRow] = await db
+            .select({
+                id: task.id,
+                topicName: topic.name,
+                className: class_.name,
+                classId: task.classId,
+                deadline: task.deadline,
+            })
+            .from(task)
+            .innerJoin(topic, eq(task.topicId, topic.id))
+            .innerJoin(class_, eq(task.classId, class_.id))
+            .where(and(eq(task.id, taskId), eq(class_.teacherId, currentTeacherId)));
+
+        if (!taskRow) return error("任务不存在", "NOT_FOUND", 404);
+
+        // Use subquery to get the latest submission per experiment to avoid duplicate rows
+        const latestSub = db
+            .select({
+                experimentId: submission.experimentId,
+                status: sql<number>`MAX(${submission.status})`.as("latest_status"),
+            })
+            .from(submission)
+            .groupBy(submission.experimentId)
+            .as("latest_sub");
+
+        const students = await db
+            .select({
+                id: student.id,
+                studentId: student.studentId,
+                name: student.name,
+                experimentId: experiment.id,
+                currentStage: experiment.currentStage,
+                experimentStatus: experiment.status,
+                submissionStatus: latestSub.status,
+                lastActivity: experiment.updatedAt,
+            })
+            .from(student)
+            .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, taskId)))
+            .leftJoin(latestSub, eq(latestSub.experimentId, experiment.id))
+            .where(eq(student.classId, taskRow.classId))
+            .orderBy(asc(student.studentId));
+
+        const counts = { not_started: 0, stage1: 0, stage2: 0, stage3: 0, stage4: 0, submitted: 0, graded: 0, rejected: 0 };
+        const studentList = students.map((s) => {
+            let status = "not_started";
+            let stage: number | null = null;
+
+            if (!s.experimentId) {
+                status = "not_started";
+                counts.not_started++;
+            } else if (s.submissionStatus === 2) {
+                status = "graded";
+                counts.graded++;
+            } else if (s.submissionStatus === 3) {
+                status = "rejected";
+                counts.rejected++;
+            } else if (s.submissionStatus === 1) {
+                status = "submitted";
+                counts.submitted++;
+            } else {
+                stage = s.currentStage ?? 0;
+                if (stage <= 1) { status = "stage1"; counts.stage1++; }
+                else if (stage === 2) { status = "stage2"; counts.stage2++; }
+                else if (stage === 3) { status = "stage3"; counts.stage3++; }
+                else { status = "stage4"; counts.stage4++; }
+            }
+
+            return {
+                studentId: s.studentId,
+                name: s.name,
+                status,
+                stage,
+                lastActivity: s.lastActivity,
+            };
+        });
+
+        return json({
+            task: { topicName: taskRow.topicName, className: taskRow.className, deadline: taskRow.deadline },
+            counts,
+            students: studentList,
+        });
+    }
+};
+
 export {
     taskExtendRoutes,
+    taskProgressRoutes,
     taskRoutes,
     topicAttachmentDeleteRoutes,
     topicAttachmentRoutes,
