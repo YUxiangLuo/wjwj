@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { loginAsTeacher } from "./helpers";
 
+type ApiResponse<T> = { success: boolean; data?: T; error?: { code: string; message: string } };
+type DashboardData = {
+    stats: Array<{ label: string; value: number }>;
+    recentSubmissions: Array<{ student: string; class: string; topic: string; time: string }>;
+    recentGradings: Array<{ student: string; class: string; topic: string; score: number | null; rejected: boolean; time: string }>;
+};
+
 test.describe("Teacher Dashboard", () => {
     test("displays stats cards with correct labels", async ({ page }) => {
         await loginAsTeacher(page);
@@ -54,12 +61,12 @@ test.describe("Teacher Dashboard", () => {
         await loginAsTeacher(page);
 
         const res = await page.request.get("/api/teacher/dashboard");
-        const json = await res.json();
+        const json = (await res.json()) as ApiResponse<DashboardData>;
         expect(json.success).toBe(true);
-        expect(json.data.stats).toHaveLength(4);
-        expect(json.data.stats[0].label).toBe("我的班级");
-        expect(json.data.stats[0].value).toBeGreaterThanOrEqual(0);
-        expect(json.data.recentSubmissions).toBeDefined();
-        expect(json.data.recentGradings).toBeDefined();
+        expect(json.data!.stats).toHaveLength(4);
+        expect(json.data!.stats[0].label).toBe("我的班级");
+        expect(json.data!.stats[0].value).toBeGreaterThanOrEqual(0);
+        expect(json.data!.recentSubmissions).toBeDefined();
+        expect(json.data!.recentGradings).toBeDefined();
     });
 });
