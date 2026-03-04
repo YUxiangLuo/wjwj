@@ -152,7 +152,7 @@ export function TeacherManagement() {
                     <h2 className="text-lg font-semibold text-slate-100">教师管理</h2>
                     <p className="text-sm text-slate-400 mt-1">管理教师账号、锁定状态与登录安全。</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                <Button data-testid="teacher-create-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                     <Plus className="w-4 h-4 mr-1" />
                     添加教师
                 </Button>
@@ -216,13 +216,14 @@ export function TeacherManagement() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                             <Input
                                 placeholder="搜索工号或姓名"
+                                data-testid="teacher-search-input"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                                 className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
-                        <Button variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                        <Button data-testid="teacher-search-submit" variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
                             <Search className="w-4 h-4 mr-2" />
                             搜索
                         </Button>
@@ -268,14 +269,15 @@ export function TeacherManagement() {
                                                         解锁
                                                     </Button>
                                                 )}
-                                                <Button variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                    <Button data-testid={`teacher-reset-${teacher.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleToggleStatus(teacher)}
+                                                        size="sm"
+                                                        data-testid={`teacher-toggle-status-${teacher.id}`}
+                                                        onClick={() => handleToggleStatus(teacher)}
                                                     className={`h-8 ${teacher.status === 1 ? "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
                                                 >
                                                     {teacher.status === 1 ? "停用" : "启用"}
@@ -312,6 +314,7 @@ export function TeacherManagement() {
                             <Label htmlFor="employeeId" className="text-slate-300">工号</Label>
                             <Input
                                 id="employeeId"
+                                data-testid="teacher-create-employee-id"
                                 placeholder="请输入工号"
                                 value={newTeacher.employeeId}
                                 onChange={(e) => setNewTeacher({ ...newTeacher, employeeId: e.target.value })}
@@ -322,6 +325,7 @@ export function TeacherManagement() {
                             <Label htmlFor="name" className="text-slate-300">姓名</Label>
                             <Input
                                 id="name"
+                                data-testid="teacher-create-name"
                                 placeholder="请输入姓名"
                                 value={newTeacher.name}
                                 onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
@@ -337,6 +341,7 @@ export function TeacherManagement() {
                             取消
                         </Button>
                         <Button
+                            data-testid="teacher-create-submit"
                             onClick={handleAddTeacher}
                             disabled={submitting || !newTeacher.employeeId.trim() || !newTeacher.name.trim()}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"

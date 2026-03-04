@@ -140,6 +140,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
                 <Label htmlFor="username" className="text-slate-300 text-sm font-medium ml-1">{getRoleLabel()}</Label>
                 <Input
                   id="username"
+                  data-testid={`${role}-login-username`}
                   placeholder={role === "teacher" ? "请输入工号或助教账号" : `请输入${getRoleLabel()}`}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -156,6 +157,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
                 </div>
                 <Input
                   id="password"
+                  data-testid={`${role}-login-password`}
                   type="password"
                   placeholder="请输入密码"
                   value={password}
@@ -174,7 +176,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
             )}
 
             <div className="space-y-4 pt-2">
-              <Button type="submit" className="w-full h-12 text-base font-medium bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
+              <Button type="submit" data-testid={`${role}-login-submit`} className="w-full h-12 text-base font-medium bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

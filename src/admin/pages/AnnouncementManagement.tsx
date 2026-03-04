@@ -206,7 +206,7 @@ export function AnnouncementManagement() {
                     <h2 className="text-lg font-semibold text-slate-100">公告管理</h2>
                     <p className="text-sm text-slate-400 mt-1">统一发布系统通知，支持草稿与阅读统计。</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                <Button data-testid="announcement-create-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                     <Plus className="w-4 h-4 mr-1" />
                     发布公告
                 </Button>
@@ -312,13 +312,14 @@ export function AnnouncementManagement() {
                                     </div>
                                     <p className="text-sm text-slate-400 mb-4 line-clamp-2">{announcement.content}</p>
                                     <div className="flex flex-wrap gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => openEditModal(announcement)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                        <Button data-testid={`announcement-edit-open-${announcement.id}`} variant="ghost" size="sm" onClick={() => openEditModal(announcement)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                             <Pencil className="w-3.5 h-3.5 mr-1" />
                                             编辑
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
+                                            data-testid={`announcement-toggle-publish-${announcement.id}`}
                                             onClick={() => handleTogglePublish(announcement)}
                                             className={`h-8 ${announcement.status === 1 ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
                                         >
@@ -337,6 +338,7 @@ export function AnnouncementManagement() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
+                                            data-testid={`announcement-stats-${announcement.id}`}
                                             onClick={() => handleViewStats(announcement)}
                                             disabled={announcement.status !== 1}
                                             className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
@@ -347,6 +349,7 @@ export function AnnouncementManagement() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
+                                            data-testid={`announcement-delete-${announcement.id}`}
                                             onClick={() => handleDelete(announcement)}
                                             className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
                                         >
@@ -379,6 +382,7 @@ export function AnnouncementManagement() {
                             <Label htmlFor="title" className="text-slate-300">标题</Label>
                             <Input
                                 id="title"
+                                data-testid="announcement-create-title"
                                 placeholder="请输入公告标题"
                                 value={newAnnouncement.title}
                                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
@@ -389,6 +393,7 @@ export function AnnouncementManagement() {
                             <Label htmlFor="content" className="text-slate-300">内容</Label>
                             <Textarea
                                 id="content"
+                                data-testid="announcement-create-content"
                                 placeholder="请输入公告内容"
                                 value={newAnnouncement.content}
                                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
@@ -401,6 +406,7 @@ export function AnnouncementManagement() {
                             取消
                         </Button>
                         <Button
+                            data-testid="announcement-create-draft"
                             variant="outline"
                             onClick={() => handleAddAnnouncement(false)}
                             disabled={submitting || !newAnnouncement.title.trim()}
@@ -411,6 +417,7 @@ export function AnnouncementManagement() {
                             保存草稿
                         </Button>
                         <Button
+                            data-testid="announcement-create-publish"
                             onClick={() => handleAddAnnouncement(true)}
                             disabled={submitting || !newAnnouncement.title.trim()}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -434,6 +441,7 @@ export function AnnouncementManagement() {
                             <Label htmlFor="editTitle" className="text-slate-300">标题</Label>
                             <Input
                                 id="editTitle"
+                                data-testid="announcement-edit-title"
                                 placeholder="请输入公告标题"
                                 value={editForm.title}
                                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
@@ -444,6 +452,7 @@ export function AnnouncementManagement() {
                             <Label htmlFor="editContent" className="text-slate-300">内容</Label>
                             <Textarea
                                 id="editContent"
+                                data-testid="announcement-edit-content"
                                 placeholder="请输入公告内容"
                                 value={editForm.content}
                                 onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
@@ -456,6 +465,7 @@ export function AnnouncementManagement() {
                             取消
                         </Button>
                         <Button
+                            data-testid="announcement-edit-submit"
                             onClick={handleEditAnnouncement}
                             disabled={submitting || !editForm.title.trim()}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -505,7 +515,7 @@ export function AnnouncementManagement() {
                         )}
                     </div>
                     <DialogFooter>
-                        <Button onClick={() => setShowStatsModal(false)} className="bg-slate-800 text-slate-300 hover:bg-slate-700">关闭</Button>
+                        <Button data-testid="announcement-stats-close" onClick={() => setShowStatsModal(false)} className="bg-slate-800 text-slate-300 hover:bg-slate-700">关闭</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

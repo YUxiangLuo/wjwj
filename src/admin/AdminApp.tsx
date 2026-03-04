@@ -314,6 +314,7 @@ export function AdminApp() {
                             <NavLink
                                 key={item.path}
                                 to={item.path}
+                                data-testid={`admin-nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
                                 className={({ isActive: activeLink }) => `
                                     flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-200 group
                                     ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
@@ -402,7 +403,7 @@ export function AdminApp() {
 
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" title="退出登录">
+                                    <Button data-testid="admin-logout-trigger" variant="ghost" size="icon" className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" title="退出登录">
                                         <LogOut className="w-5 h-5" />
                                     </Button>
                                 </AlertDialogTrigger>

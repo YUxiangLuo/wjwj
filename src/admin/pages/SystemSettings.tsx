@@ -285,6 +285,7 @@ export function SystemSettings() {
                                     <Button
                                         key={section.id}
                                         variant="ghost"
+                                        data-testid={`settings-section-${section.id}`}
                                         onClick={() => setActiveSection(section.id)}
                                         className={`w-full justify-start gap-3 transition-all duration-200 ${isActive
                                             ? "bg-indigo-600/10 text-indigo-400 font-medium border border-indigo-500/10"
@@ -322,6 +323,7 @@ export function SystemSettings() {
                                         <Label htmlFor="systemName" className="text-slate-300">系统名称</Label>
                                         <Input
                                             id="systemName"
+                                            data-testid="settings-system-name"
                                             value={settings.systemName}
                                             onChange={(e) => setSettings({ ...settings, systemName: e.target.value })}
                                             className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
@@ -402,6 +404,7 @@ export function SystemSettings() {
                                             <Label htmlFor="maxLoginAttempts" className="text-slate-300">最大登录尝试次数</Label>
                                             <Input
                                                 id="maxLoginAttempts"
+                                                data-testid="settings-max-login-attempts"
                                                 type="number"
                                                 value={settings.maxLoginAttempts}
                                                 onChange={(e) => setSettings({ ...settings, maxLoginAttempts: parseInt(e.target.value) || 0 })}
@@ -413,6 +416,7 @@ export function SystemSettings() {
                                             <Label htmlFor="lockDurationMinutes" className="text-slate-300">锁定自动解锁 (分钟)</Label>
                                             <Input
                                                 id="lockDurationMinutes"
+                                                data-testid="settings-lock-duration"
                                                 type="number"
                                                 value={settings.lockDurationMinutes}
                                                 onChange={(e) => setSettings({ ...settings, lockDurationMinutes: parseInt(e.target.value) || 0 })}
@@ -510,11 +514,11 @@ export function SystemSettings() {
                                     <div className="bg-slate-950/30 border border-slate-800 rounded-lg p-4 space-y-4 mt-2">
                                         <h4 className="text-sm font-medium text-slate-300">手动备份与恢复</h4>
                                         <div className="flex flex-col sm:flex-row gap-3">
-                                            <Button onClick={handleCreateBackup} disabled={backupLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                                            <Button data-testid="settings-backup-create" onClick={handleCreateBackup} disabled={backupLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                                                 {backupLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
                                                 立即备份
                                             </Button>
-                                            <Button variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                                            <Button data-testid="settings-backup-restore-open" variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
                                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                                 恢复备份
                                             </Button>
@@ -531,7 +535,7 @@ export function SystemSettings() {
                         )}
 
                         <div className="pt-6 mt-6 border-t border-slate-800 flex justify-end">
-                            <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                            <Button data-testid="settings-save" onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
                                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                                 保存设置
                             </Button>

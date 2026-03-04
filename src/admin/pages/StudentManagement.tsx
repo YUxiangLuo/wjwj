@@ -206,7 +206,7 @@ export function StudentManagement() {
                         <h2 className="text-lg font-semibold text-slate-100">学生管理</h2>
                         <p className="text-sm text-slate-400 mt-1">查看学生档案、实验进度与班级调整。</p>
                     </div>
-                    <Button variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                    <Button data-testid="student-search-refresh" variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
                         <Search className="w-4 h-4 mr-2" />
                         刷新结果
                     </Button>
@@ -270,6 +270,7 @@ export function StudentManagement() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                                 <Input
                                     placeholder="搜索学号或姓名"
+                                    data-testid="student-search-input"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -355,6 +356,7 @@ export function StudentManagement() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
+                                                        data-testid={`student-open-transfer-${student.id}`}
                                                         onClick={() => openTransferModal(student)}
                                                         className="h-8 text-slate-400 hover:text-purple-400 hover:bg-purple-500/10"
                                                     >
@@ -364,6 +366,7 @@ export function StudentManagement() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
+                                                        data-testid={`student-toggle-status-${student.id}`}
                                                         onClick={() => handleToggleStatus(student)}
                                                         className={`h-8 ${student.status === 1 ? "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
                                                     >
@@ -421,6 +424,7 @@ export function StudentManagement() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-slate-300">转班原因 (可选)</label>
                             <Input
+                                data-testid="student-transfer-reason"
                                 value={transferReason}
                                 onChange={(e) => setTransferReason(e.target.value)}
                                 placeholder="例如：行政调班"
@@ -439,7 +443,7 @@ export function StudentManagement() {
                         <Button variant="ghost" onClick={() => setTransferStudent(null)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleTransfer} disabled={!targetClassId} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button data-testid="student-transfer-submit" onClick={handleTransfer} disabled={!targetClassId} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             确认转班
                         </Button>
                     </DialogFooter>

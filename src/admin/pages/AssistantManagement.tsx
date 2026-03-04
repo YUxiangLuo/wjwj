@@ -173,7 +173,7 @@ export function AssistantManagement() {
                     <h2 className="text-lg font-semibold text-slate-100">助教管理</h2>
                     <p className="text-sm text-slate-400 mt-1">维护助教账号与所绑定教师信息。</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                <Button data-testid="assistant-create-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                     <Plus className="w-4 h-4 mr-1" />
                     添加助教
                 </Button>
@@ -233,9 +233,10 @@ export function AssistantManagement() {
                         <p className="text-xs text-slate-500 mt-1">共 {filteredAssistants.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <Input
-                            placeholder="搜索账号 / 姓名 / 教师"
-                            value={searchTerm}
+                            <Input
+                                placeholder="搜索账号 / 姓名 / 教师"
+                                data-testid="assistant-search-input"
+                                value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50"
                         />
@@ -285,13 +286,14 @@ export function AssistantManagement() {
                                         <TableCell className="text-slate-500 text-xs">{formatDate(assistant.createdAt)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                <Button data-testid={`assistant-reset-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    data-testid={`assistant-toggle-status-${assistant.id}`}
                                                     onClick={() => handleToggleStatus(assistant)}
                                                     className={`h-8 ${assistant.status === 1 ? "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
                                                 >
@@ -300,6 +302,7 @@ export function AssistantManagement() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    data-testid={`assistant-delete-${assistant.id}`}
                                                     onClick={() => handleDelete(assistant)}
                                                     className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
                                                 >
@@ -338,6 +341,7 @@ export function AssistantManagement() {
                             <Label htmlFor="account" className="text-slate-300">账号</Label>
                             <Input
                                 id="account"
+                                data-testid="assistant-create-account"
                                 placeholder="请输入账号"
                                 value={newAssistant.account}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, account: e.target.value })}
@@ -348,6 +352,7 @@ export function AssistantManagement() {
                             <Label htmlFor="assistantName" className="text-slate-300">姓名</Label>
                             <Input
                                 id="assistantName"
+                                data-testid="assistant-create-name"
                                 placeholder="请输入姓名"
                                 value={newAssistant.name}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, name: e.target.value })}
@@ -376,6 +381,7 @@ export function AssistantManagement() {
                             取消
                         </Button>
                         <Button
+                            data-testid="assistant-create-submit"
                             onClick={handleAddAssistant}
                             disabled={submitting || !newAssistant.account.trim() || !newAssistant.name.trim() || !newAssistant.teacherId}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"

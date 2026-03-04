@@ -168,7 +168,7 @@ export function SemesterManagement() {
                     <h2 className="text-lg font-semibold text-slate-100">学期管理</h2>
                     <p className="text-sm text-slate-400 mt-1">维护学期信息并标记当前学期。</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                <Button data-testid="semester-create-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                     <Plus className="w-4 h-4 mr-1" />
                     创建学期
                 </Button>
@@ -283,18 +283,19 @@ export function SemesterManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {!semester.isCurrent && (
-                                                    <Button variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 h-8">
+                                                    <Button data-testid={`semester-set-current-${semester.id}`} variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 h-8">
                                                         <Star className="w-3.5 h-3.5 mr-1.5" />
                                                         设为当前
                                                     </Button>
                                                 )}
-                                                <Button variant="ghost" size="sm" onClick={() => openEdit(semester)} className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 h-8">
+                                                <Button data-testid={`semester-edit-open-${semester.id}`} variant="ghost" size="sm" onClick={() => openEdit(semester)} className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 h-8">
                                                     <Pencil className="w-3.5 h-3.5 mr-1.5" />
                                                     编辑
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    data-testid={`semester-delete-${semester.id}`}
                                                     onClick={() => handleDelete(semester)}
                                                     className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-8"
                                                     disabled={semester.classCount > 0}
@@ -335,6 +336,7 @@ export function SemesterManagement() {
                             <Label htmlFor="semesterName" className="text-slate-300">学期名称</Label>
                             <Input
                                 id="semesterName"
+                                data-testid="semester-create-name"
                                 placeholder="例如：2024-Fall"
                                 value={newSemesterName}
                                 onChange={(e) => setNewSemesterName(e.target.value)}
@@ -359,7 +361,7 @@ export function SemesterManagement() {
                         <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button data-testid="semester-create-submit" onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认创建
                         </Button>
@@ -378,6 +380,7 @@ export function SemesterManagement() {
                             <Label htmlFor="editSemesterName" className="text-slate-300">学期名称</Label>
                             <Input
                                 id="editSemesterName"
+                                data-testid="semester-edit-name"
                                 placeholder="例如：2024-Fall"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
@@ -389,7 +392,7 @@ export function SemesterManagement() {
                         <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleEditSemester} disabled={submitting || !editName.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button data-testid="semester-edit-submit" onClick={handleEditSemester} disabled={submitting || !editName.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存
                         </Button>

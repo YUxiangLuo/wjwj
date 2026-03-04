@@ -202,7 +202,7 @@ export function ClassManagement() {
                     <h2 className="text-lg font-semibold text-slate-100">班级管理</h2>
                     <p className="text-sm text-slate-400 mt-1">管理班级、授课教师与学生规模。</p>
                 </div>
-                <Button onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                     <Plus className="w-4 h-4 mr-1" />
                     创建班级
                 </Button>
@@ -264,6 +264,7 @@ export function ClassManagement() {
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <Input
                             placeholder="搜索班级 / 学期 / 教师"
+                            data-testid="class-search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50"
@@ -336,13 +337,14 @@ export function ClassManagement() {
                                                     <Users className="w-3.5 h-3.5 mr-1" />
                                                     学生
                                                 </Button>
-                                                <Button variant="ghost" size="sm" onClick={() => openEditModal(cls)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                <Button data-testid={`class-edit-open-${cls.id}`} variant="ghost" size="sm" onClick={() => openEditModal(cls)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                     <Pencil className="w-3.5 h-3.5 mr-1" />
                                                     编辑
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
+                                                    data-testid={`class-delete-${cls.id}`}
                                                     onClick={() => handleDelete(cls)}
                                                     className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
                                                 >
@@ -382,6 +384,7 @@ export function ClassManagement() {
                             <Label htmlFor="className" className="text-slate-300">班级名称</Label>
                             <Input
                                 id="className"
+                                data-testid="class-create-name"
                                 placeholder="请输入班级名称"
                                 value={newClass.name}
                                 onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
@@ -420,6 +423,7 @@ export function ClassManagement() {
                             取消
                         </Button>
                         <Button
+                            data-testid="class-create-submit"
                             onClick={handleAddClass}
                             disabled={submitting || !newClass.name.trim() || !newClass.semesterId || !newClass.teacherId}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
@@ -442,6 +446,7 @@ export function ClassManagement() {
                             <Label htmlFor="editClassName" className="text-slate-300">班级名称</Label>
                             <Input
                                 id="editClassName"
+                                data-testid="class-edit-name"
                                 placeholder="请输入班级名称"
                                 value={editForm.name}
                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
@@ -472,6 +477,7 @@ export function ClassManagement() {
                             取消
                         </Button>
                         <Button
+                            data-testid="class-edit-submit"
                             onClick={handleEditClass}
                             disabled={submitting || !editForm.name.trim()}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
