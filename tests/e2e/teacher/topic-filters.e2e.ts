@@ -35,6 +35,6 @@ test.describe("Teacher Topic Filters", () => {
         await expect(page.locator('[data-testid^="teacher-topic-row-"]').first()).toContainText("E2E 抽样课题");
 
         await page.getByTestId("teacher-topic-search").fill("不存在的课题名称XYZ");
-        await expect(page.getByText("暂无符合条件的数据")).toBeVisible();
+        await expect(page.getByText("共 0 条数据")).toBeVisible();
     });
 });

@@ -54,8 +54,9 @@ test.describe("Teacher Export Filters", () => {
         // Initially batch export should be disabled
         await expect(page.getByTestId("teacher-export-batch")).toBeDisabled();
 
-        // Check first individual checkbox
-        const firstCheck = page.locator('[data-testid^="teacher-export-check-"]').first();
+        // Check first individual row checkbox (exclude check-all)
+        const firstRow = page.locator('[data-testid^="teacher-export-row-"]').first();
+        const firstCheck = firstRow.locator('[data-testid^="teacher-export-check-"]');
         await firstCheck.check();
         await expect(page.getByTestId("teacher-export-batch")).toBeEnabled();
 

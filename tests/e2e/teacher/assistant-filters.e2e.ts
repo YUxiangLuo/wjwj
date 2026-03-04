@@ -34,6 +34,6 @@ test.describe("Teacher Assistant Filters", () => {
         await expect(page.locator('[data-testid^="teacher-assistant-row-"]', { hasText: "assistant" })).not.toHaveCount(0);
 
         await page.getByTestId("teacher-assistant-search").fill("不存在的助教ZZZ");
-        await expect(page.getByText("暂无符合条件的数据")).toBeVisible();
+        await expect(page.getByText("暂无符合条件的助教")).toBeVisible();
     });
 });
