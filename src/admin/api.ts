@@ -19,13 +19,16 @@ import {
 import { eq, desc, sql, and, count } from "drizzle-orm";
 import {
     error,
+    getClientIp,
     json,
 } from "../server/http";
 import {
+    ADMIN_USER_TYPE,
     adminLoginRoutes,
     adminLogoutRoutes,
     adminMeRoutes,
     adminPasswordRoutes,
+    requireAdminAuth,
     withAdminAuth,
 } from "./routes/auth";
 import { backupCreateRoutes, backupListRoutes, backupRestoreRoutes } from "./routes/backup";
@@ -239,6 +242,9 @@ const systemSettingsRoutes = {
     },
 
     async PUT(req: Request) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
         const body = await req.json();
 
         // Loop through keys and upsert
@@ -268,12 +274,12 @@ const systemSettingsRoutes = {
         // Log operation
         // (Simplified, normally get real user ID)
         await db.insert(operationLog).values({
-            userType: 1, // Admin (assuming)
-            userId: 0, // System
+            userType: ADMIN_USER_TYPE,
+            userId: auth.admin!.id,
             action: 'UPDATE_SETTINGS',
             targetType: 'system',
             detail: body,
-            ipAddress: '127.0.0.1'
+            ipAddress: getClientIp(req),
         });
 
         return json({ success: true });

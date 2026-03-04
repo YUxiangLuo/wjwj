@@ -169,7 +169,7 @@ export function SystemSettings() {
                 const data = res.data;
                 setBackupList(data);
                 if (!lastBackupId) {
-                    const firstBackupId = data.at(0)?.backupId;
+                    const firstBackupId = data.find((item) => item.hasZip)?.backupId;
                     if (firstBackupId) {
                         setRestoreForm(prev => ({ ...prev, backupId: firstBackupId }));
                     }
@@ -192,6 +192,13 @@ export function SystemSettings() {
             setRestoreError("请输入备份ID");
             return;
         }
+
+        const selectedBackup = backupList.find((item) => item.backupId === restoreForm.backupId.trim());
+        if (selectedBackup && !selectedBackup.hasZip) {
+            setRestoreError("该备份缺少资源文件，无法用于恢复");
+            return;
+        }
+
         if (!restoreForm.password || !restoreForm.confirmPassword) {
             setRestoreError("请输入管理员密码确认");
             return;
@@ -621,7 +628,7 @@ export function SystemSettings() {
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                     {backupList.map((item) => (
-                                        <SelectItem key={item.backupId} value={item.backupId}>
+                                        <SelectItem key={item.backupId} value={item.backupId} disabled={!item.hasZip}>
                                             <span className="font-mono">{item.backupId}</span> {item.hasZip ? "" : "(不可用)"}
                                         </SelectItem>
                                     ))}

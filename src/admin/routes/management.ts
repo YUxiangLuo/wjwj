@@ -54,6 +54,9 @@ const semesterCurrentRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的学期ID", "INVALID_ID");
 
+        const [targetSemester] = await db.select({ id: semester.id }).from(semester).where(eq(semester.id, id));
+        if (!targetSemester) return error("学期不存在", "NOT_FOUND", 404);
+
         await db.update(semester).set({ isCurrent: 0 });
         await db.update(semester).set({ isCurrent: 1 }).where(eq(semester.id, id));
 
@@ -65,6 +68,13 @@ const semesterDeleteRoutes = {
     async DELETE(req: Request) {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的学期ID", "INVALID_ID");
+
+        const [targetSemester] = await db
+            .select({ id: semester.id, isCurrent: semester.isCurrent })
+            .from(semester)
+            .where(eq(semester.id, id));
+        if (!targetSemester) return error("学期不存在", "NOT_FOUND", 404);
+        if (targetSemester.isCurrent === 1) return error("当前学期不能删除", "CURRENT_SEMESTER_PROTECTED");
 
         const [classCount] = await db.select({ count: count() }).from(class_).where(eq(class_.semesterId, id));
         if (classCount && classCount.count > 0) return error("该学期下有班级，无法删除", "HAS_CLASSES");
