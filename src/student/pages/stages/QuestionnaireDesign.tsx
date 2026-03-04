@@ -84,6 +84,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [syncConflictOpen, setSyncConflictOpen] = useState(false);
     const [serverConflictDraft, setServerConflictDraft] = useState<QuestionnaireData | null>(null);
     const [localConflictDraft, setLocalConflictDraft] = useState<QuestionnaireData | null>(null);
+    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+    const [recommendCollapsed, setRecommendCollapsed] = useState(false);
     const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
     const serverSnapshotRef = useRef("");
     const saveInFlightRef = useRef(false);
@@ -148,6 +150,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             const success = await saveExperiment({ questionnaire: questionnaireData });
             if (success) {
                 serverSnapshotRef.current = snapshot;
+                setLastSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
                 setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
             }
         } finally {
@@ -967,30 +970,35 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         </div>
                         <div className="space-y-4">
                             <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle className="text-base text-slate-200">推荐题目</CardTitle>
+                                <CardHeader className="cursor-pointer select-none" onClick={() => setRecommendCollapsed(!recommendCollapsed)}>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-base text-slate-200">推荐题目</CardTitle>
+                                        <span className={`text-slate-400 transition-transform duration-200 ${recommendCollapsed ? "" : "rotate-180"}`}>▲</span>
+                                    </div>
                                     <CardDescription className="text-slate-400">可直接引用教师提供的推荐题目</CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {recommendQuestions.length === 0 && (
-                                        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-500 text-center">
-                                            暂无推荐题目
-                                        </div>
-                                    )}
-                                    {recommendQuestions.map((rq) => (
-                                        <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-900 transition-colors">
-                                            <div className="space-y-1">
-                                                <div className="text-sm font-medium text-slate-300 line-clamp-2">{rq.content}</div>
-                                                <div className="text-xs text-slate-500">
-                                                    类型：{questionTypeLabels[{ 1: "boolean", 2: "single", 3: "multiple", 4: "scale" }[rq.questionType] as QuestionType]}
-                                                </div>
+                                {!recommendCollapsed && (
+                                    <CardContent className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {recommendQuestions.length === 0 && (
+                                            <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-500 text-center">
+                                                暂无推荐题目
                                             </div>
-                                            <Button size="sm" variant="outline" className="w-full mt-1 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" onClick={() => handleUseRecommend(rq)}>
-                                                使用此题
-                                            </Button>
-                                        </div>
-                                    ))}
-                                </CardContent>
+                                        )}
+                                        {recommendQuestions.map((rq) => (
+                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-900 transition-colors">
+                                                <div className="space-y-1">
+                                                    <div className="text-sm font-medium text-slate-300 line-clamp-2">{rq.content}</div>
+                                                    <div className="text-xs text-slate-500">
+                                                        类型：{questionTypeLabels[{ 1: "boolean", 2: "single", 3: "multiple", 4: "scale" }[rq.questionType] as QuestionType]}
+                                                    </div>
+                                                </div>
+                                                <Button size="sm" variant="outline" className="w-full mt-1 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" onClick={() => handleUseRecommend(rq)}>
+                                                    使用此题
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                )}
                             </Card>
                             <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                                 <CardHeader>
@@ -1310,7 +1318,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             {renderStep()}
 
-            <div className="flex justify-between pt-4 border-t border-slate-800/50">
+            <div className="flex justify-between items-center pt-4 border-t border-slate-800/50">
                 <Button
                     variant="outline"
                     onClick={() => step > 1 && setStep((step - 1) as 1 | 2 | 3 | 4)}
@@ -1319,8 +1327,15 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 >
                     上一步
                 </Button>
+                {lastSavedAt && (
+                    <span className="text-xs text-slate-500">已自动保存于 {lastSavedAt}</span>
+                )}
                 {step < 4 ? (
-                    <Button onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                    <Button
+                        onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)}
+                        disabled={step === 2 && questions.length < 5}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
+                    >
                         下一步
                     </Button>
                 ) : (

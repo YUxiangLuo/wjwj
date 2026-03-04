@@ -20,7 +20,7 @@ const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     not_started: { label: "未开始", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
     in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" },
     submitted: { label: "已提交", color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
-    grading: { label: "批改中", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
+    grading: { label: "批改中", color: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
     graded: { label: "已批改", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
     rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
 };

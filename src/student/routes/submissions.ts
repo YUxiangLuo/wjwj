@@ -221,11 +221,12 @@ const submissionDownloadRoutes: RouteDefinition = {
         const filePath = type === "questionnaire" ? row.questionnairePdfPath : row.reportPdfPath;
         if (!filePath) return error("文件不存在", "NOT_FOUND", 404);
 
-        const baseDir = path.join(process.cwd(), "storage");
-        const normalizedPath = path.normalize(filePath).replace(/^([/\\])+/, "");
-        const fullPath = path.join(baseDir, normalizedPath);
+        const baseDir = path.resolve(process.cwd(), "storage");
+        const normalizedPath = filePath.replace(/\\/g, "/").replace(/^\/+/, "");
+        const relativePath = normalizedPath.startsWith("storage/") ? normalizedPath.slice("storage/".length) : normalizedPath;
+        const fullPath = path.resolve(baseDir, relativePath);
 
-        if (!fullPath.startsWith(baseDir)) {
+        if (!fullPath.startsWith(baseDir + path.sep) && fullPath !== baseDir) {
             return error("无效的文件路径", "INVALID_PATH", 400);
         }
 

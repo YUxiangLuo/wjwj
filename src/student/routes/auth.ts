@@ -133,7 +133,7 @@ const loginRoutes: RouteDefinition = {
         const isValid = await Bun.password.verify(password, s.password);
         if (!isValid) {
             const failCount = (s.loginFailCount ?? 0) + 1;
-            const updateData: any = { loginFailCount: failCount };
+            const updateData: Record<string, unknown> = { loginFailCount: failCount };
             if (failCount >= maxAttempts) {
                 updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
             }
@@ -229,6 +229,11 @@ const passwordRoutes: RouteDefinition = {
 
         const hashed = await Bun.password.hash(newPassword);
         await db.update(student).set({ password: hashed, isFirstLogin: 0 }).where(eq(student.id, s.id));
+
+        // Invalidate all existing sessions for this student to force re-login
+        await db.delete(userSession).where(
+            and(eq(userSession.userType, STUDENT_USER_TYPE), eq(userSession.userId, s.id))
+        );
 
         return json({ success: true });
     },

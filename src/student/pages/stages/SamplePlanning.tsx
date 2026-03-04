@@ -217,9 +217,24 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between items-center">
                                         <Label className="text-slate-300">允许误差 (Margin of Error)</Label>
-                                        <span className="text-sm font-bold text-teal-400">{marginOfError[0]}%</span>
+                                        <div className="flex items-center gap-1">
+                                            <Input
+                                                type="number"
+                                                value={marginOfError[0]}
+                                                onChange={(e) => {
+                                                    const v = parseInt(e.target.value);
+                                                    if (!Number.isNaN(v) && v >= 1 && v <= 10) {
+                                                        setMarginOfError([v]);
+                                                    }
+                                                }}
+                                                min={1}
+                                                max={10}
+                                                className="w-16 h-7 text-sm font-bold text-teal-400 bg-slate-950/50 border-slate-800 text-center px-1"
+                                            />
+                                            <span className="text-sm font-bold text-teal-400">%</span>
+                                        </div>
                                     </div>
                                     <Slider
                                         value={marginOfError}
@@ -347,7 +362,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 </Button>
                 <div className="flex gap-3">
                     <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
-                        保存并进入下一阶段
+                        确认并进入下一阶段
                     </Button>
                 </div>
             </div>
@@ -360,7 +375,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         <AlertDialogDescription className="text-slate-400 text-base">
                             您设定的最终样本量为 <strong className="text-emerald-400 text-lg">{finalSampleSize}</strong>。
                             <br /><br />
-                            确认后将进入抽样执行阶段。如需修改，您可以返回本阶段。
+                            确认后将进入抽样执行阶段。如需修改，您需要返回本阶段，届时后续阶段（抽样执行、分析报告）的数据将被<strong className="text-rose-400">清空</strong>。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

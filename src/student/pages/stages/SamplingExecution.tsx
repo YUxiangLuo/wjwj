@@ -61,6 +61,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [simpleSeed, setSimpleSeed] = useState(initialResults?.simple?.seed ? String(initialResults.simple.seed) : "");
     const [systematicSeed, setSystematicSeed] = useState(initialResults?.systematic?.seed ? String(initialResults.systematic.seed) : "");
     const [stratifiedSeed, setStratifiedSeed] = useState(initialResults?.stratified?.seed ? String(initialResults.stratified.seed) : "");
+    const [executionTimes, setExecutionTimes] = useState<Record<SamplingMethod, number | null>>({ simple: null, systematic: null, stratified: null });
     // Stats state
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [layers, setLayers] = useState<Array<{ name: string; count: number; ratio: number }>>([]);
@@ -73,6 +74,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 if (res.success && res.data?.stats) {
                     setPopulationStats(res.data.stats);
                 }
+            }).catch((e) => {
+                console.error("Failed to load population stats:", e);
             });
         }
     }, [experiment?.taskId]);
@@ -160,6 +163,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     // Execute sampling with real API
     const executeSimple = async () => {
         setExecuting("simple");
+        const startTime = performance.now();
         try {
             const seed = parseSeed(simpleSeed);
             const res = await experimentApi.executeSampling(experiment?.taskId!, "simple", {
@@ -169,6 +173,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
             if (res.success && res.data?.result) {
                 const nextSimple = res.data.result;
                 setSimpleResult(nextSimple);
+                setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ simple: nextSimple }) });
             }
         } catch (e) {
@@ -179,7 +184,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     const executeSystematic = async () => {
+        if (kValue < 1) return;
         setExecuting("systematic");
+        const startTime = performance.now();
         try {
             const seed = parseSeed(systematicSeed);
             const res = await experimentApi.executeSampling(experiment?.taskId!, "systematic", {
@@ -190,6 +197,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
             if (res.success && res.data?.result) {
                 const nextSystematic = res.data.result;
                 setSystematicResult(nextSystematic);
+                setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ systematic: nextSystematic }) });
             }
         } catch (e) {
@@ -201,6 +209,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     const executeStratified = async () => {
         setExecuting("stratified");
+        const startTime = performance.now();
         // Construct layers payload mapping current counts to layer names
         const layersPayload = layers.map((layer, i) => ({
             name: layer.name,
@@ -219,6 +228,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
             if (res.success && res.data?.result) {
                 const nextStratified = res.data.result;
                 setStratifiedResult(nextStratified);
+                setExecutionTimes(prev => ({ ...prev, stratified: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: nextStratified }) });
             }
         } catch (e) {
@@ -229,7 +239,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     // Validation
-    const expectedSystematicCount = Math.ceil(N / kValue);
+    const expectedSystematicCount = kValue >= 1 ? Math.ceil(N / kValue) : 0;
     const isKValid = kValue >= 1 && kValue <= N &&
         expectedSystematicCount >= n * 0.8 && expectedSystematicCount <= n * 1.2;
 
@@ -401,7 +411,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 </div>
                                                 <div>
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-200/70 text-sm mt-1">共成功抽取 {simpleResult.sampleCount} 个样本</p>
+                                                    <p className="text-emerald-200/70 text-sm mt-1">共成功抽取 {simpleResult.sampleCount} 个样本{executionTimes.simple !== null && `，耗时 ${executionTimes.simple} ms`}</p>
                                                     {simpleResult.seed && (
                                                         <p className="text-xs text-emerald-500/50 mt-1 font-mono">Random Seed: {simpleResult.seed}</p>
                                                     )}
@@ -517,7 +527,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 </div>
                                                 <div>
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-200/70 text-sm mt-1">K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本</p>
+                                                    <p className="text-emerald-200/70 text-sm mt-1">K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本{executionTimes.systematic !== null && `，耗时 ${executionTimes.systematic} ms`}</p>
                                                 </div>
                                                 <Button variant="ghost" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid} className="ml-auto text-slate-400 hover:text-white hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
@@ -685,7 +695,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 </div>
                                                 <div>
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-200/70 text-sm mt-1">按 {STRATIFY_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本</p>
+                                                    <p className="text-emerald-200/70 text-sm mt-1">按 {STRATIFY_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified !== null && `，耗时 ${executionTimes.stratified} ms`}</p>
                                                 </div>
                                                 <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} className="ml-auto text-slate-400 hover:text-white hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
