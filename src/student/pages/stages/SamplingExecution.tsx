@@ -74,6 +74,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 if (res.success && res.data?.stats) {
                     setPopulationStats(res.data.stats);
                 }
+            }).catch((e) => {
+                console.error("Failed to load population stats:", e);
             });
         }
     }, [experiment?.taskId]);
@@ -182,6 +184,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     const executeSystematic = async () => {
+        if (kValue < 1) return;
         setExecuting("systematic");
         const startTime = performance.now();
         try {
@@ -236,7 +239,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     // Validation
-    const expectedSystematicCount = Math.ceil(N / kValue);
+    const expectedSystematicCount = kValue >= 1 ? Math.ceil(N / kValue) : 0;
     const isKValid = kValue >= 1 && kValue <= N &&
         expectedSystematicCount >= n * 0.8 && expectedSystematicCount <= n * 1.2;
 

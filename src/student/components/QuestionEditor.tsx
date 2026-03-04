@@ -100,6 +100,10 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             if (validOptions.length < 2) return false;
         }
 
+        if (type === "multiple") {
+            if (minSelect < 1 || maxSelect < minSelect) return false;
+        }
+
         return true;
     };
 

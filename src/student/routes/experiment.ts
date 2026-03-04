@@ -90,7 +90,12 @@ async function notifyUser(
 }
 
 async function readPopulationData(filePath: string): Promise<any[]> {
-    const fullPath = path.join(process.cwd(), filePath);
+    const baseDir = path.resolve(process.cwd());
+    const fullPath = path.resolve(process.cwd(), filePath);
+    if (!fullPath.startsWith(baseDir + path.sep) && fullPath !== baseDir) {
+        console.error("Path traversal attempt blocked:", filePath);
+        return [];
+    }
     try {
         const fileBuffer = await fs.readFile(fullPath);
         const workbook = XLSX.read(fileBuffer, { type: "buffer" });
@@ -750,7 +755,7 @@ const samplingActionRoutes: RouteDefinition = {
         if (!["simple", "systematic", "stratified"].includes(body.method)) {
             return error("无效的抽样方法", "VALIDATION_ERROR", 400);
         }
-        const params = body.params && typeof body.params === "object" ? body.params : {};
+        const params = body.params !== null && typeof body.params === "object" && !Array.isArray(body.params) ? body.params : {};
 
         const [exp] = await db
             .select({ samplePlan: experiment.samplePlan })
@@ -999,7 +1004,7 @@ const submitRoutes: RouteDefinition = {
 
         const [submissionResult] = await db.insert(submission).values({
             experimentId: exp.id,
-            status: 1,
+            status: ExperimentStatus.SUBMITTED,
             submittedAt: new Date(),
         });
 
