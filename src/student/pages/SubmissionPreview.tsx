@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, FileText, Send, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, FileText, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -109,6 +109,16 @@ export function SubmissionPreview() {
         if (!taskId) return;
         setConfirmOpen(false);
         setError(null);
+
+        // Pre-submission deadline check
+        if (task?.deadline) {
+            const deadlineDate = new Date(task.deadline.includes("T") ? task.deadline : `${task.deadline}T23:59:00`);
+            if (new Date() > deadlineDate) {
+                setError("任务已截止，无法提交");
+                return;
+            }
+        }
+
         if (!navigator.onLine) {
             setError("网络连接异常，请检查网络后重试");
             return;
@@ -306,7 +316,7 @@ export function SubmissionPreview() {
             <div className="flex flex-col items-end gap-4 pb-12">
                 {!reportLengthValid && (
                     <div className="text-sm text-red-400 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" />
+                        <AlertCircle className="w-4 h-4" />
                         报告字数不符合要求（100-5000字），请返回修改。
                     </div>
                 )}

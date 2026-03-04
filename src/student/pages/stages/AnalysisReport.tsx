@@ -998,7 +998,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </Button>
                 <Button onClick={() => setConfirmSubmitOpen(true)} disabled={!isValidLength} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
                     <Send className="w-4 h-4 mr-2" />
-                    完成并预览提交
+                    完成并预览报告
                 </Button>
             </div>
 
