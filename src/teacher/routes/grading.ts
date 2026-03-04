@@ -7,7 +7,6 @@ import type { RouteDefinition } from "../../server/route-types";
 import {
     ASSISTANT_USER_TYPE,
     TEACHER_USER_TYPE,
-    getCurrentTeacherId,
     getCurrentUser,
     isLockExpired,
     notifyStudentById,
@@ -338,8 +337,9 @@ const gradingDetailRoutes: RouteDefinition = {
 
 const teacherPdfDownloadRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const access = await getAccessibleClassIds(req);
+        if (!access) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        if (access.classIds.length === 0) return error("无权限访问", "FORBIDDEN", 403);
 
         const submissionId = Number(getRouteParam(req, "id"));
         const type = getRouteParam(req, "type");
@@ -356,7 +356,7 @@ const teacherPdfDownloadRoutes: RouteDefinition = {
             .innerJoin(experiment, eq(submission.experimentId, experiment.id))
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(eq(submission.id, submissionId), eq(class_.teacherId, currentTeacherId)));
+            .where(and(eq(submission.id, submissionId), sql`${class_.id} IN (${sql.join(access.classIds, sql`, `)})`));
 
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
 

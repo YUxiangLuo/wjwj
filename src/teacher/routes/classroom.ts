@@ -4,12 +4,15 @@ import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, loginLog, semester, student, submission, task } from "../../db/schema";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { ASSISTANT_USER_TYPE, getCurrentTeacherId } from "./auth";
+import { ASSISTANT_USER_TYPE, requirePrimaryTeacher } from "./auth";
+
+const STUDENT_USER_TYPE = 4;
 
 const classRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const rows = await db
             .select({
                 id: class_.id,
@@ -35,8 +38,9 @@ const classStudentsRoutes: RouteDefinition = {
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [cls] = await db
             .select({ id: class_.id })
@@ -50,8 +54,9 @@ const classStudentsRoutes: RouteDefinition = {
                 id: student.id,
                 studentId: student.studentId,
                 name: student.name,
+                email: student.email,
                 status: student.status,
-                lastLogin: sql<string>`(select max(login_at) from login_log where user_id = ${student.id} and user_type = 2)`,
+                lastLogin: sql<string>`(select max(login_at) from login_log where user_id = ${student.id} and user_type = ${STUDENT_USER_TYPE})`,
             })
             .from(student)
             .where(and(eq(student.classId, classId), isNull(student.deletedAt)));
@@ -64,8 +69,9 @@ const classStudentsRoutes: RouteDefinition = {
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [cls] = await db
             .select({ id: class_.id })
@@ -85,6 +91,7 @@ const classStudentsRoutes: RouteDefinition = {
         await db.insert(student).values({
             studentId: body.studentId,
             name: body.name,
+            email: body.email?.trim() || null,
             classId,
             password: defaultPassword,
             status: 1,
@@ -101,8 +108,9 @@ const classStudentsImportRoutes: RouteDefinition = {
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [cls] = await db
             .select({ id: class_.id })
@@ -171,6 +179,7 @@ const classStudentsImportRoutes: RouteDefinition = {
                 await tx.insert(student).values({
                     studentId: item.studentId,
                     name: item.name,
+                    email: item.email ?? null,
                     classId,
                     password: defaultPassword,
                     status: 1,
@@ -190,9 +199,11 @@ const classStudentsImportRoutes: RouteDefinition = {
 const studentRoutes: RouteDefinition = {
     async PUT(req) {
         const studentId = Number(getRouteParam(req, "id"));
+        if (isNaN(studentId)) return error("Invalid ID", "INVALID_ID");
 
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [owned] = await db
             .select({ id: student.id })
@@ -220,9 +231,11 @@ const studentRoutes: RouteDefinition = {
 
     async DELETE(req) {
         const studentId = Number(getRouteParam(req, "id"));
+        if (isNaN(studentId)) return error("Invalid ID", "INVALID_ID");
 
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [owned] = await db
             .select({ id: student.id })
@@ -239,8 +252,9 @@ const studentRoutes: RouteDefinition = {
 
 const assistantRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const assistants = await db
             .select({
@@ -282,8 +296,9 @@ const assistantRoutes: RouteDefinition = {
     },
 
     async POST(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const body = await parseBody<{ name: string; studentId: string }>(req);
 
         if (!body.name || !body.studentId) return error("Missing fields", "VALIDATION_ERROR");
@@ -308,9 +323,11 @@ const assistantRoutes: RouteDefinition = {
 const assistantItemRoutes: RouteDefinition = {
     async PUT(req) {
         const id = Number(getRouteParam(req, "id"));
+        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [owned] = await db
             .select({ id: assistant.id, account: assistant.account, name: assistant.name, status: assistant.status })
@@ -336,9 +353,11 @@ const assistantItemRoutes: RouteDefinition = {
     },
     async DELETE(req) {
         const id = Number(getRouteParam(req, "id"));
+        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [owned] = await db
             .select({ id: assistant.id })
@@ -358,9 +377,11 @@ const assistantItemRoutes: RouteDefinition = {
 const assistantClassAssignRoutes: RouteDefinition = {
     async POST(req) {
         const assistantId = Number(getRouteParam(req, "id"));
+        if (isNaN(assistantId)) return error("Invalid ID", "INVALID_ID");
 
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [owned] = await db
             .select({ id: assistant.id })

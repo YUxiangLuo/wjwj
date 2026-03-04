@@ -1,11 +1,22 @@
 import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
+import { basename } from "node:path";
 import { db } from "../../db";
 import { class_, student, task, topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { getCurrentTeacherId, notifyStudentsByClassIds } from "./auth";
+import { notifyStudentsByClassIds, requirePrimaryTeacher } from "./auth";
 import { hasTopicOwnership } from "./topic-guards";
+
+function sanitizeUploadFileName(originalName: string) {
+    const fileName = basename(originalName)
+        .replace(/[\x00-\x1F\x7F]/g, "")
+        .replace(/[\\/]/g, "_")
+        .replace(/\s+/g, "_")
+        .slice(0, 120);
+
+    return fileName || "upload.bin";
+}
 
 async function requireTopicOwner(topicId: number, teacherId: number) {
     const [row] = await db
@@ -47,8 +58,9 @@ function getAttachmentType(fileName: string, mimeType: string) {
 
 const topicRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const rows = await db
             .select({
                 id: topic.id,
@@ -66,8 +78,9 @@ const topicRoutes: RouteDefinition = {
     },
 
     async POST(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const body = await parseBody<{ name: string; description?: string; status?: number }>(req);
 
         if (!body.name?.trim()) return error("课题名称不能为空", "VALIDATION_ERROR");
@@ -85,8 +98,9 @@ const topicRoutes: RouteDefinition = {
 
 const topicItemRoutes: RouteDefinition = {
     async PUT(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -107,8 +121,9 @@ const topicItemRoutes: RouteDefinition = {
     },
 
     async DELETE(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -122,8 +137,9 @@ const topicItemRoutes: RouteDefinition = {
 
 const topicDetailRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
 
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
@@ -157,8 +173,9 @@ const topicDetailRoutes: RouteDefinition = {
 
 const topicExcelUploadRoutes: RouteDefinition = {
     async POST(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -180,7 +197,7 @@ const topicExcelUploadRoutes: RouteDefinition = {
         if (columnSet.size !== parsed.columns.length) return error("表头存在重复列名", "VALIDATION_ERROR", 400);
         if (parsed.rows.some((row) => isRowEmpty(row))) return error("存在完全空白的行", "VALIDATION_ERROR", 400);
 
-        const fileName = `${Date.now()}_${file.name}`;
+        const fileName = `${Date.now()}_${sanitizeUploadFileName(file.name)}`;
         const filePath = `/storage/uploads/${fileName}`;
         await Bun.write(`${process.cwd()}${filePath}`, buffer);
 
@@ -192,8 +209,9 @@ const topicExcelUploadRoutes: RouteDefinition = {
 
 const topicFieldMappingRoutes: RouteDefinition = {
     async PUT(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -238,8 +256,9 @@ const topicFieldMappingRoutes: RouteDefinition = {
 
 const topicAttachmentRoutes: RouteDefinition = {
     async POST(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -267,7 +286,7 @@ const topicAttachmentRoutes: RouteDefinition = {
         if (file.size > sizeLimit) return error("文件大小超过限制", "VALIDATION_ERROR", 400);
 
         const buffer = await file.arrayBuffer();
-        const fileName = `${Date.now()}_${file.name}`;
+        const fileName = `${Date.now()}_${sanitizeUploadFileName(file.name)}`;
         const filePath = `/storage/uploads/${fileName}`;
         await Bun.write(`${process.cwd()}${filePath}`, buffer);
 
@@ -285,8 +304,9 @@ const topicAttachmentRoutes: RouteDefinition = {
 
 const topicAttachmentDeleteRoutes: RouteDefinition = {
     async DELETE(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const topicId = Number(getRouteParam(req, "id"));
         const attachmentId = Number(getRouteParam(req, "attachmentId"));
         if (isNaN(topicId) || isNaN(attachmentId)) return error("Invalid ID", "INVALID_ID");
@@ -301,8 +321,9 @@ const topicAttachmentDeleteRoutes: RouteDefinition = {
 
 const topicRecommendQuestionRoutes: RouteDefinition = {
     async PUT(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -345,8 +366,9 @@ const topicRecommendQuestionRoutes: RouteDefinition = {
 
 const topicWeightRoutes: RouteDefinition = {
     async PUT(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -366,8 +388,9 @@ const topicWeightRoutes: RouteDefinition = {
 
 const topicCopyRoutes: RouteDefinition = {
     async POST(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -422,8 +445,9 @@ const topicCopyRoutes: RouteDefinition = {
 
 const taskRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const rows = await db
             .select({
                 id: task.id,
@@ -432,7 +456,12 @@ const taskRoutes: RouteDefinition = {
                 publishedAt: task.openTime,
                 deadline: task.deadline,
                 total: count(student.id),
-                completed: sql<number>`0`,
+                completed: sql<number>`(
+                    SELECT COUNT(*)
+                    FROM submission s
+                    INNER JOIN experiment e ON s.experiment_id = e.id
+                    WHERE e.task_id = ${task.id} AND s.status IN (1, 2, 3)
+                )`,
                 pending: sql<number>`(
                     SELECT COUNT(*)
                     FROM submission s
@@ -452,8 +481,9 @@ const taskRoutes: RouteDefinition = {
     },
 
     async POST(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const body = await parseBody<{ topicId: number; classIds: number[]; deadline?: string }>(req);
 
         if (!body.topicId || !body.classIds?.length) return error("请选择课题和班级", "VALIDATION_ERROR");
@@ -502,8 +532,9 @@ const taskRoutes: RouteDefinition = {
 
 const taskExtendRoutes: RouteDefinition = {
     async PUT(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const taskId = Number(getRouteParam(req, "id"));
         if (isNaN(taskId)) return error("Invalid ID", "INVALID_ID");
 

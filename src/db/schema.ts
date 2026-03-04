@@ -92,6 +92,7 @@ export const student = mysqlTable(
         id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
         studentId: varchar("student_id", { length: 50 }).notNull().unique(),
         name: varchar("name", { length: 100 }).notNull(),
+        email: varchar("email", { length: 120 }),
         password: varchar("password", { length: 255 }).notNull(),
         classId: bigint("class_id", { mode: "number", unsigned: true }).notNull(),
         isFirstLogin: tinyint("is_first_login").notNull().default(1),

@@ -209,6 +209,19 @@ export async function getCurrentTeacherId(req: Request): Promise<number | null> 
     return null;
 }
 
+export async function requirePrimaryTeacher(req: Request): Promise<{ teacherId: number | null; error: Response | null }> {
+    const auth = await requireTeacherAuth(req);
+    if (auth.error) {
+        return { teacherId: null, error: auth.error };
+    }
+
+    if (auth.user?.type !== "teacher") {
+        return { teacherId: null, error: error("仅教师可执行此操作", "FORBIDDEN", 403) };
+    }
+
+    return { teacherId: auth.user.id, error: null };
+}
+
 export async function getCurrentAssistantId(req: Request): Promise<number | null> {
     const user = await getCurrentUser(req);
     return user?.type === "assistant" ? user.id : null;

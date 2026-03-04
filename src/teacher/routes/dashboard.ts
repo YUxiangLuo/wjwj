@@ -1,14 +1,15 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, submission, task, topic } from "../../db/schema";
-import { error, json } from "../../server/http";
+import { json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { getCurrentTeacherId } from "./auth";
+import { requirePrimaryTeacher } from "./auth";
 
 const dashboardRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const [[myClasses], [myTopics], [pendingGrading], [activeTasks]] = await Promise.all([
             db.select({ count: count() }).from(class_).where(eq(class_.teacherId, currentTeacherId)),

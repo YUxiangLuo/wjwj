@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { class_, experiment, student, submission, task, topic } from "../../db/schema";
 import { error, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { getCurrentTeacherId } from "./auth";
+import { requirePrimaryTeacher } from "./auth";
 
 function parseIdList(value: string | null) {
     if (!value) return [] as number[];
@@ -31,6 +31,13 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
             status: submission.status,
             gradedByType: submission.gradedByType,
             gradedById: submission.gradedById,
+            gradedByName: sql<string | null>`(
+                CASE
+                    WHEN ${submission.gradedByType} = 2 THEN (SELECT t.name FROM teacher t WHERE t.id = ${submission.gradedById})
+                    WHEN ${submission.gradedByType} = 3 THEN (SELECT a.name FROM assistant a WHERE a.id = ${submission.gradedById})
+                    ELSE NULL
+                END
+            )`,
             gradedAt: submission.gradedAt,
         })
         .from(submission)
@@ -68,14 +75,15 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
         totalScore: r.totalScore ?? "",
         status: r.status === 2 ? "已批改" : r.status === 3 ? "已驳回" : r.status === 1 ? "待批改" : "草稿",
         gradedAt: r.gradedAt ? new Date(r.gradedAt).toLocaleString() : "",
-        gradedBy: r.gradedById ? String(r.gradedById) : "",
+        gradedBy: r.gradedByName ?? "",
     }));
 }
 
 const gradeExportPreviewRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const params = getSearchParams(req);
         const classId = params.get("classId");
@@ -133,8 +141,9 @@ const gradeExportPreviewRoutes: RouteDefinition = {
 
 const gradeExportDataRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
         const params = getSearchParams(req);
         const rows = await getGradeExportRows(currentTeacherId, params);
         return json(rows);
@@ -143,8 +152,9 @@ const gradeExportDataRoutes: RouteDefinition = {
 
 const gradeExportExcelRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = await getCurrentTeacherId(req);
-        if (!currentTeacherId) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        const currentTeacherId = auth.teacherId!;
 
         const params = getSearchParams(req);
         const rows = await getGradeExportRows(currentTeacherId, params);
