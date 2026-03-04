@@ -1,5 +1,5 @@
 import { and, count, eq } from "drizzle-orm";
-import { db } from "./index";
+import { db } from "../index";
 import {
     assistant,
     assistantClass,
@@ -12,7 +12,7 @@ import {
     task,
     teacher,
     topic,
-} from "./schema";
+} from "../schema";
 
 async function seedTeacherE2E() {
     console.log("🌱 Initializing teacher e2e database...\n");

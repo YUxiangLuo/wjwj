@@ -72,7 +72,7 @@ bun run db:push
 3) （可选）写入演示数据
 
 ```bash
-bun run src/db/seed.ts
+bun run src/db/seeds/default.ts
 ```
 
 4) 启动开发环境

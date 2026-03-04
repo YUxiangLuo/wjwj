@@ -1,10 +1,10 @@
 /**
  * Enhanced Database Seed Script (Chinese Localization)
  * Covers all system tables with realistic relationship data and user flows.
- * Run with: bun run src/db/seed.ts
+ * Run with: bun run src/db/seeds/default.ts
  */
 
-import { db } from "./index";
+import { db } from "../index";
 import {
     admin,
     teacher,
@@ -26,7 +26,7 @@ import {
     notification,
     operationLog,
     loginLog
-} from "./schema";
+} from "../schema";
 import { eq, and } from "drizzle-orm";
 
 async function seed() {
