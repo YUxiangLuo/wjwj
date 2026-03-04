@@ -408,7 +408,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 </div>
                                                 <div>
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-200/70 text-sm mt-1">共成功抽取 {simpleResult.sampleCount} 个样本{executionTimes.simple != null && `，耗时 ${executionTimes.simple} ms`}</p>
+                                                    <p className="text-emerald-200/70 text-sm mt-1">共成功抽取 {simpleResult.sampleCount} 个样本{executionTimes.simple !== null && `，耗时 ${executionTimes.simple} ms`}</p>
                                                     {simpleResult.seed && (
                                                         <p className="text-xs text-emerald-500/50 mt-1 font-mono">Random Seed: {simpleResult.seed}</p>
                                                     )}
@@ -524,7 +524,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 </div>
                                                 <div>
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-200/70 text-sm mt-1">K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本{executionTimes.systematic != null && `，耗时 ${executionTimes.systematic} ms`}</p>
+                                                    <p className="text-emerald-200/70 text-sm mt-1">K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本{executionTimes.systematic !== null && `，耗时 ${executionTimes.systematic} ms`}</p>
                                                 </div>
                                                 <Button variant="ghost" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid} className="ml-auto text-slate-400 hover:text-white hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
@@ -692,7 +692,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 </div>
                                                 <div>
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-200/70 text-sm mt-1">按 {STRATIFY_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified != null && `，耗时 ${executionTimes.stratified} ms`}</p>
+                                                    <p className="text-emerald-200/70 text-sm mt-1">按 {STRATIFY_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified !== null && `，耗时 ${executionTimes.stratified} ms`}</p>
                                                 </div>
                                                 <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} className="ml-auto text-slate-400 hover:text-white hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
