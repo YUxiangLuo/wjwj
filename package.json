@@ -15,6 +15,7 @@
     "test:unit": "bun test src env.test.ts",
     "test:e2e:admin": "E2E_RESET_SCRIPT=db:reset:e2e:admin bunx playwright test tests/e2e/admin",
     "test:e2e:teacher": "E2E_RESET_SCRIPT=db:reset:e2e:teacher bunx playwright test tests/e2e/teacher",
+    "test:e2e:student": "E2E_RESET_SCRIPT=db:reset:e2e:student bunx playwright test tests/e2e/student",
     "test:e2e": "bunx playwright test",
     "test:e2e:ci": "bunx playwright test --reporter=line",
     "test:e2e:headed": "bunx playwright test --headed",
@@ -29,7 +30,8 @@
     "db:check": "bunx drizzle-kit check",
     "db:reset": "bun run src/db/clean.ts --force && bun run db:push && bun run src/db/seeds/default.ts",
     "db:reset:e2e:admin": "bun run src/db/clean.ts --force && bun run db:push && bun run src/db/seeds/admin-e2e.ts",
-    "db:reset:e2e:teacher": "bun run src/db/clean.ts --force && bun run db:push && bun run src/db/seeds/teacher-e2e.ts"
+    "db:reset:e2e:teacher": "bun run src/db/clean.ts --force && bun run db:push && bun run src/db/seeds/teacher-e2e.ts",
+    "db:reset:e2e:student": "bun run src/db/clean.ts --force && bun run db:push && bun run src/db/seeds/student-e2e.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

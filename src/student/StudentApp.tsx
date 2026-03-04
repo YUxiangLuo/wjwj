@@ -242,6 +242,7 @@ function StudentAppContent() {
                             variant="ghost"
                             size="icon"
                             className="relative text-slate-400 hover:text-white hover:bg-slate-800"
+                            data-testid="student-open-notifications"
                             onClick={() => {
                                 setShowNotifications(true);
                                 refreshNotifications();
@@ -262,7 +263,7 @@ function StudentAppContent() {
                                 onClick={() => setShowAuthDialog(prev => !prev)}
                             >
                                 <Avatar className="h-9 w-9 border border-slate-700 bg-slate-800">
-                                    <AvatarFallback className="bg-indigo-600 text-white font-medium text-sm">
+                                    <AvatarFallback className="bg-indigo-600 text-white font-medium text-sm" data-testid="student-avatar">
                                         {displayInitial}
                                     </AvatarFallback>
                                 </Avatar>
@@ -279,6 +280,7 @@ function StudentAppContent() {
                                         </div>
                                         <button
                                             className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+                                            data-testid="student-nav-profile"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
                                                 navigate("/profile");
@@ -289,6 +291,7 @@ function StudentAppContent() {
                                         </button>
                                         <button
                                             className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+                                            data-testid="student-open-password-modal"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
                                                 setPasswordError(null);
@@ -300,6 +303,7 @@ function StudentAppContent() {
                                         </button>
                                         <button
                                             className="w-full flex items-center px-3 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors cursor-pointer text-left"
+                                            data-testid="student-logout-trigger"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
                                                 setShowLogoutConfirm(true);
@@ -349,6 +353,7 @@ function StudentAppContent() {
                                 value={passwordForm.currentPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                                 autoComplete="current-password"
+                                data-testid="student-password-current"
                                 className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
                             />
                         </div>
@@ -360,6 +365,7 @@ function StudentAppContent() {
                                 value={passwordForm.newPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                 autoComplete="new-password"
+                                data-testid="student-password-new"
                                 className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
                             />
                         </div>
@@ -371,6 +377,7 @@ function StudentAppContent() {
                                 value={passwordForm.confirmPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                                 autoComplete="new-password"
+                                data-testid="student-password-confirm"
                                 className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
                             />
                         </div>
@@ -396,7 +403,7 @@ function StudentAppContent() {
                                 取消
                             </Button>
                         )}
-                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white" data-testid="student-password-save">
                             {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             保存
                         </Button>
@@ -415,6 +422,7 @@ function StudentAppContent() {
                                 onClick={() => markAllNotificationsAsRead()}
                                 disabled={!notifications || notifications.unreadCount === 0}
                                 className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                data-testid="student-notification-read-all"
                             >
                                 全部已读
                             </Button>
