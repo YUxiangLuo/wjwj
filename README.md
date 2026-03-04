@@ -69,13 +69,19 @@ bun install
 bun run db:push
 ```
 
-3) （可选）写入演示数据
+3) （推荐）重置并写入本地演示数据
+
+```bash
+bun run db:reset
+```
+
+4) （可选）仅写入演示数据
 
 ```bash
 bun run src/db/seeds/default.ts
 ```
 
-4) 启动开发环境
+5) 启动开发环境
 
 ```bash
 bun dev
@@ -83,9 +89,15 @@ bun dev
 
 默认访问地址：
 
-- 学生端：`/student`
-- 教师端：`/teacher`
-- 管理员端：`/admin`
+- 学生端：`http://127.0.0.1:3000/student`
+- 教师端：`http://127.0.0.1:3000/teacher`
+- 管理员端：`http://127.0.0.1:3000/admin`
+
+## 测试分层说明
+
+- 单元测试：`bun test` / `bun run test:unit`
+- E2E 测试：`bun run test:e2e` 或按端执行 `bun run test:e2e:admin`、`bun run test:e2e:teacher`
+- E2E 文件统一命名为 `*.e2e.ts`，并由 `playwright.config.ts` 的 `testMatch` 限定收集，避免被 `bun test` 误扫
 
 ## 常用脚本
 
@@ -95,8 +107,10 @@ bun start               # 生产模式启动
 
 bun test                # 运行单元测试（src + env.test.ts）
 bun run test:watch      # 单元测试监听模式
+bun run test:e2e        # 运行全部 E2E 测试
 bun run test:e2e:admin  # 仅运行管理员端 E2E 测试
 bun run test:e2e:teacher # 仅运行教师端 E2E 测试（独立种子）
+bun run test:all        # 先单元测试，再运行全部 E2E
 
 bun run db:generate     # 生成迁移
 bun run db:migrate      # 执行迁移脚本
