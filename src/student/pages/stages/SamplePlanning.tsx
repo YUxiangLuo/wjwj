@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,22 @@ interface SamplePlanningProps {
     onPrev: () => void;
 }
 
+function computeRecommendedSampleSize(confidenceLevel: string, marginOfError: number, populationSize: number) {
+    const zValues: Record<string, number> = {
+        "90": 1.645,
+        "95": 1.96,
+        "99": 2.576,
+    };
+
+    const z = zValues[confidenceLevel] ?? 1.96;
+    const e = marginOfError / 100;
+    const p = 0.5;
+
+    const n0 = (z * z * p * (1 - p)) / (e * e);
+    const n = n0 / (1 + (n0 - 1) / populationSize);
+    return Math.ceil(n);
+}
+
 export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const { populationSize, experiment, saveExperiment } = useExperiment();
 
@@ -34,6 +50,8 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const [marginOfError, setMarginOfError] = useState([initialData?.marginOfError ?? 5]);
     const [finalSampleSize, setFinalSampleSize] = useState(initialData?.finalSampleSize ?? 384);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
+    const serverSnapshotRef = useRef("");
+    const saveInFlightRef = useRef(false);
 
     const N = populationSize;
 
@@ -46,13 +64,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     // Calculate recommended sample size
     const calculateSampleSize = useCallback(() => {
-        const z = zValues[confidenceLevel] ?? 1.96;
-        const e = (marginOfError[0] ?? 5) / 100;
-        const p = 0.5;
-
-        const n0 = (z * z * p * (1 - p)) / (e * e);
-        const n = n0 / (1 + (n0 - 1) / N);
-        return Math.ceil(n);
+        return computeRecommendedSampleSize(confidenceLevel, marginOfError[0] ?? 5, N);
     }, [confidenceLevel, marginOfError, N]);
 
     const recommendedSize = calculateSampleSize();
@@ -60,6 +72,48 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const maxSize = Math.floor(N * 0.5);
 
     const isValidSize = finalSampleSize >= minSize && finalSampleSize <= maxSize;
+
+    const buildSamplePlanData = useCallback((): SamplePlanData => ({
+        confidenceLevel,
+        marginOfError: marginOfError[0] ?? 5,
+        recommendedSize,
+        finalSampleSize,
+    }), [confidenceLevel, marginOfError, recommendedSize, finalSampleSize]);
+
+    useEffect(() => {
+        if (initialData) {
+            const initialRecommended = initialData.recommendedSize ?? computeRecommendedSampleSize(
+                initialData.confidenceLevel ?? "95",
+                initialData.marginOfError ?? 5,
+                N
+            );
+            serverSnapshotRef.current = JSON.stringify({
+                confidenceLevel: initialData.confidenceLevel ?? "95",
+                marginOfError: initialData.marginOfError ?? 5,
+                recommendedSize: initialRecommended,
+                finalSampleSize: initialData.finalSampleSize ?? initialRecommended,
+            });
+            return;
+        }
+
+        serverSnapshotRef.current = "";
+    }, [initialData, N]);
+
+    const autoSaveSamplePlan = useCallback(async () => {
+        const payload = buildSamplePlanData();
+        const snapshot = JSON.stringify(payload);
+        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
+
+        saveInFlightRef.current = true;
+        try {
+            const success = await saveExperiment({ samplePlan: payload });
+            if (success) {
+                serverSnapshotRef.current = snapshot;
+            }
+        } finally {
+            saveInFlightRef.current = false;
+        }
+    }, [buildSamplePlanData, saveExperiment]);
 
     // Auto-update final sample size when recommended changes (only if user hasn't modified it - simplified logic for now: update if no initial data)
     useEffect(() => {
@@ -69,14 +123,42 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     }, [recommendedSize, initialData]);
 
 
-    const handleConfirmNext = async () => {
-        // Save current data
-        const samplePlanData: SamplePlanData = {
-            confidenceLevel,
-            marginOfError: marginOfError[0] ?? 5,
-            recommendedSize,
-            finalSampleSize,
+    useEffect(() => {
+        const debounceTimer = window.setTimeout(() => {
+            void autoSaveSamplePlan();
+        }, 3000);
+
+        return () => {
+            window.clearTimeout(debounceTimer);
         };
+    }, [autoSaveSamplePlan]);
+
+    useEffect(() => {
+        const intervalTimer = window.setInterval(() => {
+            void autoSaveSamplePlan();
+        }, 30 * 1000);
+
+        return () => {
+            window.clearInterval(intervalTimer);
+        };
+    }, [autoSaveSamplePlan]);
+
+    useEffect(() => {
+        const onBeforeUnload = (event: BeforeUnloadEvent) => {
+            const snapshot = JSON.stringify(buildSamplePlanData());
+            if (snapshot === serverSnapshotRef.current) return;
+            event.preventDefault();
+            event.returnValue = "";
+        };
+
+        window.addEventListener("beforeunload", onBeforeUnload);
+        return () => {
+            window.removeEventListener("beforeunload", onBeforeUnload);
+        };
+    }, [buildSamplePlanData]);
+
+    const handleConfirmNext = async () => {
+        const samplePlanData = buildSamplePlanData();
         await saveExperiment({ samplePlan: samplePlanData, currentStage: 3 });
         onNext();
     };

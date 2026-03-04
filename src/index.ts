@@ -6,8 +6,8 @@ import { adminApiRoutes } from "./admin/api";
 import { studentApiRoutes } from "./student/api";
 import { teacherApiRoutes } from "./teacher/api";
 import { db } from "./db";
-import { systemConfig, operationLog, admin, notification } from "./db/schema";
-import { inArray } from "drizzle-orm";
+import { systemConfig, operationLog, admin, notification, task, topic, student, experiment } from "./db/schema";
+import { and, eq, gte, inArray, isNotNull, isNull, lt, lte } from "drizzle-orm";
 import { readdir, stat, unlink } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { createBackupArtifacts } from "./admin/backup";
@@ -81,6 +81,12 @@ console.log(`🚀 Server running at ${server.url}`);
 
 const AUTO_BACKUP_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 let autoBackupRunning = false;
+const NOTIFICATION_CLEANUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_NOTIFICATION_RETENTION_DAYS = 90;
+let notificationCleanupRunning = false;
+const DEADLINE_REMINDER_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const DEFAULT_DEADLINE_REMINDER_HOURS = 24;
+let deadlineReminderRunning = false;
 
 function getFrequencyMs(freq: string) {
   switch (freq) {
@@ -235,7 +241,147 @@ async function cleanupExpiredBackups(retentionDays: number) {
   }
 }
 
+async function checkAndCleanupNotifications() {
+  if (notificationCleanupRunning) return;
+  notificationCleanupRunning = true;
+
+  try {
+    const rows = await db
+      .select({ key: systemConfig.configKey, value: systemConfig.configValue })
+      .from(systemConfig)
+      .where(inArray(systemConfig.configKey, ["notification.retention_days"]));
+
+    const configuredDays = Number(rows.find((row) => row.key === "notification.retention_days")?.value ?? "");
+    const retentionDays = Number.isFinite(configuredDays) && configuredDays > 0
+      ? configuredDays
+      : DEFAULT_NOTIFICATION_RETENTION_DAYS;
+
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+    await db.delete(notification).where(lt(notification.createdAt, cutoff));
+  } catch (error) {
+    console.error("Notification cleanup failed:", error);
+  } finally {
+    notificationCleanupRunning = false;
+  }
+}
+
+async function checkAndSendDeadlineReminders() {
+  if (deadlineReminderRunning) return;
+  deadlineReminderRunning = true;
+
+  try {
+    const rows = await db
+      .select({ key: systemConfig.configKey, value: systemConfig.configValue })
+      .from(systemConfig)
+      .where(inArray(systemConfig.configKey, ["notification.deadline_reminder_hours"]));
+
+    const configuredHours = Number(rows.find((row) => row.key === "notification.deadline_reminder_hours")?.value ?? "");
+    const reminderHours = Number.isFinite(configuredHours) && configuredHours > 0
+      ? configuredHours
+      : DEFAULT_DEADLINE_REMINDER_HOURS;
+
+    const now = new Date();
+    const reminderWindowEnd = new Date(now.getTime() + reminderHours * 60 * 60 * 1000);
+
+    const dueTasks = await db
+      .select({
+        taskId: task.id,
+        classId: task.classId,
+        deadline: task.deadline,
+        topicName: topic.name,
+      })
+      .from(task)
+      .innerJoin(topic, eq(task.topicId, topic.id))
+      .where(and(
+        isNull(task.deletedAt),
+        eq(topic.isDeleted, 0),
+        isNull(topic.deletedAt),
+        isNotNull(task.deadline),
+        gte(task.deadline, now),
+        lte(task.deadline, reminderWindowEnd),
+      ));
+
+    for (const dueTask of dueTasks) {
+      if (!dueTask.deadline) continue;
+
+      const studentsInClass = await db
+        .select({ id: student.id })
+        .from(student)
+        .where(and(
+          eq(student.classId, dueTask.classId),
+          eq(student.status, 1),
+          isNull(student.deletedAt),
+        ));
+
+      if (studentsInClass.length === 0) continue;
+
+      const studentIds = studentsInClass.map((s) => s.id);
+      const experimentRows = await db
+        .select({ studentId: experiment.studentId, status: experiment.status })
+        .from(experiment)
+        .where(and(
+          eq(experiment.taskId, dueTask.taskId),
+          inArray(experiment.studentId, studentIds),
+        ));
+
+      const submittedStudentIds = new Set(
+        experimentRows
+          .filter((row) => row.status === 1 || row.status === 2)
+          .map((row) => row.studentId)
+      );
+
+      const remindStudentIds = studentIds.filter((studentId) => !submittedStudentIds.has(studentId));
+      if (remindStudentIds.length === 0) continue;
+
+      const existingReminderRows = await db
+        .select({ receiverId: notification.receiverId })
+        .from(notification)
+        .where(and(
+          eq(notification.receiverType, 4),
+          inArray(notification.receiverId, remindStudentIds),
+          eq(notification.type, "DEADLINE_REMINDER"),
+          eq(notification.relatedType, "task"),
+          eq(notification.relatedId, dueTask.taskId),
+        ));
+
+      const existingReceiverIds = new Set(existingReminderRows.map((row) => row.receiverId));
+      const remainingHours = Math.max(1, Math.ceil((dueTask.deadline.getTime() - Date.now()) / (60 * 60 * 1000)));
+      const deadlineText = dueTask.deadline.toLocaleString("zh-CN");
+
+      const reminderInserts = remindStudentIds
+        .filter((studentId) => !existingReceiverIds.has(studentId))
+        .map((studentId) => ({
+          receiverType: 4,
+          receiverId: studentId,
+          type: "DEADLINE_REMINDER",
+          title: "任务即将截止",
+          content: `任务「${dueTask.topicName}」将于${remainingHours}小时后截止（${deadlineText}），请尽快完成提交。`,
+          relatedType: "task",
+          relatedId: dueTask.taskId,
+        }));
+
+      if (reminderInserts.length > 0) {
+        await db.insert(notification).values(reminderInserts);
+      }
+    }
+  } catch (error) {
+    console.error("Deadline reminder scheduler failed:", error);
+  } finally {
+    deadlineReminderRunning = false;
+  }
+}
+
 if (process.env.DISABLE_AUTO_BACKUP !== "1") {
   setInterval(checkAndRunAutoBackup, AUTO_BACKUP_CHECK_INTERVAL_MS);
   checkAndRunAutoBackup();
+}
+
+if (process.env.DISABLE_NOTIFICATION_CLEANUP !== "1") {
+  setInterval(checkAndCleanupNotifications, NOTIFICATION_CLEANUP_INTERVAL_MS);
+  checkAndCleanupNotifications();
+}
+
+if (process.env.DISABLE_DEADLINE_REMINDER !== "1") {
+  setInterval(checkAndSendDeadlineReminders, DEADLINE_REMINDER_CHECK_INTERVAL_MS);
+  checkAndSendDeadlineReminders();
 }

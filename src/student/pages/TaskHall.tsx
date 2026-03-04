@@ -32,10 +32,30 @@ function parseDeadline(deadline: string | null): Date | null {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function formatDateTime(value: string | null) {
+    if (!value) return "无";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    });
+}
+
 function getRemainingMs(deadline: string | null): number | null {
     const end = parseDeadline(deadline);
     if (!end) return null;
     return end.getTime() - Date.now();
+}
+
+function isTaskNotOpenYet(publishedAt: string) {
+    const parsed = new Date(publishedAt);
+    if (Number.isNaN(parsed.getTime())) return false;
+    return parsed.getTime() > Date.now();
 }
 
 function isDeadlinePassed(deadline: string | null) {
@@ -44,9 +64,12 @@ function isDeadlinePassed(deadline: string | null) {
     return remaining <= 0;
 }
 
-function DeadlineDisplay({ deadline, status }: { deadline: string | null; status: TaskStatus }) {
+function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | null; status: TaskStatus; notOpenYet: boolean }) {
     if (!deadline) return null;
     if (status === "graded") return null;
+    if (notOpenYet) {
+        return <span className="text-sm text-cyan-400">尚未开放</span>;
+    }
 
     const remainingMs = getRemainingMs(deadline);
     if (remainingMs === null) return null;
@@ -91,8 +114,12 @@ interface TaskCardProps {
 function TaskCard({ task }: TaskCardProps) {
     const status = statusConfig[task.status];
     const deadlinePassed = isDeadlinePassed(task.deadline);
+    const notOpenYet = isTaskNotOpenYet(task.publishedAt);
 
     const getActionButton = () => {
+        if (notOpenYet) {
+            return { text: "未开放", variant: "outline" as const };
+        }
         switch (task.status) {
             case "not_started":
                 return { text: "开始实验", variant: "default" as const };
@@ -109,7 +136,7 @@ function TaskCard({ task }: TaskCardProps) {
     };
 
     const action = getActionButton();
-    const disabled = deadlinePassed && ["not_started", "in_progress", "rejected"].includes(task.status);
+    const disabled = (deadlinePassed || notOpenYet) && ["not_started", "in_progress", "rejected"].includes(task.status);
     const showHistory = ["submitted", "grading", "graded", "rejected"].includes(task.status);
 
     return (
@@ -167,10 +194,11 @@ function TaskCard({ task }: TaskCardProps) {
 
                     {/* Footer */}
                     <div className="flex justify-between items-center pt-3 border-t border-slate-800">
-                        <span className="text-xs text-slate-500">
-                            截止：{task.deadline ? new Date(task.deadline).toLocaleDateString() : "无"}
-                        </span>
-                        <DeadlineDisplay deadline={task.deadline} status={task.status} />
+                        <div className="text-xs text-slate-500 space-y-0.5">
+                            <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
+                            <div>截止：{formatDateTime(task.deadline)}</div>
+                        </div>
+                        <DeadlineDisplay deadline={task.deadline} status={task.status} notOpenYet={notOpenYet} />
                     </div>
 
                     {/* Action button */}
@@ -194,7 +222,9 @@ function TaskCard({ task }: TaskCardProps) {
                         )}
                     </div>
                     {disabled && (
-                        <div className="text-xs text-slate-500 text-center bg-slate-800/50 py-1 rounded">已截止，无法继续操作</div>
+                        <div className="text-xs text-slate-500 text-center bg-slate-800/50 py-1 rounded">
+                            {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
+                        </div>
                     )}
                 </div>
             </CardContent>
@@ -202,7 +232,7 @@ function TaskCard({ task }: TaskCardProps) {
     );
 }
 
-type FilterType = "all" | "in_progress" | "completed";
+type FilterType = "all" | "in_progress" | "submitted" | "graded";
 
 export function TaskHall() {
     const [tasks, setTasks] = useState<StudentTask[]>([]);
@@ -260,17 +290,18 @@ export function TaskHall() {
     const filteredTasks = tasks.filter(task => {
         if (filter === "all") return true;
         if (filter === "in_progress") {
-            return ["not_started", "in_progress", "submitted", "grading", "rejected"].includes(task.status);
+            return ["not_started", "in_progress", "rejected"].includes(task.status);
         }
-        if (filter === "completed") return task.status === "graded";
+        if (filter === "submitted") return ["submitted", "grading"].includes(task.status);
+        if (filter === "graded") return task.status === "graded";
         return true;
     });
 
     // Calculate stats
     const inProgressCount = tasks.filter(t =>
-        ["not_started", "in_progress", "submitted", "grading", "rejected"].includes(t.status)
+        ["not_started", "in_progress", "rejected"].includes(t.status)
     ).length;
-    const completedCount = tasks.filter(t => t.status === "graded").length;
+    const gradedCount = tasks.filter(t => t.status === "graded").length;
     const averageScore = tasks
         .filter(t => t.status === "graded" && t.score !== undefined)
         .reduce((acc, t, _, arr) => acc + (t.score || 0) / arr.length, 0);
@@ -364,8 +395,8 @@ export function TaskHall() {
                             <CheckCircle className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-100 group-hover:text-emerald-400 transition-colors">{completedCount}</p>
-                            <p className="text-sm text-slate-500">已完成实验</p>
+                            <p className="text-3xl font-bold text-slate-100 group-hover:text-emerald-400 transition-colors">{gradedCount}</p>
+                            <p className="text-sm text-slate-500">已批改实验</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -402,10 +433,16 @@ export function TaskHall() {
                         进行中
                     </button>
                     <button
-                        onClick={() => setFilter("completed")}
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "completed" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+                        onClick={() => setFilter("submitted")}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "submitted" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
-                        已完成
+                        已提交
+                    </button>
+                    <button
+                        onClick={() => setFilter("graded")}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "graded" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+                    >
+                        已批改
                     </button>
                 </div>
             </div>

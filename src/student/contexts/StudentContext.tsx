@@ -19,6 +19,7 @@ interface StudentContextValue {
     refreshNotifications: () => Promise<void>;
     markNotificationAsRead: (id: number) => Promise<void>;
     markAllNotificationsAsRead: () => Promise<void>;
+    deleteNotification: (id: number) => Promise<void>;
 }
 
 const StudentContext = createContext<StudentContextValue | null>(null);
@@ -126,6 +127,26 @@ export function StudentProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
+    const deleteNotification = useCallback(async (id: number) => {
+        try {
+            const res = await notificationsApi.remove(id);
+            if (res.success) {
+                setNotifications((prev) => {
+                    if (!prev) return prev;
+                    const target = prev.notifications.find((n) => n.id === id);
+                    const nextUnread = target && !target.isRead ? Math.max(0, prev.unreadCount - 1) : prev.unreadCount;
+                    return {
+                        ...prev,
+                        unreadCount: nextUnread,
+                        notifications: prev.notifications.filter((n) => n.id !== id),
+                    };
+                });
+            }
+        } catch {
+            // ignore errors
+        }
+    }, []);
+
     // 初始化
     useEffect(() => {
         refreshUser();
@@ -145,6 +166,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
         refreshNotifications,
         markNotificationAsRead,
         markAllNotificationsAsRead,
+        deleteNotification,
     };
 
     return (

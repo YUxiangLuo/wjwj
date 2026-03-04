@@ -130,7 +130,18 @@ const topicItemRoutes: RouteDefinition = {
         const ownsTopic = await hasTopicOwnership(id, currentTeacherId, requireTopicOwner);
         if (!ownsTopic) return error("课题不存在", "NOT_FOUND", 404);
 
-        await db.update(topic).set({ isDeleted: 1, deletedAt: new Date() }).where(and(eq(topic.id, id), eq(topic.teacherId, currentTeacherId), eq(topic.isDeleted, 0)));
+        const deletedAt = new Date();
+        await db.transaction(async (tx) => {
+            await tx
+                .update(topic)
+                .set({ isDeleted: 1, deletedAt })
+                .where(and(eq(topic.id, id), eq(topic.teacherId, currentTeacherId), eq(topic.isDeleted, 0)));
+
+            await tx
+                .update(task)
+                .set({ deletedAt })
+                .where(and(eq(task.topicId, id), isNull(task.deletedAt)));
+        });
         return json({ success: true });
     }
 };

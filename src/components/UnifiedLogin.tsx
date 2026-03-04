@@ -43,6 +43,19 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
     }
   };
 
+  const getForgotPasswordHint = () => {
+    switch (role) {
+      case "student":
+        return "忘记密码？请联系班级教师重置";
+      case "teacher":
+        return "忘记密码？请联系系统管理员重置";
+      case "admin":
+        return "忘记密码？请联系系统管理员通过后台重置";
+      default:
+        return "忘记密码？请联系管理员";
+    }
+  };
+
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-slate-950 font-sans text-slate-200">
       {/* Left Side: Hero / Branding */}
@@ -151,9 +164,9 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between ml-1">
                   <Label htmlFor="password" className="text-slate-300 text-sm font-medium">密码</Label>
-                  <a href="#" className="text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
-                    忘记密码?
-                  </a>
+                  <span className="text-xs font-medium text-indigo-300/80">
+                    {getForgotPasswordHint()}
+                  </span>
                 </div>
                 <Input
                   id="password"

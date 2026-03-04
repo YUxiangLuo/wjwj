@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Loader2, Clock, AlertTriangle, BookOpen, ChevronRight } from "lucide-react";
+import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Loader2, Clock, AlertTriangle, BookOpen, ChevronRight, Eye } from "lucide-react";
 import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -15,6 +16,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { experimentApi, tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
+import { TopicDeletedState } from "../components/TopicDeletedState";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -32,6 +34,38 @@ function parseDeadline(deadline: string | null): Date | null {
     const withTime = deadline.includes("T") ? deadline : `${deadline}T23:59:00`;
     const parsed = new Date(withTime);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateTime(value: string | null) {
+    if (!value) return "无";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString("zh-CN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    });
+}
+
+type PreviewType = "image" | "pdf" | "video";
+
+function getAttachmentPreviewType(file: TopicAttachment): PreviewType | null {
+    const lowerType = file.type.toLowerCase();
+    const lowerName = file.name.toLowerCase();
+
+    if (lowerType.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(lowerName)) {
+        return "image";
+    }
+    if (lowerType === "application/pdf" || lowerName.endsWith(".pdf")) {
+        return "pdf";
+    }
+    if (lowerType.startsWith("video/") || /\.(mp4|webm|ogg|mov|m4v)$/.test(lowerName)) {
+        return "video";
+    }
+    return null;
 }
 
 function isDeadlinePassed(deadline: string | null) {
@@ -79,7 +113,9 @@ export function TopicDetails() {
     const [task, setTask] = useState<TaskDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [topicDeleted, setTopicDeleted] = useState(false);
     const [showRestartConfirm, setShowRestartConfirm] = useState(false);
+    const [previewFile, setPreviewFile] = useState<TopicAttachment | null>(null);
 
     useEffect(() => {
         async function loadTask() {
@@ -89,15 +125,22 @@ export function TopicDetails() {
             }
 
             setLoading(true);
+            setNotFound(false);
+            setTopicDeleted(false);
             try {
                 const res = await tasksApi.get(parseInt(taskId));
                 if (res.success && res.data) {
                     setTask(res.data);
+                } else if (res.error?.code === "TOPIC_DELETED") {
+                    setTask(null);
+                    setTopicDeleted(true);
                 } else {
+                    setTask(null);
                     setNotFound(true);
                 }
             } catch (error) {
                 console.error("Failed to load task:", error);
+                setTask(null);
                 setNotFound(true);
             } finally {
                 setLoading(false);
@@ -114,13 +157,19 @@ export function TopicDetails() {
         );
     }
 
+    if (topicDeleted) {
+        return <TopicDeletedState />;
+    }
+
     if (notFound || !task) {
         return <Navigate to="/" replace />;
     }
 
     const status = statusConfig[task.status];
     const deadlinePassed = isDeadlinePassed(task.deadline);
-    const canStartExperiment = ["not_started", "in_progress", "rejected"].includes(task.status) && !deadlinePassed;
+    const openAt = new Date(task.publishedAt);
+    const notOpenYet = !Number.isNaN(openAt.getTime()) && openAt.getTime() > Date.now();
+    const canStartExperiment = ["not_started", "in_progress", "rejected"].includes(task.status) && !deadlinePassed && !notOpenYet;
 
     const getActionButton = () => {
         switch (task.status) {
@@ -160,6 +209,9 @@ export function TopicDetails() {
         }
     };
 
+    const previewType = previewFile ? getAttachmentPreviewType(previewFile) : null;
+    const previewUrl = previewFile ? `/api/student/attachments/${previewFile.id}/download?mode=preview` : "";
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-12">
             <Link to="/">
@@ -173,8 +225,8 @@ export function TopicDetails() {
                 <div>
                     <h1 className="text-3xl font-bold text-slate-100">{task.name}</h1>
                     <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-slate-400">
-                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> 发布于 {task.publishedAt}</span>
-                        {task.deadline && <span>截止于 {task.deadline}</span>}
+                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}</span>
+                        {task.deadline && <span>截止于 {formatDateTime(task.deadline)}</span>}
                     </div>
                 </div>
                 <Badge variant="outline" className={`${status.color} px-3 py-1 text-sm h-8`}>{status.label}</Badge>
@@ -194,7 +246,7 @@ export function TopicDetails() {
                         <div className="rounded-2xl bg-slate-900/80 border border-slate-800 px-6 py-4 shadow-sm backdrop-blur-sm min-w-[200px]">
                             <div className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wider">截止状态</div>
                             <div className="text-2xl font-bold text-slate-200">{getDeadlineLabel(task.deadline)}</div>
-                            <div className="text-xs text-slate-500 mt-1 font-mono">{task.deadline ?? "未设置截止时间"}</div>
+                            <div className="text-xs text-slate-500 mt-1 font-mono">{task.deadline ? formatDateTime(task.deadline) : "未设置截止时间"}</div>
                         </div>
                     </div>
                 </CardContent>
@@ -227,7 +279,7 @@ export function TopicDetails() {
                             <CardContent className="pt-6">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {task.attachments.map((file) => (
-                                        <div key={file.id} className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-800/50 p-3 hover:bg-slate-800 transition-colors group">
+                                        <div key={file.id} className="flex items-center justify-between rounded-xl border border-slate-700 bg-slate-800/50 p-3 hover:bg-slate-800 transition-colors group gap-2">
                                             <div className="flex items-center gap-3 overflow-hidden">
                                                 <div className="p-2 rounded-lg bg-slate-900 border border-slate-700 shrink-0">
                                                     {getFileIcon(file.type)}
@@ -237,9 +289,28 @@ export function TopicDetails() {
                                                     <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
                                                 </div>
                                             </div>
-                                            <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-slate-700 shrink-0" onClick={() => handleDownload(file)}>
-                                                <Download className="w-4 h-4" />
-                                            </Button>
+                                            <div className="flex items-center gap-1 shrink-0">
+                                                {getAttachmentPreviewType(file) && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-slate-400 hover:text-white hover:bg-slate-700"
+                                                        onClick={() => setPreviewFile(file)}
+                                                        title="预览"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-slate-400 hover:text-white hover:bg-slate-700"
+                                                    onClick={() => handleDownload(file)}
+                                                    title="下载"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -333,7 +404,7 @@ export function TopicDetails() {
                             {!canStartExperiment && ["not_started", "in_progress", "rejected"].includes(task.status) && (
                                 <div className="flex items-center justify-center gap-1.5 text-xs text-rose-400 bg-rose-500/10 p-2 rounded-lg">
                                     <AlertTriangle className="w-3 h-3" />
-                                    任务已截止，无法继续操作
+                                    {notOpenYet ? "任务尚未开放，暂不可操作" : "任务已截止，无法继续操作"}
                                 </div>
                             )}
                         </CardContent>
@@ -410,6 +481,28 @@ export function TopicDetails() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <Dialog open={!!previewFile} onOpenChange={(open) => { if (!open) setPreviewFile(null); }}>
+                <DialogContent className="max-w-5xl bg-slate-900 border-slate-800 text-slate-200">
+                    <DialogHeader>
+                        <DialogTitle className="text-slate-100">附件预览</DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            {previewFile?.name}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-2">
+                        {previewType === "image" && (
+                            <img src={previewUrl} alt={previewFile?.name ?? "附件图片"} className="max-h-[70vh] w-full object-contain rounded-lg" />
+                        )}
+                        {previewType === "pdf" && (
+                            <iframe title={previewFile?.name ?? "PDF预览"} src={previewUrl} className="w-full h-[70vh] rounded-lg" />
+                        )}
+                        {previewType === "video" && (
+                            <video src={previewUrl} controls className="max-h-[70vh] w-full rounded-lg bg-black" />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

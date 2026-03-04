@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu } from "lucide-react";
+import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyRound } from "lucide-react";
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,6 +43,7 @@ function StudentAppContent() {
         refreshNotifications,
         markAllNotificationsAsRead,
         markNotificationAsRead,
+        deleteNotification,
         refreshSession,
         sessionExpiresAt,
         authErrorCode,
@@ -143,6 +144,23 @@ function StudentAppContent() {
     // 未登录时显示提示（实际应该跳转到登录页）
     const displayName = currentUser?.name ?? "访客";
     const displayInitial = displayName.charAt(0);
+    const passwordRules = {
+        minLength: passwordForm.newPassword.length >= 8,
+        hasLetter: /[A-Za-z]/.test(passwordForm.newPassword),
+        hasNumber: /\d/.test(passwordForm.newPassword),
+        hasSpecial: /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword),
+        noStudentId: !(currentUser?.studentId && passwordForm.newPassword.includes(currentUser.studentId)),
+        matched: passwordForm.confirmPassword.length > 0 && passwordForm.newPassword === passwordForm.confirmPassword,
+    };
+    const strengthScore = [
+        passwordRules.minLength,
+        passwordRules.hasLetter,
+        passwordRules.hasNumber,
+        passwordRules.hasSpecial,
+        passwordRules.noStudentId,
+    ].filter(Boolean).length;
+    const passwordStrengthLabel =
+        strengthScore <= 2 ? "弱" : strengthScore <= 4 ? "中" : "强";
 
     const handleLogout = async () => {
         try {
@@ -159,19 +177,19 @@ function StudentAppContent() {
             setPasswordError("请填写完整信息");
             return;
         }
-        if (passwordForm.newPassword.length < 8) {
+        if (!passwordRules.minLength) {
             setPasswordError("新密码长度至少为8位");
             return;
         }
-        if (!/[A-Za-z]/.test(passwordForm.newPassword) || !/\d/.test(passwordForm.newPassword) || !/[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword)) {
+        if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {
             setPasswordError("新密码需包含字母、数字和特殊字符");
             return;
         }
-        if (currentUser?.studentId && passwordForm.newPassword.includes(currentUser.studentId)) {
+        if (!passwordRules.noStudentId) {
             setPasswordError("新密码不能包含学号");
             return;
         }
-        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        if (!passwordRules.matched) {
             setPasswordError("两次输入的新密码不一致");
             return;
         }
@@ -231,7 +249,9 @@ function StudentAppContent() {
                         >
                             <Bell className="w-5 h-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse ring-2 ring-slate-900"></span>
+                                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold leading-5 text-center ring-2 ring-slate-900">
+                                    {unreadCount > 99 ? "99+" : unreadCount}
+                                </span>
                             )}
                         </Button>
 
@@ -266,6 +286,17 @@ function StudentAppContent() {
                                         >
                                             <User className="mr-2 h-4 w-4 text-slate-400" />
                                             个人信息
+                                        </button>
+                                        <button
+                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+                                            onClick={() => {
+                                                setShowAuthDialog(false);
+                                                setPasswordError(null);
+                                                setShowPasswordModal(true);
+                                            }}
+                                        >
+                                            <KeyRound className="mr-2 h-4 w-4 text-slate-400" />
+                                            修改密码
                                         </button>
                                         <button
                                             className="w-full flex items-center px-3 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors cursor-pointer text-left"
@@ -343,6 +374,20 @@ function StudentAppContent() {
                                 className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
                             />
                         </div>
+                        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between text-slate-400">
+                                <span>密码强度</span>
+                                <span className={strengthScore <= 2 ? "text-rose-400" : strengthScore <= 4 ? "text-amber-400" : "text-emerald-400"}>
+                                    {passwordStrengthLabel}
+                                </span>
+                            </div>
+                            <div className={passwordRules.minLength ? "text-emerald-400" : "text-slate-500"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
+                            <div className={passwordRules.hasLetter ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
+                            <div className={passwordRules.hasNumber ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
+                            <div className={passwordRules.hasSpecial ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
+                            <div className={passwordRules.noStudentId ? "text-emerald-400" : "text-slate-500"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
+                            <div className={passwordRules.matched ? "text-emerald-400" : "text-slate-500"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
+                        </div>
                         {passwordError && <div className="text-sm text-rose-400 bg-rose-900/20 p-2 rounded">{passwordError}</div>}
                     </div>
                     <DialogFooter>
@@ -381,35 +426,49 @@ function StudentAppContent() {
                             <div className="text-sm text-slate-500 text-center py-8">暂无通知</div>
                         ) : (
                             notifications.notifications.map((notice) => (
-                                <button
+                                <div
                                     key={notice.id}
-                                    className={`w-full text-left p-3 rounded-lg border transition-all ${notice.isRead ? "bg-slate-950 border-slate-800/50 opacity-70" : "bg-slate-800 border-slate-700 shadow-sm hover:bg-slate-800/80"}`}
-                                    onClick={() => {
-                                        if (!notice.isRead) {
-                                            markNotificationAsRead(notice.id);
-                                        }
-                                    }}
+                                    className={`p-3 rounded-lg border transition-all ${notice.isRead ? "bg-slate-950 border-slate-800/50 opacity-70" : "bg-slate-800 border-slate-700 shadow-sm hover:bg-slate-800/80"}`}
                                 >
                                     <div className="flex items-start justify-between gap-2">
-                                        <div>
-                                            <div className="text-sm font-medium text-slate-200">
-                                                {notice.title}
-                                                {!notice.isRead && <span className="ml-2 inline-block w-1.5 h-1.5 bg-rose-500 rounded-full align-middle"></span>}
+                                        <button
+                                            className="flex-1 text-left"
+                                            onClick={() => {
+                                                if (!notice.isRead) {
+                                                    markNotificationAsRead(notice.id);
+                                                }
+                                            }}
+                                        >
+                                            <div>
+                                                <div className="text-sm font-medium text-slate-200">
+                                                    {notice.title}
+                                                    {!notice.isRead && <span className="ml-2 inline-block w-1.5 h-1.5 bg-rose-500 rounded-full align-middle"></span>}
+                                                </div>
+                                                <div className="text-xs text-slate-400 mt-1 line-clamp-2">
+                                                    {notice.content}
+                                                </div>
                                             </div>
-                                            <div className="text-xs text-slate-400 mt-1 line-clamp-2">
-                                                {notice.content}
+                                        </button>
+                                        <div className="flex items-start gap-1">
+                                            <button
+                                                type="button"
+                                                className="h-7 w-7 rounded-md text-slate-500 hover:text-rose-300 hover:bg-rose-500/10 flex items-center justify-center"
+                                                onClick={() => deleteNotification(notice.id)}
+                                                title="删除通知"
+                                            >
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                            <div className="text-[10px] text-slate-500 whitespace-nowrap pt-1">
+                                                {new Date(notice.createdAt).toLocaleString("zh-CN", {
+                                                    month: "2-digit",
+                                                    day: "2-digit",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
                                             </div>
-                                        </div>
-                                        <div className="text-[10px] text-slate-500 whitespace-nowrap pt-1">
-                                            {new Date(notice.createdAt).toLocaleString("zh-CN", {
-                                                month: "2-digit",
-                                                day: "2-digit",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            })}
                                         </div>
                                     </div>
-                                </button>
+                                </div>
                             ))
                         )}
                     </div>

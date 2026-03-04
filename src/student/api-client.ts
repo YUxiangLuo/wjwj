@@ -349,6 +349,12 @@ export const notificationsApi = {
             { method: "PUT" }
         ),
 
+    remove: (notificationId: number) =>
+        request<{ success: boolean }>(
+            `/api/student/notifications/${notificationId}`,
+            { method: "DELETE" }
+        ),
+
     markAllAsRead: () =>
         request<{ success: boolean }>("/api/student/notifications/read-all", {
             method: "PUT",

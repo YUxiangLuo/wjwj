@@ -27,9 +27,9 @@ import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
 import { SamplePlanning } from "./stages/SamplePlanning";
 import { SamplingExecution } from "./stages/SamplingExecution";
 import { AnalysisReport } from "./stages/AnalysisReport";
-import { SurveySimulation } from "./stages/SurveySimulation";
+import { TopicDeletedState } from "../components/TopicDeletedState";
 
-const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告", "调查结果模拟"];
+const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
 // Context for experiment data
 interface ExperimentContextValue {
@@ -62,6 +62,7 @@ export function ExperimentLayout() {
     const [experiment, setExperiment] = useState<ExperimentData | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [topicDeleted, setTopicDeleted] = useState(false);
     const [currentStage, setCurrentStage] = useState(1);
     const [taskName, setTaskName] = useState("");
     const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -78,24 +79,35 @@ export function ExperimentLayout() {
             }
 
             setLoading(true);
+            setNotFound(false);
+            setTopicDeleted(false);
             try {
                 const res = await experimentApi.get(parseInt(taskId));
                 if (res.success && res.data) {
+                    const normalizedStage = Math.min(4, Math.max(res.data.currentStage || 1, 1));
                     setExperiment(res.data);
-                    setCurrentStage(Math.max(res.data.currentStage || 1, 1));
+                    setCurrentStage(normalizedStage);
                     setLastSavedAt(res.data.lastSavedAt);
 
                     // Fetch task details for name
                     tasksApi.get(parseInt(taskId)).then(taskRes => {
                         if (taskRes.success && taskRes.data) {
                             setTaskName(taskRes.data.name);
+                        } else if (taskRes.error?.code === "TOPIC_DELETED") {
+                            setTopicDeleted(true);
+                            setExperiment(null);
                         }
                     });
+                } else if (res.error?.code === "TOPIC_DELETED") {
+                    setExperiment(null);
+                    setTopicDeleted(true);
                 } else {
+                    setExperiment(null);
                     setNotFound(true);
                 }
             } catch (error) {
                 console.error("Failed to load experiment:", error);
+                setExperiment(null);
                 setNotFound(true);
             } finally {
                 setLoading(false);
@@ -147,7 +159,7 @@ export function ExperimentLayout() {
     }, [saveExperiment, currentStage]);
 
     const handleNextStage = useCallback(async () => {
-        if (currentStage < 5) {
+        if (currentStage < 4) {
             const newStage = currentStage + 1;
             const success = await saveExperiment({ currentStage: newStage });
             if (success) {
@@ -197,12 +209,18 @@ export function ExperimentLayout() {
         );
     }
 
+    if (topicDeleted) {
+        return <TopicDeletedState />;
+    }
+
     if (notFound || !experiment) {
         return <Navigate to="/" replace />;
     }
 
     const renderStage = () => {
-        switch (currentStage) {
+        const stageToRender = Math.min(4, Math.max(currentStage, 1));
+
+        switch (stageToRender) {
             case 1:
                 return <QuestionnaireDesign onNext={handleNextStage} />;
             case 2:
@@ -210,15 +228,7 @@ export function ExperimentLayout() {
             case 3:
                 return <SamplingExecution onNext={handleNextStage} onPrev={handlePrevStage} />;
             case 4:
-                return <AnalysisReport onPrev={handlePrevStage} onSubmit={async () => {
-                    if (!taskId) return;
-                    const success = await saveExperiment({ currentStage: 5 });
-                    if (success) {
-                        setCurrentStage(5);
-                    }
-                }} />;
-            case 5:
-                return <SurveySimulation onPrev={handlePrevStage} onSubmit={() => {
+                return <AnalysisReport onPrev={handlePrevStage} onSubmit={() => {
                     if (taskId) {
                         navigate(`/task/${taskId}/preview`);
                     }

@@ -58,6 +58,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     const [kValue, setKValue] = useState(initialResults?.systematic?.kValue ?? Math.round(N / n));
     const [stratifyBy, setStratifyBy] = useState(initialResults?.stratified?.stratifyBy ?? "gender");
+    const [simpleSeed, setSimpleSeed] = useState(initialResults?.simple?.seed ? String(initialResults.simple.seed) : "");
+    const [systematicSeed, setSystematicSeed] = useState(initialResults?.systematic?.seed ? String(initialResults.systematic.seed) : "");
+    const [stratifiedSeed, setStratifiedSeed] = useState(initialResults?.stratified?.seed ? String(initialResults.stratified.seed) : "");
     // Stats state
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [layers, setLayers] = useState<Array<{ name: string; count: number; ratio: number }>>([]);
@@ -121,6 +124,21 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
 
+    const parseSeed = useCallback((seedText: string) => {
+        const trimmed = seedText.trim();
+        if (!trimmed) return undefined;
+        const parsed = Number.parseInt(trimmed, 10);
+        return Number.isFinite(parsed) ? parsed : undefined;
+    }, []);
+
+    const buildSamplingResultsPayload = useCallback((next: Partial<SamplingResultsData>) => {
+        const payload: SamplingResultsData = {};
+        if (simpleResult) payload.simple = simpleResult;
+        if (systematicResult) payload.systematic = systematicResult;
+        if (stratifiedResult) payload.stratified = stratifiedResult;
+        return { ...payload, ...next };
+    }, [simpleResult, systematicResult, stratifiedResult]);
+
     // Save results when they change
     const saveResults = useCallback(async () => {
         const samplingResults: SamplingResultsData = {};
@@ -143,11 +161,15 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeSimple = async () => {
         setExecuting("simple");
         try {
+            const seed = parseSeed(simpleSeed);
             const res = await experimentApi.executeSampling(experiment?.taskId!, "simple", {
-                sampleSize: n
+                sampleSize: n,
+                seed,
             });
             if (res.success && res.data?.result) {
-                setSimpleResult(res.data.result);
+                const nextSimple = res.data.result;
+                setSimpleResult(nextSimple);
+                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ simple: nextSimple }) });
             }
         } catch (e) {
             console.error(e);
@@ -159,12 +181,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeSystematic = async () => {
         setExecuting("systematic");
         try {
+            const seed = parseSeed(systematicSeed);
             const res = await experimentApi.executeSampling(experiment?.taskId!, "systematic", {
                 kValue,
-                sampleSize: Math.ceil(N / kValue)
+                sampleSize: Math.ceil(N / kValue),
+                seed,
             });
             if (res.success && res.data?.result) {
-                setSystematicResult(res.data.result);
+                const nextSystematic = res.data.result;
+                setSystematicResult(nextSystematic);
+                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ systematic: nextSystematic }) });
             }
         } catch (e) {
             console.error(e);
@@ -175,8 +201,6 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     const executeStratified = async () => {
         setExecuting("stratified");
-        const totalSampleCount = layerSampleCounts.reduce((a, b) => a + b, 0);
-
         // Construct layers payload mapping current counts to layer names
         const layersPayload = layers.map((layer, i) => ({
             name: layer.name,
@@ -186,12 +210,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         }));
 
         try {
+            const seed = parseSeed(stratifiedSeed);
             const res = await experimentApi.executeSampling(experiment?.taskId!, "stratified", {
                 stratifyBy,
-                layers: layersPayload
+                layers: layersPayload,
+                seed,
             });
             if (res.success && res.data?.result) {
-                setStratifiedResult(res.data.result);
+                const nextStratified = res.data.result;
+                setStratifiedResult(nextStratified);
+                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: nextStratified }) });
             }
         } catch (e) {
             console.error(e);
@@ -206,8 +234,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         expectedSystematicCount >= n * 0.8 && expectedSystematicCount <= n * 1.2;
 
     const stratifiedTotal = layerSampleCounts.reduce((a, b) => a + b, 0);
-    // Allow small deviation for rounding
-    const isStratifiedValid = Math.abs(stratifiedTotal - n) <= layers.length + 5; // Relaxed validation slightly
+    const isStratifiedValid = layers.length > 0 && stratifiedTotal === n;
 
     const allCompleted = simpleResult?.completed && systematicResult?.completed && stratifiedResult?.completed;
 
@@ -218,15 +245,41 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     // Allocation helpers
+    const normalizeCountsToTarget = (counts: number[]) => {
+        const normalized = counts.map((count) => Math.max(0, Math.round(count)));
+        if (normalized.length === 0) return normalized;
+
+        let total = normalized.reduce((sum, count) => sum + count, 0);
+        let cursor = 0;
+        while (total < n) {
+            const idx = cursor % normalized.length;
+            normalized[idx] += 1;
+            total += 1;
+            cursor += 1;
+        }
+
+        cursor = 0;
+        while (total > n) {
+            const idx = cursor % normalized.length;
+            if (normalized[idx] > 0) {
+                normalized[idx] -= 1;
+                total -= 1;
+            }
+            cursor += 1;
+        }
+
+        return normalized;
+    };
+
     const applyProportionalAllocation = () => {
-        setLayerSampleCounts(layers.map(l => Math.round(n * l.ratio / 100)));
+        setLayerSampleCounts(normalizeCountsToTarget(layers.map((l) => n * l.ratio / 100)));
     };
 
     const applyEqualAllocation = () => {
         if (layers.length === 0) return;
         const equalCount = Math.floor(n / layers.length);
         const remainder = n % layers.length;
-        setLayerSampleCounts(layers.map((_, i) => equalCount + (i < remainder ? 1 : 0)));
+        setLayerSampleCounts(normalizeCountsToTarget(layers.map((_, i) => equalCount + (i < remainder ? 1 : 0))));
     };
 
     const updateLayerCount = (index: number, value: number) => {
@@ -316,6 +369,18 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
+                                    <div className="p-4 bg-slate-950/30 rounded-xl border border-slate-800/50">
+                                        <Label htmlFor="simpleSeed" className="text-slate-300 text-xs">随机种子（可选）</Label>
+                                        <Input
+                                            id="simpleSeed"
+                                            type="number"
+                                            value={simpleSeed}
+                                            onChange={(e) => setSimpleSeed(e.target.value)}
+                                            placeholder="留空则每次随机"
+                                            className="mt-2 bg-slate-900 border-slate-700 text-slate-200 focus:border-indigo-500"
+                                        />
+                                        <p className="text-xs text-slate-500 mt-2">设置后可复现同一组抽样结果。</p>
+                                    </div>
                                     {!simpleResult?.completed ? (
                                         <div className="bg-slate-950/50 rounded-xl p-8 text-center border border-slate-800 border-dashed">
                                             <div className="mb-4 text-slate-400">尚未执行抽样</div>
@@ -356,7 +421,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-base text-slate-200">抽样预览</CardTitle>
-                                        <Badge variant="outline" className="border-slate-700 text-slate-400">前 5 条</Badge>
+                                        <Badge variant="outline" className="border-slate-700 text-slate-400">分页预览</Badge>
                                     </div>
                                     <CardDescription className="text-slate-400">展示部分抽样结果数据</CardDescription>
                                 </CardHeader>
@@ -389,7 +454,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-950/30 rounded-xl border border-slate-800/50">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-slate-950/30 rounded-xl border border-slate-800/50">
                                         <div className="space-y-3">
                                             <Label htmlFor="kValue" className="text-slate-300">间隔 K 值 (步长)</Label>
                                             <div className="relative">
@@ -416,6 +481,20 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     样本量偏差过大，请调整 K 值
                                                 </p>
                                             )}
+                                        </div>
+                                        <div className="space-y-3">
+                                            <Label htmlFor="systematicSeed" className="text-slate-300">随机种子（可选）</Label>
+                                            <Input
+                                                id="systematicSeed"
+                                                type="number"
+                                                value={systematicSeed}
+                                                onChange={(e) => setSystematicSeed(e.target.value)}
+                                                placeholder="留空则每次随机"
+                                                className="bg-slate-900 border-slate-700 text-slate-200 focus:border-teal-500"
+                                            />
+                                            <p className="text-xs text-slate-500">
+                                                设置后可复现系统抽样结果。
+                                            </p>
                                         </div>
                                     </div>
 
@@ -454,7 +533,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-base text-slate-200">抽样预览</CardTitle>
-                                        <Badge variant="outline" className="border-slate-700 text-slate-400">前 5 条</Badge>
+                                        <Badge variant="outline" className="border-slate-700 text-slate-400">分页预览</Badge>
                                     </div>
                                     <CardDescription className="text-slate-400">展示部分抽样结果数据</CardDescription>
                                 </CardHeader>
@@ -509,6 +588,17 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     )}
                                                 </SelectContent>
                                             </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="stratifiedSeed" className="text-slate-300 text-xs">随机种子（可选）</Label>
+                                            <Input
+                                                id="stratifiedSeed"
+                                                type="number"
+                                                value={stratifiedSeed}
+                                                onChange={(e) => setStratifiedSeed(e.target.value)}
+                                                placeholder="留空则每次随机"
+                                                className="w-48 bg-slate-900 border-slate-700 text-slate-200"
+                                            />
                                         </div>
 
                                         <div className="flex gap-2 mb-0.5">
@@ -572,7 +662,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     {!isStratifiedValid && layers.length > 0 && (
                                         <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl text-xs flex items-center gap-2">
                                             <Target className="w-4 h-4 shrink-0" />
-                                            各层样本数之和应接近目标样本量 {n}（当前：{stratifiedTotal}）
+                                            各层样本数之和必须等于目标样本量 {n}（当前：{stratifiedTotal}）
                                         </div>
                                     )}
 
@@ -611,7 +701,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-base text-slate-200">抽样预览</CardTitle>
-                                        <Badge variant="outline" className="border-slate-700 text-slate-400">前 5 条</Badge>
+                                        <Badge variant="outline" className="border-slate-700 text-slate-400">分页预览</Badge>
                                     </div>
                                     <CardDescription className="text-slate-400">展示部分抽样结果数据</CardDescription>
                                 </CardHeader>
@@ -678,33 +768,77 @@ const STRATIFY_LABELS: Record<string, string> = {
 
 // Sample preview table component
 function SamplePreviewTable({ data, total }: { data: unknown[]; total: number }) {
-    const samples = data as Array<{ id: number; age: string; gender: string; income: string }>;
+    const samples = (data as Array<Record<string, unknown>>) ?? [];
+    const pageSize = 20;
+    const [page, setPage] = useState(1);
 
-    if (samples.length === 0) return null;
+    useEffect(() => {
+        setPage(1);
+    }, [samples.length]);
+
+    if (samples.length === 0) {
+        return <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">暂无抽样数据</div>;
+    }
+
+    const keys = Object.keys(samples[0] ?? {});
+    const totalPages = Math.max(1, Math.ceil(samples.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const start = (currentPage - 1) * pageSize;
+    const end = Math.min(start + pageSize, samples.length);
+    const rows = samples.slice(start, end);
 
     return (
-        <div className="w-full">
-            <Table>
-                <TableHeader>
-                    <TableRow className="border-slate-800 hover:bg-transparent">
-                        <TableHead className="text-xs text-slate-500 h-8">ID</TableHead>
-                        <TableHead className="text-xs text-slate-500 h-8">年龄段</TableHead>
-                        <TableHead className="text-xs text-slate-500 h-8">性别</TableHead>
-                        <TableHead className="text-xs text-slate-500 h-8 text-right">收入</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {samples.slice(0, 5).map((row) => (
-                        <TableRow key={row.id} className="border-slate-800 hover:bg-slate-800/50">
-                            <TableCell className="py-2.5 text-slate-300 font-mono text-xs">{row.id}</TableCell>
-                            <TableCell className="py-2.5 text-slate-400 text-xs">{row.age}</TableCell>
-                            <TableCell className="py-2.5 text-slate-400 text-xs">{row.gender}</TableCell>
-                            <TableCell className="py-2.5 text-slate-400 text-xs text-right">{row.income}</TableCell>
+        <div className="w-full h-full flex flex-col">
+            <div className="flex-1 overflow-auto rounded-xl border border-slate-800">
+                <Table>
+                    <TableHeader className="bg-slate-950/50 sticky top-0">
+                        <TableRow className="border-slate-800 hover:bg-transparent">
+                            {keys.map((key) => (
+                                <TableHead key={key} className="text-xs text-slate-500 h-8 whitespace-nowrap">
+                                    {FIELD_LABELS[key] || key}
+                                </TableHead>
+                            ))}
                         </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-            <p className="text-xs text-slate-600 mt-3 text-center">显示前 {Math.min(5, samples.length)} 条，共 {total} 条</p>
+                    </TableHeader>
+                    <TableBody>
+                        {rows.map((row, rowIndex) => (
+                            <TableRow key={`${start + rowIndex}`} className="border-slate-800 hover:bg-slate-800/50">
+                                {keys.map((key) => (
+                                    <TableCell key={`${start + rowIndex}-${key}`} className="py-2 text-slate-300 text-xs whitespace-nowrap">
+                                        {String(row[key] ?? "")}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2">
+                <p className="text-xs text-slate-600">
+                    显示第 {start + 1}-{end} 条，共 {Math.max(total, samples.length)} 条
+                </p>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                        disabled={currentPage <= 1}
+                    >
+                        上一页
+                    </Button>
+                    <span className="text-xs text-slate-500">{currentPage}/{totalPages}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage >= totalPages}
+                    >
+                        下一页
+                    </Button>
+                </div>
+            </div>
         </div>
     );
 }

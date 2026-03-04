@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type SubmissionDetail } from "../api-client";
 import { toast } from "sonner";
 
@@ -254,7 +255,10 @@ export function GradingDetail() {
                                 </div>
                                 <div className="prose prose-invert max-w-none">
                                     {data.reportContent ? (
-                                        <pre className="whitespace-pre-wrap break-all font-sans text-sm text-slate-300 leading-relaxed bg-slate-950/50 p-6 rounded-lg border border-slate-800/50">{data.reportContent}</pre>
+                                        <RichTextContent
+                                            html={data.reportContent}
+                                            className="text-sm text-slate-300 leading-relaxed bg-slate-950/50 p-6 rounded-lg border border-slate-800/50"
+                                        />
                                     ) : (
                                         <div className="text-slate-500 text-center py-20 bg-slate-950/30 rounded-lg border border-dashed border-slate-800">
                                             暂无报告内容
@@ -292,7 +296,10 @@ export function GradingDetail() {
                                             <div className="text-center space-y-2 border-b border-slate-800 pb-6 mb-6">
                                                 <div className="font-bold text-xl text-slate-100">{questionnaire.title}</div>
                                                 {questionnaire.welcomeText && (
-                                                    <div className="text-sm text-slate-400">{questionnaire.welcomeText}</div>
+                                                    <RichTextContent
+                                                        html={questionnaire.welcomeText}
+                                                        className="text-sm text-slate-400"
+                                                    />
                                                 )}
                                             </div>
                                             <div className="space-y-6">
@@ -303,7 +310,10 @@ export function GradingDetail() {
                                                 ))}
                                             </div>
                                             {questionnaire.endingText && (
-                                                <div className="text-sm text-slate-500 text-center border-t border-slate-800 pt-6 mt-6">{questionnaire.endingText}</div>
+                                                <RichTextContent
+                                                    html={questionnaire.endingText}
+                                                    className="text-sm text-slate-500 text-center border-t border-slate-800 pt-6 mt-6"
+                                                />
                                             )}
                                         </div>
                                     ) : (

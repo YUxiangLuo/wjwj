@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -16,9 +15,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List } from "lucide-react";
+import { RichTextContent } from "@/components/RichTextContent";
+import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
-import { tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
+import { RichTextEditor } from "../../components/RichTextEditor";
+import { experimentApi, tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
 
 interface QuestionnaireDesignProps {
     onNext: () => void;
@@ -37,6 +39,15 @@ const questionTypeColors: Record<QuestionType, string> = {
     multiple: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
     scale: "bg-amber-500/10 text-amber-400 border-amber-500/20",
 };
+
+type ScoreStatus = "pass" | "warning" | "fail";
+
+interface ScoreItem {
+    label: string;
+    points: number;
+    status: ScoreStatus;
+    message: string;
+}
 
 function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -65,7 +76,18 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [recommendQuestions, setRecommendQuestions] = useState<RecommendQuestion[]>([]);
+    const [previewAnswers, setPreviewAnswers] = useState<Record<string, string | string[] | number>>({});
+    const [isOnline, setIsOnline] = useState(
+        typeof navigator === "undefined" ? true : navigator.onLine
+    );
+    const [networkNotice, setNetworkNotice] = useState<string | null>(null);
+    const [syncConflictOpen, setSyncConflictOpen] = useState(false);
+    const [serverConflictDraft, setServerConflictDraft] = useState<QuestionnaireData | null>(null);
+    const [localConflictDraft, setLocalConflictDraft] = useState<QuestionnaireData | null>(null);
     const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
+    const serverSnapshotRef = useRef("");
+    const saveInFlightRef = useRef(false);
+    const reconnectSyncingRef = useRef(false);
 
     useEffect(() => {
         async function loadRecommendQuestions() {
@@ -83,16 +105,55 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     }, [experiment?.taskId]);
 
 
-    // Auto-save when data changes
-    const saveData = useCallback(async () => {
-        const questionnaireData: QuestionnaireData = {
+    const buildQuestionnaireData = useCallback((): QuestionnaireData => {
+        return {
             title,
             welcomeText,
             endingText,
             questions,
         };
-        await saveExperiment({ questionnaire: questionnaireData });
-    }, [title, welcomeText, endingText, questions, saveExperiment]);
+    }, [title, welcomeText, endingText, questions]);
+
+    const normalizeQuestionnaireData = useCallback((raw: unknown): QuestionnaireData => {
+        const data = raw && typeof raw === "object" ? (raw as Partial<QuestionnaireData>) : {};
+        return {
+            title: data.title ?? "",
+            welcomeText: data.welcomeText ?? "",
+            endingText: data.endingText ?? "",
+            questions: Array.isArray(data.questions) ? data.questions : [],
+        };
+    }, []);
+
+    const applyQuestionnaireData = useCallback((data: QuestionnaireData) => {
+        setTitle(data.title ?? "");
+        setWelcomeText(data.welcomeText ?? "");
+        setEndingText(data.endingText ?? "");
+        setQuestions(Array.isArray(data.questions) ? data.questions : []);
+    }, []);
+
+    useEffect(() => {
+        const serverQuestionnaire = normalizeQuestionnaireData(initialData);
+        serverSnapshotRef.current = JSON.stringify(serverQuestionnaire);
+    }, [initialData, normalizeQuestionnaireData]);
+
+    const saveData = useCallback(async () => {
+        const questionnaireData = buildQuestionnaireData();
+        const snapshot = JSON.stringify(questionnaireData);
+
+        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
+        if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+        saveInFlightRef.current = true;
+        try {
+            const success = await saveExperiment({ questionnaire: questionnaireData });
+            if (success) {
+                serverSnapshotRef.current = snapshot;
+                setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
+            }
+        } finally {
+            saveInFlightRef.current = false;
+        }
+    }, [buildQuestionnaireData, saveExperiment]);
 
     // Restore draft from localStorage
     useEffect(() => {
@@ -116,6 +177,208 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             // ignore invalid draft
         }
     }, [draftKey, initialData]);
+
+    useEffect(() => {
+        if (!draftKey) return;
+        try {
+            localStorage.setItem(draftKey, JSON.stringify(buildQuestionnaireData()));
+        } catch {
+            // ignore write errors
+        }
+    }, [draftKey, buildQuestionnaireData]);
+
+    useEffect(() => {
+        const debounceTimer = window.setTimeout(() => {
+            void saveData();
+        }, 3000);
+
+        return () => {
+            window.clearTimeout(debounceTimer);
+        };
+    }, [saveData]);
+
+    useEffect(() => {
+        const intervalTimer = window.setInterval(() => {
+            void saveData();
+        }, 30 * 1000);
+
+        return () => {
+            window.clearInterval(intervalTimer);
+        };
+    }, [saveData]);
+
+    useEffect(() => {
+        const onBeforeUnload = (event: BeforeUnloadEvent) => {
+            const currentSnapshot = JSON.stringify(buildQuestionnaireData());
+            if (currentSnapshot === serverSnapshotRef.current) return;
+            event.preventDefault();
+            event.returnValue = "";
+        };
+
+        window.addEventListener("beforeunload", onBeforeUnload);
+        return () => {
+            window.removeEventListener("beforeunload", onBeforeUnload);
+        };
+    }, [buildQuestionnaireData]);
+
+    useEffect(() => {
+        setPreviewAnswers((prev) => {
+            const allowed = new Set(questions.map((q) => q.id));
+            const next: Record<string, string | string[] | number> = {};
+            Object.entries(prev).forEach(([key, value]) => {
+                if (allowed.has(key)) {
+                    next[key] = value;
+                }
+            });
+            return next;
+        });
+    }, [questions]);
+
+    const syncAfterReconnect = useCallback(async () => {
+        if (!experiment?.taskId || reconnectSyncingRef.current) return;
+        reconnectSyncingRef.current = true;
+        setNetworkNotice("网络已恢复，正在同步本地数据...");
+
+        try {
+            const localData = buildQuestionnaireData();
+            const localSnapshot = JSON.stringify(localData);
+            const lastSyncedSnapshot = serverSnapshotRef.current;
+
+            const res = await experimentApi.get(experiment.taskId);
+            if (!res.success || !res.data) {
+                setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
+                return;
+            }
+
+            const serverData = normalizeQuestionnaireData(res.data.questionnaire);
+            const serverSnapshot = JSON.stringify(serverData);
+            const localChanged = localSnapshot !== lastSyncedSnapshot;
+            const serverChanged = serverSnapshot !== lastSyncedSnapshot;
+
+            if (localSnapshot === serverSnapshot) {
+                serverSnapshotRef.current = serverSnapshot;
+                setNetworkNotice("网络已恢复，数据已同步");
+                return;
+            }
+
+            if (localChanged && serverChanged) {
+                setLocalConflictDraft(localData);
+                setServerConflictDraft(serverData);
+                setSyncConflictOpen(true);
+                setNetworkNotice("检测到本地与服务器草稿冲突，请选择保留版本");
+                return;
+            }
+
+            if (localChanged) {
+                const success = await saveExperiment({ questionnaire: localData });
+                if (success) {
+                    serverSnapshotRef.current = localSnapshot;
+                    setNetworkNotice("网络已恢复，本地草稿已同步到服务器");
+                } else {
+                    setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
+                }
+                return;
+            }
+
+            applyQuestionnaireData(serverData);
+            serverSnapshotRef.current = serverSnapshot;
+            if (draftKey) {
+                try {
+                    localStorage.setItem(draftKey, serverSnapshot);
+                } catch {
+                    // ignore write errors
+                }
+            }
+            setNetworkNotice("检测到服务器有更新，已同步最新草稿");
+        } catch {
+            setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
+        } finally {
+            reconnectSyncingRef.current = false;
+        }
+    }, [
+        applyQuestionnaireData,
+        buildQuestionnaireData,
+        draftKey,
+        experiment?.taskId,
+        normalizeQuestionnaireData,
+        saveExperiment,
+    ]);
+
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            void syncAfterReconnect();
+        };
+        const handleOffline = () => {
+            setIsOnline(false);
+            setNetworkNotice("网络已断开，数据将保存在本地");
+        };
+
+        window.addEventListener("online", handleOnline);
+        window.addEventListener("offline", handleOffline);
+        return () => {
+            window.removeEventListener("online", handleOnline);
+            window.removeEventListener("offline", handleOffline);
+        };
+    }, [syncAfterReconnect]);
+
+    useEffect(() => {
+        if (!isOnline) {
+            setNetworkNotice("网络已断开，数据将保存在本地");
+        }
+    }, [isOnline]);
+
+    useEffect(() => {
+        if (!networkNotice || syncConflictOpen || !isOnline) return;
+        const timer = window.setTimeout(() => {
+            setNetworkNotice(null);
+        }, 5000);
+        return () => {
+            window.clearTimeout(timer);
+        };
+    }, [isOnline, networkNotice, syncConflictOpen]);
+
+    const handleKeepServerDraft = useCallback(() => {
+        if (!serverConflictDraft) {
+            setSyncConflictOpen(false);
+            return;
+        }
+
+        applyQuestionnaireData(serverConflictDraft);
+        const serverSnapshot = JSON.stringify(serverConflictDraft);
+        serverSnapshotRef.current = serverSnapshot;
+        if (draftKey) {
+            try {
+                localStorage.setItem(draftKey, serverSnapshot);
+            } catch {
+                // ignore write errors
+            }
+        }
+        setSyncConflictOpen(false);
+        setNetworkNotice("已保留服务器草稿版本");
+    }, [applyQuestionnaireData, draftKey, serverConflictDraft]);
+
+    const handleKeepLocalDraft = useCallback(async () => {
+        const localData = localConflictDraft ?? buildQuestionnaireData();
+        const localSnapshot = JSON.stringify(localData);
+        const success = await saveExperiment({ questionnaire: localData });
+
+        if (success) {
+            serverSnapshotRef.current = localSnapshot;
+            if (draftKey) {
+                try {
+                    localStorage.setItem(draftKey, localSnapshot);
+                } catch {
+                    // ignore write errors
+                }
+            }
+            setNetworkNotice("已保留本地草稿并同步到服务器");
+        } else {
+            setNetworkNotice("保留本地草稿失败，请稍后重试");
+        }
+
+        setSyncConflictOpen(false);
+    }, [buildQuestionnaireData, draftKey, localConflictDraft, saveExperiment]);
 
     const steps = [
         { num: 1, title: "欢迎语设置" },
@@ -258,16 +521,136 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         setQuestions((prev) => [...prev, mapRecommendQuestion(rq)]);
     };
 
+    const invalidOptionQuestions = useMemo(() => {
+        const invalidIndexes: number[] = [];
+
+        questions.forEach((question, index) => {
+            if (question.type !== "single" && question.type !== "multiple") {
+                return;
+            }
+
+            const options = (question.options ?? [])
+                .map((option) => String(option ?? "").trim())
+                .filter((option) => option.length > 0);
+
+            if (options.length < 2) {
+                invalidIndexes.push(index + 1);
+                return;
+            }
+
+            if (question.type === "multiple") {
+                const minSelect = question.minSelect ?? 1;
+                const maxSelect = question.maxSelect ?? options.length;
+                if (minSelect < 1 || maxSelect < minSelect || maxSelect > options.length) {
+                    invalidIndexes.push(index + 1);
+                }
+            }
+        });
+
+        return invalidIndexes;
+    }, [questions]);
+
+    const welcomeTextLength = useMemo(() => getRichTextPlainLength(welcomeText), [welcomeText]);
+    const endingTextLength = useMemo(() => getRichTextPlainLength(endingText), [endingText]);
+
     // Validation
     const validation = {
         title: title.trim().length >= 1 && title.length <= 100,
-        welcomeText: welcomeText.trim().length >= 20,
-        endingText: endingText.trim().length >= 20,
+        welcomeText: welcomeTextLength >= 20 && welcomeTextLength <= 1000,
+        endingText: endingTextLength >= 20 && endingTextLength <= 1000,
         questionCount: questions.length >= 5 && questions.length <= 50,
+        optionCount: invalidOptionQuestions.length === 0,
         questionTypes: new Set(questions.map((q) => q.type)).size >= 2,
     };
 
-    const canProceed = validation.title && validation.welcomeText && validation.endingText && validation.questionCount;
+    const canProceed =
+        validation.title &&
+        validation.welcomeText &&
+        validation.endingText &&
+        validation.questionCount &&
+        validation.optionCount;
+
+    const scoreItems = useMemo<ScoreItem[]>(() => {
+        const items: ScoreItem[] = [];
+
+        items.push({
+            label: "标题完整性",
+            points: validation.title ? 10 : 0,
+            status: validation.title ? "pass" : "fail",
+            message: validation.title ? "标题长度符合要求" : "标题需为1-100字",
+        });
+
+        items.push({
+            label: "欢迎语质量",
+            points: validation.welcomeText ? (welcomeTextLength >= 80 ? 15 : 12) : 0,
+            status: validation.welcomeText ? "pass" : "fail",
+            message: validation.welcomeText ? "欢迎语字数符合要求" : "欢迎语需在20-1000字之间",
+        });
+
+        items.push({
+            label: "结束语质量",
+            points: validation.endingText ? (endingTextLength >= 80 ? 15 : 12) : 0,
+            status: validation.endingText ? "pass" : "fail",
+            message: validation.endingText ? "结束语字数符合要求" : "结束语需在20-1000字之间",
+        });
+
+        items.push({
+            label: "题目数量",
+            points: validation.questionCount ? 20 : 0,
+            status: validation.questionCount ? "pass" : "fail",
+            message: validation.questionCount ? "题目数量在5-50题范围内" : "题目数量需在5-50题",
+        });
+
+        items.push({
+            label: "选项配置",
+            points: validation.optionCount ? 20 : 0,
+            status: validation.optionCount ? "pass" : "fail",
+            message: validation.optionCount
+                ? "单选/多选题选项配置有效"
+                : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 配置无效`,
+        });
+
+        const diversityScore = validation.questionCount
+            ? (validation.questionTypes ? 20 : 12)
+            : 0;
+        items.push({
+            label: "题型多样性",
+            points: diversityScore,
+            status: validation.questionCount
+                ? (validation.questionTypes ? "pass" : "warning")
+                : "fail",
+            message: validation.questionCount
+                ? (validation.questionTypes ? "题型结构较均衡" : "建议至少包含2种题型")
+                : "请先满足题目数量要求",
+        });
+
+        return items;
+    }, [
+        invalidOptionQuestions,
+        validation.title,
+        validation.welcomeText,
+        validation.endingText,
+        validation.questionCount,
+        validation.optionCount,
+        validation.questionTypes,
+        welcomeTextLength,
+        endingTextLength,
+    ]);
+
+    const preliminaryScore = useMemo(() => {
+        const total = scoreItems.reduce((sum, item) => sum + item.points, 0);
+        return Math.max(0, Math.min(100, Math.round(total)));
+    }, [scoreItems]);
+
+    const requiredFailCount = [
+        validation.title,
+        validation.welcomeText,
+        validation.endingText,
+        validation.questionCount,
+        validation.optionCount,
+    ].filter(Boolean).length;
+    const requiredMissingCount = 5 - requiredFailCount;
+    const warningCount = validation.questionTypes ? 0 : 1;
 
     const handleConfirmComplete = async () => {
         // Save final data
@@ -275,6 +658,138 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         // Move to next stage
         await saveExperiment({ currentStage: 2 });
         onNext();
+    };
+
+    const answeredCount = questions.filter((q) => {
+        const answer = previewAnswers[q.id];
+        if (answer === undefined || answer === null) return false;
+        if (Array.isArray(answer)) return answer.length > 0;
+        if (typeof answer === "number") return true;
+        return String(answer).trim().length > 0;
+    }).length;
+
+    const setSingleAnswer = (questionId: string, value: string) => {
+        setPreviewAnswers((prev) => ({ ...prev, [questionId]: value }));
+    };
+
+    const toggleMultipleAnswer = (question: Question, option: string) => {
+        setPreviewAnswers((prev) => {
+            const current = Array.isArray(prev[question.id]) ? (prev[question.id] as string[]) : [];
+            if (current.includes(option)) {
+                return { ...prev, [question.id]: current.filter((item) => item !== option) };
+            }
+
+            const maxSelect = question.maxSelect ?? question.options?.length ?? 10;
+            if (current.length >= maxSelect) {
+                return prev;
+            }
+            return { ...prev, [question.id]: [...current, option] };
+        });
+    };
+
+    const renderPreviewQuestion = (question: Question, index: number) => {
+        const answer = previewAnswers[question.id];
+
+        return (
+            <div key={question.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                    <span className="font-semibold text-slate-700">Q{index + 1}.</span>
+                    <div className="flex-1 space-y-2">
+                        <div className="text-sm text-slate-700 font-medium leading-relaxed">{question.content}</div>
+                        <Badge variant="outline" className={`text-[10px] ${questionTypeColors[question.type]}`}>
+                            {questionTypeLabels[question.type]}
+                        </Badge>
+                    </div>
+                </div>
+
+                {question.type === "boolean" && (
+                    <div className="space-y-2 pl-6">
+                        {["是", "否"].map((option) => (
+                            <label key={option} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name={`preview_${question.id}`}
+                                    checked={answer === option}
+                                    onChange={() => setSingleAnswer(question.id, option)}
+                                />
+                                {option}
+                            </label>
+                        ))}
+                    </div>
+                )}
+
+                {question.type === "single" && (
+                    <div className="space-y-2 pl-6">
+                        {(question.options ?? []).map((option) => (
+                            <label key={option} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name={`preview_${question.id}`}
+                                    checked={answer === option}
+                                    onChange={() => setSingleAnswer(question.id, option)}
+                                />
+                                {option}
+                            </label>
+                        ))}
+                    </div>
+                )}
+
+                {question.type === "multiple" && (
+                    <div className="space-y-2 pl-6">
+                        <div className="text-xs text-slate-500">
+                            最少选择 {question.minSelect ?? 1} 项，最多选择 {question.maxSelect ?? question.options?.length ?? 10} 项
+                        </div>
+                        {(question.options ?? []).map((option) => {
+                            const selected = Array.isArray(answer) ? answer.includes(option) : false;
+                            const selectedCount = Array.isArray(answer) ? answer.length : 0;
+                            const maxSelect = question.maxSelect ?? question.options?.length ?? 10;
+                            const disabled = !selected && selectedCount >= maxSelect;
+
+                            return (
+                                <label key={option} className={`flex items-center gap-2 text-sm ${disabled ? "text-slate-400" : "text-slate-700"} ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={selected}
+                                        disabled={disabled}
+                                        onChange={() => toggleMultipleAnswer(question, option)}
+                                    />
+                                    {option}
+                                </label>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {question.type === "scale" && (
+                    <div className="space-y-2 pl-6">
+                        <div className="flex justify-between text-xs text-slate-500">
+                            <span>{question.scaleMinLabel || "最低"}</span>
+                            <span>{question.scaleMaxLabel || "最高"}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {Array.from({
+                                length: (question.scaleMax ?? 10) - (question.scaleMin ?? 1) + 1,
+                            }).map((_, i) => {
+                                const value = (question.scaleMin ?? 1) + i;
+                                const selected = answer === value;
+                                return (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => setPreviewAnswers((prev) => ({ ...prev, [question.id]: value }))}
+                                        className={`h-8 min-w-8 rounded-md border text-xs font-medium transition-colors ${selected
+                                            ? "bg-indigo-600 border-indigo-600 text-white"
+                                            : "bg-white border-slate-300 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300"}`}
+                                    >
+                                        {value}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
     };
 
     const renderStep = () => {
@@ -305,20 +820,22 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="welcome" className="text-slate-300">欢迎语 *（至少20字）</Label>
-                                    <Textarea
+                                    <RichTextEditor
                                         id="welcome"
                                         placeholder="请输入欢迎语，说明调查目的、预计用时等"
                                         value={welcomeText}
-                                        onChange={(e) => setWelcomeText(e.target.value)}
-                                        rows={8}
-                                        maxLength={1000}
-                                        className="bg-slate-950/50 border-slate-800 focus:border-indigo-500 resize-none"
+                                        onChange={setWelcomeText}
+                                        editorClassName="min-h-[220px]"
                                     />
                                     <div className="flex justify-between text-xs">
-                                        <span className={welcomeText.length < 20 ? "text-rose-400" : "text-emerald-400"}>
-                                            {welcomeText.length < 20 ? `还需 ${20 - welcomeText.length} 字` : "✓ 符合要求"}
+                                        <span className={welcomeTextLength < 20 || welcomeTextLength > 1000 ? "text-rose-400" : "text-emerald-400"}>
+                                            {welcomeTextLength > 1000
+                                                ? `已超出 ${welcomeTextLength - 1000} 字`
+                                                : welcomeTextLength < 20
+                                                    ? `还需 ${20 - welcomeTextLength} 字`
+                                                    : "✓ 符合要求"}
                                         </span>
-                                        <span className="text-slate-500">{welcomeText.length}/1000</span>
+                                        <span className="text-slate-500">{welcomeTextLength}/1000</span>
                                     </div>
                                 </div>
                             </CardContent>
@@ -500,20 +1017,22 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             <CardContent className="space-y-6">
                                 <div className="space-y-2">
                                     <Label htmlFor="ending" className="text-slate-300">结束语 *（至少20字）</Label>
-                                    <Textarea
+                                    <RichTextEditor
                                         id="ending"
                                         placeholder="请输入结束语，如致谢词等"
                                         value={endingText}
-                                        onChange={(e) => setEndingText(e.target.value)}
-                                        rows={8}
-                                        maxLength={1000}
-                                        className="bg-slate-950/50 border-slate-800 focus:border-indigo-500 resize-none"
+                                        onChange={setEndingText}
+                                        editorClassName="min-h-[220px]"
                                     />
                                     <div className="flex justify-between text-xs">
-                                        <span className={endingText.length < 20 ? "text-rose-400" : "text-emerald-400"}>
-                                            {endingText.length < 20 ? `还需 ${20 - endingText.length} 字` : "✓ 符合要求"}
+                                        <span className={endingTextLength < 20 || endingTextLength > 1000 ? "text-rose-400" : "text-emerald-400"}>
+                                            {endingTextLength > 1000
+                                                ? `已超出 ${endingTextLength - 1000} 字`
+                                                : endingTextLength < 20
+                                                    ? `还需 ${20 - endingTextLength} 字`
+                                                    : "✓ 符合要求"}
                                         </span>
-                                        <span className="text-slate-500">{endingText.length}/1000</span>
+                                        <span className="text-slate-500">{endingTextLength}/1000</span>
                                     </div>
                                 </div>
                                 <div className="rounded-xl bg-indigo-900/20 border border-indigo-500/20 p-3 text-xs text-indigo-300 flex items-start gap-2">
@@ -531,31 +1050,38 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                             <CardHeader>
                                 <CardTitle className="text-slate-100">问卷预览</CardTitle>
-                                <CardDescription className="text-slate-400">展示给受访者的效果预览</CardDescription>
+                                <CardDescription className="text-slate-400">完整交互式预览，可直接测试题目作答体验</CardDescription>
                             </CardHeader>
-                            <CardContent className="flex justify-center bg-slate-950/30 py-8 rounded-xl inner-shadow">
-                                <div className="w-full max-w-xs rounded-3xl border border-slate-200 bg-white p-5 shadow-xl text-slate-800">
-                                    <div className="text-base font-bold text-slate-900 text-center">{title || "问卷标题"}</div>
-                                    <div className="mt-3 text-xs text-slate-600 whitespace-pre-line leading-relaxed">
-                                        {welcomeText || "欢迎语将在这里展示"}
+                            <CardContent className="bg-slate-950/30 py-6 px-4 sm:px-6 rounded-xl inner-shadow">
+                                <div className="w-full max-w-2xl mx-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl text-slate-800">
+                                    <div className="space-y-3 border-b border-slate-200 pb-4">
+                                        <div className="text-base font-bold text-slate-900">{title || "问卷标题"}</div>
+                                        <RichTextContent
+                                            html={welcomeText}
+                                            className="text-xs text-slate-600 leading-relaxed"
+                                            emptyFallback="欢迎语将在这里展示"
+                                        />
+                                        <div className="text-[11px] text-slate-500">
+                                            已试填 {answeredCount} / {questions.length} 题
+                                        </div>
                                     </div>
-                                    <div className="mt-5 space-y-3">
-                                        {questions.slice(0, 3).map((q, index) => (
-                                            <div key={q.id} className="rounded-xl bg-slate-50 p-3 text-xs border border-slate-100">
-                                                <span className="font-semibold text-slate-700">Q{index + 1}.</span> <span className="text-slate-600">{q.content}</span>
-                                            </div>
-                                        ))}
-                                        {questions.length > 3 && (
-                                            <div className="text-center text-xs text-slate-400 py-1">... 更多题目 ...</div>
-                                        )}
-                                        {questions.length === 0 && (
-                                            <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-400 text-center italic">
+
+                                    <div className="mt-4 max-h-[520px] overflow-y-auto pr-1 space-y-3">
+                                        {questions.length === 0 ? (
+                                            <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-400 text-center italic border border-slate-200">
                                                 还没有题目
                                             </div>
+                                        ) : (
+                                            questions.map((q, index) => renderPreviewQuestion(q, index))
                                         )}
                                     </div>
-                                    <div className="mt-5 pt-3 border-t border-slate-100 text-[10px] text-slate-500 whitespace-pre-line text-center">
-                                        {endingText || "结束语将在这里展示"}
+
+                                    <div className="mt-5 pt-3 border-t border-slate-200">
+                                        <RichTextContent
+                                            html={endingText}
+                                            className="text-xs text-slate-600 leading-relaxed"
+                                            emptyFallback="结束语将在这里展示"
+                                        />
                                     </div>
                                 </div>
                             </CardContent>
@@ -583,7 +1109,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
                                     <span className={`text-sm ${validation.welcomeText ? "text-emerald-400" : "text-rose-400"}`}>
-                                        欢迎语：{welcomeText.length} 字 {validation.welcomeText ? "" : "(至少20字)"}
+                                        欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
                                     </span>
                                 </div>
                                 <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.questionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
@@ -607,6 +1133,16 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         {validation.questionTypes ? "" : " (建议至少2种)"}
                                     </span>
                                 </div>
+                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.optionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                    {validation.optionCount ? (
+                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                    ) : (
+                                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                                    )}
+                                    <span className={`text-sm ${validation.optionCount ? "text-emerald-400" : "text-rose-400"}`}>
+                                        选项数量：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
+                                    </span>
+                                </div>
                                 <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.endingText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.endingText ? (
                                         <CheckCircle className="w-5 h-5 text-emerald-500" />
@@ -614,8 +1150,62 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
                                     <span className={`text-sm ${validation.endingText ? "text-emerald-400" : "text-rose-400"}`}>
-                                        结束语：{endingText.length} 字 {validation.endingText ? "" : "(至少20字)"}
+                                        结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
                                     </span>
+                                </div>
+                                {requiredMissingCount === 0 ? (
+                                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+                                        问卷结构完整，可进入下一阶段。
+                                        {warningCount > 0 ? ` 另有 ${warningCount} 项建议优化。` : ""}
+                                    </div>
+                                ) : (
+                                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-300">
+                                        仍有 {requiredMissingCount} 项必填检测未通过，需修复后才能继续。
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm h-fit">
+                            <CardHeader>
+                                <CardTitle className="text-slate-100">初步评分（机器评分）</CardTitle>
+                                <CardDescription className="text-slate-400">供参考，满分100分</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-xs uppercase tracking-wider text-indigo-300">当前得分</div>
+                                        <div className="text-3xl font-bold text-indigo-200">{preliminaryScore}</div>
+                                    </div>
+                                    <div className="text-xs text-indigo-300/80">
+                                        {preliminaryScore >= 90
+                                            ? "问卷结构优秀"
+                                            : preliminaryScore >= 75
+                                                ? "问卷结构良好"
+                                                : preliminaryScore >= 60
+                                                    ? "可继续优化"
+                                                    : "建议先完善基础项"}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    {scoreItems.map((item) => (
+                                        <div key={item.label} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-slate-200">{item.label}</span>
+                                                <span className="text-xs font-mono text-slate-400">{item.points} 分</span>
+                                            </div>
+                                            <div
+                                                className={`text-xs mt-1 ${item.status === "pass"
+                                                    ? "text-emerald-400"
+                                                    : item.status === "warning"
+                                                        ? "text-amber-400"
+                                                        : "text-rose-400"
+                                                    }`}
+                                            >
+                                                {item.message}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </CardContent>
                         </Card>
@@ -626,6 +1216,39 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
     return (
         <div className="space-y-8 pb-12">
+            {networkNotice && (
+                <Card
+                    className={`rounded-2xl border shadow-sm ${syncConflictOpen
+                        ? "border-amber-500/30 bg-amber-500/10"
+                        : isOnline
+                            ? "border-emerald-500/30 bg-emerald-500/10"
+                            : "border-rose-500/30 bg-rose-500/10"
+                        }`}
+                >
+                    <CardContent className="px-4 py-3">
+                        <div className="flex items-center gap-2 text-sm">
+                            {syncConflictOpen ? (
+                                <AlertCircle className="h-4 w-4 text-amber-400" />
+                            ) : isOnline ? (
+                                <CheckCircle className="h-4 w-4 text-emerald-400" />
+                            ) : (
+                                <AlertCircle className="h-4 w-4 text-rose-400" />
+                            )}
+                            <span
+                                className={syncConflictOpen
+                                    ? "text-amber-300"
+                                    : isOnline
+                                        ? "text-emerald-300"
+                                        : "text-rose-300"
+                                }
+                            >
+                                {networkNotice}
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <Card className="rounded-3xl border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/20 shadow-lg relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-teal-500 opacity-20"></div>
                 <CardContent className="py-6 px-8">
@@ -655,8 +1278,13 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     return (
                                         <button
                                             key={s.num}
-                                            onClick={() => setStep(s.num as 1 | 2 | 3 | 4)}
-                                            className="flex flex-col items-center gap-2 group"
+                                            onClick={() => {
+                                                if (s.num <= step) {
+                                                    setStep(s.num as 1 | 2 | 3 | 4);
+                                                }
+                                            }}
+                                            disabled={s.num > step}
+                                            className="flex flex-col items-center gap-2 group disabled:cursor-not-allowed"
                                         >
                                             <span
                                                 className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${isCurrent
@@ -775,6 +1403,35 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             }}
                         >
                             恢复草稿
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-100">检测到草稿冲突</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400 leading-relaxed">
+                            本地草稿和服务器草稿都发生了变化。请选择要保留的版本。
+                            <br />
+                            <span className="text-slate-500">保留本地版本将覆盖服务器当前草稿。</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            onClick={handleKeepServerDraft}
+                        >
+                            保留服务器版本
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            onClick={() => {
+                                void handleKeepLocalDraft();
+                            }}
+                        >
+                            保留本地版本
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

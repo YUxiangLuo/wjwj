@@ -19,6 +19,23 @@ export function Profile() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const passwordRules = {
+        minLength: passwordForm.newPassword.length >= 8,
+        hasLetter: /[A-Za-z]/.test(passwordForm.newPassword),
+        hasNumber: /\d/.test(passwordForm.newPassword),
+        hasSpecial: /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword),
+        noStudentId: !(currentUser?.studentId && passwordForm.newPassword.includes(currentUser.studentId)),
+        matched: passwordForm.confirmPassword.length > 0 && passwordForm.newPassword === passwordForm.confirmPassword,
+    };
+    const strengthScore = [
+        passwordRules.minLength,
+        passwordRules.hasLetter,
+        passwordRules.hasNumber,
+        passwordRules.hasSpecial,
+        passwordRules.noStudentId,
+    ].filter(Boolean).length;
+    const passwordStrengthLabel =
+        strengthScore <= 2 ? "弱" : strengthScore <= 4 ? "中" : "强";
 
     const handleChangePassword = async () => {
         setError(null);
@@ -27,19 +44,19 @@ export function Profile() {
             setError("请填写完整信息");
             return;
         }
-        if (passwordForm.newPassword.length < 8) {
+        if (!passwordRules.minLength) {
             setError("新密码长度至少为8位");
             return;
         }
-        if (!/[A-Za-z]/.test(passwordForm.newPassword) || !/\d/.test(passwordForm.newPassword) || !/[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword)) {
+        if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {
             setError("新密码需包含字母、数字和特殊字符");
             return;
         }
-        if (currentUser?.studentId && passwordForm.newPassword.includes(currentUser.studentId)) {
+        if (!passwordRules.noStudentId) {
             setError("新密码不能包含学号");
             return;
         }
-        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        if (!passwordRules.matched) {
             setError("两次输入的新密码不一致");
             return;
         }
@@ -167,6 +184,20 @@ export function Profile() {
                                 autoComplete="new-password"
                                 className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
+                        </div>
+                        <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-3 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between text-slate-400">
+                                <span>密码强度</span>
+                                <span className={strengthScore <= 2 ? "text-rose-400" : strengthScore <= 4 ? "text-amber-400" : "text-emerald-400"}>
+                                    {passwordStrengthLabel}
+                                </span>
+                            </div>
+                            <div className={passwordRules.minLength ? "text-emerald-400" : "text-slate-500"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
+                            <div className={passwordRules.hasLetter ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
+                            <div className={passwordRules.hasNumber ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
+                            <div className={passwordRules.hasSpecial ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
+                            <div className={passwordRules.noStudentId ? "text-emerald-400" : "text-slate-500"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
+                            <div className={passwordRules.matched ? "text-emerald-400" : "text-slate-500"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
                         {error && <div className="text-sm text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">{error}</div>}
                         {success && (

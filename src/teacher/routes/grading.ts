@@ -1,5 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { join } from "node:path";
+import { resolve, sep } from "node:path";
 import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, student, submission, task, teacher, topic } from "../../db/schema";
 import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
@@ -29,8 +29,17 @@ async function getAccessibleClassIds(req: Request): Promise<{ classIds: number[]
 }
 
 export function resolveSubmissionPdfPath(pdfPath: string) {
-    const relativePath = pdfPath.replace(/^\/+/, "");
-    return join(process.cwd(), relativePath);
+    const baseDir = resolve(process.cwd(), "storage");
+    const normalized = pdfPath.replace(/\\/g, "/").replace(/^\/+/, "");
+    const relativePath = normalized.startsWith("storage/") ? normalized.slice("storage/".length) : normalized;
+    const fullPath = resolve(baseDir, relativePath);
+
+    const isInsideStorage = fullPath === baseDir || fullPath.startsWith(`${baseDir}${sep}`);
+    if (!isInsideStorage) {
+        throw new Error("INVALID_PATH");
+    }
+
+    return fullPath;
 }
 
 const gradingRoutes: RouteDefinition = {
@@ -363,7 +372,14 @@ const teacherPdfDownloadRoutes: RouteDefinition = {
         const pdfPath = type === "questionnaire" ? row.questionnairePdfPath : row.reportPdfPath;
         if (!pdfPath) return error("文件不存在", "NOT_FOUND", 404);
 
-        const file = Bun.file(resolveSubmissionPdfPath(pdfPath));
+        let fullPath: string;
+        try {
+            fullPath = resolveSubmissionPdfPath(pdfPath);
+        } catch {
+            return error("无效的文件路径", "INVALID_PATH", 400);
+        }
+
+        const file = Bun.file(fullPath);
         const exists = await file.exists();
         if (!exists) return error("文件不存在", "NOT_FOUND", 404);
 

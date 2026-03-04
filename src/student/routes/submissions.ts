@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { db } from "../../db";
@@ -6,6 +6,34 @@ import { assistant, experiment, submission, task, teacher, topic } from "../../d
 import { error, getRouteParam, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireAuth } from "./auth";
+
+async function getTaskAccessError(taskId: number, classId: number): Promise<Response | null> {
+    const [activeRow] = await db
+        .select({ id: task.id })
+        .from(task)
+        .innerJoin(topic, eq(task.topicId, topic.id))
+        .where(and(eq(task.id, taskId), eq(task.classId, classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
+
+    if (activeRow) return null;
+
+    const [deletedRow] = await db
+        .select({ id: task.id })
+        .from(task)
+        .innerJoin(topic, eq(task.topicId, topic.id))
+        .where(
+            and(
+                eq(task.id, taskId),
+                eq(task.classId, classId),
+                or(isNotNull(task.deletedAt), eq(topic.isDeleted, 1), isNotNull(topic.deletedAt))
+            )
+        );
+
+    if (deletedRow) {
+        return error("课题已删除", "TOPIC_DELETED", 410);
+    }
+
+    return error("任务不存在", "NOT_FOUND", 404);
+}
 
 const submissionsByTaskRoutes: RouteDefinition = {
     async GET(req) {
@@ -15,6 +43,9 @@ const submissionsByTaskRoutes: RouteDefinition = {
 
         const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
+
+        const taskAccessError = await getTaskAccessError(taskId, currentStudent.classId);
+        if (taskAccessError) return taskAccessError;
 
         const [exp] = await db
             .select({ id: experiment.id })
@@ -64,7 +95,7 @@ const submissionsByTaskRoutes: RouteDefinition = {
                 id: s.id,
                 submittedAt: s.submittedAt?.toISOString() ?? null,
                 status: s.status,
-                totalScore: s.totalScore ? Number(s.totalScore) : null,
+                totalScore: s.totalScore === null || s.totalScore === undefined ? null : Number(s.totalScore),
                 gradedAt: s.gradedAt?.toISOString() ?? null,
                 graderName:
                     s.gradedByType === 2
@@ -150,10 +181,10 @@ const submissionDetailRoutes: RouteDefinition = {
             topicName: row.topicName,
             submittedAt: row.submittedAt?.toISOString() ?? null,
             status: row.status,
-            scoreQuestionnaire: row.scoreQuestionnaire ? Number(row.scoreQuestionnaire) : null,
-            scoreProcess: row.scoreProcess ? Number(row.scoreProcess) : null,
-            scoreReport: row.scoreReport ? Number(row.scoreReport) : null,
-            totalScore: row.totalScore ? Number(row.totalScore) : null,
+            scoreQuestionnaire: row.scoreQuestionnaire === null || row.scoreQuestionnaire === undefined ? null : Number(row.scoreQuestionnaire),
+            scoreProcess: row.scoreProcess === null || row.scoreProcess === undefined ? null : Number(row.scoreProcess),
+            scoreReport: row.scoreReport === null || row.scoreReport === undefined ? null : Number(row.scoreReport),
+            totalScore: row.totalScore === null || row.totalScore === undefined ? null : Number(row.totalScore),
             teacherComment: row.teacherComment ?? null,
             rejectReason: row.rejectReason ?? null,
             gradedAt: row.gradedAt?.toISOString() ?? null,

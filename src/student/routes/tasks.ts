@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, submission, task, topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
 import { error, getRouteParam, json } from "../../server/http";
@@ -16,6 +16,21 @@ function isLockActive(lockedAt: Date | null, lockTimeoutMinutes: number) {
     if (!lockedAt) return false;
     const expiresAt = lockedAt.getTime() + lockTimeoutMinutes * 60 * 1000;
     return Date.now() < expiresAt;
+}
+
+async function isTopicDeletedForTask(taskId: number, classId: number) {
+    const [deletedRow] = await db
+        .select({ id: task.id })
+        .from(task)
+        .innerJoin(topic, eq(task.topicId, topic.id))
+        .where(
+            and(
+                eq(task.id, taskId),
+                eq(task.classId, classId),
+                or(isNotNull(task.deletedAt), eq(topic.isDeleted, 1), isNotNull(topic.deletedAt))
+            )
+        );
+    return Boolean(deletedRow);
 }
 
 const tasksRoutes: RouteDefinition = {
@@ -37,7 +52,7 @@ const tasksRoutes: RouteDefinition = {
             })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
-            .where(and(eq(task.classId, currentStudent.classId), isNull(task.deletedAt), eq(topic.status, 1)))
+            .where(and(eq(task.classId, currentStudent.classId), isNull(task.deletedAt), eq(topic.status, 1), eq(topic.isDeleted, 0)))
             .orderBy(desc(task.createdAt));
 
         const taskIds = tasks.map((t) => t.id);
@@ -121,12 +136,12 @@ const tasksRoutes: RouteDefinition = {
                 topicId: t.topicId,
                 name: t.topicName,
                 description: t.topicDescription,
-                publishedAt: t.openTime?.toISOString().split("T")[0] ?? t.createdAt.toISOString().split("T")[0],
-                deadline: t.deadline?.toISOString().split("T")[0] ?? null,
+                publishedAt: (t.openTime ?? t.createdAt).toISOString(),
+                deadline: t.deadline?.toISOString() ?? null,
                 status,
                 progress,
                 currentStage: exp?.currentStage ?? 0,
-                score: sub?.totalScore ? Number(sub.totalScore) : undefined,
+                score: sub?.totalScore === null || sub?.totalScore === undefined ? undefined : Number(sub.totalScore),
                 rejectReason: sub?.rejectReason ?? undefined,
             };
         });
@@ -160,9 +175,12 @@ const taskDetailRoutes: RouteDefinition = {
             })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
-            .where(and(eq(task.id, taskId), eq(task.classId, currentStudent.classId), isNull(task.deletedAt)));
+            .where(and(eq(task.id, taskId), eq(task.classId, currentStudent.classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
 
         if (!taskInfo) {
+            if (await isTopicDeletedForTask(taskId, currentStudent.classId)) {
+                return error("课题已删除", "TOPIC_DELETED", 410);
+            }
             return error("任务不存在", "NOT_FOUND", 404);
         }
 
@@ -233,8 +251,8 @@ const taskDetailRoutes: RouteDefinition = {
             topicId: taskInfo.topicId,
             name: taskInfo.topicName,
             description: taskInfo.topicDescription,
-            publishedAt: taskInfo.openTime?.toISOString().split("T")[0] ?? taskInfo.createdAt.toISOString().split("T")[0],
-            deadline: taskInfo.deadline?.toISOString().split("T")[0] ?? null,
+            publishedAt: (taskInfo.openTime ?? taskInfo.createdAt).toISOString(),
+            deadline: taskInfo.deadline?.toISOString() ?? null,
             populationSize: taskInfo.excelRowCount ?? 10000,
             attachments: attachments.map((a) => ({
                 id: a.id,
@@ -245,7 +263,9 @@ const taskDetailRoutes: RouteDefinition = {
             recommendQuestions,
             status,
             currentStage: exp?.currentStage ?? 0,
-            score: submissionInfo?.totalScore ? Number(submissionInfo.totalScore) : undefined,
+            score: submissionInfo?.totalScore === null || submissionInfo?.totalScore === undefined
+                ? undefined
+                : Number(submissionInfo.totalScore),
             rejectReason: submissionInfo?.rejectReason ?? undefined,
         });
     },

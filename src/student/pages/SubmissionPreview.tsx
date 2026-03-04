@@ -4,8 +4,20 @@ import { ArrowLeft, FileText, Send, Loader2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { RichTextContent } from "@/components/RichTextContent";
 import { experimentApi, tasksApi, type ExperimentData, type TaskDetail, type Question } from "../api-client";
-import { cn } from "@/lib/utils";
+import { getRichTextPlainLength } from "@/utils/rich-text";
+import { TopicDeletedState } from "../components/TopicDeletedState";
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
@@ -59,16 +71,27 @@ export function SubmissionPreview() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [topicDeleted, setTopicDeleted] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
 
     useEffect(() => {
         async function loadData() {
             if (!taskId) return;
             setLoading(true);
+            setTopicDeleted(false);
             try {
                 const [taskRes, expRes] = await Promise.all([
                     tasksApi.get(Number(taskId)),
                     experimentApi.get(Number(taskId)),
                 ]);
+
+                if (taskRes.error?.code === "TOPIC_DELETED" || expRes.error?.code === "TOPIC_DELETED") {
+                    setTask(null);
+                    setExperiment(null);
+                    setTopicDeleted(true);
+                    return;
+                }
+
                 if (taskRes.success && taskRes.data) {
                     setTask(taskRes.data);
                 }
@@ -84,15 +107,44 @@ export function SubmissionPreview() {
 
     const handleSubmit = async () => {
         if (!taskId) return;
+        setConfirmOpen(false);
         setError(null);
+        if (!navigator.onLine) {
+            setError("网络连接异常，请检查网络后重试");
+            return;
+        }
+
         setSubmitting(true);
         try {
-            const res = await experimentApi.submit(Number(taskId));
-            if (res.success) {
+            const nonRetryableCodes = new Set([
+                "TASK_DEADLINE",
+                "ALREADY_GRADED",
+                "INCOMPLETE",
+                "REPORT_TOO_SHORT",
+                "VERSION_CONFLICT",
+                "VALIDATION_ERROR",
+            ]);
+
+            const first = await experimentApi.submit(Number(taskId));
+            if (first.success || first.error?.code === "ALREADY_SUBMITTED") {
                 navigate("/", { replace: true });
-            } else {
-                setError(res.error?.message ?? "提交失败");
+                return;
             }
+
+            if (nonRetryableCodes.has(first.error?.code ?? "")) {
+                setError(first.error?.message ?? "提交失败");
+                return;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 800));
+
+            const second = await experimentApi.submit(Number(taskId));
+            if (second.success || second.error?.code === "ALREADY_SUBMITTED") {
+                navigate("/", { replace: true });
+                return;
+            }
+
+            setError(second.error?.message ?? first.error?.message ?? "提交失败（已自动重试一次）");
         } catch (e) {
             setError(e instanceof Error ? e.message : "提交失败");
         } finally {
@@ -108,6 +160,10 @@ export function SubmissionPreview() {
         );
     }
 
+    if (topicDeleted) {
+        return <TopicDeletedState />;
+    }
+
     if (!task || !experiment) {
         return (
             <div className="text-center text-slate-500 mt-20">未找到实验数据</div>
@@ -116,8 +172,11 @@ export function SubmissionPreview() {
 
     const questionnaire = experiment.questionnaire;
     const questionnaireQuestions = questionnaire?.questions ?? [];
+    const samplePlan = experiment.samplePlan;
+    const samplingResults = experiment.samplingResults;
     const reportContent = experiment.reportContent ?? "";
-    const reportLengthValid = reportContent.length >= 100 && reportContent.length <= 5000;
+    const reportLength = getRichTextPlainLength(reportContent);
+    const reportLengthValid = reportLength >= 100 && reportLength <= 5000;
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
@@ -157,18 +216,52 @@ export function SubmissionPreview() {
                         </TabsList>
 
                         <TabsContent value="report" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
-                            <div className="bg-white/5 rounded-xl p-6 border border-white/10 min-h-[300px]">
-                                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-emerald-400" />
-                                    实验报告正文
-                                </h3>
-                                {reportContent ? (
-                                    <div className="whitespace-pre-line break-words text-sm text-slate-300 leading-relaxed pl-4 border-l-2 border-slate-700">
-                                        {reportContent}
+                            <div className="bg-white/5 rounded-xl p-6 border border-white/10 min-h-[300px] space-y-5">
+                                <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
+                                    <h3 className="text-base font-semibold text-white mb-3">阶段一：问卷设计</h3>
+                                    <div className="text-sm text-slate-300 space-y-1">
+                                        <p>问卷标题：{questionnaire?.title || "未填写"}</p>
+                                        <p>题目数量：{questionnaireQuestions.length} 题</p>
                                     </div>
-                                ) : (
-                                    <div className="text-sm text-slate-500 italic">暂无报告内容</div>
-                                )}
+                                </div>
+
+                                <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
+                                    <h3 className="text-base font-semibold text-white mb-3">阶段二：样本量规划</h3>
+                                    {samplePlan ? (
+                                        <div className="text-sm text-slate-300 space-y-1">
+                                            <p>置信水平：{samplePlan.confidenceLevel}%</p>
+                                            <p>允许误差：{samplePlan.marginOfError}%</p>
+                                            <p>建议样本量：{samplePlan.recommendedSize}</p>
+                                            <p>最终样本量：{samplePlan.finalSampleSize}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="text-sm text-slate-500 italic">暂无样本量规划数据</div>
+                                    )}
+                                </div>
+
+                                <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
+                                    <h3 className="text-base font-semibold text-white mb-3">阶段三：抽样执行</h3>
+                                    <div className="text-sm text-slate-300 space-y-1">
+                                        <p>简单随机抽样：{samplingResults?.simple?.completed ? `已完成（${samplingResults.simple.sampleCount} 样本）` : "未完成"}</p>
+                                        <p>系统抽样：{samplingResults?.systematic?.completed ? `已完成（${samplingResults.systematic.sampleCount} 样本）` : "未完成"}</p>
+                                        <p>分层抽样：{samplingResults?.stratified?.completed ? "已完成" : "未完成"}</p>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
+                                    <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                                        <FileText className="w-4 h-4 text-emerald-400" />
+                                        阶段四：分析报告
+                                    </h3>
+                                    {reportContent ? (
+                                        <RichTextContent
+                                            html={reportContent}
+                                            className="text-sm text-slate-300 leading-relaxed pl-4 border-l-2 border-slate-700"
+                                        />
+                                    ) : (
+                                        <div className="text-sm text-slate-500 italic">暂无报告内容</div>
+                                    )}
+                                </div>
                             </div>
                         </TabsContent>
 
@@ -180,9 +273,10 @@ export function SubmissionPreview() {
                                     <>
                                         <div className="mb-6 pb-4 border-b border-white/10">
                                             <div className="text-xl font-bold text-white mb-2">{questionnaire.title || "未命名问卷"}</div>
-                                            <div className="text-sm text-slate-400 whitespace-pre-line bg-slate-900/30 p-3 rounded-lg border border-white/5">
-                                                {questionnaire.welcomeText}
-                                            </div>
+                                            <RichTextContent
+                                                html={questionnaire.welcomeText ?? ""}
+                                                className="text-sm text-slate-400 bg-slate-900/30 p-3 rounded-lg border border-white/5"
+                                            />
                                         </div>
 
                                         <div className="space-y-3">
@@ -196,9 +290,10 @@ export function SubmissionPreview() {
                                         </div>
 
                                         <div className="mt-6 pt-4 border-t border-white/10">
-                                            <div className="text-sm text-slate-400 whitespace-pre-line bg-slate-900/30 p-3 rounded-lg border border-white/5">
-                                                {questionnaire.endingText}
-                                            </div>
+                                            <RichTextContent
+                                                html={questionnaire.endingText ?? ""}
+                                                className="text-sm text-slate-400 bg-slate-900/30 p-3 rounded-lg border border-white/5"
+                                            />
                                         </div>
                                     </>
                                 )}
@@ -222,7 +317,7 @@ export function SubmissionPreview() {
                 )}
 
                 <Button
-                    onClick={handleSubmit}
+                    onClick={() => setConfirmOpen(true)}
                     disabled={!reportLengthValid || submitting}
                     className="w-full md:w-auto h-12 px-8 text-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
                 >
@@ -239,6 +334,27 @@ export function SubmissionPreview() {
                     )}
                 </Button>
             </div>
+
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-100">确认提交实验</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                            提交后将无法修改实验内容。确定现在提交吗？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                        >
+                            {submitting ? "提交中..." : "确认提交"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

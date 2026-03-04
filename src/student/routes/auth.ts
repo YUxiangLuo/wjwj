@@ -125,7 +125,9 @@ const loginRoutes: RouteDefinition = {
         const maxAttempts = await getConfigNumber("login.max_fail_count", STUDENT_MAX_LOGIN_ATTEMPTS);
         const lockMinutes = await getConfigNumber("login.lock_duration_minutes", STUDENT_LOCK_MINUTES);
         if (s.lockedUntil && new Date(s.lockedUntil) > now) {
-            return error("账号已被锁定，请稍后重试", "ACCOUNT_LOCKED", 403);
+            const remainingMs = new Date(s.lockedUntil).getTime() - now.getTime();
+            const remainingMinutes = Math.max(1, Math.ceil(remainingMs / (60 * 1000)));
+            return error(`账号已被锁定，请在${remainingMinutes}分钟后重试`, "ACCOUNT_LOCKED", 403);
         }
 
         const isValid = await Bun.password.verify(password, s.password);
@@ -136,8 +138,11 @@ const loginRoutes: RouteDefinition = {
                 updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
             }
             await db.update(student).set(updateData).where(eq(student.id, s.id));
+            const remainingAttempts = Math.max(0, maxAttempts - failCount);
             return error(
-                failCount >= maxAttempts ? `账号或密码错误，已锁定${lockMinutes}分钟` : "账号或密码错误",
+                failCount >= maxAttempts
+                    ? `账号或密码错误，已锁定${lockMinutes}分钟`
+                    : `账号或密码错误，还剩${remainingAttempts}次尝试机会`,
                 "INVALID_CREDENTIALS",
                 401
             );
@@ -212,6 +217,10 @@ const passwordRoutes: RouteDefinition = {
 
         const isValid = await Bun.password.verify(currentPassword, s.password);
         if (!isValid) return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
+
+        if (currentPassword === newPassword) {
+            return error("新密码不能与当前密码相同", "PASSWORD_SAME", 400);
+        }
 
         const rules = validatePasswordStrength(newPassword, s.studentId);
         if (!rules.isValid) {

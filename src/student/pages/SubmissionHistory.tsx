@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { submissionsApi, type SubmissionSummary } from "../api-client";
 import { cn } from "@/lib/utils";
+import { TopicDeletedState } from "../components/TopicDeletedState";
 
 const statusConfig: Record<number, { label: string; color: string; icon: any }> = {
     0: { label: "批改草稿", color: "bg-slate-500/10 text-slate-400 border-slate-500/20", icon: FileText },
@@ -18,15 +19,20 @@ export function SubmissionHistory() {
     const { taskId } = useParams();
     const [submissions, setSubmissions] = useState<SubmissionSummary[]>([]);
     const [loading, setLoading] = useState(true);
+    const [topicDeleted, setTopicDeleted] = useState(false);
 
     useEffect(() => {
         async function load() {
             if (!taskId) return;
             setLoading(true);
+            setTopicDeleted(false);
             try {
                 const res = await submissionsApi.listByTask(Number(taskId));
                 if (res.success && res.data) {
                     setSubmissions(res.data);
+                } else if (res.error?.code === "TOPIC_DELETED") {
+                    setSubmissions([]);
+                    setTopicDeleted(true);
                 }
             } finally {
                 setLoading(false);
@@ -41,6 +47,10 @@ export function SubmissionHistory() {
                 <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
             </div>
         );
+    }
+
+    if (topicDeleted) {
+        return <TopicDeletedState />;
     }
 
     return (

@@ -8,6 +8,7 @@ import { attachmentDownloadRoutes, exportRoutes } from "./routes/files";
 import {
     announcementReadRoutes,
     announcementsRoutes,
+    notificationDeleteRoutes,
     notificationReadAllRoutes,
     notificationReadRoutes,
     notificationsRoutes,
@@ -40,6 +41,7 @@ export const studentApiRoutes = {
     // Notifications
     "/api/student/notifications": notificationsRoutes,
     "/api/student/notifications/read-all": notificationReadAllRoutes,
+    "/api/student/notifications/:id": notificationDeleteRoutes,
     "/api/student/notifications/:id/read": notificationReadRoutes,
 
     // Announcements

@@ -11,3 +11,7 @@ test("resolveSubmissionPdfPath keeps relative path", () => {
     const resolved = resolveSubmissionPdfPath("storage/uploads/submissions/report.pdf");
     expect(resolved).toBe(join(process.cwd(), "storage/uploads/submissions/report.pdf"));
 });
+
+test("resolveSubmissionPdfPath rejects path traversal", () => {
+    expect(() => resolveSubmissionPdfPath("../../etc/passwd")).toThrow("INVALID_PATH");
+});

@@ -59,6 +59,25 @@ const notificationReadRoutes: RouteDefinition = {
     },
 };
 
+const notificationDeleteRoutes: RouteDefinition = {
+    async DELETE(req) {
+        const auth = await requireAuth(req);
+        if (auth.error) return auth.error;
+        const currentStudent = auth.student!;
+
+        const notificationId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        if (!notificationId) {
+            return error("无效的通知ID", "INVALID_ID");
+        }
+
+        await db
+            .delete(notification)
+            .where(and(eq(notification.id, notificationId), eq(notification.receiverType, 4), eq(notification.receiverId, currentStudent.id)));
+
+        return json({ success: true });
+    },
+};
+
 const notificationReadAllRoutes: RouteDefinition = {
     async PUT(req) {
         const auth = await requireAuth(req);
@@ -155,6 +174,7 @@ const announcementReadRoutes: RouteDefinition = {
 export {
     announcementReadRoutes,
     announcementsRoutes,
+    notificationDeleteRoutes,
     notificationReadAllRoutes,
     notificationReadRoutes,
     notificationsRoutes,
