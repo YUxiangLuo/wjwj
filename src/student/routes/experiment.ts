@@ -94,9 +94,22 @@ async function notifyUser(
 }
 
 async function readPopulationData(filePath: string): Promise<any[]> {
-    const baseDir = path.resolve(process.cwd());
-    const fullPath = path.resolve(process.cwd(), filePath);
-    if (!fullPath.startsWith(baseDir + path.sep) && fullPath !== baseDir) {
+    // Normalize input path so values like "/storage/uploads/..." become "storage/uploads/..."
+    let normalizedPath = filePath.replace(/\\/g, "/").trim();
+    if (normalizedPath.startsWith("/")) {
+        normalizedPath = normalizedPath.slice(1);
+    }
+
+    // Only allow reading files from the "storage" directory tree
+    if (!normalizedPath || !normalizedPath.startsWith("storage/")) {
+        console.error("Invalid population data path:", filePath);
+        return [];
+    }
+
+    const storageBaseDir = path.resolve(process.cwd(), "storage");
+    const fullPath = path.resolve(process.cwd(), normalizedPath);
+
+    if (!fullPath.startsWith(storageBaseDir + path.sep) && fullPath !== storageBaseDir) {
         console.error("Path traversal attempt blocked:", filePath);
         return [];
     }

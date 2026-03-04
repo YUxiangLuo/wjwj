@@ -223,7 +223,8 @@ const submissionDownloadRoutes: RouteDefinition = {
 
         const baseDir = path.resolve(process.cwd(), "storage");
         const normalizedPath = filePath.replace(/\\/g, "/").replace(/^\/+/, "");
-        const fullPath = path.resolve(baseDir, normalizedPath);
+        const relativePath = normalizedPath.startsWith("storage/") ? normalizedPath.slice("storage/".length) : normalizedPath;
+        const fullPath = path.resolve(baseDir, relativePath);
 
         if (!fullPath.startsWith(baseDir + path.sep) && fullPath !== baseDir) {
             return error("无效的文件路径", "INVALID_PATH", 400);

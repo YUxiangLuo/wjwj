@@ -101,7 +101,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         }
 
         if (type === "multiple") {
-            if (minSelect < 1 || maxSelect < minSelect) return false;
+            const validCount = options.filter((o) => o.trim()).length;
+            if (minSelect < 1 || maxSelect < minSelect || maxSelect > validCount) return false;
         }
 
         return true;
@@ -121,8 +122,9 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         }
 
         if (type === "multiple") {
-            savedQuestion.minSelect = minSelect;
-            savedQuestion.maxSelect = Math.min(maxSelect, savedQuestion.options?.length ?? 3);
+            const validCount = savedQuestion.options?.length ?? 3;
+            savedQuestion.minSelect = Math.max(1, Math.min(minSelect, validCount));
+            savedQuestion.maxSelect = Math.max(savedQuestion.minSelect, Math.min(maxSelect, validCount));
         }
 
         if (type === "scale") {
