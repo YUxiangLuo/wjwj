@@ -123,7 +123,7 @@ export function Login() {
                 </div>
 
                 <div className="relative z-20 text-sm text-slate-500">
-                    © 2026 Sampling Stimulation System. All rights reserved.
+                    © 2026 Sampling Simulation System. All rights reserved.
                 </div>
             </div>
 
@@ -204,14 +204,14 @@ export function Login() {
                     </form>
 
                     <div className="flex justify-center gap-8 text-sm text-slate-500">
-                        <a href="#" className="flex items-center gap-1.5 hover:text-slate-300 transition-colors">
+                        <span className="flex items-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer">
                             <HelpCircle className="w-4 h-4" />
                             使用指南
-                        </a>
-                        <a href="#" className="flex items-center gap-1.5 hover:text-slate-300 transition-colors">
+                        </span>
+                        <span className="flex items-center gap-1.5 hover:text-slate-300 transition-colors cursor-pointer">
                             <Lock className="w-4 h-4" />
                             隐私政策
-                        </a>
+                        </span>
                     </div>
                 </div>
             </div>
