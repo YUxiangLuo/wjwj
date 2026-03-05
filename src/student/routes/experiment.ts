@@ -773,6 +773,27 @@ const samplingActionRoutes: RouteDefinition = {
             return error("无效的抽样方法", "VALIDATION_ERROR", 400);
         }
         const params = isPlainObject(body.params) ? body.params : {};
+        const rawSeed = params.seed;
+        let samplingSeed: number | undefined;
+        if (!(rawSeed === undefined || rawSeed === null || rawSeed === "")) {
+            if (typeof rawSeed === "number") {
+                if (!Number.isInteger(rawSeed)) {
+                    return error("seed 需为整数", "VALIDATION_ERROR", 400);
+                }
+                samplingSeed = rawSeed;
+            } else if (typeof rawSeed === "string") {
+                const trimmedSeed = rawSeed.trim();
+                if (!trimmedSeed) {
+                    samplingSeed = undefined;
+                } else if (!/^-?\d+$/.test(trimmedSeed)) {
+                    return error("seed 需为整数", "VALIDATION_ERROR", 400);
+                } else {
+                    samplingSeed = Number.parseInt(trimmedSeed, 10);
+                }
+            } else {
+                return error("seed 需为整数", "VALIDATION_ERROR", 400);
+            }
+        }
 
         const [exp] = await db
             .select({ samplePlan: experiment.samplePlan })
@@ -808,10 +829,6 @@ const samplingActionRoutes: RouteDefinition = {
             return error("总体数据为空或读取失败", "READ_FAILED");
         }
 
-        const samplingSeed =
-            typeof params.seed === "number" || typeof params.seed === "string"
-                ? params.seed
-                : undefined;
         const random = createSeededRandom(samplingSeed);
 
         let sampledData: any[] = [];
@@ -827,7 +844,7 @@ const samplingActionRoutes: RouteDefinition = {
                     return error(`简单随机抽样样本量需等于目标样本量（${targetSampleSize}）`, "VALIDATION_ERROR", 400);
                 }
                 sampledData = await performSimpleSampling(population, n, random);
-                resultParams = { completed: true, sampleCount: sampledData.length, seed: params.seed, data: sampledData };
+                resultParams = { completed: true, sampleCount: sampledData.length, seed: samplingSeed, data: sampledData };
                 break;
             }
             case "systematic": {
@@ -844,7 +861,7 @@ const samplingActionRoutes: RouteDefinition = {
                     }
                 }
                 sampledData = await performSystematicSampling(population, k, random);
-                resultParams = { completed: true, kValue: k, sampleCount: sampledData.length, seed: params.seed, data: sampledData };
+                resultParams = { completed: true, kValue: k, sampleCount: sampledData.length, seed: samplingSeed, data: sampledData };
                 break;
             }
             case "stratified": {
@@ -921,7 +938,7 @@ const samplingActionRoutes: RouteDefinition = {
                 }
 
                 sampledData = await performStratifiedSampling(population, stratifyBy, layers, random);
-                resultParams = { completed: true, stratifyBy, layers, stratifiedData: [], seed: params.seed, data: sampledData };
+                resultParams = { completed: true, stratifyBy, layers, stratifiedData: [], seed: samplingSeed, data: sampledData };
                 break;
             }
         }
