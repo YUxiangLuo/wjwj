@@ -394,6 +394,7 @@ export const submission = mysqlTable(
     },
     (t) => ({
         experimentIdIdx: index("idx_experiment_id").on(t.experimentId),
+        experimentSubmittedIdIdx: index("idx_experiment_submitted_id").on(t.experimentId, t.submittedAt, t.id),
         statusIdx: index("idx_status").on(t.status),
         lockedIdx: index("idx_locked").on(t.lockedAt),
     })

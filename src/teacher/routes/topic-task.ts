@@ -612,16 +612,6 @@ const taskProgressRoutes: RouteDefinition = {
 
         if (!taskRow) return error("任务不存在", "NOT_FOUND", 404);
 
-        // Use subquery to get the latest submission per experiment to avoid duplicate rows
-        const latestSub = db
-            .select({
-                experimentId: submission.experimentId,
-                status: sql<number>`MAX(${submission.status})`.as("latest_status"),
-            })
-            .from(submission)
-            .groupBy(submission.experimentId)
-            .as("latest_sub");
-
         const students = await db
             .select({
                 id: student.id,
@@ -630,12 +620,17 @@ const taskProgressRoutes: RouteDefinition = {
                 experimentId: experiment.id,
                 currentStage: experiment.currentStage,
                 experimentStatus: experiment.status,
-                submissionStatus: latestSub.status,
+                submissionStatus: sql<number | null>`(
+                    SELECT s.status
+                    FROM submission s
+                    WHERE s.experiment_id = ${experiment.id}
+                    ORDER BY s.submitted_at DESC, s.id DESC
+                    LIMIT 1
+                )`,
                 lastActivity: experiment.updatedAt,
             })
             .from(student)
             .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, taskId)))
-            .leftJoin(latestSub, eq(latestSub.experimentId, experiment.id))
             .where(and(eq(student.classId, taskRow.classId), isNull(student.deletedAt)))
             .orderBy(asc(student.studentId));
 
@@ -653,7 +648,8 @@ const taskProgressRoutes: RouteDefinition = {
             } else if (s.submissionStatus === 3) {
                 status = "rejected";
                 counts.rejected++;
-            } else if (s.submissionStatus === 1) {
+            } else if (s.experimentStatus === 1) {
+                // experiment is submitted: submission may be pending(1) or draft(0)
                 status = "submitted";
                 counts.submitted++;
             } else {
