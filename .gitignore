@@ -40,8 +40,5 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 backups/
 storage/
 .vscode/
-.playwright-mcp/
-playwright-report/
-test-results/
 package-lock.json
 node_modules
