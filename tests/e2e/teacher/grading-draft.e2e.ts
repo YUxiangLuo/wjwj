@@ -19,10 +19,10 @@ test.describe("Teacher Grading Draft", () => {
 
         await page.getByTestId("teacher-grading-save-draft").click();
 
-        // After draft save, status should remain pending (1)
+        // After draft save, status should be draft (0)
         const checkRes = await page.request.get(`/api/teacher/grading/${submissionId}`);
         const checkJson = (await checkRes.json()) as ApiResponse<{ status: number; scoreQuestionnaire: string }>;
         expect(checkJson.success).toBe(true);
-        expect(checkJson.data!.status).toBe(1);
+        expect(checkJson.data!.status).toBe(0);
     });
 });

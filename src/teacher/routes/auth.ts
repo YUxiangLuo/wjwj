@@ -270,7 +270,7 @@ async function handleTeacherLogin(req: Request, t: typeof teacher.$inferSelect, 
         return error(`账号已被锁定，请${remainMinutes}分钟后重试`, "ACCOUNT_LOCKED", 403);
     }
 
-    if (t.status !== undefined && t.status !== null && t.status !== 1) {
+    if (t.status !== 1) {
         return error("账号已停用，请联系管理员", "ACCOUNT_DISABLED", 403);
     }
 

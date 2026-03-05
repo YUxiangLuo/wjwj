@@ -529,7 +529,7 @@ export function GradingDetail() {
                     </div>
 
                     <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900/50">
-                        {data.status === 1 && !isReadOnly && (
+                        {(data.status === 0 || data.status === 1) && !isReadOnly && (
                             <>
                                 <div className="flex gap-2">
                                     <Button data-testid="teacher-grading-save-draft" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-slate-100 hover:bg-slate-800 h-11" onClick={handleSaveDraft} disabled={saving || savingDraft}>
