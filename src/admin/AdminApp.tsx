@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
     LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
     Activity, Megaphone, Settings, Bell, LogOut, Loader2, Search,
-    Menu, X
+    Menu, X, Sun, Moon
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,6 +25,7 @@ import {
 import { Dashboard } from "./pages/Dashboard";
 import { authApi, systemApi, type AdminUser, type AdminNotification } from "./api-client";
 import { Toaster } from "sonner";
+import { useTheme } from "@/components/ThemeProvider";
 import { SemesterManagement } from "./pages/SemesterManagement";
 import { TeacherManagement } from "./pages/TeacherManagement";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -62,6 +63,7 @@ const pageTitles: Record<string, string> = {
 export function AdminApp() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const currentPath = location.pathname;
     const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
     const pageTitle = pageTitles[currentPath] ?? "管理后台";
@@ -283,7 +285,7 @@ export function AdminApp() {
 
     return (
         <div className="flex min-h-screen bg-slate-950 text-slate-200 font-sans antialiased">
-            <Toaster richColors position="top-right" theme="dark" />
+            <Toaster richColors position="top-right" theme={theme} />
 
             {/* Sidebar */}
             <aside
@@ -397,6 +399,16 @@ export function AdminApp() {
                                 {unreadCount > 0 && (
                                     <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 ring-2 ring-slate-900 rounded-full animate-pulse"></span>
                                 )}
+                            </Button>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                                onClick={toggleTheme}
+                                title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
+                            >
+                                {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                             </Button>
 
                             <Separator orientation="vertical" className="h-6 bg-slate-800" />

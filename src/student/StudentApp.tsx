@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyRound } from "lucide-react";
+import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyRound, Sun, Moon } from "lucide-react";
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,11 +27,13 @@ import { Profile } from "./pages/Profile";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { authApi } from "./api-client";
 import { Login } from "./pages/Login";
+import { useTheme } from "@/components/ThemeProvider";
 import "./student.css";
 
 function StudentAppContent() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const isTaskHall = location.pathname === "/";
     const isLoginPage = location.pathname === "/login";
     const {
@@ -254,6 +256,16 @@ function StudentAppContent() {
                                     {unreadCount > 99 ? "99+" : unreadCount}
                                 </span>
                             )}
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                            onClick={toggleTheme}
+                            title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
+                        >
+                            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                         </Button>
 
                         <div className="relative">
