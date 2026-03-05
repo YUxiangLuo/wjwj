@@ -12,6 +12,7 @@ import { readdir, stat, unlink } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { createBackupArtifacts } from "./admin/backup";
 import { redirect } from "react-router-dom";
+import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./server/template-files";
 
 type RouteRequest = Request & { params: Record<string, string> };
 
@@ -36,6 +37,33 @@ const routes = {
 
   // Teacher API routes
   ...teacherApiRoutes,
+
+  // Static templates (teacher upload guides and csv templates)
+  "/templates/:name": async (req: RouteRequest) => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
+    const fileName = req.params.name ?? "";
+    const fullPath = resolveTemplatePath(fileName);
+    if (!fullPath) return new Response("Not Found", { status: 404 });
+
+    const file = Bun.file(fullPath);
+    if (!(await file.exists())) {
+      return new Response("Not Found", { status: 404 });
+    }
+
+    const headers = {
+      "Content-Type": getTemplateContentType(fileName),
+      "Content-Disposition": getTemplateContentDisposition(fileName),
+    };
+
+    if (req.method === "HEAD") {
+      return new Response(null, { headers });
+    }
+
+    return new Response(file, { headers });
+  },
 
   // API endpoints (example)
   "/api/hello": {
