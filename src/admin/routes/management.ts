@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import {
     announcement,
@@ -123,7 +123,7 @@ const teacherRoutes: RouteDefinition = {
                 ? await db
                     .select({ userId: loginLog.userId, lastLogin: sql<Date>`MAX(${loginLog.loginAt})` })
                     .from(loginLog)
-                    .where(and(eq(loginLog.userType, 2), sql`${loginLog.userId} IN (${sql.join(teacherIds, sql`, `)})`))
+                    .where(and(eq(loginLog.userType, 2), inArray(loginLog.userId, teacherIds)))
                     .groupBy(loginLog.userId)
                 : [];
 
@@ -236,7 +236,7 @@ const assistantRoutes: RouteDefinition = {
                 ? await db
                     .select({ userId: loginLog.userId, lastLogin: sql<Date>`MAX(${loginLog.loginAt})` })
                     .from(loginLog)
-                    .where(and(eq(loginLog.userType, 3), sql`${loginLog.userId} IN (${sql.join(assistantIds, sql`, `)})`))
+                    .where(and(eq(loginLog.userType, 3), inArray(loginLog.userId, assistantIds)))
                     .groupBy(loginLog.userId)
                 : [];
         const lastLoginMap = new Map(lastLogins.map((l) => [l.userId, l.lastLogin]));
@@ -427,14 +427,14 @@ const studentRoutes: RouteDefinition = {
                 ? await db
                     .select({ userId: loginLog.userId, lastActive: sql<Date>`MAX(${loginLog.loginAt})` })
                     .from(loginLog)
-                    .where(and(eq(loginLog.userType, 4), sql`${loginLog.userId} IN (${sql.join(studentIds, sql`, `)})`))
+                    .where(and(eq(loginLog.userType, 4), inArray(loginLog.userId, studentIds)))
                     .groupBy(loginLog.userId)
                 : [];
         const lastActiveMap = new Map(lastActives.map((l) => [l.userId, l.lastActive]));
 
         const experiments =
             studentIds.length > 0
-                ? await db.select({ studentId: experiment.studentId, currentStage: experiment.currentStage, status: experiment.status }).from(experiment).where(sql`${experiment.studentId} IN (${sql.join(studentIds, sql`, `)})`)
+                ? await db.select({ studentId: experiment.studentId, currentStage: experiment.currentStage, status: experiment.status }).from(experiment).where(inArray(experiment.studentId, studentIds))
                 : [];
 
         const progressMap = new Map();
