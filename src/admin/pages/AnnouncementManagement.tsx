@@ -561,12 +561,12 @@ export function AnnouncementManagement() {
                                         <h4 className="text-sm font-medium text-slate-400 border-b border-slate-800 pb-2">已读用户列表</h4>
                                         <div className="max-h-48 overflow-y-auto space-y-1">
                                             {currentStats.readers.map((reader, i) => (
-                                                <div key={i} className="flex items-center justify-between text-sm bg-slate-950/50 px-3 py-2 rounded border border-slate-800">
+                                                <div key={`${reader.role}-${reader.name}-${i}`} className="flex items-center justify-between text-sm bg-slate-950/50 px-3 py-2 rounded border border-slate-800">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-slate-200">{reader.name}</span>
                                                         <Badge variant="outline" className="text-xs bg-slate-800 text-slate-400 border-slate-700">{reader.role}</Badge>
                                                     </div>
-                                                    <span className="text-xs text-slate-500">{new Date(reader.readAt).toLocaleString("zh-CN")}</span>
+                                                    <span className="text-xs text-slate-500">{reader.readAt ? new Date(reader.readAt).toLocaleString("zh-CN") : "-"}</span>
                                                 </div>
                                             ))}
                                         </div>

@@ -657,6 +657,7 @@
 | 教师 | `teacher-create-submit` | 确认添加 |
 | 教师 | `teacher-search-input` | 搜索输入框 |
 | 教师 | `teacher-search-submit` | 搜索按钮 |
+| 教师 | `teacher-view-classes-{id}` | 查看班级按钮 |
 | 教师 | `teacher-reset-{id}` | 重置密码 |
 | 教师 | `teacher-toggle-status-{id}` | 切换状态 |
 | 助教 | `assistant-create-open` | 打开添加弹窗 |

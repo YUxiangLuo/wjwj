@@ -697,12 +697,12 @@ const announcementStatsRoutes = {
             .where(eq(announcementRead.announcementId, id))
             .orderBy(desc(announcementRead.readAt));
 
-        const readers: { name: string; role: string; readAt: Date | null }[] = [];
+        const readers: { name: string; role: string; readAt: string | null }[] = [];
 
-        // Batch-fetch names for each user type
-        const teacherIds = readRecords.filter(r => r.userType === 2).map(r => r.userId);
-        const assistantIds = readRecords.filter(r => r.userType === 3).map(r => r.userId);
-        const studentIds = readRecords.filter(r => r.userType === 4).map(r => r.userId);
+        // Batch-fetch names for each user type (de-duplicate IDs)
+        const teacherIds = Array.from(new Set(readRecords.filter(r => r.userType === 2).map(r => r.userId)));
+        const assistantIds = Array.from(new Set(readRecords.filter(r => r.userType === 3).map(r => r.userId)));
+        const studentIds = Array.from(new Set(readRecords.filter(r => r.userType === 4).map(r => r.userId)));
 
         const teacherNames = teacherIds.length > 0
             ? new Map((await db.select({ id: teacher.id, name: teacher.name }).from(teacher).where(inArray(teacher.id, teacherIds))).map(t => [t.id, t.name]))
@@ -721,7 +721,7 @@ const announcementStatsRoutes = {
             readers.push({
                 name: nameMaps[r.userType]?.get(r.userId) ?? "未知用户",
                 role: roleLabels[r.userType] ?? "未知",
-                readAt: r.readAt,
+                readAt: r.readAt ? r.readAt.toISOString() : null,
             });
         }
 

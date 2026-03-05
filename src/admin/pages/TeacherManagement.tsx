@@ -137,6 +137,7 @@ export function TeacherManagement() {
 
     async function handleViewClasses(t: Teacher) {
         setClassesTeacher(t);
+        setTeacherClasses([]);
         setShowClassesModal(true);
         setLoadingClasses(true);
         try {
@@ -330,7 +331,7 @@ export function TeacherManagement() {
                                                         <Pencil className="w-3.5 h-3.5 mr-1" />
                                                         编辑
                                                     </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => handleViewClasses(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                    <Button data-testid={`teacher-view-classes-${teacher.id}`} variant="ghost" size="sm" onClick={() => handleViewClasses(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                         <Eye className="w-3.5 h-3.5 mr-1" />
                                                         班级
                                                     </Button>
