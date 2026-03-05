@@ -162,7 +162,8 @@ export function AssistantManagement() {
         }
     }
 
-    const formatDate = (dateStr: string) => {
+    const formatDate = (dateStr: string | null) => {
+        if (!dateStr) return "-";
         return new Date(dateStr).toLocaleDateString("zh-CN");
     };
 
@@ -296,6 +297,8 @@ export function AssistantManagement() {
                                     <TableHead className="text-slate-400">姓名</TableHead>
                                     <TableHead className="text-slate-400">所属教师</TableHead>
                                     <TableHead className="text-slate-400">状态</TableHead>
+                                    <TableHead className="text-slate-400">绑定班级数</TableHead>
+                                    <TableHead className="text-slate-400">最后登录</TableHead>
                                     <TableHead className="text-slate-400">创建时间</TableHead>
                                     <TableHead className="text-slate-400 text-right">操作</TableHead>
                                 </TableRow>
@@ -315,6 +318,8 @@ export function AssistantManagement() {
                                                 <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已停用</Badge>
                                             )}
                                         </TableCell>
+                                        <TableCell className="text-slate-300">{assistant.classCount}</TableCell>
+                                        <TableCell className="text-slate-500 text-xs">{formatDate(assistant.lastLogin)}</TableCell>
                                         <TableCell className="text-slate-500 text-xs">{formatDate(assistant.createdAt)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
@@ -353,7 +358,7 @@ export function AssistantManagement() {
                                 ))}
                                 {filteredAssistants.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-16 text-slate-500">
+                                        <TableCell colSpan={8} className="text-center py-16 text-slate-500">
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
                                                     <Search className="w-5 h-5 text-slate-600" />

@@ -72,7 +72,7 @@ export function Dashboard() {
 
     useEffect(() => {
         loadData();
-        const interval = setInterval(loadMetrics, 5000);
+        const interval = setInterval(loadMetrics, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -150,31 +150,24 @@ export function Dashboard() {
                     icon={Calendar}
                     value={loading ? "-" : stats?.currentSemester ?? "-"}
                     label="当前学期"
-                    trend="稳定"
-                    trendUp
                     loading={loading}
                 />
                 <KpiCard
                     icon={Briefcase}
                     value={loading ? "-" : stats?.teacherCount ?? 0}
                     label="教师总数"
-                    trend="稳定"
-                    trendUp
                     loading={loading}
                 />
                 <KpiCard
                     icon={Activity}
                     value={loading ? "-" : stats?.todayActiveUsers ?? 0}
                     label="今日活跃用户"
-                    trend="+3.4%"
-                    trendUp
                     loading={loading}
                 />
                 <KpiCard
                     icon={LogOut}
                     value={loading ? "-" : stats?.todayLogins ?? 0}
                     label="今日登录次数"
-                    trend="-1.2%"
                     loading={loading}
                 />
             </div>
@@ -184,31 +177,24 @@ export function Dashboard() {
                     icon={School}
                     value={loading ? "-" : stats?.classCount ?? 0}
                     label="班级总数"
-                    trend="稳定"
-                    trendUp
                     loading={loading}
                 />
                 <KpiCard
                     icon={GraduationCap}
                     value={loading ? "-" : stats?.studentCount ?? 0}
                     label="学生总数"
-                    trend="+2.1%"
-                    trendUp
                     loading={loading}
                 />
                 <KpiCard
                     icon={UserCheck}
                     value={loading ? "-" : stats?.assistantCount ?? 0}
                     label="助教总数"
-                    trend="稳定"
-                    trendUp
                     loading={loading}
                 />
                 <KpiCard
                     icon={TrendingUp}
                     value={loading ? "-" : stats?.pendingItems ?? 0}
                     label="待处理事项"
-                    trend="关注"
                     loading={loading}
                 />
             </div>

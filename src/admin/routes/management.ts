@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import {
     announcement,
@@ -8,6 +8,7 @@ import {
     class_,
     experiment,
     loginLog,
+    operationLog,
     semester,
     student,
     studentTransfer,
@@ -16,8 +17,14 @@ import {
     teacher,
     topic,
 } from "../../db/schema";
-import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
+import { error, getClientIp, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { ADMIN_USER_TYPE, requireAdminAuth } from "./auth";
+
+/** Escape SQL LIKE wildcard characters to prevent unintended pattern matching */
+function escapeLike(value: string): string {
+    return value.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
 
 const semesterRoutes: RouteDefinition = {
     async GET() {
@@ -105,7 +112,8 @@ const teacherRoutes: RouteDefinition = {
             .$dynamic();
 
         if (search) {
-            query = query.where(or(like(teacher.employeeId, `%${search}%`), like(teacher.name, `%${search}%`)));
+            const escaped = escapeLike(search);
+            query = query.where(or(like(teacher.employeeId, `%${escaped}%`), like(teacher.name, `%${escaped}%`)));
         }
 
         const rows = await query;
@@ -115,7 +123,7 @@ const teacherRoutes: RouteDefinition = {
                 ? await db
                     .select({ userId: loginLog.userId, lastLogin: sql<Date>`MAX(${loginLog.loginAt})` })
                     .from(loginLog)
-                    .where(and(eq(loginLog.userType, 2), sql`${loginLog.userId} IN (${sql.join(teacherIds, sql`, `)})`))
+                    .where(and(eq(loginLog.userType, 2), inArray(loginLog.userId, teacherIds)))
                     .groupBy(loginLog.userId)
                 : [];
 
@@ -126,6 +134,8 @@ const teacherRoutes: RouteDefinition = {
     async POST(req) {
         const body = await parseBody<{ employeeId: string; name: string }>(req);
         if (!body.employeeId?.trim() || !body.name?.trim()) return error("工号和姓名不能为空", "VALIDATION_ERROR");
+        if (body.employeeId.trim().length > 50) return error("工号不能超过50个字符", "VALIDATION_ERROR");
+        if (body.name.trim().length > 100) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
 
         const [existing] = await db.select().from(teacher).where(eq(teacher.employeeId, body.employeeId.trim()));
         if (existing) return error("工号已存在", "DUPLICATE_EMPLOYEE_ID");
@@ -142,6 +152,7 @@ const teacherUpdateRoutes = {
         const body = await parseBody<{ name?: string }>(req);
         if (!id) return error("无效的教师ID", "INVALID_ID");
         if (!body.name?.trim()) return error("姓名不能为空", "VALIDATION_ERROR");
+        if (body.name.trim().length > 100) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
 
         const [t] = await db.select().from(teacher).where(eq(teacher.id, id));
         if (!t) return error("教师不存在", "NOT_FOUND", 404);
@@ -219,12 +230,24 @@ const assistantRoutes: RouteDefinition = {
         if (teacherId && teacherId !== "all") query = query.where(eq(assistant.creatorTeacherId, parseInt(teacherId)));
 
         const rows = await query;
-        return json(rows.map((r) => ({ ...r, isLocked: r.lockedUntil ? new Date(r.lockedUntil) > new Date() : false })));
+        const assistantIds = rows.map((r) => r.id);
+        const lastLogins =
+            assistantIds.length > 0
+                ? await db
+                    .select({ userId: loginLog.userId, lastLogin: sql<Date>`MAX(${loginLog.loginAt})` })
+                    .from(loginLog)
+                    .where(and(eq(loginLog.userType, 3), inArray(loginLog.userId, assistantIds)))
+                    .groupBy(loginLog.userId)
+                : [];
+        const lastLoginMap = new Map(lastLogins.map((l) => [l.userId, l.lastLogin]));
+        return json(rows.map((r) => ({ ...r, isLocked: r.lockedUntil ? new Date(r.lockedUntil) > new Date() : false, lastLogin: lastLoginMap.get(r.id) ?? null })));
     },
 
     async POST(req) {
         const body = await parseBody<{ account: string; name: string; teacherId: number }>(req);
         if (!body.account?.trim() || !body.name?.trim() || !body.teacherId) return error("账号、姓名和所属教师不能为空", "VALIDATION_ERROR");
+        if (body.account.trim().length > 50) return error("账号不能超过50个字符", "VALIDATION_ERROR");
+        if (body.name.trim().length > 100) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
 
         const [existing] = await db.select().from(assistant).where(eq(assistant.account, body.account.trim()));
         if (existing) return error("账号已存在", "DUPLICATE_ACCOUNT");
@@ -262,6 +285,9 @@ const assistantDeleteRoutes = {
     async DELETE(req: Request) {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的助教ID", "INVALID_ID");
+
+        const [a] = await db.select({ id: assistant.id }).from(assistant).where(eq(assistant.id, id));
+        if (!a) return error("助教不存在", "NOT_FOUND", 404);
 
         await db.delete(assistantClass).where(eq(assistantClass.assistantId, id));
         await db.delete(assistant).where(eq(assistant.id, id));
@@ -343,6 +369,9 @@ const classUpdateRoutes = {
         const body = await parseBody<{ name?: string; teacherId?: number }>(req);
         if (!id) return error("无效的班级ID", "INVALID_ID");
 
+        const [c] = await db.select({ id: class_.id }).from(class_).where(eq(class_.id, id));
+        if (!c) return error("班级不存在", "NOT_FOUND", 404);
+
         const updates: Record<string, unknown> = {};
         if (body.name?.trim()) updates.name = body.name.trim();
         if (body.teacherId) updates.teacherId = body.teacherId;
@@ -385,7 +414,10 @@ const studentRoutes: RouteDefinition = {
 
         const conditions = [isNull(student.deletedAt)];
         if (classId && classId !== "all") conditions.push(eq(student.classId, parseInt(classId)));
-        if (search) conditions.push(or(like(student.studentId, `%${search}%`), like(student.name, `%${search}%`))!);
+        if (search) {
+            const escaped = escapeLike(search);
+            conditions.push(or(like(student.studentId, `%${escaped}%`), like(student.name, `%${escaped}%`))!);
+        }
         query = query.where(and(...conditions));
 
         const rows = await query;
@@ -395,14 +427,14 @@ const studentRoutes: RouteDefinition = {
                 ? await db
                     .select({ userId: loginLog.userId, lastActive: sql<Date>`MAX(${loginLog.loginAt})` })
                     .from(loginLog)
-                    .where(and(eq(loginLog.userType, 4), sql`${loginLog.userId} IN (${sql.join(studentIds, sql`, `)})`))
+                    .where(and(eq(loginLog.userType, 4), inArray(loginLog.userId, studentIds)))
                     .groupBy(loginLog.userId)
                 : [];
         const lastActiveMap = new Map(lastActives.map((l) => [l.userId, l.lastActive]));
 
         const experiments =
             studentIds.length > 0
-                ? await db.select({ studentId: experiment.studentId, currentStage: experiment.currentStage, status: experiment.status }).from(experiment).where(sql`${experiment.studentId} IN (${sql.join(studentIds, sql`, `)})`)
+                ? await db.select({ studentId: experiment.studentId, currentStage: experiment.currentStage, status: experiment.status }).from(experiment).where(inArray(experiment.studentId, studentIds))
                 : [];
 
         const progressMap = new Map();
@@ -486,6 +518,9 @@ const studentResetPasswordRoutes = {
 
 const studentTransferRoutes = {
     async POST(req: Request) {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ targetClassId: number; reason?: string }>(req);
         if (!id) return error("无效的学生ID", "INVALID_ID");
@@ -498,8 +533,19 @@ const studentTransferRoutes = {
         if (!targetClass) return error("目标班级不存在", "NOT_FOUND", 404);
         if (s.classId === body.targetClassId) return error("学生已在该班级", "SAME_CLASS");
 
-        await db.insert(studentTransfer).values({ studentId: id, fromClassId: s.classId, toClassId: body.targetClassId, reason: body.reason, operatedBy: 1 });
+        await db.insert(studentTransfer).values({ studentId: id, fromClassId: s.classId, toClassId: body.targetClassId, reason: body.reason, operatedBy: auth.admin!.id });
         await db.update(student).set({ classId: body.targetClassId }).where(eq(student.id, id));
+
+        await db.insert(operationLog).values({
+            userType: ADMIN_USER_TYPE,
+            userId: auth.admin!.id,
+            action: "STUDENT_TRANSFER",
+            targetType: "student",
+            targetId: id,
+            detail: { fromClassId: s.classId, toClassId: body.targetClassId, reason: body.reason },
+            ipAddress: getClientIp(req),
+        });
+
         return json({ success: true });
     },
 };
@@ -512,6 +558,8 @@ const announcementRoutes: RouteDefinition = {
     async POST(req) {
         const body = await parseBody<{ title: string; content: string; publish?: boolean; targetScope?: string }>(req);
         if (!body.title?.trim() || !body.content?.trim()) return error("标题和内容不能为空", "VALIDATION_ERROR");
+        if (body.title.trim().length > 100) return error("公告标题不能超过100个字符", "VALIDATION_ERROR");
+        if (body.content.trim().length > 10000) return error("公告内容不能超过10000个字符", "VALIDATION_ERROR");
 
         const validScopes = ["all", "teacher", "student", "assistant"];
         const scope = body.targetScope && validScopes.includes(body.targetScope) ? body.targetScope : "all";
@@ -531,6 +579,8 @@ const announcementUpdateRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ title?: string; content?: string }>(req);
         if (!id) return error("无效的公告ID", "INVALID_ID");
+        if (body.title && body.title.trim().length > 100) return error("公告标题不能超过100个字符", "VALIDATION_ERROR");
+        if (body.content && body.content.trim().length > 10000) return error("公告内容不能超过10000个字符", "VALIDATION_ERROR");
 
         const updates: Record<string, unknown> = {};
         if (body.title?.trim()) updates.title = body.title.trim();
@@ -588,7 +638,7 @@ const announcementStatsRoutes = {
             ? await db.select({ count: count() }).from(assistant).where(eq(assistant.status, 1))
             : [{ count: 0 }];
         const [sCount] = includeStudent
-            ? await db.select({ count: count() }).from(student).where(eq(student.status, 1))
+            ? await db.select({ count: count() }).from(student).where(and(eq(student.status, 1), isNull(student.deletedAt)))
             : [{ count: 0 }];
         const totalCount = (tCount?.count ?? 0) + (aCount?.count ?? 0) + (sCount?.count ?? 0);
 
