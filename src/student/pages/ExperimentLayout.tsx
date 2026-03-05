@@ -371,9 +371,9 @@ export function ExperimentLayout() {
                         <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
                             返回到“<span className="text-indigo-400 font-medium">{targetStage ? stageNames[targetStage - 1] : ""}</span>”将导致以下后续阶段的数据被<strong className="text-rose-400">永久清空</strong>：
                             <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-slate-400">
-                                <li>样本量规划数据</li>
-                                <li>抽样执行结果</li>
-                                <li>分析报告内容</li>
+                                {targetStage !== null && targetStage <= 1 && <li>样本量规划数据</li>}
+                                {targetStage !== null && targetStage <= 2 && <li>抽样执行结果</li>}
+                                {targetStage !== null && targetStage <= 3 && <li>分析报告内容</li>}
                             </ul>
                             <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-300 text-xs">
                                 ⚠️ 警告：此操作不可撤销。
