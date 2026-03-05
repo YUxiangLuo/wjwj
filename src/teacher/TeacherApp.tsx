@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import "./teacher.css";
 import { authApi, teacherApi, type TeacherNotification, type TeacherUser } from "./api-client";
 import { useTheme } from "@/components/ThemeProvider";
+import { Toaster } from "sonner";
 
 import { Dashboard } from "./pages/Dashboard";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -295,6 +296,7 @@ export function TeacherApp() {
 
     return (
         <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden">
+            <Toaster richColors position="top-right" theme={theme} />
             {/* Sidebar */}
             <aside className={`
                 fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 flex flex-col

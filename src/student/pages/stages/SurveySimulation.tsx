@@ -33,7 +33,7 @@ const mockPieData = [
     { label: "选项 A", value: 45, color: "#11d4d4" },
     { label: "选项 B", value: 25, color: "#6366f1" },
     { label: "选项 C", value: 18, color: "#f59e0b" },
-    { label: "选项 D", value: 12, color: "#e5e7eb" },
+    { label: "选项 D", value: 12, color: "#94a3b8" },
 ];
 
 export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
@@ -253,7 +253,7 @@ function PieChart({ data }: { data: Array<{ label: string; value: number; color:
                         />
                     ))}
                     {/* Inner circle for donut chart effect */}
-                    <circle cx="80" cy="80" r="40" fill="#0f172a" />
+                    <circle cx="80" cy="80" r="40" className="fill-slate-950" />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <span className="text-xs text-slate-500 font-medium">分布</span>

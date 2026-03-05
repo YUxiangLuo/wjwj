@@ -694,11 +694,11 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         const answer = previewAnswers[question.id];
 
         return (
-            <div key={question.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+            <div key={question.id} className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 space-y-3">
                 <div className="flex items-start gap-2">
-                    <span className="font-semibold text-slate-700">Q{index + 1}.</span>
+                    <span className="font-semibold text-neutral-700">Q{index + 1}.</span>
                     <div className="flex-1 space-y-2">
-                        <div className="text-sm text-slate-700 font-medium leading-relaxed">{question.content}</div>
+                        <div className="text-sm text-neutral-700 font-medium leading-relaxed">{question.content}</div>
                         <Badge variant="outline" className={`text-[10px] ${questionTypeColors[question.type]}`}>
                             {questionTypeLabels[question.type]}
                         </Badge>
@@ -708,7 +708,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 {question.type === "boolean" && (
                     <div className="space-y-2 pl-6">
                         {["是", "否"].map((option) => (
-                            <label key={option} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                            <label key={option} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
                                 <input
                                     type="radio"
                                     name={`preview_${question.id}`}
@@ -724,7 +724,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 {question.type === "single" && (
                     <div className="space-y-2 pl-6">
                         {(question.options ?? []).map((option) => (
-                            <label key={option} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                            <label key={option} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
                                 <input
                                     type="radio"
                                     name={`preview_${question.id}`}
@@ -739,7 +739,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
                 {question.type === "multiple" && (
                     <div className="space-y-2 pl-6">
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-neutral-500">
                             最少选择 {question.minSelect ?? 1} 项，最多选择 {question.maxSelect ?? question.options?.length ?? 10} 项
                         </div>
                         {(question.options ?? []).map((option) => {
@@ -749,7 +749,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             const disabled = !selected && selectedCount >= maxSelect;
 
                             return (
-                                <label key={option} className={`flex items-center gap-2 text-sm ${disabled ? "text-slate-400" : "text-slate-700"} ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                                <label key={option} className={`flex items-center gap-2 text-sm ${disabled ? "text-neutral-400" : "text-neutral-700"} ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                                     <input
                                         type="checkbox"
                                         checked={selected}
@@ -765,7 +765,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
                 {question.type === "scale" && (
                     <div className="space-y-2 pl-6">
-                        <div className="flex justify-between text-xs text-slate-500">
+                        <div className="flex justify-between text-xs text-neutral-500">
                             <span>{question.scaleMinLabel || "最低"}</span>
                             <span>{question.scaleMaxLabel || "最高"}</span>
                         </div>
@@ -782,7 +782,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         onClick={() => setPreviewAnswers((prev) => ({ ...prev, [question.id]: value }))}
                                         className={`h-8 min-w-8 rounded-md border text-xs font-medium transition-colors ${selected
                                             ? "bg-indigo-600 border-indigo-600 text-white"
-                                            : "bg-white border-slate-300 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300"}`}
+                                            : "bg-white border-neutral-300 text-neutral-700 hover:bg-indigo-50 hover:border-indigo-300"}`}
                                     >
                                         {value}
                                     </button>
@@ -1061,22 +1061,22 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 <CardDescription className="text-slate-400">完整交互式预览，可直接测试题目作答体验</CardDescription>
                             </CardHeader>
                             <CardContent className="bg-slate-950/30 py-6 px-4 sm:px-6 rounded-xl inner-shadow">
-                                <div className="w-full max-w-2xl mx-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl text-slate-800">
-                                    <div className="space-y-3 border-b border-slate-200 pb-4">
-                                        <div className="text-base font-bold text-slate-900">{title || "问卷标题"}</div>
+                                <div className="w-full max-w-2xl mx-auto rounded-3xl border border-neutral-200 bg-white p-6 shadow-xl text-neutral-800">
+                                    <div className="space-y-3 border-b border-neutral-200 pb-4">
+                                        <div className="text-base font-bold text-neutral-900">{title || "问卷标题"}</div>
                                         <RichTextContent
                                             html={welcomeText}
-                                            className="text-xs text-slate-600 leading-relaxed"
+                                            className="text-xs text-neutral-600 leading-relaxed"
                                             emptyFallback="欢迎语将在这里展示"
                                         />
-                                        <div className="text-[11px] text-slate-500">
+                                        <div className="text-[11px] text-neutral-500">
                                             已试填 {answeredCount} / {questions.length} 题
                                         </div>
                                     </div>
 
                                     <div className="mt-4 max-h-[520px] overflow-y-auto pr-1 space-y-3">
                                         {questions.length === 0 ? (
-                                            <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-400 text-center italic border border-slate-200">
+                                            <div className="rounded-xl bg-neutral-50 p-4 text-sm text-neutral-400 text-center italic border border-neutral-200">
                                                 还没有题目
                                             </div>
                                         ) : (
@@ -1084,10 +1084,10 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         )}
                                     </div>
 
-                                    <div className="mt-5 pt-3 border-t border-slate-200">
+                                    <div className="mt-5 pt-3 border-t border-neutral-200">
                                         <RichTextContent
                                             html={endingText}
-                                            className="text-xs text-slate-600 leading-relaxed"
+                                            className="text-xs text-neutral-600 leading-relaxed"
                                             emptyFallback="结束语将在这里展示"
                                         />
                                     </div>

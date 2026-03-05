@@ -250,7 +250,7 @@ export function ExperimentLayout() {
         <ExperimentContext.Provider value={contextValue}>
             <div className="space-y-6 pb-12 animate-in fade-in duration-500">
                 {/* Top bar */}
-                <div className="sticky top-[4rem] z-40 bg-slate-950/90 backdrop-blur pb-4 pt-2 -mt-2 border-b border-white/5 flex justify-between items-center">
+                <div className="sticky top-[4rem] z-40 bg-slate-950/90 backdrop-blur pb-4 pt-2 -mt-2 border-b border-slate-800/50 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                         <Link to="/">
                             <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-100 hover:bg-slate-800" title="返回首页">
@@ -306,7 +306,7 @@ export function ExperimentLayout() {
                                     className="absolute left-0 top-0 h-2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-all duration-500 ease-out"
                                     style={{ width: `${(currentStage / stageNames.length) * 100}%` }}
                                 >
-                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg shadow-purple-500/50"></div>
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-slate-950 rounded-full shadow-lg shadow-purple-500/50"></div>
                                 </div>
                             </div>
 
