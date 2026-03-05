@@ -74,6 +74,7 @@ export function GradingDetail() {
 
     async function loadDetail(id: number) {
         setLoading(true);
+        setLastSavedAt(null);
         draftResolvedRef.current = false;
         const res = await teacherApi.getSubmissionDetail(id);
         if (res.success && res.data) {
@@ -656,7 +657,7 @@ export function GradingDetail() {
 
                     <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900/50">
                         {lastSavedAt && (
-                            <div className="text-xs text-slate-500 text-center">已自动保存于 {lastSavedAt}</div>
+                            <div className="text-xs text-slate-500 text-center">已保存于 {lastSavedAt}</div>
                         )}
                         {(data.status === 0 || data.status === 1) && !isReadOnly && (
                             <>
