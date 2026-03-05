@@ -34,6 +34,12 @@ async function seed() {
 
     const defaultPassword = "123456";
     const hashedPassword = await Bun.password.hash(defaultPassword);
+    const USER_TYPES = {
+        admin: 1,
+        teacher: 2,
+        assistant: 3,
+        student: 4
+    } as const;
 
     // ==========================================
     // 1. 系统配置 & 管理员
@@ -338,7 +344,7 @@ async function seed() {
                 totalScore: "87.83",
                 teacherComment: "实验设计规范，分析深入，做得很好！",
                 status: 2, // Graded
-                gradedByType: 1, // Teacher
+                gradedByType: USER_TYPES.teacher,
                 gradedById: teacherIds[0]!,
                 gradedAt: new Date()
             });
@@ -360,13 +366,13 @@ async function seed() {
     // Announcement Read
     await db.insert(announcementRead).values({
         announcementId: annoRes.insertId,
-        userType: 1, // Teacher
+        userType: USER_TYPES.teacher,
         userId: teacherIds[0]!
     });
 
     // Notifications
     await db.insert(notification).values({
-        receiverType: 2, // Student
+        receiverType: USER_TYPES.student,
         receiverId: studentIds[0]!,
         type: "TASK_ASSIGNED",
         title: "新任务发布",
@@ -376,7 +382,7 @@ async function seed() {
 
     // Login Logs
     await db.insert(loginLog).values({
-        userType: 2,
+        userType: USER_TYPES.student,
         userId: studentIds[0]!,
         loginAt: new Date(),
         ipAddress: "127.0.0.1",
@@ -385,7 +391,7 @@ async function seed() {
 
     // Operation Logs
     await db.insert(operationLog).values({
-        userType: 1,
+        userType: USER_TYPES.teacher,
         userId: teacherIds[0]!,
         action: "CREATE_TOPIC",
         targetType: "topic",
