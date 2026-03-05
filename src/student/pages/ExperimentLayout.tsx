@@ -250,7 +250,7 @@ export function ExperimentLayout() {
         <ExperimentContext.Provider value={contextValue}>
             <div className="space-y-6 pb-12 animate-in fade-in duration-500">
                 {/* Top bar */}
-                <div className="sticky top-[4rem] z-40 bg-slate-950/90 backdrop-blur pb-4 pt-2 -mt-2 border-b border-white/5 flex justify-between items-center">
+                <div className="sticky top-[4rem] z-40 bg-slate-950/90 backdrop-blur pb-4 pt-2 -mt-2 border-b border-slate-800/50 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                         <Link to="/">
                             <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-100 hover:bg-slate-800" title="返回首页">

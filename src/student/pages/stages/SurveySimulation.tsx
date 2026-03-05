@@ -33,7 +33,7 @@ const mockPieData = [
     { label: "选项 A", value: 45, color: "#11d4d4" },
     { label: "选项 B", value: 25, color: "#6366f1" },
     { label: "选项 C", value: 18, color: "#f59e0b" },
-    { label: "选项 D", value: 12, color: "#e5e7eb" },
+    { label: "选项 D", value: 12, color: "#94a3b8" },
 ];
 
 export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
