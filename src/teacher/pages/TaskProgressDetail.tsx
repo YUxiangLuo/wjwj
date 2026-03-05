@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Clock, Search } from "lucide-react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { ArrowLeft, Users, Clock, Search, Eye, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -105,23 +105,70 @@ export function TaskProgressDetail() {
                 })}
             </div>
 
-            {/* Progress bar */}
+            {/* Ring chart */}
             {total > 0 && (
-                <div className="flex h-3 rounded-full overflow-hidden bg-slate-800">
-                    {STATUS_KEYS.map((key) => {
-                        const count = data.counts[key];
-                        if (count === 0) return null;
-                        const pct = (count / total) * 100;
-                        return (
-                            <div
-                                key={key}
-                                className={`${PROGRESS_COLORS[key]} transition-all duration-500`}
-                                style={{ width: `${pct}%` }}
-                                title={`${STATUS_CONFIG[key].label}: ${count}`}
-                            />
-                        );
-                    })}
-                </div>
+                <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                    <CardContent className="p-6 flex flex-col items-center sm:flex-row sm:items-center gap-6">
+                        <div className="relative w-36 h-36 shrink-0">
+                            <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                                {(() => {
+                                    const radius = 15.91549;
+                                    const circumference = 2 * Math.PI * radius;
+                                    let offset = 0;
+                                    return STATUS_KEYS.map((key) => {
+                                        const count = data.counts[key];
+                                        if (count === 0) return null;
+                                        const pct = (count / total) * 100;
+                                        const dashLength = (pct / 100) * circumference;
+                                        const currentOffset = offset;
+                                        offset += dashLength;
+                                        const colorMap: Record<StatusKey, string> = {
+                                            not_started: "#64748b",
+                                            stage1: "#3b82f6",
+                                            stage2: "#06b6d4",
+                                            stage3: "#8b5cf6",
+                                            stage4: "#f59e0b",
+                                            submitted: "#eab308",
+                                            graded: "#10b981",
+                                            rejected: "#f43f5e",
+                                        };
+                                        return (
+                                            <circle
+                                                key={key}
+                                                cx="18"
+                                                cy="18"
+                                                r={radius}
+                                                fill="none"
+                                                stroke={colorMap[key]}
+                                                strokeWidth="3"
+                                                strokeDasharray={`${dashLength} ${circumference - dashLength}`}
+                                                strokeDashoffset={-currentOffset}
+                                            />
+                                        );
+                                    });
+                                })()}
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-2xl font-bold text-slate-100">{total}</span>
+                                <span className="text-xs text-slate-500">总人数</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2">
+                            {STATUS_KEYS.map((key) => {
+                                const cfg = STATUS_CONFIG[key];
+                                const count = data.counts[key];
+                                if (count === 0) return null;
+                                return (
+                                    <div key={key} className="flex items-center gap-2 text-sm">
+                                        <span className={`w-2.5 h-2.5 rounded-full ${PROGRESS_COLORS[key]}`} />
+                                        <span className="text-slate-400">{cfg.label}</span>
+                                        <span className={`font-medium ${cfg.color}`}>{count}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Student list */}
@@ -147,11 +194,13 @@ export function TaskProgressDetail() {
                                 <TableHead className="text-slate-400">状态</TableHead>
                                 <TableHead className="text-slate-400">当前阶段</TableHead>
                                 <TableHead className="text-slate-400">最近活动</TableHead>
+                                <TableHead className="text-slate-400 text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredStudents.map((s) => {
                                 const cfg = STATUS_CONFIG[s.status as StatusKey] ?? STATUS_CONFIG.not_started;
+                                const canGrade = (s.status === "submitted" || s.status === "graded" || s.status === "rejected") && s.submissionId;
                                 return (
                                     <TableRow key={s.studentId} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                         <TableCell className="font-mono text-slate-300 text-sm">{s.studentId}</TableCell>
@@ -167,12 +216,29 @@ export function TaskProgressDetail() {
                                         <TableCell className="text-slate-500 text-xs">
                                             {s.lastActivity ? new Date(s.lastActivity).toLocaleString("zh-CN") : "-"}
                                         </TableCell>
+                                        <TableCell className="text-right">
+                                            {canGrade ? (
+                                                <Button variant="ghost" size="sm" className="h-7 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10" asChild>
+                                                    <Link to={`/grading/${s.submissionId}`}>
+                                                        <PenLine className="w-3 h-3 mr-1" />
+                                                        进入批改
+                                                    </Link>
+                                                </Button>
+                                            ) : s.status !== "not_started" ? (
+                                                <span className="text-xs text-slate-600">
+                                                    <Eye className="w-3 h-3 inline mr-1" />
+                                                    进行中
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-slate-600">-</span>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
                                 );
                             })}
                             {filteredStudents.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">
                                         暂无数据
                                     </TableCell>
                                 </TableRow>

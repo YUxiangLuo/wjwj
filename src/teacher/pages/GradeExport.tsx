@@ -12,21 +12,72 @@ import { toast } from "sonner";
 export function GradeExport() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
     const [topics, setTopics] = useState<Topic[]>([]);
-    const [preview, setPreview] = useState<GradeExportPreviewItem[]>([]);
+    const [allPreview, setAllPreview] = useState<GradeExportPreviewItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [classFilter, setClassFilter] = useState<string>("all");
-    const [topicFilter, setTopicFilter] = useState<string>("all");
+    const [semesterFilter, setSemesterFilter] = useState<string>("all");
+    const [classFilter, setClassFilter] = useState<Set<number>>(new Set());
+    const [topicFilter, setTopicFilter] = useState<Set<number>>(new Set());
     const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
 
     useEffect(() => {
-        loadFilters();
+        loadData();
     }, []);
 
-    useEffect(() => {
-        loadPreview();
-    }, [classFilter, topicFilter]);
+    async function loadData() {
+        setLoading(true);
+        const [classesRes, topicsRes, previewRes] = await Promise.all([
+            teacherApi.getClasses(),
+            teacherApi.getTopics(),
+            teacherApi.getGradeExportPreview({}),
+        ]);
+        if (classesRes.success && classesRes.data) setClasses(classesRes.data);
+        if (topicsRes.success && topicsRes.data) setTopics(topicsRes.data);
+        if (previewRes.success && previewRes.data) setAllPreview(previewRes.data);
+        setLoading(false);
+    }
 
-    const selectedCount = selectedTaskIds.length;
+    const semesters = useMemo(() => {
+        const values = classes.map(c => c.semester).filter(Boolean) as string[];
+        return [...new Set(values)];
+    }, [classes]);
+
+    // Build classId → semester map
+    const classToSemester = useMemo(() => {
+        const m = new Map<number, string | null>();
+        classes.forEach(c => m.set(c.id, c.semester));
+        return m;
+    }, [classes]);
+
+    // Filtered classes by semester
+    const filteredClasses = useMemo(() => {
+        if (semesterFilter === "all") return classes;
+        return classes.filter(c => c.semester === semesterFilter);
+    }, [classes, semesterFilter]);
+
+    // Client-side filtered preview
+    const preview = useMemo(() => {
+        let result = allPreview;
+
+        // Filter by semester (via class)
+        if (semesterFilter !== "all") {
+            const semClassIds = new Set(filteredClasses.map(c => c.id));
+            result = result.filter(item => semClassIds.has(item.classId));
+        }
+
+        // Filter by selected classes
+        if (classFilter.size > 0) {
+            result = result.filter(item => classFilter.has(item.classId));
+        }
+
+        // Filter by selected topics
+        if (topicFilter.size > 0) {
+            result = result.filter(item => topicFilter.has(item.topicId));
+        }
+
+        return result;
+    }, [allPreview, semesterFilter, filteredClasses, classFilter, topicFilter]);
+
+    const selectedCount = selectedTaskIds.filter(id => preview.some(p => p.taskId === id)).length;
 
     const summary = useMemo(() => {
         const totalTasks = preview.length;
@@ -36,38 +87,33 @@ export function GradeExport() {
         return { totalTasks, completedTasks, totalSubmissions, totalGraded };
     }, [preview]);
 
-    async function loadFilters() {
-        const [classesRes, topicsRes] = await Promise.all([
-            teacherApi.getClasses(),
-            teacherApi.getTopics()
-        ]);
-        if (classesRes.success && classesRes.data) setClasses(classesRes.data);
-        if (topicsRes.success && topicsRes.data) setTopics(topicsRes.data);
-    }
-
-    async function loadPreview() {
-        setLoading(true);
-        const res = await teacherApi.getGradeExportPreview({
-            classId: classFilter,
-            topicId: topicFilter,
+    function toggleClassFilter(classId: number) {
+        setClassFilter(prev => {
+            const next = new Set(prev);
+            if (next.has(classId)) next.delete(classId);
+            else next.add(classId);
+            return next;
         });
-        if (res.success && res.data) {
-            setPreview(res.data);
-        } else {
-            setPreview([]);
-        }
-        setLoading(false);
         setSelectedTaskIds([]);
     }
 
-    const previewMap = useMemo(() => new Map(preview.map(p => [p.taskId, p])), [preview]);
+    function toggleTopicFilter(topicId: number) {
+        setTopicFilter(prev => {
+            const next = new Set(prev);
+            if (next.has(topicId)) next.delete(topicId);
+            else next.add(topicId);
+            return next;
+        });
+        setSelectedTaskIds([]);
+    }
 
     function toggleTask(taskId: number) {
         setSelectedTaskIds(prev => prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]);
     }
 
     async function exportExcel(taskId?: number) {
-        const ids = taskId ? [taskId] : selectedTaskIds;
+        const visibleTaskIds = new Set(preview.map(p => p.taskId));
+        const ids = taskId ? [taskId] : selectedTaskIds.filter(id => visibleTaskIds.has(id));
         if (ids.length === 0) return;
 
         const search = new URLSearchParams();
@@ -157,29 +203,96 @@ export function GradeExport() {
                         <CardTitle className="text-base text-slate-100">导出列表</CardTitle>
                         <p className="text-xs text-slate-500 mt-1">共 {preview.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger data-testid="teacher-export-class-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
-                                <SelectValue placeholder="全部班级" />
+                    <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap lg:w-auto">
+                        {/* Semester filter */}
+                        <Select value={semesterFilter} onValueChange={(v) => {
+                            setSemesterFilter(v);
+                            setClassFilter(new Set());
+                            setSelectedTaskIds([]);
+                        }}>
+                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
+                                <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                                <SelectItem value="all">全部班级</SelectItem>
-                                {classes.map((cls) => (
-                                    <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                <SelectItem value="all">全部学期</SelectItem>
+                                {semesters.map((sem) => (
+                                    <SelectItem key={sem} value={sem}>{sem}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Select value={topicFilter} onValueChange={setTopicFilter}>
-                            <SelectTrigger data-testid="teacher-export-topic-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
-                                <SelectValue placeholder="全部课题" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                                <SelectItem value="all">全部课题</SelectItem>
-                                {topics.map((t) => (
-                                    <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+
+                        {/* Multi-select class filter */}
+                        <div className="relative">
+                            <button
+                                data-testid="teacher-export-class-filter"
+                                className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 h-10 text-sm text-slate-200 sm:w-44 w-full hover:border-slate-700"
+                                onClick={(e) => {
+                                    const menu = (e.currentTarget.nextElementSibling as HTMLElement);
+                                    menu.classList.toggle("hidden");
+                                }}
+                            >
+                                <span className="truncate">
+                                    {classFilter.size === 0 ? "全部班级" : `已选 ${classFilter.size} 个班级`}
+                                </span>
+                                <span className="text-slate-500 ml-1">▾</span>
+                            </button>
+                            <div className="hidden absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
+                                <button
+                                    className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800"
+                                    onClick={() => { setClassFilter(new Set()); setSelectedTaskIds([]); }}
+                                >
+                                    清除选择
+                                </button>
+                                {filteredClasses.map(cls => (
+                                    <label key={cls.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                            checked={classFilter.has(cls.id)}
+                                            onChange={() => toggleClassFilter(cls.id)}
+                                        />
+                                        {cls.name}
+                                    </label>
                                 ))}
-                            </SelectContent>
-                        </Select>
+                            </div>
+                        </div>
+
+                        {/* Multi-select topic filter */}
+                        <div className="relative">
+                            <button
+                                data-testid="teacher-export-topic-filter"
+                                className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 h-10 text-sm text-slate-200 sm:w-44 w-full hover:border-slate-700"
+                                onClick={(e) => {
+                                    const menu = (e.currentTarget.nextElementSibling as HTMLElement);
+                                    menu.classList.toggle("hidden");
+                                }}
+                            >
+                                <span className="truncate">
+                                    {topicFilter.size === 0 ? "全部课题" : `已选 ${topicFilter.size} 个课题`}
+                                </span>
+                                <span className="text-slate-500 ml-1">▾</span>
+                            </button>
+                            <div className="hidden absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
+                                <button
+                                    className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800"
+                                    onClick={() => { setTopicFilter(new Set()); setSelectedTaskIds([]); }}
+                                >
+                                    清除选择
+                                </button>
+                                {topics.map(t => (
+                                    <label key={t.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                            checked={topicFilter.has(t.id)}
+                                            onChange={() => toggleTopicFilter(t.id)}
+                                        />
+                                        {t.name}
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
                         <Button
                             data-testid="teacher-export-batch"
                             variant="outline"

@@ -41,6 +41,7 @@ export function TopicManagement() {
 
     // Form state
     const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
+    const [editingTopicStatus, setEditingTopicStatus] = useState<number>(0);
     const [newTopicName, setNewTopicName] = useState("");
     const [newTopicDesc, setNewTopicDesc] = useState("");
 
@@ -135,6 +136,7 @@ export function TopicManagement() {
 
     function openCreateModal() {
         setEditingTopicId(null);
+        setEditingTopicStatus(0);
         setNewTopicName("");
         setNewTopicDesc("");
         setCurrentStep(1);
@@ -149,6 +151,7 @@ export function TopicManagement() {
 
     function openEditModal(topic: Topic) {
         setEditingTopicId(topic.id);
+        setEditingTopicStatus(topic.status);
         setNewTopicName(topic.name);
         setNewTopicDesc(topic.description || "");
         setCurrentStep(1);
@@ -442,6 +445,7 @@ export function TopicManagement() {
                 open={showCreateModal}
                 onOpenChange={setShowCreateModal}
                 editingTopicId={editingTopicId}
+                isPublished={editingTopicStatus === 1}
                 currentStep={currentStep}
                 setCurrentStep={setCurrentStep}
                 newTopicName={newTopicName}

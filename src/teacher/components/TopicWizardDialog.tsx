@@ -19,6 +19,7 @@ interface TopicWizardDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     editingTopicId: number | null;
+    isPublished?: boolean;
     currentStep: number;
     setCurrentStep: (value: number | ((prev: number) => number)) => void;
     newTopicName: string;
@@ -50,6 +51,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         open,
         onOpenChange,
         editingTopicId,
+        isPublished,
         currentStep,
         setCurrentStep,
         newTopicName,
@@ -274,6 +276,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {currentStep === 2 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                {isPublished && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-300">
+                                        <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+                                        课题已发布，Excel 数据不可修改
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-between">
                                     <Label className="text-slate-300">上传总体数据（Excel）</Label>
                                     <div className="flex items-center gap-3">
@@ -296,33 +304,35 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </a>
                                     </div>
                                 </div>
-                                <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
-                                    <Upload className="w-10 h-10 mx-auto text-slate-600 mb-4" />
-                                    <p className="text-sm text-slate-400 mb-2">点击或拖拽上传 Excel 文件</p>
-                                    <p className="text-xs text-slate-500 mb-4">支持 .xlsx, .xls, .csv 格式，数据行数 1-100,000</p>
-                                    <Input
-                                        type="file"
-                                        data-testid="teacher-topic-excel-file"
-                                        accept=".xlsx,.xls,.csv"
-                                        className="hidden"
-                                        id="excel-upload"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) onExcelUpload(file);
-                                        }}
-                                    />
-                                    <div className="flex items-center justify-center gap-3">
-                                        <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100">
-                                            选择文件
-                                        </Button>
+                                {!isPublished && (
+                                    <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
+                                        <Upload className="w-10 h-10 mx-auto text-slate-600 mb-4" />
+                                        <p className="text-sm text-slate-400 mb-2">点击或拖拽上传 Excel 文件</p>
+                                        <p className="text-xs text-slate-500 mb-4">支持 .xlsx, .xls, .csv 格式，数据行数 1-100,000</p>
+                                        <Input
+                                            type="file"
+                                            data-testid="teacher-topic-excel-file"
+                                            accept=".xlsx,.xls,.csv"
+                                            className="hidden"
+                                            id="excel-upload"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) onExcelUpload(file);
+                                            }}
+                                        />
+                                        <div className="flex items-center justify-center gap-3">
+                                            <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100">
+                                                选择文件
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                                 {uploadingExcel && <div className="flex items-center gap-2 text-sm text-indigo-400"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                 {excelInfo && (
                                     <div className="bg-slate-950 border border-slate-800 rounded p-4 text-sm text-slate-300">
                                         <div className="flex items-center gap-2 text-emerald-400 mb-2">
                                             <CheckCircle2 className="w-4 h-4" />
-                                            上传成功
+                                            {isPublished ? "已上传数据" : "上传成功"}
                                         </div>
                                         <div>已解析：{excelInfo.rowCount} 行 / {excelInfo.colCount} 列</div>
                                     </div>
@@ -332,6 +342,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                                {isPublished && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-300">
+                                        <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+                                        课题已发布，字段映射不可修改
+                                    </div>
+                                )}
+                                {!isPublished && (
                                 <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
@@ -351,11 +368,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </Button>
                                     </div>
                                 </div>
+                                )}
 
                                 <div className="space-y-2">
                                     <Label className="text-slate-300">标识符（必选 1 个）</Label>
                                     <Select
                                         value={fieldMapping.identifier ?? ""}
+                                        disabled={isPublished}
                                         onValueChange={(v) =>
                                             setFieldMapping((prev) => ({
                                                 ...prev,
@@ -403,7 +422,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.stratified.includes(c);
                                                 const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
-                                                const disabled = fieldMapping.identifier === c || blockedAsIdentifier;
+                                                const disabled = isPublished || fieldMapping.identifier === c || blockedAsIdentifier;
                                                 const reason = fieldMapping.identifier === c
                                                     ? "该字段已作为标识符"
                                                     : blockedAsIdentifier
@@ -445,7 +464,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.numeric.includes(c);
                                                 const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
-                                                const disabled = fieldMapping.identifier === c || blockedAsIdentifier;
+                                                const disabled = isPublished || fieldMapping.identifier === c || blockedAsIdentifier;
                                                 const reason = fieldMapping.identifier === c
                                                     ? "该字段已作为标识符"
                                                     : blockedAsIdentifier
@@ -658,7 +677,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(3)} disabled={!excelInfo} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
                         )}
                         {currentStep === 3 && (
-                            <Button data-testid="teacher-topic-next" onClick={onSaveFieldMapping} disabled={!canProceedMapping} className="bg-indigo-600 hover:bg-indigo-700 text-white">保存并继续</Button>
+                            <Button data-testid="teacher-topic-next" onClick={isPublished ? () => setCurrentStep(4) : onSaveFieldMapping} disabled={!isPublished && !canProceedMapping} className="bg-indigo-600 hover:bg-indigo-700 text-white">{isPublished ? "下一步" : "保存并继续"}</Button>
                         )}
                         {currentStep === 4 && (
                             <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
