@@ -129,6 +129,8 @@ export function SubmissionPreview() {
             const nonRetryableCodes = new Set([
                 "TASK_DEADLINE",
                 "ALREADY_GRADED",
+                "ALREADY_SUBMITTED",
+                "REJECTED_NEED_RESET",
                 "INCOMPLETE",
                 "REPORT_TOO_SHORT",
                 "VERSION_CONFLICT",

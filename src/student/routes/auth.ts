@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, loginLog, student, systemConfig, userSession } from "../../db/schema";
 import {
@@ -230,10 +230,21 @@ const passwordRoutes: RouteDefinition = {
         const hashed = await Bun.password.hash(newPassword);
         await db.update(student).set({ password: hashed, isFirstLogin: 0 }).where(eq(student.id, s.id));
 
-        // Invalidate all existing sessions for this student to force re-login
-        await db.delete(userSession).where(
-            and(eq(userSession.userType, STUDENT_USER_TYPE), eq(userSession.userId, s.id))
-        );
+        // Invalidate other sessions but keep the current one (spec: "不强制重新登录")
+        const currentToken = getCookieValue(req, STUDENT_SESSION_COOKIE) ?? req.headers.get("x-student-session");
+        if (currentToken) {
+            await db.delete(userSession).where(
+                and(
+                    eq(userSession.userType, STUDENT_USER_TYPE),
+                    eq(userSession.userId, s.id),
+                    sql`${userSession.sessionToken} != ${currentToken}`
+                )
+            );
+        } else {
+            await db.delete(userSession).where(
+                and(eq(userSession.userType, STUDENT_USER_TYPE), eq(userSession.userId, s.id))
+            );
+        }
 
         return json({ success: true });
     },

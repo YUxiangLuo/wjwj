@@ -978,6 +978,7 @@ const submitRoutes: RouteDefinition = {
 
         if (exp.status === ExperimentStatus.SUBMITTED) return error("实验已提交，请勿重复提交", "ALREADY_SUBMITTED");
         if (exp.status === ExperimentStatus.GRADED) return error("实验已批改完成", "ALREADY_GRADED");
+        if (exp.status === ExperimentStatus.REJECTED) return error("实验已被驳回，请先重置后再提交", "REJECTED_NEED_RESET");
         if (exp.currentStage < 4) return error("请完成所有实验阶段后再提交", "INCOMPLETE");
 
         const questionnaireError = validateQuestionnaireForSubmit(exp.questionnaire);
@@ -1092,7 +1093,11 @@ const resetRoutes: RouteDefinition = {
         if (taskAccessError) return taskAccessError;
 
         const body = await parseBody<{ resetToStage: number; clearQuestionnaire?: boolean }>(req);
-        const resetToStage = Math.max(1, Math.min(4, Number(body.resetToStage) || 1));
+        let resetToStageInput = Number(body.resetToStage);
+        if (!Number.isFinite(resetToStageInput)) {
+            resetToStageInput = 1;
+        }
+        const resetToStage = Math.max(0, Math.min(4, resetToStageInput));
         const clearQuestionnaire = Boolean(body.clearQuestionnaire);
 
         const [exp] = await db
@@ -1132,6 +1137,11 @@ const resetRoutes: RouteDefinition = {
         };
 
         if (clearQuestionnaire) updates.questionnaire = null;
+
+        if (resetToStage <= 0) {
+            updates.questionnaire = null;
+            updates.stage1CompletedAt = null;
+        }
 
         if (resetToStage <= 1) {
             updates.samplePlan = null;
