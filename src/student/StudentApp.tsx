@@ -191,6 +191,10 @@ function StudentAppContent() {
             setPasswordError("新密码不能包含学号");
             return;
         }
+        if (passwordForm.newPassword === passwordForm.currentPassword) {
+            setPasswordError("新密码不能与当前密码相同");
+            return;
+        }
         if (!passwordRules.matched) {
             setPasswordError("两次输入的新密码不一致");
             return;

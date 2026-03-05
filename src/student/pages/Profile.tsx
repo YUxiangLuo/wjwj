@@ -56,6 +56,10 @@ export function Profile() {
             setError("新密码不能包含学号");
             return;
         }
+        if (passwordForm.newPassword === passwordForm.currentPassword) {
+            setError("新密码不能与当前密码相同");
+            return;
+        }
         if (!passwordRules.matched) {
             setError("两次输入的新密码不一致");
             return;
