@@ -234,7 +234,7 @@ function StudentAppContent() {
                                 L
                             </div>
                             <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-slate-100 group-hover:text-slate-100 transition-colors">统计学虚拟仿真实验室</h1>
+                                <h1 className="text-lg font-bold text-slate-100 group-hover:text-slate-200 transition-colors">统计学虚拟仿真实验室</h1>
                                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Learning Lab</p>
                             </div>
                         </Link>
