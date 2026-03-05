@@ -90,6 +90,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const serverSnapshotRef = useRef("");
     const saveInFlightRef = useRef(false);
     const reconnectSyncingRef = useRef(false);
+    const draftResolvedRef = useRef(false);
 
     useEffect(() => {
         async function loadRecommendQuestions() {
@@ -163,26 +164,34 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         if (!draftKey) return;
         try {
             const raw = localStorage.getItem(draftKey);
-            if (!raw) return;
+            if (!raw) { draftResolvedRef.current = true; return; }
             const draft = JSON.parse(raw) as QuestionnaireData;
+            // Skip empty/trivial drafts
+            const hasDraftContent = Boolean(draft.title || (draft.questions && draft.questions.length > 0));
+            if (!hasDraftContent) { draftResolvedRef.current = true; return; }
             const hasServerData = Boolean(initialData?.title || initialData?.questions?.length);
             if (hasServerData) {
-                const different = JSON.stringify(draft) !== JSON.stringify(initialData);
+                const serverNorm = { title: initialData?.title ?? "", welcomeText: initialData?.welcomeText ?? "", endingText: initialData?.endingText ?? "", questions: initialData?.questions ?? [] };
+                const different = JSON.stringify(draft) !== JSON.stringify(serverNorm);
                 if (different) {
                     setPendingDraft(draft);
                     setRestoreDraftOpen(true);
+                } else {
+                    draftResolvedRef.current = true;
                 }
             } else {
                 setPendingDraft(draft);
                 setRestoreDraftOpen(true);
             }
         } catch {
+            draftResolvedRef.current = true;
             // ignore invalid draft
         }
     }, [draftKey, initialData]);
 
+    // Save draft to localStorage (guard: only after draft recovery dialog resolved)
     useEffect(() => {
-        if (!draftKey) return;
+        if (!draftKey || !draftResolvedRef.current) return;
         try {
             localStorage.setItem(draftKey, JSON.stringify(buildQuestionnaireData()));
         } catch {
@@ -190,6 +199,11 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         }
     }, [draftKey, buildQuestionnaireData]);
 
+    // Keep a ref to the latest saveData so the 30-second interval doesn't reset on every keystroke
+    const saveDataRef = useRef(saveData);
+    useEffect(() => { saveDataRef.current = saveData; }, [saveData]);
+
+    // Debounce: save 3 seconds after user stops editing
     useEffect(() => {
         const debounceTimer = window.setTimeout(() => {
             void saveData();
@@ -200,15 +214,16 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         };
     }, [saveData]);
 
+    // Fixed 30-second interval: uses ref so the interval is never reset by content changes
     useEffect(() => {
         const intervalTimer = window.setInterval(() => {
-            void saveData();
+            void saveDataRef.current();
         }, 30 * 1000);
 
         return () => {
             window.clearInterval(intervalTimer);
         };
-    }, [saveData]);
+    }, []);
 
     useEffect(() => {
         const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -660,6 +675,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         await saveData();
         // Move to next stage
         await saveExperiment({ currentStage: 2 });
+        // Clear localStorage draft after successful stage completion
+        if (draftKey) localStorage.removeItem(draftKey);
         onNext();
     };
 
@@ -1401,6 +1418,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                             onClick={() => {
                                 if (draftKey) localStorage.removeItem(draftKey);
+                                draftResolvedRef.current = true;
                                 setRestoreDraftOpen(false);
                             }}
                         >
@@ -1414,6 +1432,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 setWelcomeText(pendingDraft.welcomeText ?? "");
                                 setEndingText(pendingDraft.endingText ?? "");
                                 setQuestions(pendingDraft.questions ?? []);
+                                draftResolvedRef.current = true;
                                 setRestoreDraftOpen(false);
                             }}
                         >

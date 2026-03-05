@@ -372,11 +372,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [syncConflictOpen, setSyncConflictOpen] = useState(false);
     const [serverConflictDraft, setServerConflictDraft] = useState<string | null>(null);
     const [localConflictDraft, setLocalConflictDraft] = useState<string | null>(null);
+    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
     const draftKey = experiment?.taskId ? `student_report_draft_${experiment.taskId}` : null;
     const serverSnapshotRef = useRef("");
     const saveInFlightRef = useRef(false);
     const reconnectSyncingRef = useRef(false);
+    const draftResolvedRef = useRef(false);
 
     const minLength = 100;
     const maxLength = 5000;
@@ -481,9 +483,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     useEffect(() => {
         if (!draftKey) return;
         const raw = localStorage.getItem(draftKey);
-        if (!raw) return;
+        if (!raw) { draftResolvedRef.current = true; return; }
+        // Skip empty/trivial drafts
+        const plainLen = getRichTextPlainLength(raw);
+        if (plainLen === 0) { draftResolvedRef.current = true; return; }
         const hasServerData = Boolean(experiment?.reportContent);
-        if (hasServerData && raw === experiment?.reportContent) return;
+        if (hasServerData && raw === experiment?.reportContent) { draftResolvedRef.current = true; return; }
         setPendingDraft(raw);
         setRestoreDraftOpen(true);
     }, [draftKey, experiment?.reportContent]);
@@ -498,6 +503,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             const success = await saveExperiment({ reportContent: snapshot });
             if (success) {
                 serverSnapshotRef.current = snapshot;
+                setLastSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
                 setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
             }
         } finally {
@@ -505,8 +511,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         }
     }, [reportContent, saveExperiment]);
 
+    // Save draft to localStorage (guard: only after draft recovery dialog resolved)
     useEffect(() => {
-        if (!draftKey) return;
+        if (!draftKey || !draftResolvedRef.current) return;
         try {
             localStorage.setItem(draftKey, reportContent);
         } catch {
@@ -514,6 +521,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         }
     }, [draftKey, reportContent]);
 
+    // Keep a ref to the latest saveReport so the 30-second interval doesn't reset on every keystroke
+    const saveReportRef = useRef(saveReport);
+    useEffect(() => { saveReportRef.current = saveReport; }, [saveReport]);
+
+    // Debounce: save 3 seconds after user stops editing
     useEffect(() => {
         const debounceTimer = window.setTimeout(() => {
             void saveReport();
@@ -524,15 +536,16 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         };
     }, [saveReport]);
 
+    // Fixed 30-second interval: uses ref so the interval is never reset by content changes
     useEffect(() => {
         const intervalTimer = window.setInterval(() => {
-            void saveReport();
+            void saveReportRef.current();
         }, 30 * 1000);
 
         return () => {
             window.clearInterval(intervalTimer);
         };
-    }, [saveReport]);
+    }, []);
 
     const syncAfterReconnect = useCallback(async () => {
         if (!experiment?.taskId || reconnectSyncingRef.current) return;
@@ -696,6 +709,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         try {
             // Save final report content before preview
             await saveReport();
+            // Clear localStorage draft after successful submission
+            if (draftKey) localStorage.removeItem(draftKey);
             onSubmit();
         } finally {
             setIsSubmitting(false);
@@ -992,10 +1007,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </Card>
 
             {/* Navigation */}
-            <div className="flex justify-between pt-6 border-t border-slate-800/50">
+            <div className="flex justify-between items-center pt-6 border-t border-slate-800/50">
                 <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一阶段
                 </Button>
+                {lastSavedAt && (
+                    <span className="text-xs text-slate-500">已自动保存于 {lastSavedAt}</span>
+                )}
                 <Button onClick={() => setConfirmSubmitOpen(true)} disabled={!isValidLength} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
                     <Send className="w-4 h-4 mr-2" />
                     完成并预览报告
@@ -1099,6 +1117,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                             onClick={() => {
                                 if (draftKey) localStorage.removeItem(draftKey);
+                                draftResolvedRef.current = true;
                                 setRestoreDraftOpen(false);
                             }}
                         >
@@ -1110,6 +1129,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 if (pendingDraft !== null) {
                                     setReportContent(pendingDraft);
                                 }
+                                draftResolvedRef.current = true;
                                 setRestoreDraftOpen(false);
                             }}
                         >
