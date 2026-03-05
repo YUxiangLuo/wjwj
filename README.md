@@ -93,11 +93,9 @@ bun dev
 - 教师端：`http://127.0.0.1:3000/teacher`
 - 管理员端：`http://127.0.0.1:3000/admin`
 
-## 测试分层说明
+## 测试说明
 
 - 单元测试：`bun test` / `bun run test:unit`
-- E2E 测试：`bun run test:e2e` 或按端执行 `bun run test:e2e:admin`、`bun run test:e2e:teacher`
-- E2E 文件统一命名为 `*.e2e.ts`，并由 `playwright.config.ts` 的 `testMatch` 限定收集，避免被 `bun test` 误扫
 
 ## 常用脚本
 
@@ -107,10 +105,7 @@ bun start               # 生产模式启动
 
 bun test                # 运行单元测试（src + env.test.ts）
 bun run test:watch      # 单元测试监听模式
-bun run test:e2e        # 运行全部 E2E 测试
-bun run test:e2e:admin  # 仅运行管理员端 E2E 测试
-bun run test:e2e:teacher # 仅运行教师端 E2E 测试（独立种子）
-bun run test:all        # 先单元测试，再运行全部 E2E
+bun run test:all        # 运行全部测试
 
 bun run db:generate     # 生成迁移
 bun run db:migrate      # 执行迁移脚本
@@ -119,8 +114,6 @@ bun run db:studio       # 打开 Drizzle Studio
 bun run db:drop         # 删除数据库对象
 bun run db:check        # 检查数据库差异
 bun run db:reset        # 清空并重建数据库 + 写入种子
-bun run db:reset:e2e:admin   # Admin E2E 数据初始化
-bun run db:reset:e2e:teacher # Teacher E2E 数据初始化
 ```
 
 ## 默认演示账号（执行 seed 后）
