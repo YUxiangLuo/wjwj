@@ -342,6 +342,64 @@ export function ExperimentLayout() {
                     </div>
                 </div>
 
+                {/* Compact horizontal progress for small screens (< lg) */}
+                <div className="flex lg:hidden items-center gap-1.5 px-1 py-2 rounded-xl border border-slate-800 bg-slate-900/80 backdrop-blur">
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider shrink-0 pl-1 select-none">进度</span>
+                    <div className="flex items-center gap-1 flex-1 min-w-0">
+                        {stageNames.map((stage, index) => {
+                            const stageNum = index + 1;
+                            const isCompleted = stageNum < currentStage;
+                            const isCurrent = stageNum === currentStage;
+                            const Icon = [FileText, Ruler, Play, BarChart3][index] ?? FileText;
+                            const isLast = index === stageNames.length - 1;
+
+                            return (
+                                <div key={stage} className="flex items-center">
+                                    <button
+                                        onClick={() => {
+                                            if (stageNum < currentStage) {
+                                                setTargetStage(stageNum);
+                                                setConfirmRollbackOpen(true);
+                                            }
+                                        }}
+                                        disabled={stageNum >= currentStage}
+                                        title={`${stageNum}. ${stage}`}
+                                        className="relative disabled:cursor-default group flex items-center gap-1"
+                                    >
+                                        <span
+                                            className={`flex h-7 w-7 items-center justify-center rounded-lg border transition-all duration-300 ${isCurrent
+                                                ? "border-indigo-500 bg-indigo-600 text-white shadow shadow-indigo-500/30 scale-105"
+                                                : isCompleted
+                                                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500/20"
+                                                    : "border-slate-800 bg-slate-900 text-slate-600"
+                                                }`}
+                                        >
+                                            <Icon className="w-3.5 h-3.5" />
+                                            {isCompleted && (
+                                                <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 border-2 border-slate-900 p-[1px] text-white">
+                                                    <CheckCircle2 className="h-2 w-2" />
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span className={`text-[10px] font-medium tracking-tight whitespace-nowrap transition-colors select-none hidden sm:inline ${isCurrent ? "text-indigo-300" :
+                                            isCompleted ? "text-emerald-500/70" :
+                                                "text-slate-600"
+                                            }`}>
+                                            {stage}
+                                        </span>
+                                    </button>
+                                    {!isLast && (
+                                        <div className={`w-3 sm:w-5 h-0.5 rounded-full mx-0.5 transition-colors ${stageNum < currentStage ? "bg-emerald-500/40" : "bg-slate-800"}`} />
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <span className="text-xs font-bold text-indigo-400 font-mono shrink-0 pr-1">
+                        {Math.round((currentStage / stageNames.length) * 100)}%
+                    </span>
+                </div>
+
                 {/* Stage Content */}
                 <div className="min-h-[500px] animate-in slide-in-from-bottom-4 duration-500">
                     {renderStage()}
