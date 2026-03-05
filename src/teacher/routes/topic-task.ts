@@ -620,15 +620,8 @@ const taskProgressRoutes: RouteDefinition = {
                 experimentId: experiment.id,
                 currentStage: experiment.currentStage,
                 experimentStatus: experiment.status,
-                submissionStatus: sql<number | null>`(
-                    SELECT s.status
-                    FROM submission s
-                    WHERE s.experiment_id = ${experiment.id}
-                    ORDER BY s.submitted_at DESC, s.id DESC
-                    LIMIT 1
-                )`,
-                submissionId: sql<number | null>`(
-                    SELECT s.id
+                latestSubmission: sql<string | null>`(
+                    SELECT JSON_OBJECT('id', s.id, 'status', s.status)
                     FROM submission s
                     WHERE s.experiment_id = ${experiment.id}
                     ORDER BY s.submitted_at DESC, s.id DESC
@@ -645,14 +638,15 @@ const taskProgressRoutes: RouteDefinition = {
         const studentList = students.map((s) => {
             let status = "not_started";
             let stage: number | null = null;
+            const latestSub = s.latestSubmission ? JSON.parse(s.latestSubmission) as { id: number; status: number } : null;
 
             if (!s.experimentId) {
                 status = "not_started";
                 counts.not_started++;
-            } else if (s.submissionStatus === 2) {
+            } else if (latestSub?.status === 2) {
                 status = "graded";
                 counts.graded++;
-            } else if (s.submissionStatus === 3) {
+            } else if (latestSub?.status === 3) {
                 status = "rejected";
                 counts.rejected++;
             } else if (s.experimentStatus === 1) {
@@ -673,7 +667,7 @@ const taskProgressRoutes: RouteDefinition = {
                 status,
                 stage,
                 lastActivity: s.lastActivity,
-                submissionId: s.submissionId ? Number(s.submissionId) : null,
+                submissionId: latestSub?.id ?? null,
             };
         });
 

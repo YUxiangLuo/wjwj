@@ -27,15 +27,20 @@ export function GradeExport() {
 
     async function loadData() {
         setLoading(true);
-        const [classesRes, topicsRes, previewRes] = await Promise.all([
-            teacherApi.getClasses(),
-            teacherApi.getTopics(),
-            teacherApi.getGradeExportPreview({}),
-        ]);
-        if (classesRes.success && classesRes.data) setClasses(classesRes.data);
-        if (topicsRes.success && topicsRes.data) setTopics(topicsRes.data);
-        if (previewRes.success && previewRes.data) setAllPreview(previewRes.data);
-        setLoading(false);
+        try {
+            const [classesRes, topicsRes, previewRes] = await Promise.all([
+                teacherApi.getClasses(),
+                teacherApi.getTopics(),
+                teacherApi.getGradeExportPreview({}),
+            ]);
+            if (classesRes.success && classesRes.data) setClasses(classesRes.data);
+            if (topicsRes.success && topicsRes.data) setTopics(topicsRes.data);
+            if (previewRes.success && previewRes.data) setAllPreview(previewRes.data);
+        } catch {
+            toast.error("加载成绩导出数据失败");
+        } finally {
+            setLoading(false);
+        }
     }
 
     const semesters = useMemo(() => {
@@ -72,7 +77,9 @@ export function GradeExport() {
         return result;
     }, [allPreview, semesterFilter, filteredClasses, classFilter, topicFilter]);
 
-    const selectedCount = selectedTaskIds.filter(id => preview.some(p => p.taskId === id)).length;
+    const visibleTaskIds = useMemo(() => new Set(preview.map(p => p.taskId)), [preview]);
+
+    const selectedCount = selectedTaskIds.filter(id => visibleTaskIds.has(id)).length;
 
     const summary = useMemo(() => {
         const totalTasks = preview.length;
@@ -107,7 +114,6 @@ export function GradeExport() {
     }
 
     async function exportExcel(taskId?: number) {
-        const visibleTaskIds = new Set(preview.map(p => p.taskId));
         const ids = taskId ? [taskId] : selectedTaskIds.filter(id => visibleTaskIds.has(id));
         if (ids.length === 0) return;
 
@@ -221,7 +227,7 @@ export function GradeExport() {
                             <button
                                 data-testid="teacher-export-class-filter"
                                 aria-expanded={classMenuOpen}
-                                aria-haspopup="listbox"
+                                aria-haspopup="menu"
                                 className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 h-10 text-sm text-slate-200 sm:w-44 w-full hover:border-slate-700"
                                 onClick={() => { setClassMenuOpen(prev => !prev); setTopicMenuOpen(false); }}
                             >
@@ -233,15 +239,16 @@ export function GradeExport() {
                             {classMenuOpen && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setClassMenuOpen(false)} />
-                                    <div role="listbox" className="absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
+                                    <div role="menu" className="absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
                                         <button
+                                            role="menuitem"
                                             className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800"
                                             onClick={() => { setClassFilter(new Set()); setSelectedTaskIds([]); }}
                                         >
                                             清除选择
                                         </button>
                                         {filteredClasses.map(cls => (
-                                            <label key={cls.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
+                                            <label key={cls.id} role="menuitemcheckbox" aria-checked={classFilter.has(cls.id)} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
@@ -261,7 +268,7 @@ export function GradeExport() {
                             <button
                                 data-testid="teacher-export-topic-filter"
                                 aria-expanded={topicMenuOpen}
-                                aria-haspopup="listbox"
+                                aria-haspopup="menu"
                                 className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 h-10 text-sm text-slate-200 sm:w-44 w-full hover:border-slate-700"
                                 onClick={() => { setTopicMenuOpen(prev => !prev); setClassMenuOpen(false); }}
                             >
@@ -273,15 +280,16 @@ export function GradeExport() {
                             {topicMenuOpen && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setTopicMenuOpen(false)} />
-                                    <div role="listbox" className="absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
+                                    <div role="menu" className="absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
                                         <button
+                                            role="menuitem"
                                             className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800"
                                             onClick={() => { setTopicFilter(new Set()); setSelectedTaskIds([]); }}
                                         >
                                             清除选择
                                         </button>
                                         {topics.map(t => (
-                                            <label key={t.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
+                                            <label key={t.id} role="menuitemcheckbox" aria-checked={topicFilter.has(t.id)} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"

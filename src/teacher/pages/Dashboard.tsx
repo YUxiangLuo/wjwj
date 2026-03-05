@@ -47,7 +47,14 @@ function StatCard({ icon: Icon, label, value, color, loading, to }: {
     );
 
     if (to) {
-        return <Link to={to}>{content}</Link>;
+        return (
+            <Link
+                to={to}
+                className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-xl"
+            >
+                {content}
+            </Link>
+        );
     }
     return content;
 }
