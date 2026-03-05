@@ -191,7 +191,7 @@ export function SubmissionPreview() {
     return (
         <div className="space-y-6 max-w-4xl mx-auto">
             <Link to={`/task/${task.id}/experiment`}>
-                <Button variant="ghost" className="gap-2 text-slate-400 hover:text-white hover:bg-slate-800">
+                <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                     <ArrowLeft className="w-4 h-4" />
                     返回修改
                 </Button>
@@ -200,7 +200,7 @@ export function SubmissionPreview() {
             <Card className="border-indigo-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
                 <CardHeader className="border-b border-slate-700/30 pb-4">
-                    <CardTitle className="flex items-center gap-3 text-2xl text-white">
+                    <CardTitle className="flex items-center gap-3 text-2xl text-slate-100">
                         <FileText className="w-6 h-6 text-indigo-400" />
                         提交前预览
                     </CardTitle>
@@ -228,7 +228,7 @@ export function SubmissionPreview() {
                         <TabsContent value="report" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
                             <div className="bg-white/5 rounded-xl p-6 border border-white/10 min-h-[300px] space-y-5">
                                 <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
-                                    <h3 className="text-base font-semibold text-white mb-3">阶段一：问卷设计</h3>
+                                    <h3 className="text-base font-semibold text-slate-100 mb-3">阶段一：问卷设计</h3>
                                     <div className="text-sm text-slate-300 space-y-1">
                                         <p>问卷标题：{questionnaire?.title || "未填写"}</p>
                                         <p>题目数量：{questionnaireQuestions.length} 题</p>
@@ -236,7 +236,7 @@ export function SubmissionPreview() {
                                 </div>
 
                                 <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
-                                    <h3 className="text-base font-semibold text-white mb-3">阶段二：样本量规划</h3>
+                                    <h3 className="text-base font-semibold text-slate-100 mb-3">阶段二：样本量规划</h3>
                                     {samplePlan ? (
                                         <div className="text-sm text-slate-300 space-y-1">
                                             <p>置信水平：{samplePlan.confidenceLevel}%</p>
@@ -250,7 +250,7 @@ export function SubmissionPreview() {
                                 </div>
 
                                 <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
-                                    <h3 className="text-base font-semibold text-white mb-3">阶段三：抽样执行</h3>
+                                    <h3 className="text-base font-semibold text-slate-100 mb-3">阶段三：抽样执行</h3>
                                     <div className="text-sm text-slate-300 space-y-1">
                                         <p>简单随机抽样：{samplingResults?.simple?.completed ? `已完成（${samplingResults.simple.sampleCount} 样本）` : "未完成"}</p>
                                         <p>系统抽样：{samplingResults?.systematic?.completed ? `已完成（${samplingResults.systematic.sampleCount} 样本）` : "未完成"}</p>
@@ -259,7 +259,7 @@ export function SubmissionPreview() {
                                 </div>
 
                                 <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
-                                    <h3 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                                    <h3 className="text-base font-semibold text-slate-100 mb-3 flex items-center gap-2">
                                         <FileText className="w-4 h-4 text-emerald-400" />
                                         阶段四：分析报告
                                     </h3>
@@ -282,7 +282,7 @@ export function SubmissionPreview() {
                                 ) : (
                                     <>
                                         <div className="mb-6 pb-4 border-b border-white/10">
-                                            <div className="text-xl font-bold text-white mb-2">{questionnaire.title || "未命名问卷"}</div>
+                                            <div className="text-xl font-bold text-slate-100 mb-2">{questionnaire.title || "未命名问卷"}</div>
                                             <RichTextContent
                                                 html={questionnaire.welcomeText ?? ""}
                                                 className="text-sm text-slate-400 bg-slate-900/30 p-3 rounded-lg border border-white/5"
@@ -354,7 +354,7 @@ export function SubmissionPreview() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             onClick={handleSubmit}

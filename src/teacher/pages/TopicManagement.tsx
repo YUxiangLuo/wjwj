@@ -468,7 +468,7 @@ export function TopicManagement() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">
+                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
                             取消
                         </AlertDialogCancel>
                         <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}>

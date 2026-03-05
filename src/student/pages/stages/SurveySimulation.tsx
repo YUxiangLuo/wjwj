@@ -146,7 +146,7 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
             </Card>
 
             <div className="flex justify-between pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一阶段
                 </Button>
                 <Button onClick={onSubmit} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
@@ -182,7 +182,7 @@ function BarChart({ data }: { data: Array<{ label: string; value: number }> }) {
                                 className="w-full rounded-t-lg bg-gradient-to-t from-indigo-600 to-teal-400 opacity-80 group-hover:opacity-100 transition-opacity"
                                 style={{ height: `${Math.round((item.value / max) * chartHeight)}px` }}
                             />
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-slate-100 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                                 {item.value}%
                             </div>
                         </div>

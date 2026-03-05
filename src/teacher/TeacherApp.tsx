@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock, Sun, Moon
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import "./teacher.css";
 import { authApi, teacherApi, type TeacherNotification, type TeacherUser } from "./api-client";
+import { useTheme } from "@/components/ThemeProvider";
 
 import { Dashboard } from "./pages/Dashboard";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -53,6 +54,7 @@ const pageTitles: Record<string, string> = {
 export function TeacherApp() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { theme, toggleTheme } = useTheme();
     const currentPath = location.pathname;
     const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
 
@@ -377,7 +379,7 @@ export function TeacherApp() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="lg:hidden text-slate-400 hover:text-white"
+                            className="lg:hidden text-slate-400 hover:text-slate-100"
                             onClick={() => setIsSidebarOpen(true)}
                         >
                             <Menu className="w-5 h-5" />
@@ -408,6 +410,17 @@ export function TeacherApp() {
                             {unreadCount > 0 && (
                                 <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-slate-900"></span>
                             )}
+                        </Button>
+
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                            onClick={toggleTheme}
+                            title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
+                            aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
+                        >
+                            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                         </Button>
 
                         <div className="flex items-center gap-1">

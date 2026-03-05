@@ -205,7 +205,7 @@ function TaskCard({ task }: TaskCardProps) {
                     <div className="flex gap-2">
                         <Link to={`/task/${task.id}`} className={`flex-1 ${disabled ? "pointer-events-none opacity-50" : ""}`}>
                             <Button
-                                className={`w-full ${action.variant === 'default' ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20' : ''} ${action.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''} ${action.variant === 'outline' ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white' : ''}`}
+                                className={`w-full ${action.variant === 'default' ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20' : ''} ${action.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''} ${action.variant === 'outline' ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100' : ''}`}
                                 variant="ghost"
                                 disabled={disabled}
                             >
@@ -215,7 +215,7 @@ function TaskCard({ task }: TaskCardProps) {
                         </Link>
                         {showHistory && (
                             <Link to={`/task/${task.id}/history`}>
-                                <Button variant="outline" size="icon" className="border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white" title="历史记录">
+                                <Button variant="outline" size="icon" className="border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-100" title="历史记录">
                                     <Clock className="w-4 h-4" />
                                 </Button>
                             </Link>
@@ -329,7 +329,7 @@ export function TaskHall() {
                             <Sparkles className="h-3 w-3" />
                             <span>今天也要保持好奇心</span>
                         </div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight">
+                        <h2 className="text-3xl md:text-4xl font-bold text-slate-100 tracking-tight leading-tight">
                             欢迎回来，<br className="hidden md:block" />继续你的 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">抽样探索</span>
                         </h2>
                         <p className="text-slate-400 text-lg leading-relaxed">
@@ -350,7 +350,7 @@ export function TaskHall() {
                             </Button>
                         )}
                         <Link to="/">
-                            <Button variant="outline" size="lg" className="rounded-full px-8 border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-white w-full sm:w-auto h-12 text-base backdrop-blur-sm">
+                            <Button variant="outline" size="lg" className="rounded-full px-8 border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-slate-100 w-full sm:w-auto h-12 text-base backdrop-blur-sm">
                                 <BookOpen className="w-4 h-4 mr-2" />
                                 浏览任务
                             </Button>
@@ -511,7 +511,7 @@ export function TaskHall() {
                             {selectedAnnouncement ? (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div>
-                                        <h3 className="text-lg font-bold text-white leading-tight">{selectedAnnouncement.title}</h3>
+                                        <h3 className="text-lg font-bold text-slate-100 leading-tight">{selectedAnnouncement.title}</h3>
                                         <div className="flex items-center gap-2 mt-2 text-xs text-slate-500 font-mono bg-slate-950/50 inline-flex px-2 py-1 rounded">
                                             <Clock className="w-3 h-3" />
                                             {new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN")}

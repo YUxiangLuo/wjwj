@@ -165,7 +165,7 @@ export function StudentManagement() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center gap-3">
                 <Link to="/class">
-                    <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-slate-800">
+                    <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                         <ArrowLeft className="w-4 h-4 mr-1" />
                         返回
                     </Button>
@@ -233,7 +233,7 @@ export function StudentManagement() {
                                 className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
-                        <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-white">
+                        <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
                             <Upload className="w-4 h-4 mr-2" />
                             批量导入
                         </Button>
@@ -293,7 +293,7 @@ export function StudentManagement() {
                                             <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                 <RotateCcw className="w-4 h-4" />
                                             </Button>
-                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" : "text-slate-400 hover:text-white"}`}>
+                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" : "text-slate-400 hover:text-slate-100"}`}>
                                                 <UserX className={`w-4 h-4 ${student.status === 0 ? "text-slate-500" : ""}`} />
                                             </Button>
                                             <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" title="删除" onClick={() => handleDelete(student)}>

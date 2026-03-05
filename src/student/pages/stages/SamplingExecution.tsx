@@ -417,7 +417,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     )}
                                                 </div>
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={executeSimple} disabled={executing !== null} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white w-full">
+                                            <Button variant="outline" size="sm" onClick={executeSimple} disabled={executing !== null} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100 w-full">
                                                 <RefreshCw className="w-4 h-4 mr-2" />
                                                 重新抽样
                                             </Button>
@@ -529,7 +529,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
                                                     <p className="text-emerald-200/70 text-sm mt-1">K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本{executionTimes.systematic !== null && `，耗时 ${executionTimes.systematic} ms`}</p>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid} className="ml-auto text-slate-400 hover:text-white hover:bg-slate-800">
+                                                <Button variant="ghost" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid} className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
                                                 </Button>
                                             </div>
@@ -612,10 +612,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         </div>
 
                                         <div className="flex gap-2 mb-0.5">
-                                            <Button variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
+                                            <Button variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
                                                 按比例分配
                                             </Button>
-                                            <Button variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white" onClick={applyEqualAllocation} disabled={layers.length === 0}>
+                                            <Button variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={applyEqualAllocation} disabled={layers.length === 0}>
                                                 等额分配
                                             </Button>
                                         </div>
@@ -697,7 +697,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
                                                     <p className="text-emerald-200/70 text-sm mt-1">按 {STRATIFY_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified !== null && `，耗时 ${executionTimes.stratified} ms`}</p>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} className="ml-auto text-slate-400 hover:text-white hover:bg-slate-800">
+                                                <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
                                                 </Button>
                                             </div>
@@ -732,7 +732,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
             {/* Navigation */}
             <div className="flex justify-between pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一步
                 </Button>
                 <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} className={allCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-800 text-slate-500"}>
@@ -759,7 +759,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmNext} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

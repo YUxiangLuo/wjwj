@@ -281,7 +281,7 @@ export function Dashboard() {
                 <Card className="xl:col-span-2 border-slate-800 bg-slate-900 shadow-lg shadow-black/20">
                     <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                         <CardTitle className="text-lg text-slate-100">最近动态</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-white">
+                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
                             <Link to="/announcement">查看全部</Link>
                         </Button>
                     </CardHeader>
@@ -292,7 +292,7 @@ export function Dashboard() {
                             announcements.map((item) => (
                                 <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-800/50 hover:border-slate-700 transition-all group">
                                     <div>
-                                        <div className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">{item.title}</div>
+                                        <div className="text-sm font-medium text-slate-200 group-hover:text-slate-100 transition-colors">{item.title}</div>
                                         <div className="text-xs text-slate-500 mt-1">发布于 {formatDate(item.createdAt)}</div>
                                     </div>
                                     <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 border border-slate-800 px-2 py-0.5 rounded bg-slate-900">公告</span>
@@ -311,7 +311,7 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent className="space-y-3 pt-6">
                         {quickActions.map((action) => (
-                            <Button key={action.to} variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all" asChild>
+                            <Button key={action.to} variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-slate-100 hover:border-slate-600 transition-all" asChild>
                                 <Link to={action.to}>
                                     {action.label}
                                     <ArrowUpRight className="w-4 h-4 opacity-50" />

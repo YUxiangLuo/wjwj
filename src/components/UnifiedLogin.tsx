@@ -68,11 +68,11 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
         </div>
 
-        <div className="relative z-20 flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
+        <div className="relative z-20 flex items-center gap-3 text-xl font-semibold tracking-tight text-slate-100">
           <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
             <BarChart3 className="w-6 h-6 text-white" />
           </div>
-          <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-100 to-slate-400">
             统计学虚拟仿真实验平台
           </span>
         </div>
@@ -81,7 +81,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
           <div className="relative">
             <div className="absolute -top-10 -left-10 w-24 h-24 bg-indigo-500/30 rounded-full blur-3xl" />
             <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-sky-500/20 rounded-full blur-3xl" />
-            <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-white mb-6">
+            <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-slate-100 mb-6">
               探索数据背后的<br />
               <span className="text-indigo-400">数学真理</span>
             </h1>
@@ -131,7 +131,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
 
         <div className="w-full max-w-md space-y-10">
           <div className="flex flex-col space-y-3 text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-white">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-100">
               欢迎回来
             </h2>
             <p className="text-base text-slate-400">
@@ -141,8 +141,8 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
 
           <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-3 bg-slate-900 border border-slate-800 p-1 h-12 rounded-xl">
-              <TabsTrigger value="student" className="rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 hover:text-slate-200 transition-all">学生</TabsTrigger>
-              <TabsTrigger value="teacher" className="rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 hover:text-slate-200 transition-all">教师</TabsTrigger>
+              <TabsTrigger value="student" className="rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100 text-slate-400 hover:text-slate-200 transition-all">学生</TabsTrigger>
+              <TabsTrigger value="teacher" className="rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100 text-slate-400 hover:text-slate-200 transition-all">教师</TabsTrigger>
               <TabsTrigger value="admin" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-400 hover:text-slate-200 transition-all">管理员</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -158,7 +158,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
-                  className="h-12 bg-slate-900 border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-white placeholder:text-slate-600 rounded-xl transition-all"
+                  className="h-12 bg-slate-900 border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-slate-100 placeholder:text-slate-600 rounded-xl transition-all"
                 />
               </div>
               <div className="space-y-2.5">
@@ -176,7 +176,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
-                  className="h-12 bg-slate-900 border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-white placeholder:text-slate-600 rounded-xl transition-all"
+                  className="h-12 bg-slate-900 border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-slate-100 placeholder:text-slate-600 rounded-xl transition-all"
                 />
               </div>
             </div>

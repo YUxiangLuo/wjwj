@@ -246,7 +246,7 @@ export function GradingDetail() {
         <div className="flex flex-col h-full overflow-hidden bg-slate-950 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex items-center gap-4 px-6 h-16 bg-slate-900 border-b border-slate-800 shrink-0">
-                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-slate-800" onClick={() => navigate("/grading")}>
+                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-100 hover:bg-slate-800" onClick={() => navigate("/grading")}>
                     <ArrowLeft className="w-4 h-4 mr-1" />
                     返回列表
                 </Button>
@@ -312,13 +312,13 @@ export function GradingDetail() {
                                     {data.reportPdfPath && (
                                         <div className="flex items-center gap-2">
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/report`} target="_blank" rel="noreferrer">
-                                                <Button variant="outline" size="sm" className="gap-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700">
+                                                <Button variant="outline" size="sm" className="gap-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-700">
                                                     <ExternalLink className="w-4 h-4" />
                                                     预览
                                                 </Button>
                                             </a>
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/report`} download>
-                                                <Button variant="outline" size="sm" className="gap-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700">
+                                                <Button variant="outline" size="sm" className="gap-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-700">
                                                     <Download className="w-4 h-4" />
                                                     下载
                                                 </Button>
@@ -349,13 +349,13 @@ export function GradingDetail() {
                                     {data.questionnairePdfPath && (
                                         <div className="flex items-center gap-2">
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/questionnaire`} target="_blank" rel="noreferrer">
-                                                <Button variant="outline" size="sm" className="gap-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700">
+                                                <Button variant="outline" size="sm" className="gap-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-700">
                                                     <ExternalLink className="w-4 h-4" />
                                                     预览
                                                 </Button>
                                             </a>
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/questionnaire`} download>
-                                                <Button variant="outline" size="sm" className="gap-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700">
+                                                <Button variant="outline" size="sm" className="gap-2 border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-700">
                                                     <Download className="w-4 h-4" />
                                                     下载
                                                 </Button>
@@ -530,7 +530,7 @@ export function GradingDetail() {
                         {data.status === 1 && !isReadOnly && (
                             <>
                                 <div className="flex gap-2">
-                                    <Button data-testid="teacher-grading-save-draft" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-white hover:bg-slate-800 h-11" onClick={handleSaveDraft} disabled={saving || savingDraft}>
+                                    <Button data-testid="teacher-grading-save-draft" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-slate-100 hover:bg-slate-800 h-11" onClick={handleSaveDraft} disabled={saving || savingDraft}>
                                         <Save className="w-4 h-4 mr-2" />
                                         {savingDraft ? "保存中..." : "保存草稿"}
                                     </Button>

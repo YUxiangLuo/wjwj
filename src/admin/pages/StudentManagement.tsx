@@ -225,7 +225,7 @@ export function StudentManagement() {
                         <h2 className="text-lg font-semibold text-slate-100">学生管理</h2>
                         <p className="text-sm text-slate-400 mt-1">查看学生档案、实验进度与班级调整。</p>
                     </div>
-                    <Button data-testid="student-search-refresh" variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                    <Button data-testid="student-search-refresh" variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
                         <Search className="w-4 h-4 mr-2" />
                         刷新结果
                     </Button>

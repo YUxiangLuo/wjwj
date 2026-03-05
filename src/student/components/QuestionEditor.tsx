@@ -312,7 +312,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
-                        className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white"
+                        className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                     >
                         取消
                     </Button>

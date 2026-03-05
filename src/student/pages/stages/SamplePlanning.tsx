@@ -281,7 +281,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 <Button
                                     variant="outline"
                                     onClick={() => setFinalSampleSize(recommendedSize)}
-                                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
                                 >
                                     <RotateCcw className="w-4 h-4 mr-2" />
                                     重置为建议值
@@ -357,7 +357,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
             </div>
 
             <div className="flex justify-between pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一步
                 </Button>
                 <div className="flex gap-3">
@@ -379,7 +379,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmNext} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

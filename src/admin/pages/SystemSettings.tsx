@@ -488,7 +488,7 @@ export function SystemSettings() {
                                     </div>
 
                                     <div className="pt-4 border-t border-slate-800 mt-2">
-                                        <Button variant="outline" onClick={() => setShowPasswordModal(true)} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 w-full sm:w-auto">
+                                        <Button variant="outline" onClick={() => setShowPasswordModal(true)} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800 w-full sm:w-auto">
                                             <Lock className="w-4 h-4 mr-2" />
                                             修改管理员密码
                                         </Button>
@@ -617,7 +617,7 @@ export function SystemSettings() {
                                                 {backupLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
                                                 立即备份
                                             </Button>
-                                            <Button data-testid="settings-backup-restore-open" variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                                            <Button data-testid="settings-backup-restore-open" variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
                                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                                 恢复备份
                                             </Button>
