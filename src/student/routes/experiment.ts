@@ -1093,7 +1093,11 @@ const resetRoutes: RouteDefinition = {
         if (taskAccessError) return taskAccessError;
 
         const body = await parseBody<{ resetToStage: number; clearQuestionnaire?: boolean }>(req);
-        const resetToStage = Math.max(0, Math.min(4, Number(body.resetToStage) || 0));
+        let resetToStageInput = Number(body.resetToStage);
+        if (!Number.isFinite(resetToStageInput)) {
+            resetToStageInput = 1;
+        }
+        const resetToStage = Math.max(0, Math.min(4, resetToStageInput));
         const clearQuestionnaire = Boolean(body.clearQuestionnaire);
 
         const [exp] = await db
