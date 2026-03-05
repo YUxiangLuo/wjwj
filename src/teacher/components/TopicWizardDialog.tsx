@@ -677,7 +677,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(3)} disabled={!excelInfo} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
                         )}
                         {currentStep === 3 && (
-                            <Button data-testid="teacher-topic-next" onClick={isPublished ? () => setCurrentStep(4) : onSaveFieldMapping} disabled={!isPublished && !canProceedMapping} className="bg-indigo-600 hover:bg-indigo-700 text-white">{isPublished ? "下一步" : "保存并继续"}</Button>
+                            <Button
+                                data-testid="teacher-topic-next"
+                                onClick={isPublished ? () => setCurrentStep(4) : onSaveFieldMapping}
+                                disabled={!isPublished && !canProceedMapping}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            >
+                                {isPublished ? "下一步" : "保存并继续"}
+                            </Button>
                         )}
                         {currentStep === 4 && (
                             <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>

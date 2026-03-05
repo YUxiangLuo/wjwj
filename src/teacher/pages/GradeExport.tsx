@@ -18,6 +18,8 @@ export function GradeExport() {
     const [classFilter, setClassFilter] = useState<Set<number>>(new Set());
     const [topicFilter, setTopicFilter] = useState<Set<number>>(new Set());
     const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
+    const [classMenuOpen, setClassMenuOpen] = useState(false);
+    const [topicMenuOpen, setTopicMenuOpen] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -39,13 +41,6 @@ export function GradeExport() {
     const semesters = useMemo(() => {
         const values = classes.map(c => c.semester).filter(Boolean) as string[];
         return [...new Set(values)];
-    }, [classes]);
-
-    // Build classId → semester map
-    const classToSemester = useMemo(() => {
-        const m = new Map<number, string | null>();
-        classes.forEach(c => m.set(c.id, c.semester));
-        return m;
     }, [classes]);
 
     // Filtered classes by semester
@@ -225,72 +220,80 @@ export function GradeExport() {
                         <div className="relative">
                             <button
                                 data-testid="teacher-export-class-filter"
+                                aria-expanded={classMenuOpen}
+                                aria-haspopup="listbox"
                                 className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 h-10 text-sm text-slate-200 sm:w-44 w-full hover:border-slate-700"
-                                onClick={(e) => {
-                                    const menu = (e.currentTarget.nextElementSibling as HTMLElement);
-                                    menu.classList.toggle("hidden");
-                                }}
+                                onClick={() => { setClassMenuOpen(prev => !prev); setTopicMenuOpen(false); }}
                             >
                                 <span className="truncate">
                                     {classFilter.size === 0 ? "全部班级" : `已选 ${classFilter.size} 个班级`}
                                 </span>
                                 <span className="text-slate-500 ml-1">▾</span>
                             </button>
-                            <div className="hidden absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
-                                <button
-                                    className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800"
-                                    onClick={() => { setClassFilter(new Set()); setSelectedTaskIds([]); }}
-                                >
-                                    清除选择
-                                </button>
-                                {filteredClasses.map(cls => (
-                                    <label key={cls.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
-                                            checked={classFilter.has(cls.id)}
-                                            onChange={() => toggleClassFilter(cls.id)}
-                                        />
-                                        {cls.name}
-                                    </label>
-                                ))}
-                            </div>
+                            {classMenuOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setClassMenuOpen(false)} />
+                                    <div role="listbox" className="absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
+                                        <button
+                                            className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800"
+                                            onClick={() => { setClassFilter(new Set()); setSelectedTaskIds([]); }}
+                                        >
+                                            清除选择
+                                        </button>
+                                        {filteredClasses.map(cls => (
+                                            <label key={cls.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                                    checked={classFilter.has(cls.id)}
+                                                    onChange={() => toggleClassFilter(cls.id)}
+                                                />
+                                                {cls.name}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {/* Multi-select topic filter */}
                         <div className="relative">
                             <button
                                 data-testid="teacher-export-topic-filter"
+                                aria-expanded={topicMenuOpen}
+                                aria-haspopup="listbox"
                                 className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 h-10 text-sm text-slate-200 sm:w-44 w-full hover:border-slate-700"
-                                onClick={(e) => {
-                                    const menu = (e.currentTarget.nextElementSibling as HTMLElement);
-                                    menu.classList.toggle("hidden");
-                                }}
+                                onClick={() => { setTopicMenuOpen(prev => !prev); setClassMenuOpen(false); }}
                             >
                                 <span className="truncate">
                                     {topicFilter.size === 0 ? "全部课题" : `已选 ${topicFilter.size} 个课题`}
                                 </span>
                                 <span className="text-slate-500 ml-1">▾</span>
                             </button>
-                            <div className="hidden absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
-                                <button
-                                    className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800"
-                                    onClick={() => { setTopicFilter(new Set()); setSelectedTaskIds([]); }}
-                                >
-                                    清除选择
-                                </button>
-                                {topics.map(t => (
-                                    <label key={t.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
-                                            checked={topicFilter.has(t.id)}
-                                            onChange={() => toggleTopicFilter(t.id)}
-                                        />
-                                        {t.name}
-                                    </label>
-                                ))}
-                            </div>
+                            {topicMenuOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setTopicMenuOpen(false)} />
+                                    <div role="listbox" className="absolute z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-md border border-slate-800 bg-slate-900 py-1 shadow-lg">
+                                        <button
+                                            className="w-full text-left px-3 py-1.5 text-xs text-slate-400 hover:bg-slate-800"
+                                            onClick={() => { setTopicFilter(new Set()); setSelectedTaskIds([]); }}
+                                        >
+                                            清除选择
+                                        </button>
+                                        {topics.map(t => (
+                                            <label key={t.id} className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                                    checked={topicFilter.has(t.id)}
+                                                    onChange={() => toggleTopicFilter(t.id)}
+                                                />
+                                                {t.name}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <Button
