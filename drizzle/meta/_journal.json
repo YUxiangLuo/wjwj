@@ -36,6 +36,20 @@
       "when": 1768639200000,
       "tag": "0004_add_announcement_target_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1772735669000,
+      "tag": "0005_normalize_allow_registration_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1772737211578,
+      "tag": "0006_strange_exiles",
+      "breakpoints": true
     }
   ]
 }

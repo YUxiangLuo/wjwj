@@ -49,7 +49,7 @@ async function seed() {
     // System Config
     const configs = [
         { key: "system_name", value: "抽样统计虚拟仿真实验教学系统", desc: "系统名称" },
-        { key: "allow_student_login", value: "true", valueType: "boolean", desc: "允许学生登录开关" },
+        { key: "allow_registration", value: "true", valueType: "boolean", desc: "允许学生登录开关" },
         { key: "max_upload_size", value: "10", valueType: "number", desc: "最大上传限制(MB)" },
         { key: "login.max_fail_count", value: "5", valueType: "number", desc: "最大登录失败次数" },
         { key: "login.lock_duration_minutes", value: "30", valueType: "number", desc: "账号锁定时间(分钟)" },
