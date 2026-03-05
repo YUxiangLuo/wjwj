@@ -253,7 +253,7 @@ function PieChart({ data }: { data: Array<{ label: string; value: number; color:
                         />
                     ))}
                     {/* Inner circle for donut chart effect */}
-                    <circle cx="80" cy="80" r="40" fill="#0f172a" />
+                    <circle cx="80" cy="80" r="40" className="fill-slate-950" />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <span className="text-xs text-slate-500 font-medium">分布</span>
