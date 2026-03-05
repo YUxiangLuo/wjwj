@@ -263,7 +263,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         let cursor = 0;
         while (total < n) {
             const idx = cursor % normalized.length;
-            normalized[idx] += 1;
+            const current = normalized[idx] ?? 0;
+            normalized[idx] = current + 1;
             total += 1;
             cursor += 1;
         }
@@ -271,8 +272,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         cursor = 0;
         while (total > n) {
             const idx = cursor % normalized.length;
-            if (normalized[idx] > 0) {
-                normalized[idx] -= 1;
+            const current = normalized[idx] ?? 0;
+            if (current > 0) {
+                normalized[idx] = current - 1;
                 total -= 1;
             }
             cursor += 1;

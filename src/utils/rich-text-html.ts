@@ -28,7 +28,7 @@ function sanitizeTextNodeContent(input: string, safeDoc: Document): Node[] {
     const nodes: Node[] = [];
 
     for (let index = 0; index < parts.length; index += 1) {
-        const part = parts[index];
+        const part = parts[index] ?? "";
         if (part.length > 0) {
             nodes.push(safeDoc.createTextNode(part));
         }

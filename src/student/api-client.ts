@@ -117,6 +117,7 @@ export interface SamplingResultsData {
         completed: boolean;
         kValue: number;
         sampleCount: number;
+        seed?: number;
         data?: unknown[];
     };
     stratified?: {
@@ -128,6 +129,7 @@ export interface SamplingResultsData {
             ratio: number;
             sampleCount: number;
         }>;
+        seed?: number;
         data?: unknown[];
     };
 }

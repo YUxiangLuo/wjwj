@@ -808,7 +808,11 @@ const samplingActionRoutes: RouteDefinition = {
             return error("总体数据为空或读取失败", "READ_FAILED");
         }
 
-        const random = createSeededRandom(params.seed);
+        const samplingSeed =
+            typeof params.seed === "number" || typeof params.seed === "string"
+                ? params.seed
+                : undefined;
+        const random = createSeededRandom(samplingSeed);
 
         let sampledData: any[] = [];
         let resultParams: any = {};

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { teacherApi, type TaskProgressData } from "../api-client";
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string }> = {
+const STATUS_CONFIG = {
     not_started: { label: "未开始", color: "text-slate-400", bgColor: "bg-slate-500/10", borderColor: "border-slate-500/20" },
     stage1: { label: "问卷设计", color: "text-blue-400", bgColor: "bg-blue-500/10", borderColor: "border-blue-500/20" },
     stage2: { label: "样本规划", color: "text-cyan-400", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/20" },
@@ -17,9 +17,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
     submitted: { label: "已提交", color: "text-yellow-400", bgColor: "bg-yellow-500/10", borderColor: "border-yellow-500/20" },
     graded: { label: "已批改", color: "text-emerald-400", bgColor: "bg-emerald-500/10", borderColor: "border-emerald-500/20" },
     rejected: { label: "已驳回", color: "text-rose-400", bgColor: "bg-rose-500/10", borderColor: "border-rose-500/20" },
-};
+} as const;
 
-const PROGRESS_COLORS: Record<string, string> = {
+type StatusKey = keyof typeof STATUS_CONFIG;
+const STATUS_KEYS = Object.keys(STATUS_CONFIG) as StatusKey[];
+
+const PROGRESS_COLORS: Record<StatusKey, string> = {
     not_started: "bg-slate-600",
     stage1: "bg-blue-500",
     stage2: "bg-cyan-500",
@@ -88,9 +91,9 @@ export function TaskProgressDetail() {
 
             {/* Status count cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
-                {(Object.keys(STATUS_CONFIG) as string[]).map((key) => {
+                {STATUS_KEYS.map((key) => {
                     const cfg = STATUS_CONFIG[key];
-                    const count = data.counts[key as keyof typeof data.counts] ?? 0;
+                    const count = data.counts[key];
                     return (
                         <Card key={key} className={`border-slate-800 bg-slate-900 shadow-sm ${count > 0 ? "hover:border-slate-700" : ""} transition-colors`}>
                             <CardContent className="p-3 text-center">
@@ -105,8 +108,8 @@ export function TaskProgressDetail() {
             {/* Progress bar */}
             {total > 0 && (
                 <div className="flex h-3 rounded-full overflow-hidden bg-slate-800">
-                    {(Object.keys(PROGRESS_COLORS) as string[]).map((key) => {
-                        const count = data.counts[key as keyof typeof data.counts] ?? 0;
+                    {STATUS_KEYS.map((key) => {
+                        const count = data.counts[key];
                         if (count === 0) return null;
                         const pct = (count / total) * 100;
                         return (
@@ -148,7 +151,7 @@ export function TaskProgressDetail() {
                         </TableHeader>
                         <TableBody>
                             {filteredStudents.map((s) => {
-                                const cfg = STATUS_CONFIG[s.status] ?? STATUS_CONFIG.not_started;
+                                const cfg = STATUS_CONFIG[s.status as StatusKey] ?? STATUS_CONFIG.not_started;
                                 return (
                                     <TableRow key={s.studentId} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                         <TableCell className="font-mono text-slate-300 text-sm">{s.studentId}</TableCell>
