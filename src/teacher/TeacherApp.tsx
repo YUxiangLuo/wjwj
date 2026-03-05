@@ -238,6 +238,10 @@ export function TeacherApp() {
             setPasswordError("新密码需包含字母、数字和特殊字符");
             return;
         }
+        if (passwordForm.newPassword === passwordForm.currentPassword) {
+            setPasswordError("新密码不能与当前密码相同");
+            return;
+        }
         const accountId = teacherUser?.type === "teacher" ? teacherUser.employeeId : teacherUser?.account;
         if (accountId && passwordForm.newPassword.includes(accountId)) {
             setPasswordError("新密码不能包含工号/账号");

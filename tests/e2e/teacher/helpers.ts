@@ -11,6 +11,10 @@ export async function ensurePendingSubmissionId(page: Page) {
     const pending = all.find((item) => item.status === 1);
     if (pending) return pending.id;
 
+    // Also accept draft (status=0) submissions as valid targets
+    const draft = all.find((item) => item.status === 0);
+    if (draft) return draft.id;
+
     expect(all.length).toBeGreaterThan(0);
     const target = all[0]!;
     await page.request.get(`/api/teacher/grading/${target.id}`);

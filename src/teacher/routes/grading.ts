@@ -81,6 +81,8 @@ const gradingRoutes: RouteDefinition = {
 
         if (status === "pending") {
             query = query.where(eq(submission.status, 1));
+        } else if (status === "draft") {
+            query = query.where(eq(submission.status, 0));
         } else if (status === "graded") {
             query = query.where(eq(submission.status, 2));
         } else if (status === "rejected") {
@@ -185,7 +187,7 @@ const gradingDetailRoutes: RouteDefinition = {
         const myUserType = isAssistant ? ASSISTANT_USER_TYPE : TEACHER_USER_TYPE;
         const lockedByOther = row.lockedById && (row.lockedByType !== myUserType || row.lockedById !== userId) && !lockExpired;
 
-        if (!lockedByOther && row.status === 1) {
+        if (!lockedByOther && (row.status === 0 || row.status === 1)) {
             await db.update(submission).set({
                 lockedByType: myUserType,
                 lockedById: userId,
@@ -257,6 +259,10 @@ const gradingDetailRoutes: RouteDefinition = {
             return error("分项分数需在 0-100 之间", "VALIDATION_ERROR", 400);
         }
 
+        if ((body.comment ?? "").length > 2000) {
+            return error("教师评语不能超过2000字", "VALIDATION_ERROR", 400);
+        }
+
         if (!isDraft && body.status === 3) {
             const reason = (body.rejectReason ?? "").trim();
             if (reason.length < 10 || reason.length > 1000) {
@@ -287,7 +293,7 @@ const gradingDetailRoutes: RouteDefinition = {
         if (!detail) return error("提交记录不存在", "NOT_FOUND", 404);
 
         // Prevent any modification (draft or final) of already-finalized submissions
-        if (detail.status !== 1) {
+        if (detail.status !== 0 && detail.status !== 1) {
             return error("该提交已批改完成，无法修改", "ALREADY_GRADED", 409);
         }
 
@@ -320,8 +326,9 @@ const gradingDetailRoutes: RouteDefinition = {
             100;
 
         if (isDraft) {
-            // Save draft: store scores/comment without changing submission status, keep lock
+            // Save draft: store scores/comment, mark as draft (status=0), keep lock
             await db.update(submission).set({
+                status: 0,
                 scoreQuestionnaire: String(body.scoreQuestionnaire),
                 scoreProcess: String(body.scoreProcess),
                 scoreReport: String(body.scoreReport),

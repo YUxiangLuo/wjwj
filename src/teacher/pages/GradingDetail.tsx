@@ -516,18 +516,20 @@ export function GradingDetail() {
                                 <Textarea
                                     data-testid="teacher-grading-comment"
                                     rows={8}
+                                    maxLength={2000}
                                     placeholder="请输入评语..."
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
                                     className="bg-slate-950 border-slate-700 text-slate-200 resize-none focus:border-indigo-500"
                                     disabled={saving || isReadOnly}
                                 />
+                                <div className="text-xs text-slate-500 text-right">{comment.length}/2000</div>
                             </div>
                         </div>
                     </div>
 
                     <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900/50">
-                        {data.status === 1 && !isReadOnly && (
+                        {(data.status === 0 || data.status === 1) && !isReadOnly && (
                             <>
                                 <div className="flex gap-2">
                                     <Button data-testid="teacher-grading-save-draft" variant="outline" className="flex-1 border-slate-700 bg-transparent text-slate-300 hover:text-slate-100 hover:bg-slate-800 h-11" onClick={handleSaveDraft} disabled={saving || savingDraft}>

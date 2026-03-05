@@ -33,6 +33,7 @@ export function GradingManagement() {
 
     const getStatusBadge = (status: number, score?: number | null) => {
         switch (status) {
+            case 0: return <Badge variant="secondary" className="bg-slate-500/10 text-slate-400 border-slate-500/20 hover:bg-slate-500/20"><FileEdit className="w-3 h-3 mr-1" /> 批改草稿</Badge>;
             case 1: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"><Clock className="w-3 h-3 mr-1" /> 待批改</Badge>;
             case 2: return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</Badge>;
             case 3: return <Badge variant="destructive" className="bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"><XCircle className="w-3 h-3 mr-1" /> 已驳回</Badge>;
@@ -171,6 +172,7 @@ export function GradingManagement() {
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all-status">全部状态</SelectItem>
                                 <SelectItem value="pending">待批改</SelectItem>
+                                <SelectItem value="draft">批改草稿</SelectItem>
                                 <SelectItem value="graded">已批改</SelectItem>
                                 <SelectItem value="rejected">被驳回</SelectItem>
                             </SelectContent>
@@ -213,6 +215,12 @@ export function GradingManagement() {
                                             <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                                                 <FileEdit className="w-3.5 h-3.5 mr-2" />
                                                 开始批改
+                                            </Button>
+                                        )}
+                                        {sub.status === 0 && (
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-slate-700 hover:bg-slate-600 text-slate-50">
+                                                <FileEdit className="w-3.5 h-3.5 mr-2" />
+                                                继续批改
                                             </Button>
                                         )}
                                         {sub.status === 2 && (
