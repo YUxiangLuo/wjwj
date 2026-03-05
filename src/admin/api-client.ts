@@ -57,6 +57,7 @@ export interface Assistant {
     status: number;
     isLocked: boolean;
     classCount: number;
+    lastLogin: string | null;
     createdAt: string;
 }
 
