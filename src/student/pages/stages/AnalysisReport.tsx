@@ -53,6 +53,10 @@ const METHOD_META: Record<MethodKey, { label: string; color: string }> = {
     stratified: { label: "分层抽样", color: "#f59e0b" },
 };
 
+function formatSaveTime(): string {
+    return new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+}
+
 const POPULATION_SERIES: ChartSeries = { key: "population", label: "总体", color: "#94a3b8" };
 
 function sanitizeFileName(input: string) {
@@ -503,7 +507,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             const success = await saveExperiment({ reportContent: snapshot });
             if (success) {
                 serverSnapshotRef.current = snapshot;
-                setLastSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+                setLastSavedAt(formatSaveTime());
                 setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
             }
         } finally {

@@ -53,6 +53,10 @@ function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
+function formatSaveTime(): string {
+    return new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+}
+
 export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const { experiment, saveExperiment } = useExperiment();
 
@@ -151,7 +155,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             const success = await saveExperiment({ questionnaire: questionnaireData });
             if (success) {
                 serverSnapshotRef.current = snapshot;
-                setLastSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
+                setLastSavedAt(formatSaveTime());
                 setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
             }
         } finally {
@@ -171,7 +175,12 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             if (!hasDraftContent) { draftResolvedRef.current = true; return; }
             const hasServerData = Boolean(initialData?.title || initialData?.questions?.length);
             if (hasServerData) {
-                const serverNorm = { title: initialData?.title ?? "", welcomeText: initialData?.welcomeText ?? "", endingText: initialData?.endingText ?? "", questions: initialData?.questions ?? [] };
+                const serverNorm: QuestionnaireData = {
+                    title: initialData?.title ?? "",
+                    welcomeText: initialData?.welcomeText ?? "",
+                    endingText: initialData?.endingText ?? "",
+                    questions: initialData?.questions ?? [],
+                };
                 const different = JSON.stringify(draft) !== JSON.stringify(serverNorm);
                 if (different) {
                     setPendingDraft(draft);
