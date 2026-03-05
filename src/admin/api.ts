@@ -272,20 +272,7 @@ const systemSettingsRoutes = {
 
         const body = await parseBody<Record<string, unknown>>(req);
 
-        // Loop through keys and upsert (only allowed keys)
-        for (const [key, value] of Object.entries(body)) {
-            if (!ALLOWED_SETTING_KEYS.has(key)) continue;
-
-            let valStr = String(value);
-            let valType = "string";
-
-            if (typeof value === "boolean") {
-                valType = "boolean";
-                valStr = value ? "true" : "false";
-            } else if (typeof value === "number") {
-                valType = "number";
-            }
-
+        const upsertSetting = async (key: string, valStr: string, valType: "string" | "number" | "boolean") => {
             await db.insert(systemConfig).values({
                 configKey: key,
                 configValue: valStr,
@@ -296,6 +283,23 @@ const systemSettingsRoutes = {
                     valueType: valType,
                 }
             });
+        };
+
+        // Loop through keys and upsert (only allowed keys)
+        for (const [key, value] of Object.entries(body)) {
+            if (!ALLOWED_SETTING_KEYS.has(key)) continue;
+
+            let valStr = String(value);
+            let valType: "string" | "number" | "boolean" = "string";
+
+            if (typeof value === "boolean") {
+                valType = "boolean";
+                valStr = value ? "true" : "false";
+            } else if (typeof value === "number") {
+                valType = "number";
+            }
+
+            await upsertSetting(key, valStr, valType);
         }
 
         // Log operation
