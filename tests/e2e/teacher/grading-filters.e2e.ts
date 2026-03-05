@@ -45,7 +45,7 @@ test.describe("Teacher Grading Filters", () => {
                 scoreReport: 70,
                 totalScore: 70,
                 comment: "E2E draft filter test",
-                status: 1,
+                status: 0,
                 action: "draft",
             },
         });

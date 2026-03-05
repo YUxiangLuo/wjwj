@@ -11,7 +11,7 @@ export async function ensurePendingSubmissionId(page: Page) {
     const pending = all.find((item) => item.status === 1);
     if (pending) return pending.id;
 
-    // Also accept draft (status=0) submissions - reset them back to pending
+    // Also accept draft (status=0) submissions as valid targets
     const draft = all.find((item) => item.status === 0);
     if (draft) return draft.id;
 
