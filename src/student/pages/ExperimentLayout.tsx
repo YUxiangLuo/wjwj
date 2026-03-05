@@ -306,7 +306,7 @@ export function ExperimentLayout() {
                                     className="absolute left-0 top-0 h-2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-all duration-500 ease-out"
                                     style={{ width: `${(currentStage / stageNames.length) * 100}%` }}
                                 >
-                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg shadow-purple-500/50"></div>
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-slate-950 rounded-full shadow-lg shadow-purple-500/50"></div>
                                 </div>
                             </div>
 

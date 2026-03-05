@@ -226,8 +226,8 @@ export function SubmissionPreview() {
                         </TabsList>
 
                         <TabsContent value="report" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
-                            <div className="bg-white/5 rounded-xl p-6 border border-white/10 min-h-[300px] space-y-5">
-                                <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
+                            <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-800 min-h-[300px] space-y-5">
+                                <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-4">
                                     <h3 className="text-base font-semibold text-slate-100 mb-3">阶段一：问卷设计</h3>
                                     <div className="text-sm text-slate-300 space-y-1">
                                         <p>问卷标题：{questionnaire?.title || "未填写"}</p>
@@ -235,7 +235,7 @@ export function SubmissionPreview() {
                                     </div>
                                 </div>
 
-                                <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
+                                <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-4">
                                     <h3 className="text-base font-semibold text-slate-100 mb-3">阶段二：样本量规划</h3>
                                     {samplePlan ? (
                                         <div className="text-sm text-slate-300 space-y-1">
@@ -249,7 +249,7 @@ export function SubmissionPreview() {
                                     )}
                                 </div>
 
-                                <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
+                                <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-4">
                                     <h3 className="text-base font-semibold text-slate-100 mb-3">阶段三：抽样执行</h3>
                                     <div className="text-sm text-slate-300 space-y-1">
                                         <p>简单随机抽样：{samplingResults?.simple?.completed ? `已完成（${samplingResults.simple.sampleCount} 样本）` : "未完成"}</p>
@@ -258,7 +258,7 @@ export function SubmissionPreview() {
                                     </div>
                                 </div>
 
-                                <div className="rounded-lg border border-white/10 bg-slate-900/30 p-4">
+                                <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-4">
                                     <h3 className="text-base font-semibold text-slate-100 mb-3 flex items-center gap-2">
                                         <FileText className="w-4 h-4 text-emerald-400" />
                                         阶段四：分析报告
@@ -276,16 +276,16 @@ export function SubmissionPreview() {
                         </TabsContent>
 
                         <TabsContent value="questionnaire" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
-                            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                            <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-800">
                                 {!questionnaire ? (
                                     <div className="text-sm text-slate-500 italic">暂无问卷内容</div>
                                 ) : (
                                     <>
-                                        <div className="mb-6 pb-4 border-b border-white/10">
+                                        <div className="mb-6 pb-4 border-b border-slate-800">
                                             <div className="text-xl font-bold text-slate-100 mb-2">{questionnaire.title || "未命名问卷"}</div>
                                             <RichTextContent
                                                 html={questionnaire.welcomeText ?? ""}
-                                                className="text-sm text-slate-400 bg-slate-900/30 p-3 rounded-lg border border-white/5"
+                                                className="text-sm text-slate-400 bg-slate-900/30 p-3 rounded-lg border border-slate-800"
                                             />
                                         </div>
 

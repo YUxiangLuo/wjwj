@@ -344,19 +344,19 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-6">
                 <TabsList className="bg-slate-900 border border-slate-800 p-1 rounded-xl w-full flex h-auto">
-                    <TabsTrigger value="simple" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">
+                    <TabsTrigger value="simple" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
                         <div className="flex items-center gap-2">
                             <span>简单随机抽样</span>
                             {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="systematic" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">
+                    <TabsTrigger value="systematic" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
                         <div className="flex items-center gap-2">
                             <span>系统抽样</span>
                             {systematicResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="stratified" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">
+                    <TabsTrigger value="stratified" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
                         <div className="flex items-center gap-2">
                             <span>分层抽样</span>
                             {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}

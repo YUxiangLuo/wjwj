@@ -802,9 +802,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <CardContent className="pt-6">
                             <Tabs defaultValue="mean">
                                 <TabsList className="bg-slate-950 border border-slate-800 p-1 rounded-xl w-full flex h-auto">
-                                    <TabsTrigger value="mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">均值对比</TabsTrigger>
-                                    <TabsTrigger value="dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">分布对比</TabsTrigger>
-                                    <TabsTrigger value="error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400">误差分析</TabsTrigger>
+                                    <TabsTrigger value="mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">均值对比</TabsTrigger>
+                                    <TabsTrigger value="dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">分布对比</TabsTrigger>
+                                    <TabsTrigger value="error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">误差分析</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="mean" className="mt-6 space-y-4">

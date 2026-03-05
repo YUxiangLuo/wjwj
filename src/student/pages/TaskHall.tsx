@@ -423,28 +423,28 @@ export function TaskHall() {
                     <button
                         onClick={() => setFilter("all")}
                         data-testid="student-filter-all"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "all" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "all" ? "bg-slate-800 text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
                         全部
                     </button>
                     <button
                         onClick={() => setFilter("in_progress")}
                         data-testid="student-filter-in-progress"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "in_progress" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "in_progress" ? "bg-slate-800 text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
                         进行中
                     </button>
                     <button
                         onClick={() => setFilter("submitted")}
                         data-testid="student-filter-submitted"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "submitted" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "submitted" ? "bg-slate-800 text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
                         已提交
                     </button>
                     <button
                         onClick={() => setFilter("graded")}
                         data-testid="student-filter-graded"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "graded" ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "graded" ? "bg-slate-800 text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-300"}`}
                     >
                         已批改
                     </button>
@@ -490,7 +490,7 @@ export function TaskHall() {
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-indigo-300 transition-colors ${!announcement.isRead ? "text-white" : "text-slate-400"}`}>
+                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-indigo-300 transition-colors ${!announcement.isRead ? "text-slate-100" : "text-slate-400"}`}>
                                             {announcement.title}
                                         </div>
                                         {!announcement.isRead && <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0"></span>}
