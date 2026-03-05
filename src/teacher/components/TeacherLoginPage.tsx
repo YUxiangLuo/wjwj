@@ -3,16 +3,14 @@ import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface UnifiedLoginProps {
-  role: "student" | "teacher" | "admin";
+interface TeacherLoginPageProps {
   onLogin: (credentials: { username: string; password: string }) => Promise<void>;
   loading?: boolean;
   error?: string | null;
 }
 
-export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedLoginProps) {
+export function TeacherLoginPage({ onLogin, loading = false, error }: TeacherLoginPageProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
@@ -20,39 +18,6 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
     e.preventDefault();
     if (username && password) {
       await onLogin({ username, password });
-    }
-  };
-
-  const currentTab = role === "admin" ? "admin" : role === "teacher" ? "teacher" : "student";
-
-  const handleTabChange = (value: string) => {
-    if (value === currentTab) return;
-
-    // Redirect to the correct login page
-    if (value === "student") window.location.href = "/student";
-    if (value === "teacher") window.location.href = "/teacher";
-    if (value === "admin") window.location.href = "/admin/login";
-  };
-
-  const getRoleLabel = () => {
-    switch (role) {
-      case "student": return "学号";
-      case "teacher": return "工号/助教账号";
-      case "admin": return "用户名";
-      default: return "账号";
-    }
-  };
-
-  const getForgotPasswordHint = () => {
-    switch (role) {
-      case "student":
-        return "忘记密码？请联系班级教师重置";
-      case "teacher":
-        return "忘记密码？请联系系统管理员重置";
-      case "admin":
-        return "忘记密码？请联系系统管理员通过后台重置";
-      default:
-        return "忘记密码？请联系管理员";
     }
   };
 
@@ -132,29 +97,21 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
         <div className="w-full max-w-md space-y-10">
           <div className="flex flex-col space-y-3 text-center">
             <h2 className="text-3xl font-bold tracking-tight text-slate-100">
-              欢迎回来
+              教师登录
             </h2>
             <p className="text-base text-slate-400">
-              请选择您的角色并登录系统
+              请输入您的工号/助教账号和密码登录系统
             </p>
           </div>
-
-          <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-slate-900 border border-slate-800 p-1 h-12 rounded-xl">
-              <TabsTrigger value="student" className="rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100 text-slate-400 hover:text-slate-200 transition-all">学生</TabsTrigger>
-              <TabsTrigger value="teacher" className="rounded-lg data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100 text-slate-400 hover:text-slate-200 transition-all">教师</TabsTrigger>
-              <TabsTrigger value="admin" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-400 hover:text-slate-200 transition-all">管理员</TabsTrigger>
-            </TabsList>
-          </Tabs>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-5">
               <div className="space-y-2.5">
-                <Label htmlFor="username" className="text-slate-300 text-sm font-medium ml-1">{getRoleLabel()}</Label>
+                <Label htmlFor="username" className="text-slate-300 text-sm font-medium ml-1">工号/助教账号</Label>
                 <Input
                   id="username"
-                  data-testid={`${role}-login-username`}
-                  placeholder={role === "teacher" ? "请输入工号或助教账号" : `请输入${getRoleLabel()}`}
+                  data-testid="teacher-login-username"
+                  placeholder="请输入工号或助教账号"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
@@ -165,12 +122,12 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
                 <div className="flex items-center justify-between ml-1">
                   <Label htmlFor="password" className="text-slate-300 text-sm font-medium">密码</Label>
                   <span className="text-xs font-medium text-indigo-300/80">
-                    {getForgotPasswordHint()}
+                    忘记密码？请联系系统管理员重置
                   </span>
                 </div>
                 <Input
                   id="password"
-                  data-testid={`${role}-login-password`}
+                  data-testid="teacher-login-password"
                   type="password"
                   placeholder="请输入密码"
                   value={password}
@@ -189,7 +146,7 @@ export function UnifiedLogin({ role, onLogin, loading = false, error }: UnifiedL
             )}
 
             <div className="space-y-4 pt-2">
-              <Button type="submit" data-testid={`${role}-login-submit`} className="w-full h-12 text-base font-medium bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
+              <Button type="submit" data-testid="teacher-login-submit" className="w-full h-12 text-base font-medium bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

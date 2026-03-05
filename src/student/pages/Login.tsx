@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { authApi, meApi } from "../api-client";
 import { useStudent } from "../contexts/StudentContext";
-import { UnifiedLogin } from "@/components/UnifiedLogin";
+import { StudentLoginPage } from "../components/StudentLoginPage";
 
 export function Login() {
     const navigate = useNavigate();
@@ -67,8 +67,7 @@ export function Login() {
     }
 
     return (
-        <UnifiedLogin
-            role="student"
+        <StudentLoginPage
             onLogin={handleLogin}
             loading={loading}
             error={error}

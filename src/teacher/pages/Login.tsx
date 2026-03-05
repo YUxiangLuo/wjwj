@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { authApi } from "../api-client";
-import { UnifiedLogin } from "@/components/UnifiedLogin";
+import { TeacherLoginPage } from "../components/TeacherLoginPage";
 
 export function Login() {
     const navigate = useNavigate();
@@ -68,8 +68,7 @@ export function Login() {
     }
 
     return (
-        <UnifiedLogin
-            role="teacher"
+        <TeacherLoginPage
             onLogin={handleLogin}
             loading={loading}
             error={error}
