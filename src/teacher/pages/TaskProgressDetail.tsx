@@ -68,7 +68,7 @@ export function TaskProgressDetail() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white hover:bg-slate-800" onClick={() => navigate("/task")}>
+                <Button variant="ghost" size="sm" className="text-slate-400 hover:text-slate-100 hover:bg-slate-800" onClick={() => navigate("/task")}>
                     <ArrowLeft className="w-4 h-4 mr-1" />
                     返回列表
                 </Button>

@@ -257,7 +257,7 @@ export function TeacherManagement() {
                                 className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
                             />
                         </div>
-                        <Button data-testid="teacher-search-submit" variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                        <Button data-testid="teacher-search-submit" variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
                             <Search className="w-4 h-4 mr-2" />
                             搜索
                         </Button>

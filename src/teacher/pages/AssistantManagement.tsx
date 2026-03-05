@@ -321,7 +321,7 @@ export function AssistantManagement() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-rose-600 hover:bg-rose-700 text-white">确认移除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -336,7 +336,7 @@ export function AssistantManagement() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setShowUnbindConfirm(false)} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel onClick={() => setShowUnbindConfirm(false)} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction
                             data-testid="teacher-assistant-force-unbind-submit"
                             onClick={async () => {

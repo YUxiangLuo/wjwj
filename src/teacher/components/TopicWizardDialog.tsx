@@ -163,7 +163,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         }}
                                     />
                                     <div className="flex items-center justify-center gap-3">
-                                        <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-white">
+                                        <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100">
                                             选择文件
                                         </Button>
                                     </div>
@@ -412,7 +412,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
                     <div className="flex gap-2">
                         {currentStep > 1 && (
-                            <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700">上一步</Button>
+                            <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-700">上一步</Button>
                         )}
                         {currentStep === 1 && (
                             <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-indigo-600 hover:bg-indigo-700 text-white">{editingTopicId ? "保存并继续" : "下一步"}</Button>

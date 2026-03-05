@@ -154,7 +154,7 @@ export function Dashboard() {
                 <Card className="border-slate-800 bg-slate-900">
                     <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                         <CardTitle className="text-lg text-slate-100">最近提交</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-white">
+                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
                             <Link to="/grading">全部作业</Link>
                         </Button>
                     </CardHeader>
@@ -190,7 +190,7 @@ export function Dashboard() {
                 <Card className="border-slate-800 bg-slate-900">
                     <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
                         <CardTitle className="text-lg text-slate-100">最近批改</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-white">
+                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
                             <Link to="/grading">批改列表</Link>
                         </Button>
                     </CardHeader>
@@ -250,7 +250,7 @@ export function Dashboard() {
                                 <ArrowUpRight className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                             </Link>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all group" asChild>
+                        <Button variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-slate-100 hover:border-slate-600 transition-all group" asChild>
                             <Link to="/topic">
                                 <span className="flex items-center gap-2">
                                     <BookOpen className="w-4 h-4" />
@@ -259,7 +259,7 @@ export function Dashboard() {
                                 <ArrowUpRight className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                             </Link>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-600 transition-all group" asChild>
+                        <Button variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-slate-100 hover:border-slate-600 transition-all group" asChild>
                             <Link to="/export">
                                 <span className="flex items-center gap-2">
                                     <GraduationCap className="w-4 h-4" />

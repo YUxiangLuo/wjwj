@@ -100,7 +100,7 @@ export function Profile() {
                 <Card className="lg:col-span-2 border-indigo-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
                     <CardHeader className="border-b border-slate-700/30 pb-4">
-                        <CardTitle className="flex items-center gap-2 text-white">
+                        <CardTitle className="flex items-center gap-2 text-slate-100">
                             <User className="w-5 h-5 text-indigo-400" />
                             基础资料
                         </CardTitle>
@@ -145,7 +145,7 @@ export function Profile() {
 
                 <Card className="border-indigo-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="border-b border-slate-700/30 pb-4">
-                        <CardTitle className="flex items-center gap-2 text-white">
+                        <CardTitle className="flex items-center gap-2 text-slate-100">
                             <Key className="w-5 h-5 text-indigo-400" />
                             修改密码
                         </CardTitle>
@@ -161,7 +161,7 @@ export function Profile() {
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                                 autoComplete="current-password"
                                 data-testid="student-profile-password-current"
-                                className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
                         <div className="space-y-2">
@@ -173,7 +173,7 @@ export function Profile() {
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-new"
-                                className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
                         <div className="space-y-2">
@@ -185,7 +185,7 @@ export function Profile() {
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-confirm"
-                                className="bg-slate-950/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
                         <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-3 text-xs space-y-1.5">

@@ -224,7 +224,7 @@ function StudentAppContent() {
                     <div className="flex items-center gap-4">
                         {!isTaskHall && (
                             <Link to="/">
-                                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-white hover:bg-slate-800">
+                                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                                     <ArrowLeft className="w-5 h-5" />
                                 </Button>
                             </Link>
@@ -234,7 +234,7 @@ function StudentAppContent() {
                                 L
                             </div>
                             <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-slate-100 group-hover:text-white transition-colors">统计学虚拟仿真实验室</h1>
+                                <h1 className="text-lg font-bold text-slate-100 group-hover:text-slate-100 transition-colors">统计学虚拟仿真实验室</h1>
                                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Learning Lab</p>
                             </div>
                         </Link>
@@ -243,7 +243,7 @@ function StudentAppContent() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="relative text-slate-400 hover:text-white hover:bg-slate-800"
+                            className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800"
                             data-testid="student-open-notifications"
                             onClick={() => {
                                 setShowNotifications(true);
@@ -287,11 +287,11 @@ function StudentAppContent() {
                                     <div className="fixed inset-0 z-40" onClick={() => setShowAuthDialog(false)}></div>
                                     <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-800 bg-slate-900 shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-200">
                                         <div className="px-3 py-2.5 border-b border-slate-800 bg-slate-900/50">
-                                            <p className="text-sm font-medium leading-none text-white">{displayName}</p>
+                                            <p className="text-sm font-medium leading-none text-slate-100">{displayName}</p>
                                             <p className="text-xs leading-none text-slate-500 mt-1.5">{currentUser.studentId}</p>
                                         </div>
                                         <button
-                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors cursor-pointer text-left"
                                             data-testid="student-nav-profile"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
@@ -302,7 +302,7 @@ function StudentAppContent() {
                                             个人信息
                                         </button>
                                         <button
-                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer text-left"
+                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors cursor-pointer text-left"
                                             data-testid="student-open-password-modal"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
@@ -411,7 +411,7 @@ function StudentAppContent() {
                     </div>
                     <DialogFooter>
                         {!currentUser?.isFirstLogin && (
-                            <Button variant="ghost" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving} className="text-slate-400 hover:text-white hover:bg-slate-800">
+                            <Button variant="ghost" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving} className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                                 取消
                             </Button>
                         )}
@@ -502,7 +502,7 @@ function StudentAppContent() {
                         <DialogDescription className="text-slate-400">会话将在 5 分钟内过期，是否继续？</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowSessionWarning(false)} className="text-slate-400 hover:text-white hover:bg-slate-800">稍后</Button>
+                        <Button variant="ghost" onClick={() => setShowSessionWarning(false)} className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">稍后</Button>
                         <Button
                             onClick={async () => {
                                 await refreshUser();
@@ -538,7 +538,7 @@ function StudentAppContent() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={async () => {
                                 setShowLogoutConfirm(false);

@@ -74,7 +74,7 @@ export function SubmissionDetailPage() {
         <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-detail">
             <div className="flex items-center justify-between">
                 <Link to={`/task/${detail.taskId}/history`}>
-                    <Button variant="ghost" className="gap-2 text-slate-400 hover:text-white hover:bg-slate-800">
+                    <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                         <ArrowLeft className="w-4 h-4" />
                         返回历史记录
                     </Button>
@@ -91,7 +91,7 @@ export function SubmissionDetailPage() {
             <Card className="border-indigo-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
                 <CardHeader className="pb-4 border-b border-slate-700/30">
-                    <CardTitle className="text-2xl text-white flex items-center gap-3">
+                    <CardTitle className="text-2xl text-slate-100 flex items-center gap-3">
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
                             {detail.topicName}
                         </span>
@@ -120,17 +120,17 @@ export function SubmissionDetailPage() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="bg-slate-800/40 rounded-lg p-4 text-center border border-slate-700/30">
                             <div className="text-xs text-slate-400 mb-1 uppercase tracking-wider">问卷设计</div>
-                            <div className="text-2xl font-bold text-white font-mono">{detail.scoreQuestionnaire ?? "-"}</div>
+                            <div className="text-2xl font-bold text-slate-100 font-mono">{detail.scoreQuestionnaire ?? "-"}</div>
                             <div className="text-[10px] text-slate-500 mt-1">权重 {detail.weights.questionnaire}%</div>
                         </div>
                         <div className="bg-slate-800/40 rounded-lg p-4 text-center border border-slate-700/30">
                             <div className="text-xs text-slate-400 mb-1 uppercase tracking-wider">实验过程</div>
-                            <div className="text-2xl font-bold text-white font-mono">{detail.scoreProcess ?? "-"}</div>
+                            <div className="text-2xl font-bold text-slate-100 font-mono">{detail.scoreProcess ?? "-"}</div>
                             <div className="text-[10px] text-slate-500 mt-1">权重 {detail.weights.process}%</div>
                         </div>
                         <div className="bg-slate-800/40 rounded-lg p-4 text-center border border-slate-700/30">
                             <div className="text-xs text-slate-400 mb-1 uppercase tracking-wider">实验报告</div>
-                            <div className="text-2xl font-bold text-white font-mono">{detail.scoreReport ?? "-"}</div>
+                            <div className="text-2xl font-bold text-slate-100 font-mono">{detail.scoreReport ?? "-"}</div>
                             <div className="text-[10px] text-slate-500 mt-1">权重 {detail.weights.report}%</div>
                         </div>
                         <div className="bg-indigo-900/20 rounded-lg p-4 text-center border border-indigo-500/30 relative overflow-hidden">
@@ -138,7 +138,7 @@ export function SubmissionDetailPage() {
                             <div className="text-xs text-indigo-300 mb-1 uppercase tracking-wider font-semibold relative">总分</div>
                             <div className={cn("text-3xl font-bold font-mono relative",
                                 (detail.totalScore ?? 0) >= 90 ? "text-emerald-400" :
-                                    (detail.totalScore ?? 0) >= 60 ? "text-cyan-400" : "text-white"
+                                    (detail.totalScore ?? 0) >= 60 ? "text-cyan-400" : "text-slate-100"
                             )}>
                                 {detail.totalScore ?? "-"}
                             </div>
@@ -177,7 +177,7 @@ export function SubmissionDetailPage() {
                             variant="outline"
                             onClick={() => handleDownload("questionnaire")}
                             disabled={!detail.questionnairePdfPath}
-                            className="bg-slate-800/50 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 hover:border-slate-600 gap-2"
+                            className="bg-slate-800/50 border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-700 hover:border-slate-600 gap-2"
                         >
                             <Download className="w-4 h-4" />
                             下载问卷 PDF
@@ -186,7 +186,7 @@ export function SubmissionDetailPage() {
                             variant="outline"
                             onClick={() => handleDownload("report")}
                             disabled={!detail.reportPdfPath}
-                            className="bg-slate-800/50 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700 hover:border-slate-600 gap-2"
+                            className="bg-slate-800/50 border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-700 hover:border-slate-600 gap-2"
                         >
                             <Download className="w-4 h-4" />
                             下载报告 PDF

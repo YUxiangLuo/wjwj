@@ -28,7 +28,7 @@ function ToolbarButton({ title, onClick, children }: ToolbarButtonProps) {
                 event.preventDefault();
                 onClick();
             }}
-            className="h-8 w-8 rounded-md border border-slate-700 bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center justify-center transition-colors"
+            className="h-8 w-8 rounded-md border border-slate-700 bg-slate-900 text-slate-300 hover:text-slate-100 hover:bg-slate-800 flex items-center justify-center transition-colors"
         >
             {children}
         </button>

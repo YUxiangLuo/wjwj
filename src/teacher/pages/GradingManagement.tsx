@@ -216,7 +216,7 @@ export function GradingManagement() {
                                             </Button>
                                         )}
                                         {sub.status === 2 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-white hover:bg-slate-800">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                                                 查看详情
                                             </Button>
                                         )}

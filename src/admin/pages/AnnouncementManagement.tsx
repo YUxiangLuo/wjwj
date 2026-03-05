@@ -440,7 +440,7 @@ export function AnnouncementManagement() {
                             variant="outline"
                             onClick={() => handleAddAnnouncement(false)}
                             disabled={submitting || !newAnnouncement.title.trim()}
-                            className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            className="bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             <Archive className="w-4 h-4 mr-1" />

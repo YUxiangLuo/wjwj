@@ -914,7 +914,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
+                                                            className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
                                                             onClick={() => moveQuestion(index, "up")}
                                                             disabled={index === 0}
                                                         >
@@ -923,7 +923,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
+                                                            className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
                                                             onClick={() => moveQuestion(index, "down")}
                                                             disabled={index === questions.length - 1}
                                                         >
@@ -932,7 +932,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
+                                                            className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
                                                             onClick={() => handleDuplicateQuestion(q)}
                                                         >
                                                             <Copy className="w-4 h-4" />
@@ -940,7 +940,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-700"
+                                                            className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
                                                             <Edit2 className="w-4 h-4" />
@@ -992,7 +992,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         类型：{questionTypeLabels[{ 1: "boolean", 2: "single", 3: "multiple", 4: "scale" }[rq.questionType] as QuestionType]}
                                                     </div>
                                                 </div>
-                                                <Button size="sm" variant="outline" className="w-full mt-1 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white" onClick={() => handleUseRecommend(rq)}>
+                                                <Button size="sm" variant="outline" className="w-full mt-1 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100" onClick={() => handleUseRecommend(rq)}>
                                                     使用此题
                                                 </Button>
                                             </div>
@@ -1323,7 +1323,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     variant="outline"
                     onClick={() => step > 1 && setStep((step - 1) as 1 | 2 | 3 | 4)}
                     disabled={step === 1}
-                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
                 >
                     上一步
                 </Button>
@@ -1364,7 +1364,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} className="bg-rose-600 hover:bg-rose-700 text-white">删除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -1382,7 +1382,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmComplete} className="bg-emerald-600 hover:bg-emerald-700 text-white">确认完成</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -1398,7 +1398,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
-                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                             onClick={() => {
                                 if (draftKey) localStorage.removeItem(draftKey);
                                 setRestoreDraftOpen(false);
@@ -1435,7 +1435,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
-                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                             onClick={handleKeepServerDraft}
                         >
                             保留服务器版本

@@ -148,11 +148,11 @@ export function SystemMonitor() {
                         <span className={`w-2 h-2 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-slate-600"}`} />
                         {isLive ? "实时监控中" : "监控已暂停"}
                     </div>
-                    <Button variant="outline" onClick={handleExportReport} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                    <Button variant="outline" onClick={handleExportReport} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
                         <Download className="w-4 h-4 mr-2" />
                         导出报告
                     </Button>
-                    <Button variant="outline" onClick={fetchData} disabled={loading} className="border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">
+                    <Button variant="outline" onClick={fetchData} disabled={loading} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                         刷新
                     </Button>

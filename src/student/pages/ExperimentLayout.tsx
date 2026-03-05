@@ -253,12 +253,12 @@ export function ExperimentLayout() {
                 <div className="sticky top-[4rem] z-40 bg-slate-950/90 backdrop-blur pb-4 pt-2 -mt-2 border-b border-white/5 flex justify-between items-center">
                     <div className="flex items-center gap-2">
                         <Link to="/">
-                            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-white hover:bg-slate-800" title="返回首页">
+                            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-100 hover:bg-slate-800" title="返回首页">
                                 <Home className="w-4 h-4" />
                             </Button>
                         </Link>
                         <Link to={`/task/${taskId}`}>
-                            <Button variant="ghost" className="gap-2 text-slate-400 hover:text-white hover:bg-slate-800 hidden sm:flex">
+                            <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 hidden sm:flex">
                                 <ArrowLeft className="w-4 h-4" />
                                 退出实验
                             </Button>
@@ -273,7 +273,7 @@ export function ExperimentLayout() {
                                 已自动保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN")}
                             </span>
                         )}
-                        <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+                        <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                             {isSaving ? (
                                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                             ) : (
@@ -381,7 +381,7 @@ export function ExperimentLayout() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={applyRollback} className="bg-rose-600 hover:bg-rose-700 text-white">确认返回</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

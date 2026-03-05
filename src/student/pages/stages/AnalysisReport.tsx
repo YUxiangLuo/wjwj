@@ -908,15 +908,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 pt-6">
-                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white" onClick={() => handleExport("simple")}>
+                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("simple")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 简单随机抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white" onClick={() => handleExport("systematic")}>
+                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("systematic")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 系统抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white" onClick={() => handleExport("stratified")}>
+                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("stratified")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 分层抽样结果
                             </Button>
@@ -993,7 +993,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             {/* Navigation */}
             <div className="flex justify-between pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white">
+                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一阶段
                 </Button>
                 <Button onClick={() => setConfirmSubmitOpen(true)} disabled={!isValidLength} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
@@ -1073,7 +1073,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isSubmitting} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">取消</AlertDialogCancel>
+                        <AlertDialogCancel disabled={isSubmitting} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleSubmit} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                             {isSubmitting ? (
                                 <>
@@ -1096,7 +1096,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
-                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                             onClick={() => {
                                 if (draftKey) localStorage.removeItem(draftKey);
                                 setRestoreDraftOpen(false);
@@ -1131,7 +1131,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
-                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white"
+                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                             onClick={handleKeepServerDraft}
                         >
                             保留服务器版本

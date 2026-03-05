@@ -379,7 +379,7 @@ export function TeacherApp() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="lg:hidden text-slate-400 hover:text-white"
+                            className="lg:hidden text-slate-400 hover:text-slate-100"
                             onClick={() => setIsSidebarOpen(true)}
                         >
                             <Menu className="w-5 h-5" />

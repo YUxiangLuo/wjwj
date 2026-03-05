@@ -40,7 +40,7 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onCancel} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white">
+                    <AlertDialogCancel onClick={onCancel} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
                         取消
                     </AlertDialogCancel>
                     <AlertDialogAction data-testid="teacher-student-confirm-submit" onClick={onConfirm} className={state.type === "delete" ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}>
