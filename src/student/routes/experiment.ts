@@ -1093,7 +1093,7 @@ const resetRoutes: RouteDefinition = {
         if (taskAccessError) return taskAccessError;
 
         const body = await parseBody<{ resetToStage: number; clearQuestionnaire?: boolean }>(req);
-        const resetToStage = Math.max(0, Math.min(4, Number(body.resetToStage) ?? 0));
+        const resetToStage = Math.max(0, Math.min(4, Number(body.resetToStage) || 0));
         const clearQuestionnaire = Boolean(body.clearQuestionnaire);
 
         const [exp] = await db
@@ -1136,13 +1136,7 @@ const resetRoutes: RouteDefinition = {
 
         if (resetToStage <= 0) {
             updates.questionnaire = null;
-            updates.samplePlan = null;
-            updates.samplingResults = null;
-            updates.reportContent = null;
             updates.stage1CompletedAt = null;
-            updates.stage2CompletedAt = null;
-            updates.stage3CompletedAt = null;
-            updates.stage4CompletedAt = null;
         }
 
         if (resetToStage <= 1) {
