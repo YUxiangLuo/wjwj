@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
 import { getRichTextPlainLength } from "@/utils/rich-text";
+import { formatSaveTime } from "@/utils/format";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
@@ -51,10 +52,6 @@ interface ScoreItem {
 
 function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
-
-function formatSaveTime(): string {
-    return new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 }
 
 export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
@@ -175,12 +172,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             if (!hasDraftContent) { draftResolvedRef.current = true; return; }
             const hasServerData = Boolean(initialData?.title || initialData?.questions?.length);
             if (hasServerData) {
-                const serverNorm: QuestionnaireData = {
-                    title: initialData?.title ?? "",
-                    welcomeText: initialData?.welcomeText ?? "",
-                    endingText: initialData?.endingText ?? "",
-                    questions: initialData?.questions ?? [],
-                };
+                const serverNorm = normalizeQuestionnaireData(initialData);
                 const different = JSON.stringify(draft) !== JSON.stringify(serverNorm);
                 if (different) {
                     setPendingDraft(draft);

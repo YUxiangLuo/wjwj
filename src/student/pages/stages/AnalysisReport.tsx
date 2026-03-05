@@ -23,6 +23,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, Download, FileText, Send, Loader2, Sparkles, AlertCircle, Maximize2, CheckCircle } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
+import { formatSaveTime } from "@/utils/format";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { experimentApi } from "../../api-client";
@@ -52,10 +53,6 @@ const METHOD_META: Record<MethodKey, { label: string; color: string }> = {
     systematic: { label: "系统抽样", color: "#14b8a6" },
     stratified: { label: "分层抽样", color: "#f59e0b" },
 };
-
-function formatSaveTime(): string {
-    return new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
-}
 
 const POPULATION_SERIES: ChartSeries = { key: "population", label: "总体", color: "#94a3b8" };
 
