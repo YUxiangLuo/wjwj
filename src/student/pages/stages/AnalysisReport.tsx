@@ -208,6 +208,7 @@ function buildRepresentativenessRows(
         if (totalPop === 0) return { label: field, values: {} as Record<string, number> };
 
         const categories = Object.keys(popField);
+        if (categories.length === 0) return { label: field, values: {} as Record<string, number> };
         const values: Record<string, number> = {};
 
         (Object.keys(METHOD_META) as MethodKey[]).forEach((method) => {
