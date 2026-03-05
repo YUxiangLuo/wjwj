@@ -1257,28 +1257,28 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 </Card>
             )}
 
-            <Card className="rounded-3xl border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/20 shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-teal-500 opacity-20"></div>
-                <CardContent className="py-6 px-8">
-                    <div className="flex flex-col gap-6">
-                        <div className="flex flex-wrap items-center justify-between gap-4">
-                            <div>
-                                <div className="text-xs text-indigo-400 uppercase tracking-widest font-semibold mb-1">问卷设计进度</div>
-                                <div className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                                    <span className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold shadow-lg shadow-indigo-500/30">
+            <Card className="rounded-2xl border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/20 shadow-lg relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-teal-500 opacity-20"></div>
+                <CardContent className="py-3 px-6">
+                    <div className="flex flex-col gap-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-3">
+                                <div className="text-xs text-indigo-400 uppercase tracking-widest font-semibold">问卷设计进度</div>
+                                <div className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                                    <span className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-md shadow-indigo-500/30">
                                         {step}
                                     </span>
                                     {steps[step - 1]?.title}
                                 </div>
                             </div>
-                            <div className="rounded-full bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 text-sm font-semibold text-indigo-400 shadow-sm">
+                            <div className="rounded-full bg-indigo-500/10 border border-indigo-500/20 px-3 py-0.5 text-xs font-semibold text-indigo-400">
                                 {Math.round((step / 4) * 100)}% 完成度
                             </div>
                         </div>
 
-                        <div className="relative pt-2">
+                        <div className="relative">
                             <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-0.5 bg-slate-800 -z-10" />
-                            <div className="flex items-start justify-between relative">
+                            <div className="flex items-center justify-between relative">
                                 {steps.map((s) => {
                                     const isCompleted = step > s.num;
                                     const isCurrent = step === s.num;
@@ -1292,19 +1292,19 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                 }
                                             }}
                                             disabled={s.num > step}
-                                            className="flex flex-col items-center gap-2 group disabled:cursor-not-allowed"
+                                            className="flex flex-col items-center gap-1 group disabled:cursor-not-allowed"
                                         >
                                             <span
-                                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${isCurrent
-                                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/40 scale-110 ring-4 ring-slate-900"
+                                                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${isCurrent
+                                                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/40 scale-110 ring-2 ring-slate-900"
                                                     : isCompleted
-                                                        ? "bg-emerald-500 text-white ring-4 ring-slate-900"
-                                                        : "bg-slate-800 text-slate-500 border border-slate-700 ring-4 ring-slate-900"
+                                                        ? "bg-emerald-500 text-white ring-2 ring-slate-900"
+                                                        : "bg-slate-800 text-slate-500 border border-slate-700 ring-2 ring-slate-900"
                                                     }`}
                                             >
-                                                {isCompleted ? <CheckCircle className="w-4 h-4" /> : s.num}
+                                                {isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : s.num}
                                             </span>
-                                            <span className={`text-xs font-medium transition-colors duration-200 ${isCurrent ? "text-indigo-400" : isCompleted ? "text-emerald-500" : "text-slate-500 group-hover:text-slate-400"}`}>
+                                            <span className={`text-[10px] font-medium transition-colors duration-200 ${isCurrent ? "text-indigo-400" : isCompleted ? "text-emerald-500" : "text-slate-500 group-hover:text-slate-400"}`}>
                                                 {s.title}
                                             </span>
                                         </button>

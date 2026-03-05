@@ -286,31 +286,31 @@ export function ExperimentLayout() {
 
                 {/* Overall Progress */}
                 <Card className="rounded-2xl border-slate-800 bg-slate-900 shadow-lg">
-                    <CardContent className="py-6 px-4 sm:px-8">
-                        <div className="flex flex-col gap-6">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">实验总进度</div>
-                                    <div className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                    <CardContent className="py-3 px-4 sm:px-6">
+                        <div className="flex flex-col gap-2.5">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-3">
+                                    <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">实验总进度</div>
+                                    <div className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
                                         阶段 {currentStage}: {stageNames[currentStage - 1]}
                                     </div>
                                 </div>
-                                <div className="text-xl font-bold text-indigo-400 font-mono">
+                                <div className="text-base font-bold text-indigo-400 font-mono">
                                     {Math.round((currentStage / stageNames.length) * 100)}%
                                 </div>
                             </div>
 
-                            <div className="relative h-2 w-full rounded-full bg-slate-800">
+                            <div className="relative h-1.5 w-full rounded-full bg-slate-800">
                                 <div
-                                    className="absolute left-0 top-0 h-2 rounded-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-all duration-500 ease-out"
+                                    className="absolute left-0 top-0 h-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-all duration-500 ease-out"
                                     style={{ width: `${(currentStage / stageNames.length) * 100}%` }}
                                 >
-                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-slate-950 rounded-full shadow-lg shadow-purple-500/50"></div>
+                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-slate-950 rounded-full shadow-lg shadow-purple-500/50"></div>
                                 </div>
                             </div>
 
-                            <div className="flex items-start justify-between gap-1 overflow-x-auto pb-2 scrollbar-hide">
+                            <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
                                 {stageNames.map((stage, index) => {
                                     const stageNum = index + 1;
                                     const isCompleted = stageNum < currentStage;
@@ -327,24 +327,24 @@ export function ExperimentLayout() {
                                                 }
                                             }}
                                             disabled={stageNum >= currentStage}
-                                            className="flex flex-col items-center gap-3 min-w-[70px] disabled:cursor-default group"
+                                            className="flex flex-col items-center gap-1.5 min-w-[60px] disabled:cursor-default group"
                                         >
                                             <span
-                                                className={`relative flex h-10 w-10 items-center justify-center rounded-xl border transition-all duration-300 ${isCurrent
-                                                    ? "border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 scale-110"
+                                                className={`relative flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-300 ${isCurrent
+                                                    ? "border-indigo-500 bg-indigo-600 text-white shadow-md shadow-indigo-500/30 scale-110"
                                                     : isCompleted
                                                         ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500/20"
                                                         : "border-slate-800 bg-slate-900 text-slate-600"
                                                     }`}
                                             >
-                                                <Icon className="w-5 h-5" />
+                                                <Icon className="w-4 h-4" />
                                                 {isCompleted && (
-                                                    <span className="absolute -top-1.5 -right-1.5 rounded-full bg-emerald-500 border-2 border-slate-950 p-[2px] text-white">
-                                                        <CheckCircle2 className="h-2.5 w-2.5" />
+                                                    <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 border-2 border-slate-950 p-[1px] text-white">
+                                                        <CheckCircle2 className="h-2 w-2" />
                                                     </span>
                                                 )}
                                             </span>
-                                            <span className={`text-[10px] font-medium uppercase tracking-tight whitespace-nowrap px-2 py-1 rounded-md transition-colors ${isCurrent ? "text-indigo-300 bg-indigo-500/10" :
+                                            <span className={`text-[10px] font-medium uppercase tracking-tight whitespace-nowrap transition-colors ${isCurrent ? "text-indigo-300" :
                                                 isCompleted ? "text-emerald-500/70" :
                                                     "text-slate-600"
                                                 }`}>
