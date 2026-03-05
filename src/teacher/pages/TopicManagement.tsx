@@ -236,7 +236,20 @@ export function TopicManagement() {
 
     async function handleSaveWeights() {
         if (!editingTopicId) return;
-        const total = weightConfig.questionnaire + weightConfig.process + weightConfig.report;
+        const { questionnaire, process, report } = weightConfig;
+        if (questionnaire < 10 || questionnaire > 50) {
+            toast.error("问卷设计权重需在10-50%之间");
+            return;
+        }
+        if (process < 20 || process > 60) {
+            toast.error("实验过程权重需在20-60%之间");
+            return;
+        }
+        if (report < 10 || report > 50) {
+            toast.error("实验报告权重需在10-50%之间");
+            return;
+        }
+        const total = questionnaire + process + report;
         if (total !== 100) {
             toast.error("权重总和必须等于100");
             return;

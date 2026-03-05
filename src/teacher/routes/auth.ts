@@ -266,7 +266,12 @@ async function handleTeacherLogin(req: Request, t: typeof teacher.$inferSelect, 
     const lockMinutes = await getConfigNumber("login.lock_duration_minutes", TEACHER_LOCK_MINUTES);
 
     if (t.lockedUntil && new Date(t.lockedUntil) > now) {
-        return error("账号已锁定，请稍后再试", "ACCOUNT_LOCKED", 403);
+        const remainMinutes = Math.ceil((new Date(t.lockedUntil).getTime() - now.getTime()) / 60000);
+        return error(`账号已被锁定，请${remainMinutes}分钟后重试`, "ACCOUNT_LOCKED", 403);
+    }
+
+    if (t.status !== undefined && t.status !== null && t.status !== 1) {
+        return error("账号已停用，请联系管理员", "ACCOUNT_DISABLED", 403);
     }
 
     const isValid = await Bun.password.verify(password, t.password);
@@ -277,8 +282,11 @@ async function handleTeacherLogin(req: Request, t: typeof teacher.$inferSelect, 
             updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
         }
         await db.update(teacher).set(updateData).where(eq(teacher.id, t.id));
+        const remaining = maxAttempts - failCount;
         return error(
-            failCount >= maxAttempts ? `密码错误次数过多，账号已锁定${lockMinutes}分钟` : "工号或密码错误",
+            failCount >= maxAttempts
+                ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
+                : `账号或密码错误，还剩${remaining}次尝试机会`,
             "INVALID_CREDENTIALS",
             401
         );
@@ -325,7 +333,8 @@ async function handleAssistantLogin(req: Request, a: typeof assistant.$inferSele
     const lockMinutes = await getConfigNumber("login.lock_duration_minutes", TEACHER_LOCK_MINUTES);
 
     if (a.lockedUntil && new Date(a.lockedUntil) > now) {
-        return error("账号已锁定，请稍后再试", "ACCOUNT_LOCKED", 403);
+        const remainMinutes = Math.ceil((new Date(a.lockedUntil).getTime() - now.getTime()) / 60000);
+        return error(`账号已被锁定，请${remainMinutes}分钟后重试`, "ACCOUNT_LOCKED", 403);
     }
 
     if (a.status !== 1) {
@@ -340,8 +349,11 @@ async function handleAssistantLogin(req: Request, a: typeof assistant.$inferSele
             updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
         }
         await db.update(assistant).set(updateData).where(eq(assistant.id, a.id));
+        const remaining = maxAttempts - failCount;
         return error(
-            failCount >= maxAttempts ? `密码错误次数过多，账号已锁定${lockMinutes}分钟` : "工号或密码错误",
+            failCount >= maxAttempts
+                ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
+                : `账号或密码错误，还剩${remaining}次尝试机会`,
             "INVALID_CREDENTIALS",
             401
         );

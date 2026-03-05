@@ -84,6 +84,7 @@ const topicRoutes: RouteDefinition = {
         const body = await parseBody<{ name: string; description?: string; status?: number }>(req);
 
         if (!body.name?.trim()) return error("课题名称不能为空", "VALIDATION_ERROR");
+        if (body.name.trim().length > 200) return error("课题名称不能超过200字", "VALIDATION_ERROR", 400);
 
         const [result] = await db.insert(topic).values({
             teacherId: currentTeacherId,
@@ -114,6 +115,7 @@ const topicItemRoutes: RouteDefinition = {
             if (typeof body.name !== "string") return error("课题名称格式无效", "VALIDATION_ERROR", 400);
             const trimmedName = body.name.trim();
             if (!trimmedName) return error("课题名称不能为空", "VALIDATION_ERROR", 400);
+            if (trimmedName.length > 200) return error("课题名称不能超过200字", "VALIDATION_ERROR", 400);
             updateData.name = trimmedName;
         }
         if (body.description !== undefined) updateData.description = body.description;
@@ -394,7 +396,11 @@ const topicWeightRoutes: RouteDefinition = {
         const body = await parseBody<{ weightConfig: { questionnaire: number; process: number; report: number } }>(req);
         const weightConfig = body.weightConfig;
         if (!weightConfig) return error("评分权重不能为空", "VALIDATION_ERROR", 400);
-        const sum = (weightConfig.questionnaire ?? 0) + (weightConfig.process ?? 0) + (weightConfig.report ?? 0);
+        const { questionnaire: wQ, process: wP, report: wR } = weightConfig;
+        if (wQ < 10 || wQ > 50) return error("问卷设计权重需在10-50%之间", "VALIDATION_ERROR", 400);
+        if (wP < 20 || wP > 60) return error("实验过程权重需在20-60%之间", "VALIDATION_ERROR", 400);
+        if (wR < 10 || wR > 50) return error("实验报告权重需在10-50%之间", "VALIDATION_ERROR", 400);
+        const sum = wQ + wP + wR;
         if (sum !== 100) return error("评分权重总和必须等于100", "VALIDATION_ERROR", 400);
 
         await db.update(topic).set({ weightConfig }).where(eq(topic.id, id));
@@ -568,6 +574,7 @@ const taskExtendRoutes: RouteDefinition = {
             .where(and(eq(task.id, taskId), eq(class_.teacherId, currentTeacherId)));
 
         if (!row) return error("任务不存在", "NOT_FOUND", 404);
+        if (newDeadline <= new Date()) return error("新截止时间必须晚于当前时间", "VALIDATION_ERROR", 400);
         if (row.deadline && new Date(row.deadline) >= newDeadline) return error("新截止时间必须晚于原截止时间", "VALIDATION_ERROR", 400);
 
         await db.update(task).set({ deadline: newDeadline }).where(eq(task.id, taskId));

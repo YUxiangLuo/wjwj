@@ -516,12 +516,14 @@ export function GradingDetail() {
                                 <Textarea
                                     data-testid="teacher-grading-comment"
                                     rows={8}
+                                    maxLength={2000}
                                     placeholder="请输入评语..."
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
                                     className="bg-slate-950 border-slate-700 text-slate-200 resize-none focus:border-indigo-500"
                                     disabled={saving || isReadOnly}
                                 />
+                                <div className="text-xs text-slate-500 text-right">{comment.length}/2000</div>
                             </div>
                         </div>
                     </div>

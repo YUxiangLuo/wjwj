@@ -81,6 +81,8 @@ const gradingRoutes: RouteDefinition = {
 
         if (status === "pending") {
             query = query.where(eq(submission.status, 1));
+        } else if (status === "draft") {
+            query = query.where(eq(submission.status, 0));
         } else if (status === "graded") {
             query = query.where(eq(submission.status, 2));
         } else if (status === "rejected") {
@@ -255,6 +257,10 @@ const gradingDetailRoutes: RouteDefinition = {
         const scores = [body.scoreQuestionnaire, body.scoreProcess, body.scoreReport];
         if (scores.some((s) => !Number.isFinite(s) || s < 0 || s > 100)) {
             return error("分项分数需在 0-100 之间", "VALIDATION_ERROR", 400);
+        }
+
+        if ((body.comment ?? "").length > 2000) {
+            return error("教师评语不能超过2000字", "VALIDATION_ERROR", 400);
         }
 
         if (!isDraft && body.status === 3) {
