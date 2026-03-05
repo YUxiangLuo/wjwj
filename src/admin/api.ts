@@ -55,6 +55,7 @@ import {
     studentStatusRoutes,
     studentTransferRoutes,
     studentUnlockRoutes,
+    teacherClassesRoutes,
     teacherResetPasswordRoutes,
     teacherRoutes,
     teacherStatusRoutes,
@@ -388,6 +389,7 @@ export const adminApiRoutes = {
     "/api/admin/teachers/:id/status": withAdminAuth(teacherStatusRoutes),
     "/api/admin/teachers/:id/unlock": withAdminAuth(teacherUnlockRoutes),
     "/api/admin/teachers/:id/reset-password": withAdminAuth(teacherResetPasswordRoutes),
+    "/api/admin/teachers/:id/classes": withAdminAuth(teacherClassesRoutes),
 
     // Assistants
     "/api/admin/assistants": withAdminAuth(assistantRoutes),

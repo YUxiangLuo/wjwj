@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock, GraduationCap, Pencil } from "lucide-react";
+import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock, GraduationCap, Pencil, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { teacherApi, type Teacher } from "../api-client";
+import { teacherApi, type Teacher, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
 
 export function TeacherManagement() {
@@ -20,6 +20,10 @@ export function TeacherManagement() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
     const [editName, setEditName] = useState("");
+    const [showClassesModal, setShowClassesModal] = useState(false);
+    const [classesTeacher, setClassesTeacher] = useState<Teacher | null>(null);
+    const [teacherClasses, setTeacherClasses] = useState<TeacherClass[]>([]);
+    const [loadingClasses, setLoadingClasses] = useState(false);
 
     useEffect(() => {
         loadTeachers();
@@ -129,6 +133,25 @@ export function TeacherManagement() {
         setEditingTeacher(teacher);
         setEditName(teacher.name);
         setShowEditModal(true);
+    }
+
+    async function handleViewClasses(t: Teacher) {
+        setClassesTeacher(t);
+        setShowClassesModal(true);
+        setLoadingClasses(true);
+        try {
+            const res = await teacherApi.getClasses(t.id);
+            if (res.success && res.data) {
+                setTeacherClasses(res.data);
+            } else {
+                toast.error(res.error?.message ?? "获取班级列表失败");
+            }
+        } catch (err) {
+            console.error("Failed to load teacher classes:", err);
+            toast.error("获取班级列表失败");
+        } finally {
+            setLoadingClasses(false);
+        }
     }
 
     async function handleEditTeacher() {
@@ -307,6 +330,10 @@ export function TeacherManagement() {
                                                         <Pencil className="w-3.5 h-3.5 mr-1" />
                                                         编辑
                                                     </Button>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleViewClasses(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                        <Eye className="w-3.5 h-3.5 mr-1" />
+                                                        班级
+                                                    </Button>
                                                     <Button data-testid={`teacher-reset-${teacher.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置
@@ -428,6 +455,59 @@ export function TeacherManagement() {
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认修改
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showClassesModal} onOpenChange={setShowClassesModal}>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-slate-100">
+                            {classesTeacher?.name} 的班级列表
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-2">
+                        {loadingClasses ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
+                            </div>
+                        ) : teacherClasses.length === 0 ? (
+                            <div className="text-center py-8 text-slate-500">
+                                <GraduationCap className="w-8 h-8 mx-auto mb-2 text-slate-600" />
+                                <p>暂无关联班级</p>
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="border-slate-800 hover:bg-slate-900/50">
+                                        <TableHead className="text-slate-400">班级名称</TableHead>
+                                        <TableHead className="text-slate-400">学期</TableHead>
+                                        <TableHead className="text-slate-400">学生人数</TableHead>
+                                        <TableHead className="text-slate-400">创建时间</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {teacherClasses.map((cls) => (
+                                        <TableRow key={cls.id} className="border-slate-800 hover:bg-slate-800/50">
+                                            <TableCell className="font-medium text-slate-200">{cls.name}</TableCell>
+                                            <TableCell className="text-slate-300">{cls.semesterName ?? "-"}</TableCell>
+                                            <TableCell className="text-slate-300">
+                                                <div className="flex items-center gap-1">
+                                                    <Users className="w-3.5 h-3.5 text-slate-500" />
+                                                    {cls.studentCount}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-slate-500 text-xs">{formatDate(cls.createdAt)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setShowClassesModal(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                            关闭
                         </Button>
                     </DialogFooter>
                 </DialogContent>

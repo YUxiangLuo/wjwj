@@ -205,6 +205,32 @@ const teacherResetPasswordRoutes = {
     },
 };
 
+const teacherClassesRoutes = {
+    async GET(req: Request) {
+        const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+        if (!id) return error("无效的教师ID", "INVALID_ID");
+
+        const [t] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, id));
+        if (!t) return error("教师不存在", "NOT_FOUND", 404);
+
+        const rows = await db
+            .select({
+                id: class_.id,
+                name: class_.name,
+                semesterId: class_.semesterId,
+                semesterName: semester.name,
+                studentCount: sql<number>`(SELECT COUNT(*) FROM student WHERE student.class_id = ${class_.id} AND student.deleted_at IS NULL)`,
+                createdAt: class_.createdAt,
+            })
+            .from(class_)
+            .leftJoin(semester, eq(class_.semesterId, semester.id))
+            .where(eq(class_.teacherId, id))
+            .orderBy(desc(class_.createdAt));
+
+        return json(rows);
+    },
+};
+
 const assistantRoutes: RouteDefinition = {
     async GET(req) {
         const params = getSearchParams(req);
@@ -660,7 +686,46 @@ const announcementStatsRoutes = {
         if (includeAssistant) byRole.push({ role: "助教", readCount: roleReadMap.get(3) ?? 0, totalCount: aCount?.count ?? 0 });
         if (includeStudent) byRole.push({ role: "学生", readCount: roleReadMap.get(4) ?? 0, totalCount: sCount?.count ?? 0 });
 
-        return json({ readCount, totalCount, readRate, byRole });
+        // Readers list: join with user tables to get names
+        const readRecords = await db
+            .select({
+                userType: announcementRead.userType,
+                userId: announcementRead.userId,
+                readAt: announcementRead.readAt,
+            })
+            .from(announcementRead)
+            .where(eq(announcementRead.announcementId, id))
+            .orderBy(desc(announcementRead.readAt));
+
+        const readers: { name: string; role: string; readAt: Date | null }[] = [];
+
+        // Batch-fetch names for each user type
+        const teacherIds = readRecords.filter(r => r.userType === 2).map(r => r.userId);
+        const assistantIds = readRecords.filter(r => r.userType === 3).map(r => r.userId);
+        const studentIds = readRecords.filter(r => r.userType === 4).map(r => r.userId);
+
+        const teacherNames = teacherIds.length > 0
+            ? new Map((await db.select({ id: teacher.id, name: teacher.name }).from(teacher).where(inArray(teacher.id, teacherIds))).map(t => [t.id, t.name]))
+            : new Map<number, string>();
+        const assistantNames = assistantIds.length > 0
+            ? new Map((await db.select({ id: assistant.id, name: assistant.name }).from(assistant).where(inArray(assistant.id, assistantIds))).map(a => [a.id, a.name]))
+            : new Map<number, string>();
+        const studentNames = studentIds.length > 0
+            ? new Map((await db.select({ id: student.id, name: student.name }).from(student).where(inArray(student.id, studentIds))).map(s => [s.id, s.name]))
+            : new Map<number, string>();
+
+        const roleLabels: Record<number, string> = { 2: "教师", 3: "助教", 4: "学生" };
+        const nameMaps: Record<number, Map<number, string>> = { 2: teacherNames, 3: assistantNames, 4: studentNames };
+
+        for (const r of readRecords) {
+            readers.push({
+                name: nameMaps[r.userType]?.get(r.userId) ?? "未知用户",
+                role: roleLabels[r.userType] ?? "未知",
+                readAt: r.readAt,
+            });
+        }
+
+        return json({ readCount, totalCount, readRate, byRole, readers });
     },
 };
 
@@ -686,6 +751,7 @@ export {
     studentStatusRoutes,
     studentTransferRoutes,
     studentUnlockRoutes,
+    teacherClassesRoutes,
     teacherResetPasswordRoutes,
     teacherRoutes,
     teacherStatusRoutes,

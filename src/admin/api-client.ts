@@ -213,6 +213,15 @@ export const semesterApi = {
 // Teacher API
 // ============================================================
 
+export interface TeacherClass {
+    id: number;
+    name: string;
+    semesterId: number;
+    semesterName: string | null;
+    studentCount: number;
+    createdAt: string;
+}
+
 export const teacherApi = {
     list: (search?: string) =>
         request<Teacher[]>(
@@ -246,6 +255,9 @@ export const teacherApi = {
         request<{ success: boolean }>(`/api/admin/teachers/${id}/reset-password`, {
             method: "POST",
         }),
+
+    getClasses: (id: number) =>
+        request<TeacherClass[]>(`/api/admin/teachers/${id}/classes`),
 };
 
 // ============================================================
@@ -417,6 +429,7 @@ export const announcementApi = {
             totalCount: number;
             readRate: number;
             byRole: { role: string; readCount: number; totalCount: number }[];
+            readers: { name: string; role: string; readAt: string }[];
         }>(`/api/admin/announcements/${id}/stats`),
 };
 
