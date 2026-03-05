@@ -264,6 +264,7 @@ function StudentAppContent() {
                             className="text-slate-400 hover:text-slate-100 hover:bg-slate-800"
                             onClick={toggleTheme}
                             title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
+                            aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                         >
                             {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                         </Button>
