@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, Save, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type SubmissionDetail } from "../api-client";
 import { toast } from "sonner";
@@ -47,6 +57,16 @@ export function GradingDetail() {
     const [showTemplates, setShowTemplates] = useState(false);
     const [savingDraft, setSavingDraft] = useState(false);
 
+    // Auto-save state & refs
+    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
+    const [pendingDraft, setPendingDraft] = useState<{ scores: typeof scores; comment: string } | null>(null);
+    const serverSnapshotRef = useRef("");
+    const saveInFlightRef = useRef(false);
+    const draftResolvedRef = useRef(false);
+
+    const draftKey = submissionId ? `teacher_grading_draft_${submissionId}` : null;
+
     useEffect(() => {
         if (!submissionId) return;
         loadDetail(Number(submissionId));
@@ -54,6 +74,7 @@ export function GradingDetail() {
 
     async function loadDetail(id: number) {
         setLoading(true);
+        draftResolvedRef.current = false;
         const res = await teacherApi.getSubmissionDetail(id);
         if (res.success && res.data) {
             setData(res.data);
@@ -65,9 +86,108 @@ export function GradingDetail() {
             setComment(res.data.teacherComment ?? "");
             setWeights(res.data.weights ?? { questionnaire: 30, process: 30, report: 40 });
             setRejectReason(res.data.rejectReason ?? "");
+
+            // Initialize server snapshot for auto-save comparison
+            const serverData = {
+                scores: {
+                    questionnaire: String(res.data.scoreQuestionnaire ?? 0),
+                    process: String(res.data.scoreProcess ?? 0),
+                    report: String(res.data.scoreReport ?? 0),
+                },
+                comment: res.data.teacherComment ?? "",
+            };
+            serverSnapshotRef.current = JSON.stringify(serverData);
+
+            // Check for localStorage draft recovery
+            const key = `teacher_grading_draft_${id}`;
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw) {
+                    const draft = JSON.parse(raw) as { scores: typeof scores; comment: string };
+                    if (JSON.stringify(draft) !== JSON.stringify(serverData)) {
+                        setPendingDraft(draft);
+                        setRestoreDraftOpen(true);
+                    } else {
+                        draftResolvedRef.current = true;
+                    }
+                } else {
+                    draftResolvedRef.current = true;
+                }
+            } catch {
+                draftResolvedRef.current = true;
+            }
         }
         setLoading(false);
     }
+
+    // ─── Auto-save ───────────────────────────────────────────────
+    const buildGradingSnapshot = useCallback(() => ({
+        scores,
+        comment,
+    }), [scores, comment]);
+
+    const autoSave = useCallback(async () => {
+        if (!submissionId || !data || data.readonly) return;
+        if (data.status !== 0 && data.status !== 1) return;
+        if (!draftResolvedRef.current) return;
+
+        const gradingData = buildGradingSnapshot();
+        const snapshot = JSON.stringify(gradingData);
+
+        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
+        if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+        saveInFlightRef.current = true;
+        try {
+            const sq = parseFloat(gradingData.scores.questionnaire) || 0;
+            const sp = parseFloat(gradingData.scores.process) || 0;
+            const sr = parseFloat(gradingData.scores.report) || 0;
+            const total = sq * (weights.questionnaire / 100) + sp * (weights.process / 100) + sr * (weights.report / 100);
+
+            const res = await teacherApi.submitGrade(Number(submissionId), {
+                scoreQuestionnaire: sq,
+                scoreProcess: sp,
+                scoreReport: sr,
+                totalScore: parseFloat(total.toFixed(2)),
+                comment: gradingData.comment,
+                status: 0,
+                action: "draft",
+            });
+
+            if (res.success) {
+                serverSnapshotRef.current = snapshot;
+                setLastSavedAt(new Date().toLocaleTimeString("zh-CN", {
+                    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+                }));
+            }
+        } finally {
+            saveInFlightRef.current = false;
+        }
+    }, [submissionId, data, buildGradingSnapshot, weights]);
+
+    const autoSaveRef = useRef(autoSave);
+    useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
+
+    // Debounce: auto-save 3s after user stops typing
+    useEffect(() => {
+        if (!draftResolvedRef.current) return;
+        const timer = window.setTimeout(() => { void autoSave(); }, 3000);
+        return () => window.clearTimeout(timer);
+    }, [autoSave]);
+
+    // Interval: auto-save every 30s
+    useEffect(() => {
+        const timer = window.setInterval(() => { void autoSaveRef.current(); }, 30_000);
+        return () => window.clearInterval(timer);
+    }, []);
+
+    // localStorage draft save on every change
+    useEffect(() => {
+        if (!draftKey || !draftResolvedRef.current) return;
+        try {
+            localStorage.setItem(draftKey, JSON.stringify(buildGradingSnapshot()));
+        } catch { /* ignore write errors */ }
+    }, [draftKey, buildGradingSnapshot]);
 
     const totalScore = (
         (parseFloat(scores.questionnaire) || 0) * (weights.questionnaire / 100) +
@@ -94,6 +214,7 @@ export function GradingDetail() {
 
         setSaving(false);
         if (res.success) {
+            if (draftKey) localStorage.removeItem(draftKey);
             toast.success("提交成功");
             navigate("/grading");
         } else {
@@ -105,13 +226,14 @@ export function GradingDetail() {
         if (!submissionId || data?.readonly) return;
         setSavingDraft(true);
 
+        const gradingData = buildGradingSnapshot();
         const payload = {
-            scoreQuestionnaire: parseFloat(scores.questionnaire) || 0,
-            scoreProcess: parseFloat(scores.process) || 0,
-            scoreReport: parseFloat(scores.report) || 0,
+            scoreQuestionnaire: parseFloat(gradingData.scores.questionnaire) || 0,
+            scoreProcess: parseFloat(gradingData.scores.process) || 0,
+            scoreReport: parseFloat(gradingData.scores.report) || 0,
             totalScore: parseFloat(totalScore.toFixed(2)),
-            comment: comment,
-            status: 1,
+            comment: gradingData.comment,
+            status: 0,
             action: "draft",
         };
 
@@ -119,6 +241,10 @@ export function GradingDetail() {
         setSavingDraft(false);
 
         if (res.success) {
+            serverSnapshotRef.current = JSON.stringify(gradingData);
+            setLastSavedAt(new Date().toLocaleTimeString("zh-CN", {
+                hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+            }));
             toast.success("草稿已保存");
         } else {
             toast.error("保存失败: " + res.error?.message);
@@ -137,7 +263,7 @@ export function GradingDetail() {
             scoreReport: parseFloat(scores.report) || 0,
             totalScore: parseFloat(totalScore.toFixed(2)),
             comment: comment,
-            status: 1,
+            status: 0,
             action: "draft",
         };
         await teacherApi.submitGrade(Number(submissionId), payload);
@@ -529,6 +655,9 @@ export function GradingDetail() {
                     </div>
 
                     <div className="p-6 border-t border-slate-800 space-y-3 bg-slate-900/50">
+                        {lastSavedAt && (
+                            <div className="text-xs text-slate-500 text-center">已自动保存于 {lastSavedAt}</div>
+                        )}
                         {(data.status === 0 || data.status === 1) && !isReadOnly && (
                             <>
                                 <div className="flex gap-2">
@@ -590,6 +719,43 @@ export function GradingDetail() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-100">恢复草稿</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                            检测到未完成的批改草稿，是否恢复？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                            onClick={() => {
+                                if (draftKey) localStorage.removeItem(draftKey);
+                                setPendingDraft(null);
+                                setRestoreDraftOpen(false);
+                                draftResolvedRef.current = true;
+                            }}
+                        >
+                            放弃草稿
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            onClick={() => {
+                                if (!pendingDraft) return;
+                                setScores(pendingDraft.scores);
+                                setComment(pendingDraft.comment);
+                                setPendingDraft(null);
+                                setRestoreDraftOpen(false);
+                                draftResolvedRef.current = true;
+                            }}
+                        >
+                            恢复草稿
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
