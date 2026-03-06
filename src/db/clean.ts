@@ -34,7 +34,7 @@ async function reset() {
     `);
 
     // Drop each table
-    const result = tables as unknown as Array<{ table_name?: string; TABLE_NAME?: string }>;
+    const result = (tables as unknown as [Array<{ table_name?: string; TABLE_NAME?: string }>])[0];
     for (const row of result) {
         const tableName = row.table_name || row.TABLE_NAME;
         if (!tableName) continue;
