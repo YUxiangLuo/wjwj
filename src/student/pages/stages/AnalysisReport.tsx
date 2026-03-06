@@ -202,12 +202,9 @@ function buildRepresentativenessRows(
 ) {
     const rows: ChartRow[] = [];
 
-    // Numeric fields: |sample_mean - population_mean| / population_mean * 100
+    // Numeric fields: populationStats only contains categorical distributions,
+    // so we use the combined-sample mean as a proxy for the population mean.
     for (const field of numericFields) {
-        // Compute population mean from stats if available
-        const popFieldStats = populationStats[field];
-        // populationStats mainly has categorical data; for numeric we compute from all method rows merged
-        // Instead, compare each method's mean against the overall average as a proxy
         const allValues: number[] = [];
         for (const method of Object.keys(methodRows) as MethodKey[]) {
             for (const row of methodRows[method]) {
@@ -216,34 +213,52 @@ function buildRepresentativenessRows(
             }
         }
         if (allValues.length === 0) continue;
-        const overallMean = allValues.reduce((s, v) => s + v, 0) / allValues.length;
-        if (overallMean === 0) continue;
+        const combinedMean = allValues.reduce((s, v) => s + v, 0) / allValues.length;
+        if (combinedMean === 0) continue;
 
         const values: Record<string, number> = {};
         for (const method of Object.keys(METHOD_META) as MethodKey[]) {
             const methodMean = calculateMean(methodRows[method], field);
-            values[method] = Math.abs(methodMean - overallMean) / Math.abs(overallMean) * 100;
+            values[method] = Math.abs(methodMean - combinedMean) / Math.abs(combinedMean) * 100;
         }
         rows.push({ label: `${field}（均值偏差）`, values });
     }
 
-    // Categorical fields: average absolute proportion difference vs population
+    // Categorical fields: average absolute proportion difference vs population.
+    // Categories are the union of population and sample categories.
     for (const field of categoricalFields) {
         const popFieldStats = populationStats[field];
         if (!popFieldStats) continue;
         const totalPop = Object.values(popFieldStats).reduce((s, v) => s + v, 0);
         if (totalPop === 0) continue;
 
-        const categories = Object.keys(popFieldStats);
+        // Build union of population + sample categories
+        const categorySet = new Set<string>(Object.keys(popFieldStats));
+        for (const method of Object.keys(methodRows) as MethodKey[]) {
+            for (const row of methodRows[method]) {
+                const val = String(row[field] ?? "").trim();
+                if (val) categorySet.add(val);
+            }
+        }
+        const categories = Array.from(categorySet);
+
         const values: Record<string, number> = {};
 
         for (const method of Object.keys(METHOD_META) as MethodKey[]) {
             const mRows = methodRows[method];
             if (mRows.length === 0) { values[method] = 0; continue; }
+
+            // Precompute frequency map for this method and field (single pass)
+            const categoryCounts: Record<string, number> = {};
+            for (const row of mRows) {
+                const key = String(row[field] ?? "").trim();
+                categoryCounts[key] = (categoryCounts[key] ?? 0) + 1;
+            }
+
             let totalDiff = 0;
             for (const cat of categories) {
                 const popProp = (popFieldStats[cat] ?? 0) / totalPop * 100;
-                const sampleCount = mRows.filter((r) => String(r[field] ?? "").trim() === cat).length;
+                const sampleCount = categoryCounts[cat] ?? 0;
                 const sampleProp = (sampleCount / mRows.length) * 100;
                 totalDiff += Math.abs(sampleProp - popProp);
             }
