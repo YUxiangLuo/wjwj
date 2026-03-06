@@ -5,7 +5,7 @@
  * relationship in the system.  Designed to run on a freshly-pushed schema
  * (after `bun run db:reset`).
  *
- * Run with:  bun run src/db/seeds/default.ts
+ * Run with:  bun run db:seed
  */
 
 import { db } from "../index";

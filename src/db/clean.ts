@@ -15,7 +15,8 @@ async function reset() {
     if (!force) {
         console.log("⚠️  WARNING: This will DROP ALL TABLES in the database!");
         console.log("Run with --force or -f to confirm.\n");
-        console.log("Usage: bun run db:reset --force");
+        console.log("Usage: bun run db:clean");
+        console.log("Or:    bun run db:reset");
         process.exit(1);
     }
 

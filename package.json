@@ -8,12 +8,13 @@
     "bun": ">=1.3.0"
   },
   "scripts": {
-    "dev": "bun --hot src/index.ts",
+    "dev": "DISABLE_AUTO_BACKUP=1 DISABLE_NOTIFICATION_CLEANUP=1 DISABLE_DEADLINE_REMINDER=1 bun --hot src/index.ts",
+    "dev:full": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "test": "bun test src env.test.ts",
-    "test:watch": "bun test src env.test.ts --watch",
-    "test:unit": "bun test src env.test.ts",
-    "test:all": "bun run test:unit",
+    "test:watch": "bun run test --watch",
+    "test:unit": "bun run test",
+    "test:all": "bun run test",
     "test:env": "bun test env.test.ts",
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
@@ -21,7 +22,9 @@
     "db:studio": "bunx drizzle-kit studio",
     "db:drop": "bunx drizzle-kit drop",
     "db:check": "bunx drizzle-kit check",
-    "db:reset": "bun run src/db/clean.ts --force && bun run db:push && bun run src/db/seeds/default.ts"
+    "db:clean": "bun run src/db/clean.ts --force",
+    "db:seed": "bun run src/db/seeds/default.ts",
+    "db:reset": "bun run db:clean && bun run db:push && bun run db:seed"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

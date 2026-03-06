@@ -78,7 +78,7 @@ bun run db:reset
 4) （可选）仅写入演示数据
 
 ```bash
-bun run src/db/seeds/default.ts
+bun run db:seed
 ```
 
 5) 启动开发环境
@@ -86,6 +86,8 @@ bun run src/db/seeds/default.ts
 ```bash
 bun dev
 ```
+
+`bun dev` 默认会关闭自动备份、通知清理和截止提醒这些后台定时任务，避免本地开发产生额外副作用；如果需要联调这些调度逻辑，使用 `bun run dev:full`。
 
 默认访问地址：
 
@@ -95,17 +97,19 @@ bun dev
 
 ## 测试分层说明
 
-- 单元测试：`bun test` / `bun run test:unit`
+- 当前 `bun test` / `bun run test:all` 会运行 `src/` 下测试和 `env.test.ts`
 
 ## 常用脚本
 
 ```bash
-bun dev                 # 开发模式（热更新）
+bun dev                 # 开发模式（热更新，默认关闭后台定时任务）
+bun run dev:full        # 开发模式（保留自动备份/通知清理/截止提醒）
 bun start               # 生产模式启动
 
-bun test                # 运行单元测试（src + env.test.ts）
-bun run test:watch      # 单元测试监听模式
-bun run test:all        # 运行全部测试（当前仅单元测试）
+bun test                # 运行当前测试集（src + env.test.ts）
+bun run test:watch      # 测试监听模式
+bun run test:all        # 运行当前测试集
+bun run test:env        # 仅运行环境变量加载测试
 
 bun run db:generate     # 生成迁移
 bun run db:migrate      # 执行迁移脚本
@@ -113,6 +117,8 @@ bun run db:push         # 直接同步 schema 到数据库
 bun run db:studio       # 打开 Drizzle Studio
 bun run db:drop         # 删除数据库对象
 bun run db:check        # 检查数据库差异
+bun run db:clean        # 清空当前数据库（危险操作）
+bun run db:seed         # 写入默认演示数据
 bun run db:reset        # 清空并重建数据库 + 写入种子
 ```
 
