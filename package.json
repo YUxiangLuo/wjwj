@@ -9,8 +9,11 @@
   },
   "scripts": {
     "dev": "DISABLE_AUTO_BACKUP=1 DISABLE_NOTIFICATION_CLEANUP=1 DISABLE_DEADLINE_REMINDER=1 bun --hot src/index.ts",
-    "dev:full": "bun --hot src/index.ts",
+    "dev:full": "RUN_IN_PROCESS_SCHEDULERS=1 bun --hot src/index.ts",
+    "dev:worker": "bun --hot src/worker.ts",
     "start": "NODE_ENV=production bun src/index.ts",
+    "start:legacy": "RUN_IN_PROCESS_SCHEDULERS=1 NODE_ENV=production bun src/index.ts",
+    "worker": "NODE_ENV=production bun src/worker.ts",
     "test": "bun test src env.test.ts",
     "test:watch": "bun run test --watch",
     "test:unit": "bun run test",

@@ -87,7 +87,11 @@ bun run db:seed
 bun dev
 ```
 
-`bun dev` 默认会关闭自动备份、通知清理和截止提醒这些后台定时任务，避免本地开发产生额外副作用；如果需要联调这些调度逻辑，使用 `bun run dev:full`。
+`bun dev` 默认只启动 Web 服务，并关闭自动备份、通知清理和截止提醒这些后台定时任务，避免本地开发产生额外副作用；如果需要在单进程里联调这些调度逻辑，使用 `bun run dev:full`。更接近生产的方式是单独启动后台 worker：
+
+```bash
+bun run dev:worker
+```
 
 默认访问地址：
 
@@ -106,9 +110,12 @@ bun dev
 ## 常用脚本
 
 ```bash
-bun dev                 # 开发模式（热更新，默认关闭后台定时任务）
-bun run dev:full        # 开发模式（保留自动备份/通知清理/截止提醒）
-bun start               # 生产模式启动
+bun dev                 # 开发模式（仅 Web，默认关闭后台定时任务）
+bun run dev:full        # 开发模式（单进程保留后台定时任务）
+bun run dev:worker      # 开发模式启动后台 worker
+bun start               # 生产模式启动 Web 服务
+bun run worker          # 生产模式启动后台 worker
+bun run start:legacy    # 兼容模式：单进程启动 Web + 后台任务
 
 bun test                # 运行当前测试集（src + env.test.ts）
 bun run test:watch      # 测试监听模式
@@ -145,6 +152,7 @@ bun run db:reset        # 清空并重建数据库 + 写入种子
 ## 开发备注
 
 - 项目是单服务多前端路由模式，统一由 `src/index.ts` 聚合
+- 后台调度任务已抽到 `src/worker.ts` / `src/server/background-jobs.ts`，生产环境建议与 Web 分开部署
 - API 返回格式统一为 `{ success, data | error }`
 - 鉴权与会话逻辑分别在：
   - `src/admin/routes/auth.ts`
