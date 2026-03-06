@@ -35,14 +35,16 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<TabKey>("basic");
 
+    const topicId = topic?.id ?? null;
+
     useEffect(() => {
-        if (open && topic) {
+        if (open && topicId !== null) {
             setActiveTab("basic");
-            loadDetail(topic.id);
+            loadDetail(topicId);
         } else {
             setDetail(null);
         }
-    }, [open, topic?.id]);
+    }, [open, topicId]);
 
     async function loadDetail(id: number) {
         setLoading(true);
@@ -53,9 +55,17 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
         setLoading(false);
     }
 
+    function safeParseJson(raw: unknown): Record<string, unknown> | null {
+        if (!raw) return null;
+        if (typeof raw === "object") return raw as Record<string, unknown>;
+        if (typeof raw === "string") {
+            try { return JSON.parse(raw); } catch { return null; }
+        }
+        return null;
+    }
+
     const fieldMapping = (() => {
-        const raw = detail?.topic?.fieldMapping ?? null;
-        const parsed = typeof raw === "string" ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+        const parsed = safeParseJson(detail?.topic?.fieldMapping);
         return {
             identifier: parsed?.identifier as string | undefined,
             stratified: (parsed?.stratified ?? []) as string[],
@@ -65,8 +75,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
     })();
 
     const weightConfig = (() => {
-        const raw = detail?.topic?.weightConfig;
-        const parsed = typeof raw === "string" ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+        const parsed = safeParseJson(detail?.topic?.weightConfig);
         return {
             questionnaire: (parsed?.questionnaire ?? 30) as number,
             process: (parsed?.process ?? 30) as number,
