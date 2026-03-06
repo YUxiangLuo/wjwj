@@ -1,16 +1,25 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
-import { class_, loginLog, student, systemConfig, userSession } from "../../db/schema";
+import { class_, student } from "../../db/schema";
+import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import {
     buildSessionCookie,
     clearSessionCookie,
     error,
-    getClientIp,
-    getCookieValue,
     isSecureRequest,
     json,
     parseBody,
 } from "../../server/http";
+import { getConfigNumber } from "../../server/system-config";
+import {
+    clearUserSessionForUser,
+    createSingleUserSession,
+    deleteUserSessionByToken,
+    extendUserSession,
+    loadActiveUserSession,
+    readSessionToken,
+    recordLoginLog,
+} from "../../server/user-session";
 import type { RouteDefinition } from "../../server/route-types";
 
 const STUDENT_USER_TYPE = 4;
@@ -19,62 +28,24 @@ const STUDENT_SESSION_TTL_MINUTES = 240;
 const STUDENT_MAX_LOGIN_ATTEMPTS = 5;
 const STUDENT_LOCK_MINUTES = 30;
 
-export async function getConfigNumber(key: string, fallback: number) {
-    const [row] = await db
-        .select({ value: systemConfig.configValue, valueType: systemConfig.valueType })
-        .from(systemConfig)
-        .where(eq(systemConfig.configKey, key))
-        .limit(1);
-
-    if (!row) return fallback;
-    if (row.valueType === "number") return Number(row.value);
-    if (row.valueType === "boolean") return row.value === "true" ? 1 : 0;
-    const parsed = Number(row.value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function validatePasswordStrength(password: string, account: string) {
-    const minLength = password.length >= 8;
-    const hasLetter = /[A-Za-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(password);
-    const containsAccount = account && password.includes(account);
-
-    return {
-        minLength,
-        hasLetter,
-        hasNumber,
-        hasSpecial,
-        containsAccount,
-        isValid: minLength && hasLetter && hasNumber && hasSpecial && !containsAccount,
-    };
-}
-
 export async function getCurrentStudent(req: Request) {
-    const sessionToken = getCookieValue(req, STUDENT_SESSION_COOKIE) ?? req.headers.get("x-student-session");
-    if (!sessionToken) {
+    const currentSession = await loadActiveUserSession(
+        req,
+        { cookieName: STUDENT_SESSION_COOKIE, headerName: "x-student-session" },
+        [STUDENT_USER_TYPE]
+    );
+    if (!currentSession.session) {
+        if (currentSession.failure === "missing_session") {
+            return { student: null, errorCode: "AUTH_005", errorMessage: "您的账号已在其他设备登录" };
+        }
         return { student: null, errorCode: "AUTH_004", errorMessage: "会话已过期，请重新登录" };
     }
 
-    const [session] = await db
-        .select()
-        .from(userSession)
-        .where(and(eq(userSession.sessionToken, sessionToken), eq(userSession.userType, STUDENT_USER_TYPE)));
-
-    if (!session) {
-        return { student: null, errorCode: "AUTH_005", errorMessage: "您的账号已在其他设备登录" };
-    }
-
-    const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
-    if (expiresAt && expiresAt <= new Date()) {
-        await db.delete(userSession).where(eq(userSession.sessionToken, sessionToken));
-        return { student: null, errorCode: "AUTH_004", errorMessage: "会话已过期，请重新登录" };
-    }
-
-    const sessionTtlMinutes = await getConfigNumber("session.student_timeout_minutes", STUDENT_SESSION_TTL_MINUTES);
-    const now = new Date();
-    const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-    await db.update(userSession).set({ lastActiveAt: now, expiresAt: newExpiresAt }).where(eq(userSession.id, session.id));
+    const { expiresAt: newExpiresAt } = await extendUserSession(
+        currentSession.session.id,
+        "session.student_timeout_minutes",
+        STUDENT_SESSION_TTL_MINUTES
+    );
 
     const [s] = await db
         .select({
@@ -86,7 +57,7 @@ export async function getCurrentStudent(req: Request) {
             isFirstLogin: student.isFirstLogin,
         })
         .from(student)
-        .where(and(eq(student.id, session.userId), isNull(student.deletedAt)));
+        .where(and(eq(student.id, currentSession.session.userId), isNull(student.deletedAt)));
 
     if (s) return { student: s, sessionExpiresAt: newExpiresAt };
     return { student: null, errorCode: "AUTH_004", errorMessage: "会话已过期，请重新登录" };
@@ -154,27 +125,15 @@ const loginRoutes: RouteDefinition = {
 
         await db.update(student).set({ loginFailCount: 0, lockedUntil: null }).where(eq(student.id, s.id));
 
-        const token = crypto.randomUUID();
-        const sessionTtlMinutes = await getConfigNumber("session.student_timeout_minutes", STUDENT_SESSION_TTL_MINUTES);
-        const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-
-        await db.delete(userSession).where(and(eq(userSession.userType, STUDENT_USER_TYPE), eq(userSession.userId, s.id)));
-
-        await db.insert(userSession).values({
-            sessionToken: token,
+        const { token, expiresAt } = await createSingleUserSession({
+            req,
             userType: STUDENT_USER_TYPE,
             userId: s.id,
-            deviceInfo: req.headers.get("user-agent") ?? "",
-            expiresAt,
-            lastActiveAt: now,
+            ttlConfigKey: "session.student_timeout_minutes",
+            defaultTtlMinutes: STUDENT_SESSION_TTL_MINUTES,
         });
 
-        await db.insert(loginLog).values({
-            userType: STUDENT_USER_TYPE,
-            userId: s.id,
-            ipAddress: getClientIp(req),
-            userAgent: req.headers.get("user-agent") ?? "",
-        });
+        await recordLoginLog(req, STUDENT_USER_TYPE, s.id);
 
         const secure = isSecureRequest(req);
         return json(
@@ -190,9 +149,12 @@ const loginRoutes: RouteDefinition = {
 
 const logoutRoutes: RouteDefinition = {
     async POST(req) {
-        const token = getCookieValue(req, STUDENT_SESSION_COOKIE) ?? req.headers.get("x-student-session");
+        const token = readSessionToken(req, {
+            cookieName: STUDENT_SESSION_COOKIE,
+            headerName: "x-student-session",
+        });
         if (token) {
-            await db.delete(userSession).where(eq(userSession.sessionToken, token));
+            await deleteUserSessionByToken(token);
         }
         const secure = isSecureRequest(req);
         return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie(STUDENT_SESSION_COOKIE, secure) });
@@ -222,29 +184,24 @@ const passwordRoutes: RouteDefinition = {
             return error("新密码不能与当前密码相同", "PASSWORD_SAME", 400);
         }
 
-        const rules = validatePasswordStrength(newPassword, s.studentId);
-        if (!rules.isValid) {
-            return error("新密码不符合规则", "PASSWORD_WEAK", 400);
+        const rules = evaluatePasswordRules({
+            password: newPassword,
+            minLength: STUDENT_PASSWORD_POLICY.minLength,
+            forbiddenSubstrings: [s.studentId],
+        });
+        if (!rules.isPolicyValid) {
+            return error(STUDENT_PASSWORD_POLICY.errorMessage, "PASSWORD_WEAK", 400);
         }
 
         const hashed = await Bun.password.hash(newPassword);
         await db.update(student).set({ password: hashed, isFirstLogin: 0 }).where(eq(student.id, s.id));
 
         // Invalidate other sessions but keep the current one (spec: "不强制重新登录")
-        const currentToken = getCookieValue(req, STUDENT_SESSION_COOKIE) ?? req.headers.get("x-student-session");
-        if (currentToken) {
-            await db.delete(userSession).where(
-                and(
-                    eq(userSession.userType, STUDENT_USER_TYPE),
-                    eq(userSession.userId, s.id),
-                    sql`${userSession.sessionToken} != ${currentToken}`
-                )
-            );
-        } else {
-            await db.delete(userSession).where(
-                and(eq(userSession.userType, STUDENT_USER_TYPE), eq(userSession.userId, s.id))
-            );
-        }
+        const currentToken = readSessionToken(req, {
+            cookieName: STUDENT_SESSION_COOKIE,
+            headerName: "x-student-session",
+        });
+        await clearUserSessionForUser(STUDENT_USER_TYPE, s.id, currentToken);
 
         return json({ success: true });
     },

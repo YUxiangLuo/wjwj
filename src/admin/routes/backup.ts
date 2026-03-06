@@ -1,10 +1,11 @@
 import { access, readdir, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "../../db";
-import { admin, notification, operationLog, userSession } from "../../db/schema";
-import { clearSessionCookie, error, getClientIp, getCookieValue, isSecureRequest, json, parseBody } from "../../server/http";
+import { admin, notification, operationLog } from "../../db/schema";
+import { clearSessionCookie, error, getClientIp, isSecureRequest, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { deleteUserSessionByToken, readSessionToken } from "../../server/user-session";
 import { createBackupArtifacts } from "../backup";
 import { ADMIN_SESSION_COOKIE, ADMIN_USER_TYPE, requireAdminAuth } from "./auth";
 
@@ -63,7 +64,10 @@ const backupRestoreRoutes: RouteDefinition = {
         const backupId = body.backupId?.trim();
         const password = body.password ?? "";
         const confirmPassword = body.confirmPassword ?? "";
-        const sessionToken = getCookieValue(req, ADMIN_SESSION_COOKIE) ?? req.headers.get("x-admin-session");
+        const sessionToken = readSessionToken(req, {
+            cookieName: ADMIN_SESSION_COOKIE,
+            headerName: "x-admin-session",
+        });
 
         if (!backupId) {
             return error("缺少备份ID", "VALIDATION_ERROR");
@@ -167,7 +171,7 @@ const backupRestoreRoutes: RouteDefinition = {
         });
 
         if (sessionToken) {
-            await db.delete(userSession).where(eq(userSession.sessionToken, sessionToken));
+            await deleteUserSessionByToken(sessionToken);
         }
 
         const secure = isSecureRequest(req);

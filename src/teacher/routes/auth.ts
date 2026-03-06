@@ -1,16 +1,24 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { assistant, loginLog, notification, student, systemConfig, teacher, userSession } from "../../db/schema";
+import { assistant, notification, student, teacher } from "../../db/schema";
+import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import {
     buildSessionCookie,
     clearSessionCookie,
     error,
-    getClientIp,
-    getCookieValue,
     isSecureRequest,
     json,
     parseBody,
 } from "../../server/http";
+import { getConfigNumber } from "../../server/system-config";
+import {
+    createSingleUserSession,
+    deleteUserSessionByToken,
+    extendUserSession,
+    loadActiveUserSession,
+    readSessionToken,
+    recordLoginLog,
+} from "../../server/user-session";
 import type { RouteDefinition } from "../../server/route-types";
 
 export const TEACHER_USER_TYPE = 2;
@@ -29,37 +37,6 @@ export interface AuthUser {
     account?: string;
     isFirstLogin: number;
     creatorTeacherId?: number;
-}
-
-export async function getConfigNumber(key: string, fallback: number) {
-    const [row] = await db
-        .select({ value: systemConfig.configValue, valueType: systemConfig.valueType })
-        .from(systemConfig)
-        .where(eq(systemConfig.configKey, key))
-        .limit(1);
-
-    if (!row) return fallback;
-    if (row.valueType === "number") return Number(row.value);
-    if (row.valueType === "boolean") return row.value === "true" ? 1 : 0;
-    const parsed = Number(row.value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function validateTeacherPassword(password: string, account: string) {
-    const minLength = password.length >= 8;
-    const hasLetter = /[A-Za-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(password);
-    const containsAccount = account && password.includes(account);
-
-    return {
-        minLength,
-        hasLetter,
-        hasNumber,
-        hasSpecial,
-        containsAccount,
-        isValid: minLength && hasLetter && hasNumber && hasSpecial && !containsAccount,
-    };
 }
 
 export function isLockExpired(lockedAt?: Date | null) {
@@ -108,37 +85,30 @@ export async function notifyStudentById(
 }
 
 export async function requireTeacherAuth(req: Request): Promise<{ user: AuthUser | null; error: Response | null; session?: any }> {
-    const token = getCookieValue(req, TEACHER_SESSION_COOKIE) ?? req.headers.get("x-teacher-session");
-    if (!token) {
+    const currentSession = await loadActiveUserSession(
+        req,
+        { cookieName: TEACHER_SESSION_COOKIE, headerName: "x-teacher-session" },
+        [TEACHER_USER_TYPE, ASSISTANT_USER_TYPE]
+    );
+    if (!currentSession.session || currentSession.userType == null) {
         return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
     }
 
-    const [session] = await db
-        .select()
-        .from(userSession)
-        .where(and(eq(userSession.sessionToken, token), eq(userSession.userType, TEACHER_USER_TYPE)))
-        .limit(1);
-
-    if (session) {
-        const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
-        if (expiresAt && expiresAt <= new Date()) {
-            await db.delete(userSession).where(eq(userSession.sessionToken, token));
-            return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
-        }
-
+    if (currentSession.userType === TEACHER_USER_TYPE) {
         const [t] = await db
             .select({ id: teacher.id, employeeId: teacher.employeeId, name: teacher.name, isFirstLogin: teacher.isFirstLogin })
             .from(teacher)
-            .where(eq(teacher.id, session.userId));
+            .where(eq(teacher.id, currentSession.session.userId));
 
         if (!t) {
             return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
         }
 
-        const now = new Date();
-        const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
-        const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-        await db.update(userSession).set({ lastActiveAt: now, expiresAt: newExpiresAt }).where(eq(userSession.id, session.id));
+        const { expiresAt } = await extendUserSession(
+            currentSession.session.id,
+            "session.teacher_timeout_minutes",
+            TEACHER_SESSION_TTL_MINUTES
+        );
 
         return {
             user: {
@@ -149,36 +119,25 @@ export async function requireTeacherAuth(req: Request): Promise<{ user: AuthUser
                 isFirstLogin: t.isFirstLogin,
             },
             error: null,
-            session: { ...session, expiresAt: newExpiresAt },
+            session: { ...currentSession.session, expiresAt },
         };
     }
 
-    const [assistantSession] = await db
-        .select()
-        .from(userSession)
-        .where(and(eq(userSession.sessionToken, token), eq(userSession.userType, ASSISTANT_USER_TYPE)))
-        .limit(1);
-
-    if (assistantSession) {
-        const expiresAt = assistantSession.expiresAt ? new Date(assistantSession.expiresAt) : null;
-        if (expiresAt && expiresAt <= new Date()) {
-            await db.delete(userSession).where(eq(userSession.sessionToken, token));
-            return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
-        }
-
+    if (currentSession.userType === ASSISTANT_USER_TYPE) {
         const [a] = await db
             .select({ id: assistant.id, account: assistant.account, name: assistant.name, isFirstLogin: assistant.isFirstLogin, creatorTeacherId: assistant.creatorTeacherId })
             .from(assistant)
-            .where(eq(assistant.id, assistantSession.userId));
+            .where(eq(assistant.id, currentSession.session.userId));
 
         if (!a) {
             return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
         }
 
-        const now = new Date();
-        const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
-        const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-        await db.update(userSession).set({ lastActiveAt: now, expiresAt: newExpiresAt }).where(eq(userSession.id, assistantSession.id));
+        const { expiresAt } = await extendUserSession(
+            currentSession.session.id,
+            "session.teacher_timeout_minutes",
+            TEACHER_SESSION_TTL_MINUTES
+        );
 
         return {
             user: {
@@ -190,7 +149,7 @@ export async function requireTeacherAuth(req: Request): Promise<{ user: AuthUser
                 creatorTeacherId: a.creatorTeacherId,
             },
             error: null,
-            session: { ...assistantSession, expiresAt: newExpiresAt },
+            session: { ...currentSession.session, expiresAt },
         };
     }
 
@@ -294,27 +253,15 @@ async function handleTeacherLogin(req: Request, t: typeof teacher.$inferSelect, 
 
     await db.update(teacher).set({ loginFailCount: 0, lockedUntil: null }).where(eq(teacher.id, t.id));
 
-    const token = crypto.randomUUID();
-    const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
-    const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-
-    await db.delete(userSession).where(and(eq(userSession.userType, TEACHER_USER_TYPE), eq(userSession.userId, t.id)));
-
-    await db.insert(userSession).values({
-        sessionToken: token,
+    const { token, expiresAt } = await createSingleUserSession({
+        req,
         userType: TEACHER_USER_TYPE,
         userId: t.id,
-        deviceInfo: req.headers.get("user-agent") ?? "",
-        expiresAt,
-        lastActiveAt: now,
+        ttlConfigKey: "session.teacher_timeout_minutes",
+        defaultTtlMinutes: TEACHER_SESSION_TTL_MINUTES,
     });
 
-    await db.insert(loginLog).values({
-        userType: TEACHER_USER_TYPE,
-        userId: t.id,
-        ipAddress: getClientIp(req),
-        userAgent: req.headers.get("user-agent") ?? "",
-    });
+    await recordLoginLog(req, TEACHER_USER_TYPE, t.id);
 
     const secure = isSecureRequest(req);
     return json(
@@ -361,27 +308,15 @@ async function handleAssistantLogin(req: Request, a: typeof assistant.$inferSele
 
     await db.update(assistant).set({ loginFailCount: 0, lockedUntil: null }).where(eq(assistant.id, a.id));
 
-    const token = crypto.randomUUID();
-    const sessionTtlMinutes = await getConfigNumber("session.teacher_timeout_minutes", TEACHER_SESSION_TTL_MINUTES);
-    const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-
-    await db.delete(userSession).where(and(eq(userSession.userType, ASSISTANT_USER_TYPE), eq(userSession.userId, a.id)));
-
-    await db.insert(userSession).values({
-        sessionToken: token,
+    const { token, expiresAt } = await createSingleUserSession({
+        req,
         userType: ASSISTANT_USER_TYPE,
         userId: a.id,
-        deviceInfo: req.headers.get("user-agent") ?? "",
-        expiresAt,
-        lastActiveAt: now,
+        ttlConfigKey: "session.teacher_timeout_minutes",
+        defaultTtlMinutes: TEACHER_SESSION_TTL_MINUTES,
     });
 
-    await db.insert(loginLog).values({
-        userType: ASSISTANT_USER_TYPE,
-        userId: a.id,
-        ipAddress: getClientIp(req),
-        userAgent: req.headers.get("user-agent") ?? "",
-    });
+    await recordLoginLog(req, ASSISTANT_USER_TYPE, a.id);
 
     const secure = isSecureRequest(req);
     return json(
@@ -428,9 +363,12 @@ const teacherMeRoutes: RouteDefinition = {
 
 const teacherLogoutRoutes: RouteDefinition = {
     async POST(req) {
-        const token = getCookieValue(req, TEACHER_SESSION_COOKIE) ?? req.headers.get("x-teacher-session");
+        const token = readSessionToken(req, {
+            cookieName: TEACHER_SESSION_COOKIE,
+            headerName: "x-teacher-session",
+        });
         if (token) {
-            await db.delete(userSession).where(eq(userSession.sessionToken, token));
+            await deleteUserSessionByToken(token);
         }
         const secure = isSecureRequest(req);
         return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie(TEACHER_SESSION_COOKIE, secure) });
@@ -456,9 +394,13 @@ const teacherPasswordRoutes: RouteDefinition = {
 
         const user = auth.user!;
         const accountId = user.type === "teacher" ? user.employeeId : user.account;
-        const policy = validateTeacherPassword(newPassword, accountId ?? "");
-        if (!policy.isValid) {
-            return error("新密码需至少8位且包含字母、数字、特殊字符，且不包含工号", "VALIDATION_ERROR", 400);
+        const policy = evaluatePasswordRules({
+            password: newPassword,
+            minLength: TEACHER_PASSWORD_POLICY.minLength,
+            forbiddenSubstrings: [accountId],
+        });
+        if (!policy.isPolicyValid) {
+            return error(TEACHER_PASSWORD_POLICY.errorMessage, "VALIDATION_ERROR", 400);
         }
 
         if (user.type === "teacher") {

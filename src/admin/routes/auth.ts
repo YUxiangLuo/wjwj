@@ -1,16 +1,25 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "../../db";
-import { admin, loginLog, operationLog, systemConfig, userSession } from "../../db/schema";
+import { admin, operationLog } from "../../db/schema";
+import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import {
     buildSessionCookie,
     clearSessionCookie,
     error,
     getClientIp,
-    getCookieValue,
     isSecureRequest,
     json,
     parseBody,
 } from "../../server/http";
+import { getConfigNumber } from "../../server/system-config";
+import {
+    createSingleUserSession,
+    deleteUserSessionByToken,
+    extendUserSession,
+    loadActiveUserSession,
+    readSessionToken,
+    recordLoginLog,
+} from "../../server/user-session";
 import type { RouteDefinition } from "../../server/route-types";
 
 export const ADMIN_USER_TYPE = 1;
@@ -19,78 +28,32 @@ const DEFAULT_ADMIN_SESSION_TTL_MINUTES = 30;
 const DEFAULT_ADMIN_MAX_LOGIN_ATTEMPTS = 5;
 const DEFAULT_ADMIN_LOCK_MINUTES = 30;
 
-function validateAdminPassword(password: string, username: string) {
-    const minLength = password.length >= 12;
-    const hasLetter = /[A-Za-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(password);
-    const containsUsername = username && password.includes(username);
-
-    return {
-        minLength,
-        hasLetter,
-        hasNumber,
-        hasSpecial,
-        containsUsername,
-        isValid: minLength && hasLetter && hasNumber && hasSpecial && !containsUsername,
-    };
-}
-
-export async function getConfigNumber(key: string, fallback: number) {
-    const [row] = await db
-        .select({ value: systemConfig.configValue, valueType: systemConfig.valueType })
-        .from(systemConfig)
-        .where(eq(systemConfig.configKey, key))
-        .limit(1);
-
-    if (!row) return fallback;
-    if (row.valueType === "number") return Number(row.value);
-    if (row.valueType === "boolean") return row.value === "true" ? 1 : 0;
-    const parsed = Number(row.value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
-
 export async function requireAdminAuth(req: Request) {
-    const token = getCookieValue(req, ADMIN_SESSION_COOKIE) ?? req.headers.get("x-admin-session");
-    if (!token) {
-        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
-    }
-
-    const [session] = await db
-        .select()
-        .from(userSession)
-        .where(and(eq(userSession.sessionToken, token), eq(userSession.userType, ADMIN_USER_TYPE)))
-        .limit(1);
-
-    if (!session) {
-        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
-    }
-
-    const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
-    if (expiresAt && expiresAt <= new Date()) {
-        await db.delete(userSession).where(eq(userSession.sessionToken, token));
+    const currentSession = await loadActiveUserSession(
+        req,
+        { cookieName: ADMIN_SESSION_COOKIE, headerName: "x-admin-session" },
+        [ADMIN_USER_TYPE]
+    );
+    if (!currentSession.session) {
         return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
     }
 
     const [adm] = await db
         .select({ id: admin.id, username: admin.username, isFirstLogin: admin.isFirstLogin })
         .from(admin)
-        .where(eq(admin.id, session.userId));
+        .where(eq(admin.id, currentSession.session.userId));
 
     if (!adm) {
         return { admin: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
     }
 
-    const now = new Date();
-    const sessionTtlMinutes = await getConfigNumber("session.admin_timeout_minutes", DEFAULT_ADMIN_SESSION_TTL_MINUTES);
-    const newExpiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
+    const { expiresAt } = await extendUserSession(
+        currentSession.session.id,
+        "session.admin_timeout_minutes",
+        DEFAULT_ADMIN_SESSION_TTL_MINUTES
+    );
 
-    await db
-        .update(userSession)
-        .set({ lastActiveAt: now, expiresAt: newExpiresAt })
-        .where(eq(userSession.id, session.id));
-
-    return { admin: adm, error: null, session: { ...session, expiresAt: newExpiresAt } };
+    return { admin: adm, error: null, session: { ...currentSession.session, expiresAt } };
 }
 
 export function withAdminAuth(routes: RouteDefinition): RouteDefinition {
@@ -173,27 +136,15 @@ const adminLoginRoutes: RouteDefinition = {
 
         await db.update(admin).set({ loginFailCount: 0, lockedUntil: null }).where(eq(admin.id, adm.id));
 
-        const token = crypto.randomUUID();
-        const sessionTtlMinutes = await getConfigNumber("session.admin_timeout_minutes", DEFAULT_ADMIN_SESSION_TTL_MINUTES);
-        const expiresAt = new Date(now.getTime() + sessionTtlMinutes * 60 * 1000);
-
-        await db.delete(userSession).where(and(eq(userSession.userType, ADMIN_USER_TYPE), eq(userSession.userId, adm.id)));
-
-        await db.insert(userSession).values({
-            sessionToken: token,
+        const { token, expiresAt } = await createSingleUserSession({
+            req,
             userType: ADMIN_USER_TYPE,
             userId: adm.id,
-            deviceInfo: req.headers.get("user-agent") ?? "",
-            expiresAt,
-            lastActiveAt: now,
+            ttlConfigKey: "session.admin_timeout_minutes",
+            defaultTtlMinutes: DEFAULT_ADMIN_SESSION_TTL_MINUTES,
         });
 
-        await db.insert(loginLog).values({
-            userType: ADMIN_USER_TYPE,
-            userId: adm.id,
-            ipAddress: getClientIp(req),
-            userAgent: req.headers.get("user-agent") ?? "",
-        });
+        await recordLoginLog(req, ADMIN_USER_TYPE, adm.id);
 
         const secure = isSecureRequest(req);
         return json(
@@ -220,9 +171,12 @@ const adminMeRoutes: RouteDefinition = {
 
 const adminLogoutRoutes: RouteDefinition = {
     async POST(req) {
-        const token = getCookieValue(req, ADMIN_SESSION_COOKIE) ?? req.headers.get("x-admin-session");
+        const token = readSessionToken(req, {
+            cookieName: ADMIN_SESSION_COOKIE,
+            headerName: "x-admin-session",
+        });
         if (token) {
-            await db.delete(userSession).where(eq(userSession.sessionToken, token));
+            await deleteUserSessionByToken(token);
         }
         const secure = isSecureRequest(req);
         return json({ ok: true }, 200, { "Set-Cookie": clearSessionCookie(ADMIN_SESSION_COOKIE, secure) });
@@ -256,9 +210,13 @@ const adminPasswordRoutes: RouteDefinition = {
             return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
         }
 
-        const policy = validateAdminPassword(newPassword, adm.username ?? "");
-        if (!policy.isValid) {
-            return error("新密码需至少12位且包含字母、数字和特殊字符，且不包含用户名", "VALIDATION_ERROR", 400);
+        const policy = evaluatePasswordRules({
+            password: newPassword,
+            minLength: ADMIN_PASSWORD_POLICY.minLength,
+            forbiddenSubstrings: [adm.username],
+        });
+        if (!policy.isPolicyValid) {
+            return error(ADMIN_PASSWORD_POLICY.errorMessage, "VALIDATION_ERROR", 400);
         }
 
         const hashed = await Bun.password.hash(newPassword);

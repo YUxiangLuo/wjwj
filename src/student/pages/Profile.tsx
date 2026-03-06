@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
 import { authApi } from "../api-client";
 import { useStudent } from "../contexts/StudentContext";
 
@@ -19,23 +20,22 @@ export function Profile() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const passwordPolicy = evaluatePasswordRules({
+        password: passwordForm.newPassword,
+        confirmPassword: passwordForm.confirmPassword,
+        minLength: STUDENT_PASSWORD_POLICY.minLength,
+        forbiddenSubstrings: [currentUser?.studentId],
+    });
     const passwordRules = {
-        minLength: passwordForm.newPassword.length >= 8,
-        hasLetter: /[A-Za-z]/.test(passwordForm.newPassword),
-        hasNumber: /\d/.test(passwordForm.newPassword),
-        hasSpecial: /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword),
-        noStudentId: !(currentUser?.studentId && passwordForm.newPassword.includes(currentUser.studentId)),
-        matched: passwordForm.confirmPassword.length > 0 && passwordForm.newPassword === passwordForm.confirmPassword,
+        minLength: passwordPolicy.minLength,
+        hasLetter: passwordPolicy.hasLetter,
+        hasNumber: passwordPolicy.hasNumber,
+        hasSpecial: passwordPolicy.hasSpecial,
+        noStudentId: passwordPolicy.noForbiddenSubstring,
+        matched: passwordPolicy.matched ?? false,
     };
-    const strengthScore = [
-        passwordRules.minLength,
-        passwordRules.hasLetter,
-        passwordRules.hasNumber,
-        passwordRules.hasSpecial,
-        passwordRules.noStudentId,
-    ].filter(Boolean).length;
-    const passwordStrengthLabel =
-        strengthScore <= 2 ? "弱" : strengthScore <= 4 ? "中" : "强";
+    const strengthScore = passwordPolicy.score;
+    const passwordStrengthLabel = passwordPolicy.strengthLabel;
 
     const handleChangePassword = async () => {
         setError(null);
@@ -44,8 +44,12 @@ export function Profile() {
             setError("请填写完整信息");
             return;
         }
+        if (passwordForm.newPassword === passwordForm.currentPassword) {
+            setError("新密码不能与当前密码相同");
+            return;
+        }
         if (!passwordRules.minLength) {
-            setError("新密码长度至少为8位");
+            setError(`新密码长度至少为${STUDENT_PASSWORD_POLICY.minLength}位`);
             return;
         }
         if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {

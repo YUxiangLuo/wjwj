@@ -28,6 +28,7 @@ import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { authApi } from "./api-client";
 import { Login } from "./pages/Login";
 import { useTheme } from "@/components/ThemeProvider";
+import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
 import "./student.css";
 
 function StudentAppContent() {
@@ -146,23 +147,22 @@ function StudentAppContent() {
     // 未登录时显示提示（实际应该跳转到登录页）
     const displayName = currentUser?.name ?? "访客";
     const displayInitial = displayName.charAt(0);
+    const passwordPolicy = evaluatePasswordRules({
+        password: passwordForm.newPassword,
+        confirmPassword: passwordForm.confirmPassword,
+        minLength: STUDENT_PASSWORD_POLICY.minLength,
+        forbiddenSubstrings: [currentUser?.studentId],
+    });
     const passwordRules = {
-        minLength: passwordForm.newPassword.length >= 8,
-        hasLetter: /[A-Za-z]/.test(passwordForm.newPassword),
-        hasNumber: /\d/.test(passwordForm.newPassword),
-        hasSpecial: /[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword),
-        noStudentId: !(currentUser?.studentId && passwordForm.newPassword.includes(currentUser.studentId)),
-        matched: passwordForm.confirmPassword.length > 0 && passwordForm.newPassword === passwordForm.confirmPassword,
+        minLength: passwordPolicy.minLength,
+        hasLetter: passwordPolicy.hasLetter,
+        hasNumber: passwordPolicy.hasNumber,
+        hasSpecial: passwordPolicy.hasSpecial,
+        noStudentId: passwordPolicy.noForbiddenSubstring,
+        matched: passwordPolicy.matched ?? false,
     };
-    const strengthScore = [
-        passwordRules.minLength,
-        passwordRules.hasLetter,
-        passwordRules.hasNumber,
-        passwordRules.hasSpecial,
-        passwordRules.noStudentId,
-    ].filter(Boolean).length;
-    const passwordStrengthLabel =
-        strengthScore <= 2 ? "弱" : strengthScore <= 4 ? "中" : "强";
+    const strengthScore = passwordPolicy.score;
+    const passwordStrengthLabel = passwordPolicy.strengthLabel;
 
     const handleLogout = async () => {
         try {
@@ -179,8 +179,12 @@ function StudentAppContent() {
             setPasswordError("请填写完整信息");
             return;
         }
+        if (passwordForm.newPassword === passwordForm.currentPassword) {
+            setPasswordError("新密码不能与当前密码相同");
+            return;
+        }
         if (!passwordRules.minLength) {
-            setPasswordError("新密码长度至少为8位");
+            setPasswordError(`新密码长度至少为${STUDENT_PASSWORD_POLICY.minLength}位`);
             return;
         }
         if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {

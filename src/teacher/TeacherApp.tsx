@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import "./teacher.css";
 import { authApi, teacherApi, type TeacherNotification, type TeacherUser } from "./api-client";
 import { useTheme } from "@/components/ThemeProvider";
+import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
 import { Toaster } from "sonner";
 
 import { Dashboard } from "./pages/Dashboard";
@@ -226,15 +227,23 @@ export function TeacherApp() {
 
     const handleChangePassword = async () => {
         setPasswordError(null);
+        const accountId = teacherUser?.type === "teacher" ? teacherUser.employeeId : teacherUser?.account;
+        const passwordRules = evaluatePasswordRules({
+            password: passwordForm.newPassword,
+            confirmPassword: passwordForm.confirmPassword,
+            minLength: TEACHER_PASSWORD_POLICY.minLength,
+            forbiddenSubstrings: [accountId],
+        });
+
         if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
             setPasswordError("请填写完整信息");
             return;
         }
-        if (passwordForm.newPassword.length < 8) {
-            setPasswordError("新密码长度至少为8位");
+        if (!passwordRules.minLength) {
+            setPasswordError(`新密码长度至少为${TEACHER_PASSWORD_POLICY.minLength}位`);
             return;
         }
-        if (!/[A-Za-z]/.test(passwordForm.newPassword) || !/\d/.test(passwordForm.newPassword) || !/[!@#$%^&*(),.?":{}|<>\[\]\\/\-_=+~`]/.test(passwordForm.newPassword)) {
+        if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {
             setPasswordError("新密码需包含字母、数字和特殊字符");
             return;
         }
@@ -242,12 +251,11 @@ export function TeacherApp() {
             setPasswordError("新密码不能与当前密码相同");
             return;
         }
-        const accountId = teacherUser?.type === "teacher" ? teacherUser.employeeId : teacherUser?.account;
-        if (accountId && passwordForm.newPassword.includes(accountId)) {
+        if (!passwordRules.noForbiddenSubstring) {
             setPasswordError("新密码不能包含工号/账号");
             return;
         }
-        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        if (!passwordRules.matched) {
             setPasswordError("两次输入的新密码不一致");
             return;
         }
