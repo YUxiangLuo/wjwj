@@ -14,6 +14,7 @@ export function GradeExport() {
     const [topics, setTopics] = useState<Topic[]>([]);
     const [preview, setPreview] = useState<GradeExportPreviewItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [semesterFilter, setSemesterFilter] = useState<string>("all");
     const [classFilter, setClassFilter] = useState<string>("all");
     const [topicFilter, setTopicFilter] = useState<string>("all");
     const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
@@ -25,6 +26,21 @@ export function GradeExport() {
     useEffect(() => {
         loadPreview();
     }, [classFilter, topicFilter]);
+
+    // When semester changes, reset class filter and filter classes list
+    useEffect(() => {
+        setClassFilter("all");
+    }, [semesterFilter]);
+
+    const semesters = useMemo(() => {
+        const values = classes.map((c) => c.semester).filter(Boolean) as string[];
+        return Array.from(new Set(values)).sort();
+    }, [classes]);
+
+    const filteredClasses = useMemo(() => {
+        if (semesterFilter === "all") return classes;
+        return classes.filter((c) => c.semester === semesterFilter);
+    }, [classes, semesterFilter]);
 
     const selectedCount = selectedTaskIds.length;
 
@@ -157,14 +173,25 @@ export function GradeExport() {
                         <CardTitle className="text-base text-slate-100">导出列表</CardTitle>
                         <p className="text-xs text-slate-500 mt-1">共 {preview.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto flex-wrap">
+                        <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+                            <SelectTrigger data-testid="teacher-export-semester-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
+                                <SelectValue placeholder="全部学期" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                <SelectItem value="all">全部学期</SelectItem>
+                                {semesters.map((s) => (
+                                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Select value={classFilter} onValueChange={setClassFilter}>
                             <SelectTrigger data-testid="teacher-export-class-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all">全部班级</SelectItem>
-                                {classes.map((cls) => (
+                                {filteredClasses.map((cls) => (
                                     <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
                                 ))}
                             </SelectContent>

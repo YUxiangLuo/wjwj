@@ -17,11 +17,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { teacherApi, type Topic, type TopicDetail, type TopicRecommendQuestion } from "../api-client";
 import { TopicWizardDialog } from "../components/TopicWizardDialog";
+import { TopicViewDialog } from "../components/TopicViewDialog";
 import { toast } from "sonner";
 
 export function TopicManagement() {
     const [topics, setTopics] = useState<Topic[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [viewingTopic, setViewingTopic] = useState<Topic | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentStep, setCurrentStep] = useState(1);
     const [excelInfo, setExcelInfo] = useState<{ filePath: string; rowCount: number; colCount: number; columns: string[]; preview: any[] } | null>(null);
@@ -154,6 +157,11 @@ export function TopicManagement() {
         setCurrentStep(1);
         loadTopicDetail(topic.id);
         setShowCreateModal(true);
+    }
+
+    function openViewModal(topic: Topic) {
+        setViewingTopic(topic);
+        setShowViewModal(true);
     }
 
     async function executeConfirmAction() {
@@ -404,13 +412,14 @@ export function TopicManagement() {
                                 <div className="flex flex-wrap gap-2">
                                     {topic.status === 0 ? (
                                         <>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
                                             <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
                                             <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     ) : (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => openEditModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
                                             <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button
                                                 data-testid={`teacher-topic-copy-${topic.id}`}
@@ -466,6 +475,12 @@ export function TopicManagement() {
                 onSaveFieldMapping={handleSaveFieldMapping}
                 onSaveRecommendQuestions={handleSaveRecommendQuestions}
                 onSaveWeights={handleSaveWeights}
+            />
+
+            <TopicViewDialog
+                open={showViewModal}
+                onOpenChange={setShowViewModal}
+                topic={viewingTopic}
             />
 
             <AlertDialog

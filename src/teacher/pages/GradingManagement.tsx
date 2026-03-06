@@ -15,6 +15,7 @@ export function GradingManagement() {
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState("all-status");
     const [filterClass, setFilterClass] = useState("all-class");
+    const [filterTopic, setFilterTopic] = useState("all-topic");
     const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
@@ -71,17 +72,23 @@ export function GradingManagement() {
         return Array.from(new Set(values));
     }, [submissions]);
 
+    const topicOptions = useMemo(() => {
+        const values = submissions.map((sub) => sub.topic).filter(Boolean);
+        return Array.from(new Set(values));
+    }, [submissions]);
+
     const filteredSubmissions = useMemo(() => {
         const keyword = searchTerm.trim().toLowerCase();
         return submissions.filter((sub) => {
             const matchesClass = filterClass === "all-class" || sub.className === filterClass;
+            const matchesTopic = filterTopic === "all-topic" || sub.topic === filterTopic;
             const matchesKeyword = !keyword ||
                 sub.studentName.toLowerCase().includes(keyword) ||
                 sub.studentId.toLowerCase().includes(keyword) ||
                 sub.topic.toLowerCase().includes(keyword);
-            return matchesClass && matchesKeyword;
+            return matchesClass && matchesTopic && matchesKeyword;
         });
-    }, [submissions, filterClass, searchTerm]);
+    }, [submissions, filterClass, filterTopic, searchTerm]);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -161,6 +168,17 @@ export function GradingManagement() {
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                                 <SelectItem value="all-class">全部班级</SelectItem>
                                 {classOptions.map((name) => (
+                                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={filterTopic} onValueChange={setFilterTopic}>
+                            <SelectTrigger data-testid="teacher-grading-topic-filter" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
+                                <SelectValue placeholder="全部课题" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                <SelectItem value="all-topic">全部课题</SelectItem>
+                                {topicOptions.map((name) => (
                                     <SelectItem key={name} value={name}>{name}</SelectItem>
                                 ))}
                             </SelectContent>

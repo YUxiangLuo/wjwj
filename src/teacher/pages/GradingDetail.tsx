@@ -190,6 +190,20 @@ export function GradingDetail() {
         } catch { /* ignore write errors */ }
     }, [draftKey, buildGradingSnapshot]);
 
+    // Warn before closing tab/window with unsaved changes
+    useEffect(() => {
+        const handler = (e: BeforeUnloadEvent) => {
+            if (!draftResolvedRef.current) return;
+            const snapshot = JSON.stringify(buildGradingSnapshot());
+            if (snapshot !== serverSnapshotRef.current) {
+                e.preventDefault();
+                e.returnValue = "";
+            }
+        };
+        window.addEventListener("beforeunload", handler);
+        return () => window.removeEventListener("beforeunload", handler);
+    }, [buildGradingSnapshot]);
+
     const totalScore = (
         (parseFloat(scores.questionnaire) || 0) * (weights.questionnaire / 100) +
         (parseFloat(scores.process) || 0) * (weights.process / 100) +
@@ -633,7 +647,14 @@ export function GradingDetail() {
                                                 key={idx}
                                                 className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-300 hover:border-indigo-500 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
                                                 disabled={saving || isReadOnly}
-                                                onClick={() => setComment(prev => prev ? `${prev}，${tpl}` : tpl)}
+                                                onClick={() => setComment(prev => {
+                                                    const next = prev ? `${prev}，${tpl}` : tpl;
+                                                    if (next.length > 2000) {
+                                                        toast.warning("评语已达字数上限（2000字）");
+                                                        return prev;
+                                                    }
+                                                    return next;
+                                                })}
                                             >
                                                 {tpl}
                                             </button>

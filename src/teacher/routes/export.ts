@@ -50,13 +50,19 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
         .$dynamic();
 
     if (classId && classId !== "all") {
-        query = query.where(eq(class_.id, Number(classId)));
+        const id = Number(classId);
+        if (!Number.isFinite(id)) return null;
+        query = query.where(eq(class_.id, id));
     }
     if (topicId && topicId !== "all") {
-        query = query.where(eq(topic.id, Number(topicId)));
+        const id = Number(topicId);
+        if (!Number.isFinite(id)) return null;
+        query = query.where(eq(topic.id, id));
     }
     if (taskId && taskId !== "all") {
-        query = query.where(eq(task.id, Number(taskId)));
+        const id = Number(taskId);
+        if (!Number.isFinite(id)) return null;
+        query = query.where(eq(task.id, id));
     }
     if (taskIds.length > 0) {
         query = query.where(sql`${task.id} IN (${sql.join(taskIds, sql`, `)})`);
@@ -146,6 +152,7 @@ const gradeExportDataRoutes: RouteDefinition = {
         const currentTeacherId = auth.teacherId!;
         const params = getSearchParams(req);
         const rows = await getGradeExportRows(currentTeacherId, params);
+        if (!rows) return error("查询参数无效", "INVALID_PARAM", 400);
         return json(rows);
     }
 };
@@ -158,6 +165,7 @@ const gradeExportExcelRoutes: RouteDefinition = {
 
         const params = getSearchParams(req);
         const rows = await getGradeExportRows(currentTeacherId, params);
+        if (!rows) return error("查询参数无效", "INVALID_PARAM", 400);
 
         const headers = [
             "学号",

@@ -8,12 +8,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type TeacherStats, type TeacherAnnouncement } from "../api-client";
 
-function StatCard({ icon: Icon, label, value, color, loading }: {
+function StatCard({ icon: Icon, label, value, color, loading, to }: {
     icon: React.ComponentType<{ className?: string }>;
     label: string;
     value: number;
     color: string;
     loading?: boolean;
+    to?: string;
 }) {
     // Map colors to class names
     const colorStyles: Record<string, { bg: string, text: string, border: string }> = {
@@ -26,8 +27,8 @@ function StatCard({ icon: Icon, label, value, color, loading }: {
 
     const style = colorStyles[color] || colorStyles.slate!;
 
-    return (
-        <Card className="border-slate-800 bg-slate-900 hover:border-slate-700 transition-all duration-200">
+    const card = (
+        <Card className={`border-slate-800 bg-slate-900 hover:border-slate-700 transition-all duration-200 ${to ? "cursor-pointer" : ""}`}>
             <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                     <div>
@@ -45,6 +46,11 @@ function StatCard({ icon: Icon, label, value, color, loading }: {
             </CardContent>
         </Card>
     );
+
+    if (to) {
+        return <Link to={to}>{card}</Link>;
+    }
+    return card;
 }
 
 export function Dashboard() {
@@ -89,11 +95,11 @@ export function Dashboard() {
 
     const getIconAndColor = (label: string) => {
         switch (label) {
-            case "我的班级": return { icon: School, color: "blue" };
-            case "我的课题": return { icon: BookOpen, color: "emerald" };
-            case "待批改作业": return { icon: PenLine, color: "rose" };
-            case "进行中任务": return { icon: ClipboardList, color: "amber" };
-            default: return { icon: LayoutDashboard, color: "slate" };
+            case "我的班级": return { icon: School, color: "blue", to: "/class" };
+            case "我的课题": return { icon: BookOpen, color: "emerald", to: "/topic" };
+            case "待批改作业": return { icon: PenLine, color: "rose", to: "/grading" };
+            case "进行中任务": return { icon: ClipboardList, color: "amber", to: "/task" };
+            default: return { icon: LayoutDashboard, color: "slate", to: undefined };
         }
     };
 
@@ -131,7 +137,7 @@ export function Dashboard() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {stats.length > 0 ? stats.map((stat) => {
-                    const { icon, color } = getIconAndColor(stat.label);
+                    const { icon, color, to } = getIconAndColor(stat.label);
                     return (
                         <StatCard
                             key={stat.label}
@@ -140,6 +146,7 @@ export function Dashboard() {
                             value={stat.value}
                             color={color}
                             loading={loading}
+                            to={to}
                         />
                     );
                 }) : (

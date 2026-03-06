@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Clock, Search } from "lucide-react";
+import { ArrowLeft, Users, Clock, Search, FileEdit, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,24 @@ const PROGRESS_COLORS: Record<StatusKey, string> = {
     graded: "bg-emerald-500",
     rejected: "bg-rose-500",
 };
+
+const RING_COLORS: Record<StatusKey, string> = {
+    not_started: "#475569",
+    stage1: "#3b82f6",
+    stage2: "#06b6d4",
+    stage3: "#8b5cf6",
+    stage4: "#f59e0b",
+    submitted: "#eab308",
+    graded: "#10b981",
+    rejected: "#f43f5e",
+};
+
+const CHART_SIZE = 160;
+const CHART_CENTER = CHART_SIZE / 2;
+const RING_RADIUS = 65;
+const RING_STROKE = 14;
+
+const STATUSES_WITH_SUBMISSION: StatusKey[] = ["submitted", "graded", "rejected"];
 
 export function TaskProgressDetail() {
     const { taskId } = useParams();
@@ -105,22 +123,103 @@ export function TaskProgressDetail() {
                 })}
             </div>
 
-            {/* Progress bar */}
+            {/* Ring chart + Progress bar */}
             {total > 0 && (
-                <div className="flex h-3 rounded-full overflow-hidden bg-slate-800">
-                    {STATUS_KEYS.map((key) => {
-                        const count = data.counts[key];
-                        if (count === 0) return null;
-                        const pct = (count / total) * 100;
-                        return (
-                            <div
-                                key={key}
-                                className={`${PROGRESS_COLORS[key]} transition-all duration-500`}
-                                style={{ width: `${pct}%` }}
-                                title={`${STATUS_CONFIG[key].label}: ${count}`}
-                            />
-                        );
-                    })}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Ring chart */}
+                    <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                        <CardContent className="p-6 flex flex-col items-center">
+                            <svg width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-4">
+                                {(() => {
+                                    const circumference = 2 * Math.PI * RING_RADIUS;
+                                    let offset = 0;
+                                    const segments: React.ReactNode[] = [];
+
+                                    STATUS_KEYS.forEach((key) => {
+                                        const count = data.counts[key];
+                                        if (count === 0) return;
+                                        const pct = count / total;
+                                        const length = pct * circumference;
+                                        segments.push(
+                                            <circle
+                                                key={key}
+                                                cx={CHART_CENTER}
+                                                cy={CHART_CENTER}
+                                                r={RING_RADIUS}
+                                                fill="none"
+                                                stroke={RING_COLORS[key]}
+                                                strokeWidth={RING_STROKE}
+                                                strokeDasharray={`${length} ${circumference - length}`}
+                                                strokeDashoffset={-offset}
+                                                transform={`rotate(-90 ${CHART_CENTER} ${CHART_CENTER})`}
+                                                className="transition-all duration-500"
+                                            />
+                                        );
+                                        offset += length;
+                                    });
+
+                                    return (
+                                        <>
+                                            <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" stroke="rgb(30,41,59)" strokeWidth={RING_STROKE} />
+                                            {segments}
+                                            <text x={CHART_CENTER} y={CHART_CENTER - 8} textAnchor="middle" className="fill-slate-100 text-2xl font-bold" fontSize="28">{total}</text>
+                                            <text x={CHART_CENTER} y={CHART_CENTER + 14} textAnchor="middle" className="fill-slate-500 text-xs" fontSize="12">总人数</text>
+                                        </>
+                                    );
+                                })()}
+                            </svg>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+                                {STATUS_KEYS.map((key) => {
+                                    const cfg = STATUS_CONFIG[key];
+                                    const count = data.counts[key];
+                                    if (count === 0) return null;
+                                    return (
+                                        <div key={key} className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RING_COLORS[key] }} />
+                                            <span className="text-slate-400">{cfg.label}</span>
+                                            <span className={`font-medium ${cfg.color}`}>{count}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Distribution bar (now wider, takes 2 cols) */}
+                    <Card className="border-slate-800 bg-slate-900 shadow-sm lg:col-span-2">
+                        <CardContent className="p-6 flex flex-col justify-center h-full gap-4">
+                            <span className="text-sm font-medium text-slate-200">各阶段分布</span>
+                            <div className="flex h-4 rounded-full overflow-hidden bg-slate-800">
+                                {STATUS_KEYS.map((key) => {
+                                    const count = data.counts[key];
+                                    if (count === 0) return null;
+                                    const pct = (count / total) * 100;
+                                    return (
+                                        <div
+                                            key={key}
+                                            className={`${PROGRESS_COLORS[key]} transition-all duration-500`}
+                                            style={{ width: `${pct}%` }}
+                                            title={`${STATUS_CONFIG[key].label}: ${count}`}
+                                        />
+                                    );
+                                })}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {STATUS_KEYS.map((key) => {
+                                    const cfg = STATUS_CONFIG[key];
+                                    const count = data.counts[key];
+                                    return (
+                                        <div key={key} className="flex items-center gap-2 text-xs">
+                                            <span className={`w-2 h-2 rounded-full ${PROGRESS_COLORS[key]}`} />
+                                            <span className="text-slate-400">{cfg.label}</span>
+                                            <span className={`font-medium ${cfg.color}`}>{count}</span>
+                                            <span className="text-slate-600">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             )}
 
@@ -147,6 +246,7 @@ export function TaskProgressDetail() {
                                 <TableHead className="text-slate-400">状态</TableHead>
                                 <TableHead className="text-slate-400">当前阶段</TableHead>
                                 <TableHead className="text-slate-400">最近活动</TableHead>
+                                <TableHead className="text-slate-400 text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -167,12 +267,30 @@ export function TaskProgressDetail() {
                                         <TableCell className="text-slate-500 text-xs">
                                             {s.lastActivity ? new Date(s.lastActivity).toLocaleString("zh-CN") : "-"}
                                         </TableCell>
+                                        <TableCell className="text-right">
+                                            {STATUSES_WITH_SUBMISSION.includes(s.status as StatusKey) && s.submissionId ? (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                                    onClick={() => navigate(`/grading/${s.submissionId}`)}
+                                                >
+                                                    {s.status === "submitted" ? (
+                                                        <><FileEdit className="w-3 h-3 mr-1" />进入批改</>
+                                                    ) : (
+                                                        <><Eye className="w-3 h-3 mr-1" />查看详情</>
+                                                    )}
+                                                </Button>
+                                            ) : (
+                                                <span className="text-xs text-slate-600">-</span>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
                                 );
                             })}
                             {filteredStudents.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-12 text-slate-500">
+                                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">
                                         暂无数据
                                     </TableCell>
                                 </TableRow>
