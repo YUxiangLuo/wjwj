@@ -410,12 +410,14 @@ export function AnnouncementManagement() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="content" className="text-slate-300">内容</Label>
-                            <RichTextEditor
-                                id="content"
-                                placeholder="请输入公告内容"
-                                value={newAnnouncement.content}
-                                onChange={(value) => setNewAnnouncement({ ...newAnnouncement, content: value })}
-                            />
+                            <div data-testid="announcement-create-content">
+                                <RichTextEditor
+                                    id="content"
+                                    placeholder="请输入公告内容"
+                                    value={newAnnouncement.content}
+                                    onChange={(value) => setNewAnnouncement({ ...newAnnouncement, content: value })}
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label className="text-slate-300">发布范围</Label>
@@ -481,12 +483,14 @@ export function AnnouncementManagement() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="editContent" className="text-slate-300">内容</Label>
-                            <RichTextEditor
-                                id="editContent"
-                                placeholder="请输入公告内容"
-                                value={editForm.content}
-                                onChange={(value) => setEditForm({ ...editForm, content: value })}
-                            />
+                            <div data-testid="announcement-edit-content">
+                                <RichTextEditor
+                                    id="editContent"
+                                    placeholder="请输入公告内容"
+                                    value={editForm.content}
+                                    onChange={(value) => setEditForm({ ...editForm, content: value })}
+                                />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
