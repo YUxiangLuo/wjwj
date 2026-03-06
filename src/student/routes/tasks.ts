@@ -3,14 +3,9 @@ import { db } from "../../db";
 import { experiment, submission, task, topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
 import { error, getRouteParam, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { getConfigNumber, requireAuth } from "./auth";
-
-const ExperimentStatus = {
-    IN_PROGRESS: 0,
-    SUBMITTED: 1,
-    GRADED: 2,
-    REJECTED: 3,
-} as const;
+import { getConfigNumber } from "../../server/system-config";
+import { ExperimentStatus } from "../experiment/status";
+import { requireAuth } from "./auth";
 
 function isLockActive(lockedAt: Date | null, lockTimeoutMinutes: number) {
     if (!lockedAt) return false;
