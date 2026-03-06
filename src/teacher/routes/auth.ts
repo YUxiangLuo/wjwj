@@ -19,7 +19,7 @@ import {
     readSessionToken,
     recordLoginLog,
 } from "../../server/user-session";
-import type { RouteDefinition } from "../../server/route-types";
+import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 
 export const TEACHER_USER_TYPE = 2;
 export const ASSISTANT_USER_TYPE = 3;
@@ -28,6 +28,29 @@ const TEACHER_SESSION_TTL_MINUTES = 120;
 const TEACHER_MAX_LOGIN_ATTEMPTS = 5;
 const TEACHER_LOCK_MINUTES = 30;
 const GRADING_LOCK_MINUTES = 30;
+const TEACHER_AUTH_CACHE = Symbol("teacher_auth");
+const PRIMARY_TEACHER_CONTEXT = Symbol("primary_teacher_context");
+
+type NotificationDbClient = Pick<typeof db, "insert" | "select" | "update" | "delete">;
+
+export interface AuthSession {
+    id: number;
+    sessionToken: string;
+    userType: number;
+    userId: number;
+    expiresAt: Date;
+}
+
+interface TeacherAuthResult {
+    user: AuthUser | null;
+    error: Response | null;
+    session?: AuthSession;
+}
+
+type TeacherRequestContext = Request & {
+    [TEACHER_AUTH_CACHE]?: TeacherAuthResult;
+    [PRIMARY_TEACHER_CONTEXT]?: number;
+};
 
 export interface AuthUser {
     id: number;
@@ -39,6 +62,47 @@ export interface AuthUser {
     creatorTeacherId?: number;
 }
 
+function setPrimaryTeacherContext(req: Request, teacherId: number) {
+    (req as TeacherRequestContext)[PRIMARY_TEACHER_CONTEXT] = teacherId;
+}
+
+function readPrimaryTeacherContext(req: Request) {
+    return (req as TeacherRequestContext)[PRIMARY_TEACHER_CONTEXT] ?? null;
+}
+
+function readTeacherAuthCache(req: Request): TeacherAuthResult | null {
+    return (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] ?? null;
+}
+
+function writeTeacherAuthCache(req: Request, auth: TeacherAuthResult) {
+    (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] = auth;
+}
+
+export function getTeacherAuth(req: Request): TeacherAuthResult {
+    const cached = readTeacherAuthCache(req);
+    if (!cached) {
+        throw new Error("Teacher auth context is unavailable. Wrap the route with withTeacherAuth or call requireTeacherAuth first.");
+    }
+    return cached;
+}
+
+export function getTeacherUser(req: Request): AuthUser {
+    const auth = getTeacherAuth(req);
+    if (!auth.user) {
+        throw new Error("Teacher auth user is unavailable. Wrap the route with withTeacherAuth.");
+    }
+    return auth.user;
+}
+
+export function getPrimaryTeacherIdOrThrow(req: Request) {
+    const teacherId = readPrimaryTeacherContext(req);
+    if (teacherId == null) {
+        throw new Error("Primary teacher context is unavailable. Wrap the route with withPrimaryTeacherAuth or call requirePrimaryTeacher first.");
+    }
+
+    return teacherId;
+}
+
 export function isLockExpired(lockedAt?: Date | null) {
     if (!lockedAt) return true;
     return Date.now() - new Date(lockedAt).getTime() > GRADING_LOCK_MINUTES * 60 * 1000;
@@ -46,17 +110,18 @@ export function isLockExpired(lockedAt?: Date | null) {
 
 export async function notifyStudentsByClassIds(
     classIds: number[],
-    payload: { type: string; title: string; content: string; relatedType?: string; relatedId?: number }
+    payload: { type: string; title: string; content: string; relatedType?: string; relatedId?: number },
+    database: NotificationDbClient = db
 ) {
     if (!classIds.length) return;
-    const students = await db
+    const students = await database
         .select({ id: student.id })
         .from(student)
         .where(and(sql`${student.classId} IN (${sql.join(classIds, sql`, `)})`, isNull(student.deletedAt)));
 
     if (!students.length) return;
 
-    await db.insert(notification).values(
+    await database.insert(notification).values(
         students.map((s) => ({
             receiverType: 4,
             receiverId: s.id,
@@ -71,9 +136,10 @@ export async function notifyStudentsByClassIds(
 
 export async function notifyStudentById(
     studentId: number,
-    payload: { type: string; title: string; content: string; relatedType?: string; relatedId?: number }
+    payload: { type: string; title: string; content: string; relatedType?: string; relatedId?: number },
+    database: NotificationDbClient = db
 ) {
-    await db.insert(notification).values({
+    await database.insert(notification).values({
         receiverType: 4,
         receiverId: studentId,
         type: payload.type,
@@ -84,81 +150,88 @@ export async function notifyStudentById(
     });
 }
 
-export async function requireTeacherAuth(req: Request): Promise<{ user: AuthUser | null; error: Response | null; session?: any }> {
-    const currentSession = await loadActiveUserSession(
-        req,
-        { cookieName: TEACHER_SESSION_COOKIE, headerName: "x-teacher-session" },
-        [TEACHER_USER_TYPE, ASSISTANT_USER_TYPE]
-    );
-    if (!currentSession.session || currentSession.userType == null) {
+export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResult> {
+    const cached = readTeacherAuthCache(req);
+    if (cached) return cached;
+
+    const auth = await (async () => {
+        const currentSession = await loadActiveUserSession(
+            req,
+            { cookieName: TEACHER_SESSION_COOKIE, headerName: "x-teacher-session" },
+            [TEACHER_USER_TYPE, ASSISTANT_USER_TYPE]
+        );
+        if (!currentSession.session || currentSession.userType == null) {
+            return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+        }
+
+        if (currentSession.userType === TEACHER_USER_TYPE) {
+            const [t] = await db
+                .select({ id: teacher.id, employeeId: teacher.employeeId, name: teacher.name, isFirstLogin: teacher.isFirstLogin })
+                .from(teacher)
+                .where(eq(teacher.id, currentSession.session.userId));
+
+            if (!t) {
+                return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+            }
+
+            const { expiresAt } = await extendUserSession(
+                currentSession.session.id,
+                "session.teacher_timeout_minutes",
+                TEACHER_SESSION_TTL_MINUTES
+            );
+
+            return {
+                user: {
+                    id: t.id,
+                    type: "teacher" as const,
+                    name: t.name,
+                    employeeId: t.employeeId,
+                    isFirstLogin: t.isFirstLogin,
+                },
+                error: null,
+                session: { ...currentSession.session, expiresAt },
+            };
+        }
+
+        if (currentSession.userType === ASSISTANT_USER_TYPE) {
+            const [a] = await db
+                .select({ id: assistant.id, account: assistant.account, name: assistant.name, isFirstLogin: assistant.isFirstLogin, creatorTeacherId: assistant.creatorTeacherId })
+                .from(assistant)
+                .where(eq(assistant.id, currentSession.session.userId));
+
+            if (!a) {
+                return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+            }
+
+            const { expiresAt } = await extendUserSession(
+                currentSession.session.id,
+                "session.teacher_timeout_minutes",
+                TEACHER_SESSION_TTL_MINUTES
+            );
+
+            return {
+                user: {
+                    id: a.id,
+                    type: "assistant" as const,
+                    name: a.name,
+                    account: a.account,
+                    isFirstLogin: a.isFirstLogin,
+                    creatorTeacherId: a.creatorTeacherId,
+                },
+                error: null,
+                session: { ...currentSession.session, expiresAt },
+            };
+        }
+
         return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
-    }
+    })();
 
-    if (currentSession.userType === TEACHER_USER_TYPE) {
-        const [t] = await db
-            .select({ id: teacher.id, employeeId: teacher.employeeId, name: teacher.name, isFirstLogin: teacher.isFirstLogin })
-            .from(teacher)
-            .where(eq(teacher.id, currentSession.session.userId));
-
-        if (!t) {
-            return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
-        }
-
-        const { expiresAt } = await extendUserSession(
-            currentSession.session.id,
-            "session.teacher_timeout_minutes",
-            TEACHER_SESSION_TTL_MINUTES
-        );
-
-        return {
-            user: {
-                id: t.id,
-                type: "teacher",
-                name: t.name,
-                employeeId: t.employeeId,
-                isFirstLogin: t.isFirstLogin,
-            },
-            error: null,
-            session: { ...currentSession.session, expiresAt },
-        };
-    }
-
-    if (currentSession.userType === ASSISTANT_USER_TYPE) {
-        const [a] = await db
-            .select({ id: assistant.id, account: assistant.account, name: assistant.name, isFirstLogin: assistant.isFirstLogin, creatorTeacherId: assistant.creatorTeacherId })
-            .from(assistant)
-            .where(eq(assistant.id, currentSession.session.userId));
-
-        if (!a) {
-            return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
-        }
-
-        const { expiresAt } = await extendUserSession(
-            currentSession.session.id,
-            "session.teacher_timeout_minutes",
-            TEACHER_SESSION_TTL_MINUTES
-        );
-
-        return {
-            user: {
-                id: a.id,
-                type: "assistant",
-                name: a.name,
-                account: a.account,
-                isFirstLogin: a.isFirstLogin,
-                creatorTeacherId: a.creatorTeacherId,
-            },
-            error: null,
-            session: { ...currentSession.session, expiresAt },
-        };
-    }
-
-    return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+    writeTeacherAuthCache(req, auth);
+    return auth;
 }
 
 export async function getCurrentUser(req: Request): Promise<AuthUser | null> {
-    const auth = await requireTeacherAuth(req);
-    return auth.user;
+    return (await requireTeacherAuth(req)).user;
 }
 
 export async function getCurrentTeacherId(req: Request): Promise<number | null> {
@@ -169,7 +242,13 @@ export async function getCurrentTeacherId(req: Request): Promise<number | null> 
 }
 
 export async function requirePrimaryTeacher(req: Request): Promise<{ teacherId: number | null; error: Response | null }> {
+    const cachedTeacherId = readPrimaryTeacherContext(req);
+    if (cachedTeacherId != null) {
+        return { teacherId: cachedTeacherId, error: null };
+    }
+
     const auth = await requireTeacherAuth(req);
+    // note: getOrCreateRequestCache handles dedup, so no double-query here
     if (auth.error) {
         return { teacherId: null, error: auth.error };
     }
@@ -178,6 +257,7 @@ export async function requirePrimaryTeacher(req: Request): Promise<{ teacherId: 
         return { teacherId: null, error: error("仅教师可执行此操作", "FORBIDDEN", 403) };
     }
 
+    setPrimaryTeacherContext(req, auth.user.id);
     return { teacherId: auth.user.id, error: null };
 }
 
@@ -186,36 +266,45 @@ export async function getCurrentAssistantId(req: Request): Promise<number | null
     return user?.type === "assistant" ? user.id : null;
 }
 
+function wrapTeacherRoute(handler?: RouteHandler): RouteHandler | undefined {
+    if (!handler) {
+        return undefined;
+    }
+
+    return async (req) => {
+        const auth = await requireTeacherAuth(req);
+        if (auth.error) return auth.error;
+        return handler(req);
+    };
+}
+
+function wrapPrimaryTeacherRoute(handler?: RouteHandler): RouteHandler | undefined {
+    if (!handler) {
+        return undefined;
+    }
+
+    return async (req) => {
+        const auth = await requirePrimaryTeacher(req);
+        if (auth.error) return auth.error;
+        return handler(req);
+    };
+}
+
 export function withTeacherAuth(routes: RouteDefinition): RouteDefinition {
     return {
-        GET: routes.GET
-            ? async (req) => {
-                const auth = await requireTeacherAuth(req);
-                if (auth.error) return auth.error;
-                return routes.GET!(req);
-            }
-            : undefined,
-        POST: routes.POST
-            ? async (req) => {
-                const auth = await requireTeacherAuth(req);
-                if (auth.error) return auth.error;
-                return routes.POST!(req);
-            }
-            : undefined,
-        PUT: routes.PUT
-            ? async (req) => {
-                const auth = await requireTeacherAuth(req);
-                if (auth.error) return auth.error;
-                return routes.PUT!(req);
-            }
-            : undefined,
-        DELETE: routes.DELETE
-            ? async (req) => {
-                const auth = await requireTeacherAuth(req);
-                if (auth.error) return auth.error;
-                return routes.DELETE!(req);
-            }
-            : undefined,
+        GET: wrapTeacherRoute(routes.GET),
+        POST: wrapTeacherRoute(routes.POST),
+        PUT: wrapTeacherRoute(routes.PUT),
+        DELETE: wrapTeacherRoute(routes.DELETE),
+    };
+}
+
+export function withPrimaryTeacherAuth(routes: RouteDefinition): RouteDefinition {
+    return {
+        GET: wrapPrimaryTeacherRoute(routes.GET),
+        POST: wrapPrimaryTeacherRoute(routes.POST),
+        PUT: wrapPrimaryTeacherRoute(routes.PUT),
+        DELETE: wrapPrimaryTeacherRoute(routes.DELETE),
     };
 }
 
@@ -355,9 +444,9 @@ const teacherLoginRoutes: RouteDefinition = {
 
 const teacherMeRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requireTeacherAuth(req);
-        if (auth.error) return auth.error;
-        return json({ ...auth.user!, sessionExpiresAt: auth.session?.expiresAt ?? null });
+        const auth = getTeacherAuth(req);
+        const user = getTeacherUser(req);
+        return json({ ...user, sessionExpiresAt: auth.session?.expiresAt ?? null });
     },
 };
 
@@ -377,8 +466,7 @@ const teacherLogoutRoutes: RouteDefinition = {
 
 const teacherPasswordRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requireTeacherAuth(req);
-        if (auth.error) return auth.error;
+        const auth = getTeacherAuth(req);
 
         const body = await parseBody<{ currentPassword: string; newPassword: string }>(req);
         const currentPassword = body.currentPassword ?? "";
@@ -392,7 +480,7 @@ const teacherPasswordRoutes: RouteDefinition = {
             return error("新密码不能与当前密码相同", "VALIDATION_ERROR", 400);
         }
 
-        const user = auth.user!;
+        const user = getTeacherUser(req);
         const accountId = user.type === "teacher" ? user.employeeId : user.account;
         const policy = evaluatePasswordRules({
             password: newPassword,

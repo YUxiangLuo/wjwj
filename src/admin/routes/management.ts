@@ -19,7 +19,7 @@ import {
 } from "../../db/schema";
 import { error, getClientIp, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { ADMIN_USER_TYPE, requireAdminAuth } from "./auth";
+import { ADMIN_USER_TYPE, getAdminUser } from "./auth";
 
 /** Escape SQL LIKE wildcard characters to prevent unintended pattern matching */
 function escapeLike(value: string): string {
@@ -556,9 +556,7 @@ const studentResetPasswordRoutes = {
 
 const studentTransferRoutes = {
     async POST(req: Request) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
-
+        const adm = getAdminUser(req);
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         const body = await parseBody<{ targetClassId: number; reason?: string }>(req);
         if (!id) return error("无效的学生ID", "INVALID_ID");
@@ -572,12 +570,12 @@ const studentTransferRoutes = {
         if (!targetClass) return error("目标班级不存在", "NOT_FOUND", 404);
         if (s.classId === body.targetClassId) return error("学生已在该班级", "SAME_CLASS");
 
-        await db.insert(studentTransfer).values({ studentId: id, fromClassId: s.classId, toClassId: body.targetClassId, reason: body.reason, operatedBy: auth.admin!.id });
+        await db.insert(studentTransfer).values({ studentId: id, fromClassId: s.classId, toClassId: body.targetClassId, reason: body.reason, operatedBy: adm.id });
         await db.update(student).set({ classId: body.targetClassId }).where(eq(student.id, id));
 
         await db.insert(operationLog).values({
             userType: ADMIN_USER_TYPE,
-            userId: auth.admin!.id,
+            userId: adm.id,
             action: "STUDENT_TRANSFER",
             targetType: "student",
             targetId: id,

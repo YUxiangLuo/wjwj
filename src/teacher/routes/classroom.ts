@@ -4,15 +4,13 @@ import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, loginLog, semester, student, submission, task } from "../../db/schema";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { ASSISTANT_USER_TYPE, requirePrimaryTeacher } from "./auth";
+import { ASSISTANT_USER_TYPE, getPrimaryTeacherIdOrThrow } from "./auth";
 
 const STUDENT_USER_TYPE = 4;
 
 const classRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const rows = await db
             .select({
                 id: class_.id,
@@ -38,9 +36,7 @@ const classStudentsRoutes: RouteDefinition = {
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [cls] = await db
             .select({ id: class_.id })
@@ -70,9 +66,7 @@ const classStudentsRoutes: RouteDefinition = {
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [cls] = await db
             .select({ id: class_.id })
@@ -109,9 +103,7 @@ const classStudentsImportRoutes: RouteDefinition = {
 
         if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
 
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [cls] = await db
             .select({ id: class_.id })
@@ -210,9 +202,7 @@ const studentRoutes: RouteDefinition = {
         const studentId = Number(getRouteParam(req, "id"));
         if (isNaN(studentId)) return error("Invalid ID", "INVALID_ID");
 
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [owned] = await db
             .select({ id: student.id, studentId: student.studentId })
@@ -242,9 +232,7 @@ const studentRoutes: RouteDefinition = {
         const studentId = Number(getRouteParam(req, "id"));
         if (isNaN(studentId)) return error("Invalid ID", "INVALID_ID");
 
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [owned] = await db
             .select({ id: student.id })
@@ -261,9 +249,7 @@ const studentRoutes: RouteDefinition = {
 
 const assistantRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const assistants = await db
             .select({
@@ -305,9 +291,7 @@ const assistantRoutes: RouteDefinition = {
     },
 
     async POST(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const body = await parseBody<{ name: string; studentId: string }>(req);
 
         if (!body.name || !body.studentId) return error("Missing fields", "VALIDATION_ERROR");
@@ -334,9 +318,7 @@ const assistantItemRoutes: RouteDefinition = {
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [owned] = await db
             .select({ id: assistant.id, account: assistant.account, name: assistant.name, status: assistant.status })
@@ -364,9 +346,7 @@ const assistantItemRoutes: RouteDefinition = {
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [owned] = await db
             .select({ id: assistant.id })
@@ -388,9 +368,7 @@ const assistantClassAssignRoutes: RouteDefinition = {
         const assistantId = Number(getRouteParam(req, "id"));
         if (isNaN(assistantId)) return error("Invalid ID", "INVALID_ID");
 
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [owned] = await db
             .select({ id: assistant.id })

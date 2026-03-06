@@ -3,13 +3,11 @@ import { db } from "../../db";
 import { announcement, announcementRead, notification } from "../../db/schema";
 import { error, getRouteParam, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { requireTeacherAuth } from "./auth";
+import { getTeacherUser } from "./auth";
 
 const teacherNotificationsRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requireTeacherAuth(req);
-        if (auth.error) return auth.error;
-        const currentUser = auth.user!;
+        const currentUser = getTeacherUser(req);
 
         const receiverType = currentUser.type === "teacher" ? 2 : 3;
 
@@ -40,9 +38,7 @@ const teacherNotificationsRoutes: RouteDefinition = {
 
 const teacherNotificationReadRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requireTeacherAuth(req);
-        if (auth.error) return auth.error;
-        const currentUser = auth.user!;
+        const currentUser = getTeacherUser(req);
 
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
@@ -59,9 +55,7 @@ const teacherNotificationReadRoutes: RouteDefinition = {
 
 const teacherNotificationReadAllRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requireTeacherAuth(req);
-        if (auth.error) return auth.error;
-        const currentUser = auth.user!;
+        const currentUser = getTeacherUser(req);
 
         const receiverType = currentUser.type === "teacher" ? 2 : 3;
 
@@ -77,9 +71,7 @@ export { teacherNotificationReadAllRoutes, teacherNotificationReadRoutes, teache
 
 const teacherAnnouncementsRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requireTeacherAuth(req);
-        if (auth.error) return auth.error;
-        const currentUser = auth.user!;
+        const currentUser = getTeacherUser(req);
 
         const userType = currentUser.type === "teacher" ? 2 : 3;
 
@@ -125,9 +117,7 @@ const teacherAnnouncementsRoutes: RouteDefinition = {
 
 const teacherAnnouncementReadRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requireTeacherAuth(req);
-        if (auth.error) return auth.error;
-        const currentUser = auth.user!;
+        const currentUser = getTeacherUser(req);
 
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");

@@ -7,7 +7,7 @@ import { clearSessionCookie, error, getClientIp, isSecureRequest, json, parseBod
 import type { RouteDefinition } from "../../server/route-types";
 import { deleteUserSessionByToken, readSessionToken } from "../../server/user-session";
 import { createBackupArtifacts } from "../backup";
-import { ADMIN_SESSION_COOKIE, ADMIN_USER_TYPE, requireAdminAuth } from "./auth";
+import { ADMIN_SESSION_COOKIE, ADMIN_USER_TYPE, getAdminUser } from "./auth";
 
 function requireEnv(name: string) {
     const value = process.env[name]?.trim();
@@ -19,14 +19,12 @@ function requireEnv(name: string) {
 
 const backupCreateRoutes: RouteDefinition = {
     async POST(req: Request) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
-
+        const adm = getAdminUser(req);
         const result = await createBackupArtifacts("backup");
         if (!result.ok) {
             await db.insert(notification).values({
                 receiverType: ADMIN_USER_TYPE,
-                receiverId: auth.admin!.id,
+                receiverId: adm.id,
                 type: "BACKUP_FAILED",
                 title: "备份失败",
                 content: `备份失败：${result.error}`,
@@ -36,7 +34,7 @@ const backupCreateRoutes: RouteDefinition = {
 
         await db.insert(operationLog).values({
             userType: ADMIN_USER_TYPE,
-            userId: auth.admin!.id,
+            userId: adm.id,
             action: "CREATE_BACKUP",
             targetType: "system",
             detail: { backupId: result.backupId, sqlPath: result.sqlPath, zipPath: result.zipPath },
@@ -45,7 +43,7 @@ const backupCreateRoutes: RouteDefinition = {
 
         await db.insert(notification).values({
             receiverType: ADMIN_USER_TYPE,
-            receiverId: auth.admin!.id,
+            receiverId: adm.id,
             type: "BACKUP_CREATED",
             title: "备份已完成",
             content: `备份 ${result.backupId} 已创建成功。`,
@@ -57,9 +55,7 @@ const backupCreateRoutes: RouteDefinition = {
 
 const backupRestoreRoutes: RouteDefinition = {
     async POST(req: Request) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
-
+        const adm = getAdminUser(req);
         const body = await parseBody<{ backupId?: string; password?: string; confirmPassword?: string }>(req);
         const backupId = body.backupId?.trim();
         const password = body.password ?? "";
@@ -81,12 +77,12 @@ const backupRestoreRoutes: RouteDefinition = {
             return error("两次输入的密码不一致", "VALIDATION_ERROR");
         }
 
-        const [adm] = await db.select().from(admin).where(eq(admin.id, auth.admin!.id));
-        if (!adm) {
+        const [admRow] = await db.select().from(admin).where(eq(admin.id, adm.id));
+        if (!admRow) {
             return error("账户不存在", "ACCOUNT_NOT_FOUND", 401);
         }
 
-        const passwordValid = await Bun.password.verify(password, adm.password);
+        const passwordValid = await Bun.password.verify(password, admRow.password);
         if (!passwordValid) {
             return error("管理员密码不正确", "INVALID_CREDENTIALS", 401);
         }
@@ -158,7 +154,7 @@ const backupRestoreRoutes: RouteDefinition = {
 
         await db.insert(operationLog).values({
             userType: ADMIN_USER_TYPE,
-            userId: auth.admin!.id,
+            userId: adm.id,
             action: "RESTORE_BACKUP",
             targetType: "system",
             detail: {

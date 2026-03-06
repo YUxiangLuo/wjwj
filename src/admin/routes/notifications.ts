@@ -2,14 +2,12 @@ import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { notification } from "../../db/schema";
 import { error, getRouteParam, json } from "../../server/http";
-import { ADMIN_USER_TYPE, requireAdminAuth } from "./auth";
+import { ADMIN_USER_TYPE, getAdminUser } from "./auth";
 
 const notificationRoutes = {
     async GET(req: Request) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
-
-        const adminId = auth.admin!.id;
+        const adm = getAdminUser(req);
+        const adminId = adm.id;
 
         const [countRow] = await db
             .select({ count: count() })
@@ -33,16 +31,13 @@ const notificationRoutes = {
         return json({
             count: countRow?.count ?? 0,
             items,
-            sessionExpiresAt: auth.session?.expiresAt ?? null,
         });
     },
 };
 
 const notificationMarkReadRoutes = {
     async PUT(req: Request) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
-
+        const adm = getAdminUser(req);
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
 
         if (!id) {
@@ -52,7 +47,7 @@ const notificationMarkReadRoutes = {
         await db
             .update(notification)
             .set({ isRead: 1, readAt: new Date() })
-            .where(and(eq(notification.id, id), eq(notification.receiverType, ADMIN_USER_TYPE), eq(notification.receiverId, auth.admin!.id)));
+            .where(and(eq(notification.id, id), eq(notification.receiverType, ADMIN_USER_TYPE), eq(notification.receiverId, adm.id)));
 
         return json({ success: true });
     },
@@ -60,13 +55,11 @@ const notificationMarkReadRoutes = {
 
 const notificationReadAllRoutes = {
     async PUT(req: Request) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
-
+        const adm = getAdminUser(req);
         await db
             .update(notification)
             .set({ isRead: 1, readAt: new Date() })
-            .where(and(eq(notification.receiverType, ADMIN_USER_TYPE), eq(notification.receiverId, auth.admin!.id), eq(notification.isRead, 0)));
+            .where(and(eq(notification.receiverType, ADMIN_USER_TYPE), eq(notification.receiverId, adm.id), eq(notification.isRead, 0)));
 
         return json({ success: true });
     },

@@ -29,7 +29,7 @@ import {
     adminLogoutRoutes,
     adminMeRoutes,
     adminPasswordRoutes,
-    requireAdminAuth,
+    getAdminAuth,
     withAdminAuth,
 } from "./routes/auth";
 import { backupCreateRoutes, backupListRoutes, backupRestoreRoutes } from "./routes/backup";
@@ -301,8 +301,7 @@ const systemSettingsRoutes = {
     },
 
     async PUT(req: Request) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
+        const adm = getAdminUser(req);
 
         const body = await parseBody<Record<string, unknown>>(req);
 
@@ -339,7 +338,7 @@ const systemSettingsRoutes = {
         // Log operation
         await db.insert(operationLog).values({
             userType: ADMIN_USER_TYPE,
-            userId: auth.admin!.id,
+            userId: adm.id,
             action: 'UPDATE_SETTINGS',
             targetType: 'system',
             detail: body,
@@ -400,7 +399,7 @@ const systemLogsRoutes = {
 export const adminApiRoutes = {
     // Auth
     "/api/admin/login": adminLoginRoutes,
-    "/api/admin/me": adminMeRoutes,
+    "/api/admin/me": withAdminAuth(adminMeRoutes),
     "/api/admin/logout": adminLogoutRoutes,
     "/api/admin/password": withAdminAuth(adminPasswordRoutes),
 

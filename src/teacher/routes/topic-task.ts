@@ -22,21 +22,17 @@ import {
     listTeacherTopics,
 } from "../topic/query-service";
 import { extendTopicTaskDeadline, publishTopicTasks } from "../topic/task-service";
-import { requirePrimaryTeacher } from "./auth";
+import { getPrimaryTeacherIdOrThrow } from "./auth";
 import { hasTopicOwnership } from "./topic-guards";
 
 const topicRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         return json(await listTeacherTopics(currentTeacherId));
     },
 
     async POST(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const body = await parseBody<{ name: string; description?: string; status?: number }>(req);
         const createResult = await createTeacherTopic({
             teacherId: currentTeacherId,
@@ -52,9 +48,7 @@ const topicRoutes: RouteDefinition = {
 
 const topicItemRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -73,9 +67,7 @@ const topicItemRoutes: RouteDefinition = {
     },
 
     async DELETE(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -89,9 +81,7 @@ const topicItemRoutes: RouteDefinition = {
 
 const topicDetailRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
 
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
@@ -105,9 +95,7 @@ const topicDetailRoutes: RouteDefinition = {
 
 const topicExcelUploadRoutes: RouteDefinition = {
     async POST(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -133,9 +121,7 @@ const topicExcelUploadRoutes: RouteDefinition = {
 
 const topicFieldMappingRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -156,9 +142,7 @@ const topicFieldMappingRoutes: RouteDefinition = {
 
 const topicAttachmentRoutes: RouteDefinition = {
     async POST(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -177,9 +161,7 @@ const topicAttachmentRoutes: RouteDefinition = {
 
 const topicAttachmentDeleteRoutes: RouteDefinition = {
     async DELETE(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const topicId = Number(getRouteParam(req, "id"));
         const attachmentId = Number(getRouteParam(req, "attachmentId"));
         if (isNaN(topicId) || isNaN(attachmentId)) return error("Invalid ID", "INVALID_ID");
@@ -194,9 +176,7 @@ const topicAttachmentDeleteRoutes: RouteDefinition = {
 
 const topicRecommendQuestionRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -213,9 +193,7 @@ const topicRecommendQuestionRoutes: RouteDefinition = {
 
 const topicWeightRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -235,9 +213,7 @@ const topicWeightRoutes: RouteDefinition = {
 
 const topicCopyRoutes: RouteDefinition = {
     async POST(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const id = Number(getRouteParam(req, "id"));
         if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
 
@@ -252,16 +228,12 @@ const topicCopyRoutes: RouteDefinition = {
 
 const taskRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         return json(await listTeacherTasks(currentTeacherId));
     },
 
     async POST(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const body = await parseBody<{ topicId: number; classIds: number[]; deadline?: string }>(req);
         const publishResult = await publishTopicTasks({
             teacherId: currentTeacherId,
@@ -279,9 +251,7 @@ const taskRoutes: RouteDefinition = {
 
 const taskExtendRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const taskId = Number(getRouteParam(req, "id"));
         if (isNaN(taskId)) return error("Invalid ID", "INVALID_ID");
 
@@ -301,9 +271,7 @@ const taskExtendRoutes: RouteDefinition = {
 
 const taskProgressRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const taskId = Number(getRouteParam(req, "id"));
         if (isNaN(taskId)) return error("Invalid ID", "INVALID_ID");
 

@@ -20,72 +20,117 @@ import {
     readSessionToken,
     recordLoginLog,
 } from "../../server/user-session";
-import type { RouteDefinition } from "../../server/route-types";
+import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 
 export const ADMIN_USER_TYPE = 1;
 export const ADMIN_SESSION_COOKIE = "admin_session";
 const DEFAULT_ADMIN_SESSION_TTL_MINUTES = 30;
 const DEFAULT_ADMIN_MAX_LOGIN_ATTEMPTS = 5;
 const DEFAULT_ADMIN_LOCK_MINUTES = 30;
+const ADMIN_AUTH_CACHE = Symbol("admin_auth");
 
-export async function requireAdminAuth(req: Request) {
-    const currentSession = await loadActiveUserSession(
-        req,
-        { cookieName: ADMIN_SESSION_COOKIE, headerName: "x-admin-session" },
-        [ADMIN_USER_TYPE]
-    );
-    if (!currentSession.session) {
-        return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+export interface AdminInfo {
+    id: number;
+    username: string;
+    isFirstLogin: number;
+}
+
+interface AdminAuthSession {
+    id: number;
+    sessionToken: string;
+    userType: number;
+    userId: number;
+    expiresAt: Date;
+}
+
+interface AdminAuthResult {
+    admin: AdminInfo | null;
+    error: Response | null;
+    session?: AdminAuthSession;
+}
+
+type AdminRequestContext = Request & {
+    [ADMIN_AUTH_CACHE]?: AdminAuthResult;
+};
+
+function readAdminAuthCache(req: Request): AdminAuthResult | null {
+    return (req as AdminRequestContext)[ADMIN_AUTH_CACHE] ?? null;
+}
+
+function writeAdminAuthCache(req: Request, auth: AdminAuthResult) {
+    (req as AdminRequestContext)[ADMIN_AUTH_CACHE] = auth;
+}
+
+export function getAdminAuth(req: Request): AdminAuthResult {
+    const cached = readAdminAuthCache(req);
+    if (!cached) {
+        throw new Error("Admin auth context is unavailable. Wrap the route with withAdminAuth or call requireAdminAuth first.");
+    }
+    return cached;
+}
+
+export function getAdminUser(req: Request): AdminInfo {
+    const auth = getAdminAuth(req);
+    if (!auth.admin) {
+        throw new Error("Admin user is unavailable. Wrap the route with withAdminAuth.");
+    }
+    return auth.admin;
+}
+
+export async function requireAdminAuth(req: Request): Promise<AdminAuthResult> {
+    const cached = readAdminAuthCache(req);
+    if (cached) return cached;
+
+    const auth = await (async () => {
+        const currentSession = await loadActiveUserSession(
+            req,
+            { cookieName: ADMIN_SESSION_COOKIE, headerName: "x-admin-session" },
+            [ADMIN_USER_TYPE]
+        );
+        if (!currentSession.session) {
+            return { admin: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
+        }
+
+        const [adm] = await db
+            .select({ id: admin.id, username: admin.username, isFirstLogin: admin.isFirstLogin })
+            .from(admin)
+            .where(eq(admin.id, currentSession.session.userId));
+
+        if (!adm) {
+            return { admin: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+        }
+
+        const { expiresAt } = await extendUserSession(
+            currentSession.session.id,
+            "session.admin_timeout_minutes",
+            DEFAULT_ADMIN_SESSION_TTL_MINUTES
+        );
+
+        return { admin: adm, error: null, session: { ...currentSession.session, expiresAt } };
+    })();
+
+    writeAdminAuthCache(req, auth);
+    return auth;
+}
+
+function wrapAdminRoute(handler?: RouteHandler): RouteHandler | undefined {
+    if (!handler) {
+        return undefined;
     }
 
-    const [adm] = await db
-        .select({ id: admin.id, username: admin.username, isFirstLogin: admin.isFirstLogin })
-        .from(admin)
-        .where(eq(admin.id, currentSession.session.userId));
-
-    if (!adm) {
-        return { admin: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
-    }
-
-    const { expiresAt } = await extendUserSession(
-        currentSession.session.id,
-        "session.admin_timeout_minutes",
-        DEFAULT_ADMIN_SESSION_TTL_MINUTES
-    );
-
-    return { admin: adm, error: null, session: { ...currentSession.session, expiresAt } };
+    return async (req) => {
+        const auth = await requireAdminAuth(req);
+        if (auth.error) return auth.error;
+        return handler(req);
+    };
 }
 
 export function withAdminAuth(routes: RouteDefinition): RouteDefinition {
     return {
-        GET: routes.GET
-            ? async (req) => {
-                const auth = await requireAdminAuth(req);
-                if (auth.error) return auth.error;
-                return routes.GET!(req);
-            }
-            : undefined,
-        POST: routes.POST
-            ? async (req) => {
-                const auth = await requireAdminAuth(req);
-                if (auth.error) return auth.error;
-                return routes.POST!(req);
-            }
-            : undefined,
-        PUT: routes.PUT
-            ? async (req) => {
-                const auth = await requireAdminAuth(req);
-                if (auth.error) return auth.error;
-                return routes.PUT!(req);
-            }
-            : undefined,
-        DELETE: routes.DELETE
-            ? async (req) => {
-                const auth = await requireAdminAuth(req);
-                if (auth.error) return auth.error;
-                return routes.DELETE!(req);
-            }
-            : undefined,
+        GET: wrapAdminRoute(routes.GET),
+        POST: wrapAdminRoute(routes.POST),
+        PUT: wrapAdminRoute(routes.PUT),
+        DELETE: wrapAdminRoute(routes.DELETE),
     };
 }
 
@@ -160,10 +205,10 @@ const adminLoginRoutes: RouteDefinition = {
 
 const adminMeRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
+        const auth = getAdminAuth(req);
+        const adm = getAdminUser(req);
         return json({
-            ...auth.admin!,
+            ...adm,
             sessionExpiresAt: auth.session?.expiresAt ?? null,
         });
     },
@@ -185,8 +230,7 @@ const adminLogoutRoutes: RouteDefinition = {
 
 const adminPasswordRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requireAdminAuth(req);
-        if (auth.error) return auth.error;
+        const adm = getAdminUser(req);
 
         const body = await parseBody<{ currentPassword: string; newPassword: string }>(req);
         const currentPassword = body.currentPassword ?? "";
@@ -200,12 +244,12 @@ const adminPasswordRoutes: RouteDefinition = {
             return error("新密码不能与当前密码相同", "VALIDATION_ERROR", 400);
         }
 
-        const [adm] = await db.select().from(admin).where(eq(admin.id, auth.admin!.id));
-        if (!adm) {
+        const [admRow] = await db.select().from(admin).where(eq(admin.id, adm.id));
+        if (!admRow) {
             return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
         }
 
-        const isValid = await Bun.password.verify(currentPassword, adm.password);
+        const isValid = await Bun.password.verify(currentPassword, admRow.password);
         if (!isValid) {
             return error("当前密码不正确", "INVALID_CREDENTIALS", 401);
         }

@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { class_, experiment, student, submission, task, topic } from "../../db/schema";
 import { error, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { requirePrimaryTeacher } from "./auth";
+import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 function parseIdList(value: string | null) {
     if (!value) return [] as number[];
@@ -87,9 +87,7 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
 
 const gradeExportPreviewRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const params = getSearchParams(req);
         const classId = params.get("classId");
@@ -147,9 +145,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
 
 const gradeExportDataRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
         const params = getSearchParams(req);
         const rows = await getGradeExportRows(currentTeacherId, params);
         if (!rows) return error("查询参数无效", "INVALID_PARAM", 400);
@@ -159,9 +155,7 @@ const gradeExportDataRoutes: RouteDefinition = {
 
 const gradeExportExcelRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const params = getSearchParams(req);
         const rows = await getGradeExportRows(currentTeacherId, params);

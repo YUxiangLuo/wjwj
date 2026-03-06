@@ -3,13 +3,11 @@ import { db } from "../../db";
 import { class_, experiment, student, submission, task, topic } from "../../db/schema";
 import { json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { requirePrimaryTeacher } from "./auth";
+import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 const dashboardRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requirePrimaryTeacher(req);
-        if (auth.error) return auth.error;
-        const currentTeacherId = auth.teacherId!;
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [[myClasses], [myTopics], [pendingGrading], [activeTasks]] = await Promise.all([
             db.select({ count: count() }).from(class_).where(eq(class_.teacherId, currentTeacherId)),
