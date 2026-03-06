@@ -122,7 +122,11 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         }
     }, [recommendedSize, initialData]);
 
+    // Keep a ref to the latest autoSaveSamplePlan so the 30-second interval doesn't reset on every change
+    const autoSaveRef = useRef(autoSaveSamplePlan);
+    useEffect(() => { autoSaveRef.current = autoSaveSamplePlan; }, [autoSaveSamplePlan]);
 
+    // Debounce: save 3 seconds after user stops editing
     useEffect(() => {
         const debounceTimer = window.setTimeout(() => {
             void autoSaveSamplePlan();
@@ -133,15 +137,16 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         };
     }, [autoSaveSamplePlan]);
 
+    // Fixed 30-second interval: uses ref so the interval is never reset by content changes
     useEffect(() => {
         const intervalTimer = window.setInterval(() => {
-            void autoSaveSamplePlan();
+            void autoSaveRef.current();
         }, 30 * 1000);
 
         return () => {
             window.clearInterval(intervalTimer);
         };
-    }, [autoSaveSamplePlan]);
+    }, []);
 
     useEffect(() => {
         const onBeforeUnload = (event: BeforeUnloadEvent) => {
