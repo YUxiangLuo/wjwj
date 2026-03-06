@@ -43,6 +43,9 @@ function shiftQueue(kind: QueryKind, queues: Required<QueueMap>) {
 
 function createBuilder(kind: QueryKind, operation: MockDbOperation, queues: Required<QueueMap>, operations: MockDbOperation[]) {
     const builder = {
+        $dynamic() {
+            return builder;
+        },
         from(table: unknown) {
             operation.table = table;
             return builder;

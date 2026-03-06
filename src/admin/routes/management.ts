@@ -26,6 +26,70 @@ function escapeLike(value: string): string {
     return value.replace(/[%_\\]/g, (ch) => `\\${ch}`);
 }
 
+function createCountMap(rows: Array<{ key: number; count: number }>) {
+    return new Map(rows.map((row) => [row.key, row.count]));
+}
+
+async function loadSemesterClassCounts(semesterIds: number[]) {
+    if (semesterIds.length === 0) return new Map<number, number>();
+
+    const rows = await db
+        .select({
+            key: class_.semesterId,
+            count: count(),
+        })
+        .from(class_)
+        .where(inArray(class_.semesterId, semesterIds))
+        .groupBy(class_.semesterId);
+
+    return createCountMap(rows);
+}
+
+async function loadTeacherClassCounts(teacherIds: number[]) {
+    if (teacherIds.length === 0) return new Map<number, number>();
+
+    const rows = await db
+        .select({
+            key: class_.teacherId,
+            count: count(),
+        })
+        .from(class_)
+        .where(inArray(class_.teacherId, teacherIds))
+        .groupBy(class_.teacherId);
+
+    return createCountMap(rows);
+}
+
+async function loadAssistantClassCounts(assistantIds: number[]) {
+    if (assistantIds.length === 0) return new Map<number, number>();
+
+    const rows = await db
+        .select({
+            key: assistantClass.assistantId,
+            count: count(),
+        })
+        .from(assistantClass)
+        .where(inArray(assistantClass.assistantId, assistantIds))
+        .groupBy(assistantClass.assistantId);
+
+    return createCountMap(rows);
+}
+
+async function loadClassStudentCounts(classIds: number[]) {
+    if (classIds.length === 0) return new Map<number, number>();
+
+    const rows = await db
+        .select({
+            key: student.classId,
+            count: count(),
+        })
+        .from(student)
+        .where(and(inArray(student.classId, classIds), isNull(student.deletedAt)))
+        .groupBy(student.classId);
+
+    return createCountMap(rows);
+}
+
 const semesterRoutes: RouteDefinition = {
     async GET() {
         const rows = await db
@@ -34,12 +98,16 @@ const semesterRoutes: RouteDefinition = {
                 name: semester.name,
                 isCurrent: semester.isCurrent,
                 createdAt: semester.createdAt,
-                classCount: sql<number>`(SELECT COUNT(*) FROM class WHERE class.semester_id = ${semester.id})`,
             })
             .from(semester)
             .orderBy(desc(semester.createdAt));
 
-        return json(rows);
+        const classCounts = await loadSemesterClassCounts(rows.map((row) => row.id));
+
+        return json(rows.map((row) => ({
+            ...row,
+            classCount: classCounts.get(row.id) ?? 0,
+        })));
     },
 
     async POST(req) {
@@ -115,7 +183,6 @@ const teacherRoutes: RouteDefinition = {
                 isFirstLogin: teacher.isFirstLogin,
                 lockedUntil: teacher.lockedUntil,
                 createdAt: teacher.createdAt,
-                classCount: sql<number>`(SELECT COUNT(*) FROM class WHERE class.teacher_id = ${teacher.id})`,
             })
             .from(teacher)
             .orderBy(desc(teacher.createdAt))
@@ -128,6 +195,7 @@ const teacherRoutes: RouteDefinition = {
 
         const rows = await query;
         const teacherIds = rows.map((r) => r.id);
+        const classCounts = await loadTeacherClassCounts(teacherIds);
         const lastLogins =
             teacherIds.length > 0
                 ? await db
@@ -138,7 +206,12 @@ const teacherRoutes: RouteDefinition = {
                 : [];
 
         const lastLoginMap = new Map(lastLogins.map((l) => [l.userId, l.lastLogin]));
-        return json(rows.map((r) => ({ ...r, isLocked: r.lockedUntil ? new Date(r.lockedUntil) > new Date() : false, lastLogin: lastLoginMap.get(r.id) ?? null })));
+        return json(rows.map((r) => ({
+            ...r,
+            classCount: classCounts.get(r.id) ?? 0,
+            isLocked: r.lockedUntil ? new Date(r.lockedUntil) > new Date() : false,
+            lastLogin: lastLoginMap.get(r.id) ?? null,
+        })));
     },
 
     async POST(req) {
@@ -230,7 +303,6 @@ const assistantRoutes: RouteDefinition = {
                 lockedUntil: assistant.lockedUntil,
                 createdAt: assistant.createdAt,
                 teacherName: teacher.name,
-                classCount: sql<number>`(SELECT COUNT(*) FROM assistant_class WHERE assistant_class.assistant_id = ${assistant.id})`,
             })
             .from(assistant)
             .leftJoin(teacher, eq(assistant.creatorTeacherId, teacher.id))
@@ -244,6 +316,7 @@ const assistantRoutes: RouteDefinition = {
 
         const rows = await query;
         const assistantIds = rows.map((r) => r.id);
+        const classCounts = await loadAssistantClassCounts(assistantIds);
         const lastLogins =
             assistantIds.length > 0
                 ? await db
@@ -253,7 +326,12 @@ const assistantRoutes: RouteDefinition = {
                     .groupBy(loginLog.userId)
                 : [];
         const lastLoginMap = new Map(lastLogins.map((l) => [l.userId, l.lastLogin]));
-        return json(rows.map((r) => ({ ...r, isLocked: r.lockedUntil ? new Date(r.lockedUntil) > new Date() : false, lastLogin: lastLoginMap.get(r.id) ?? null })));
+        return json(rows.map((r) => ({
+            ...r,
+            classCount: classCounts.get(r.id) ?? 0,
+            isLocked: r.lockedUntil ? new Date(r.lockedUntil) > new Date() : false,
+            lastLogin: lastLoginMap.get(r.id) ?? null,
+        })));
     },
 
     async POST(req) {
@@ -355,7 +433,6 @@ const classRoutes: RouteDefinition = {
                 createdAt: class_.createdAt,
                 semesterName: semester.name,
                 teacherName: teacher.name,
-                studentCount: sql<number>`(SELECT COUNT(*) FROM student WHERE student.class_id = ${class_.id} AND student.deleted_at IS NULL)`,
             })
             .from(class_)
             .leftJoin(semester, eq(class_.semesterId, semester.id))
@@ -374,7 +451,13 @@ const classRoutes: RouteDefinition = {
         }
         if (conditions.length > 0) query = query.where(and(...conditions));
 
-        return json(await query);
+        const rows = await query;
+        const studentCounts = await loadClassStudentCounts(rows.map((row) => row.id));
+
+        return json(rows.map((row) => ({
+            ...row,
+            studentCount: studentCounts.get(row.id) ?? 0,
+        })));
     },
 
     async POST(req) {

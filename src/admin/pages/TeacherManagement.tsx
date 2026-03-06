@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { teacherApi, classApi, type Teacher, type Class } from "../api-client";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { toast } from "sonner";
 
 export function TeacherManagement() {
+    const { confirm, dialog } = useConfirmDialog();
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -76,7 +78,15 @@ export function TeacherManagement() {
         const newStatus = teacher.status === 1 ? 0 : 1;
         const action = newStatus === 0 ? "停用" : "启用";
 
-        if (!confirm(`确定${action}教师「${teacher.name}」吗？`)) {
+        const shouldProceed = await confirm({
+            title: `${action}教师「${teacher.name}」`,
+            description: newStatus === 0
+                ? "停用后该教师将无法登录系统，也无法继续管理其负责的班级。"
+                : "启用后该教师将恢复登录权限，并可继续管理其负责的班级。",
+            confirmLabel: action,
+            tone: newStatus === 0 ? "destructive" : "primary",
+        });
+        if (!shouldProceed) {
             return;
         }
 
@@ -94,7 +104,12 @@ export function TeacherManagement() {
     }
 
     async function handleUnlock(teacher: Teacher) {
-        if (!confirm(`确定解锁教师「${teacher.name}」吗？`)) {
+        const shouldUnlock = await confirm({
+            title: `解锁教师「${teacher.name}」`,
+            description: "解锁后该教师可立即重新尝试登录。",
+            confirmLabel: "解锁教师",
+        });
+        if (!shouldUnlock) {
             return;
         }
 
@@ -112,7 +127,12 @@ export function TeacherManagement() {
     }
 
     async function handleResetPassword(teacher: Teacher) {
-        if (!confirm(`确定重置教师「${teacher.name}」的密码吗？\n\n密码将重置为工号，下次登录需要修改密码。`)) {
+        const shouldReset = await confirm({
+            title: `重置教师「${teacher.name}」的密码`,
+            description: "密码将重置为工号，下次登录需要修改密码。",
+            confirmLabel: "重置密码",
+        });
+        if (!shouldReset) {
             return;
         }
 
@@ -373,6 +393,7 @@ export function TeacherManagement() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">添加教师</DialogTitle>
+                        <DialogDescription className="text-slate-400">创建教师账号，初始密码将设置为工号。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
@@ -422,6 +443,7 @@ export function TeacherManagement() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">编辑教师</DialogTitle>
+                        <DialogDescription className="text-slate-400">修改教师显示姓名，工号保持不变。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
@@ -467,6 +489,7 @@ export function TeacherManagement() {
                         <DialogTitle className="text-slate-100">
                             教师「{classesTeacher?.name}」的关联班级
                         </DialogTitle>
+                        <DialogDescription className="text-slate-400">查看该教师当前负责的班级及学生规模。</DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
                         {classesLoading ? (
@@ -501,6 +524,7 @@ export function TeacherManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {dialog}
         </div>
     );
 }

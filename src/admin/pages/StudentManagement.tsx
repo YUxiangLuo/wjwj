@@ -16,11 +16,13 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { studentApi, classApi, type Student, type Class, type StudentExperiment } from "../api-client";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
 export function StudentManagement() {
     const location = useLocation();
+    const { confirm, dialog } = useConfirmDialog();
     const [students, setStudents] = useState<Student[]>([]);
     const [classes, setClasses] = useState<Class[]>([]);
     const [loading, setLoading] = useState(true);
@@ -89,7 +91,12 @@ export function StudentManagement() {
     }
 
     async function handleResetPassword(student: Student) {
-        if (!confirm(`确定重置学生「${student.name}」的密码吗？\n\n密码将重置为学号。`)) {
+        const shouldReset = await confirm({
+            title: `重置学生「${student.name}」的密码`,
+            description: "密码将重置为学号。",
+            confirmLabel: "重置密码",
+        });
+        if (!shouldReset) {
             return;
         }
 
@@ -107,7 +114,12 @@ export function StudentManagement() {
     }
 
     async function handleUnlock(student: Student) {
-        if (!confirm(`确定解锁学生「${student.name}」吗？`)) {
+        const shouldUnlock = await confirm({
+            title: `解锁学生「${student.name}」`,
+            description: "解锁后该学生可立即重新尝试登录。",
+            confirmLabel: "解锁学生",
+        });
+        if (!shouldUnlock) {
             return;
         }
 
@@ -128,7 +140,15 @@ export function StudentManagement() {
         const newStatus = student.status === 1 ? 0 : 1;
         const action = newStatus === 0 ? "停用" : "启用";
 
-        if (!confirm(`确定${action}学生「${student.name}」吗？`)) {
+        const shouldProceed = await confirm({
+            title: `${action}学生「${student.name}」`,
+            description: newStatus === 0
+                ? "停用后该学生将无法登录系统和继续实验。"
+                : "启用后该学生将恢复登录和实验权限。",
+            confirmLabel: action,
+            tone: newStatus === 0 ? "destructive" : "primary",
+        });
+        if (!shouldProceed) {
             return;
         }
 
@@ -486,6 +506,9 @@ export function StudentManagement() {
                                 {selectedStudentForExp?.name} ({selectedStudentForExp?.studentId})
                             </span>
                         </DialogTitle>
+                        <DialogDescription className="text-slate-400">
+                            查看该学生在各个实验任务中的阶段进度、提交状态和成绩记录。
+                        </DialogDescription>
                     </DialogHeader>
 
                     {loadingExperiments ? (
@@ -536,6 +559,7 @@ export function StudentManagement() {
                     )}
                 </DialogContent>
             </Dialog>
+            {dialog}
         </>
     );
 }

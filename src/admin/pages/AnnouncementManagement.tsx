@@ -4,16 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/student/components/RichTextEditor";
 import { RichTextContent } from "@/components/RichTextContent";
 import { announcementApi, type Announcement } from "../api-client";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { toast } from "sonner";
 
 export function AnnouncementManagement() {
+    const { confirm, dialog } = useConfirmDialog();
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -118,7 +120,15 @@ export function AnnouncementManagement() {
         const isPublished = announcement.status === 1;
         const action = isPublished ? "撤回" : "发布";
 
-        if (!confirm(`确定${action}公告「${announcement.title}」吗？`)) {
+        const shouldProceed = await confirm({
+            title: `${action}公告「${announcement.title}」`,
+            description: isPublished
+                ? "撤回后该公告将不再对目标用户可见，但草稿内容会保留。"
+                : "发布后该公告将立即对目标范围内的用户可见。",
+            confirmLabel: action,
+            tone: isPublished ? "destructive" : "primary",
+        });
+        if (!shouldProceed) {
             return;
         }
 
@@ -139,7 +149,13 @@ export function AnnouncementManagement() {
     }
 
     async function handleDelete(announcement: Announcement) {
-        if (!confirm(`确定删除公告「${announcement.title}」吗？`)) {
+        const shouldDelete = await confirm({
+            title: `删除公告「${announcement.title}」`,
+            description: "删除后公告内容和阅读统计都将无法恢复。",
+            confirmLabel: "删除公告",
+            tone: "destructive",
+        });
+        if (!shouldDelete) {
             return;
         }
 
@@ -395,6 +411,7 @@ export function AnnouncementManagement() {
                 <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">发布公告</DialogTitle>
+                        <DialogDescription className="text-slate-400">创建公告草稿或立即发布给指定目标用户。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
@@ -468,6 +485,7 @@ export function AnnouncementManagement() {
                 <DialogContent className="sm:max-w-lg bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">编辑公告</DialogTitle>
+                        <DialogDescription className="text-slate-400">更新公告标题和正文内容，已发布状态保持不变。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
@@ -515,6 +533,7 @@ export function AnnouncementManagement() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">公告阅读统计</DialogTitle>
+                        <DialogDescription className="text-slate-400">查看当前公告的阅读人数、阅读率和按角色分布。</DialogDescription>
                     </DialogHeader>
                     <div className="py-6">
                         {statsLoading ? (
@@ -568,6 +587,7 @@ export function AnnouncementManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {dialog}
         </div>
     );
 }

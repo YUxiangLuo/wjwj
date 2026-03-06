@@ -10,9 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { semesterApi, type Semester } from "../api-client";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { toast } from "sonner";
 
 export function SemesterManagement() {
+    const { confirm, dialog } = useConfirmDialog();
     const [semesters, setSemesters] = useState<Semester[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -49,7 +51,12 @@ export function SemesterManagement() {
         // Warn if format doesn't match recommended pattern
         const formatRegex = /^\d{4}-(Spring|Fall)$/;
         if (!formatRegex.test(newSemesterName.trim())) {
-            if (!confirm("学期名称不符合推荐格式（YYYY-Spring 或 YYYY-Fall），确定继续创建吗？")) {
+            const shouldContinue = await confirm({
+                title: "学期名称不符合推荐格式",
+                description: "建议使用 YYYY-Spring 或 YYYY-Fall。\n继续创建后不会影响系统功能，但会降低列表可读性。",
+                confirmLabel: "继续创建",
+            });
+            if (!shouldContinue) {
                 return;
             }
         }
@@ -124,7 +131,13 @@ export function SemesterManagement() {
             return;
         }
 
-        if (!confirm(`确定删除学期「${semester.name}」吗？`)) {
+        const shouldDelete = await confirm({
+            title: `删除学期「${semester.name}」`,
+            description: "删除后该学期将从列表中移除，且无法恢复。",
+            confirmLabel: "删除学期",
+            tone: "destructive",
+        });
+        if (!shouldDelete) {
             return;
         }
 
@@ -407,6 +420,7 @@ export function SemesterManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {dialog}
         </div>
     );
 }

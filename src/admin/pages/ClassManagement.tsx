@@ -5,15 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { classApi, semesterApi, teacherApi, type Class, type Semester, type Teacher } from "../api-client";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export function ClassManagement() {
     const navigate = useNavigate();
+    const { confirm, dialog } = useConfirmDialog();
     const [classes, setClasses] = useState<Class[]>([]);
     const [semesters, setSemesters] = useState<Semester[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -121,8 +123,13 @@ export function ClassManagement() {
         const teacherChanged = editForm.teacherId !== String(editingClass.teacherId);
 
         if (teacherChanged) {
-            const newTeacher = teachers.find(t => t.id === parseInt(editForm.teacherId));
-            if (!confirm(`确定将班级「${editingClass.name}」的授课教师更换为「${newTeacher?.name}」吗？\n\n更换后：\n- 原教师将无法管理该班级\n- 新教师将获得该班级的管理权限`)) {
+            const newTeacher = teachers.find((t) => t.id === parseInt(editForm.teacherId));
+            const shouldReassign = await confirm({
+                title: `更换班级「${editingClass.name}」的授课教师`,
+                description: `将授课教师调整为「${newTeacher?.name ?? "未选择"}」后：\n- 原教师将无法管理该班级\n- 新教师将获得该班级的管理权限`,
+                confirmLabel: "确认更换",
+            });
+            if (!shouldReassign) {
                 return;
             }
         }
@@ -150,11 +157,17 @@ export function ClassManagement() {
     }
 
     async function handleDelete(cls: Class) {
-        const message = cls.studentCount > 0
-            ? `确定删除班级「${cls.name}」吗？\n\n⚠️ 警告：该班级有 ${cls.studentCount} 名学生\n\n删除后：\n- 班级内的学生将无法继续实验\n- 历史实验数据和成绩将被保留`
-            : `确定删除班级「${cls.name}」吗？`;
+        const description = cls.studentCount > 0
+            ? `该班级当前有 ${cls.studentCount} 名学生。\n\n删除后：\n- 班级内的学生将无法继续实验\n- 历史实验数据和成绩将被保留`
+            : "删除后该班级将从列表中移除，且无法恢复。";
 
-        if (!confirm(message)) {
+        const shouldDelete = await confirm({
+            title: `删除班级「${cls.name}」`,
+            description,
+            confirmLabel: "删除班级",
+            tone: "destructive",
+        });
+        if (!shouldDelete) {
             return;
         }
 
@@ -378,6 +391,7 @@ export function ClassManagement() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">创建班级</DialogTitle>
+                        <DialogDescription className="text-slate-400">为指定学期和教师创建一个新的教学班级。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
@@ -440,6 +454,7 @@ export function ClassManagement() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">编辑班级</DialogTitle>
+                        <DialogDescription className="text-slate-400">更新班级名称或重新分配授课教师。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
@@ -488,6 +503,7 @@ export function ClassManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {dialog}
         </div>
     );
 }

@@ -5,13 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { assistantApi, teacherApi, type Assistant, type Teacher } from "../api-client";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { toast } from "sonner";
 
 export function AssistantManagement() {
+    const { confirm, dialog } = useConfirmDialog();
     const [assistants, setAssistants] = useState<Assistant[]>([]);
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
@@ -91,7 +93,15 @@ export function AssistantManagement() {
         const newStatus = assistant.status === 1 ? 0 : 1;
         const action = newStatus === 0 ? "停用" : "启用";
 
-        if (!confirm(`确定${action}助教「${assistant.name}」吗？`)) {
+        const shouldProceed = await confirm({
+            title: `${action}助教「${assistant.name}」`,
+            description: newStatus === 0
+                ? "停用后该助教将无法登录系统，也无法继续处理所属教师的班级事务。"
+                : "启用后该助教将恢复登录权限，并可继续协助所属教师。",
+            confirmLabel: action,
+            tone: newStatus === 0 ? "destructive" : "primary",
+        });
+        if (!shouldProceed) {
             return;
         }
 
@@ -109,7 +119,12 @@ export function AssistantManagement() {
     }
 
     async function handleResetPassword(assistant: Assistant) {
-        if (!confirm(`确定重置助教「${assistant.name}」的密码吗？\n\n密码将重置为账号，下次登录需要修改密码。`)) {
+        const shouldReset = await confirm({
+            title: `重置助教「${assistant.name}」的密码`,
+            description: "密码将重置为账号，下次登录需要修改密码。",
+            confirmLabel: "重置密码",
+        });
+        if (!shouldReset) {
             return;
         }
 
@@ -127,7 +142,12 @@ export function AssistantManagement() {
     }
 
     async function handleUnlock(assistant: Assistant) {
-        if (!confirm(`确定解锁助教「${assistant.name}」吗？`)) {
+        const shouldUnlock = await confirm({
+            title: `解锁助教「${assistant.name}」`,
+            description: "解锁后该助教可立即重新尝试登录。",
+            confirmLabel: "解锁助教",
+        });
+        if (!shouldUnlock) {
             return;
         }
 
@@ -145,7 +165,13 @@ export function AssistantManagement() {
     }
 
     async function handleDelete(assistant: Assistant) {
-        if (!confirm(`确定删除助教「${assistant.name}」吗？`)) {
+        const shouldDelete = await confirm({
+            title: `删除助教「${assistant.name}」`,
+            description: "删除后该助教账号将无法恢复，请确认其职责已完成交接。",
+            confirmLabel: "删除助教",
+            tone: "destructive",
+        });
+        if (!shouldDelete) {
             return;
         }
 
@@ -378,6 +404,7 @@ export function AssistantManagement() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">添加助教</DialogTitle>
+                        <DialogDescription className="text-slate-400">创建助教账号并绑定到指定教师名下。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
@@ -435,6 +462,7 @@ export function AssistantManagement() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            {dialog}
         </div>
     );
 }
