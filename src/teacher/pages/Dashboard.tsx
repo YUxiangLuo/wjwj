@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type TeacherStats, type TeacherAnnouncement } from "../api-client";
 
 function StatCard({ icon: Icon, label, value, color, loading }: {
@@ -320,9 +321,10 @@ export function Dashboard() {
                         {selectedAnnouncement?.createdAt && new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN")}
                     </div>
                     <div className="flex-1 overflow-y-auto py-4">
-                        <div className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
-                            {selectedAnnouncement?.content}
-                        </div>
+                        <RichTextContent
+                            html={selectedAnnouncement?.content ?? ""}
+                            className="text-sm text-slate-300 leading-relaxed"
+                        />
                     </div>
                 </DialogContent>
             </Dialog>

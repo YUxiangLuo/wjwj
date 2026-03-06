@@ -137,6 +137,7 @@ export function TeacherManagement() {
 
     async function handleViewClasses(teacher: Teacher) {
         setClassesTeacher(teacher);
+        setTeacherClasses([]);
         setShowClassesModal(true);
         setClassesLoading(true);
         try {
