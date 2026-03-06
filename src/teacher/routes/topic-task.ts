@@ -627,6 +627,13 @@ const taskProgressRoutes: RouteDefinition = {
                     ORDER BY s.submitted_at DESC, s.id DESC
                     LIMIT 1
                 )`,
+                submissionId: sql<number | null>`(
+                    SELECT s.id
+                    FROM submission s
+                    WHERE s.experiment_id = ${experiment.id}
+                    ORDER BY s.submitted_at DESC, s.id DESC
+                    LIMIT 1
+                )`,
                 lastActivity: experiment.updatedAt,
             })
             .from(student)
@@ -666,6 +673,7 @@ const taskProgressRoutes: RouteDefinition = {
                 status,
                 stage,
                 lastActivity: s.lastActivity,
+                submissionId: s.submissionId ?? null,
             };
         });
 

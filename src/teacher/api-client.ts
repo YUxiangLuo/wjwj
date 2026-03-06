@@ -94,7 +94,7 @@ export interface Task {
 export interface TaskProgressData {
     task: { topicName: string; className: string; deadline: string | null };
     counts: { not_started: number; stage1: number; stage2: number; stage3: number; stage4: number; submitted: number; graded: number; rejected: number };
-    students: { studentId: string; name: string; status: string; stage: number | null; lastActivity: string | null }[];
+    students: { studentId: string; name: string; status: string; stage: number | null; lastActivity: string | null; submissionId: number | null }[];
 }
 
 export interface GradingItem {
