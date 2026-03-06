@@ -383,7 +383,7 @@ export function ExperimentLayout() {
                 {/* Stage description card */}
                 <div className="mt-6 mb-6">
                     {(() => {
-                        const currentStageConfig = stages[currentStage - 1]!;
+                        const currentStageConfig = stages[currentStage - 1] ?? stages[0];
                         const StageIcon = currentStageConfig.icon;
                         return (
                             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-800/50">
