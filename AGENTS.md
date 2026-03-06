@@ -115,3 +115,16 @@ Core workflow:
 2. `agent-browser snapshot -i` - Get interactive elements with refs (@e1, @e2)
 3. `agent-browser click @e1` / `fill @e2 "text"` - Interact using refs
 4. Re-snapshot after page changes
+
+Project-specific经验:
+
+- Admin, teacher, student 都跑在同一个 origin 下，cookie 会互相影响。跨端回归时务必用独立 session，例如 `agent-browser --session admin ...`、`agent-browser --session teacher ...`、`agent-browser --session student ...`。
+- 页面跳转、弹窗开关、列表刷新后，旧的 `@e*` ref 很容易失效。不要复用旧 ref，先重新 `snapshot` 再继续操作。
+- 不要只看 toast 就判断成功，必须再抓一次 `snapshot` 验证列表、状态、数量或弹窗文案已经实际变化。
+- 本项目很多动作按钮没有稳定 test id，优先用“先搜索/过滤缩小结果，再点当前快照中的行内按钮”的方式，不要硬编码数据库 id。
+- 富文本公告编辑器是 `contenteditable`，不是普通 `textarea`。优先直接定位 `div[contenteditable='true']`；如果 `fill` 不稳定，就用 `agent-browser eval` 设置 `textContent` / `innerHTML` 并补发 `input` 事件。
+- 导出类能力优先用 `agent-browser download <sel> <path>`，下载后再用 shell 读取文件内容做断言。
+- 需要验证“首次登录改密”“管理员重置密码后强制改密”“锁定/停用恢复”这类状态流时，建议在一轮结束后执行 `bun run db:seed` 恢复标准种子状态；只有需要完全清空额外数据时才用 `bun run db:reset`。
+- `agent-browser network requests` 在开发模式 + HMR 下可能重复记录同一批请求。做“请求次数”判断时，不要只信它；必要时用 `agent-browser eval` 在页面里包一层 `window.fetch` 统计真实调用次数。
+- 某些负向路径会被 UI 禁住，例如“当前学期删除”“草稿公告统计”。这种场景优先复用已登录 session，用 `agent-browser eval` 直接 `fetch('/api/...', { credentials: 'include' })` 验证后端返回，而不是强行操作禁用控件。
+- 排查“是不是多标签页/多会话噪音”时，先跑 `agent-browser tab list --session <name>`；确认只剩一个标签页后，再判断请求或状态是否重复。
