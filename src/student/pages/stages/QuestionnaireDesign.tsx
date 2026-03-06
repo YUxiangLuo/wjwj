@@ -1290,6 +1290,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     }
                                 }}
                                 disabled={s.num > step}
+                                aria-label={`第 ${s.num} 步: ${s.title}`}
                                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 disabled:cursor-not-allowed ${
                                     isCurrent
                                         ? "bg-indigo-600/15 text-indigo-300 border border-indigo-500/30"

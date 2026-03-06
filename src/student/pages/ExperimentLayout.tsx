@@ -29,7 +29,12 @@ import { SamplingExecution } from "./stages/SamplingExecution";
 import { AnalysisReport } from "./stages/AnalysisReport";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 
-const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
+const stages = [
+    { name: "问卷设计", description: "设计调查问卷，包括标题、欢迎语、问题和结束语", icon: FileText },
+    { name: "样本量规划", description: "设置抽样参数，计算最优样本量", icon: Ruler },
+    { name: "抽样执行", description: "使用三种抽样方法从总体中抽取样本", icon: Play },
+    { name: "分析与报告", description: "分析抽样结果，撰写研究报告", icon: BarChart3 },
+] as const;
 
 // Context for experiment data
 interface ExperimentContextValue {
@@ -270,14 +275,6 @@ export function ExperimentLayout() {
         saveExperiment,
     };
 
-    const stageDescriptions = [
-        "设计调查问卷，包括标题、欢迎语、问题和结束语",
-        "设置抽样参数，计算最优样本量",
-        "使用三种抽样方法从总体中抽取样本",
-        "分析抽样结果，撰写研究报告",
-    ];
-
-    const stageIcons = [FileText, Ruler, Play, BarChart3];
 
     return (
         <ExperimentContext.Provider value={contextValue}>
@@ -336,14 +333,14 @@ export function ExperimentLayout() {
 
                     {/* Row 2: Compact stage progress (always visible) */}
                     <div className="flex items-center gap-3 pb-2.5 px-1 overflow-x-auto scrollbar-hide">
-                        {stageNames.map((stage, index) => {
+                        {stages.map((stage, index) => {
                             const stageNum = index + 1;
                             const isCompleted = stageNum < currentStage;
                             const isCurrent = stageNum === currentStage;
-                            const Icon = stageIcons[index] ?? FileText;
+                            const Icon = stage.icon;
 
                             return (
-                                <div key={stage} className="flex items-center gap-2">
+                                <div key={stage.name} className="flex items-center gap-2">
                                     {index > 0 && (
                                         <ChevronRight className={`w-3 h-3 flex-shrink-0 ${isCompleted || isCurrent ? "text-slate-500" : "text-slate-700"}`} />
                                     )}
@@ -355,6 +352,7 @@ export function ExperimentLayout() {
                                             }
                                         }}
                                         disabled={stageNum >= currentStage}
+                                        aria-label={`阶段 ${stageNum}: ${stage.name}`}
                                         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 disabled:cursor-default ${
                                             isCurrent
                                                 ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
@@ -370,14 +368,14 @@ export function ExperimentLayout() {
                                                 <Icon className={`w-3.5 h-3.5 ${isCurrent ? "text-indigo-400" : "text-slate-600"}`} />
                                             )}
                                         </span>
-                                        <span className="hidden sm:inline">{stage}</span>
+                                        <span className="hidden sm:inline">{stage.name}</span>
                                         <span className="sm:hidden">{stageNum}</span>
                                     </button>
                                 </div>
                             );
                         })}
                         <div className="ml-auto text-xs font-bold text-indigo-400 font-mono flex-shrink-0">
-                            {Math.round((currentStage / stageNames.length) * 100)}%
+                            {Math.round((currentStage / stages.length) * 100)}%
                         </div>
                     </div>
                 </div>
@@ -385,7 +383,8 @@ export function ExperimentLayout() {
                 {/* Stage description card */}
                 <div className="mt-6 mb-6">
                     {(() => {
-                        const StageIcon = stageIcons[currentStage - 1] ?? FileText;
+                        const currentStageConfig = stages[currentStage - 1]!;
+                        const StageIcon = currentStageConfig.icon;
                         return (
                             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-800/50">
                                 <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex-shrink-0">
@@ -393,10 +392,10 @@ export function ExperimentLayout() {
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-sm font-semibold text-slate-200">
-                                        阶段 {currentStage}: {stageNames[currentStage - 1]}
+                                        阶段 {currentStage}: {currentStageConfig.name}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-0.5">
-                                        {stageDescriptions[currentStage - 1]}
+                                        {currentStageConfig.description}
                                     </div>
                                 </div>
                             </div>
@@ -415,7 +414,7 @@ export function ExperimentLayout() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认返回阶段</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
-                            返回到“<span className="text-indigo-400 font-medium">{targetStage ? stageNames[targetStage - 1] : ""}</span>”将导致以下后续阶段的数据被<strong className="text-rose-400">永久清空</strong>：
+                            返回到“<span className="text-indigo-400 font-medium">{targetStage ? stages[targetStage - 1]!.name : ""}</span>”将导致以下后续阶段的数据被<strong className="text-rose-400">永久清空</strong>：
                             <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-slate-400">
                                 {targetStage !== null && targetStage <= 1 && <li>样本量规划数据</li>}
                                 {targetStage !== null && targetStage <= 2 && <li>抽样执行结果</li>}
