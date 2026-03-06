@@ -13,6 +13,7 @@ import {
 } from "../../server/http";
 import { getConfigNumber } from "../../server/system-config";
 import {
+    clearUserSessionForUser,
     createSingleUserSession,
     deleteUserSessionByToken,
     extendUserSession,
@@ -147,6 +148,8 @@ const adminLoginRoutes: RouteDefinition = {
         const [adm] = await db.select().from(admin).where(eq(admin.username, username));
 
         if (!adm) {
+            // Perform a dummy hash verification to prevent timing-based user enumeration
+            await Bun.password.verify(password, "$argon2id$v=19$m=65536,t=2,p=1$dummysaltvalue$dummyhashvalue0000000000000000000000000000000").catch(() => {});
             return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
         }
 
@@ -265,6 +268,13 @@ const adminPasswordRoutes: RouteDefinition = {
 
         const hashed = await Bun.password.hash(newPassword);
         await db.update(admin).set({ password: hashed, isFirstLogin: 0 }).where(eq(admin.id, adm.id));
+
+        // Invalidate other sessions but keep the current one
+        const currentToken = readSessionToken(req, {
+            cookieName: ADMIN_SESSION_COOKIE,
+            headerName: "x-admin-session",
+        });
+        await clearUserSessionForUser(ADMIN_USER_TYPE, adm.id, currentToken);
 
         await db.insert(operationLog).values({
             userType: ADMIN_USER_TYPE,

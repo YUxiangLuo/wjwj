@@ -59,29 +59,6 @@ const routes = {
 
     return new Response(file, { headers });
   },
-
-  // API endpoints (example)
-  "/api/hello": {
-    async GET(req: Request) {
-      return Response.json({
-        message: "Hello, world!",
-        method: "GET",
-      });
-    },
-    async PUT(req: Request) {
-      return Response.json({
-        message: "Hello, world!",
-        method: "PUT",
-      });
-    },
-  },
-
-  "/api/hello/:name": async (req: RouteRequest) => {
-    const name = req.params.name;
-    return Response.json({
-      message: `Hello, ${name}!`,
-    });
-  },
 };
 
 const server = serve({

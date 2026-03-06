@@ -28,7 +28,7 @@ export function createStorageUploadPath(fileName: string, folder = "uploads") {
 export async function writeStorageFile(storagePath: string, data: string | ArrayBuffer | ArrayBufferView | Blob) {
     const fullPath = resolveStoragePath(storagePath);
     await mkdir(dirname(fullPath), { recursive: true });
-    await Bun.write(fullPath, data);
+    await Bun.write(fullPath, data as Blob | string | ArrayBufferLike);
     return fullPath;
 }
 

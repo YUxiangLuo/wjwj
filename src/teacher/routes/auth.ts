@@ -12,6 +12,7 @@ import {
 } from "../../server/http";
 import { getConfigNumber } from "../../server/system-config";
 import {
+    clearUserSessionForUser,
     createSingleUserSession,
     deleteUserSessionByToken,
     extendUserSession,
@@ -325,7 +326,7 @@ async function handleTeacherLogin(req: Request, t: typeof teacher.$inferSelect, 
     const isValid = await Bun.password.verify(password, t.password);
     if (!isValid) {
         const failCount = (t.loginFailCount ?? 0) + 1;
-        const updateData: any = { loginFailCount: failCount };
+        const updateData: { loginFailCount: number; lockedUntil?: Date } = { loginFailCount: failCount };
         if (failCount >= maxAttempts) {
             updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
         }
@@ -380,7 +381,7 @@ async function handleAssistantLogin(req: Request, a: typeof assistant.$inferSele
     const isValid = await Bun.password.verify(password, a.password);
     if (!isValid) {
         const failCount = (a.loginFailCount ?? 0) + 1;
-        const updateData: any = { loginFailCount: failCount };
+        const updateData: { loginFailCount: number; lockedUntil?: Date } = { loginFailCount: failCount };
         if (failCount >= maxAttempts) {
             updateData.lockedUntil = new Date(now.getTime() + lockMinutes * 60 * 1000);
         }
@@ -438,6 +439,8 @@ const teacherLoginRoutes: RouteDefinition = {
             return handleAssistantLogin(req, a, password);
         }
 
+        // Perform a dummy hash verification to prevent timing-based user enumeration
+        await Bun.password.verify(password, "$argon2id$v=19$m=65536,t=2,p=1$dummysaltvalue$dummyhashvalue0000000000000000000000000000000").catch(() => {});
         return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
     },
 };
@@ -500,6 +503,13 @@ const teacherPasswordRoutes: RouteDefinition = {
 
             const hashed = await Bun.password.hash(newPassword);
             await db.update(teacher).set({ password: hashed, isFirstLogin: 0 }).where(eq(teacher.id, t.id));
+
+            // Invalidate other sessions but keep the current one
+            const currentToken = readSessionToken(req, {
+                cookieName: TEACHER_SESSION_COOKIE,
+                headerName: "x-teacher-session",
+            });
+            await clearUserSessionForUser(TEACHER_USER_TYPE, t.id, currentToken);
         } else {
             const [a] = await db.select().from(assistant).where(eq(assistant.id, user.id));
             if (!a) return error("账户不存在", "ACCOUNT_NOT_FOUND", 404);
@@ -509,6 +519,13 @@ const teacherPasswordRoutes: RouteDefinition = {
 
             const hashed = await Bun.password.hash(newPassword);
             await db.update(assistant).set({ password: hashed, isFirstLogin: 0 }).where(eq(assistant.id, a.id));
+
+            // Invalidate other sessions but keep the current one
+            const currentToken = readSessionToken(req, {
+                cookieName: TEACHER_SESSION_COOKIE,
+                headerName: "x-teacher-session",
+            });
+            await clearUserSessionForUser(ASSISTANT_USER_TYPE, a.id, currentToken);
         }
 
         return json({ success: true });
