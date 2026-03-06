@@ -49,10 +49,18 @@ const semesterRoutes: RouteDefinition = {
         const [existing] = await db.select().from(semester).where(eq(semester.name, body.name.trim()));
         if (existing) return error("学期名称已存在", "DUPLICATE_NAME");
 
-        if (body.setAsCurrent) await db.update(semester).set({ isCurrent: 0 });
-
-        const [result] = await db.insert(semester).values({ name: body.name.trim(), isCurrent: body.setAsCurrent ? 1 : 0 });
-        return json({ id: result.insertId }, 201);
+        let insertId: number;
+        if (body.setAsCurrent) {
+            insertId = await db.transaction(async (tx) => {
+                await tx.update(semester).set({ isCurrent: 0 });
+                const [result] = await tx.insert(semester).values({ name: body.name.trim(), isCurrent: 1 });
+                return result.insertId;
+            });
+        } else {
+            const [result] = await db.insert(semester).values({ name: body.name.trim(), isCurrent: 0 });
+            insertId = result.insertId;
+        }
+        return json({ id: insertId }, 201);
     },
 };
 
@@ -64,8 +72,10 @@ const semesterCurrentRoutes = {
         const [targetSemester] = await db.select({ id: semester.id }).from(semester).where(eq(semester.id, id));
         if (!targetSemester) return error("学期不存在", "NOT_FOUND", 404);
 
-        await db.update(semester).set({ isCurrent: 0 });
-        await db.update(semester).set({ isCurrent: 1 }).where(eq(semester.id, id));
+        await db.transaction(async (tx) => {
+            await tx.update(semester).set({ isCurrent: 0 });
+            await tx.update(semester).set({ isCurrent: 1 }).where(eq(semester.id, id));
+        });
 
         return json({ success: true });
     },
@@ -94,7 +104,7 @@ const semesterDeleteRoutes = {
 const teacherRoutes: RouteDefinition = {
     async GET(req) {
         const params = getSearchParams(req);
-        const search = params.get("search") ?? "";
+        const search = (params.get("search") ?? "").slice(0, 100);
 
         let query = db
             .select({
@@ -227,7 +237,10 @@ const assistantRoutes: RouteDefinition = {
             .orderBy(desc(assistant.createdAt))
             .$dynamic();
 
-        if (teacherId && teacherId !== "all") query = query.where(eq(assistant.creatorTeacherId, parseInt(teacherId)));
+        if (teacherId && teacherId !== "all") {
+            const parsed = parseInt(teacherId, 10);
+            if (Number.isFinite(parsed) && parsed > 0) query = query.where(eq(assistant.creatorTeacherId, parsed));
+        }
 
         const rows = await query;
         const assistantIds = rows.map((r) => r.id);
@@ -248,6 +261,10 @@ const assistantRoutes: RouteDefinition = {
         if (!body.account?.trim() || !body.name?.trim() || !body.teacherId) return error("账号、姓名和所属教师不能为空", "VALIDATION_ERROR");
         if (body.account.trim().length > 50) return error("账号不能超过50个字符", "VALIDATION_ERROR");
         if (body.name.trim().length > 100) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
+        if (!Number.isInteger(body.teacherId) || body.teacherId <= 0) return error("无效的教师ID", "VALIDATION_ERROR");
+
+        const [t] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, body.teacherId));
+        if (!t) return error("所属教师不存在", "NOT_FOUND", 404);
 
         const [existing] = await db.select().from(assistant).where(eq(assistant.account, body.account.trim()));
         if (existing) return error("账号已存在", "DUPLICATE_ACCOUNT");
@@ -347,8 +364,14 @@ const classRoutes: RouteDefinition = {
             .$dynamic();
 
         const conditions = [];
-        if (semesterId && semesterId !== "all") conditions.push(eq(class_.semesterId, parseInt(semesterId)));
-        if (teacherId && teacherId !== "all") conditions.push(eq(class_.teacherId, parseInt(teacherId)));
+        if (semesterId && semesterId !== "all") {
+            const parsed = parseInt(semesterId, 10);
+            if (Number.isFinite(parsed) && parsed > 0) conditions.push(eq(class_.semesterId, parsed));
+        }
+        if (teacherId && teacherId !== "all") {
+            const parsed = parseInt(teacherId, 10);
+            if (Number.isFinite(parsed) && parsed > 0) conditions.push(eq(class_.teacherId, parsed));
+        }
         if (conditions.length > 0) query = query.where(and(...conditions));
 
         return json(await query);
@@ -357,6 +380,13 @@ const classRoutes: RouteDefinition = {
     async POST(req) {
         const body = await parseBody<{ name: string; semesterId: number; teacherId: number }>(req);
         if (!body.name?.trim() || !body.semesterId || !body.teacherId) return error("班级名称、学期和教师不能为空", "VALIDATION_ERROR");
+        if (!Number.isInteger(body.semesterId) || body.semesterId <= 0) return error("无效的学期ID", "VALIDATION_ERROR");
+        if (!Number.isInteger(body.teacherId) || body.teacherId <= 0) return error("无效的教师ID", "VALIDATION_ERROR");
+
+        const [s] = await db.select({ id: semester.id }).from(semester).where(eq(semester.id, body.semesterId));
+        if (!s) return error("学期不存在", "NOT_FOUND", 404);
+        const [t] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, body.teacherId));
+        if (!t) return error("教师不存在", "NOT_FOUND", 404);
 
         const [result] = await db.insert(class_).values({ name: body.name.trim(), semesterId: body.semesterId, teacherId: body.teacherId });
         return json({ id: result.insertId }, 201);
@@ -384,8 +414,13 @@ const classUpdateRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的班级ID", "INVALID_ID");
 
-        await db.update(student).set({ deletedAt: new Date() }).where(eq(student.classId, id));
-        await db.delete(class_).where(eq(class_.id, id));
+        const [c] = await db.select({ id: class_.id }).from(class_).where(eq(class_.id, id));
+        if (!c) return error("班级不存在", "NOT_FOUND", 404);
+
+        await db.transaction(async (tx) => {
+            await tx.update(student).set({ deletedAt: new Date() }).where(eq(student.classId, id));
+            await tx.delete(class_).where(eq(class_.id, id));
+        });
         return json({ success: true });
     },
 };
@@ -394,7 +429,7 @@ const studentRoutes: RouteDefinition = {
     async GET(req) {
         const params = getSearchParams(req);
         const classId = params.get("class_id");
-        const search = params.get("search") ?? "";
+        const search = (params.get("search") ?? "").slice(0, 100);
 
         let query = db
             .select({
@@ -413,7 +448,10 @@ const studentRoutes: RouteDefinition = {
             .$dynamic();
 
         const conditions = [isNull(student.deletedAt)];
-        if (classId && classId !== "all") conditions.push(eq(student.classId, parseInt(classId)));
+        if (classId && classId !== "all") {
+            const parsed = parseInt(classId, 10);
+            if (Number.isFinite(parsed) && parsed > 0) conditions.push(eq(student.classId, parsed));
+        }
         if (search) {
             const escaped = escapeLike(search);
             conditions.push(or(like(student.studentId, `%${escaped}%`), like(student.name, `%${escaped}%`))!);
@@ -525,6 +563,7 @@ const studentTransferRoutes = {
         const body = await parseBody<{ targetClassId: number; reason?: string }>(req);
         if (!id) return error("无效的学生ID", "INVALID_ID");
         if (!body.targetClassId) return error("目标班级不能为空", "VALIDATION_ERROR");
+        if (body.reason && body.reason.trim().length > 500) return error("转班原因不能超过500个字符", "VALIDATION_ERROR");
 
         const [s] = await db.select().from(student).where(eq(student.id, id));
         if (!s) return error("学生不存在", "NOT_FOUND", 404);
@@ -582,6 +621,9 @@ const announcementUpdateRoutes = {
         if (body.title && body.title.trim().length > 100) return error("公告标题不能超过100个字符", "VALIDATION_ERROR");
         if (body.content && body.content.trim().length > 10000) return error("公告内容不能超过10000个字符", "VALIDATION_ERROR");
 
+        const [existing] = await db.select({ id: announcement.id }).from(announcement).where(eq(announcement.id, id));
+        if (!existing) return error("公告不存在", "NOT_FOUND", 404);
+
         const updates: Record<string, unknown> = {};
         if (body.title?.trim()) updates.title = body.title.trim();
         if (body.content?.trim()) updates.content = body.content.trim();
@@ -593,6 +635,9 @@ const announcementUpdateRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的公告ID", "INVALID_ID");
 
+        const [existing] = await db.select({ id: announcement.id }).from(announcement).where(eq(announcement.id, id));
+        if (!existing) return error("公告不存在", "NOT_FOUND", 404);
+
         await db.delete(announcement).where(eq(announcement.id, id));
         return json({ success: true });
     },
@@ -603,6 +648,9 @@ const announcementPublishRoutes = {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的公告ID", "INVALID_ID");
 
+        const [existing] = await db.select({ id: announcement.id }).from(announcement).where(eq(announcement.id, id));
+        if (!existing) return error("公告不存在", "NOT_FOUND", 404);
+
         await db.update(announcement).set({ status: 1 }).where(eq(announcement.id, id));
         return json({ success: true });
     },
@@ -612,6 +660,9 @@ const announcementUnpublishRoutes = {
     async PUT(req: Request) {
         const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!id) return error("无效的公告ID", "INVALID_ID");
+
+        const [existing] = await db.select({ id: announcement.id }).from(announcement).where(eq(announcement.id, id));
+        if (!existing) return error("公告不存在", "NOT_FOUND", 404);
 
         await db.update(announcement).set({ status: 0 }).where(eq(announcement.id, id));
         return json({ success: true });
