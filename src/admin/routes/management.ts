@@ -757,6 +757,7 @@ const announcementStatsRoutes = {
 
         const [an] = await db.select().from(announcement).where(eq(announcement.id, id));
         if (!an) return error("公告不存在", "NOT_FOUND", 404);
+        if (an.status !== 1) return error("草稿公告暂无阅读统计", "ANNOUNCEMENT_NOT_PUBLISHED");
 
         const scope = an.targetScope ?? "all";
         const includeTeacher = scope === "all" || scope === "teacher";

@@ -42,7 +42,7 @@ async function loadBackupRoutes(options: {
         createBackupArtifacts: async () => backupResult,
     }));
 
-    const module = await import("./backup");
+    const module = await import(`./backup?backup-route-test=${Math.random()}`);
     return { module, operations };
 }
 

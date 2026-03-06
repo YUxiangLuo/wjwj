@@ -64,6 +64,7 @@ import {
 } from "./routes/management";
 import { notificationMarkReadRoutes, notificationReadAllRoutes, notificationRoutes } from "./routes/notifications";
 import { semesterUpdateRoutes } from "./routes/semester";
+import { validateAdminSettingsPayload } from "./settings-validation";
 
 // ============================================================
 // Types
@@ -305,6 +306,13 @@ const systemSettingsRoutes = {
         const adm = getAdminUser(req);
 
         const body = await parseBody<Record<string, unknown>>(req);
+        const filteredBody = Object.fromEntries(
+            Object.entries(body).filter(([key]) => ALLOWED_SETTING_KEYS.has(key))
+        );
+        const validationError = validateAdminSettingsPayload(filteredBody);
+        if (validationError) {
+            return error(validationError.message, "VALIDATION_ERROR");
+        }
 
         const upsertSetting = async (key: string, valStr: string, valType: "string" | "number" | "boolean") => {
             await db.insert(systemConfig).values({
@@ -320,8 +328,7 @@ const systemSettingsRoutes = {
         };
 
         // Loop through keys and upsert (only allowed keys)
-        for (const [key, value] of Object.entries(body)) {
-            if (!ALLOWED_SETTING_KEYS.has(key)) continue;
+        for (const [key, value] of Object.entries(filteredBody)) {
 
             let valStr = String(value);
             let valType: "string" | "number" | "boolean" = "string";

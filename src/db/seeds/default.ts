@@ -48,9 +48,15 @@ async function insertOrGet<T extends { id: number }>(
     table: any,
     where: any,
     values: any,
+    updateValues?: any,
 ): Promise<number> {
-    const [exist] = await db.select().from(table).where(where);
-    if (exist) return (exist as T).id;
+    const [exist] = await db.select({ id: table.id }).from(table).where(where);
+    if (exist) {
+        if (updateValues) {
+            await db.update(table).set(updateValues).where(eq(table.id, (exist as T).id));
+        }
+        return (exist as T).id;
+    }
     const [res] = await db.insert(table).values(values);
     return res.insertId;
 }
@@ -88,8 +94,22 @@ async function seed() {
 
     await db
         .insert(admin)
-        .values({ username: "admin", password: hashedPassword, isFirstLogin: 0 })
-        .onDuplicateKeyUpdate({ set: { username: "admin" } });
+        .values({
+            username: "admin",
+            password: hashedPassword,
+            isFirstLogin: 0,
+            loginFailCount: 0,
+            lockedUntil: null,
+        })
+        .onDuplicateKeyUpdate({
+            set: {
+                username: "admin",
+                password: hashedPassword,
+                isFirstLogin: 0,
+                loginFailCount: 0,
+                lockedUntil: null,
+            },
+        });
 
     // ========================================================
     // 2. 学期  (往期 / 当前 / 下学期)
@@ -110,7 +130,7 @@ async function seed() {
     const [prevSemId, currSemId, nextSemId] = semIds as [number, number, number];
 
     // ========================================================
-    // 3. 教师 (5 位，含特殊状态)
+    // 3. 教师 (6 位，含首次登录 / 停用 / 锁定样本)
     // ========================================================
     console.log("👨‍🏫 教师…");
 
@@ -125,38 +145,69 @@ async function seed() {
         { employeeId: "teacher", name: "张教授（演示）", isFirstLogin: 0, status: 1 },
         { employeeId: "T002", name: "李博士", isFirstLogin: 0, status: 1 },
         { employeeId: "T003", name: "王讲师", isFirstLogin: 0, status: 1 },
-        { employeeId: "T004", name: "赵副教授（首次登录）", isFirstLogin: 1, status: 1 },
-        { employeeId: "T005", name: "刘老师（已停用）", isFirstLogin: 0, status: 0 },
+        { employeeId: "T004", name: "赵副教授", isFirstLogin: 1, status: 1 },
+        { employeeId: "T005", name: "刘老师", isFirstLogin: 0, status: 0 },
+        { employeeId: "T006", name: "陈老师", isFirstLogin: 0, status: 1, loginFailCount: 5, lockedUntil: daysFromNow(1) },
     ];
     const teacherIds: number[] = [];
     for (const t of teachersData) {
+        const teacherSeed = {
+            employeeId: t.employeeId,
+            name: t.name,
+            password: hashedPassword,
+            isFirstLogin: t.isFirstLogin ?? 0,
+            status: t.status ?? 1,
+            loginFailCount: t.loginFailCount ?? 0,
+            lockedUntil: t.lockedUntil ?? null,
+        };
         teacherIds.push(
             await insertOrGet(
                 teacher,
                 eq(teacher.employeeId, t.employeeId),
-                { ...t, password: hashedPassword },
+                teacherSeed,
+                teacherSeed,
             ),
         );
     }
 
     // ========================================================
-    // 4. 助教 (4 位)
+    // 4. 助教 (5 位，含首次登录 / 锁定样本)
     // ========================================================
     console.log("👩‍🏫 助教…");
 
-    const assistantsData = [
+    const assistantsData: {
+        account: string;
+        name: string;
+        creator: number;
+        isFirstLogin: number;
+        status?: number;
+        loginFailCount?: number;
+        lockedUntil?: Date | null;
+    }[] = [
         { account: "assistant", name: "演示助教", creator: teacherIds[0]!, isFirstLogin: 0 },
         { account: "A002", name: "助教小陈", creator: teacherIds[0]!, isFirstLogin: 0 },
         { account: "A003", name: "助教小赵", creator: teacherIds[1]!, isFirstLogin: 0 },
-        { account: "A004", name: "助教小周（首次登录）", creator: teacherIds[2]!, isFirstLogin: 1 },
+        { account: "A004", name: "助教小周", creator: teacherIds[2]!, isFirstLogin: 1 },
+        { account: "A005", name: "助教小孙", creator: teacherIds[1]!, isFirstLogin: 0, status: 1, loginFailCount: 5, lockedUntil: daysFromNow(1) },
     ];
     const assistantIds: number[] = [];
     for (const a of assistantsData) {
+        const assistantSeed = {
+            account: a.account,
+            name: a.name,
+            password: hashedPassword,
+            creatorTeacherId: a.creator,
+            isFirstLogin: a.isFirstLogin,
+            status: a.status ?? 1,
+            loginFailCount: a.loginFailCount ?? 0,
+            lockedUntil: a.lockedUntil ?? null,
+        };
         assistantIds.push(
             await insertOrGet(
                 assistant,
                 eq(assistant.account, a.account),
-                { account: a.account, name: a.name, password: hashedPassword, creatorTeacherId: a.creator, isFirstLogin: a.isFirstLogin },
+                assistantSeed,
+                assistantSeed,
             ),
         );
     }
@@ -232,8 +283,8 @@ async function seed() {
         { studentId: "2024010", name: "褚一一", classId: classIds[0]! },
         { studentId: "2024011", name: "卫一二", classId: classIds[0]! },
         { studentId: "2024012", name: "蒋一三", classId: classIds[0]! },
-        { studentId: "2024013", name: "沈一四（首次登录）", classId: classIds[0]!, isFirstLogin: 1 },
-        { studentId: "2024014", name: "韩一五（已锁定）", classId: classIds[0]!, loginFailCount: 5, lockedUntil: daysFromNow(1) },
+        { studentId: "2024013", name: "沈一四", classId: classIds[0]!, isFirstLogin: 1 },
+        { studentId: "2024014", name: "韩一五", classId: classIds[0]!, loginFailCount: 5, lockedUntil: daysFromNow(1) },
         // ── B班 (当前学期) 8 名 ──
         { studentId: "2024101", name: "杨二一", classId: classIds[1]! },
         { studentId: "2024102", name: "朱二二", classId: classIds[1]! },
@@ -247,7 +298,7 @@ async function seed() {
         { studentId: "2024201", name: "张三一", classId: classIds[2]! },
         { studentId: "2024202", name: "孔三二", classId: classIds[2]! },
         { studentId: "2024203", name: "曹三三", classId: classIds[2]! },
-        { studentId: "2024204", name: "严三四（已停用）", classId: classIds[2]!, status: 0 },
+        { studentId: "2024204", name: "严三四", classId: classIds[2]!, status: 0 },
         // ── 往期班 3 名 ──
         { studentId: "2023001", name: "往期陈一", classId: classIds[4]! },
         { studentId: "2023002", name: "往期赵二", classId: classIds[4]! },
@@ -256,21 +307,24 @@ async function seed() {
 
     const studentIds: number[] = [];
     for (const s of studentDefs) {
+        const studentSeed = {
+            password: hashedPassword,
+            studentId: s.studentId,
+            name: s.name,
+            classId: s.classId,
+            email: s.email ?? null,
+            isFirstLogin: s.isFirstLogin ?? 0,
+            status: s.status ?? 1,
+            loginFailCount: s.loginFailCount ?? 0,
+            lockedUntil: s.lockedUntil ?? null,
+            deletedAt: null,
+        };
         studentIds.push(
             await insertOrGet(
                 student,
                 eq(student.studentId, s.studentId),
-                {
-                    studentId: s.studentId,
-                    name: s.name,
-                    password: hashedPassword,
-                    classId: s.classId,
-                    email: s.email ?? null,
-                    isFirstLogin: s.isFirstLogin ?? 0,
-                    status: s.status ?? 1,
-                    loginFailCount: s.loginFailCount ?? 0,
-                    lockedUntil: s.lockedUntil ?? null,
-                },
+                studentSeed,
+                studentSeed,
             ),
         );
     }
@@ -938,14 +992,16 @@ async function seed() {
     console.log(`🔑 通用密码: ${defaultPassword}`);
     console.log("");
     console.log("👤 管理员:   admin");
-    console.log("👨‍🏫 教师:     teacher (演示)  |  T002  |  T003  |  T004 (首次登录)  |  T005 (已停用)");
-    console.log("👩‍🏫 助教:     assistant (演示)  |  A002  |  A003  |  A004 (首次登录)");
+    console.log("👨‍🏫 教师:     teacher (演示)  |  T002  |  T003  |  T004 (首次登录)  |  T005 (已停用)  |  T006 (已锁定)");
+    console.log("👩‍🏫 助教:     assistant (演示)  |  A002  |  A003  |  A004 (首次登录)  |  A005 (已锁定)");
     console.log("👨‍🎓 学生:     student (演示)  |  2024001-2024014 (A班)  |  2024101-2024108 (B班)");
     console.log("                2024201-2024204 (数据挖掘)  |  2023001-2023003 (往期)");
     console.log("");
     console.log("📌 特殊账号:");
-    console.log("   T004 / 2024013   → 首次登录（需修改密码）");
+    console.log("   T004 / A004 / 2024013 → 首次登录（需修改密码）");
     console.log("   T005             → 已停用教师");
+    console.log("   T006             → 已锁定教师");
+    console.log("   A005             → 已锁定助教");
     console.log("   2024014          → 已锁定学生");
     console.log("   2024204          → 已停用学生");
     console.log("══════════════════════════════════════════");

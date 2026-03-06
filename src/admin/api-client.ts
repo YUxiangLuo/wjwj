@@ -115,6 +115,17 @@ export interface AdminNotification {
 // API Client
 // ============================================================
 
+const ADMIN_SESSION_EXPIRED_ERROR_CODES = new Set(["UNAUTHORIZED", "SESSION_EXPIRED", "ACCOUNT_NOT_FOUND"]);
+
+export function shouldDispatchAdminSessionExpired(
+    url: string,
+    status: number,
+    response: Pick<ApiResponse<unknown>, "error"> | null | undefined,
+) {
+    if (status !== 401 || url.includes("/api/admin/login")) return false;
+    return ADMIN_SESSION_EXPIRED_ERROR_CODES.has(response?.error?.code ?? "");
+}
+
 async function request<T>(
     url: string,
     options?: RequestInit
@@ -129,10 +140,6 @@ async function request<T>(
             ...options,
         });
 
-        if (res.status === 401 && typeof window !== "undefined" && !url.includes("/api/admin/login")) {
-            window.dispatchEvent(new CustomEvent("admin:session-expired"));
-        }
-
         const contentType = res.headers.get("content-type") ?? "";
         if (!contentType.includes("application/json")) {
             return {
@@ -145,6 +152,9 @@ async function request<T>(
         }
 
         const data = await res.json();
+        if (typeof window !== "undefined" && shouldDispatchAdminSessionExpired(url, res.status, data as ApiResponse<unknown>)) {
+            window.dispatchEvent(new CustomEvent("admin:session-expired"));
+        }
         return data as ApiResponse<T>;
     } catch (error) {
         return {

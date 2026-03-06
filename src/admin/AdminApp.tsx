@@ -399,6 +399,7 @@ export function AdminApp() {
 
                         <div className="flex items-center gap-2">
                             <Button
+                                data-testid="admin-notifications-trigger"
                                 variant="ghost"
                                 size="icon"
                                 className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800"
@@ -406,6 +407,7 @@ export function AdminApp() {
                                     setShowNotifications(true);
                                     if (!notifications.length) fetchNotifications();
                                 }}
+                                aria-label="打开通知中心"
                             >
                                 <Bell className="w-5 h-5" />
                                 {unreadCount > 0 && (

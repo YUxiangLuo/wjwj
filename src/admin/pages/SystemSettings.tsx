@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
 import { settingsApi, systemApi, authApi, type BackupInfo } from "../api-client";
+import { validateAdminSettingsPayload } from "../settings-validation";
 import { toast } from "sonner";
 
 interface SettingSection {
@@ -132,47 +133,36 @@ export function SystemSettings() {
     }
 
     const handleSave = async () => {
-        // Validate ranges per V3 spec
-        const validations: { field: string; value: number; min: number; max: number; label: string }[] = [
-            { field: "maxLoginAttempts", value: settings.maxLoginAttempts, min: 3, max: 10, label: "最大登录尝试次数" },
-            { field: "lockDurationMinutes", value: settings.lockDurationMinutes, min: 10, max: 60, label: "锁定时长" },
-            { field: "adminSessionTimeout", value: settings.adminSessionTimeout, min: 15, max: 60, label: "管理员会话超时" },
-            { field: "teacherSessionTimeout", value: settings.teacherSessionTimeout, min: 60, max: 240, label: "教师会话超时" },
-            { field: "studentSessionTimeout", value: settings.studentSessionTimeout, min: 120, max: 480, label: "学生会话超时" },
-            { field: "excelMaxRows", value: settings.excelMaxRows, min: 10000, max: 500000, label: "Excel 最大行数" },
-            { field: "batchImportMaxRows", value: settings.batchImportMaxRows, min: 100, max: 1000, label: "批量导入最大行数" },
-        ];
+        const payload = {
+            system_name: settings.systemName,
+            maintenance_mode: settings.maintenanceMode,
+            allow_registration: settings.allowRegistration,
+            "login.max_fail_count": settings.maxLoginAttempts,
+            "login.lock_duration_minutes": settings.lockDurationMinutes,
+            "session.admin_timeout_minutes": settings.adminSessionTimeout,
+            "session.teacher_timeout_minutes": settings.teacherSessionTimeout,
+            "session.student_timeout_minutes": settings.studentSessionTimeout,
+            experiment_time_limit: settings.experimentTimeLimit,
+            auto_save_interval: settings.autoSaveInterval,
+            require_approval: settings.requireApproval,
+            enable_backup: settings.enableBackup,
+            backup_frequency: settings.backupFrequency,
+            "backup.retention_days": settings.backupRetentionDays,
+            "file.excel_max_rows": settings.excelMaxRows,
+            "file.max_attachment_size_mb": settings.maxAttachmentSizeMb,
+            "file.batch_import_max_rows": settings.batchImportMaxRows,
+            "notification.deadline_reminder_hours": settings.deadlineReminderHours,
+            "notification.retention_days": settings.notificationRetentionDays,
+        };
 
-        for (const v of validations) {
-            if (v.value < v.min || v.value > v.max) {
-                toast.error(`${v.label}须在 ${v.min} - ${v.max} 范围内`);
-                return;
-            }
+        const validationError = validateAdminSettingsPayload(payload);
+        if (validationError) {
+            toast.error(validationError.message);
+            return;
         }
 
         setSaving(true);
         try {
-            const payload = {
-                system_name: settings.systemName,
-                maintenance_mode: settings.maintenanceMode,
-                allow_registration: settings.allowRegistration,
-                "login.max_fail_count": settings.maxLoginAttempts,
-                "login.lock_duration_minutes": settings.lockDurationMinutes,
-                "session.admin_timeout_minutes": settings.adminSessionTimeout,
-                "session.teacher_timeout_minutes": settings.teacherSessionTimeout,
-                "session.student_timeout_minutes": settings.studentSessionTimeout,
-                experiment_time_limit: settings.experimentTimeLimit,
-                auto_save_interval: settings.autoSaveInterval,
-                require_approval: settings.requireApproval,
-                enable_backup: settings.enableBackup,
-                backup_frequency: settings.backupFrequency,
-                "backup.retention_days": settings.backupRetentionDays,
-                "file.excel_max_rows": settings.excelMaxRows,
-                "file.max_attachment_size_mb": settings.maxAttachmentSizeMb,
-                "file.batch_import_max_rows": settings.batchImportMaxRows,
-                "notification.deadline_reminder_hours": settings.deadlineReminderHours,
-                "notification.retention_days": settings.notificationRetentionDays,
-            };
 
             const res = await settingsApi.update(payload);
             if (res.success) {

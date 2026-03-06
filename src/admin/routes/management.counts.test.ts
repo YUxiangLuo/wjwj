@@ -12,6 +12,7 @@ async function loadManagementModule(options: {
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
         ADMIN_USER_TYPE: 1,
+        ADMIN_SESSION_COOKIE: "admin_session",
         getAdminUser: () => ({ id: 1, username: "admin", isFirstLogin: 0 }),
     }));
 
@@ -156,4 +157,28 @@ test("class list merges grouped student counts and defaults empty classes to zer
     expect(byId.get(7)).toMatchObject({ name: "空班级", studentCount: 0 });
     expect(byId.get(1)).toMatchObject({ name: "统计学原理 A班", studentCount: 15 });
     expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(2);
+});
+
+test("announcement stats rejects draft announcements before loading audience counts", async () => {
+    const { module, operations } = await loadManagementModule({
+        select: [
+            [{ id: 47, status: 0, targetScope: "all" }],
+        ],
+    });
+
+    const req = Object.assign(new Request("https://example.com/api/admin/announcements/47/stats"), {
+        params: { id: "47" },
+    });
+    const response = await module.announcementStatsRoutes.GET!(req);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "ANNOUNCEMENT_NOT_PUBLISHED",
+            message: "草稿公告暂无阅读统计",
+        },
+    });
+    expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(1);
 });

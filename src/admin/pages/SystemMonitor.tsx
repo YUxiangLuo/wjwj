@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Cpu, HardDrive, Activity, Wifi, Users, Pause, Play, RefreshCw, TerminalSquare, AlertTriangle, Download, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { systemApi, type SystemMetrics, type SystemLog } from "../api-client";
 import { toast } from "sonner";
+import { createSingleFlight } from "../single-flight";
 
 const defaultMetrics: SystemMetrics = {
     cpu: 0,
@@ -14,6 +15,15 @@ const defaultMetrics: SystemMetrics = {
     network: 0,
     activeConnections: 0,
 };
+
+const requestMonitorSnapshot = createSingleFlight(async () => {
+    const [metricsRes, logsRes] = await Promise.all([
+        systemApi.getMetrics(),
+        systemApi.getLogs(),
+    ]);
+
+    return { metricsRes, logsRes };
+});
 
 function MetricCard({ label, value, unit, icon: Icon, color }: {
     label: string;
@@ -46,13 +56,13 @@ export function SystemMonitor() {
     const [logs, setLogs] = useState<SystemLog[]>([]);
     const [isLive, setIsLive] = useState(true);
     const [loading, setLoading] = useState(true);
+    const isMountedRef = useRef(true);
+    const lastAutoFetchAtRef = useRef(0);
 
     const fetchData = async () => {
         try {
-            const [metricsRes, logsRes] = await Promise.all([
-                systemApi.getMetrics(),
-                systemApi.getLogs(),
-            ]);
+            const { metricsRes, logsRes } = await requestMonitorSnapshot();
+            if (!isMountedRef.current) return;
 
             if (metricsRes.success && metricsRes.data) {
                 setMetrics(metricsRes.data);
@@ -63,14 +73,33 @@ export function SystemMonitor() {
         } catch (error) {
             console.error("Failed to fetch system data:", error);
         } finally {
-            setLoading(false);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
         }
     };
 
+    const fetchDataForPolling = async () => {
+        const now = Date.now();
+        // React Strict Mode replays effects in development; suppress the duplicate immediate poll.
+        if (now - lastAutoFetchAtRef.current < 250) return;
+        lastAutoFetchAtRef.current = now;
+        await fetchData();
+    };
+
     useEffect(() => {
-        fetchData();
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        void fetchDataForPolling();
         if (!isLive) return;
-        const interval = setInterval(fetchData, 3000);
+        const interval = setInterval(() => {
+            void fetchDataForPolling();
+        }, 3000);
         return () => clearInterval(interval);
     }, [isLive]);
 
@@ -157,15 +186,16 @@ export function SystemMonitor() {
                         <span className={`w-2 h-2 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-slate-600"}`} />
                         {isLive ? "实时监控中" : "监控已暂停"}
                     </div>
-                    <Button variant="outline" onClick={handleExportReport} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
+                    <Button data-testid="monitor-export-report" variant="outline" onClick={handleExportReport} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
                         <Download className="w-4 h-4 mr-2" />
                         导出报告
                     </Button>
-                    <Button variant="outline" onClick={fetchData} disabled={loading} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
+                    <Button data-testid="monitor-refresh" variant="outline" onClick={fetchData} disabled={loading} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                         刷新
                     </Button>
                     <Button
+                        data-testid={isLive ? "monitor-pause" : "monitor-resume"}
                         variant={isLive ? "secondary" : "default"}
                         onClick={() => setIsLive(!isLive)}
                         className={isLive ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-indigo-600 hover:bg-indigo-700 text-white"}
