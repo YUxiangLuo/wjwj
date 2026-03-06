@@ -440,7 +440,7 @@ const teacherLoginRoutes: RouteDefinition = {
         }
 
         // Perform a dummy hash verification to prevent timing-based user enumeration
-        await Bun.password.verify(password, "$argon2id$v=19$m=65536,t=2,p=1$dummysaltvalue$dummyhashvalue0000000000000000000000000000000").catch(() => {});
+        await Bun.password.verify(password, "$argon2id$v=19$m=65536,t=2,p=1$w/hP7Qg4tzkpJ83osQKCIhfaHH+AXgyU4icxg2s1sPE$PhYwmBc6O4HkfHsMpS1CoAMXJAGNfXo/vlEUxw0c+zU").catch(() => {});
         return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
     },
 };
