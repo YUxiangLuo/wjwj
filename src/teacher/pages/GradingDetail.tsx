@@ -648,7 +648,11 @@ export function GradingDetail() {
                                                 disabled={saving || isReadOnly}
                                                 onClick={() => setComment(prev => {
                                                     const next = prev ? `${prev}，${tpl}` : tpl;
-                                                    return next.length <= 2000 ? next : prev;
+                                                    if (next.length > 2000) {
+                                                        toast.warning("评语已达字数上限（2000字）");
+                                                        return prev;
+                                                    }
+                                                    return next;
                                                 })}
                                             >
                                                 {tpl}
