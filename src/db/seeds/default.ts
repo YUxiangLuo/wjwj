@@ -428,16 +428,16 @@ async function seed() {
 
     // ── 附件（多种文件类型） ──
     const attachmentsDefs: { topicIdx: number; fileName: string; filePath: string; fileType: string; fileSize: number }[] = [
-        { topicIdx: 0, fileName: "消费者行为分析-实验指导书.pdf", filePath: "/storage/uploads/topics/consumer_guide.pdf", fileType: "application/pdf", fileSize: 2_500_000 },
-        { topicIdx: 0, fileName: "调查问卷模板.docx", filePath: "/storage/uploads/topics/consumer_template.docx", fileType: "application/docx", fileSize: 350_000 },
-        { topicIdx: 1, fileName: "网购趋势调查-实验指导书.pdf", filePath: "/storage/uploads/topics/shopping_guide.pdf", fileType: "application/pdf", fileSize: 1_800_000 },
-        { topicIdx: 1, fileName: "参考文献汇总.pdf", filePath: "/storage/uploads/topics/shopping_refs.pdf", fileType: "application/pdf", fileSize: 4_200_000 },
-        { topicIdx: 2, fileName: "市场调研方法-指导手册.pdf", filePath: "/storage/uploads/topics/market_guide.pdf", fileType: "application/pdf", fileSize: 3_100_000 },
-        { topicIdx: 3, fileName: "数据分析入门讲义.pdf", filePath: "/storage/uploads/topics/data_analysis_slides.pdf", fileType: "application/pdf", fileSize: 5_600_000 },
-        { topicIdx: 3, fileName: "示例数据集说明.xlsx", filePath: "/storage/uploads/topics/data_analysis_example.xlsx", fileType: "application/xlsx", fileSize: 780_000 },
-        { topicIdx: 5, fileName: "健康调查-实验手册.pdf", filePath: "/storage/uploads/topics/health_guide.pdf", fileType: "application/pdf", fileSize: 2_100_000 },
-        { topicIdx: 5, fileName: "体检指标参考范围.png", filePath: "/storage/uploads/topics/health_reference.png", fileType: "image/png", fileSize: 420_000 },
-        { topicIdx: 7, fileName: "2023年消费趋势-指导书.pdf", filePath: "/storage/uploads/topics/2023_consumer_guide.pdf", fileType: "application/pdf", fileSize: 1_900_000 },
+        { topicIdx: 0, fileName: "消费者行为分析-实验指导书.pdf", filePath: "/storage/uploads/topics/consumer_guide.pdf", fileType: "application/pdf", fileSize: 1_670 },
+        { topicIdx: 0, fileName: "调查问卷模板.docx", filePath: "/storage/uploads/topics/consumer_template.docx", fileType: "application/docx", fileSize: 1_833 },
+        { topicIdx: 1, fileName: "网购趋势调查-实验指导书.pdf", filePath: "/storage/uploads/topics/shopping_guide.pdf", fileType: "application/pdf", fileSize: 1_657 },
+        { topicIdx: 1, fileName: "参考文献汇总.pdf", filePath: "/storage/uploads/topics/shopping_refs.pdf", fileType: "application/pdf", fileSize: 1_663 },
+        { topicIdx: 2, fileName: "市场调研方法-指导手册.pdf", filePath: "/storage/uploads/topics/market_guide.pdf", fileType: "application/pdf", fileSize: 1_626 },
+        { topicIdx: 3, fileName: "数据分析入门讲义.pdf", filePath: "/storage/uploads/topics/data_analysis_slides.pdf", fileType: "application/pdf", fileSize: 1_630 },
+        { topicIdx: 3, fileName: "示例数据集说明.xlsx", filePath: "/storage/uploads/topics/data_analysis_example.xlsx", fileType: "application/xlsx", fileSize: 17_448 },
+        { topicIdx: 5, fileName: "健康调查-实验手册.pdf", filePath: "/storage/uploads/topics/health_guide.pdf", fileType: "application/pdf", fileSize: 1_635 },
+        { topicIdx: 5, fileName: "体检指标参考范围.png", filePath: "/storage/uploads/topics/health_reference.png", fileType: "image/png", fileSize: 17_361 },
+        { topicIdx: 7, fileName: "2023年消费趋势-指导书.pdf", filePath: "/storage/uploads/topics/2023_consumer_guide.pdf", fileType: "application/pdf", fileSize: 1_588 },
     ];
     for (const a of attachmentsDefs) {
         await db.insert(topicAttachment).values({
