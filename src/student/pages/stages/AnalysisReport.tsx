@@ -23,7 +23,6 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, Download, FileText, Send, Loader2, Sparkles, AlertCircle, Maximize2, CheckCircle } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
-import { formatSaveTime } from "@/utils/format";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { experimentApi } from "../../api-client";
@@ -449,7 +448,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [syncConflictOpen, setSyncConflictOpen] = useState(false);
     const [serverConflictDraft, setServerConflictDraft] = useState<string | null>(null);
     const [localConflictDraft, setLocalConflictDraft] = useState<string | null>(null);
-    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
     const draftKey = experiment?.taskId ? `student_report_draft_${experiment.taskId}` : null;
     const serverSnapshotRef = useRef("");
@@ -590,7 +588,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             const success = await saveExperiment({ reportContent: snapshot });
             if (success) {
                 serverSnapshotRef.current = snapshot;
-                setLastSavedAt(formatSaveTime());
                 setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
             }
         } finally {
@@ -1130,9 +1127,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一阶段
                 </Button>
-                {lastSavedAt && (
-                    <span className="text-xs text-slate-500">已自动保存于 {lastSavedAt}</span>
-                )}
                 <Button onClick={() => setConfirmSubmitOpen(true)} disabled={!isValidLength} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
                     <Send className="w-4 h-4 mr-2" />
                     完成并预览报告

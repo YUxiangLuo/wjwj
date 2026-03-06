@@ -363,7 +363,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
             <div className="flex justify-between pt-6 border-t border-slate-800/50">
                 <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
-                    上一步
+                    上一阶段
                 </Button>
                 <div className="flex gap-3">
                     <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">

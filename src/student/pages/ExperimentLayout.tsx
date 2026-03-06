@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, createContext, useContext, useMemo } from "react";
-import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2, ChevronRight, ChevronLeft, Home, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2, ChevronRight, Home, Clock, AlertCircle } from "lucide-react";
 import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+
 import {
     AlertDialog,
     AlertDialogAction,
@@ -270,132 +270,139 @@ export function ExperimentLayout() {
         saveExperiment,
     };
 
+    const stageDescriptions = [
+        "设计调查问卷，包括标题、欢迎语、问题和结束语",
+        "设置抽样参数，计算最优样本量",
+        "使用三种抽样方法从总体中抽取样本",
+        "分析抽样结果，撰写研究报告",
+    ];
+
+    const stageIcons = [FileText, Ruler, Play, BarChart3];
+
     return (
         <ExperimentContext.Provider value={contextValue}>
-            <div className="space-y-6 pb-12 animate-in fade-in duration-500">
-                {/* Top bar */}
-                <div className="sticky top-[4rem] z-40 bg-slate-950/90 backdrop-blur pb-4 pt-2 -mt-2 border-b border-slate-800/50 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <Link to="/">
-                            <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-100 hover:bg-slate-800" title="返回首页">
-                                <Home className="w-4 h-4" />
-                            </Button>
-                        </Link>
-                        <Link to={`/task/${taskId}`}>
-                            <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 hidden sm:flex">
-                                <ArrowLeft className="w-4 h-4" />
-                                退出实验
-                            </Button>
-                        </Link>
-                        <h1 className="text-sm font-semibold text-slate-200 border-l border-slate-700 pl-4 ml-2 line-clamp-1 max-w-[200px] sm:max-w-md">
-                            {taskName || `Experiment #${experiment.taskId}`}
-                        </h1>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        {deadlineInfo && (
-                            <span className={`text-xs font-medium flex items-center gap-1 hidden sm:flex ${
-                                deadlineInfo.level === "urgent" ? "text-rose-400" :
-                                deadlineInfo.level === "warning" ? "text-amber-400" :
-                                deadlineInfo.level === "expired" ? "text-slate-500" :
-                                "text-slate-400"
-                            }`}>
-                                {deadlineInfo.level === "urgent" ? (
-                                    <AlertCircle className="w-3.5 h-3.5" />
-                                ) : (
-                                    <Clock className="w-3.5 h-3.5" />
-                                )}
-                                {deadlineInfo.text}
-                            </span>
-                        )}
-                        {lastSavedAt && (
-                            <span className="text-xs text-slate-500 font-mono hidden sm:inline-block">
-                                已自动保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN")}
-                            </span>
-                        )}
-                        <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
-                            {isSaving ? (
-                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                            ) : (
-                                <Save className="w-3.5 h-3.5 mr-1.5" />
+            <div className="pb-12 animate-in fade-in duration-500">
+                {/* Sticky header: top bar + compact stage navigation */}
+                <div className="sticky top-[4rem] z-40 bg-slate-950/90 backdrop-blur -mt-2 border-b border-slate-800/50">
+                    {/* Row 1: Title + actions */}
+                    <div className="flex justify-between items-center pt-2 pb-2 px-0">
+                        <div className="flex items-center gap-2">
+                            <Link to="/">
+                                <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-100 hover:bg-slate-800" title="返回首页">
+                                    <Home className="w-4 h-4" />
+                                </Button>
+                            </Link>
+                            <Link to={`/task/${taskId}`}>
+                                <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 hidden sm:flex">
+                                    <ArrowLeft className="w-4 h-4" />
+                                    退出实验
+                                </Button>
+                            </Link>
+                            <h1 className="text-sm font-semibold text-slate-200 border-l border-slate-700 pl-4 ml-2 line-clamp-1 max-w-[200px] sm:max-w-md">
+                                {taskName || `Experiment #${experiment.taskId}`}
+                            </h1>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            {deadlineInfo && (
+                                <span className={`text-xs font-medium flex items-center gap-1 hidden sm:flex ${
+                                    deadlineInfo.level === "urgent" ? "text-rose-400" :
+                                    deadlineInfo.level === "warning" ? "text-amber-400" :
+                                    deadlineInfo.level === "expired" ? "text-slate-500" :
+                                    "text-slate-400"
+                                }`}>
+                                    {deadlineInfo.level === "urgent" ? (
+                                        <AlertCircle className="w-3.5 h-3.5" />
+                                    ) : (
+                                        <Clock className="w-3.5 h-3.5" />
+                                    )}
+                                    {deadlineInfo.text}
+                                </span>
                             )}
-                            保存
-                        </Button>
+                            {lastSavedAt && (
+                                <span className="text-xs text-slate-500 font-mono hidden sm:inline-block">
+                                    已自动保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN")}
+                                </span>
+                            )}
+                            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
+                                {isSaving ? (
+                                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                ) : (
+                                    <Save className="w-3.5 h-3.5 mr-1.5" />
+                                )}
+                                保存
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Compact stage progress (always visible) */}
+                    <div className="flex items-center gap-3 pb-2.5 px-1 overflow-x-auto scrollbar-hide">
+                        {stageNames.map((stage, index) => {
+                            const stageNum = index + 1;
+                            const isCompleted = stageNum < currentStage;
+                            const isCurrent = stageNum === currentStage;
+                            const Icon = stageIcons[index] ?? FileText;
+
+                            return (
+                                <div key={stage} className="flex items-center gap-2">
+                                    {index > 0 && (
+                                        <ChevronRight className={`w-3 h-3 flex-shrink-0 ${isCompleted || isCurrent ? "text-slate-500" : "text-slate-700"}`} />
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            if (stageNum < currentStage) {
+                                                setTargetStage(stageNum);
+                                                setConfirmRollbackOpen(true);
+                                            }
+                                        }}
+                                        disabled={stageNum >= currentStage}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 disabled:cursor-default ${
+                                            isCurrent
+                                                ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
+                                                : isCompleted
+                                                    ? "text-emerald-400/80 hover:bg-emerald-500/10 cursor-pointer"
+                                                    : "text-slate-600"
+                                        }`}
+                                    >
+                                        <span className="relative flex-shrink-0">
+                                            {isCompleted ? (
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                            ) : (
+                                                <Icon className={`w-3.5 h-3.5 ${isCurrent ? "text-indigo-400" : "text-slate-600"}`} />
+                                            )}
+                                        </span>
+                                        <span className="hidden sm:inline">{stage}</span>
+                                        <span className="sm:hidden">{stageNum}</span>
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        <div className="ml-auto text-xs font-bold text-indigo-400 font-mono flex-shrink-0">
+                            {Math.round((currentStage / stageNames.length) * 100)}%
+                        </div>
                     </div>
                 </div>
 
-                {/* Overall Progress */}
-                <Card className="rounded-2xl border-slate-800 bg-slate-900 shadow-lg">
-                    <CardContent className="py-3 px-4 sm:px-6">
-                        <div className="flex flex-col gap-2.5">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex items-center gap-3">
-                                    <div className="text-xs text-slate-500 uppercase tracking-wider font-semibold">实验总进度</div>
-                                    <div className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                {/* Stage description card */}
+                <div className="mt-6 mb-6">
+                    {(() => {
+                        const StageIcon = stageIcons[currentStage - 1] ?? FileText;
+                        return (
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-800/50">
+                                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex-shrink-0">
+                                    <StageIcon className="w-4 h-4 text-indigo-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-sm font-semibold text-slate-200">
                                         阶段 {currentStage}: {stageNames[currentStage - 1]}
                                     </div>
-                                </div>
-                                <div className="text-base font-bold text-indigo-400 font-mono">
-                                    {Math.round((currentStage / stageNames.length) * 100)}%
-                                </div>
-                            </div>
-
-                            <div className="relative h-1.5 w-full rounded-full bg-slate-800">
-                                <div
-                                    className="absolute left-0 top-0 h-1.5 rounded-full bg-gradient-to-r from-indigo-600 to-purple-500 transition-all duration-500 ease-out"
-                                    style={{ width: `${(currentStage / stageNames.length) * 100}%` }}
-                                >
-                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-slate-950 rounded-full shadow-lg shadow-purple-500/50"></div>
+                                    <div className="text-xs text-slate-500 mt-0.5">
+                                        {stageDescriptions[currentStage - 1]}
+                                    </div>
                                 </div>
                             </div>
-
-                            <div className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
-                                {stageNames.map((stage, index) => {
-                                    const stageNum = index + 1;
-                                    const isCompleted = stageNum < currentStage;
-                                    const isCurrent = stageNum === currentStage;
-                                    const Icon = [FileText, Ruler, Play, BarChart3, CheckCircle2][index] ?? FileText;
-
-                                    return (
-                                        <button
-                                            key={stage}
-                                            onClick={() => {
-                                                if (stageNum < currentStage) {
-                                                    setTargetStage(stageNum);
-                                                    setConfirmRollbackOpen(true);
-                                                }
-                                            }}
-                                            disabled={stageNum >= currentStage}
-                                            className="flex flex-col items-center gap-1.5 min-w-[60px] disabled:cursor-default group"
-                                        >
-                                            <span
-                                                className={`relative flex h-8 w-8 items-center justify-center rounded-lg border transition-all duration-300 ${isCurrent
-                                                    ? "border-indigo-500 bg-indigo-600 text-white shadow-md shadow-indigo-500/30 scale-110"
-                                                    : isCompleted
-                                                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500/20"
-                                                        : "border-slate-800 bg-slate-900 text-slate-600"
-                                                    }`}
-                                            >
-                                                <Icon className="w-4 h-4" />
-                                                {isCompleted && (
-                                                    <span className="absolute -top-1 -right-1 rounded-full bg-emerald-500 border-2 border-slate-950 p-[1px] text-white">
-                                                        <CheckCircle2 className="h-2 w-2" />
-                                                    </span>
-                                                )}
-                                            </span>
-                                            <span className={`text-[10px] font-medium uppercase tracking-tight whitespace-nowrap transition-colors ${isCurrent ? "text-indigo-300" :
-                                                isCompleted ? "text-emerald-500/70" :
-                                                    "text-slate-600"
-                                                }`}>
-                                                {stage}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        );
+                    })()}
+                </div>
 
                 {/* Stage Content */}
                 <div className="min-h-[500px] animate-in slide-in-from-bottom-4 duration-500">
