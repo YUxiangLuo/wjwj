@@ -3,12 +3,15 @@ import { db } from "../../db";
 import { assistantClass, experiment, notification } from "../../db/schema";
 import { ExperimentStatus } from "./status";
 
+type NotificationDbClient = Pick<typeof db, "insert" | "select" | "update" | "delete">;
+
 async function notifyUser(
     receiverType: number,
     receiverId: number,
-    payload: { type: string; title: string; content: string; relatedType?: string; relatedId?: number }
+    payload: { type: string; title: string; content: string; relatedType?: string; relatedId?: number },
+    database: NotificationDbClient = db
 ) {
-    await db.insert(notification).values({
+    await database.insert(notification).values({
         receiverType,
         receiverId,
         type: payload.type,
@@ -59,7 +62,7 @@ export async function notifySubmissionReviewers(params: {
     studentIdText: string;
     studentName: string;
     topicName: string;
-}) {
+}, database: NotificationDbClient = db) {
     const studentName = params.studentName || params.studentIdText;
 
     if (params.teacherId) {
@@ -69,14 +72,14 @@ export async function notifySubmissionReviewers(params: {
             content: `学生「${studentName}」提交了「${params.topicName}」`,
             relatedType: "submission",
             relatedId: params.submissionId,
-        });
+        }, database);
     }
 
     if (!params.classId) {
         return;
     }
 
-    const assistantRows = await db
+    const assistantRows = await database
         .select({ assistantId: assistantClass.assistantId })
         .from(assistantClass)
         .where(eq(assistantClass.classId, params.classId));
@@ -89,6 +92,6 @@ export async function notifySubmissionReviewers(params: {
             content: `学生「${studentName}」提交了「${params.topicName}」`,
             relatedType: "submission",
             relatedId: params.submissionId,
-        });
+        }, database);
     }
 }

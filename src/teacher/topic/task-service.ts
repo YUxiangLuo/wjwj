@@ -34,7 +34,7 @@ export async function publishTopicTasks(params: {
     }
 
     const [topicRow] = await db
-        .select({ id: topic.id })
+        .select({ id: topic.id, name: topic.name })
         .from(topic)
         .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
     if (!topicRow) {
@@ -65,24 +65,26 @@ export async function publishTopicTasks(params: {
     const existingClassIds = new Set(existingRows.map((row) => row.classId));
     const toInsert = params.classIds.filter((classId) => !existingClassIds.has(classId));
 
-    for (const classId of toInsert) {
-        await db.insert(task).values({
-            topicId: params.topicId,
-            classId,
-            openTime: new Date(),
-            deadline: deadlineDate,
-        });
-    }
-
     if (toInsert.length > 0) {
-        const [topicNamed] = await db.select({ name: topic.name }).from(topic).where(eq(topic.id, params.topicId));
-        const deadlineText = deadlineDate ? deadlineDate.toLocaleString("zh-CN") : "无限制";
-        await notifyStudentsByClassIds(toInsert, {
-            type: "TASK_PUBLISHED",
-            title: "新任务已发布",
-            content: `教师发布了新任务「${topicNamed?.name ?? "未命名课题"}」，截止时间：${deadlineText}`,
-            relatedType: "topic",
-            relatedId: params.topicId,
+        await db.transaction(async (tx) => {
+            const now = new Date();
+            await tx.insert(task).values(
+                toInsert.map((classId) => ({
+                    topicId: params.topicId,
+                    classId,
+                    openTime: now,
+                    deadline: deadlineDate,
+                }))
+            );
+
+            const deadlineText = deadlineDate ? deadlineDate.toLocaleString("zh-CN") : "无限制";
+            await notifyStudentsByClassIds(toInsert, {
+                type: "TASK_PUBLISHED",
+                title: "新任务已发布",
+                content: `教师发布了新任务「${topicRow.name ?? "未命名课题"}」，截止时间：${deadlineText}`,
+                relatedType: "topic",
+                relatedId: params.topicId,
+            }, tx);
         });
     }
 
@@ -119,13 +121,15 @@ export async function extendTopicTaskDeadline(params: {
         return fail("新截止时间必须晚于原截止时间", "VALIDATION_ERROR");
     }
 
-    await db.update(task).set({ deadline: newDeadline }).where(eq(task.id, params.taskId));
-    await notifyStudentsByClassIds([row.classId], {
-        type: "TASK_EXTENDED",
-        title: "截止时间已延长",
-        content: `任务截止时间已延长至 ${newDeadline.toLocaleString("zh-CN")}`,
-        relatedType: "task",
-        relatedId: params.taskId,
+    await db.transaction(async (tx) => {
+        await tx.update(task).set({ deadline: newDeadline }).where(eq(task.id, params.taskId));
+        await notifyStudentsByClassIds([row.classId], {
+            type: "TASK_EXTENDED",
+            title: "截止时间已延长",
+            content: `任务截止时间已延长至 ${newDeadline.toLocaleString("zh-CN")}`,
+            relatedType: "task",
+            relatedId: params.taskId,
+        }, tx);
     });
 
     return { ok: true };

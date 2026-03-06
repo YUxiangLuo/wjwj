@@ -34,6 +34,12 @@ interface SubmitFailure {
     status: number;
 }
 
+interface SubmitSuccess {
+    submissionId: number;
+    submittedAt: Date;
+    lastSavedAt: Date;
+}
+
 function fail(message: string, code: string, status = 400): SubmitFailure {
     return { ok: false, message, code, status };
 }
@@ -48,6 +54,10 @@ function normalizePopulationSize(populationSize: SubmitTaskInfo["populationSize"
     if (populationSize === null || populationSize === undefined) return null;
     const parsed = Number(populationSize);
     return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isSubmitFailure(result: SubmitFailure | SubmitSuccess): result is SubmitFailure {
+    return "ok" in result && result.ok === false;
 }
 
 export function validateExperimentSubmission(params: {
@@ -92,33 +102,56 @@ export async function submitStudentExperiment(params: {
         return validation;
     }
 
-    const lastSavedAt = new Date();
-    const [submitUpdateResult] = await db
-        .update(experiment)
-        .set({
+    const transactionResult: SubmitFailure | SubmitSuccess = await db.transaction(async (tx) => {
+        const nextLastSavedAt = new Date();
+        const [submitUpdateResult] = await tx
+            .update(experiment)
+            .set({
+                status: ExperimentStatus.SUBMITTED,
+                version: params.experimentRecord.version + 1,
+                lastSavedAt: nextLastSavedAt,
+            })
+            .where(
+                and(
+                    eq(experiment.id, params.experimentRecord.id),
+                    eq(experiment.version, params.experimentRecord.version)
+                )
+            );
+
+        if (getAffectedRows(submitUpdateResult) === 0) {
+            return fail("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        }
+
+        const nextSubmittedAt = new Date();
+        const [submissionResult] = await tx.insert(submission).values({
+            experimentId: params.experimentRecord.id,
             status: ExperimentStatus.SUBMITTED,
-            version: params.experimentRecord.version + 1,
-            lastSavedAt,
-        })
-        .where(
-            and(
-                eq(experiment.id, params.experimentRecord.id),
-                eq(experiment.version, params.experimentRecord.version)
-            )
-        );
+            submittedAt: nextSubmittedAt,
+        });
 
-    if (getAffectedRows(submitUpdateResult) === 0) {
-        return fail("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
-    }
+        const nextSubmissionId = submissionResult.insertId as number;
 
-    const submittedAt = new Date();
-    const [submissionResult] = await db.insert(submission).values({
-        experimentId: params.experimentRecord.id,
-        status: ExperimentStatus.SUBMITTED,
-        submittedAt,
+        await notifySubmissionReviewers({
+            classId: params.taskInfo.classId ?? null,
+            teacherId: params.taskInfo.teacherId ?? null,
+            submissionId: nextSubmissionId,
+            studentIdText: params.student.studentId,
+            studentName: params.student.name ?? "",
+            topicName: params.taskInfo.topicName ?? "未命名课题",
+        }, tx);
+
+        return {
+            submissionId: nextSubmissionId,
+            submittedAt: nextSubmittedAt,
+            lastSavedAt: nextLastSavedAt,
+        };
     });
 
-    const submissionId = submissionResult.insertId as number;
+    if (isSubmitFailure(transactionResult)) {
+        return transactionResult;
+    }
+
+    const { submissionId, submittedAt, lastSavedAt } = transactionResult;
 
     scheduleSubmissionPdfGeneration({
         submissionId,
@@ -130,19 +163,6 @@ export async function submitStudentExperiment(params: {
         questionnaire: params.experimentRecord.questionnaire as any | null,
         reportContent: params.experimentRecord.reportContent ?? "",
     });
-
-    try {
-        await notifySubmissionReviewers({
-            classId: params.taskInfo.classId ?? null,
-            teacherId: params.taskInfo.teacherId ?? null,
-            submissionId,
-            studentIdText: params.student.studentId,
-            studentName: params.student.name ?? "",
-            topicName: params.taskInfo.topicName ?? "未命名课题",
-        });
-    } catch (error) {
-        console.error("Failed to notify teacher/assistants on submission:", error);
-    }
 
     return { ok: true as const, submissionId, submittedAt, lastSavedAt };
 }
