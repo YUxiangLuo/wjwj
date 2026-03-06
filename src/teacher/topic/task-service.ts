@@ -1,0 +1,132 @@
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { db } from "../../db";
+import { class_, task, topic } from "../../db/schema";
+import { notifyStudentsByClassIds } from "../routes/auth";
+
+interface TaskServiceFailure {
+    ok: false;
+    code: string;
+    message: string;
+    status: number;
+}
+
+interface TaskPublishSuccess {
+    ok: true;
+    skipped: number[];
+}
+
+interface TaskExtendSuccess {
+    ok: true;
+}
+
+function fail(message: string, code: string, status = 400): TaskServiceFailure {
+    return { ok: false, message, code, status };
+}
+
+export async function publishTopicTasks(params: {
+    teacherId: number;
+    topicId: number;
+    classIds: number[];
+    deadline?: string;
+}): Promise<TaskPublishSuccess | TaskServiceFailure> {
+    if (!params.topicId || !params.classIds.length) {
+        return fail("请选择课题和班级", "VALIDATION_ERROR");
+    }
+
+    const [topicRow] = await db
+        .select({ id: topic.id })
+        .from(topic)
+        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
+    if (!topicRow) {
+        return fail("无权限使用该课题", "FORBIDDEN", 403);
+    }
+
+    const allowedClasses = await db
+        .select({ id: class_.id })
+        .from(class_)
+        .where(and(eq(class_.teacherId, params.teacherId), sql`${class_.id} IN (${sql.join(params.classIds, sql`, `)})`));
+    if (allowedClasses.length !== params.classIds.length) {
+        return fail("存在无权限的班级", "FORBIDDEN", 403);
+    }
+
+    const deadlineDate = params.deadline ? new Date(params.deadline) : null;
+    if (deadlineDate && Number.isNaN(deadlineDate.getTime())) {
+        return fail("截止时间无效", "VALIDATION_ERROR");
+    }
+    if (deadlineDate && deadlineDate <= new Date()) {
+        return fail("截止时间必须晚于当前时间", "VALIDATION_ERROR");
+    }
+
+    const existingRows = await db
+        .select({ classId: task.classId })
+        .from(task)
+        .where(and(eq(task.topicId, params.topicId), sql`${task.classId} IN (${sql.join(params.classIds, sql`, `)})`, isNull(task.deletedAt)));
+
+    const existingClassIds = new Set(existingRows.map((row) => row.classId));
+    const toInsert = params.classIds.filter((classId) => !existingClassIds.has(classId));
+
+    for (const classId of toInsert) {
+        await db.insert(task).values({
+            topicId: params.topicId,
+            classId,
+            openTime: new Date(),
+            deadline: deadlineDate,
+        });
+    }
+
+    if (toInsert.length > 0) {
+        const [topicNamed] = await db.select({ name: topic.name }).from(topic).where(eq(topic.id, params.topicId));
+        const deadlineText = deadlineDate ? deadlineDate.toLocaleString("zh-CN") : "无限制";
+        await notifyStudentsByClassIds(toInsert, {
+            type: "TASK_PUBLISHED",
+            title: "新任务已发布",
+            content: `教师发布了新任务「${topicNamed?.name ?? "未命名课题"}」，截止时间：${deadlineText}`,
+            relatedType: "topic",
+            relatedId: params.topicId,
+        });
+    }
+
+    return { ok: true, skipped: Array.from(existingClassIds) };
+}
+
+export async function extendTopicTaskDeadline(params: {
+    teacherId: number;
+    taskId: number;
+    deadline: string;
+}): Promise<TaskExtendSuccess | TaskServiceFailure> {
+    if (!params.deadline) {
+        return fail("请输入截止时间", "VALIDATION_ERROR");
+    }
+
+    const newDeadline = new Date(params.deadline);
+    if (Number.isNaN(newDeadline.getTime())) {
+        return fail("截止时间无效", "VALIDATION_ERROR");
+    }
+
+    const [row] = await db
+        .select({ id: task.id, classId: task.classId, deadline: task.deadline })
+        .from(task)
+        .innerJoin(class_, eq(task.classId, class_.id))
+        .where(and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId)));
+
+    if (!row) {
+        return fail("任务不存在", "NOT_FOUND", 404);
+    }
+    if (newDeadline <= new Date()) {
+        return fail("新截止时间必须晚于当前时间", "VALIDATION_ERROR");
+    }
+    if (row.deadline && new Date(row.deadline) >= newDeadline) {
+        return fail("新截止时间必须晚于原截止时间", "VALIDATION_ERROR");
+    }
+
+    await db.update(task).set({ deadline: newDeadline }).where(eq(task.id, params.taskId));
+    await notifyStudentsByClassIds([row.classId], {
+        type: "TASK_EXTENDED",
+        title: "截止时间已延长",
+        content: `任务截止时间已延长至 ${newDeadline.toLocaleString("zh-CN")}`,
+        relatedType: "task",
+        relatedId: params.taskId,
+    });
+
+    return { ok: true };
+}
