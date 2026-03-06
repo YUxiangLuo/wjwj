@@ -118,6 +118,24 @@ export function SystemSettings() {
     }
 
     const handleSave = async () => {
+        // Validate ranges per V3 spec
+        const validations: { field: string; value: number; min: number; max: number; label: string }[] = [
+            { field: "maxLoginAttempts", value: settings.maxLoginAttempts, min: 3, max: 10, label: "最大登录尝试次数" },
+            { field: "lockDurationMinutes", value: settings.lockDurationMinutes, min: 10, max: 60, label: "锁定时长" },
+            { field: "adminSessionTimeout", value: settings.adminSessionTimeout, min: 15, max: 60, label: "管理员会话超时" },
+            { field: "teacherSessionTimeout", value: settings.teacherSessionTimeout, min: 60, max: 240, label: "教师会话超时" },
+            { field: "studentSessionTimeout", value: settings.studentSessionTimeout, min: 120, max: 480, label: "学生会话超时" },
+            { field: "excelMaxRows", value: settings.excelMaxRows, min: 10000, max: 500000, label: "Excel 最大行数" },
+            { field: "batchImportMaxRows", value: settings.batchImportMaxRows, min: 100, max: 1000, label: "批量导入最大行数" },
+        ];
+
+        for (const v of validations) {
+            if (v.value < v.min || v.value > v.max) {
+                toast.error(`${v.label}须在 ${v.min} - ${v.max} 范围内`);
+                return;
+            }
+        }
+
         setSaving(true);
         try {
             const payload = {
@@ -432,11 +450,13 @@ export function SystemSettings() {
                                                 id="maxLoginAttempts"
                                                 data-testid="settings-max-login-attempts"
                                                 type="number"
+                                                min={3}
+                                                max={10}
                                                 value={settings.maxLoginAttempts}
                                                 onChange={(e) => setSettings({ ...settings, maxLoginAttempts: parseInt(e.target.value) || 0 })}
                                                 className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
                                             />
-                                            <p className="text-xs text-slate-500">连续失败后账号将被临时锁定</p>
+                                            <p className="text-xs text-slate-500">连续失败后账号将被临时锁定（3 - 10）</p>
                                         </div>
                                         <div className="space-y-3">
                                             <Label htmlFor="lockDurationMinutes" className="text-slate-300">锁定自动解锁 (分钟)</Label>
@@ -444,10 +464,13 @@ export function SystemSettings() {
                                                 id="lockDurationMinutes"
                                                 data-testid="settings-lock-duration"
                                                 type="number"
+                                                min={10}
+                                                max={60}
                                                 value={settings.lockDurationMinutes}
                                                 onChange={(e) => setSettings({ ...settings, lockDurationMinutes: parseInt(e.target.value) || 0 })}
                                                 className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
                                             />
+                                            <p className="text-xs text-slate-500">锁定后自动解锁时间（10 - 60 分钟）</p>
                                         </div>
                                     </div>
 
@@ -455,30 +478,36 @@ export function SystemSettings() {
                                         <h4 className="text-sm font-medium text-slate-400 border-b border-slate-800 pb-2">会话超时设置</h4>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="space-y-2">
-                                                <Label htmlFor="adminSessionTimeout" className="text-slate-300 text-xs">管理员 (分钟)</Label>
+                                                <Label htmlFor="adminSessionTimeout" className="text-slate-300 text-xs">管理员 (15-60 分钟)</Label>
                                                 <Input
                                                     id="adminSessionTimeout"
                                                     type="number"
+                                                    min={15}
+                                                    max={60}
                                                     value={settings.adminSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, adminSessionTimeout: parseInt(e.target.value) || 0 })}
                                                     className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="teacherSessionTimeout" className="text-slate-300 text-xs">教师 (分钟)</Label>
+                                                <Label htmlFor="teacherSessionTimeout" className="text-slate-300 text-xs">教师 (60-240 分钟)</Label>
                                                 <Input
                                                     id="teacherSessionTimeout"
                                                     type="number"
+                                                    min={60}
+                                                    max={240}
                                                     value={settings.teacherSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, teacherSessionTimeout: parseInt(e.target.value) || 0 })}
                                                     className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="studentSessionTimeout" className="text-slate-300 text-xs">学生 (分钟)</Label>
+                                                <Label htmlFor="studentSessionTimeout" className="text-slate-300 text-xs">学生 (120-480 分钟)</Label>
                                                 <Input
                                                     id="studentSessionTimeout"
                                                     type="number"
+                                                    min={120}
+                                                    max={480}
                                                     value={settings.studentSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, studentSessionTimeout: parseInt(e.target.value) || 0 })}
                                                     className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
@@ -506,6 +535,8 @@ export function SystemSettings() {
                                             <Input
                                                 id="excelMaxRows"
                                                 type="number"
+                                                min={10000}
+                                                max={500000}
                                                 value={settings.excelMaxRows}
                                                 onChange={(e) => setSettings({ ...settings, excelMaxRows: parseInt(e.target.value) || 0 })}
                                                 className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
@@ -529,6 +560,8 @@ export function SystemSettings() {
                                         <Input
                                             id="batchImportMaxRows"
                                             type="number"
+                                            min={100}
+                                            max={1000}
                                             value={settings.batchImportMaxRows}
                                             onChange={(e) => setSettings({ ...settings, batchImportMaxRows: parseInt(e.target.value) || 0 })}
                                             className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50 max-w-xs"

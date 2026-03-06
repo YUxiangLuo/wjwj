@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock, GraduationCap, Pencil } from "lucide-react";
+import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock, GraduationCap, Pencil, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { teacherApi, type Teacher } from "../api-client";
+import { teacherApi, classApi, type Teacher, type Class } from "../api-client";
 import { toast } from "sonner";
 
 export function TeacherManagement() {
@@ -20,6 +20,10 @@ export function TeacherManagement() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
     const [editName, setEditName] = useState("");
+    const [showClassesModal, setShowClassesModal] = useState(false);
+    const [classesTeacher, setClassesTeacher] = useState<Teacher | null>(null);
+    const [teacherClasses, setTeacherClasses] = useState<Class[]>([]);
+    const [classesLoading, setClassesLoading] = useState(false);
 
     useEffect(() => {
         loadTeachers();
@@ -129,6 +133,24 @@ export function TeacherManagement() {
         setEditingTeacher(teacher);
         setEditName(teacher.name);
         setShowEditModal(true);
+    }
+
+    async function handleViewClasses(teacher: Teacher) {
+        setClassesTeacher(teacher);
+        setTeacherClasses([]);
+        setShowClassesModal(true);
+        setClassesLoading(true);
+        try {
+            const res = await classApi.list({ teacherId: String(teacher.id) });
+            if (res.success && res.data) {
+                setTeacherClasses(res.data);
+            }
+        } catch (error) {
+            console.error("Failed to load teacher classes:", error);
+            toast.error("加载班级列表失败");
+        } finally {
+            setClassesLoading(false);
+        }
     }
 
     async function handleEditTeacher() {
@@ -288,10 +310,15 @@ export function TeacherManagement() {
                                         <TableCell className="font-medium text-slate-200">{teacher.name}</TableCell>
                                         <TableCell>{getStatusBadge(teacher)}</TableCell>
                                         <TableCell className="text-slate-300">
-                                            <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => handleViewClasses(teacher)}
+                                                className="flex items-center gap-1 hover:text-indigo-400 transition-colors cursor-pointer"
+                                                title="查看关联班级"
+                                            >
                                                 <GraduationCap className="w-3.5 h-3.5 text-slate-500" />
                                                 {teacher.classCount}
-                                            </div>
+                                                <Eye className="w-3 h-3 text-slate-600 ml-0.5" />
+                                            </button>
                                         </TableCell>
                                         <TableCell className="text-slate-500 text-xs">{formatDate(teacher.lastLogin)}</TableCell>
                                         <TableCell className="text-slate-500 text-xs">{formatDate(teacher.createdAt)}</TableCell>
@@ -429,6 +456,48 @@ export function TeacherManagement() {
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认修改
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* 查看关联班级弹窗 */}
+            <Dialog open={showClassesModal} onOpenChange={setShowClassesModal}>
+                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-slate-100">
+                            教师「{classesTeacher?.name}」的关联班级
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {classesLoading ? (
+                            <div className="flex justify-center py-8">
+                                <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
+                            </div>
+                        ) : teacherClasses.length > 0 ? (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="border-slate-800 hover:bg-slate-900/50">
+                                        <TableHead className="text-slate-400">班级名称</TableHead>
+                                        <TableHead className="text-slate-400">学期</TableHead>
+                                        <TableHead className="text-slate-400">学生人数</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {teacherClasses.map((cls) => (
+                                        <TableRow key={cls.id} className="border-slate-800">
+                                            <TableCell className="font-medium text-slate-200">{cls.name}</TableCell>
+                                            <TableCell className="text-slate-400">{cls.semesterName ?? "-"}</TableCell>
+                                            <TableCell className="text-slate-400">{cls.studentCount}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        ) : (
+                            <div className="text-center py-8 text-slate-500">该教师暂无关联班级</div>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setShowClassesModal(false)} className="bg-slate-800 text-slate-300 hover:bg-slate-700">关闭</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

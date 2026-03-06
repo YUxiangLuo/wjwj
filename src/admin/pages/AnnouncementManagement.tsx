@@ -3,12 +3,13 @@ import { Plus, Pencil, Trash2, Send, Archive, Loader2, BarChart3, Users, Eye, Me
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RichTextEditor } from "@/student/components/RichTextEditor";
+import { RichTextContent } from "@/components/RichTextContent";
 import { announcementApi, type Announcement } from "../api-client";
 import { toast } from "sonner";
 
@@ -326,7 +327,9 @@ export function AnnouncementManagement() {
                                         </div>
                                         <span className="text-xs text-slate-500">{formatDateTime(announcement.createdAt)}</span>
                                     </div>
-                                    <p className="text-sm text-slate-400 mb-4 line-clamp-2">{announcement.content}</p>
+                                    <div className="text-sm text-slate-400 mb-4 line-clamp-2">
+                                        <RichTextContent html={announcement.content} />
+                                    </div>
                                     <div className="flex flex-wrap gap-2">
                                         <Button data-testid={`announcement-edit-open-${announcement.id}`} variant="ghost" size="sm" onClick={() => openEditModal(announcement)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
                                             <Pencil className="w-3.5 h-3.5 mr-1" />
@@ -407,14 +410,14 @@ export function AnnouncementManagement() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="content" className="text-slate-300">内容</Label>
-                            <Textarea
-                                id="content"
-                                data-testid="announcement-create-content"
-                                placeholder="请输入公告内容"
-                                value={newAnnouncement.content}
-                                onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
-                                className="min-h-32 resize-none bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
-                            />
+                            <div data-testid="announcement-create-content">
+                                <RichTextEditor
+                                    id="content"
+                                    placeholder="请输入公告内容"
+                                    value={newAnnouncement.content}
+                                    onChange={(value) => setNewAnnouncement({ ...newAnnouncement, content: value })}
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label className="text-slate-300">发布范围</Label>
@@ -480,14 +483,14 @@ export function AnnouncementManagement() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="editContent" className="text-slate-300">内容</Label>
-                            <Textarea
-                                id="editContent"
-                                data-testid="announcement-edit-content"
-                                placeholder="请输入公告内容"
-                                value={editForm.content}
-                                onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
-                                className="min-h-32 resize-none bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
-                            />
+                            <div data-testid="announcement-edit-content">
+                                <RichTextEditor
+                                    id="editContent"
+                                    placeholder="请输入公告内容"
+                                    value={editForm.content}
+                                    onChange={(value) => setEditForm({ ...editForm, content: value })}
+                                />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

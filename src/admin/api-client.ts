@@ -133,6 +133,17 @@ async function request<T>(
             window.dispatchEvent(new CustomEvent("admin:session-expired"));
         }
 
+        const contentType = res.headers.get("content-type") ?? "";
+        if (!contentType.includes("application/json")) {
+            return {
+                success: false,
+                error: {
+                    code: "INVALID_RESPONSE",
+                    message: `服务器返回了非预期的响应 (${res.status})`,
+                },
+            };
+        }
+
         const data = await res.json();
         return data as ApiResponse<T>;
     } catch (error) {
@@ -430,6 +441,8 @@ export interface SystemMetrics {
     disk: number;
     network: number;
     activeConnections: number;
+    todayLogins?: number;
+    activeByRole?: { role: string; count: number }[];
 }
 
 export interface SystemLog {

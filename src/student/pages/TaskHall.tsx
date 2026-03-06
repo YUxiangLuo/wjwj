@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RichTextContent } from "@/components/RichTextContent";
 import { tasksApi, announcementsApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
 
 // Re-export types for compatibility
@@ -518,9 +519,10 @@ export function TaskHall() {
                                         </div>
                                     </div>
                                     <div className="w-full h-px bg-slate-800" />
-                                    <div className="text-sm text-slate-300 whitespace-pre-line leading-relaxed">
-                                        {selectedAnnouncement.content}
-                                    </div>
+                                    <RichTextContent
+                                        html={selectedAnnouncement.content}
+                                        className="text-sm text-slate-300 leading-relaxed"
+                                    />
                                 </div>
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-3 opacity-50">

@@ -197,8 +197,8 @@ const backupListRoutes: RouteDefinition = {
                     return {
                         backupId,
                         createdAt: fileStat.mtime.toISOString(),
-                        sqlPath,
-                        zipPath,
+                        sqlPath: `${backupId}.sql`,
+                        zipPath: `${backupId}.zip`,
                         hasZip,
                     };
                 })
