@@ -198,7 +198,7 @@ const gradingDetailRoutes: RouteDefinition = {
         const weightConfig = typeof row.weightConfig === "string"
             ? (() => {
                 try {
-                    return JSON.parse(row.weightConfig as unknown as string);
+                    return JSON.parse(row.weightConfig);
                 } catch {
                     return null;
                 }
@@ -308,7 +308,7 @@ const gradingDetailRoutes: RouteDefinition = {
         const weightConfig = typeof topicRow?.weightConfig === "string"
             ? (() => {
                 try {
-                    return JSON.parse(topicRow.weightConfig as unknown as string);
+                    return JSON.parse(topicRow.weightConfig);
                 } catch {
                     return null;
                 }

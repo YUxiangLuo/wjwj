@@ -151,7 +151,7 @@ const submissionDetailRoutes: RouteDefinition = {
             typeof row.weightConfig === "string"
                 ? (() => {
                     try {
-                        return JSON.parse(row.weightConfig as unknown as string);
+                        return JSON.parse(row.weightConfig);
                     } catch {
                         return null;
                     }

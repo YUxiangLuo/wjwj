@@ -30,6 +30,7 @@ import {
     adminMeRoutes,
     adminPasswordRoutes,
     getAdminAuth,
+    getAdminUser,
     withAdminAuth,
 } from "./routes/auth";
 import { backupCreateRoutes, backupListRoutes, backupRestoreRoutes } from "./routes/backup";

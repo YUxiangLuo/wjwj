@@ -34,9 +34,10 @@ async function reset() {
     `);
 
     // Drop each table
-    const rows = (tables as any)[0] as Array<{ table_name?: string; TABLE_NAME?: string }>;
-    for (const row of rows) {
+    const result = (tables as unknown as [Array<{ table_name?: string; TABLE_NAME?: string }>])[0];
+    for (const row of result) {
         const tableName = row.table_name || row.TABLE_NAME;
+        if (!tableName) continue;
         console.log(`  Dropping table: ${tableName}`);
         await db.execute(sql.raw(`DROP TABLE IF EXISTS \`${tableName}\``));
     }
