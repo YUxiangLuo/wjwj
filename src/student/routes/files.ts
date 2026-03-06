@@ -1,10 +1,10 @@
 import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import { db } from "../../db";
 import { experiment, task, topic, topicAttachment } from "../../db/schema";
 import { error, getRouteParam, getSearchParams } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { resolveStoragePath } from "../../server/storage-files";
 import { requireAuth } from "./auth";
 
 function toCsv(data: Record<string, unknown>[], extraHeaders: string[] = []) {
@@ -30,17 +30,7 @@ function toCsv(data: Record<string, unknown>[], extraHeaders: string[] = []) {
 }
 
 export function resolveAttachmentPath(filePath: string) {
-    const baseDir = path.resolve(process.cwd(), "storage");
-    const normalized = filePath.replace(/\\/g, "/").replace(/^\/+/, "");
-    const relativePath = normalized.startsWith("storage/") ? normalized.slice("storage/".length) : normalized;
-    const fullPath = path.resolve(baseDir, relativePath);
-
-    const isInsideStorage = fullPath === baseDir || fullPath.startsWith(`${baseDir}${path.sep}`);
-    if (!isInsideStorage) {
-        throw new Error("INVALID_PATH");
-    }
-
-    return fullPath;
+    return resolveStoragePath(filePath);
 }
 
 function inferMimeTypeFromName(fileName: string) {

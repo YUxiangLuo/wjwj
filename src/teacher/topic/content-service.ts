@@ -1,6 +1,8 @@
 import { and, count, eq } from "drizzle-orm";
+import { basename } from "node:path";
 import { db } from "../../db";
 import { topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
+import { copyStorageFile, createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
 import { getAttachmentType, sanitizeUploadFileName } from "./file-utils";
 import { validateRecommendQuestionItems, validateTopicAttachmentUpload } from "./validation";
 
@@ -35,19 +37,23 @@ export async function uploadTopicAttachment(params: {
     }
 
     const buffer = await params.file.arrayBuffer();
-    const fileName = `${Date.now()}_${sanitizeUploadFileName(params.file.name)}`;
-    const filePath = `/storage/uploads/${fileName}`;
-    await Bun.write(`${process.cwd()}${filePath}`, buffer);
+    const filePath = createStorageUploadPath(sanitizeUploadFileName(params.file.name));
 
-    const [result] = await db.insert(topicAttachment).values({
-        topicId: params.topicId,
-        fileName: params.file.name,
-        filePath,
-        fileType: params.file.type || "unknown",
-        fileSize: params.file.size,
-    });
+    try {
+        await writeStorageFile(filePath, buffer);
+        const [result] = await db.insert(topicAttachment).values({
+            topicId: params.topicId,
+            fileName: params.file.name,
+            filePath,
+            fileType: params.file.type || "unknown",
+            fileSize: params.file.size,
+        });
 
-    return { ok: true as const, id: result.insertId, filePath };
+        return { ok: true as const, id: result.insertId, filePath };
+    } catch (error) {
+        await deleteStorageFileIfExists(filePath).catch(() => undefined);
+        throw error;
+    }
 }
 
 export async function replaceTopicRecommendQuestions(params: {
@@ -79,7 +85,30 @@ export async function deleteTopicAttachment(params: {
     topicId: number;
     attachmentId: number;
 }) {
-    await db.delete(topicAttachment).where(and(eq(topicAttachment.id, params.attachmentId), eq(topicAttachment.topicId, params.topicId)));
+    const filePath = await db.transaction(async (tx) => {
+        const [attachment] = await tx
+            .select({ filePath: topicAttachment.filePath })
+            .from(topicAttachment)
+            .where(and(eq(topicAttachment.id, params.attachmentId), eq(topicAttachment.topicId, params.topicId)));
+
+        if (!attachment?.filePath) {
+            return null;
+        }
+
+        await tx.delete(topicAttachment).where(and(eq(topicAttachment.id, params.attachmentId), eq(topicAttachment.topicId, params.topicId)));
+
+        const [refCount] = await tx
+            .select({ count: count() })
+            .from(topicAttachment)
+            .where(eq(topicAttachment.filePath, attachment.filePath));
+
+        return (refCount?.count ?? 0) === 0 ? attachment.filePath : null;
+    });
+
+    if (filePath) {
+        await deleteStorageFileIfExists(filePath).catch(() => undefined);
+    }
+
     return { ok: true as const };
 }
 
@@ -92,44 +121,79 @@ export async function copyTopicWithResources(params: {
         return fail("课题不存在", "NOT_FOUND", 404);
     }
 
-    const [result] = await db.insert(topic).values({
-        teacherId: params.teacherId,
-        name: `${sourceTopic.name} (副本)`,
-        description: sourceTopic.description ?? "",
-        excelFilePath: sourceTopic.excelFilePath,
-        excelRowCount: sourceTopic.excelRowCount,
-        fieldMapping: sourceTopic.fieldMapping,
-        weightConfig: sourceTopic.weightConfig,
-        status: 0,
-    });
-
-    const newTopicId = Number(result.insertId);
-
     const attachments = await db.select().from(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
-    if (attachments.length) {
-        await db.insert(topicAttachment).values(
-            attachments.map((attachment) => ({
-                topicId: newTopicId,
+    const questions = await db.select().from(topicRecommendQuestion).where(eq(topicRecommendQuestion.topicId, params.topicId));
+    const copiedStoragePaths: string[] = [];
+
+    try {
+        const copiedExcelFilePath = sourceTopic.excelFilePath
+            ? createStorageUploadPath(sanitizeUploadFileName(basename(sourceTopic.excelFilePath)))
+            : null;
+
+        if (sourceTopic.excelFilePath && copiedExcelFilePath) {
+            await copyStorageFile(sourceTopic.excelFilePath, copiedExcelFilePath);
+            copiedStoragePaths.push(copiedExcelFilePath);
+        }
+
+        const copiedAttachments: Array<{
+            fileName: string;
+            filePath: string;
+            fileType: string;
+            fileSize: number;
+        }> = [];
+        for (const attachment of attachments) {
+            const copiedFilePath = createStorageUploadPath(sanitizeUploadFileName(attachment.fileName));
+            await copyStorageFile(attachment.filePath, copiedFilePath);
+            copiedStoragePaths.push(copiedFilePath);
+            copiedAttachments.push({
                 fileName: attachment.fileName,
-                filePath: attachment.filePath,
+                filePath: copiedFilePath,
                 fileType: attachment.fileType,
                 fileSize: attachment.fileSize,
-            }))
-        );
-    }
+            });
+        }
 
-    const questions = await db.select().from(topicRecommendQuestion).where(eq(topicRecommendQuestion.topicId, params.topicId));
-    if (questions.length) {
-        await db.insert(topicRecommendQuestion).values(
-            questions.map((question) => ({
-                topicId: newTopicId,
-                questionType: question.questionType,
-                content: question.content,
-                options: question.options,
-                sortOrder: question.sortOrder,
-            }))
-        );
-    }
+        const newTopicId = await db.transaction(async (tx) => {
+            const [result] = await tx.insert(topic).values({
+                teacherId: params.teacherId,
+                name: `${sourceTopic.name} (副本)`,
+                description: sourceTopic.description ?? "",
+                excelFilePath: copiedExcelFilePath,
+                excelRowCount: sourceTopic.excelRowCount,
+                fieldMapping: sourceTopic.fieldMapping,
+                weightConfig: sourceTopic.weightConfig,
+                status: 0,
+            });
 
-    return { ok: true as const, id: newTopicId };
+            const insertedTopicId = Number(result.insertId);
+
+            if (copiedAttachments.length) {
+                await tx.insert(topicAttachment).values(
+                    copiedAttachments.map((attachment) => ({
+                        topicId: insertedTopicId,
+                        ...attachment,
+                    }))
+                );
+            }
+
+            if (questions.length) {
+                await tx.insert(topicRecommendQuestion).values(
+                    questions.map((question) => ({
+                        topicId: insertedTopicId,
+                        questionType: question.questionType,
+                        content: question.content,
+                        options: question.options,
+                        sortOrder: question.sortOrder,
+                    }))
+                );
+            }
+
+            return insertedTopicId;
+        });
+
+        return { ok: true as const, id: newTopicId };
+    } catch (error) {
+        await Promise.all(copiedStoragePaths.map((filePath) => deleteStorageFileIfExists(filePath).catch(() => undefined)));
+        throw error;
+    }
 }

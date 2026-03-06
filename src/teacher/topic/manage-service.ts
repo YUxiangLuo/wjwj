@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic } from "../../db/schema";
+import { createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import {
     validateParsedExcelUpload,
@@ -93,11 +94,15 @@ export async function replaceTopicExcelData(params: {
     const validationError = validateParsedExcelUpload(parsed);
     if (validationError) return fail(validationError);
 
-    const fileName = `${Date.now()}_${sanitizeUploadFileName(params.file.name)}`;
-    const filePath = `/storage/uploads/${fileName}`;
-    await Bun.write(`${process.cwd()}${filePath}`, buffer);
+    const filePath = createStorageUploadPath(sanitizeUploadFileName(params.file.name));
 
-    await db.update(topic).set({ excelFilePath: filePath, excelRowCount: parsed.rowCount }).where(eq(topic.id, params.topicId));
+    try {
+        await writeStorageFile(filePath, buffer);
+        await db.update(topic).set({ excelFilePath: filePath, excelRowCount: parsed.rowCount }).where(eq(topic.id, params.topicId));
+    } catch (error) {
+        await deleteStorageFileIfExists(filePath).catch(() => undefined);
+        throw error;
+    }
 
     return {
         ok: true as const,
