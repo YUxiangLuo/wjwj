@@ -17,7 +17,6 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
 import { getRichTextPlainLength } from "@/utils/rich-text";
-import { formatSaveTime } from "@/utils/format";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
@@ -85,7 +84,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [syncConflictOpen, setSyncConflictOpen] = useState(false);
     const [serverConflictDraft, setServerConflictDraft] = useState<QuestionnaireData | null>(null);
     const [localConflictDraft, setLocalConflictDraft] = useState<QuestionnaireData | null>(null);
-    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
     const [recommendCollapsed, setRecommendCollapsed] = useState(false);
     const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
     const serverSnapshotRef = useRef("");
@@ -152,7 +150,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             const success = await saveExperiment({ questionnaire: questionnaireData });
             if (success) {
                 serverSnapshotRef.current = snapshot;
-                setLastSavedAt(formatSaveTime());
                 setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
             }
         } finally {
@@ -1275,64 +1272,50 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 </Card>
             )}
 
-            <Card className="rounded-2xl border-slate-800 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/20 shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-teal-500 opacity-20"></div>
-                <CardContent className="py-3 px-6">
-                    <div className="flex flex-col gap-2.5">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-3">
-                                <div className="text-xs text-indigo-400 uppercase tracking-widest font-semibold">问卷设计进度</div>
-                                <div className="text-sm font-bold text-slate-100 flex items-center gap-1.5">
-                                    <span className="w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-md shadow-indigo-500/30">
-                                        {step}
+            {/* Compact sub-step indicator */}
+            <div className="flex items-center gap-2 px-1">
+                {steps.map((s, idx) => {
+                    const isCompleted = step > s.num;
+                    const isCurrent = step === s.num;
+
+                    return (
+                        <div key={s.num} className="flex items-center gap-2">
+                            {idx > 0 && (
+                                <div className={`w-6 h-px ${isCompleted || isCurrent ? "bg-indigo-500/40" : "bg-slate-800"}`} />
+                            )}
+                            <button
+                                onClick={() => {
+                                    if (s.num <= step) {
+                                        setStep(s.num as 1 | 2 | 3 | 4);
+                                    }
+                                }}
+                                disabled={s.num > step}
+                                aria-label={`第 ${s.num} 步: ${s.title}`}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 disabled:cursor-not-allowed ${
+                                    isCurrent
+                                        ? "bg-indigo-600/15 text-indigo-300 border border-indigo-500/30"
+                                        : isCompleted
+                                            ? "text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
+                                            : "text-slate-600"
+                                }`}
+                            >
+                                {isCompleted ? (
+                                    <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                                ) : (
+                                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                                        isCurrent
+                                            ? "bg-indigo-600 text-white"
+                                            : "bg-slate-800 text-slate-500 border border-slate-700"
+                                    }`}>
+                                        {s.num}
                                     </span>
-                                    {steps[step - 1]?.title}
-                                </div>
-                            </div>
-                            <div className="rounded-full bg-indigo-500/10 border border-indigo-500/20 px-3 py-0.5 text-xs font-semibold text-indigo-400">
-                                {Math.round((step / 4) * 100)}% 完成度
-                            </div>
+                                )}
+                                <span className="hidden sm:inline whitespace-nowrap">{s.title}</span>
+                            </button>
                         </div>
-
-                        <div className="relative">
-                            <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-0.5 bg-slate-800 -z-10" />
-                            <div className="flex items-center justify-between relative">
-                                {steps.map((s) => {
-                                    const isCompleted = step > s.num;
-                                    const isCurrent = step === s.num;
-
-                                    return (
-                                        <button
-                                            key={s.num}
-                                            onClick={() => {
-                                                if (s.num <= step) {
-                                                    setStep(s.num as 1 | 2 | 3 | 4);
-                                                }
-                                            }}
-                                            disabled={s.num > step}
-                                            className="flex flex-col items-center gap-1 group disabled:cursor-not-allowed"
-                                        >
-                                            <span
-                                                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 ${isCurrent
-                                                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/40 scale-110 ring-2 ring-slate-900"
-                                                    : isCompleted
-                                                        ? "bg-emerald-500 text-white ring-2 ring-slate-900"
-                                                        : "bg-slate-800 text-slate-500 border border-slate-700 ring-2 ring-slate-900"
-                                                    }`}
-                                            >
-                                                {isCompleted ? <CheckCircle className="w-3.5 h-3.5" /> : s.num}
-                                            </span>
-                                            <span className={`text-[10px] font-medium transition-colors duration-200 ${isCurrent ? "text-indigo-400" : isCompleted ? "text-emerald-500" : "text-slate-500 group-hover:text-slate-400"}`}>
-                                                {s.title}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    );
+                })}
+            </div>
 
             {renderStep()}
 
@@ -1345,9 +1328,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 >
                     上一步
                 </Button>
-                {lastSavedAt && (
-                    <span className="text-xs text-slate-500">已自动保存于 {lastSavedAt}</span>
-                )}
                 {step < 4 ? (
                     <Button
                         onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)}

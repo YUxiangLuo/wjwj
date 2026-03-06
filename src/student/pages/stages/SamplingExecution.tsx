@@ -735,7 +735,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
             {/* Navigation */}
             <div className="flex justify-between pt-6 border-t border-slate-800/50">
                 <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
-                    上一步
+                    上一阶段
                 </Button>
                 <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} className={allCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-800 text-slate-500"}>
                     {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${[simpleResult?.completed, systematicResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/3)`}
