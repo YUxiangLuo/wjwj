@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
-import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2, ChevronRight, ChevronLeft, Home } from "lucide-react";
+import { useState, useEffect, useCallback, createContext, useContext, useMemo } from "react";
+import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2, ChevronRight, ChevronLeft, Home, Clock, AlertCircle } from "lucide-react";
 import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,6 +65,7 @@ export function ExperimentLayout() {
     const [topicDeleted, setTopicDeleted] = useState(false);
     const [currentStage, setCurrentStage] = useState(1);
     const [taskName, setTaskName] = useState("");
+    const [deadline, setDeadline] = useState<string | null>(null);
     const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [confirmRollbackOpen, setConfirmRollbackOpen] = useState(false);
@@ -89,10 +90,11 @@ export function ExperimentLayout() {
                     setCurrentStage(normalizedStage);
                     setLastSavedAt(res.data.lastSavedAt);
 
-                    // Fetch task details for name
+                    // Fetch task details for name and deadline
                     tasksApi.get(parseInt(taskId)).then(taskRes => {
                         if (taskRes.success && taskRes.data) {
                             setTaskName(taskRes.data.name);
+                            setDeadline(taskRes.data.deadline ?? null);
                         } else if (taskRes.error?.code === "TOPIC_DELETED") {
                             setTopicDeleted(true);
                             setExperiment(null);
@@ -201,6 +203,28 @@ export function ExperimentLayout() {
         setConfirmRollbackOpen(false);
     }, [taskId, targetStage]);
 
+    // Deadline countdown timer - updates every minute
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        if (!deadline) return;
+        const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+        return () => window.clearInterval(timer);
+    }, [deadline]);
+
+    const deadlineInfo = useMemo(() => {
+        if (!deadline) return null;
+        const deadlineMs = new Date(deadline).getTime();
+        const diff = deadlineMs - now;
+        if (diff <= 0) return { passed: true, text: "已截止", level: "expired" as const };
+        const hours = diff / (1000 * 60 * 60);
+        const days = Math.floor(hours / 24);
+        const remainHours = Math.floor(hours % 24);
+        const remainMinutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        if (hours <= 24) return { passed: false, text: `剩余 ${Math.floor(hours)} 小时 ${remainMinutes} 分钟`, level: "urgent" as const };
+        if (days <= 7) return { passed: false, text: `剩余 ${days} 天 ${remainHours} 小时`, level: "warning" as const };
+        return { passed: false, text: `剩余 ${days} 天`, level: "normal" as const };
+    }, [deadline, now]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
@@ -268,6 +292,21 @@ export function ExperimentLayout() {
                         </h1>
                     </div>
                     <div className="flex items-center gap-4">
+                        {deadlineInfo && (
+                            <span className={`text-xs font-medium flex items-center gap-1 hidden sm:flex ${
+                                deadlineInfo.level === "urgent" ? "text-rose-400" :
+                                deadlineInfo.level === "warning" ? "text-amber-400" :
+                                deadlineInfo.level === "expired" ? "text-slate-500" :
+                                "text-slate-400"
+                            }`}>
+                                {deadlineInfo.level === "urgent" ? (
+                                    <AlertCircle className="w-3.5 h-3.5" />
+                                ) : (
+                                    <Clock className="w-3.5 h-3.5" />
+                                )}
+                                {deadlineInfo.text}
+                            </span>
+                        )}
                         {lastSavedAt && (
                             <span className="text-xs text-slate-500 font-mono hidden sm:inline-block">
                                 已自动保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN")}
