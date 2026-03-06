@@ -20,6 +20,7 @@ async function loadTaskRoutes(options: {
 
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
+        getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         notifyStudentsByClassIds: async (classIds: number[], payload: Record<string, unknown>) => {
             notifications.push({ classIds, payload });
@@ -55,10 +56,9 @@ test("task publish inserts new tasks and notifies only newly assigned classes", 
     const { module, operations, notifications } = await loadTaskRoutes({
         teacherId: 9,
         select: [
-            [{ id: 12 }],
+            [{ id: 12, name: "抽样方法课题" }],
             [{ id: 101 }, { id: 102 }],
             [],
-            [{ name: "抽样方法课题" }],
         ],
     });
 
@@ -74,8 +74,11 @@ test("task publish inserts new tasks and notifies only newly assigned classes", 
     expect(payload.data).toEqual({ success: true, skipped: [] });
 
     const taskInserts = operations.filter((operation) => operation.kind === "insert");
-    expect(taskInserts).toHaveLength(2);
-    expect(taskInserts.map((operation) => (operation.values as any)?.classId)).toEqual([101, 102]);
+    expect(taskInserts).toHaveLength(1);
+    expect(taskInserts[0]?.values).toEqual([
+        expect.objectContaining({ classId: 101, topicId: 12 }),
+        expect.objectContaining({ classId: 102, topicId: 12 }),
+    ]);
 
     expect(notifications).toHaveLength(1);
     expect(notifications[0]).toMatchObject({

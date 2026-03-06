@@ -24,6 +24,7 @@ async function loadTopicRoutes(options: {
 
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
+        getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         notifyStudentsByClassIds: async () => undefined,
     }));

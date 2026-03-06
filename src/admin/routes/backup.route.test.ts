@@ -34,6 +34,8 @@ async function loadBackupRoutes(options: {
     mock.module("./auth", () => ({
         ADMIN_SESSION_COOKIE: "admin_session",
         ADMIN_USER_TYPE: 1,
+        getAdminAuth: () => authResult,
+        getAdminUser: () => (authResult as any).admin ?? { id: 1, username: "admin", isFirstLogin: 0 },
         requireAdminAuth: async () => authResult,
     }));
     mock.module("../backup", () => ({

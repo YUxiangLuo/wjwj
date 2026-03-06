@@ -17,6 +17,14 @@ export interface MockDbOperation {
     selection?: unknown;
 }
 
+interface MockDbClient {
+    select(selection?: unknown): ReturnType<typeof createBuilder>;
+    insert(table: unknown): ReturnType<typeof createBuilder>;
+    update(table: unknown): ReturnType<typeof createBuilder>;
+    delete(table: unknown): ReturnType<typeof createBuilder>;
+    transaction<T>(callback: (tx: MockDbClient) => Promise<T> | T): Promise<T>;
+}
+
 function shiftQueue(kind: QueryKind, queues: Required<QueueMap>) {
     const queue = queues[kind];
     if (queue.length > 0) return queue.shift();
@@ -92,7 +100,7 @@ export function createMockDb(queues: QueueMap = {}) {
 
     const operations: MockDbOperation[] = [];
 
-    const db = {
+    const db: MockDbClient = {
         select(selection?: unknown) {
             return createBuilder("select", { kind: "select", selection }, normalizedQueues, operations);
         },

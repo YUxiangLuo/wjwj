@@ -1,3 +1,4 @@
+import { unlink } from "node:fs/promises";
 import { expect, mock, test } from "bun:test";
 import { createMockDb } from "../../test-utils/mock-db";
 
@@ -15,6 +16,7 @@ async function loadTopicRoutes(options: {
 
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
+        getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         notifyStudentsByClassIds: async () => undefined,
     }));
@@ -24,6 +26,15 @@ async function loadTopicRoutes(options: {
 }
 
 test("topic copy duplicates the topic and related resources under the current teacher", async () => {
+    const testId = crypto.randomUUID().slice(0, 8);
+    const sourceExcelPath = `/storage/uploads/source-copy-test-${testId}.xlsx`;
+    const sourceAttachmentPath = `/storage/uploads/guide-copy-test-${testId}.pdf`;
+    const sourceExcelAbsolutePath = `${process.cwd()}${sourceExcelPath}`;
+    const sourceAttachmentAbsolutePath = `${process.cwd()}${sourceAttachmentPath}`;
+
+    await Bun.write(sourceExcelAbsolutePath, "excel-content");
+    await Bun.write(sourceAttachmentAbsolutePath, "attachment-content");
+
     const { module, operations } = await loadTopicRoutes({
         select: [
             [{ id: 12, status: 0 }],
@@ -32,7 +43,7 @@ test("topic copy duplicates the topic and related resources under the current te
                 teacherId: 9,
                 name: "抽样设计课题",
                 description: "原始课题",
-                excelFilePath: "/storage/uploads/source.xlsx",
+                excelFilePath: sourceExcelPath,
                 excelRowCount: 16,
                 fieldMapping: { identifier: "id" },
                 weightConfig: { questionnaire: 30, process: 40, report: 30 },
@@ -42,7 +53,7 @@ test("topic copy duplicates the topic and related resources under the current te
                 id: 5,
                 topicId: 12,
                 fileName: "guide.pdf",
-                filePath: "/storage/uploads/guide.pdf",
+                filePath: sourceAttachmentPath,
                 fileType: "application/pdf",
                 fileSize: 1024,
             }],
@@ -65,33 +76,53 @@ test("topic copy duplicates the topic and related resources under the current te
     const response = await module.topicCopyRoutes.POST!(request);
     const payload = await response.json() as any;
 
-    expect(response.status).toBe(200);
-    expect(payload).toEqual({ success: true, data: { id: 44 } });
-
     const insertOperations = operations.filter((operation) => operation.kind === "insert");
-    expect(insertOperations).toHaveLength(3);
-    expect(insertOperations[0]?.values).toMatchObject({
-        teacherId: 9,
-        name: "抽样设计课题 (副本)",
-        description: "原始课题",
-        excelFilePath: "/storage/uploads/source.xlsx",
-        excelRowCount: 16,
-        status: 0,
-    });
-    expect(insertOperations[1]?.values).toEqual([{
-        topicId: 44,
-        fileName: "guide.pdf",
-        filePath: "/storage/uploads/guide.pdf",
-        fileType: "application/pdf",
-        fileSize: 1024,
-    }]);
-    expect(insertOperations[2]?.values).toEqual([{
-        topicId: 44,
-        questionType: 2,
-        content: "你最关注哪项指标？",
-        options: "价格,质量",
-        sortOrder: 1,
-    }]);
+    const copiedExcelPath = (insertOperations[0]?.values as any)?.excelFilePath as string;
+    const copiedAttachmentPath = ((insertOperations[1]?.values as any[])?.[0]?.filePath ?? "") as string;
+
+    try {
+        expect(response.status).toBe(200);
+        expect(payload).toEqual({ success: true, data: { id: 44 } });
+
+        expect(insertOperations).toHaveLength(3);
+        expect(insertOperations[0]?.values).toMatchObject({
+            teacherId: 9,
+            name: "抽样设计课题 (副本)",
+            description: "原始课题",
+            excelRowCount: 16,
+            status: 0,
+        });
+        expect(copiedExcelPath).toContain("/storage/uploads/");
+        expect(copiedExcelPath).not.toBe(sourceExcelPath);
+        expect(insertOperations[1]?.values).toEqual([{
+            topicId: 44,
+            fileName: "guide.pdf",
+            filePath: copiedAttachmentPath,
+            fileType: "application/pdf",
+            fileSize: 1024,
+        }]);
+        expect(copiedAttachmentPath).toContain("/storage/uploads/");
+        expect(copiedAttachmentPath).not.toBe(sourceAttachmentPath);
+        expect(insertOperations[2]?.values).toEqual([{
+            topicId: 44,
+            questionType: 2,
+            content: "你最关注哪项指标？",
+            options: "价格,质量",
+            sortOrder: 1,
+        }]);
+
+        expect(await Bun.file(`${process.cwd()}${copiedExcelPath}`).text()).toBe("excel-content");
+        expect(await Bun.file(`${process.cwd()}${copiedAttachmentPath}`).text()).toBe("attachment-content");
+    } finally {
+        await unlink(sourceExcelAbsolutePath).catch(() => undefined);
+        await unlink(sourceAttachmentAbsolutePath).catch(() => undefined);
+        if (copiedExcelPath) {
+            await unlink(`${process.cwd()}${copiedExcelPath}`).catch(() => undefined);
+        }
+        if (copiedAttachmentPath) {
+            await unlink(`${process.cwd()}${copiedAttachmentPath}`).catch(() => undefined);
+        }
+    }
 });
 
 test("topic copy returns 404 when the teacher does not own the topic", async () => {

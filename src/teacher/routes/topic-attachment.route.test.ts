@@ -17,6 +17,7 @@ async function loadTopicRoutes(options: {
 
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
+        getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         notifyStudentsByClassIds: async () => undefined,
     }));
@@ -104,8 +105,17 @@ test("topic attachment upload rejects unsupported attachment types before writin
 });
 
 test("topic attachment delete removes the attachment after ownership check", async () => {
+    const testId = crypto.randomUUID().slice(0, 8);
+    const filePath = `/storage/uploads/delete-attachment-test-${testId}.pdf`;
+    const absolutePath = `${process.cwd()}${filePath}`;
+    await Bun.write(absolutePath, "delete me");
+
     const { module, operations } = await loadTopicRoutes({
-        select: [[{ id: 12, status: 0 }]],
+        select: [
+            [{ id: 12, status: 0 }],
+            [{ filePath }],
+            [{ count: 0 }],
+        ],
     });
 
     const request = withRouteParams(new Request("https://example.com/api/teacher/topics/12/attachments/3", {
@@ -115,9 +125,14 @@ test("topic attachment delete removes the attachment after ownership check", asy
     const response = await module.topicAttachmentDeleteRoutes.DELETE!(request);
     const payload = await response.json() as any;
 
-    expect(response.status).toBe(200);
-    expect(payload).toEqual({ success: true, data: { success: true } });
-    expect(operations.filter((operation) => operation.kind === "delete")).toHaveLength(1);
+    try {
+        expect(response.status).toBe(200);
+        expect(payload).toEqual({ success: true, data: { success: true } });
+        expect(operations.filter((operation) => operation.kind === "delete")).toHaveLength(1);
+        expect(await Bun.file(absolutePath).exists()).toBe(false);
+    } finally {
+        await unlink(absolutePath).catch(() => undefined);
+    }
 });
 
 test("topic attachment delete returns 404 when the topic does not belong to the teacher", async () => {

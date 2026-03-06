@@ -188,7 +188,7 @@ test("experiment submit blocks incomplete experiments before any writes", async 
 
 test("experiment submit marks experiment submitted, inserts submission, and notifies teacher and assistants", async () => {
     const originalSetTimeout = globalThis.setTimeout;
-    globalThis.setTimeout = (() => 0) as typeof setTimeout;
+    globalThis.setTimeout = (() => 0) as unknown as typeof setTimeout;
 
     try {
         const { module, operations } = await loadExperimentRoutes({
