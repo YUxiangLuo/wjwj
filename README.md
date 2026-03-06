@@ -98,6 +98,10 @@ bun dev
 ## 测试分层说明
 
 - 当前 `bun test` / `bun run test:all` 会运行 `src/` 下测试和 `env.test.ts`
+- 目前仓库内主要包含两类测试：
+  - 单元测试：纯函数/工具/校验逻辑
+  - 路由测试：直接构造 `Request` 调用 route handler，并用 mock DB 验证业务链路
+- 这些路由测试不会启动 `Bun.serve`；如果后续补真实 HTTP 或浏览器链路，建议单独归为 `http.integration` 或 `e2e`
 
 ## 常用脚本
 
