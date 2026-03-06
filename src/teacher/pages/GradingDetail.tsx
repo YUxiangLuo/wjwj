@@ -197,6 +197,7 @@ export function GradingDetail() {
             const snapshot = JSON.stringify(buildGradingSnapshot());
             if (snapshot !== serverSnapshotRef.current) {
                 e.preventDefault();
+                e.returnValue = "";
             }
         };
         window.addEventListener("beforeunload", handler);
