@@ -430,6 +430,8 @@ export interface SystemMetrics {
     disk: number;
     network: number;
     activeConnections: number;
+    todayLogins?: number;
+    activeByRole?: { role: string; count: number }[];
 }
 
 export interface SystemLog {

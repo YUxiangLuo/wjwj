@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Cpu, HardDrive, Activity, Wifi, Users, Pause, Play, RefreshCw, TerminalSquare, AlertTriangle, Download } from "lucide-react";
+import { Cpu, HardDrive, Activity, Wifi, Users, Pause, Play, RefreshCw, TerminalSquare, AlertTriangle, Download, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -96,6 +96,15 @@ export function SystemMonitor() {
             `磁盘使用率: ${metrics.disk}%`,
             `网络带宽: ${metrics.network} Mbps`,
             `活跃在线用户: ${metrics.activeConnections}`,
+            `今日登录次数: ${metrics.todayLogins ?? 0}`,
+        ];
+        if (metrics.activeByRole && metrics.activeByRole.length > 0) {
+            lines.push("", "=== 在线用户分布 ===");
+            for (const r of metrics.activeByRole) {
+                lines.push(`${r.role}: ${r.count}`);
+            }
+        }
+        lines.push(
             "",
             "=== 告警信息 ===",
             alerts.length > 0
@@ -104,7 +113,7 @@ export function SystemMonitor() {
             "",
             "=== 最近日志 ===",
             ...logs.slice(0, 20).map(l => `[${new Date(l.time).toLocaleString("zh-CN")}] [${l.level}] ${l.message} (${l.source})`),
-        ];
+        );
         const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -215,6 +224,25 @@ export function SystemMonitor() {
                             <span className="text-sm font-medium">活跃在线用户</span>
                         </div>
                         <div className="text-3xl font-bold text-slate-100">{metrics.activeConnections}</div>
+                        {metrics.activeByRole && metrics.activeByRole.length > 0 && (
+                            <div className="mt-3 space-y-1">
+                                {metrics.activeByRole.map((r) => (
+                                    <div key={r.role} className="flex items-center justify-between text-xs">
+                                        <span className="text-slate-500">{r.role}</span>
+                                        <span className="text-slate-300 font-mono">{r.count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                    <CardContent className="p-5">
+                        <div className="flex items-center gap-2 text-slate-400 mb-2">
+                            <LogIn className="w-4 h-4" />
+                            <span className="text-sm font-medium">今日登录次数</span>
+                        </div>
+                        <div className="text-3xl font-bold text-slate-100">{metrics.todayLogins ?? 0}</div>
                     </CardContent>
                 </Card>
             </div>

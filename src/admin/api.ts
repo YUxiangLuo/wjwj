@@ -214,12 +214,46 @@ const systemMetricsRoutes = {
 
         const activeConnections = sessionCount?.count ?? 0;
 
+        // Today's logins count
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const [todayLoginsCount] = await db
+            .select({ count: count() })
+            .from(loginLog)
+            .where(sql`${loginLog.loginAt} >= ${startOfDay}`);
+
+        const todayLogins = todayLoginsCount?.count ?? 0;
+
+        // Active users by role (sessions active in last 30 minutes)
+        const byRoleResults = await db
+            .select({
+                userType: userSession.userType,
+                count: count(),
+            })
+            .from(userSession)
+            .where(
+                and(
+                    sql`${userSession.expiresAt} > NOW()`,
+                    sql`${userSession.lastActiveAt} > DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
+                )
+            )
+            .groupBy(userSession.userType);
+
+        const roleLabels: Record<number, string> = { 1: "管理员", 2: "教师", 3: "助教", 4: "学生" };
+        const activeByRole = byRoleResults.map((r) => ({
+            role: roleLabels[r.userType] ?? `类型${r.userType}`,
+            count: r.count,
+        }));
+
         return json({
             cpu: cpuUsage,
             memory: memUsage,
             disk: diskUsage,
             network: networkMbps,
             activeConnections: activeConnections,
+            todayLogins: todayLogins,
+            activeByRole: activeByRole,
         });
     },
 };

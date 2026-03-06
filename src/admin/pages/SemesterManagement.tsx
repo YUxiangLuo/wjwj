@@ -46,6 +46,14 @@ export function SemesterManagement() {
     async function handleAddSemester() {
         if (!newSemesterName.trim()) return;
 
+        // Warn if format doesn't match recommended pattern
+        const formatRegex = /^\d{4}-(Spring|Fall)$/;
+        if (!formatRegex.test(newSemesterName.trim())) {
+            if (!confirm("学期名称不符合推荐格式（YYYY-Spring 或 YYYY-Fall），确定继续创建吗？")) {
+                return;
+            }
+        }
+
         setSubmitting(true);
         try {
             const res = await semesterApi.create({
