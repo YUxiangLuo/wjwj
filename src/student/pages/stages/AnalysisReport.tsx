@@ -34,7 +34,7 @@ interface AnalysisReportProps {
 }
 
 type MethodKey = "simple" | "systematic" | "stratified";
-type ZoomChartType = "mean" | "dist" | "error" | null;
+type ZoomChartType = "mean" | "dist" | "error" | "represent" | null;
 type SampleRow = Record<string, unknown>;
 
 interface ChartSeries {
@@ -192,6 +192,82 @@ function buildDistributionRows(
     });
 
     return { rows, withPopulation: Boolean(populationFieldStats) };
+}
+
+function buildRepresentativenessRows(
+    numericFields: string[],
+    categoricalFields: string[],
+    methodRows: Record<MethodKey, SampleRow[]>,
+    populationStats: Record<string, Record<string, number>>
+) {
+    const rows: ChartRow[] = [];
+
+    // Numeric fields: populationStats only contains categorical distributions,
+    // so we use the combined-sample mean as a proxy for the population mean.
+    for (const field of numericFields) {
+        const allValues: number[] = [];
+        for (const method of Object.keys(methodRows) as MethodKey[]) {
+            for (const row of methodRows[method]) {
+                const v = toNumber(row[field]);
+                if (v !== null) allValues.push(v);
+            }
+        }
+        if (allValues.length === 0) continue;
+        const combinedMean = allValues.reduce((s, v) => s + v, 0) / allValues.length;
+        if (combinedMean === 0) continue;
+
+        const values: Record<string, number> = {};
+        for (const method of Object.keys(METHOD_META) as MethodKey[]) {
+            const methodMean = calculateMean(methodRows[method], field);
+            values[method] = Math.abs(methodMean - combinedMean) / Math.abs(combinedMean) * 100;
+        }
+        rows.push({ label: `${field}（均值偏差）`, values });
+    }
+
+    // Categorical fields: average absolute proportion difference vs population.
+    // Categories are the union of population and sample categories.
+    for (const field of categoricalFields) {
+        const popFieldStats = populationStats[field];
+        if (!popFieldStats) continue;
+        const totalPop = Object.values(popFieldStats).reduce((s, v) => s + v, 0);
+        if (totalPop === 0) continue;
+
+        // Build union of population + sample categories
+        const categorySet = new Set<string>(Object.keys(popFieldStats));
+        for (const method of Object.keys(methodRows) as MethodKey[]) {
+            for (const row of methodRows[method]) {
+                const val = String(row[field] ?? "").trim();
+                if (val) categorySet.add(val);
+            }
+        }
+        const categories = Array.from(categorySet);
+
+        const values: Record<string, number> = {};
+
+        for (const method of Object.keys(METHOD_META) as MethodKey[]) {
+            const mRows = methodRows[method];
+            if (mRows.length === 0) { values[method] = 0; continue; }
+
+            // Precompute frequency map for this method and field (single pass)
+            const categoryCounts: Record<string, number> = {};
+            for (const row of mRows) {
+                const key = String(row[field] ?? "").trim();
+                categoryCounts[key] = (categoryCounts[key] ?? 0) + 1;
+            }
+
+            let totalDiff = 0;
+            for (const cat of categories) {
+                const popProp = (popFieldStats[cat] ?? 0) / totalPop * 100;
+                const sampleCount = categoryCounts[cat] ?? 0;
+                const sampleProp = (sampleCount / mRows.length) * 100;
+                totalDiff += Math.abs(sampleProp - popProp);
+            }
+            values[method] = totalDiff / categories.length;
+        }
+        rows.push({ label: `${field}（分布偏差）`, values });
+    }
+
+    return rows;
 }
 
 function triggerSvgDownload(fileName: string, svgContent: string) {
@@ -453,6 +529,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const distributionRows = distributionResult.rows;
 
+    const representativenessRows = useMemo(() => {
+        return buildRepresentativenessRows(numericFields, categoricalFields, methodRows, populationStats);
+    }, [numericFields, categoricalFields, methodRows, populationStats]);
+
     const meanSeries: ChartSeries[] = [
         {
             key: "value",
@@ -474,6 +554,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         { key: "systematic", label: METHOD_META.systematic.label, color: METHOD_META.systematic.color },
         { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
         ...(distributionResult.withPopulation ? [POPULATION_SERIES] : []),
+    ];
+
+    const representativenessSeries: ChartSeries[] = [
+        { key: "simple", label: METHOD_META.simple.label, color: METHOD_META.simple.color },
+        { key: "systematic", label: METHOD_META.systematic.label, color: METHOD_META.systematic.color },
+        { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
     ];
 
     useEffect(() => {
@@ -770,6 +856,17 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         });
     };
 
+    const downloadRepresentativenessChart = () => {
+        if (representativenessRows.length === 0) return;
+        downloadChartAsSvg({
+            title: "样本代表性 - 各方法与总体的偏差",
+            rows: representativenessRows,
+            series: representativenessSeries,
+            fileName: "representativeness.svg",
+            unit: "%",
+        });
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             {networkNotice && (
@@ -821,6 +918,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <TabsTrigger value="mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">均值对比</TabsTrigger>
                                     <TabsTrigger value="dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">分布对比</TabsTrigger>
                                     <TabsTrigger value="error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">误差分析</TabsTrigger>
+                                    <TabsTrigger value="represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">样本代表性</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="mean" className="mt-6 space-y-4">
@@ -908,6 +1006,26 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
+                                    />
+                                </TabsContent>
+
+                                <TabsContent value="represent" className="mt-6 space-y-4">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                        <div className="text-sm text-slate-400">比较各抽样方法样本与总体关键指标的偏差程度（%）。</div>
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={() => setZoomChart("represent")}>
+                                                <Maximize2 className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={downloadRepresentativenessChart}>
+                                                <Download className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <ChartBars
+                                        rows={representativenessRows}
+                                        series={representativenessSeries}
+                                        unit="%"
+                                        emptyMessage="暂无可用于代表性分析的数据"
                                     />
                                 </TabsContent>
                             </Tabs>
@@ -1028,6 +1146,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             {zoomChart === "mean" && "均值对比（放大）"}
                             {zoomChart === "dist" && "分布对比（放大）"}
                             {zoomChart === "error" && "误差分析（放大）"}
+                            {zoomChart === "represent" && "样本代表性（放大）"}
                         </DialogTitle>
                     </DialogHeader>
                     {zoomChart === "mean" && (
@@ -1052,6 +1171,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             rows={errorRows}
                             series={errorSeries}
                             emptyMessage="暂无可用于误差分析的数值字段"
+                            heightClass="h-[65vh]"
+                        />
+                    )}
+                    {zoomChart === "represent" && (
+                        <ChartBars
+                            rows={representativenessRows}
+                            series={representativenessSeries}
+                            unit="%"
+                            emptyMessage="暂无可用于代表性分析的数据"
                             heightClass="h-[65vh]"
                         />
                     )}

@@ -128,7 +128,7 @@ const tasksRoutes: RouteDefinition = {
                 progress = 100;
             } else {
                 status = "in_progress";
-                progress = Math.round((exp.currentStage / 4) * 100);
+                progress = Math.round((Math.min(exp.currentStage, 4) / 4) * 100);
             }
 
             return {
