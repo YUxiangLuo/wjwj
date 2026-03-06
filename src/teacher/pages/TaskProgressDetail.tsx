@@ -44,6 +44,13 @@ const RING_COLORS: Record<StatusKey, string> = {
     rejected: "#f43f5e",
 };
 
+const CHART_SIZE = 160;
+const CHART_CENTER = CHART_SIZE / 2;
+const RING_RADIUS = 65;
+const RING_STROKE = 14;
+
+const STATUSES_WITH_SUBMISSION: StatusKey[] = ["submitted", "graded", "rejected"];
+
 export function TaskProgressDetail() {
     const { taskId } = useParams();
     const navigate = useNavigate();
@@ -122,10 +129,9 @@ export function TaskProgressDetail() {
                     {/* Ring chart */}
                     <Card className="border-slate-800 bg-slate-900 shadow-sm">
                         <CardContent className="p-6 flex flex-col items-center">
-                            <svg width="160" height="160" viewBox="0 0 160 160" className="mb-4">
+                            <svg width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-4">
                                 {(() => {
-                                    const cx = 80, cy = 80, r = 65, stroke = 14;
-                                    const circumference = 2 * Math.PI * r;
+                                    const circumference = 2 * Math.PI * RING_RADIUS;
                                     let offset = 0;
                                     const segments: React.ReactNode[] = [];
 
@@ -137,15 +143,15 @@ export function TaskProgressDetail() {
                                         segments.push(
                                             <circle
                                                 key={key}
-                                                cx={cx}
-                                                cy={cy}
-                                                r={r}
+                                                cx={CHART_CENTER}
+                                                cy={CHART_CENTER}
+                                                r={RING_RADIUS}
                                                 fill="none"
                                                 stroke={RING_COLORS[key]}
-                                                strokeWidth={stroke}
+                                                strokeWidth={RING_STROKE}
                                                 strokeDasharray={`${length} ${circumference - length}`}
                                                 strokeDashoffset={-offset}
-                                                transform={`rotate(-90 ${cx} ${cy})`}
+                                                transform={`rotate(-90 ${CHART_CENTER} ${CHART_CENTER})`}
                                                 className="transition-all duration-500"
                                             />
                                         );
@@ -154,10 +160,10 @@ export function TaskProgressDetail() {
 
                                     return (
                                         <>
-                                            <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgb(30,41,59)" strokeWidth={stroke} />
+                                            <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" stroke="rgb(30,41,59)" strokeWidth={RING_STROKE} />
                                             {segments}
-                                            <text x={cx} y={cy - 8} textAnchor="middle" className="fill-slate-100 text-2xl font-bold" fontSize="28">{total}</text>
-                                            <text x={cx} y={cy + 14} textAnchor="middle" className="fill-slate-500 text-xs" fontSize="12">总人数</text>
+                                            <text x={CHART_CENTER} y={CHART_CENTER - 8} textAnchor="middle" className="fill-slate-100 text-2xl font-bold" fontSize="28">{total}</text>
+                                            <text x={CHART_CENTER} y={CHART_CENTER + 14} textAnchor="middle" className="fill-slate-500 text-xs" fontSize="12">总人数</text>
                                         </>
                                     );
                                 })()}
@@ -262,7 +268,7 @@ export function TaskProgressDetail() {
                                             {s.lastActivity ? new Date(s.lastActivity).toLocaleString("zh-CN") : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            {(s.status === "submitted" || s.status === "graded" || s.status === "rejected") && s.submissionId ? (
+                                            {STATUSES_WITH_SUBMISSION.includes(s.status as StatusKey) && s.submissionId ? (
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"

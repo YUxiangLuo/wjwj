@@ -50,13 +50,16 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
         .$dynamic();
 
     if (classId && classId !== "all") {
-        query = query.where(eq(class_.id, Number(classId)));
+        const id = Number(classId);
+        if (Number.isFinite(id)) query = query.where(eq(class_.id, id));
     }
     if (topicId && topicId !== "all") {
-        query = query.where(eq(topic.id, Number(topicId)));
+        const id = Number(topicId);
+        if (Number.isFinite(id)) query = query.where(eq(topic.id, id));
     }
     if (taskId && taskId !== "all") {
-        query = query.where(eq(task.id, Number(taskId)));
+        const id = Number(taskId);
+        if (Number.isFinite(id)) query = query.where(eq(task.id, id));
     }
     if (taskIds.length > 0) {
         query = query.where(sql`${task.id} IN (${sql.join(taskIds, sql`, `)})`);
