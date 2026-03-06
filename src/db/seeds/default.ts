@@ -429,12 +429,12 @@ async function seed() {
     // ── 附件（多种文件类型） ──
     const attachmentsDefs: { topicIdx: number; fileName: string; filePath: string; fileType: string; fileSize: number }[] = [
         { topicIdx: 0, fileName: "消费者行为分析-实验指导书.pdf", filePath: "/storage/uploads/topics/consumer_guide.pdf", fileType: "application/pdf", fileSize: 2_500_000 },
-        { topicIdx: 0, fileName: "调查问卷模板.docx", filePath: "/storage/uploads/topics/consumer_template.docx", fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileSize: 350_000 },
+        { topicIdx: 0, fileName: "调查问卷模板.docx", filePath: "/storage/uploads/topics/consumer_template.docx", fileType: "application/docx", fileSize: 350_000 },
         { topicIdx: 1, fileName: "网购趋势调查-实验指导书.pdf", filePath: "/storage/uploads/topics/shopping_guide.pdf", fileType: "application/pdf", fileSize: 1_800_000 },
         { topicIdx: 1, fileName: "参考文献汇总.pdf", filePath: "/storage/uploads/topics/shopping_refs.pdf", fileType: "application/pdf", fileSize: 4_200_000 },
         { topicIdx: 2, fileName: "市场调研方法-指导手册.pdf", filePath: "/storage/uploads/topics/market_guide.pdf", fileType: "application/pdf", fileSize: 3_100_000 },
         { topicIdx: 3, fileName: "数据分析入门讲义.pdf", filePath: "/storage/uploads/topics/data_analysis_slides.pdf", fileType: "application/pdf", fileSize: 5_600_000 },
-        { topicIdx: 3, fileName: "示例数据集说明.xlsx", filePath: "/storage/uploads/topics/data_analysis_example.xlsx", fileType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileSize: 780_000 },
+        { topicIdx: 3, fileName: "示例数据集说明.xlsx", filePath: "/storage/uploads/topics/data_analysis_example.xlsx", fileType: "application/xlsx", fileSize: 780_000 },
         { topicIdx: 5, fileName: "健康调查-实验手册.pdf", filePath: "/storage/uploads/topics/health_guide.pdf", fileType: "application/pdf", fileSize: 2_100_000 },
         { topicIdx: 5, fileName: "体检指标参考范围.png", filePath: "/storage/uploads/topics/health_reference.png", fileType: "image/png", fileSize: 420_000 },
         { topicIdx: 7, fileName: "2023年消费趋势-指导书.pdf", filePath: "/storage/uploads/topics/2023_consumer_guide.pdf", fileType: "application/pdf", fileSize: 1_900_000 },
@@ -517,14 +517,24 @@ async function seed() {
 
     const taskIds: number[] = [];
     for (const t of taskDefs) {
-        const [taskRes] = await db.insert(task).values({
+        await db.insert(task).values({
             topicId: topicIds[t.topicIdx]!,
             classId: classIds[t.classIdx]!,
             openTime: t.openTime,
             deadline: t.deadline,
             deletedAt: t.deleted ? daysAgo(1) : null,
         }).onDuplicateKeyUpdate({ set: { deadline: t.deadline } });
-        taskIds.push(taskRes.insertId);
+
+        const [taskRow] = await db
+            .select({ id: task.id })
+            .from(task)
+            .where(
+                and(
+                    eq(task.topicId, topicIds[t.topicIdx]!),
+                    eq(task.classId, classIds[t.classIdx]!),
+                ),
+            );
+        taskIds.push(taskRow!.id);
     }
 
     // ========================================================
@@ -700,33 +710,34 @@ async function seed() {
         rejectReason?: string;
         gradedByType?: number;
         gradedById?: number;
+        submittedAgo?: number;
+        lockedByType?: number;
+        lockedById?: number;
     };
 
     const submissions: SubDef[] = [
         // 钱二 - 待批改 (pending)
-        { expIdx: 1, status: 1 },
-        // 孙三 - 已批改 (高分)
-        { expIdx: 2, status: 2, scoreQ: "92.00", scoreP: "88.50", scoreR: "95.00", total: "92.10", comment: "问卷设计完整，分析深入，报告逻辑清晰，做得非常好！", gradedByType: USER.teacher, gradedById: teacherIds[0]! },
+        { expIdx: 1, status: 1, submittedAgo: 5 },
+        // 孙三 - 已批改 (高分), 助教正在锁定复查
+        { expIdx: 2, status: 2, scoreQ: "92.00", scoreP: "88.50", scoreR: "95.00", total: "92.10", comment: "问卷设计完整，分析深入，报告逻辑清晰，做得非常好！", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 12, lockedByType: USER.assistant, lockedById: assistantIds[0]! },
         // 李四 - 已驳回
-        { expIdx: 3, status: 3, rejectReason: "报告部分内容不完整，请补充数据分析章节后重新提交。", gradedByType: USER.teacher, gradedById: teacherIds[0]! },
+        { expIdx: 3, status: 3, rejectReason: "报告部分内容不完整，请补充数据分析章节后重新提交。", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 10 },
         // 冯九 - 已批改 (低分)
-        { expIdx: 8, status: 2, scoreQ: "65.00", scoreP: "60.00", scoreR: "58.00", total: "60.60", comment: "问卷设计较为简单，抽样过程存在遗漏，报告分析不够深入，建议多参考指导书。", gradedByType: USER.teacher, gradedById: teacherIds[0]! },
+        { expIdx: 8, status: 2, scoreQ: "65.00", scoreP: "60.00", scoreR: "58.00", total: "60.60", comment: "问卷设计较为简单，抽样过程存在遗漏，报告分析不够深入，建议多参考指导书。", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 8 },
         // 陈十 - 待批改
-        { expIdx: 9, status: 1 },
+        { expIdx: 9, status: 1, submittedAgo: 3 },
         // 演示学生 - 已过期任务提交 (待批改)
-        { expIdx: 13, status: 1 },
+        { expIdx: 13, status: 1, submittedAgo: 6 },
         // 杨二一 (B班) - 待批改
-        { expIdx: 14, status: 1 },
+        { expIdx: 14, status: 1, submittedAgo: 4 },
         // 张三一 (数据挖掘) - 已批改
-        { expIdx: 18, status: 2, scoreQ: "85.00", scoreP: "82.00", scoreR: "88.00", total: "85.00", comment: "整体良好，数据分析方法运用得当。", gradedByType: USER.teacher, gradedById: teacherIds[2]! },
+        { expIdx: 18, status: 2, scoreQ: "85.00", scoreP: "82.00", scoreR: "88.00", total: "85.00", comment: "整体良好，数据分析方法运用得当。", gradedByType: USER.teacher, gradedById: teacherIds[2]!, submittedAgo: 9 },
         // 往期陈一
-        { expIdx: 20, status: 2, scoreQ: "78.00", scoreP: "80.00", scoreR: "82.00", total: "80.20", comment: "达到实验要求。", gradedByType: USER.teacher, gradedById: teacherIds[0]! },
+        { expIdx: 20, status: 2, scoreQ: "78.00", scoreP: "80.00", scoreR: "82.00", total: "80.20", comment: "达到实验要求。", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 65 },
         // 往期赵二
-        { expIdx: 21, status: 2, scoreQ: "90.00", scoreP: "92.00", scoreR: "88.00", total: "89.80", comment: "优秀，分析透彻。", gradedByType: USER.teacher, gradedById: teacherIds[0]! },
+        { expIdx: 21, status: 2, scoreQ: "90.00", scoreP: "92.00", scoreR: "88.00", total: "89.80", comment: "优秀，分析透彻。", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 63 },
         // 往期钱三
-        { expIdx: 22, status: 2, scoreQ: "72.00", scoreP: "70.00", scoreR: "75.00", total: "72.60", comment: "基本合格，建议加强报告写作。", gradedByType: USER.teacher, gradedById: teacherIds[0]! },
-        // 孙三 - 助教批改草稿 (draft submission for grading-in-progress)
-        { expIdx: 2, status: 0, scoreQ: "90.00", scoreP: "85.00", comment: "（草稿）正在评分中……" },
+        { expIdx: 22, status: 2, scoreQ: "72.00", scoreP: "70.00", scoreR: "75.00", total: "72.60", comment: "基本合格，建议加强报告写作。", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 64 },
     ];
 
     for (const s of submissions) {
@@ -755,6 +766,10 @@ async function seed() {
             gradedByType: s.gradedByType ?? null,
             gradedById: s.gradedById ?? null,
             gradedAt: s.status === 2 || s.status === 3 ? daysAgo(2) : null,
+            submittedAt: daysAgo(s.submittedAgo ?? 1),
+            lockedByType: s.lockedByType ?? null,
+            lockedById: s.lockedById ?? null,
+            lockedAt: s.lockedByType ? daysAgo(0) : null,
         });
     }
 
