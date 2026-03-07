@@ -413,14 +413,14 @@ export function TopicManagement() {
                                 <div className="flex flex-wrap gap-2">
                                     {topic.status === 0 ? (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-600 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
                                             <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
                                             <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     ) : (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-600 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
                                             <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button
                                                 data-testid={`teacher-topic-copy-${topic.id}`}

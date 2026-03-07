@@ -69,7 +69,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
     if (!deadline) return null;
     if (status === "graded") return null;
     if (notOpenYet) {
-        return <span className="text-sm text-cyan-600">尚未开放</span>;
+        return <span className="text-sm text-cyan-800">尚未开放</span>;
     }
 
     const remainingMs = getRemainingMs(deadline);
@@ -491,7 +491,7 @@ export function TaskHall() {
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-indigo-300 transition-colors ${!announcement.isRead ? "text-slate-100" : "text-slate-400"}`}>
+                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-indigo-600 transition-colors ${!announcement.isRead ? "text-slate-100" : "text-slate-400"}`}>
                                             {announcement.title}
                                         </div>
                                         {!announcement.isRead && <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0"></span>}

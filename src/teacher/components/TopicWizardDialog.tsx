@@ -300,7 +300,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             href="/templates/数据上传规范.pdf"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-xs text-indigo-500 hover:text-indigo-300 flex items-center gap-1"
+                                            className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
                                         >
                                             <HelpCircle className="w-3 h-3" />
                                             数据规范

@@ -391,7 +391,7 @@ export function StudentManagement() {
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => openExperimentsModal(student)}
-                                                        className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
+                                                        className="h-8 text-slate-400 hover:text-blue-600 hover:bg-blue-500/10"
                                                     >
                                                         <Search className="w-3.5 h-3.5 mr-1" />
                                                         实验

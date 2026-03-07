@@ -376,7 +376,7 @@ export function AnnouncementManagement() {
                                             data-testid={`announcement-stats-${announcement.id}`}
                                             onClick={() => handleViewStats(announcement)}
                                             disabled={announcement.status !== 1}
-                                            className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
+                                            className="h-8 text-slate-400 hover:text-blue-600 hover:bg-blue-500/10"
                                         >
                                             <BarChart3 className="w-3.5 h-3.5 mr-1" />
                                             统计

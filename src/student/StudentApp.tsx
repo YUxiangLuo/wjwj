@@ -457,7 +457,7 @@ function StudentAppContent() {
                                 size="sm"
                                 onClick={() => markAllNotificationsAsRead()}
                                 disabled={!notifications || notifications.unreadCount === 0}
-                                className="text-xs text-indigo-500 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                className="text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
                                 data-testid="student-notification-read-all"
                             >
                                 全部已读

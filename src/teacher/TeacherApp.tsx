@@ -573,7 +573,7 @@ export function TeacherApp() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="mt-3 h-7 text-xs text-indigo-500 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                            className="mt-3 h-7 text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
                                             onClick={async () => {
                                                 await teacherApi.readNotification(item.id);
                                                 loadNotifications();

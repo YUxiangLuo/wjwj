@@ -272,7 +272,7 @@ export function TaskProgressDetail() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-7 text-xs text-indigo-500 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                                    className="h-7 text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
                                                     onClick={() => navigate(`/grading/${s.submissionId}`)}
                                                 >
                                                     {s.status === "submitted" ? (

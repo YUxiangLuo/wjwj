@@ -650,7 +650,7 @@ export function GradingDetail() {
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-6 text-xs text-indigo-500 hover:text-indigo-300 hover:bg-indigo-500/10 px-2"
+                                        className="h-6 text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10 px-2"
                                         onClick={() => setShowTemplates(!showTemplates)}
                                         disabled={saving || isReadOnly}
                                     >

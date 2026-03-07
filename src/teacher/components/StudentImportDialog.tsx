@@ -57,7 +57,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             <div className="text-xs text-emerald-600 mt-3 font-mono">已选择：{importFile.name}</div>
                         )}
                     </div>
-                    <Button data-testid="teacher-student-template-download" variant="link" className="text-indigo-500 hover:text-indigo-300 p-0 h-auto" onClick={onDownloadTemplate}>
+                    <Button data-testid="teacher-student-template-download" variant="link" className="text-indigo-500 hover:text-indigo-600 p-0 h-auto" onClick={onDownloadTemplate}>
                         <Download className="w-4 h-4 mr-1" />
                         下载导入模板
                     </Button>

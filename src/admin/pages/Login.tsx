@@ -156,7 +156,7 @@ export function Login() {
                         </div>
 
                         {error && (
-                            <div className="p-4 text-sm text-rose-500 bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center gap-3 animate-in slide-in-from-top-2">
+                            <div className="p-4 text-sm text-rose-600 bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center gap-3 animate-in slide-in-from-top-2">
                                 <div className="w-2 h-2 rounded-full bg-rose-500" />
                                 {error}
                             </div>

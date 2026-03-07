@@ -562,7 +562,7 @@ export function AdminApp() {
                     </DialogHeader>
                     <div className="flex justify-between items-center my-2">
                         <span className="text-sm text-slate-400">未读 {unreadCount} 条</span>
-                        <Button variant="ghost" size="sm" onClick={handleMarkAllRead} disabled={unreadCount === 0} className="text-indigo-500 hover:text-indigo-300 hover:bg-indigo-500/10">
+                        <Button variant="ghost" size="sm" onClick={handleMarkAllRead} disabled={unreadCount === 0} className="text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10">
                             全部已读
                         </Button>
                     </div>

@@ -215,7 +215,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     onClick={addOption}
                                     disabled={options.length >= 10}
                                     data-testid="student-question-add-option"
-                                    className="border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-300"
+                                    className="border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-600"
                                 >
                                     <Plus className="w-4 h-4 mr-1" />
                                     添加选项

@@ -254,7 +254,7 @@ export function AssistantManagement() {
                                                 data-testid={`teacher-assistant-reset-${ta.id}`}
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
+                                                className="h-8 text-slate-400 hover:text-blue-600 hover:bg-blue-500/10"
                                                 onClick={async () => {
                                                     const res = await teacherApi.updateAssistant(ta.id, { action: "reset_password" });
                                                     if (res.success) {

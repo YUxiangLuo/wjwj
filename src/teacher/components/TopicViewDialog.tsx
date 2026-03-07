@@ -283,7 +283,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     href={a.filePath}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-xs text-indigo-500 hover:text-indigo-300 flex items-center gap-1"
+                                                    className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
                                                 >
                                                     <ExternalLink className="w-3 h-3" />
                                                     查看

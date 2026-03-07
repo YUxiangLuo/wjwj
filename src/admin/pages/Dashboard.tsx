@@ -19,7 +19,7 @@ function KpiCard({ icon: Icon, value, label, trend, trendUp, loading }: {
         <Card className="shadow-lg shadow-black/20 border-slate-800 bg-slate-900 hover:border-indigo-500/30 transition-all duration-300 group">
             <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-xl bg-slate-800/50 text-indigo-500 flex items-center justify-center border border-slate-700/50 group-hover:bg-indigo-500/10 group-hover:text-indigo-300 transition-colors">
+                    <div className="w-12 h-12 rounded-xl bg-slate-800/50 text-indigo-500 flex items-center justify-center border border-slate-700/50 group-hover:bg-indigo-500/10 group-hover:text-indigo-600 transition-colors">
                         <Icon className="w-6 h-6" />
                     </div>
                     {trend ? (
