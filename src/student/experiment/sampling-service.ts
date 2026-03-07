@@ -27,8 +27,8 @@ export function parseSamplingSeed(rawSeed: unknown) {
 
     if (!(rawSeed === undefined || rawSeed === null || rawSeed === "")) {
         if (typeof rawSeed === "number") {
-            if (!Number.isInteger(rawSeed)) {
-                return { seed: undefined, errorMessage: "seed 需为整数" };
+            if (!Number.isSafeInteger(rawSeed)) {
+                return { seed: undefined, errorMessage: rawSeed !== Math.floor(rawSeed) ? "seed 需为整数" : "seed 值超出安全整数范围" };
             }
             seed = rawSeed;
         } else if (typeof rawSeed === "string") {
