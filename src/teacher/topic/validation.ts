@@ -14,6 +14,18 @@ interface TopicFieldMappingInput {
     others?: string[];
 }
 
+interface TopicWeightConfigInput {
+    questionnaire: number;
+    process: number;
+    report: number;
+}
+
+interface TopicPublishReadyInput {
+    excelFilePath?: string | null;
+    fieldMapping?: TopicFieldMappingInput | string | null;
+    weightConfig?: TopicWeightConfigInput | string | null;
+}
+
 interface TopicAttachmentInput {
     currentCount: number;
     fileName: string;
@@ -26,6 +38,20 @@ interface TopicRecommendQuestionInput {
     content: string;
     options?: any;
     sortOrder?: number;
+}
+
+function parseObjectLike<T extends object>(value: T | string | null | undefined): T | null {
+    if (!value) return null;
+    if (typeof value === "string") {
+        try {
+            const parsed = JSON.parse(value);
+            return parsed && typeof parsed === "object" ? parsed as T : null;
+        } catch {
+            return null;
+        }
+    }
+
+    return typeof value === "object" ? value : null;
 }
 
 export function validateParsedExcelUpload(parsed: ParsedExcelFile) {
@@ -53,6 +79,22 @@ export function validateTopicFieldMappingConfig(fieldMapping: TopicFieldMappingI
     if (stratified.length < 1) return "至少选择1个分层变量";
     if (numeric.length < 1) return "至少选择1个数值变量";
     if (uniqueFields.size < 3) return "至少选择3个字段";
+
+    return null;
+}
+
+export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput | null | undefined) {
+    if (!topicInfo?.excelFilePath) return "课题需先上传总体数据后才能发布";
+
+    const fieldMapping = parseObjectLike<TopicFieldMappingInput>(topicInfo.fieldMapping);
+    if (!fieldMapping || validateTopicFieldMappingConfig(fieldMapping)) {
+        return "课题需先完成字段映射后才能发布";
+    }
+
+    const weightConfig = parseObjectLike<TopicWeightConfigInput>(topicInfo.weightConfig);
+    if (!weightConfig || validateWeightConfig(weightConfig)) {
+        return "课题需先完成评分权重配置后才能发布";
+    }
 
     return null;
 }
@@ -111,7 +153,7 @@ export function validateRecommendQuestionItems(items: TopicRecommendQuestionInpu
     return null;
 }
 
-export function validateWeightConfig(weightConfig: { questionnaire: number; process: number; report: number } | null | undefined) {
+export function validateWeightConfig(weightConfig: TopicWeightConfigInput | null | undefined) {
     if (!weightConfig) return "评分权重不能为空";
 
     const { questionnaire, process, report } = weightConfig;

@@ -1,6 +1,6 @@
 import { CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Sparkles, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -234,6 +234,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
             >
                 <DialogHeader>
                     <DialogTitle className="text-slate-100">{editingTopicId ? "编辑课题" : "创建新课题"}</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        通过六个步骤配置课题基础信息、总体数据、字段映射、辅助资料、推荐题目和评分权重。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
                     <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700">

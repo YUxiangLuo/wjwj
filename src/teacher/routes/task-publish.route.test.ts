@@ -25,6 +25,11 @@ async function loadTaskRoutes(options: {
         notifyStudentsByClassIds: async (classIds: number[], payload: Record<string, unknown>) => {
             notifications.push({ classIds, payload });
         },
+        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
+        notifyStudentById: async () => undefined,
+        isLockExpired: () => true,
+        TEACHER_USER_TYPE: 2,
+        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./topic-task");
@@ -56,7 +61,14 @@ test("task publish inserts new tasks and notifies only newly assigned classes", 
     const { module, operations, notifications } = await loadTaskRoutes({
         teacherId: 9,
         select: [
-            [{ id: 12, name: "抽样方法课题" }],
+            [{
+                id: 12,
+                name: "抽样方法课题",
+                status: 1,
+                excelFilePath: "/storage/uploads/topic.xlsx",
+                fieldMapping: { identifier: "id", stratified: ["gender"], numeric: ["score"] },
+                weightConfig: { questionnaire: 30, process: 30, report: 40 },
+            }],
             [{ id: 101 }, { id: 102 }],
             [],
         ],
@@ -90,4 +102,70 @@ test("task publish inserts new tasks and notifies only newly assigned classes", 
             relatedId: 12,
         },
     });
+});
+
+test("task publish rejects unpublished topics even when they belong to the teacher", async () => {
+    const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { module, operations, notifications } = await loadTaskRoutes({
+        teacherId: 9,
+        select: [[{
+            id: 12,
+            name: "草稿课题",
+            status: 0,
+            excelFilePath: "/storage/uploads/topic.xlsx",
+            fieldMapping: { identifier: "id", stratified: ["gender"], numeric: ["score"] },
+            weightConfig: { questionnaire: 30, process: 30, report: 40 },
+        }]],
+    });
+
+    const response = await module.taskRoutes.POST!(createJsonRequest(
+        "https://example.com/api/teacher/tasks",
+        "POST",
+        { topicId: 12, classIds: [101], deadline }
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "VALIDATION_ERROR",
+            message: "只能发布已发布课题",
+        },
+    });
+    expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
+    expect(notifications).toHaveLength(0);
+});
+
+test("task publish rejects published topics with incomplete configuration", async () => {
+    const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { module, operations, notifications } = await loadTaskRoutes({
+        teacherId: 9,
+        select: [[{
+            id: 12,
+            name: "缺配置课题",
+            status: 1,
+            excelFilePath: "/storage/uploads/topic.xlsx",
+            fieldMapping: null,
+            weightConfig: { questionnaire: 30, process: 30, report: 40 },
+        }]],
+    });
+
+    const response = await module.taskRoutes.POST!(createJsonRequest(
+        "https://example.com/api/teacher/tasks",
+        "POST",
+        { topicId: 12, classIds: [101], deadline }
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "VALIDATION_ERROR",
+            message: "课题需先完成字段映射后才能发布",
+        },
+    });
+    expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
+    expect(notifications).toHaveLength(0);
 });

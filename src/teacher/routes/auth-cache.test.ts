@@ -97,3 +97,31 @@ test("withPrimaryTeacherAuth injects teacher auth context for wrapped handlers",
     expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(2);
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(1);
 });
+
+test("lockout duration formatter uses readable minute hour and day units", async () => {
+    const { module } = await loadTeacherAuthModule();
+
+    expect(module.formatLockoutRetryDuration(5)).toBe("5分钟");
+    expect(module.formatLockoutRetryDuration(61)).toBe("1小时1分钟");
+    expect(module.formatLockoutRetryDuration(120)).toBe("2小时");
+    expect(module.formatLockoutRetryDuration(1839)).toBe("1天7小时");
+});
+
+test("requireTeacherAuth returns a kicked-offline error when the session token no longer exists", async () => {
+    const { module } = await loadTeacherAuthModule();
+
+    const request = new Request("https://example.com/api/teacher/me", {
+        headers: { cookie: "teacher_session=missing-session-token" },
+    });
+    const auth = await module.requireTeacherAuth(request);
+    const payload = await auth.error?.json() as any;
+
+    expect(auth.user).toBeNull();
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "AUTH_005",
+            message: "您的账号已在其他设备登录",
+        },
+    });
+});

@@ -178,7 +178,8 @@ export function TopicManagement() {
         if (res?.success) {
             loadTopics();
         } else {
-            toast.error("操作失败");
+            const actionLabel = type === "publish" ? "发布" : "删除";
+            toast.error(`${actionLabel}失败: ${res?.error?.message || "未知错误"}`);
         }
         setConfirmDialog({ open: false, type: null, topic: null });
     }

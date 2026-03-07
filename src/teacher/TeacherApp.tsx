@@ -53,6 +53,8 @@ const pageTitles: Record<string, string> = {
     "/export": "成绩导出",
 };
 
+const LOGIN_REDIRECT_REASON_KEY = "teacher_login_redirect_reason";
+
 export function TeacherApp() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -99,6 +101,9 @@ export function TeacherApp() {
                         setShowPasswordModal(true);
                     }
                 } else {
+                    if (res.error?.code === "AUTH_004" || res.error?.code === "AUTH_005") {
+                        sessionStorage.setItem(LOGIN_REDIRECT_REASON_KEY, res.error.message);
+                    }
                     setAuthState("guest");
                     setTeacherUser(null);
                 }

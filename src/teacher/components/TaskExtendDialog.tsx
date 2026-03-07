@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Task } from "../api-client";
@@ -28,6 +28,9 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
             <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-slate-100">延长截止时间</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        为所选任务设置新的截止时间。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="text-sm text-slate-500">

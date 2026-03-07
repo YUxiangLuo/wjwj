@@ -4,7 +4,7 @@ import { LayoutDashboard, School, BookOpen, ClipboardList, PenLine, ArrowUpRight
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type TeacherStats, type TeacherAnnouncement } from "../api-client";
 
@@ -288,6 +288,9 @@ export function Dashboard() {
                             <Megaphone className="w-5 h-5 text-amber-400" />
                             系统公告
                         </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            查看最近发布的系统公告列表。
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto space-y-2 py-2">
                         {announcements.length === 0 ? (
@@ -323,6 +326,9 @@ export function Dashboard() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100 text-base">{selectedAnnouncement?.title}</DialogTitle>
+                        <DialogDescription className="sr-only">
+                            查看系统公告的完整内容。
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="text-xs text-slate-500 -mt-2">
                         {selectedAnnouncement?.createdAt && new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN")}

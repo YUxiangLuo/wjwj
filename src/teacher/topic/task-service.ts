@@ -2,6 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, task, topic } from "../../db/schema";
 import { notifyStudentsByClassIds } from "../routes/auth";
+import { validateTopicPublishReadiness } from "./validation";
 
 interface TaskServiceFailure {
     ok: false;
@@ -34,11 +35,26 @@ export async function publishTopicTasks(params: {
     }
 
     const [topicRow] = await db
-        .select({ id: topic.id, name: topic.name })
+        .select({
+            id: topic.id,
+            name: topic.name,
+            status: topic.status,
+            excelFilePath: topic.excelFilePath,
+            fieldMapping: topic.fieldMapping,
+            weightConfig: topic.weightConfig,
+        })
         .from(topic)
-        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId)));
+        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)));
     if (!topicRow) {
         return fail("无权限使用该课题", "FORBIDDEN", 403);
+    }
+    if (topicRow.status !== 1) {
+        return fail("只能发布已发布课题", "VALIDATION_ERROR");
+    }
+
+    const publishReadinessError = validateTopicPublishReadiness(topicRow);
+    if (publishReadinessError) {
+        return fail(publishReadinessError, "VALIDATION_ERROR");
     }
 
     const allowedClasses = await db

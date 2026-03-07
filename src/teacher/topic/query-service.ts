@@ -36,7 +36,7 @@ export async function getTeacherTopicDetail(topicId: number) {
     if (topicInfo?.excelFilePath) {
         try {
             const buffer = await Bun.file(`${process.cwd()}${topicInfo.excelFilePath}`).arrayBuffer();
-            const parsed = await parseExcelFile(buffer);
+            const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
             excelInfo = { columns: parsed.columns, preview: parsed.preview };
         } catch {
             excelInfo = null;

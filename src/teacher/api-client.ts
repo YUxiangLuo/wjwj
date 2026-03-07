@@ -478,14 +478,16 @@ export const teacherApi = {
         request<{ success: boolean }>(`/api/teacher/announcements/${id}/read`, { method: "PUT" }),
 
     // Grade export
-    getGradeExportPreview: (params: { classId?: number | string; topicId?: number | string }) => {
+    getGradeExportPreview: (params: { semester?: string; classId?: number | string; topicId?: number | string }) => {
         const search = new URLSearchParams();
+        if (params.semester !== undefined) search.set("semester", String(params.semester));
         if (params.classId !== undefined) search.set("classId", String(params.classId));
         if (params.topicId !== undefined) search.set("topicId", String(params.topicId));
         return request<GradeExportPreviewItem[]>(`/api/teacher/grade-export/preview?${search.toString()}`);
     },
-    getGradeExportData: (params: { classId?: number | string; topicId?: number | string; taskId?: number | string }) => {
+    getGradeExportData: (params: { semester?: string; classId?: number | string; topicId?: number | string; taskId?: number | string }) => {
         const search = new URLSearchParams();
+        if (params.semester !== undefined) search.set("semester", String(params.semester));
         if (params.classId !== undefined) search.set("classId", String(params.classId));
         if (params.topicId !== undefined) search.set("topicId", String(params.topicId));
         if (params.taskId !== undefined) search.set("taskId", String(params.taskId));

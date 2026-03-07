@@ -5,6 +5,7 @@ import { createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } 
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import {
     validateParsedExcelUpload,
+    validateTopicPublishReadiness,
     validateStratifiedValueCardinality,
     validateTopicFieldMappingConfig,
     validateTopicName,
@@ -30,6 +31,9 @@ export async function createTeacherTopic(params: {
 }) {
     const nameError = validateTopicName(params.name);
     if (nameError) return fail(nameError);
+    if (params.status === 1) {
+        return fail("课题需先上传总体数据后才能发布");
+    }
 
     const [result] = await db.insert(topic).values({
         teacherId: params.teacherId,
@@ -46,6 +50,24 @@ export async function updateTeacherTopicBasics(params: {
     topicId: number;
     body: { name?: string; description?: string; status?: number };
 }) {
+    if (params.body.status === 1) {
+        const [topicInfo] = await db
+            .select({
+                excelFilePath: topic.excelFilePath,
+                fieldMapping: topic.fieldMapping,
+                weightConfig: topic.weightConfig,
+            })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)));
+
+        if (!topicInfo) {
+            return fail("课题不存在", "NOT_FOUND", 404);
+        }
+
+        const publishReadinessError = validateTopicPublishReadiness(topicInfo);
+        if (publishReadinessError) return fail(publishReadinessError);
+    }
+
     const updateData: Record<string, unknown> = {};
     if (params.body.name !== undefined) {
         const nameError = validateTopicName(params.body.name);
@@ -90,7 +112,7 @@ export async function replaceTopicExcelData(params: {
     file: File;
 }) {
     const buffer = await params.file.arrayBuffer();
-    const parsed = await parseExcelFile(buffer);
+    const parsed = await parseExcelFile(buffer, params.file.name);
     const validationError = validateParsedExcelUpload(parsed);
     if (validationError) return fail(validationError);
 
@@ -125,7 +147,7 @@ export async function updateTopicFieldMapping(params: {
     if (!topicInfo?.excelFilePath) return fail("请先上传总体数据");
 
     const buffer = await Bun.file(`${process.cwd()}${topicInfo.excelFilePath}`).arrayBuffer();
-    const parsed = await parseExcelFile(buffer);
+    const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
     const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
     if (cardinalityError) return fail(cardinalityError);
 

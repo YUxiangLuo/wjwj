@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -30,6 +30,9 @@ export function AssistantAddDialog(props: AssistantAddDialogProps) {
             <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                 <DialogHeader>
                     <DialogTitle className="text-slate-100">添加助教</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        填写工号和姓名以创建新的助教账号。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">

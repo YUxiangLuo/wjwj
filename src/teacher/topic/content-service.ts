@@ -17,6 +17,16 @@ function fail(message: string, code = "VALIDATION_ERROR", status = 400): Service
     return { ok: false, code, message, status };
 }
 
+function normalizeJsonColumnValue<T>(value: T | string | null | undefined) {
+    if (typeof value !== "string") return value ?? null;
+
+    try {
+        return JSON.parse(value) as T;
+    } catch {
+        return value;
+    }
+}
+
 export async function uploadTopicAttachment(params: {
     topicId: number;
     file: File;
@@ -160,8 +170,8 @@ export async function copyTopicWithResources(params: {
                 description: sourceTopic.description ?? "",
                 excelFilePath: copiedExcelFilePath,
                 excelRowCount: sourceTopic.excelRowCount,
-                fieldMapping: sourceTopic.fieldMapping,
-                weightConfig: sourceTopic.weightConfig,
+                fieldMapping: normalizeJsonColumnValue(sourceTopic.fieldMapping),
+                weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
                 status: 0,
             });
 
@@ -182,7 +192,7 @@ export async function copyTopicWithResources(params: {
                         topicId: insertedTopicId,
                         questionType: question.questionType,
                         content: question.content,
-                        options: question.options,
+                        options: normalizeJsonColumnValue(question.options),
                         sortOrder: question.sortOrder,
                     }))
                 );

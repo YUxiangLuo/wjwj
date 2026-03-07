@@ -9,6 +9,9 @@
  */
 
 import { db } from "../index";
+import { mkdir } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import PDFDocument from "pdfkit";
 import {
     admin,
     teacher,
@@ -31,17 +34,59 @@ import {
     notification,
     operationLog,
     loginLog,
+    userSession,
 } from "../schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 // ── helpers ──────────────────────────────────────────────────
+const seedBaseDate = new Date();
+seedBaseDate.setHours(12, 0, 0, 0);
+
 function daysFromNow(n: number) {
-    const d = new Date();
+    const d = new Date(seedBaseDate);
     d.setDate(d.getDate() + n);
     return d;
 }
 function daysAgo(n: number) {
     return daysFromNow(-n);
+}
+
+function sortIdsAsc<T extends { id: number }>(rows: T[]) {
+    return [...rows].sort((a, b) => a.id - b.id);
+}
+
+function resolveStorageAbsolutePath(relativePath: string) {
+    return resolve(process.cwd(), relativePath.replace(/^\/+/, ""));
+}
+
+async function writePdfFixture(relativePath: string, title: string, lines: string[]) {
+    const absolutePath = resolveStorageAbsolutePath(relativePath);
+    await mkdir(dirname(absolutePath), { recursive: true });
+
+    const doc = new PDFDocument({ size: "A4", margin: 48 });
+    const chunks: Uint8Array[] = [];
+
+    const bufferPromise = new Promise<Buffer>((resolveBuffer, reject) => {
+        doc.on("data", (chunk: Uint8Array) => {
+            chunks.push(chunk);
+        });
+        doc.on("end", () => {
+            resolveBuffer(Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))));
+        });
+        doc.on("error", reject);
+    });
+
+    doc.fontSize(18).text(title);
+    doc.moveDown();
+    lines.forEach((line) => {
+        doc.fontSize(12).text(line);
+        doc.moveDown(0.5);
+    });
+    doc.end();
+
+    const buffer = await bufferPromise;
+    await Bun.write(absolutePath, buffer);
+    return buffer.byteLength;
 }
 
 async function insertOrGet<T extends { id: number }>(
@@ -50,7 +95,11 @@ async function insertOrGet<T extends { id: number }>(
     values: any,
     updateValues?: any,
 ): Promise<number> {
-    const [exist] = await db.select({ id: table.id }).from(table).where(where);
+    const existing = sortIdsAsc(await db.select({ id: table.id }).from(table).where(where));
+    const [exist, ...duplicates] = existing;
+    if (duplicates.length > 0) {
+        await db.delete(table).where(inArray(table.id, duplicates.map((row) => row.id)));
+    }
     if (exist) {
         if (updateValues) {
             await db.update(table).set(updateValues).where(eq(table.id, (exist as T).id));
@@ -61,6 +110,62 @@ async function insertOrGet<T extends { id: number }>(
     return res.insertId;
 }
 
+async function deleteRowsNotInIds(table: any, keepIds: number[]) {
+    const rows = await db.select({ id: table.id }).from(table);
+    const keepSet = new Set(keepIds);
+    const deleteIds = rows.filter((row) => !keepSet.has(row.id)).map((row) => row.id);
+    if (deleteIds.length > 0) {
+        await db.delete(table).where(inArray(table.id, deleteIds));
+    }
+}
+
+async function deleteExperimentsByIds(experimentIds: number[]) {
+    if (experimentIds.length === 0) {
+        return;
+    }
+
+    await db
+        .delete(submission)
+        .where(inArray(submission.experimentId, experimentIds));
+    await db
+        .delete(experiment)
+        .where(inArray(experiment.id, experimentIds));
+}
+
+async function deleteTasksByIds(taskIds: number[]) {
+    if (taskIds.length === 0) {
+        return;
+    }
+
+    const existingExperimentRows = await db
+        .select({ id: experiment.id })
+        .from(experiment)
+        .where(inArray(experiment.taskId, taskIds));
+    const experimentIdsToDelete = existingExperimentRows.map((row) => row.id);
+
+    await deleteExperimentsByIds(experimentIdsToDelete);
+    await db.delete(task).where(inArray(task.id, taskIds));
+}
+
+async function deleteTopicSubtree(topicIds: number[]) {
+    if (topicIds.length === 0) {
+        return;
+    }
+
+    const existingTaskRows = await db
+        .select({ id: task.id })
+        .from(task)
+        .where(inArray(task.topicId, topicIds));
+    const taskIdsToDelete = existingTaskRows.map((row) => row.id);
+    await deleteTasksByIds(taskIdsToDelete);
+
+    await db.delete(topicAttachment).where(inArray(topicAttachment.topicId, topicIds));
+    await db
+        .delete(topicRecommendQuestion)
+        .where(inArray(topicRecommendQuestion.topicId, topicIds));
+    await db.delete(topic).where(inArray(topic.id, topicIds));
+}
+
 // ── main ─────────────────────────────────────────────────────
 async function seed() {
     console.log("🌱 开始初始化数据库数据…\n");
@@ -69,6 +174,8 @@ async function seed() {
     const hashedPassword = await Bun.password.hash(defaultPassword);
 
     const USER = { admin: 1, teacher: 2, assistant: 3, student: 4 } as const;
+
+    await db.delete(userSession);
 
     // ========================================================
     // 1. 系统配置 & 管理员
@@ -247,12 +354,11 @@ async function seed() {
         { assistantId: assistantIds[2]!, classId: classIds[1]! },
         { assistantId: assistantIds[3]!, classId: classIds[2]! },
     ];
+    await db.delete(assistantClass);
     for (const ac of assistantClassPairs) {
-        await db
-            .insert(assistantClass)
-            .values(ac)
-            .onDuplicateKeyUpdate({ set: { assistantId: ac.assistantId } });
+        await db.insert(assistantClass).values(ac);
     }
+    await deleteRowsNotInIds(assistant, assistantIds);
 
     // ========================================================
     // 6. 学生 (30 位，横跨多班级 + 特殊状态)
@@ -330,7 +436,7 @@ async function seed() {
     }
 
     // ── 转班记录 ──
-    await db.insert(studentTransfer).values([
+    const transferDefs = [
         {
             studentId: studentIds[9]!,
             fromClassId: classIds[1]!,
@@ -347,7 +453,11 @@ async function seed() {
             operatedBy: 1,
             transferredAt: daysAgo(7),
         },
-    ]);
+    ];
+    await db.delete(studentTransfer);
+    for (const transferDef of transferDefs) {
+        await db.insert(studentTransfer).values(transferDef);
+    }
 
     // ========================================================
     // 7. 课题  (8 个 + 丰富资源)
@@ -465,7 +575,7 @@ async function seed() {
 
     const topicIds: number[] = [];
     for (const t of topicsDefs) {
-        const [res] = await db.insert(topic).values({
+        const topicSeed = {
             teacherId: t.teacher,
             name: t.name,
             description: t.desc,
@@ -476,9 +586,43 @@ async function seed() {
             weightConfig: t.weightConfig ?? null,
             isDeleted: t.isDeleted ?? 0,
             deletedAt: t.deletedAt ?? null,
-        });
+        };
+        const existingTopicRows = sortIdsAsc(
+            await db
+                .select({ id: topic.id })
+                .from(topic)
+                .where(and(eq(topic.teacherId, t.teacher), eq(topic.name, t.name))),
+        );
+        const [canonicalTopic, ...duplicateTopics] = existingTopicRows;
+
+        if (duplicateTopics.length > 0) {
+            await deleteTopicSubtree(duplicateTopics.map((row) => row.id));
+        }
+
+        if (canonicalTopic) {
+            await db.update(topic).set(topicSeed).where(eq(topic.id, canonicalTopic.id));
+            topicIds.push(canonicalTopic.id);
+            continue;
+        }
+
+        const [res] = await db.insert(topic).values(topicSeed);
         topicIds.push(res.insertId);
     }
+
+    const existingTopicRows = await db
+        .select({ id: topic.id, teacherId: topic.teacherId })
+        .from(topic);
+    const teacherIdSet = new Set(teacherIds);
+    const topicIdSet = new Set(topicIds);
+    const extraTopicIds = existingTopicRows
+        .filter((row) => teacherIdSet.has(row.teacherId) && !topicIdSet.has(row.id))
+        .map((row) => row.id);
+    await deleteTopicSubtree(extraTopicIds);
+
+    await db.delete(topicAttachment).where(inArray(topicAttachment.topicId, topicIds));
+    await db
+        .delete(topicRecommendQuestion)
+        .where(inArray(topicRecommendQuestion.topicId, topicIds));
 
     // ── 附件（多种文件类型） ──
     const attachmentsDefs: { topicIdx: number; fileName: string; filePath: string; fileType: string; fileSize: number }[] = [
@@ -549,7 +693,6 @@ async function seed() {
     // ========================================================
     console.log("📋 任务分配…");
 
-    const now = new Date();
     const taskDefs: { topicIdx: number; classIdx: number; openTime: Date; deadline: Date; deleted?: boolean }[] = [
         // ── A 班 4 个任务 ──
         { topicIdx: 0, classIdx: 0, openTime: daysAgo(20), deadline: daysFromNow(25) },       // 正常进行中
@@ -571,13 +714,22 @@ async function seed() {
 
     const taskIds: number[] = [];
     for (const t of taskDefs) {
-        await db.insert(task).values({
+        const taskSeed = {
             topicId: topicIds[t.topicIdx]!,
             classId: classIds[t.classIdx]!,
             openTime: t.openTime,
             deadline: t.deadline,
             deletedAt: t.deleted ? daysAgo(1) : null,
-        }).onDuplicateKeyUpdate({ set: { deadline: t.deadline } });
+        };
+        await db.insert(task).values({
+            ...taskSeed,
+        }).onDuplicateKeyUpdate({
+            set: {
+                openTime: taskSeed.openTime,
+                deadline: taskSeed.deadline,
+                deletedAt: taskSeed.deletedAt,
+            },
+        });
 
         const [taskRow] = await db
             .select({ id: task.id })
@@ -590,6 +742,16 @@ async function seed() {
             );
         taskIds.push(taskRow!.id);
     }
+
+    const existingTaskRows = await db
+        .select({ id: task.id, topicId: task.topicId })
+        .from(task);
+    const keepTaskIdSet = new Set(taskIds);
+    const keepTopicIdSet = new Set(topicIds);
+    const extraTaskIds = existingTaskRows
+        .filter((row) => keepTopicIdSet.has(row.topicId) && !keepTaskIdSet.has(row.id))
+        .map((row) => row.id);
+    await deleteTasksByIds(extraTaskIds);
 
     // ========================================================
     // 9. 实验 & 提交  (涵盖每个阶段 × 每种状态)
@@ -731,26 +893,65 @@ async function seed() {
 
     const experimentIds: number[] = [];
     for (const e of experiments) {
-        const [res] = await db
+        const experimentSeed = {
+            studentId: studentIds[e.studentIdx]!,
+            taskId: taskIds[e.taskIdx]!,
+            currentStage: e.currentStage,
+            status: e.status,
+            questionnaire: e.questionnaire ?? null,
+            samplePlan: e.samplePlan ?? null,
+            samplingResults: e.samplingResults ?? null,
+            reportContent: e.reportContent ?? null,
+            stage1CompletedAt: e.stages?.[0] ?? null,
+            stage2CompletedAt: e.stages?.[1] ?? null,
+            stage3CompletedAt: e.stages?.[2] ?? null,
+            stage4CompletedAt: e.stages?.[3] ?? null,
+            version: e.currentStage > 0 ? e.currentStage : 1,
+        };
+        await db
             .insert(experiment)
-            .values({
-                studentId: studentIds[e.studentIdx]!,
-                taskId: taskIds[e.taskIdx]!,
-                currentStage: e.currentStage,
-                status: e.status,
-                questionnaire: e.questionnaire ?? null,
-                samplePlan: e.samplePlan ?? null,
-                samplingResults: e.samplingResults ?? null,
-                reportContent: e.reportContent ?? null,
-                stage1CompletedAt: e.stages?.[0] ?? null,
-                stage2CompletedAt: e.stages?.[1] ?? null,
-                stage3CompletedAt: e.stages?.[2] ?? null,
-                stage4CompletedAt: e.stages?.[3] ?? null,
-                version: e.currentStage > 0 ? e.currentStage : 1,
-            })
-            .onDuplicateKeyUpdate({ set: { currentStage: e.currentStage } });
-        experimentIds.push(res.insertId);
+            .values(experimentSeed)
+            .onDuplicateKeyUpdate({
+                set: {
+                    currentStage: experimentSeed.currentStage,
+                    status: experimentSeed.status,
+                    questionnaire: experimentSeed.questionnaire,
+                    samplePlan: experimentSeed.samplePlan,
+                    samplingResults: experimentSeed.samplingResults,
+                    reportContent: experimentSeed.reportContent,
+                    stage1CompletedAt: experimentSeed.stage1CompletedAt,
+                    stage2CompletedAt: experimentSeed.stage2CompletedAt,
+                    stage3CompletedAt: experimentSeed.stage3CompletedAt,
+                    stage4CompletedAt: experimentSeed.stage4CompletedAt,
+                    version: experimentSeed.version,
+                },
+            });
+
+        const [experimentRow] = await db
+            .select({ id: experiment.id })
+            .from(experiment)
+            .where(
+                and(
+                    eq(experiment.studentId, experimentSeed.studentId),
+                    eq(experiment.taskId, experimentSeed.taskId),
+                ),
+            );
+        if (!experimentRow) {
+            throw new Error(`Seed experiment missing after upsert: student=${experimentSeed.studentId}, task=${experimentSeed.taskId}`);
+        }
+        experimentIds.push(experimentRow.id);
     }
+
+    const existingExperimentRows = await db
+        .select({ id: experiment.id, taskId: experiment.taskId })
+        .from(experiment);
+    const keepExperimentIdSet = new Set(experimentIds);
+    const keepSeedTaskIdSet = new Set(taskIds);
+    const extraExperimentIds = existingExperimentRows
+        .filter((row) => keepSeedTaskIdSet.has(row.taskId) && !keepExperimentIdSet.has(row.id))
+        .map((row) => row.id);
+    await deleteExperimentsByIds(extraExperimentIds);
+    await deleteRowsNotInIds(student, studentIds);
 
     // ── 提交 & 评分记录 ──
     type SubDef = {
@@ -767,11 +968,56 @@ async function seed() {
         submittedAgo?: number;
         lockedByType?: number;
         lockedById?: number;
+        questionnairePdfPath?: string | null;
+        reportPdfPath?: string | null;
     };
+
+    await writePdfFixture(
+        "/storage/uploads/submissions/qianer-questionnaire.pdf",
+        "Qian Er Questionnaire PDF",
+        [
+            "Topic: Consumer Behavior Analysis",
+            "Student: Qian Er (2024002)",
+            "Fixture: questionnaire preview and download for teacher and assistant grading.",
+        ],
+    );
+    await writePdfFixture(
+        "/storage/uploads/submissions/qianer-report.pdf",
+        "Qian Er Report PDF",
+        [
+            "Topic: Consumer Behavior Analysis",
+            "Student: Qian Er (2024002)",
+            "Fixture: report preview and download for teacher and assistant grading.",
+        ],
+    );
+    await writePdfFixture(
+        "/storage/uploads/submissions/chenshi-questionnaire.pdf",
+        "Chen Shi Questionnaire PDF",
+        [
+            "Topic: Consumer Behavior Analysis",
+            "Student: Chen Shi (2024010)",
+            "Fixture: questionnaire PDF for teacher-side pending grading sample.",
+        ],
+    );
+    await writePdfFixture(
+        "/storage/uploads/submissions/chenshi-report.pdf",
+        "Chen Shi Report PDF",
+        [
+            "Topic: Consumer Behavior Analysis",
+            "Student: Chen Shi (2024010)",
+            "Fixture: report PDF for teacher-side pending grading sample.",
+        ],
+    );
 
     const submissions: SubDef[] = [
         // 钱二 - 待批改 (pending)
-        { expIdx: 1, status: 1, submittedAgo: 5 },
+        {
+            expIdx: 1,
+            status: 1,
+            submittedAgo: 5,
+            questionnairePdfPath: "/storage/uploads/submissions/qianer-questionnaire.pdf",
+            reportPdfPath: "/storage/uploads/submissions/qianer-report.pdf",
+        },
         // 孙三 - 已批改 (高分), 助教正在锁定复查
         { expIdx: 2, status: 2, scoreQ: "92.00", scoreP: "88.50", scoreR: "95.00", total: "92.10", comment: "问卷设计完整，分析深入，报告逻辑清晰，做得非常好！", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 12, lockedByType: USER.assistant, lockedById: assistantIds[0]! },
         // 李四 - 已驳回
@@ -779,7 +1025,13 @@ async function seed() {
         // 冯九 - 已批改 (低分)
         { expIdx: 8, status: 2, scoreQ: "65.00", scoreP: "60.00", scoreR: "58.00", total: "60.60", comment: "问卷设计较为简单，抽样过程存在遗漏，报告分析不够深入，建议多参考指导书。", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 8 },
         // 陈十 - 待批改
-        { expIdx: 9, status: 1, submittedAgo: 3 },
+        {
+            expIdx: 9,
+            status: 1,
+            submittedAgo: 3,
+            questionnairePdfPath: "/storage/uploads/submissions/chenshi-questionnaire.pdf",
+            reportPdfPath: "/storage/uploads/submissions/chenshi-report.pdf",
+        },
         // 演示学生 - 已过期任务提交 (待批改)
         { expIdx: 13, status: 1, submittedAgo: 6 },
         // 杨二一 (B班) - 待批改
@@ -808,7 +1060,7 @@ async function seed() {
             );
         if (!expRow) continue;
 
-        await db.insert(submission).values({
+        const submissionSeed = {
             experimentId: expRow.id,
             status: s.status,
             scoreQuestionnaire: s.scoreQ ?? null,
@@ -824,7 +1076,16 @@ async function seed() {
             lockedByType: s.lockedByType ?? null,
             lockedById: s.lockedById ?? null,
             lockedAt: s.lockedByType ? daysAgo(0) : null,
-        });
+            questionnairePdfPath: s.questionnairePdfPath ?? null,
+            reportPdfPath: s.reportPdfPath ?? null,
+        };
+
+        await insertOrGet(
+            submission,
+            eq(submission.experimentId, expRow.id),
+            submissionSeed,
+            submissionSeed,
+        );
     }
 
     // ========================================================
@@ -840,6 +1101,8 @@ async function seed() {
         { title: "数据备份说明（已下线）", content: "此通知已过期。", targetScope: "all", status: 0 },
     ];
 
+    await db.delete(announcementRead);
+    await db.delete(announcement);
     const announcementIds: number[] = [];
     for (const a of announcementsDefs) {
         const [res] = await db.insert(announcement).values(a);
@@ -857,10 +1120,11 @@ async function seed() {
         { annoIdx: 3, userType: USER.assistant, userId: assistantIds[0]! },
     ];
     for (const r of readsDefs) {
-        await db
-            .insert(announcementRead)
-            .values({ announcementId: announcementIds[r.annoIdx]!, userType: r.userType, userId: r.userId })
-            .onDuplicateKeyUpdate({ set: { userType: r.userType } });
+        await db.insert(announcementRead).values({
+            announcementId: announcementIds[r.annoIdx]!,
+            userType: r.userType,
+            userId: r.userId,
+        });
     }
 
     // ========================================================
@@ -881,6 +1145,7 @@ async function seed() {
         { rt: USER.teacher, rid: teacherIds[0]!, type: "TASK_ASSIGNED", title: "有新提交待批改", content: "学生「陈十」提交了「消费者行为分析实验」的实验报告。", isRead: 0 },
         { rt: USER.teacher, rid: teacherIds[1]!, type: "TASK_ASSIGNED", title: "有新提交待批改", content: "学生「杨二一」提交了「大学生网购趋势调查」的实验报告。", isRead: 0 },
     ];
+    await db.delete(notification);
     for (const n of notifDefs) {
         await db.insert(notification).values({
             receiverType: n.rt,
@@ -915,6 +1180,7 @@ async function seed() {
         { ut: USER.student, uid: studentIds[4]!, ip: "10.200.1.14", ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0", ago: 0 },
         { ut: USER.student, uid: studentIds[15]!, ip: "10.200.2.1", ua: "Mozilla/5.0 (Android 14; Mobile) Chrome/124.0", ago: 0 },
     ];
+    await db.delete(loginLog);
     for (const l of loginDefs) {
         await db.insert(loginLog).values({
             userType: l.ut,
@@ -939,6 +1205,7 @@ async function seed() {
         { ut: USER.admin, uid: 1, action: "CREATE_BACKUP", targetType: "system", targetId: null as any, detail: { reason: "日常备份" } },
         { ut: USER.admin, uid: 1, action: "CREATE_BACKUP", targetType: "system", targetId: null as any, detail: { reason: "版本升级前备份" } },
     ];
+    await db.delete(operationLog);
     for (const o of opDefs) {
         await db.insert(operationLog).values({
             userType: o.ut,
@@ -956,30 +1223,22 @@ async function seed() {
     // ========================================================
     console.log("📊 系统指标…");
 
+    await db.delete(systemMetrics);
     const metricTypes = ["cpu_usage", "memory_usage", "disk_usage", "active_users"];
     for (let dayOffset = 6; dayOffset >= 0; dayOffset--) {
+        const recordedAt = daysAgo(dayOffset);
+        const metricValues = {
+            cpu_usage: 20 + (6 - dayOffset) * 4,
+            memory_usage: 45 + (6 - dayOffset) * 3,
+            disk_usage: 56 + (6 - dayOffset),
+            active_users: 8 + (6 - dayOffset) * 2,
+        } as const;
+
         for (const mt of metricTypes) {
-            let value: number;
-            switch (mt) {
-                case "cpu_usage":
-                    value = 15 + Math.round(Math.random() * 40);
-                    break;
-                case "memory_usage":
-                    value = 40 + Math.round(Math.random() * 30);
-                    break;
-                case "disk_usage":
-                    value = 55 + Math.round(Math.random() * 10);
-                    break;
-                case "active_users":
-                    value = 5 + Math.round(Math.random() * 20);
-                    break;
-                default:
-                    value = 0;
-            }
             await db.insert(systemMetrics).values({
                 metricType: mt,
-                metricValue: String(value),
-                recordedAt: daysAgo(dayOffset),
+                metricValue: String(metricValues[mt as keyof typeof metricValues]),
+                recordedAt,
             });
         }
     }

@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -281,7 +281,12 @@ export function GradingDetail() {
             status: 0,
             action: "draft",
         };
-        await teacherApi.submitGrade(Number(submissionId), payload);
+        const saveRes = await teacherApi.submitGrade(Number(submissionId), payload);
+        if (!saveRes.success) {
+            setSavingDraft(false);
+            toast.error("保存失败: " + (saveRes.error?.message ?? "未知错误"));
+            return;
+        }
 
         // Find next pending submission
         const listRes = await teacherApi.getGradingList("pending");
@@ -423,6 +428,20 @@ export function GradingDetail() {
                     <UserCheck className="w-4 h-4 mr-2" />
                     由 {data.gradedByType === 2 ? '教师' : '助教'} <span className="font-medium mx-1">{data.gradedByName}</span> 
                     于 {data.gradedAt ? new Date(data.gradedAt).toLocaleString() : '-'} 批改
+                </div>
+            )}
+            {data.status === 3 && data.rejectReason && (
+                <div
+                    data-testid="teacher-grading-reject-reason-banner"
+                    className="px-6 py-3 text-sm text-rose-200 bg-rose-950/40 border-b border-rose-900/40"
+                >
+                    <div className="mx-auto flex max-w-5xl items-start gap-2">
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+                        <div className="space-y-1">
+                            <div className="font-medium text-rose-300">驳回原因</div>
+                            <div className="leading-6 text-rose-100/90">{data.rejectReason}</div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -710,6 +729,9 @@ export function GradingDetail() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">驳回理由</DialogTitle>
+                        <DialogDescription className="sr-only">
+                            输入驳回原因，学生将看到这段说明。
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-4">
                         <Label className="text-slate-300">驳回理由（学生可见，至少10字）</Label>

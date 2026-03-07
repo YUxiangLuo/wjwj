@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -27,6 +27,9 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
             <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="text-slate-100">添加学生</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        录入学生学号、姓名和邮箱信息。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
     validateRecommendQuestionItems,
     validateParsedExcelUpload,
+    validateTopicPublishReadiness,
     validateStratifiedValueCardinality,
     validateTopicAttachmentUpload,
     validateTopicFieldMappingConfig,
@@ -40,6 +41,25 @@ describe("topic validation helpers", () => {
     test("validateStratifiedValueCardinality rejects fields with too many unique values", () => {
         const rows = Array.from({ length: 21 }, (_, index) => ({ group: `g${index}` }));
         expect(validateStratifiedValueCardinality(rows, ["group"])).toBe("分层变量 group 的唯一值数量超过20");
+    });
+
+    test("validateTopicPublishReadiness requires data, mapping, and weights", () => {
+        expect(validateTopicPublishReadiness(null)).toBe("课题需先上传总体数据后才能发布");
+        expect(
+            validateTopicPublishReadiness({
+                excelFilePath: "/storage/uploads/topic.xlsx",
+                fieldMapping: null,
+                weightConfig: null,
+            })
+        ).toBe("课题需先完成字段映射后才能发布");
+
+        expect(
+            validateTopicPublishReadiness({
+                excelFilePath: "/storage/uploads/topic.xlsx",
+                fieldMapping: JSON.stringify({ identifier: "id", stratified: ["gender"], numeric: ["score"] }),
+                weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
+            })
+        ).toBeNull();
     });
 
     test("validateTopicAttachmentUpload enforces type and size limits", () => {

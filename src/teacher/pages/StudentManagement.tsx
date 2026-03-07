@@ -82,7 +82,7 @@ export function StudentManagement() {
     const handleDownloadTemplate = () => {
         const headers = ["studentId", "name", "email"];
         const sample = ["20240001", "张三", "zhangsan@example.com"];
-        const content = `${headers.join(",")}\n${sample.join(",")}\n`;
+        const content = `\uFEFF${headers.join(",")}\n${sample.join(",")}\n`;
         const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");

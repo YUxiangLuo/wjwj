@@ -1,6 +1,6 @@
 import { Download, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 interface StudentImportResult {
@@ -37,6 +37,9 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
             <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle className="text-slate-100">批量导入学生</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        上传学生名单文件并查看导入结果。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">

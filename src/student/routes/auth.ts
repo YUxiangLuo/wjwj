@@ -20,6 +20,7 @@ import {
     readSessionToken,
     recordLoginLog,
 } from "../../server/user-session";
+import { formatLockoutRetryDuration } from "../../server/lockout-format";
 import type { RouteDefinition } from "../../server/route-types";
 
 const STUDENT_USER_TYPE = 4;
@@ -100,7 +101,7 @@ const loginRoutes: RouteDefinition = {
         if (s.lockedUntil && new Date(s.lockedUntil) > now) {
             const remainingMs = new Date(s.lockedUntil).getTime() - now.getTime();
             const remainingMinutes = Math.max(1, Math.ceil(remainingMs / (60 * 1000)));
-            return error(`账号已被锁定，请在${remainingMinutes}分钟后重试`, "ACCOUNT_LOCKED", 403);
+            return error(`账号已被锁定，请在${formatLockoutRetryDuration(remainingMinutes)}后重试`, "ACCOUNT_LOCKED", 403);
         }
 
         const isValid = await Bun.password.verify(password, s.password);

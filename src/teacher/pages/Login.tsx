@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authApi } from "../api-client";
 
+const LOGIN_REDIRECT_REASON_KEY = "teacher_login_redirect_reason";
+
 export function Login() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
@@ -15,6 +17,12 @@ export function Login() {
     const [password, setPassword] = useState("");
 
     useEffect(() => {
+        const redirectReason = sessionStorage.getItem(LOGIN_REDIRECT_REASON_KEY);
+        if (redirectReason) {
+            setError(redirectReason);
+            sessionStorage.removeItem(LOGIN_REDIRECT_REASON_KEY);
+        }
+
         let cancelled = false;
         authApi
             .me()

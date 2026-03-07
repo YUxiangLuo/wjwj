@@ -25,7 +25,7 @@ export function GradeExport() {
 
     useEffect(() => {
         loadPreview();
-    }, [classFilter, topicFilter]);
+    }, [semesterFilter, classFilter, topicFilter]);
 
     // When semester changes, reset class filter and filter classes list
     useEffect(() => {
@@ -58,12 +58,15 @@ export function GradeExport() {
             teacherApi.getTopics()
         ]);
         if (classesRes.success && classesRes.data) setClasses(classesRes.data);
-        if (topicsRes.success && topicsRes.data) setTopics(topicsRes.data);
+        if (topicsRes.success && topicsRes.data) {
+            setTopics(topicsRes.data.filter((topic) => topic.status === 1));
+        }
     }
 
     async function loadPreview() {
         setLoading(true);
         const res = await teacherApi.getGradeExportPreview({
+            semester: semesterFilter,
             classId: classFilter,
             topicId: topicFilter,
         });
@@ -87,30 +90,43 @@ export function GradeExport() {
         if (ids.length === 0) return;
 
         const search = new URLSearchParams();
+        if (semesterFilter !== "all") {
+            search.set("semester", semesterFilter);
+        }
+        if (classFilter !== "all") {
+            search.set("classId", classFilter);
+        }
+        if (topicFilter !== "all") {
+            search.set("topicId", topicFilter);
+        }
         if (ids.length === 1) {
             search.set("taskId", String(ids[0]));
         } else {
             search.set("taskIds", ids.join(","));
         }
 
-        const res = await fetch(`/api/teacher/grade-export/excel?${search.toString()}`, {
-            credentials: "include",
-        });
+        try {
+            const res = await fetch(`/api/teacher/grade-export/excel?${search.toString()}`, {
+                credentials: "include",
+            });
 
-        if (!res.ok) {
+            if (!res.ok) {
+                toast.error("导出失败");
+                return;
+            }
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `grade-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+        } catch {
             toast.error("导出失败");
-            return;
         }
-
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `grade-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
     }
 
     return (

@@ -11,8 +11,11 @@ export function sanitizeUploadFileName(originalName: string) {
     return fileName || "upload.bin";
 }
 
-export async function parseExcelFile(buffer: ArrayBuffer) {
-    const workbook = XLSX.read(buffer, { type: "array" });
+export async function parseExcelFile(buffer: ArrayBuffer, fileName?: string | null) {
+    const normalizedName = fileName?.toLowerCase() ?? "";
+    const workbook = normalizedName.endsWith(".csv")
+        ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
+        : XLSX.read(buffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) return { rows: [], columns: [], rowCount: 0, colCount: 0, preview: [] };
     const sheet = workbook.Sheets[sheetName];

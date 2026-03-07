@@ -1,7 +1,7 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
-import { class_, experiment, student, submission, task, topic } from "../../db/schema";
+import { class_, experiment, semester, student, submission, task, topic } from "../../db/schema";
 import { error, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
@@ -11,13 +11,44 @@ function parseIdList(value: string | null) {
     return value.split(",").map((v) => Number(v.trim())).filter((v) => Number.isFinite(v));
 }
 
+function parseOptionalId(value: string | null) {
+    if (!value || value === "all") return null;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return Number.NaN;
+    return parsed;
+}
+
 async function getGradeExportRows(currentTeacherId: number, params: URLSearchParams) {
+    const semesterName = params.get("semester");
     const classId = params.get("classId");
     const topicId = params.get("topicId");
     const taskId = params.get("taskId");
     const taskIds = parseIdList(params.get("taskIds"));
+    const classIdValue = parseOptionalId(classId);
+    const topicIdValue = parseOptionalId(topicId);
+    const taskIdValue = parseOptionalId(taskId);
+    const conditions: unknown[] = [eq(class_.teacherId, currentTeacherId)];
 
-    let query = db
+    if (semesterName && semesterName !== "all") {
+        conditions.push(eq(semester.name, semesterName));
+    }
+    if (Number.isNaN(classIdValue) || Number.isNaN(topicIdValue) || Number.isNaN(taskIdValue)) {
+        return null;
+    }
+    if (classIdValue != null) {
+        conditions.push(eq(class_.id, classIdValue));
+    }
+    if (topicIdValue != null) {
+        conditions.push(eq(topic.id, topicIdValue));
+    }
+    if (taskIdValue != null) {
+        conditions.push(eq(task.id, taskIdValue));
+    }
+    if (taskIds.length > 0) {
+        conditions.push(sql`${task.id} IN (${sql.join(taskIds, sql`, `)})`);
+    }
+
+    const rows = await db
         .select({
             studentId: student.studentId,
             studentName: student.name,
@@ -46,29 +77,8 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
         .innerJoin(task, eq(experiment.taskId, task.id))
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
-        .where(eq(class_.teacherId, currentTeacherId))
-        .$dynamic();
-
-    if (classId && classId !== "all") {
-        const id = Number(classId);
-        if (!Number.isFinite(id)) return null;
-        query = query.where(eq(class_.id, id));
-    }
-    if (topicId && topicId !== "all") {
-        const id = Number(topicId);
-        if (!Number.isFinite(id)) return null;
-        query = query.where(eq(topic.id, id));
-    }
-    if (taskId && taskId !== "all") {
-        const id = Number(taskId);
-        if (!Number.isFinite(id)) return null;
-        query = query.where(eq(task.id, id));
-    }
-    if (taskIds.length > 0) {
-        query = query.where(sql`${task.id} IN (${sql.join(taskIds, sql`, `)})`);
-    }
-
-    const rows = await query;
+        .innerJoin(semester, eq(class_.semesterId, semester.id))
+        .where(conditions.length === 1 ? conditions[0]! : and(...conditions));
     return rows.map((r) => ({
         studentId: r.studentId,
         name: r.studentName,
@@ -90,10 +100,27 @@ const gradeExportPreviewRoutes: RouteDefinition = {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const params = getSearchParams(req);
+        const semesterName = params.get("semester");
         const classId = params.get("classId");
         const topicId = params.get("topicId");
+        const classIdValue = parseOptionalId(classId);
+        const topicIdValue = parseOptionalId(topicId);
+        const conditions: unknown[] = [eq(class_.teacherId, currentTeacherId)];
 
-        let query = db
+        if (Number.isNaN(classIdValue) || Number.isNaN(topicIdValue)) {
+            return error("查询参数无效", "INVALID_PARAM", 400);
+        }
+        if (semesterName && semesterName !== "all") {
+            conditions.push(eq(semester.name, semesterName));
+        }
+        if (classIdValue != null) {
+            conditions.push(eq(class_.id, classIdValue));
+        }
+        if (topicIdValue != null) {
+            conditions.push(eq(topic.id, topicIdValue));
+        }
+
+        const rows = await db
             .select({
                 taskId: task.id,
                 topicId: topic.id,
@@ -117,19 +144,10 @@ const gradeExportPreviewRoutes: RouteDefinition = {
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
+            .innerJoin(semester, eq(class_.semesterId, semester.id))
             .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
-            .where(eq(class_.teacherId, currentTeacherId))
-            .groupBy(task.id)
-            .$dynamic();
-
-        if (classId && classId !== "all") {
-            query = query.where(eq(class_.id, Number(classId)));
-        }
-        if (topicId && topicId !== "all") {
-            query = query.where(eq(topic.id, Number(topicId)));
-        }
-
-        const rows = await query;
+            .where(conditions.length === 1 ? conditions[0]! : and(...conditions))
+            .groupBy(task.id);
         return json(rows.map((r) => ({
             taskId: r.taskId,
             topicId: r.topicId,

@@ -54,8 +54,19 @@ const gradingRoutes: RouteDefinition = {
 
         const params = getSearchParams(req);
         const status = params.get("status");
+        const conditions: unknown[] = [sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`];
 
-        let query = db
+        if (status === "pending") {
+            conditions.push(eq(submission.status, 1));
+        } else if (status === "draft") {
+            conditions.push(eq(submission.status, 0));
+        } else if (status === "graded") {
+            conditions.push(eq(submission.status, 2));
+        } else if (status === "rejected") {
+            conditions.push(eq(submission.status, 3));
+        }
+
+        const rows = await db
             .select({
                 id: submission.id,
                 studentName: student.name,
@@ -75,21 +86,8 @@ const gradingRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`)
-            .orderBy(desc(submission.submittedAt))
-            .$dynamic();
-
-        if (status === "pending") {
-            query = query.where(eq(submission.status, 1));
-        } else if (status === "draft") {
-            query = query.where(eq(submission.status, 0));
-        } else if (status === "graded") {
-            query = query.where(eq(submission.status, 2));
-        } else if (status === "rejected") {
-            query = query.where(eq(submission.status, 3));
-        }
-
-        const rows = await query;
+            .where(conditions.length === 1 ? conditions[0]! : and(...conditions))
+            .orderBy(desc(submission.submittedAt));
 
         const graderIds = rows
             .filter((r) => r.gradedByType === 2 && r.gradedById)

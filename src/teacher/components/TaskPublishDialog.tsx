@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,6 +39,9 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
             <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-slate-100">发布任务</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        选择已发布课题、目标班级和任务截止时间。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">

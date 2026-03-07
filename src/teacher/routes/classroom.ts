@@ -7,6 +7,11 @@ import type { RouteDefinition } from "../../server/route-types";
 import { ASSISTANT_USER_TYPE, getPrimaryTeacherIdOrThrow } from "./auth";
 
 const STUDENT_USER_TYPE = 4;
+const DELETED_ASSISTANT_SUFFIX = "(已删除)";
+
+function isDeletedAssistantName(name: string | null | undefined) {
+    return !!name && name.endsWith(DELETED_ASSISTANT_SUFFIX);
+}
 
 const classRoutes: RouteDefinition = {
     async GET(req) {
@@ -120,7 +125,10 @@ const classStudentsImportRoutes: RouteDefinition = {
         }
 
         const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, { type: "array" });
+        const fileName = file.name.toLowerCase();
+        const workbook = fileName.endsWith(".csv")
+            ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
+            : XLSX.read(buffer, { type: "array" });
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) return error("文件内容为空", "VALIDATION_ERROR", 400);
 
@@ -216,7 +224,12 @@ const studentRoutes: RouteDefinition = {
 
         if (body.action === "reset_password") {
             const newPassword = await Bun.password.hash(owned.studentId);
-            await db.update(student).set({ password: newPassword, isFirstLogin: 1 }).where(eq(student.id, studentId));
+            await db.update(student).set({
+                password: newPassword,
+                isFirstLogin: 1,
+                loginFailCount: 0,
+                lockedUntil: null,
+            }).where(eq(student.id, studentId));
         } else if (body.action === "toggle_status") {
             const [current] = await db.select({ status: student.status }).from(student).where(eq(student.id, studentId));
             if (current) {
@@ -261,7 +274,9 @@ const assistantRoutes: RouteDefinition = {
             .from(assistant)
             .where(eq(assistant.creatorTeacherId, currentTeacherId));
 
-        const results = await Promise.all(assistants.map(async (ast) => {
+        const visibleAssistants = assistants.filter((ast) => !isDeletedAssistantName(ast.name));
+
+        const results = await Promise.all(visibleAssistants.map(async (ast) => {
             const classes = await db
                 .select({ name: class_.name, id: class_.id })
                 .from(assistantClass)
@@ -325,19 +340,27 @@ const assistantItemRoutes: RouteDefinition = {
             .from(assistant)
             .where(and(eq(assistant.id, id), eq(assistant.creatorTeacherId, currentTeacherId)));
 
-        if (!owned) return error("无权限操作该助教", "FORBIDDEN", 403);
+        if (!owned || isDeletedAssistantName(owned.name)) return error("无权限操作该助教", "FORBIDDEN", 403);
 
         const body = await parseBody<{ action: "reset_password" | "toggle_status" | "delete" }>(req);
 
         if (body.action === "reset_password") {
             const newPassword = await Bun.password.hash(owned.account);
-            await db.update(assistant).set({ password: newPassword, isFirstLogin: 1 }).where(eq(assistant.id, id));
+            await db.update(assistant).set({
+                password: newPassword,
+                isFirstLogin: 1,
+                loginFailCount: 0,
+                lockedUntil: null,
+            }).where(eq(assistant.id, id));
         } else if (body.action === "toggle_status") {
             const newStatus = owned.status === 1 ? 0 : 1;
             await db.update(assistant).set({ status: newStatus }).where(eq(assistant.id, id));
         } else if (body.action === "delete") {
-            const newName = owned.name.includes("已删除") ? owned.name : `${owned.name}(已删除)`;
-            await db.update(assistant).set({ status: 0, name: newName }).where(eq(assistant.id, id));
+            const newName = isDeletedAssistantName(owned.name) ? owned.name : `${owned.name}${DELETED_ASSISTANT_SUFFIX}`;
+            await db.transaction(async (tx) => {
+                await tx.delete(assistantClass).where(eq(assistantClass.assistantId, id));
+                await tx.update(assistant).set({ status: 0, name: newName }).where(eq(assistant.id, id));
+            });
         }
 
         return json({ success: true });
@@ -349,15 +372,17 @@ const assistantItemRoutes: RouteDefinition = {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [owned] = await db
-            .select({ id: assistant.id })
+            .select({ id: assistant.id, name: assistant.name })
             .from(assistant)
             .where(and(eq(assistant.id, id), eq(assistant.creatorTeacherId, currentTeacherId)));
 
-        if (!owned) return error("无权限操作该助教", "FORBIDDEN", 403);
+        if (!owned || isDeletedAssistantName(owned.name)) return error("无权限操作该助教", "FORBIDDEN", 403);
 
-        const [ast] = await db.select({ name: assistant.name }).from(assistant).where(eq(assistant.id, id));
-        const newName = ast?.name?.includes("已删除") ? ast.name : `${ast?.name ?? "助教"}(已删除)`;
-        await db.update(assistant).set({ status: 0, name: newName }).where(eq(assistant.id, id));
+        const newName = isDeletedAssistantName(owned.name) ? owned.name : `${owned.name}${DELETED_ASSISTANT_SUFFIX}`;
+        await db.transaction(async (tx) => {
+            await tx.delete(assistantClass).where(eq(assistantClass.assistantId, id));
+            await tx.update(assistant).set({ status: 0, name: newName }).where(eq(assistant.id, id));
+        });
 
         return json({ success: true });
     }
@@ -371,11 +396,11 @@ const assistantClassAssignRoutes: RouteDefinition = {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
 
         const [owned] = await db
-            .select({ id: assistant.id })
+            .select({ id: assistant.id, name: assistant.name })
             .from(assistant)
             .where(and(eq(assistant.id, assistantId), eq(assistant.creatorTeacherId, currentTeacherId)));
 
-        if (!owned) return error("无权限操作该助教", "FORBIDDEN", 403);
+        if (!owned || isDeletedAssistantName(owned.name)) return error("无权限操作该助教", "FORBIDDEN", 403);
 
         const body = await parseBody<{ classIds: number[]; force?: boolean }>(req);
 

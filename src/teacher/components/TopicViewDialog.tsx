@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { BookOpen, FileText, Layers, ListChecks, PieChart, Table2, ExternalLink, CheckCircle2, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { teacherApi, type TopicDetail, type Topic } from "../api-client";
 
@@ -98,6 +98,9 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                         </div>
                         <div>
                             <DialogTitle className="text-slate-100">{topic.name}</DialogTitle>
+                            <DialogDescription className="sr-only">
+                                查看课题的基本信息、数据配置、字段映射和评分权重。
+                            </DialogDescription>
                             <div className="flex items-center gap-2 mt-1">
                                 {topic.status === 1 ? (
                                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">已发布</Badge>

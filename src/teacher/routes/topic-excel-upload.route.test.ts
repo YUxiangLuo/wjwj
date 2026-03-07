@@ -27,6 +27,11 @@ async function loadTopicRoutes(options: {
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         notifyStudentsByClassIds: async () => undefined,
+        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
+        notifyStudentById: async () => undefined,
+        isLockExpired: () => true,
+        TEACHER_USER_TYPE: 2,
+        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./topic-task");
@@ -112,4 +117,33 @@ test("topic excel upload rejects workbooks with fewer than two columns", async (
         },
     });
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
+});
+
+test("topic excel upload preserves Chinese text for utf-8 csv files", async () => {
+    const { module } = await loadTopicRoutes({
+        select: [[{ id: 12, status: 0 }]],
+    });
+
+    const csvContent = "行业名称,公司名称,销售数量\n电子行业,测试科技,1200\n";
+    const form = new FormData();
+    form.append("file", new File([csvContent], "population.csv", {
+        type: "text/csv",
+    }));
+
+    const request = withRouteParam(new Request("https://example.com/api/teacher/topics/12/excel", {
+        method: "POST",
+        body: form,
+    }), "12");
+
+    const response = await module.topicExcelUploadRoutes.POST!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.data.columns).toEqual(["行业名称", "公司名称", "销售数量"]);
+    expect(payload.data.preview[0]).toEqual({
+        行业名称: "电子行业",
+        公司名称: "测试科技",
+        销售数量: 1200,
+    });
 });

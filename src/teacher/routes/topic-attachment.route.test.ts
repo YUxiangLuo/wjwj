@@ -20,6 +20,11 @@ async function loadTopicRoutes(options: {
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         notifyStudentsByClassIds: async () => undefined,
+        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
+        notifyStudentById: async () => undefined,
+        isLockExpired: () => true,
+        TEACHER_USER_TYPE: 2,
+        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./topic-task");

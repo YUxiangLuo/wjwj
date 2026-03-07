@@ -20,6 +20,7 @@ import {
     readSessionToken,
     recordLoginLog,
 } from "../../server/user-session";
+import { formatLockoutRetryDuration } from "../../server/lockout-format";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 
 export const TEACHER_USER_TYPE = 2;
@@ -109,6 +110,8 @@ export function isLockExpired(lockedAt?: Date | null) {
     return Date.now() - new Date(lockedAt).getTime() > GRADING_LOCK_MINUTES * 60 * 1000;
 }
 
+export { formatLockoutRetryDuration } from "../../server/lockout-format";
+
 export async function notifyStudentsByClassIds(
     classIds: number[],
     payload: { type: string; title: string; content: string; relatedType?: string; relatedId?: number },
@@ -162,6 +165,12 @@ export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResul
             [TEACHER_USER_TYPE, ASSISTANT_USER_TYPE]
         );
         if (!currentSession.session || currentSession.userType == null) {
+            if (currentSession.failure === "missing_session") {
+                return { user: null, error: error("您的账号已在其他设备登录", "AUTH_005", 401) };
+            }
+            if (currentSession.failure === "expired") {
+                return { user: null, error: error("会话已过期，请重新登录", "AUTH_004", 401) };
+            }
             return { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
         }
 
@@ -316,7 +325,7 @@ async function handleTeacherLogin(req: Request, t: typeof teacher.$inferSelect, 
 
     if (t.lockedUntil && new Date(t.lockedUntil) > now) {
         const remainMinutes = Math.ceil((new Date(t.lockedUntil).getTime() - now.getTime()) / 60000);
-        return error(`账号已被锁定，请${remainMinutes}分钟后重试`, "ACCOUNT_LOCKED", 403);
+        return error(`账号已被锁定，请${formatLockoutRetryDuration(remainMinutes)}后重试`, "ACCOUNT_LOCKED", 403);
     }
 
     if (t.status !== 1) {
@@ -334,7 +343,7 @@ async function handleTeacherLogin(req: Request, t: typeof teacher.$inferSelect, 
         const remaining = maxAttempts - failCount;
         return error(
             failCount >= maxAttempts
-                ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
+                ? `密码错误次数过多，账号已锁定${formatLockoutRetryDuration(lockMinutes)}`
                 : `账号或密码错误，还剩${remaining}次尝试机会`,
             "INVALID_CREDENTIALS",
             401
@@ -371,7 +380,7 @@ async function handleAssistantLogin(req: Request, a: typeof assistant.$inferSele
 
     if (a.lockedUntil && new Date(a.lockedUntil) > now) {
         const remainMinutes = Math.ceil((new Date(a.lockedUntil).getTime() - now.getTime()) / 60000);
-        return error(`账号已被锁定，请${remainMinutes}分钟后重试`, "ACCOUNT_LOCKED", 403);
+        return error(`账号已被锁定，请${formatLockoutRetryDuration(remainMinutes)}后重试`, "ACCOUNT_LOCKED", 403);
     }
 
     if (a.status !== 1) {
@@ -389,7 +398,7 @@ async function handleAssistantLogin(req: Request, a: typeof assistant.$inferSele
         const remaining = maxAttempts - failCount;
         return error(
             failCount >= maxAttempts
-                ? `密码错误次数过多，账号已锁定${lockMinutes}分钟`
+                ? `密码错误次数过多，账号已锁定${formatLockoutRetryDuration(lockMinutes)}`
                 : `账号或密码错误，还剩${remaining}次尝试机会`,
             "INVALID_CREDENTIALS",
             401

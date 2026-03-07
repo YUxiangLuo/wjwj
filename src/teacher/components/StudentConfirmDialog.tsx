@@ -35,7 +35,7 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
                     <AlertDialogTitle className="text-slate-100">确认操作</AlertDialogTitle>
                     <AlertDialogDescription className="text-slate-400">
                         {state.type === "delete" && "确认删除该学生吗？此操作不可恢复。"}
-                        {state.type === "reset" && "确认重置该学生的密码为 123456 吗？"}
+                        {state.type === "reset" && "确认重置该学生的密码为学号吗？"}
                         {state.type === "toggle" && `确认${state.student?.status === 1 ? "禁用" : "启用"}该学生账号吗？`}
                     </AlertDialogDescription>
                 </AlertDialogHeader>

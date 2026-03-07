@@ -19,6 +19,11 @@ async function loadTopicRoutes(options: {
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         notifyStudentsByClassIds: async () => undefined,
+        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
+        notifyStudentById: async () => undefined,
+        isLockExpired: () => true,
+        TEACHER_USER_TYPE: 2,
+        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./topic-task");
@@ -45,8 +50,8 @@ test("topic copy duplicates the topic and related resources under the current te
                 description: "原始课题",
                 excelFilePath: sourceExcelPath,
                 excelRowCount: 16,
-                fieldMapping: { identifier: "id" },
-                weightConfig: { questionnaire: 30, process: 40, report: 30 },
+                fieldMapping: JSON.stringify({ identifier: "id" }),
+                weightConfig: JSON.stringify({ questionnaire: 30, process: 40, report: 30 }),
                 status: 1,
             }],
             [{
@@ -62,7 +67,7 @@ test("topic copy duplicates the topic and related resources under the current te
                 topicId: 12,
                 questionType: 2,
                 content: "你最关注哪项指标？",
-                options: "价格,质量",
+                options: JSON.stringify(["价格", "质量"]),
                 sortOrder: 1,
             }],
         ],
@@ -90,6 +95,8 @@ test("topic copy duplicates the topic and related resources under the current te
             name: "抽样设计课题 (副本)",
             description: "原始课题",
             excelRowCount: 16,
+            fieldMapping: { identifier: "id" },
+            weightConfig: { questionnaire: 30, process: 40, report: 30 },
             status: 0,
         });
         expect(copiedExcelPath).toContain("/storage/uploads/");
@@ -107,7 +114,7 @@ test("topic copy duplicates the topic and related resources under the current te
             topicId: 44,
             questionType: 2,
             content: "你最关注哪项指标？",
-            options: "价格,质量",
+            options: ["价格", "质量"],
             sortOrder: 1,
         }]);
 

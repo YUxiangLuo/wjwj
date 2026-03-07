@@ -125,6 +125,36 @@ test("student login with wrong password increments fail count and returns 401", 
     expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
 });
 
+test("student login returns a readable lockout duration when account is already locked", async () => {
+    const hashed = await Bun.password.hash("Student@2026");
+    const { module } = await loadStudentAuthModule({
+        select: [[{
+            id: 11,
+            studentId: "20230001",
+            name: "Alice",
+            classId: 7,
+            status: 1,
+            isFirstLogin: 0,
+            password: hashed,
+            loginFailCount: 5,
+            lockedUntil: new Date(Date.now() + 1_839 * 60 * 1000),
+        }]],
+    });
+
+    const response = await module.loginRoutes.POST!(createJsonRequest(
+        "https://example.com/api/student/login",
+        "POST",
+        { studentId: "20230001", password: "Student@2026" }
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(403);
+    expect(payload.error).toMatchObject({
+        code: "ACCOUNT_LOCKED",
+        message: "账号已被锁定，请在1天7小时后重试",
+    });
+});
+
 test("student me route returns profile and extends session expiry", async () => {
     const now = Date.now();
     const { module, operations } = await loadStudentAuthModule({

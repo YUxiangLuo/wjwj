@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Assistant, TeacherClass } from "../api-client";
 
 interface AssistantAssignDialogProps {
@@ -28,6 +28,9 @@ export function AssistantAssignDialog(props: AssistantAssignDialogProps) {
             <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                 <DialogHeader>
                     <DialogTitle className="text-slate-100">分配班级 - {assistant?.name}</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        为助教分配或取消负责的班级。
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
