@@ -34,7 +34,7 @@ const dashboardRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(eq(class_.teacherId, currentTeacherId))
+            .where(and(eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt)))
             .orderBy(desc(submission.submittedAt))
             .limit(5);
 
@@ -53,7 +53,7 @@ const dashboardRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(eq(class_.teacherId, currentTeacherId), sql`${submission.status} IN (2, 3)`))
+            .where(and(eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt), sql`${submission.status} IN (2, 3)`))
             .orderBy(desc(submission.gradedAt))
             .limit(5);
 
@@ -68,7 +68,7 @@ const dashboardRoutes: RouteDefinition = {
                 student: sub.studentName,
                 class: sub.className,
                 topic: sub.topicName,
-                time: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : "未知时间",
+                time: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN") : "未知时间",
             })),
             recentGradings: recentGradings.map((g) => ({
                 student: g.studentName,
@@ -76,7 +76,7 @@ const dashboardRoutes: RouteDefinition = {
                 topic: g.topicName,
                 score: g.status === 2 ? g.totalScore : null,
                 rejected: g.status === 3,
-                time: g.gradedAt ? new Date(g.gradedAt).toLocaleString() : "未知时间",
+                time: g.gradedAt ? new Date(g.gradedAt).toLocaleString("zh-CN") : "未知时间",
             })),
         });
     },

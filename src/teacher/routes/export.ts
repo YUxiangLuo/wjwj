@@ -27,7 +27,7 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
     const classIdValue = parseOptionalId(classId);
     const topicIdValue = parseOptionalId(topicId);
     const taskIdValue = parseOptionalId(taskId);
-    const conditions = [eq(class_.teacherId, currentTeacherId)];
+    const conditions = [eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt), eq(topic.isDeleted, 0)];
 
     if (semesterName && semesterName !== "all") {
         conditions.push(eq(semester.name, semesterName));
@@ -84,13 +84,13 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
         name: r.studentName,
         className: r.className,
         topicName: r.topicName,
-        submittedAt: r.submittedAt ? new Date(r.submittedAt).toLocaleString() : "",
+        submittedAt: r.submittedAt ? new Date(r.submittedAt).toLocaleString("zh-CN") : "",
         scoreQuestionnaire: r.scoreQuestionnaire ?? "",
         scoreProcess: r.scoreProcess ?? "",
         scoreReport: r.scoreReport ?? "",
         totalScore: r.totalScore ?? "",
         status: r.status === 2 ? "已批改" : r.status === 3 ? "已驳回" : r.status === 1 ? "待批改" : "草稿",
-        gradedAt: r.gradedAt ? new Date(r.gradedAt).toLocaleString() : "",
+        gradedAt: r.gradedAt ? new Date(r.gradedAt).toLocaleString("zh-CN") : "",
         gradedBy: r.gradedByName ?? "",
     }));
 }
@@ -105,7 +105,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
         const topicId = params.get("topicId");
         const classIdValue = parseOptionalId(classId);
         const topicIdValue = parseOptionalId(topicId);
-        const conditions = [eq(class_.teacherId, currentTeacherId)];
+        const conditions = [eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt), eq(topic.isDeleted, 0)];
 
         if (Number.isNaN(classIdValue) || Number.isNaN(topicIdValue)) {
             return error("查询参数无效", "INVALID_PARAM", 400);
