@@ -40,7 +40,7 @@ export function parseSamplingSeed(rawSeed: unknown) {
             } else {
                 seed = Number.parseInt(trimmedSeed, 10);
                 if (!Number.isSafeInteger(seed)) {
-                    return { seed: undefined, errorMessage: "seed 值超出安全范围" };
+                    return { seed: undefined, errorMessage: "seed 值超出安全整数范围" };
                 }
             }
         } else {
