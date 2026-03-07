@@ -24,10 +24,16 @@ export function usePollingTask(options: {
         if (!enabled) return;
 
         let cancelled = false;
+        let running = false;
 
         const runTask = async () => {
-            if (cancelled) return;
-            await taskRef.current();
+            if (cancelled || running) return;
+            running = true;
+            try {
+                await taskRef.current();
+            } finally {
+                running = false;
+            }
         };
 
         if (runImmediately) {

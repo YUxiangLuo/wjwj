@@ -1,4 +1,4 @@
-const SESSION_EXPIRED_ERROR_CODES = new Set(["AUTH_004", "AUTH_005", "UNAUTHORIZED", "ACCOUNT_NOT_FOUND"]);
+const SESSION_EXPIRED_ERROR_CODES = new Set(["AUTH_004", "AUTH_005", "UNAUTHORIZED", "ACCOUNT_NOT_FOUND", "SESSION_EXPIRED"]);
 
 export function shouldDispatchSessionExpired(
     url: string,
@@ -6,7 +6,7 @@ export function shouldDispatchSessionExpired(
     response: { error?: { code?: string; message?: string } } | null | undefined,
     loginPathSegment: string,
 ) {
-    if (status !== 401 || url.includes(loginPathSegment)) return false;
+    if (status !== 401 || url.endsWith(loginPathSegment)) return false;
     return SESSION_EXPIRED_ERROR_CODES.has(response?.error?.code ?? "");
 }
 

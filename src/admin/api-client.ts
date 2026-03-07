@@ -3,6 +3,8 @@
  * 前端 API 调用工具
  */
 
+import { shouldDispatchSessionExpired, createSessionExpiredInterceptor } from "@/lib/session-expired";
+
 // ============================================================
 // Types
 // ============================================================
@@ -115,15 +117,14 @@ export interface AdminNotification {
 // API Client
 // ============================================================
 
-const ADMIN_SESSION_EXPIRED_ERROR_CODES = new Set(["UNAUTHORIZED", "SESSION_EXPIRED", "ACCOUNT_NOT_FOUND"]);
+const interceptSessionExpired = createSessionExpiredInterceptor("/api/admin/login", "admin:session-expired");
 
 export function shouldDispatchAdminSessionExpired(
     url: string,
     status: number,
     response: Pick<ApiResponse<unknown>, "error"> | null | undefined,
 ) {
-    if (status !== 401 || url.includes("/api/admin/login")) return false;
-    return ADMIN_SESSION_EXPIRED_ERROR_CODES.has(response?.error?.code ?? "");
+    return shouldDispatchSessionExpired(url, status, response, "/api/admin/login");
 }
 
 async function request<T>(
@@ -152,9 +153,7 @@ async function request<T>(
         }
 
         const data = await res.json();
-        if (typeof window !== "undefined" && shouldDispatchAdminSessionExpired(url, res.status, data as ApiResponse<unknown>)) {
-            window.dispatchEvent(new CustomEvent("admin:session-expired"));
-        }
+        interceptSessionExpired(url, res.status, data as ApiResponse<unknown>);
         return data as ApiResponse<T>;
     } catch (error) {
         return {

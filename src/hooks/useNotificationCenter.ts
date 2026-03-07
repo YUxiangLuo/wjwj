@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ApiSuccessResponse<T> {
     success: boolean;
@@ -61,6 +61,11 @@ export function useNotificationCenter<TItem, TResponse>(options: UseNotification
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    const onLoadedRef = useRef(onLoaded);
+
+    useEffect(() => {
+        onLoadedRef.current = onLoaded;
+    }, [onLoaded]);
 
     const load = useCallback(async (loadOptions?: NotificationCenterLoadOptions) => {
         const includeItems = loadOptions?.includeItems ?? true;
@@ -73,12 +78,12 @@ export function useNotificationCenter<TItem, TResponse>(options: UseNotification
                 if (includeItems) {
                     setItems(snapshot.items);
                 }
-                onLoaded?.(res.data);
+                onLoadedRef.current?.(res.data);
             }
         } finally {
             setLoading(false);
         }
-    }, [list, normalize, onLoaded]);
+    }, [list, normalize]);
 
     const open = useCallback(async () => {
         await load({ includeItems: true });
@@ -89,15 +94,16 @@ export function useNotificationCenter<TItem, TResponse>(options: UseNotification
         const res = await markOne(id);
         if (!res.success) return false;
 
-        let unreadDelta = 0;
+        const wasUnread = items.some((item) => getItemId(item) === id && !isItemRead(item));
         setItems((prev) => {
             const result = applyNotificationRead(prev, id, getItemId, isItemRead, markItemRead);
-            unreadDelta = result.unreadDelta;
             return result.items;
         });
-        setUnreadCount((current) => Math.max(current - unreadDelta, 0));
+        if (wasUnread) {
+            setUnreadCount((current) => Math.max(current - 1, 0));
+        }
         return true;
-    }, [getItemId, isItemRead, markItemRead, markOne]);
+    }, [getItemId, isItemRead, items, markItemRead, markOne]);
 
     const markAllAsRead = useCallback(async () => {
         const res = await markAll();
