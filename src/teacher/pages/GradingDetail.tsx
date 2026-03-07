@@ -118,7 +118,7 @@ export function GradingDetail() {
                 draftResolvedRef.current = true;
             }
         } else if (!res.success) {
-            toast.error("加载失败: " + (res.error?.message ?? "未知错误"));
+            toast.error(`加载失败: ${res.error?.message ?? "未知错误"}`);
             draftResolvedRef.current = true;
         }
         setLoading(false);
