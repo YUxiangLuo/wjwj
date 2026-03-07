@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
+import { useDraftSync } from "../../draft-sync";
 import { experimentApi, tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
 
 interface QuestionnaireDesignProps {
@@ -71,25 +72,12 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
-    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
-    const [pendingDraft, setPendingDraft] = useState<QuestionnaireData | null>(null);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [recommendQuestions, setRecommendQuestions] = useState<RecommendQuestion[]>([]);
     const [previewAnswers, setPreviewAnswers] = useState<Record<string, string | string[] | number>>({});
-    const [isOnline, setIsOnline] = useState(
-        typeof navigator === "undefined" ? true : navigator.onLine
-    );
-    const [networkNotice, setNetworkNotice] = useState<string | null>(null);
-    const [syncConflictOpen, setSyncConflictOpen] = useState(false);
-    const [serverConflictDraft, setServerConflictDraft] = useState<QuestionnaireData | null>(null);
-    const [localConflictDraft, setLocalConflictDraft] = useState<QuestionnaireData | null>(null);
     const [recommendCollapsed, setRecommendCollapsed] = useState(false);
     const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
-    const serverSnapshotRef = useRef("");
-    const saveInFlightRef = useRef(false);
-    const reconnectSyncingRef = useRef(false);
-    const draftResolvedRef = useRef(false);
 
     useEffect(() => {
         async function loadRecommendQuestions() {
@@ -105,16 +93,12 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         }
         loadRecommendQuestions();
     }, [experiment?.taskId]);
-
-
-    const buildQuestionnaireData = useCallback((): QuestionnaireData => {
-        return {
-            title,
-            welcomeText,
-            endingText,
-            questions,
-        };
-    }, [title, welcomeText, endingText, questions]);
+    const questionnaireData = useMemo<QuestionnaireData>(() => ({
+        title,
+        welcomeText,
+        endingText,
+        questions,
+    }), [title, welcomeText, endingText, questions]);
 
     const normalizeQuestionnaireData = useCallback((raw: unknown): QuestionnaireData => {
         const data = raw && typeof raw === "object" ? (raw as Partial<QuestionnaireData>) : {};
@@ -133,109 +117,10 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         setQuestions(Array.isArray(data.questions) ? data.questions : []);
     }, []);
 
-    useEffect(() => {
-        const serverQuestionnaire = normalizeQuestionnaireData(initialData);
-        serverSnapshotRef.current = JSON.stringify(serverQuestionnaire);
-    }, [initialData, normalizeQuestionnaireData]);
-
-    const saveData = useCallback(async () => {
-        const questionnaireData = buildQuestionnaireData();
-        const snapshot = JSON.stringify(questionnaireData);
-
-        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
-        if (typeof navigator !== "undefined" && !navigator.onLine) return;
-
-        saveInFlightRef.current = true;
-        try {
-            const success = await saveExperiment({ questionnaire: questionnaireData });
-            if (success) {
-                serverSnapshotRef.current = snapshot;
-                setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
-            }
-        } finally {
-            saveInFlightRef.current = false;
-        }
-    }, [buildQuestionnaireData, saveExperiment]);
-
-    // Restore draft from localStorage
-    useEffect(() => {
-        if (!draftKey) return;
-        try {
-            const raw = localStorage.getItem(draftKey);
-            if (!raw) { draftResolvedRef.current = true; return; }
-            const draft = JSON.parse(raw) as QuestionnaireData;
-            // Skip empty/trivial drafts
-            const hasDraftContent = Boolean(draft.title || (draft.questions && draft.questions.length > 0));
-            if (!hasDraftContent) { draftResolvedRef.current = true; return; }
-            const hasServerData = Boolean(initialData?.title || initialData?.questions?.length);
-            if (hasServerData) {
-                const serverNorm = normalizeQuestionnaireData(initialData);
-                const different = JSON.stringify(draft) !== JSON.stringify(serverNorm);
-                if (different) {
-                    setPendingDraft(draft);
-                    setRestoreDraftOpen(true);
-                } else {
-                    draftResolvedRef.current = true;
-                }
-            } else {
-                setPendingDraft(draft);
-                setRestoreDraftOpen(true);
-            }
-        } catch {
-            draftResolvedRef.current = true;
-            // ignore invalid draft
-        }
-    }, [draftKey, initialData]);
-
-    // Save draft to localStorage (guard: only after draft recovery dialog resolved)
-    useEffect(() => {
-        if (!draftKey || !draftResolvedRef.current) return;
-        try {
-            localStorage.setItem(draftKey, JSON.stringify(buildQuestionnaireData()));
-        } catch {
-            // ignore write errors
-        }
-    }, [draftKey, buildQuestionnaireData]);
-
-    // Keep a ref to the latest saveData so the 30-second interval doesn't reset on every keystroke
-    const saveDataRef = useRef(saveData);
-    useEffect(() => { saveDataRef.current = saveData; }, [saveData]);
-
-    // Debounce: save 3 seconds after user stops editing
-    useEffect(() => {
-        const debounceTimer = window.setTimeout(() => {
-            void saveData();
-        }, 3000);
-
-        return () => {
-            window.clearTimeout(debounceTimer);
-        };
-    }, [saveData]);
-
-    // Fixed 30-second interval: uses ref so the interval is never reset by content changes
-    useEffect(() => {
-        const intervalTimer = window.setInterval(() => {
-            void saveDataRef.current();
-        }, 30 * 1000);
-
-        return () => {
-            window.clearInterval(intervalTimer);
-        };
-    }, []);
-
-    useEffect(() => {
-        const onBeforeUnload = (event: BeforeUnloadEvent) => {
-            const currentSnapshot = JSON.stringify(buildQuestionnaireData());
-            if (currentSnapshot === serverSnapshotRef.current) return;
-            event.preventDefault();
-            event.returnValue = "";
-        };
-
-        window.addEventListener("beforeunload", onBeforeUnload);
-        return () => {
-            window.removeEventListener("beforeunload", onBeforeUnload);
-        };
-    }, [buildQuestionnaireData]);
+    const serverQuestionnaire = useMemo(
+        () => normalizeQuestionnaireData(initialData),
+        [initialData, normalizeQuestionnaireData]
+    );
 
     useEffect(() => {
         setPreviewAnswers((prev) => {
@@ -250,151 +135,54 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         });
     }, [questions]);
 
-    const syncAfterReconnect = useCallback(async () => {
-        if (!experiment?.taskId || reconnectSyncingRef.current) return;
-        reconnectSyncingRef.current = true;
-        setNetworkNotice("网络已恢复，正在同步本地数据...");
-
+    const parseQuestionnaireDraft = useCallback((raw: string) => {
         try {
-            const localData = buildQuestionnaireData();
-            const localSnapshot = JSON.stringify(localData);
-            const lastSyncedSnapshot = serverSnapshotRef.current;
-
-            const res = await experimentApi.get(experiment.taskId);
-            if (!res.success || !res.data) {
-                setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-                return;
-            }
-
-            const serverData = normalizeQuestionnaireData(res.data.questionnaire);
-            const serverSnapshot = JSON.stringify(serverData);
-            const localChanged = localSnapshot !== lastSyncedSnapshot;
-            const serverChanged = serverSnapshot !== lastSyncedSnapshot;
-
-            if (localSnapshot === serverSnapshot) {
-                serverSnapshotRef.current = serverSnapshot;
-                setNetworkNotice("网络已恢复，数据已同步");
-                return;
-            }
-
-            if (localChanged && serverChanged) {
-                setLocalConflictDraft(localData);
-                setServerConflictDraft(serverData);
-                setSyncConflictOpen(true);
-                setNetworkNotice("检测到本地与服务器草稿冲突，请选择保留版本");
-                return;
-            }
-
-            if (localChanged) {
-                const success = await saveExperiment({ questionnaire: localData });
-                if (success) {
-                    serverSnapshotRef.current = localSnapshot;
-                    setNetworkNotice("网络已恢复，本地草稿已同步到服务器");
-                } else {
-                    setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-                }
-                return;
-            }
-
-            applyQuestionnaireData(serverData);
-            serverSnapshotRef.current = serverSnapshot;
-            if (draftKey) {
-                try {
-                    localStorage.setItem(draftKey, serverSnapshot);
-                } catch {
-                    // ignore write errors
-                }
-            }
-            setNetworkNotice("检测到服务器有更新，已同步最新草稿");
+            return normalizeQuestionnaireData(JSON.parse(raw) as QuestionnaireData);
         } catch {
-            setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-        } finally {
-            reconnectSyncingRef.current = false;
+            return null;
         }
-    }, [
-        applyQuestionnaireData,
-        buildQuestionnaireData,
+    }, [normalizeQuestionnaireData]);
+    const isMeaningfulQuestionnaireDraft = useCallback(
+        (draft: QuestionnaireData) => Boolean(draft.title || draft.questions.length > 0),
+        []
+    );
+    const serializeQuestionnaire = useCallback((value: QuestionnaireData) => JSON.stringify(value), []);
+
+    const saveQuestionnaire = useCallback(async (nextData: QuestionnaireData) => {
+        return saveExperiment({ questionnaire: nextData });
+    }, [saveExperiment]);
+
+    const loadLatestQuestionnaire = useCallback(async () => {
+        if (!experiment?.taskId) return null;
+        const res = await experimentApi.get(experiment.taskId);
+        if (!res.success || !res.data) return null;
+        return normalizeQuestionnaireData(res.data.questionnaire);
+    }, [experiment?.taskId, normalizeQuestionnaireData]);
+
+    const {
+        clearLocalDraft,
+        discardPendingDraft,
+        isOnline,
+        keepLocalDraft,
+        keepServerDraft,
+        networkNotice,
+        restoreDraftOpen,
+        restorePendingDraft,
+        saveNow,
+        setRestoreDraftOpen,
+        setSyncConflictOpen,
+        syncConflictOpen,
+    } = useDraftSync<QuestionnaireData>({
+        applyValue: applyQuestionnaireData,
+        currentValue: questionnaireData,
         draftKey,
-        experiment?.taskId,
-        normalizeQuestionnaireData,
-        saveExperiment,
-    ]);
-
-    useEffect(() => {
-        const handleOnline = () => {
-            setIsOnline(true);
-            void syncAfterReconnect();
-        };
-        const handleOffline = () => {
-            setIsOnline(false);
-            setNetworkNotice("网络已断开，数据将保存在本地");
-        };
-
-        window.addEventListener("online", handleOnline);
-        window.addEventListener("offline", handleOffline);
-        return () => {
-            window.removeEventListener("online", handleOnline);
-            window.removeEventListener("offline", handleOffline);
-        };
-    }, [syncAfterReconnect]);
-
-    useEffect(() => {
-        if (!isOnline) {
-            setNetworkNotice("网络已断开，数据将保存在本地");
-        }
-    }, [isOnline]);
-
-    useEffect(() => {
-        if (!networkNotice || syncConflictOpen || !isOnline) return;
-        const timer = window.setTimeout(() => {
-            setNetworkNotice(null);
-        }, 5000);
-        return () => {
-            window.clearTimeout(timer);
-        };
-    }, [isOnline, networkNotice, syncConflictOpen]);
-
-    const handleKeepServerDraft = useCallback(() => {
-        if (!serverConflictDraft) {
-            setSyncConflictOpen(false);
-            return;
-        }
-
-        applyQuestionnaireData(serverConflictDraft);
-        const serverSnapshot = JSON.stringify(serverConflictDraft);
-        serverSnapshotRef.current = serverSnapshot;
-        if (draftKey) {
-            try {
-                localStorage.setItem(draftKey, serverSnapshot);
-            } catch {
-                // ignore write errors
-            }
-        }
-        setSyncConflictOpen(false);
-        setNetworkNotice("已保留服务器草稿版本");
-    }, [applyQuestionnaireData, draftKey, serverConflictDraft]);
-
-    const handleKeepLocalDraft = useCallback(async () => {
-        const localData = localConflictDraft ?? buildQuestionnaireData();
-        const localSnapshot = JSON.stringify(localData);
-        const success = await saveExperiment({ questionnaire: localData });
-
-        if (success) {
-            serverSnapshotRef.current = localSnapshot;
-            if (draftKey) {
-                try {
-                    localStorage.setItem(draftKey, localSnapshot);
-                } catch {
-                    // ignore write errors
-                }
-            }
-            setNetworkNotice("已保留本地草稿并同步到服务器");
-        } else {
-            setNetworkNotice("保留本地草稿失败，请稍后重试");
-        }
-
-        setSyncConflictOpen(false);
-    }, [buildQuestionnaireData, draftKey, localConflictDraft, saveExperiment]);
+        initialServerValue: serverQuestionnaire,
+        isMeaningfulDraft: isMeaningfulQuestionnaireDraft,
+        loadServerLatest: loadLatestQuestionnaire,
+        parseDraft: parseQuestionnaireDraft,
+        saveToServer: saveQuestionnaire,
+        serialize: serializeQuestionnaire,
+    });
 
     const steps = [
         { num: 1, title: "欢迎语设置" },
@@ -670,11 +458,11 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
     const handleConfirmComplete = async () => {
         // Save final data
-        await saveData();
+        await saveNow();
         // Move to next stage
         await saveExperiment({ currentStage: 2 });
         // Clear localStorage draft after successful stage completion
-        if (draftKey) localStorage.removeItem(draftKey);
+        clearLocalDraft();
         onNext();
     };
 
@@ -832,6 +620,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
                                         maxLength={100}
+                                        data-testid="student-questionnaire-title"
                                         className="bg-slate-950/50 border-slate-800 focus:border-indigo-500"
                                     />
                                     <p className="text-xs text-slate-500 text-right">{title.length}/100</p>
@@ -839,6 +628,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 <div className="space-y-2">
                                     <Label htmlFor="welcome" className="text-slate-300">欢迎语 *（至少20字）</Label>
                                     <RichTextEditor
+                                        dataTestId="student-questionnaire-welcome"
+                                        editorTestId="student-questionnaire-welcome-editor"
                                         id="welcome"
                                         placeholder="请输入欢迎语，说明调查目的、预计用时等"
                                         value={welcomeText}
@@ -893,12 +684,17 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                             已添加 {questions.length} 道题目（最少5题，最多50题）
                                         </CardDescription>
                                     </div>
-                                    <Button onClick={handleAddQuestion} disabled={questions.length >= 50} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                                    <Button
+                                        onClick={handleAddQuestion}
+                                        disabled={questions.length >= 50}
+                                        data-testid="student-questionnaire-add-question"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                    >
                                         <Plus className="w-4 h-4 mr-1" />
                                         添加题目
                                     </Button>
                                 </CardHeader>
-                                <CardContent className="space-y-4 pt-6">
+                                <CardContent className="space-y-4 pt-6" data-testid="student-questionnaire-list">
                                     {questions.length === 0 ? (
                                         <div className="text-center py-16 text-slate-500 bg-slate-950/30 rounded-xl border border-dashed border-slate-800">
                                             <p>暂无题目，点击「添加题目」开始设计问卷</p>
@@ -908,6 +704,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                             {questions.map((q, index) => (
                                                 <div
                                                     key={q.id}
+                                                    data-testid={`student-questionnaire-item-${q.id}`}
                                                     className={`flex items-center gap-3 p-3 rounded-xl border transition-all group hover:bg-slate-800 ${dragOverId === q.id && draggingId !== q.id
                                                         ? "border-indigo-500 ring-1 ring-indigo-500/50 bg-indigo-500/10"
                                                         : "border-slate-800 bg-slate-950/50"
@@ -929,6 +726,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            data-testid={`student-questionnaire-move-up-${q.id}`}
                                                             className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
                                                             onClick={() => moveQuestion(index, "up")}
                                                             disabled={index === 0}
@@ -938,6 +736,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            data-testid={`student-questionnaire-move-down-${q.id}`}
                                                             className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
                                                             onClick={() => moveQuestion(index, "down")}
                                                             disabled={index === questions.length - 1}
@@ -947,6 +746,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            data-testid={`student-questionnaire-duplicate-${q.id}`}
                                                             className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
                                                             onClick={() => handleDuplicateQuestion(q)}
                                                         >
@@ -955,6 +755,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            data-testid={`student-questionnaire-edit-${q.id}`}
                                                             className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
@@ -963,6 +764,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            data-testid={`student-questionnaire-delete-${q.id}`}
                                                             className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
                                                             onClick={() => handleDeleteQuestion(q.id)}
                                                         >
@@ -1041,6 +843,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 <div className="space-y-2">
                                     <Label htmlFor="ending" className="text-slate-300">结束语 *（至少20字）</Label>
                                     <RichTextEditor
+                                        dataTestId="student-questionnaire-ending"
+                                        editorTestId="student-questionnaire-ending-editor"
                                         id="ending"
                                         placeholder="请输入结束语，如致谢词等"
                                         value={endingText}
@@ -1238,9 +1042,10 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     };
 
     return (
-        <div className="space-y-8 pb-12">
+        <div className="space-y-8 pb-12" data-testid="student-stage-questionnaire">
             {networkNotice && (
                 <Card
+                    data-testid="student-questionnaire-network-notice"
                     className={`rounded-2xl border shadow-sm ${syncConflictOpen
                         ? "border-amber-500/30 bg-amber-500/10"
                         : isOnline
@@ -1273,7 +1078,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             )}
 
             {/* Compact sub-step indicator */}
-            <div className="flex items-center gap-2 px-1">
+            <div className="flex items-center gap-2 px-1" data-testid="student-questionnaire-steps">
                 {steps.map((s, idx) => {
                     const isCompleted = step > s.num;
                     const isCurrent = step === s.num;
@@ -1290,6 +1095,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     }
                                 }}
                                 disabled={s.num > step}
+                                data-testid={`student-questionnaire-step-${s.num}`}
                                 aria-label={`第 ${s.num} 步: ${s.title}`}
                                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 disabled:cursor-not-allowed ${
                                     isCurrent
@@ -1324,6 +1130,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     variant="outline"
                     onClick={() => step > 1 && setStep((step - 1) as 1 | 2 | 3 | 4)}
                     disabled={step === 1}
+                    data-testid="student-questionnaire-prev"
                     className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
                 >
                     上一步
@@ -1332,12 +1139,18 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     <Button
                         onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)}
                         disabled={step === 2 && questions.length < 5}
+                        data-testid="student-questionnaire-next"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
                     >
                         下一步
                     </Button>
                 ) : (
-                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!canProceed} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                    <Button
+                        onClick={() => setConfirmNextOpen(true)}
+                        disabled={!canProceed}
+                        data-testid="student-questionnaire-complete"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
+                    >
                         <CheckCircle className="w-4 h-4 mr-2" />
                         确认完成，进入下一阶段
                     </Button>
@@ -1354,7 +1167,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-delete-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认删除</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400">
@@ -1363,14 +1176,14 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-rose-600 hover:bg-rose-700 text-white">删除</AlertDialogAction>
+                        <AlertDialogAction onClick={confirmDelete} data-testid="student-questionnaire-delete-confirm" className="bg-rose-600 hover:bg-rose-700 text-white">删除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             {/* Confirm Next Stage Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-complete-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认完成问卷设计</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
@@ -1381,13 +1194,13 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmComplete} className="bg-emerald-600 hover:bg-emerald-700 text-white">确认完成</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmComplete} data-testid="student-questionnaire-complete-confirm" className="bg-emerald-600 hover:bg-emerald-700 text-white">确认完成</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-restore-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">恢复草稿</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400">
@@ -1397,25 +1210,15 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     <AlertDialogFooter>
                         <AlertDialogCancel
                             className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-                            onClick={() => {
-                                if (draftKey) localStorage.removeItem(draftKey);
-                                draftResolvedRef.current = true;
-                                setRestoreDraftOpen(false);
-                            }}
+                            data-testid="student-questionnaire-restore-discard"
+                            onClick={discardPendingDraft}
                         >
                             放弃草稿
                         </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            onClick={() => {
-                                if (!pendingDraft) return;
-                                setTitle(pendingDraft.title ?? "");
-                                setWelcomeText(pendingDraft.welcomeText ?? "");
-                                setEndingText(pendingDraft.endingText ?? "");
-                                setQuestions(pendingDraft.questions ?? []);
-                                draftResolvedRef.current = true;
-                                setRestoreDraftOpen(false);
-                            }}
+                            data-testid="student-questionnaire-restore-apply"
+                            onClick={restorePendingDraft}
                         >
                             恢复草稿
                         </AlertDialogAction>
@@ -1424,7 +1227,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             </AlertDialog>
 
             <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-conflict-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">检测到草稿冲突</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 leading-relaxed">
@@ -1436,14 +1239,16 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     <AlertDialogFooter>
                         <AlertDialogCancel
                             className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-                            onClick={handleKeepServerDraft}
+                            data-testid="student-questionnaire-conflict-server"
+                            onClick={keepServerDraft}
                         >
                             保留服务器版本
                         </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            data-testid="student-questionnaire-conflict-local"
                             onClick={() => {
-                                void handleKeepLocalDraft();
+                                void keepLocalDraft();
                             }}
                         >
                             保留本地版本

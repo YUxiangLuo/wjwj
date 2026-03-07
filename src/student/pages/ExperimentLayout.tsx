@@ -21,6 +21,7 @@ import {
     type SamplePlanData,
     type SamplingResultsData,
 } from "../api-client";
+import { getExperimentRouteRedirect } from "../experiment/page-access";
 
 // Stage components
 import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
@@ -73,8 +74,10 @@ export function ExperimentLayout() {
     const [deadline, setDeadline] = useState<string | null>(null);
     const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
     const [confirmRollbackOpen, setConfirmRollbackOpen] = useState(false);
     const [targetStage, setTargetStage] = useState<number | null>(null);
+    const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
 
     // Load experiment data
     useEffect(() => {
@@ -87,25 +90,42 @@ export function ExperimentLayout() {
             setLoading(true);
             setNotFound(false);
             setTopicDeleted(false);
+            setRedirectTarget(null);
             try {
-                const res = await experimentApi.get(parseInt(taskId));
-                if (res.success && res.data) {
-                    const normalizedStage = Math.min(4, Math.max(res.data.currentStage || 1, 1));
-                    setExperiment(res.data);
-                    setCurrentStage(normalizedStage);
-                    setLastSavedAt(res.data.lastSavedAt);
+                const numericTaskId = parseInt(taskId);
+                const [experimentRes, taskRes] = await Promise.all([
+                    experimentApi.get(numericTaskId),
+                    tasksApi.get(numericTaskId),
+                ]);
 
-                    // Fetch task details for name and deadline
-                    tasksApi.get(parseInt(taskId)).then(taskRes => {
-                        if (taskRes.success && taskRes.data) {
-                            setTaskName(taskRes.data.name);
-                            setDeadline(taskRes.data.deadline ?? null);
-                        } else if (taskRes.error?.code === "TOPIC_DELETED") {
-                            setTopicDeleted(true);
-                            setExperiment(null);
-                        }
+                if (taskRes.success && taskRes.data) {
+                    setTaskName(taskRes.data.name);
+                    setDeadline(taskRes.data.deadline ?? null);
+                    const nextRedirect = getExperimentRouteRedirect({
+                        taskId: numericTaskId,
+                        publishedAt: taskRes.data.publishedAt,
+                        deadline: taskRes.data.deadline,
+                        status: taskRes.data.status,
                     });
-                } else if (res.error?.code === "TOPIC_DELETED") {
+                    if (nextRedirect) {
+                        setRedirectTarget(nextRedirect);
+                    }
+                } else if (taskRes.error?.code === "TOPIC_DELETED") {
+                    setExperiment(null);
+                    setTopicDeleted(true);
+                    return;
+                } else {
+                    setExperiment(null);
+                    setNotFound(true);
+                    return;
+                }
+
+                if (experimentRes.success && experimentRes.data) {
+                    const normalizedStage = Math.min(4, Math.max(experimentRes.data.currentStage || 1, 1));
+                    setExperiment(experimentRes.data);
+                    setCurrentStage(normalizedStage);
+                    setLastSavedAt(experimentRes.data.lastSavedAt);
+                } else if (experimentRes.error?.code === "TOPIC_DELETED") {
                     setExperiment(null);
                     setTopicDeleted(true);
                 } else {
@@ -134,6 +154,7 @@ export function ExperimentLayout() {
         if (!taskId) return false;
 
         setIsSaving(true);
+        setSaveError(null);
         try {
             const res = await experimentApi.save(parseInt(taskId), data);
             if (res.success && res.data) {
@@ -151,9 +172,11 @@ export function ExperimentLayout() {
 
                 return true;
             }
+            setSaveError(res.error?.message ?? "保存失败，请稍后重试");
             return false;
         } catch (error) {
             console.error("Failed to save experiment:", error);
+            setSaveError("保存失败，请稍后重试");
             return false;
         } finally {
             setIsSaving(false);
@@ -242,6 +265,10 @@ export function ExperimentLayout() {
         return <TopicDeletedState />;
     }
 
+    if (redirectTarget) {
+        return <Navigate to={redirectTarget} replace />;
+    }
+
     if (notFound || !experiment) {
         return <Navigate to="/" replace />;
     }
@@ -278,7 +305,7 @@ export function ExperimentLayout() {
 
     return (
         <ExperimentContext.Provider value={contextValue}>
-            <div className="pb-12 animate-in fade-in duration-500">
+            <div className="pb-12 animate-in fade-in duration-500" data-testid="student-experiment-layout">
                 {/* Sticky header: top bar + compact stage navigation */}
                 <div className="sticky top-[4rem] z-40 bg-slate-950/90 backdrop-blur -mt-2 border-b border-slate-800/50">
                     {/* Row 1: Title + actions */}
@@ -320,7 +347,7 @@ export function ExperimentLayout() {
                                     已自动保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN")}
                                 </span>
                             )}
-                            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
+                            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} data-testid="student-experiment-save" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                                 {isSaving ? (
                                     <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                                 ) : (
@@ -331,8 +358,17 @@ export function ExperimentLayout() {
                         </div>
                     </div>
 
+                    {saveError && (
+                        <div
+                            className="mb-2 rounded-lg border border-rose-900/30 bg-rose-900/20 px-3 py-2 text-sm text-rose-300"
+                            data-testid="student-experiment-save-error"
+                        >
+                            {saveError}
+                        </div>
+                    )}
+
                     {/* Row 2: Compact stage progress (always visible) */}
-                    <div className="flex items-center gap-3 pb-2.5 px-1 overflow-x-auto scrollbar-hide">
+                    <div className="flex items-center gap-3 pb-2.5 px-1 overflow-x-auto scrollbar-hide" data-testid="student-experiment-stages">
                         {stages.map((stage, index) => {
                             const stageNum = index + 1;
                             const isCompleted = stageNum < currentStage;
@@ -352,6 +388,7 @@ export function ExperimentLayout() {
                                             }
                                         }}
                                         disabled={stageNum >= currentStage}
+                                        data-testid={`student-experiment-stage-${stageNum}`}
                                         aria-label={`阶段 ${stageNum}: ${stage.name}`}
                                         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 disabled:cursor-default ${
                                             isCurrent
@@ -410,7 +447,7 @@ export function ExperimentLayout() {
             </div>
 
             <AlertDialog open={confirmRollbackOpen} onOpenChange={setConfirmRollbackOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-experiment-rollback-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认返回阶段</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
@@ -427,7 +464,7 @@ export function ExperimentLayout() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={applyRollback} className="bg-rose-600 hover:bg-rose-700 text-white">确认返回</AlertDialogAction>
+                        <AlertDialogAction onClick={applyRollback} data-testid="student-experiment-rollback-confirm" className="bg-rose-600 hover:bg-rose-700 text-white">确认返回</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

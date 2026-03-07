@@ -791,15 +791,42 @@ async function seed() {
     };
 
     const samplePlanComplete = {
-        confidenceLevel: "0.95",
+        confidenceLevel: "95",
         marginOfError: 5,
         recommendedSize: 370,
         finalSampleSize: 400,
     };
 
+    const sampleCities = ["北京", "上海", "广州", "深圳", "杭州", "成都", "武汉", "西安"] as const;
+    const sampleAgeGroups = ["18-24", "25-34", "35-44", "45-55"] as const;
+    const sampleEducations = ["高中及以下", "大专", "本科", "硕士", "博士"] as const;
+
+    const buildSampleRows = (count: number, options: { offset?: number; stratifiedByGender?: boolean } = {}) => {
+        const offset = options.offset ?? 0;
+        return Array.from({ length: count }, (_, idx) => {
+            const absolute = idx + offset;
+            const gender = options.stratifiedByGender
+                ? (idx < 192 ? "男" : "女")
+                : (absolute % 2 === 0 ? "男" : "女");
+            const ageIdx = absolute % sampleAgeGroups.length;
+            const educationIdx = (absolute + 2) % sampleEducations.length;
+            const cityIdx = (absolute + 3) % sampleCities.length;
+
+            return {
+                id: 1000 + absolute,
+                gender,
+                age_group: sampleAgeGroups[ageIdx]!,
+                education: sampleEducations[educationIdx]!,
+                income: 5200 + ageIdx * 2200 + educationIdx * 950 + (absolute % 7) * 180,
+                monthly_expense: 1800 + ageIdx * 380 + cityIdx * 140 + (absolute % 5) * 95,
+                city: sampleCities[cityIdx]!,
+            };
+        });
+    };
+
     const samplingResultsComplete = {
-        simple: { completed: true, sampleCount: 400, seed: 42 },
-        systematic: { completed: true, kValue: 25, sampleCount: 400, seed: 42 },
+        simple: { completed: true, sampleCount: 400, seed: 42, data: buildSampleRows(400, { offset: 0 }) },
+        systematic: { completed: true, kValue: 25, sampleCount: 400, seed: 42, data: buildSampleRows(400, { offset: 400 }) },
         stratified: {
             completed: true,
             stratifyBy: "gender",
@@ -808,6 +835,7 @@ async function seed() {
                 { name: "女", count: 5200, ratio: 0.52, sampleCount: 208 },
             ],
             seed: 42,
+            data: buildSampleRows(400, { offset: 800, stratifiedByGender: true }),
         },
     };
 
@@ -1045,6 +1073,8 @@ async function seed() {
         // 往期钱三
         { expIdx: 22, status: 2, scoreQ: "72.00", scoreP: "70.00", scoreR: "75.00", total: "72.60", comment: "基本合格，建议加强报告写作。", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 64 },
     ];
+
+    await db.delete(submission);
 
     for (const s of submissions) {
         // Fetch experiment row to get its id

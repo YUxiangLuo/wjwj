@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, submission } from "../../db/schema";
 import { scheduleSubmissionPdfGeneration } from "./submission-pdf";
+import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "./status";
 import {
     getTargetSampleSizeFromSamplePlan,
@@ -65,21 +66,24 @@ export function validateExperimentSubmission(params: {
     taskInfo: SubmitTaskInfo;
 }) {
     const exp = params.experimentRecord;
+    const questionnaire = parseStoredJson<Record<string, unknown>>(exp.questionnaire);
+    const samplePlan = parseStoredJson<Record<string, unknown>>(exp.samplePlan);
+    const samplingResults = parseStoredJson<Record<string, unknown>>(exp.samplingResults);
 
     if (exp.status === ExperimentStatus.SUBMITTED) return fail("实验已提交，请勿重复提交", "ALREADY_SUBMITTED");
     if (exp.status === ExperimentStatus.GRADED) return fail("实验已批改完成", "ALREADY_GRADED");
     if (exp.status === ExperimentStatus.REJECTED) return fail("实验已被驳回，请先重置后再提交", "REJECTED_NEED_RESET");
     if (exp.currentStage < 4) return fail("请完成所有实验阶段后再提交", "INCOMPLETE");
 
-    const questionnaireError = validateQuestionnaireForSubmit(exp.questionnaire);
+    const questionnaireError = validateQuestionnaireForSubmit(questionnaire);
     if (questionnaireError) return fail(questionnaireError, "INCOMPLETE");
 
     const normalizedPopulationSize = normalizePopulationSize(params.taskInfo.populationSize);
-    const samplePlanError = validateSamplePlanForSubmit(exp.samplePlan, normalizedPopulationSize);
+    const samplePlanError = validateSamplePlanForSubmit(samplePlan, normalizedPopulationSize);
     if (samplePlanError) return fail(samplePlanError, "INCOMPLETE");
 
-    const targetSampleSize = getTargetSampleSizeFromSamplePlan(exp.samplePlan);
-    const samplingResultsError = validateSamplingResultsForSubmit(exp.samplingResults, targetSampleSize);
+    const targetSampleSize = getTargetSampleSizeFromSamplePlan(samplePlan);
+    const samplingResultsError = validateSamplingResultsForSubmit(samplingResults, targetSampleSize);
     if (samplingResultsError) return fail(samplingResultsError, "INCOMPLETE");
 
     const reportError = validateReportForSubmit(exp.reportContent);
@@ -94,6 +98,8 @@ export async function submitStudentExperiment(params: {
     taskInfo: SubmitTaskInfo;
     student: SubmitStudentInfo;
 }) {
+    const questionnaire = parseStoredJson<Record<string, unknown>>(params.experimentRecord.questionnaire);
+
     const validation = validateExperimentSubmission({
         experimentRecord: params.experimentRecord,
         taskInfo: params.taskInfo,
@@ -160,7 +166,7 @@ export async function submitStudentExperiment(params: {
         studentId: params.student.id,
         studentName: params.student.name ?? "",
         topicName: params.taskInfo.topicName ?? "",
-        questionnaire: params.experimentRecord.questionnaire as any | null,
+        questionnaire: questionnaire as any | null,
         reportContent: params.experimentRecord.reportContent ?? "",
     });
 

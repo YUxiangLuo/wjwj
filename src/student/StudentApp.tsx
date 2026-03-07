@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyRound, Sun, Moon } from "lucide-react";
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,7 @@ function StudentAppContent() {
     const [showSessionWarning, setShowSessionWarning] = useState(false);
     const [showSessionExpired, setShowSessionExpired] = useState(false);
     const [showAuthDialog, setShowAuthDialog] = useState(false);
+    const [authDialogCode, setAuthDialogCode] = useState<string | null>(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     useEffect(() => {
@@ -69,17 +70,45 @@ function StudentAppContent() {
     }, [currentUser]);
 
     useEffect(() => {
-        if (!authErrorCode) return;
+        if (!authErrorCode) {
+            setShowAuthDialog(false);
+            setAuthDialogCode(null);
+            return;
+        }
         const hasLoginFlag = sessionStorage.getItem("student_login_success") === "1";
-        if (hasLoginFlag) {
+        if (hasLoginFlag && (authErrorCode === "AUTH_004" || authErrorCode === "AUTH_005")) {
+            setAuthDialogCode(authErrorCode);
             setShowAuthDialog(true);
+            sessionStorage.removeItem("student_login_success");
         } else {
             setShowAuthDialog(false);
-        }
-        if (authErrorCode === "AUTH_004" || authErrorCode === "AUTH_005") {
-            sessionStorage.removeItem("student_login_success");
+            setAuthDialogCode(null);
         }
     }, [authErrorCode]);
+
+    const handleReLogin = useCallback(() => {
+        setShowAuthDialog(false);
+        setAuthDialogCode(null);
+        navigate("/login", { replace: true });
+    }, [navigate]);
+
+    const authStatusDialog = authDialogCode && showAuthDialog ? (
+        <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+            <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <DialogHeader>
+                    <DialogTitle className="text-slate-100">登录状态已变更</DialogTitle>
+                    <DialogDescription className="text-slate-400">
+                        {authDialogCode === "AUTH_005"
+                            ? "您的账号已在其他设备登录。"
+                            : "会话已过期，请重新登录。"}
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button onClick={handleReLogin} className="bg-indigo-600 hover:bg-indigo-700 text-white">重新登录</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    ) : null;
 
     useEffect(() => {
         if (!sessionExpiresAt) return;
@@ -114,30 +143,20 @@ function StudentAppContent() {
     }
 
     if (isLoginPage) {
-        return <Login />;
+        return (
+            <>
+                <Login />
+                {authStatusDialog}
+            </>
+        );
     }
 
     if (!currentUser) {
-        const hasLoginFlag = sessionStorage.getItem("student_login_success") === "1";
-        if (authErrorCode && hasLoginFlag) {
+        if (authDialogCode && showAuthDialog) {
             return (
                 <>
                     <Login />
-                    <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-                        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-                            <DialogHeader>
-                                <DialogTitle className="text-slate-100">登录状态已变更</DialogTitle>
-                                <DialogDescription className="text-slate-400">
-                                    {authErrorCode === "AUTH_005"
-                                        ? "您的账号已在其他设备登录。"
-                                        : "会话已过期，请重新登录。"}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <DialogFooter>
-                                <Button onClick={() => navigate("/login", { replace: true })} className="bg-indigo-600 hover:bg-indigo-700 text-white">重新登录</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    {authStatusDialog}
                 </>
             );
         }

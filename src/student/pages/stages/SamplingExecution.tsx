@@ -26,6 +26,12 @@ import {
 import { CheckCircle2, Play, RefreshCw, Loader2, Users, Target, Layers, ArrowRight, BarChart3, Database } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
+import {
+    formatSystematicRange,
+    getSystematicAcceptedRange,
+    getSystematicSampleCountRange,
+    isSystematicRangeWithinAcceptedRange,
+} from "../../experiment/systematic-sampling";
 
 interface SamplingExecutionProps {
     onNext: () => void;
@@ -239,9 +245,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     // Validation
-    const expectedSystematicCount = kValue >= 1 ? Math.ceil(N / kValue) : 0;
+    const systematicAcceptedRange = getSystematicAcceptedRange(n);
+    const systematicSampleCountRange = getSystematicSampleCountRange(N, kValue);
     const isKValid = kValue >= 1 && kValue <= N &&
-        expectedSystematicCount >= n * 0.8 && expectedSystematicCount <= n * 1.2;
+        isSystematicRangeWithinAcceptedRange(systematicSampleCountRange, systematicAcceptedRange);
 
     const stratifiedTotal = layerSampleCounts.reduce((a, b) => a + b, 0);
     const isStratifiedValid = layers.length > 0 && stratifiedTotal === n;
@@ -301,7 +308,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sampling">
             <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                 <CardContent className="py-6 px-6">
                     <div className="flex flex-wrap items-center justify-between gap-6">
@@ -310,7 +317,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                 <Target className="w-5 h-5 text-indigo-400" />
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-slate-400">目标样本量</div>
+                                <div className="text-sm font-medium text-slate-400">规划样本量</div>
                                 <div className="text-xl font-bold text-slate-100">{n}</div>
                             </div>
                         </div>
@@ -345,20 +352,20 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-6">
-                <TabsList className="bg-slate-900 border border-slate-800 p-1 rounded-xl w-full flex h-auto">
-                    <TabsTrigger value="simple" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
+                <TabsList className="bg-slate-900 border border-slate-800 p-1 rounded-xl w-full flex h-auto" data-testid="student-sampling-tabs">
+                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
                         <div className="flex items-center gap-2">
                             <span>简单随机抽样</span>
                             {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="systematic" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
+                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
                         <div className="flex items-center gap-2">
                             <span>系统抽样</span>
                             {systematicResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="stratified" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
+                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">
                         <div className="flex items-center gap-2">
                             <span>分层抽样</span>
                             {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
@@ -389,6 +396,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                             value={simpleSeed}
                                             onChange={(e) => setSimpleSeed(e.target.value)}
                                             placeholder="留空则每次随机"
+                                            data-testid="student-sampling-simple-seed"
                                             className="mt-2 bg-slate-900 border-slate-700 text-slate-200 focus:border-indigo-500"
                                         />
                                         <p className="text-xs text-slate-500 mt-2">设置后可复现同一组抽样结果。</p>
@@ -396,7 +404,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     {!simpleResult?.completed ? (
                                         <div className="bg-slate-950/50 rounded-xl p-8 text-center border border-slate-800 border-dashed">
                                             <div className="mb-4 text-slate-400">尚未执行抽样</div>
-                                            <Button onClick={executeSimple} disabled={executing !== null} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                                            <Button onClick={executeSimple} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                                                 {executing === "simple" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -419,7 +427,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     )}
                                                 </div>
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={executeSimple} disabled={executing !== null} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100 w-full">
+                                            <Button variant="outline" size="sm" onClick={executeSimple} disabled={executing !== null} data-testid="student-sampling-simple-rerun" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100 w-full">
                                                 <RefreshCw className="w-4 h-4 mr-2" />
                                                 重新抽样
                                             </Button>
@@ -462,7 +470,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         系统抽样
                                     </CardTitle>
                                     <CardDescription className="text-slate-400 pt-1">
-                                        按固定间隔 K 从总体中抽取样本。建议 K 值：{Math.round(N / n)}
+                                        按固定间隔 K 从总体中抽取样本。规划样本量为 {n}，实际样本量会随 K 值和随机起点在小范围内波动。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
@@ -477,6 +485,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     onChange={(e) => setKValue(parseInt(e.target.value) || 1)}
                                                     min={1}
                                                     max={N}
+                                                    data-testid="student-sampling-systematic-k"
                                                     className="bg-slate-900 border-slate-700 text-slate-200 focus:border-teal-500 pr-10"
                                                 />
                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">Steps</span>
@@ -485,12 +494,17 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <div className="space-y-3">
                                             <Label className="text-slate-300">预计抽取数量</Label>
                                             <div className={`p-2.5 border rounded-md flex items-center justify-between ${isKValid ? "border-slate-700 bg-slate-900" : "border-rose-500/50 bg-rose-500/10"}`}>
-                                                <span className={`font-mono font-bold ${isKValid ? "text-slate-200" : "text-rose-400"}`}>{expectedSystematicCount}</span>
-                                                <span className="text-xs text-slate-500">Target: {Math.floor(n * 0.8)} - {Math.floor(n * 1.2)}</span>
+                                                <span className={`font-mono font-bold ${isKValid ? "text-slate-200" : "text-rose-400"}`}>{formatSystematicRange(systematicSampleCountRange)}</span>
+                                                <span className="text-xs text-slate-500">允许范围: {formatSystematicRange(systematicAcceptedRange)}</span>
                                             </div>
+                                            {systematicSampleCountRange.min !== systematicSampleCountRange.max && (
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    随机起点不同，实际抽取数量会在 {formatSystematicRange(systematicSampleCountRange)} 之间波动。
+                                                </p>
+                                            )}
                                             {!isKValid && (
                                                 <p className="text-xs text-rose-400 mt-1">
-                                                    样本量偏差过大，请调整 K 值
+                                                    当前 K 值的实际样本量可能超出允许范围，请调整 K 值
                                                 </p>
                                             )}
                                         </div>
@@ -502,6 +516,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 value={systematicSeed}
                                                 onChange={(e) => setSystematicSeed(e.target.value)}
                                                 placeholder="留空则每次随机"
+                                                data-testid="student-sampling-systematic-seed"
                                                 className="bg-slate-900 border-slate-700 text-slate-200 focus:border-teal-500"
                                             />
                                             <p className="text-xs text-slate-500">
@@ -512,7 +527,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                                     {!systematicResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={executeSystematic} disabled={executing !== null || !isKValid} className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 w-auto px-8">
+                                            <Button onClick={executeSystematic} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 w-auto px-8">
                                                 {executing === "systematic" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -531,7 +546,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
                                                     <p className="text-emerald-200/70 text-sm mt-1">K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本{executionTimes.systematic !== null && `，耗时 ${executionTimes.systematic} ms`}</p>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid} className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+                                                <Button variant="ghost" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-rerun" className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
                                                 </Button>
                                             </div>
@@ -582,7 +597,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <div className="space-y-2">
                                             <Label className="text-slate-300 text-xs">选择分层变量</Label>
                                             <Select value={stratifyBy} onValueChange={setStratifyBy}>
-                                                <SelectTrigger className="w-48 bg-slate-900 border-slate-700 text-slate-200">
+                                                <SelectTrigger data-testid="student-sampling-stratify-by" className="w-48 bg-slate-900 border-slate-700 text-slate-200">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -609,15 +624,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 value={stratifiedSeed}
                                                 onChange={(e) => setStratifiedSeed(e.target.value)}
                                                 placeholder="留空则每次随机"
+                                                data-testid="student-sampling-stratified-seed"
                                                 className="w-48 bg-slate-900 border-slate-700 text-slate-200"
                                             />
                                         </div>
 
                                         <div className="flex gap-2 mb-0.5">
-                                            <Button variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
+                                            <Button variant="outline" size="sm" data-testid="student-sampling-alloc-proportional" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
                                                 按比例分配
                                             </Button>
-                                            <Button variant="outline" size="sm" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={applyEqualAllocation} disabled={layers.length === 0}>
+                                            <Button variant="outline" size="sm" data-testid="student-sampling-alloc-equal" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={applyEqualAllocation} disabled={layers.length === 0}>
                                                 等额分配
                                             </Button>
                                         </div>
@@ -644,6 +660,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                                 type="number"
                                                                 value={layerSampleCounts[index] ?? 0}
                                                                 onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
+                                                                data-testid={`student-sampling-layer-count-${index + 1}`}
                                                                 className="w-20 h-8 bg-slate-900 border-slate-700 text-slate-200 text-center"
                                                                 min={0}
                                                             />
@@ -680,7 +697,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                                     {!stratifiedResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/20 w-auto px-8">
+                                            <Button onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-run" className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/20 w-auto px-8">
                                                 {executing === "stratified" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -699,7 +716,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
                                                     <p className="text-emerald-200/70 text-sm mt-1">按 {STRATIFY_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified !== null && `，耗时 ${executionTimes.stratified} ms`}</p>
                                                 </div>
-                                                <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+                                                <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-rerun" className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
                                                 </Button>
                                             </div>
@@ -734,10 +751,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
             {/* Navigation */}
             <div className="flex justify-between pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
+                <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} className={allCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-800 text-slate-500"}>
+                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-800 text-slate-500"}>
                     {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${[simpleResult?.completed, systematicResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/3)`}
                     <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -745,7 +762,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
             {/* Confirm Next Stage Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-sampling-confirm-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认完成抽样执行</AlertDialogTitle>
                         <AlertDialogDescription asChild>
@@ -762,7 +779,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmNext} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sampling-confirm" className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

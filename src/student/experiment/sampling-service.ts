@@ -5,6 +5,12 @@ import {
     performSystematicSampling,
 } from "../sampling";
 import { parseTopicFieldMapping } from "./population-data";
+import {
+    formatSystematicRange,
+    getSystematicAcceptedRange,
+    getSystematicSampleCountRange,
+    isSystematicRangeWithinAcceptedRange,
+} from "./systematic-sampling";
 
 export type SamplingMethod = "simple" | "systematic" | "stratified";
 
@@ -89,16 +95,13 @@ export async function executeSamplingAction(params: {
                 };
             }
 
-            const expectedCount = Math.ceil(params.population.length / kValue);
-            if (params.targetSampleSize !== null) {
-                const minExpected = Math.floor(params.targetSampleSize * 0.8);
-                const maxExpected = Math.ceil(params.targetSampleSize * 1.2);
-                if (expectedCount < minExpected || expectedCount > maxExpected) {
-                    return {
-                        ok: false as const,
-                        errorMessage: `K 值导致样本量超出范围，需在 ${minExpected}-${maxExpected} 之间`,
-                    };
-                }
+            const acceptedRange = getSystematicAcceptedRange(params.targetSampleSize);
+            const sampleCountRange = getSystematicSampleCountRange(params.population.length, kValue);
+            if (acceptedRange && !isSystematicRangeWithinAcceptedRange(sampleCountRange, acceptedRange)) {
+                return {
+                    ok: false as const,
+                    errorMessage: `K 值导致实际样本量可能为 ${formatSystematicRange(sampleCountRange)}，需完全落在 ${formatSystematicRange(acceptedRange)} 之间`,
+                };
             }
 
             const data = await performSystematicSampling(params.population, kValue, random);

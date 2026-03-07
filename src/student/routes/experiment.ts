@@ -4,6 +4,7 @@ import { experiment, topic } from "../../db/schema";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { buildStratifiedStats, readPopulationData } from "../experiment/population-data";
+import { deserializeExperimentFields, parseStoredJson } from "../experiment/serialization";
 import { executeSamplingAction } from "../experiment/sampling-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
 import { submitStudentExperiment } from "../experiment/submit-service";
@@ -49,6 +50,10 @@ const experimentRoutes: RouteDefinition = {
         const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
         if (taskAccessError) return taskAccessError;
 
+        const taskSchedule = await findStudentTaskSchedule(taskId, currentStudent.classId);
+        const openError = ensureTaskIsOpen(taskSchedule?.openTime);
+        if (openError) return error(openError.message, openError.code, openError.status);
+
         const taskInfo = await findStudentTaskTopicInfo(taskId, currentStudent.classId);
 
         if (!taskInfo) {
@@ -63,16 +68,18 @@ const experimentRoutes: RouteDefinition = {
 
         const [topicInfo] = await db.select({ excelRowCount: topic.excelRowCount }).from(topic).where(eq(topic.id, taskInfo.topicId));
 
+        const normalizedExperiment = deserializeExperimentFields(exp);
+
         return json({
-            id: exp.id,
-            taskId: exp.taskId,
-            currentStage: exp.currentStage,
-            status: exp.status,
-            questionnaire: exp.questionnaire,
-            samplePlan: exp.samplePlan,
-            samplingResults: exp.samplingResults,
-            reportContent: exp.reportContent,
-            lastSavedAt: exp.lastSavedAt?.toISOString() ?? null,
+            id: normalizedExperiment.id,
+            taskId: normalizedExperiment.taskId,
+            currentStage: normalizedExperiment.currentStage,
+            status: normalizedExperiment.status,
+            questionnaire: normalizedExperiment.questionnaire,
+            samplePlan: normalizedExperiment.samplePlan,
+            samplingResults: normalizedExperiment.samplingResults,
+            reportContent: normalizedExperiment.reportContent,
+            lastSavedAt: normalizedExperiment.lastSavedAt?.toISOString() ?? null,
             populationSize: topicInfo?.excelRowCount ?? 10000,
         });
     },
@@ -197,7 +204,7 @@ const samplingActionRoutes: RouteDefinition = {
             return error("实验记录不存在", "NOT_FOUND", 404);
         }
 
-        const targetSampleSize = getTargetSampleSizeFromSamplePlan(exp.samplePlan);
+        const targetSampleSize = getTargetSampleSizeFromSamplePlan(parseStoredJson(exp.samplePlan));
 
         const taskInfo = await findStudentTaskSamplingInfo(taskId, currentStudent.classId);
 

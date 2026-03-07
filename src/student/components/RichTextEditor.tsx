@@ -5,6 +5,8 @@ import { getRichTextPlainLength } from "@/utils/rich-text";
 import { normalizeRichTextHtml } from "@/utils/rich-text-html";
 
 interface RichTextEditorProps {
+    dataTestId?: string;
+    editorTestId?: string;
     id?: string;
     value: string;
     onChange: (value: string) => void;
@@ -36,6 +38,8 @@ function ToolbarButton({ title, onClick, children }: ToolbarButtonProps) {
 }
 
 export function RichTextEditor({
+    dataTestId,
+    editorTestId,
     id,
     value,
     onChange,
@@ -74,7 +78,10 @@ export function RichTextEditor({
     };
 
     return (
-        <div className={cn("rounded-xl border border-slate-800 bg-slate-950/40", className)}>
+        <div
+            className={cn("rounded-xl border border-slate-800 bg-slate-950/40", className)}
+            data-testid={dataTestId}
+        >
             <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2">
                 <ToolbarButton title="加粗" onClick={() => executeCommand("bold")}>
                     <Bold className="h-4 w-4" />
@@ -106,6 +113,7 @@ export function RichTextEditor({
                     ref={editorRef}
                     contentEditable
                     suppressContentEditableWarning
+                    data-testid={editorTestId}
                     className={cn(
                         "min-h-[180px] p-4 text-sm text-slate-200 leading-relaxed outline-none rich-text-content [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:mb-1",
                         editorClassName

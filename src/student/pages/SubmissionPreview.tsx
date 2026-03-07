@@ -18,6 +18,11 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { experimentApi, tasksApi, type ExperimentData, type TaskDetail, type Question } from "../api-client";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { TopicDeletedState } from "../components/TopicDeletedState";
+import {
+    formatSystematicRange,
+    getSystematicAcceptedRange,
+} from "../experiment/systematic-sampling";
+import { getPreviewSubmitBlocker } from "../experiment/preview-submit";
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
@@ -188,10 +193,25 @@ export function SubmissionPreview() {
     const samplingResults = experiment.samplingResults;
     const reportContent = experiment.reportContent ?? "";
     const reportLength = getRichTextPlainLength(reportContent);
+    const submitBlocker = getPreviewSubmitBlocker({
+        questionnaire,
+        samplePlan,
+        samplingResults,
+        reportContent,
+        populationSize: experiment.populationSize,
+    });
     const reportLengthValid = reportLength >= 100 && reportLength <= 5000;
+    const canSubmit = submitBlocker === null;
+    const systematicAcceptedRange = getSystematicAcceptedRange(samplePlan?.finalSampleSize);
+    const systematicSampleCount = samplingResults?.systematic?.sampleCount ?? null;
+    const showSystematicSampleNote =
+        samplePlan !== null &&
+        samplingResults?.systematic?.completed === true &&
+        systematicSampleCount !== null &&
+        systematicSampleCount !== samplePlan.finalSampleSize;
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-preview">
             <Link to={`/task/${task.id}/experiment`}>
                 <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                     <ArrowLeft className="w-4 h-4" />
@@ -212,15 +232,17 @@ export function SubmissionPreview() {
                 </CardHeader>
                 <CardContent className="pt-6">
                     <Tabs defaultValue="report" className="w-full">
-                        <TabsList className="bg-slate-800/50 border border-slate-700/30 p-1 w-full md:w-auto h-auto rounded-lg">
+                        <TabsList className="bg-slate-800/50 border border-slate-700/30 p-1 w-full md:w-auto h-auto rounded-lg" data-testid="student-preview-tabs">
                             <TabsTrigger
                                 value="report"
+                                data-testid="student-preview-tab-report"
                                 className="px-6 py-2 rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-400 hover:text-slate-200 transition-all"
                             >
                                 实验报告预览
                             </TabsTrigger>
                             <TabsTrigger
                                 value="questionnaire"
+                                data-testid="student-preview-tab-questionnaire"
                                 className="px-6 py-2 rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-400 hover:text-slate-200 transition-all"
                             >
                                 问卷预览
@@ -258,6 +280,13 @@ export function SubmissionPreview() {
                                         <p>系统抽样：{samplingResults?.systematic?.completed ? `已完成（${samplingResults.systematic.sampleCount} 样本）` : "未完成"}</p>
                                         <p>分层抽样：{samplingResults?.stratified?.completed ? "已完成" : "未完成"}</p>
                                     </div>
+                                    {showSystematicSampleNote && (
+                                        <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200">
+                                            系统抽样样本量受 K 值和随机起点影响，不要求与规划样本量完全一致。
+                                            当前结果为 {systematicSampleCount}，规划样本量为 {samplePlan.finalSampleSize}，
+                                            允许范围为 {formatSystematicRange(systematicAcceptedRange)}。
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-4">
@@ -316,10 +345,10 @@ export function SubmissionPreview() {
             </Card>
 
             <div className="flex flex-col items-end gap-4 pb-12">
-                {!reportLengthValid && (
+                {!canSubmit && (
                     <div className="text-sm text-red-400 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20 flex items-center gap-2">
                         <AlertCircle className="w-4 h-4" />
-                        报告字数不符合要求（100-5000字），请返回修改。
+                        {submitBlocker}
                     </div>
                 )}
                 {error && (
@@ -330,7 +359,8 @@ export function SubmissionPreview() {
 
                 <Button
                     onClick={() => setConfirmOpen(true)}
-                    disabled={!reportLengthValid || submitting}
+                    disabled={!canSubmit || submitting}
+                    data-testid="student-preview-submit"
                     className="w-full md:w-auto h-12 px-8 text-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
                 >
                     {submitting ? (
@@ -348,7 +378,7 @@ export function SubmissionPreview() {
             </div>
 
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-preview-submit-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认提交实验</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400">
@@ -361,6 +391,7 @@ export function SubmissionPreview() {
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             onClick={handleSubmit}
                             disabled={submitting}
+                            data-testid="student-preview-submit-confirm"
                         >
                             {submitting ? "提交中..." : "确认提交"}
                         </AlertDialogAction>

@@ -1,6 +1,13 @@
 import { experiment } from "../../db/schema";
 import { attachCalculatedSampleSize } from "./sample-plan";
+import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "./status";
+import {
+    getTargetSampleSizeFromSamplePlan,
+    validateQuestionnaireForSubmit,
+    validateSamplePlanForSubmit,
+    validateSamplingResultsForSubmit,
+} from "./submit-validation";
 
 type ExperimentRecord = typeof experiment.$inferSelect;
 
@@ -17,6 +24,43 @@ function fail(message: string, code: string, status = 400): FailureResult {
 
 function isValidStage(stage: number) {
     return Number.isInteger(stage) && stage >= 0 && stage <= 4;
+}
+
+function validateStageAdvance(params: {
+    nextStage: number;
+    currentStage: number;
+    questionnaire: unknown;
+    samplePlan: unknown;
+    samplingResults: unknown;
+    populationSize: number | null | undefined;
+}) {
+    if (params.nextStage <= params.currentStage) {
+        return null;
+    }
+
+    if (params.nextStage >= 2) {
+        const questionnaireError = validateQuestionnaireForSubmit(params.questionnaire);
+        if (questionnaireError) {
+            return fail(questionnaireError, "VALIDATION_ERROR");
+        }
+    }
+
+    if (params.nextStage >= 3) {
+        const samplePlanError = validateSamplePlanForSubmit(params.samplePlan, params.populationSize ?? null);
+        if (samplePlanError) {
+            return fail(samplePlanError, "VALIDATION_ERROR");
+        }
+    }
+
+    if (params.nextStage >= 4) {
+        const targetSampleSize = getTargetSampleSizeFromSamplePlan(params.samplePlan);
+        const samplingResultsError = validateSamplingResultsForSubmit(params.samplingResults, targetSampleSize);
+        if (samplingResultsError) {
+            return fail(samplingResultsError, "VALIDATION_ERROR");
+        }
+    }
+
+    return null;
 }
 
 export function buildExperimentSaveUpdates(params: {
@@ -41,6 +85,15 @@ export function buildExperimentSaveUpdates(params: {
     }
 
     const lastSavedAt = new Date();
+    const nextQuestionnaire = params.body.questionnaire !== undefined
+        ? params.body.questionnaire
+        : parseStoredJson(exp.questionnaire);
+    const nextSamplePlan = params.body.samplePlan !== undefined
+        ? attachCalculatedSampleSize(params.body.samplePlan as Record<string, any>, params.populationSize)
+        : parseStoredJson(exp.samplePlan);
+    const nextSamplingResults = params.body.samplingResults !== undefined
+        ? params.body.samplingResults
+        : parseStoredJson(exp.samplingResults);
     const updates: Record<string, unknown> = {
         lastSavedAt,
         version: exp.version + 1,
@@ -55,6 +108,18 @@ export function buildExperimentSaveUpdates(params: {
             return fail("任务已截止，无法进入下一阶段", "TASK_DEADLINE");
         }
 
+        const stageAdvanceError = validateStageAdvance({
+            nextStage,
+            currentStage: exp.currentStage,
+            questionnaire: nextQuestionnaire,
+            samplePlan: nextSamplePlan,
+            samplingResults: nextSamplingResults,
+            populationSize: params.populationSize,
+        });
+        if (stageAdvanceError) {
+            return stageAdvanceError;
+        }
+
         updates.currentStage = nextStage;
         if (nextStage >= 1 && !exp.stage1CompletedAt) updates.stage1CompletedAt = new Date();
         if (nextStage >= 2 && !exp.stage2CompletedAt) updates.stage2CompletedAt = new Date();
@@ -63,9 +128,7 @@ export function buildExperimentSaveUpdates(params: {
     }
 
     if (params.body.questionnaire !== undefined) updates.questionnaire = params.body.questionnaire;
-    if (params.body.samplePlan !== undefined) {
-        updates.samplePlan = attachCalculatedSampleSize(params.body.samplePlan as Record<string, any>, params.populationSize);
-    }
+    if (params.body.samplePlan !== undefined) updates.samplePlan = nextSamplePlan;
     if (params.body.samplingResults !== undefined) updates.samplingResults = params.body.samplingResults;
     if (params.body.reportContent !== undefined) updates.reportContent = params.body.reportContent;
 

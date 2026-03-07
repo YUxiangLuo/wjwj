@@ -140,7 +140,10 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-900 border-slate-800 text-slate-200 sm:rounded-xl shadow-2xl shadow-indigo-500/10">
+            <DialogContent
+                className="max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-900 border-slate-800 text-slate-200 sm:rounded-xl shadow-2xl shadow-indigo-500/10"
+                data-testid="student-question-editor"
+            >
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
                         {isEditing ? "编辑题目" : "添加题目"}
@@ -153,11 +156,12 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         <div className="space-y-2">
                             <Label className="text-slate-400">题目类型</Label>
                             <Tabs value={type} onValueChange={(v) => setType(v as QuestionType)}>
-                                <TabsList className="grid grid-cols-4 w-full bg-slate-950/50 border border-slate-800 p-1">
+                                <TabsList className="grid grid-cols-4 w-full bg-slate-950/50 border border-slate-800 p-1" data-testid="student-question-type-list">
                                     {(Object.keys(questionTypeLabels) as QuestionType[]).map((t) => (
                                         <TabsTrigger
                                             key={t}
                                             value={t}
+                                            data-testid={`student-question-type-${t}`}
                                             className="text-xs data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-400 hover:text-slate-200"
                                         >
                                             {questionTypeLabels[t]}
@@ -183,6 +187,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             onChange={(e) => setContent(e.target.value)}
                             rows={3}
                             maxLength={500}
+                            data-testid="student-question-content"
                             className="bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                         />
                         <p className="text-xs text-slate-500 text-right">
@@ -209,6 +214,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     size="sm"
                                     onClick={addOption}
                                     disabled={options.length >= 10}
+                                    data-testid="student-question-add-option"
                                     className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300"
                                 >
                                     <Plus className="w-4 h-4 mr-1" />
@@ -227,6 +233,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                             value={option}
                                             onChange={(e) => updateOption(index, e.target.value)}
                                             maxLength={200}
+                                            data-testid={`student-question-option-${index + 1}`}
                                             className="flex-1 bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
                                         />
                                         <Button
@@ -234,6 +241,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                             size="icon"
                                             onClick={() => removeOption(index)}
                                             disabled={options.length <= 2}
+                                            data-testid={`student-question-remove-option-${index + 1}`}
                                             className="h-9 w-9 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -256,6 +264,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     max={options.length}
                                     value={minSelect}
                                     onChange={(e) => setMinSelect(parseInt(e.target.value) || 1)}
+                                    data-testid="student-question-min-select"
                                     className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
                                 />
                             </div>
@@ -268,6 +277,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     max={options.length}
                                     value={maxSelect}
                                     onChange={(e) => setMaxSelect(parseInt(e.target.value) || options.length)}
+                                    data-testid="student-question-max-select"
                                     className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
                                 />
                             </div>
@@ -289,6 +299,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         value={scaleMinLabel}
                                         onChange={(e) => setScaleMinLabel(e.target.value)}
                                         maxLength={50}
+                                        data-testid="student-question-scale-min-label"
                                         className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
                                     />
                                 </div>
@@ -300,6 +311,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         value={scaleMaxLabel}
                                         onChange={(e) => setScaleMaxLabel(e.target.value)}
                                         maxLength={50}
+                                        data-testid="student-question-scale-max-label"
                                         className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
                                     />
                                 </div>
@@ -312,6 +324,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
+                        data-testid="student-question-cancel"
                         className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                     >
                         取消
@@ -319,6 +332,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     <Button
                         onClick={handleSave}
                         disabled={!isValid()}
+                        data-testid="student-question-save"
                         className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
                     >
                         保存

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,7 @@ import { BarChart3, Download, FileText, Send, Loader2, Sparkles, AlertCircle, Ma
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
+import { useDraftSync } from "../../draft-sync";
 import { experimentApi } from "../../api-client";
 
 interface AnalysisReportProps {
@@ -433,27 +434,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     // Initialize from saved data
     const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
-    const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
-    const [pendingDraft, setPendingDraft] = useState<string | null>(null);
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
-    const [isOnline, setIsOnline] = useState(
-        typeof navigator === "undefined" ? true : navigator.onLine
-    );
-    const [networkNotice, setNetworkNotice] = useState<string | null>(null);
-    const [syncConflictOpen, setSyncConflictOpen] = useState(false);
-    const [serverConflictDraft, setServerConflictDraft] = useState<string | null>(null);
-    const [localConflictDraft, setLocalConflictDraft] = useState<string | null>(null);
 
     const draftKey = experiment?.taskId ? `student_report_draft_${experiment.taskId}` : null;
-    const serverSnapshotRef = useRef("");
-    const saveInFlightRef = useRef(false);
-    const reconnectSyncingRef = useRef(false);
-    const draftResolvedRef = useRef(false);
 
     const minLength = 100;
     const maxLength = 5000;
@@ -560,241 +547,52 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
     ];
 
-    useEffect(() => {
-        serverSnapshotRef.current = experiment?.reportContent ?? "";
-    }, [experiment?.reportContent]);
+    const saveReportContent = useCallback(async (nextContent: string) => {
+        return saveExperiment({ reportContent: nextContent });
+    }, [saveExperiment]);
+    const parseReportDraft = useCallback((raw: string) => raw, []);
+    const isMeaningfulReportDraft = useCallback((draft: string) => getRichTextPlainLength(draft) > 0, []);
+    const serializeReport = useCallback((value: string) => value, []);
 
-    // Restore draft from localStorage
-    useEffect(() => {
-        if (!draftKey) return;
-        const raw = localStorage.getItem(draftKey);
-        if (!raw) { draftResolvedRef.current = true; return; }
-        // Skip empty/trivial drafts
-        const plainLen = getRichTextPlainLength(raw);
-        if (plainLen === 0) { draftResolvedRef.current = true; return; }
-        const hasServerData = Boolean(experiment?.reportContent);
-        if (hasServerData && raw === experiment?.reportContent) { draftResolvedRef.current = true; return; }
-        setPendingDraft(raw);
-        setRestoreDraftOpen(true);
-    }, [draftKey, experiment?.reportContent]);
+    const loadLatestReport = useCallback(async () => {
+        if (!experiment?.taskId) return null;
+        const res = await experimentApi.get(experiment.taskId);
+        if (!res.success || !res.data) return null;
+        return typeof res.data.reportContent === "string" ? res.data.reportContent : "";
+    }, [experiment?.taskId]);
 
-    const saveReport = useCallback(async () => {
-        const snapshot = reportContent;
-        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
-        if (typeof navigator !== "undefined" && !navigator.onLine) return;
-
-        saveInFlightRef.current = true;
-        try {
-            const success = await saveExperiment({ reportContent: snapshot });
-            if (success) {
-                serverSnapshotRef.current = snapshot;
-                setNetworkNotice((prev) => (prev === "网络已恢复，正在同步本地数据..." ? "网络已恢复，本地草稿已同步到服务器" : prev));
-            }
-        } finally {
-            saveInFlightRef.current = false;
-        }
-    }, [reportContent, saveExperiment]);
-
-    // Save draft to localStorage (guard: only after draft recovery dialog resolved)
-    useEffect(() => {
-        if (!draftKey || !draftResolvedRef.current) return;
-        try {
-            localStorage.setItem(draftKey, reportContent);
-        } catch {
-            // ignore write errors
-        }
-    }, [draftKey, reportContent]);
-
-    // Keep a ref to the latest saveReport so the 30-second interval doesn't reset on every keystroke
-    const saveReportRef = useRef(saveReport);
-    useEffect(() => { saveReportRef.current = saveReport; }, [saveReport]);
-
-    // Debounce: save 3 seconds after user stops editing
-    useEffect(() => {
-        const debounceTimer = window.setTimeout(() => {
-            void saveReport();
-        }, 3000);
-
-        return () => {
-            window.clearTimeout(debounceTimer);
-        };
-    }, [saveReport]);
-
-    // Fixed 30-second interval: uses ref so the interval is never reset by content changes
-    useEffect(() => {
-        const intervalTimer = window.setInterval(() => {
-            void saveReportRef.current();
-        }, 30 * 1000);
-
-        return () => {
-            window.clearInterval(intervalTimer);
-        };
-    }, []);
-
-    const syncAfterReconnect = useCallback(async () => {
-        if (!experiment?.taskId || reconnectSyncingRef.current) return;
-        reconnectSyncingRef.current = true;
-        setNetworkNotice("网络已恢复，正在同步本地数据...");
-
-        try {
-            const localData = reportContent;
-            const localSnapshot = localData;
-            const lastSyncedSnapshot = serverSnapshotRef.current;
-
-            const res = await experimentApi.get(experiment.taskId);
-            if (!res.success || !res.data) {
-                setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-                return;
-            }
-
-            const serverData = typeof res.data.reportContent === "string" ? res.data.reportContent : "";
-            const serverSnapshot = serverData;
-            const localChanged = localSnapshot !== lastSyncedSnapshot;
-            const serverChanged = serverSnapshot !== lastSyncedSnapshot;
-
-            if (localSnapshot === serverSnapshot) {
-                serverSnapshotRef.current = serverSnapshot;
-                setNetworkNotice("网络已恢复，数据已同步");
-                return;
-            }
-
-            if (localChanged && serverChanged) {
-                setLocalConflictDraft(localData);
-                setServerConflictDraft(serverData);
-                setSyncConflictOpen(true);
-                setNetworkNotice("检测到本地与服务器草稿冲突，请选择保留版本");
-                return;
-            }
-
-            if (localChanged) {
-                const success = await saveExperiment({ reportContent: localData });
-                if (success) {
-                    serverSnapshotRef.current = localSnapshot;
-                    if (draftKey) {
-                        try {
-                            localStorage.setItem(draftKey, localSnapshot);
-                        } catch {
-                            // ignore write errors
-                        }
-                    }
-                    setNetworkNotice("网络已恢复，本地草稿已同步到服务器");
-                } else {
-                    setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-                }
-                return;
-            }
-
-            setReportContent(serverData);
-            serverSnapshotRef.current = serverSnapshot;
-            if (draftKey) {
-                try {
-                    localStorage.setItem(draftKey, serverSnapshot);
-                } catch {
-                    // ignore write errors
-                }
-            }
-            setNetworkNotice("检测到服务器有更新，已同步最新草稿");
-        } catch {
-            setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-        } finally {
-            reconnectSyncingRef.current = false;
-        }
-    }, [draftKey, experiment?.taskId, reportContent, saveExperiment]);
-
-    useEffect(() => {
-        const handleOnline = () => {
-            setIsOnline(true);
-            void syncAfterReconnect();
-        };
-        const handleOffline = () => {
-            setIsOnline(false);
-            setNetworkNotice("网络已断开，数据将保存在本地");
-        };
-
-        window.addEventListener("online", handleOnline);
-        window.addEventListener("offline", handleOffline);
-        return () => {
-            window.removeEventListener("online", handleOnline);
-            window.removeEventListener("offline", handleOffline);
-        };
-    }, [syncAfterReconnect]);
-
-    useEffect(() => {
-        if (!isOnline) {
-            setNetworkNotice("网络已断开，数据将保存在本地");
-        }
-    }, [isOnline]);
-
-    useEffect(() => {
-        if (!networkNotice || syncConflictOpen || !isOnline) return;
-        const timer = window.setTimeout(() => {
-            setNetworkNotice(null);
-        }, 5000);
-        return () => {
-            window.clearTimeout(timer);
-        };
-    }, [isOnline, networkNotice, syncConflictOpen]);
-
-    const handleKeepServerDraft = useCallback(() => {
-        if (serverConflictDraft === null) {
-            setSyncConflictOpen(false);
-            return;
-        }
-
-        setReportContent(serverConflictDraft);
-        serverSnapshotRef.current = serverConflictDraft;
-        if (draftKey) {
-            try {
-                localStorage.setItem(draftKey, serverConflictDraft);
-            } catch {
-                // ignore write errors
-            }
-        }
-        setSyncConflictOpen(false);
-        setNetworkNotice("已保留服务器草稿版本");
-    }, [draftKey, serverConflictDraft]);
-
-    const handleKeepLocalDraft = useCallback(async () => {
-        const localData = localConflictDraft ?? reportContent;
-        const success = await saveExperiment({ reportContent: localData });
-
-        if (success) {
-            serverSnapshotRef.current = localData;
-            if (draftKey) {
-                try {
-                    localStorage.setItem(draftKey, localData);
-                } catch {
-                    // ignore write errors
-                }
-            }
-            setNetworkNotice("已保留本地草稿并同步到服务器");
-        } else {
-            setNetworkNotice("保留本地草稿失败，请稍后重试");
-        }
-
-        setSyncConflictOpen(false);
-    }, [draftKey, localConflictDraft, reportContent, saveExperiment]);
-
-    useEffect(() => {
-        const onBeforeUnload = (event: BeforeUnloadEvent) => {
-            if (reportContent === serverSnapshotRef.current) return;
-            event.preventDefault();
-            event.returnValue = "";
-        };
-
-        window.addEventListener("beforeunload", onBeforeUnload);
-        return () => {
-            window.removeEventListener("beforeunload", onBeforeUnload);
-        };
-    }, [reportContent]);
+    const {
+        clearLocalDraft,
+        discardPendingDraft,
+        isOnline,
+        keepLocalDraft,
+        keepServerDraft,
+        networkNotice,
+        restoreDraftOpen,
+        restorePendingDraft,
+        saveNow,
+        setRestoreDraftOpen,
+        setSyncConflictOpen,
+        syncConflictOpen,
+    } = useDraftSync<string>({
+        applyValue: setReportContent,
+        currentValue: reportContent,
+        draftKey,
+        initialServerValue: experiment?.reportContent ?? "",
+        isMeaningfulDraft: isMeaningfulReportDraft,
+        loadServerLatest: loadLatestReport,
+        parseDraft: parseReportDraft,
+        saveToServer: saveReportContent,
+        serialize: serializeReport,
+    });
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
             // Save final report content before preview
-            await saveReport();
+            await saveNow();
             // Clear localStorage draft after successful submission
-            if (draftKey) localStorage.removeItem(draftKey);
+            clearLocalDraft();
             onSubmit();
         } finally {
             setIsSubmitting(false);
@@ -865,9 +663,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
             {networkNotice && (
                 <Card
+                    data-testid="student-analysis-network-notice"
                     className={`rounded-2xl border shadow-sm ${syncConflictOpen
                         ? "border-amber-500/30 bg-amber-500/10"
                         : isOnline
@@ -911,11 +710,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </CardHeader>
                         <CardContent className="pt-6">
                             <Tabs defaultValue="mean">
-                                <TabsList className="bg-slate-950 border border-slate-800 p-1 rounded-xl w-full flex h-auto">
-                                    <TabsTrigger value="mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">均值对比</TabsTrigger>
-                                    <TabsTrigger value="dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">分布对比</TabsTrigger>
-                                    <TabsTrigger value="error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">误差分析</TabsTrigger>
-                                    <TabsTrigger value="represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">样本代表性</TabsTrigger>
+                                <TabsList className="bg-slate-950 border border-slate-800 p-1 rounded-xl w-full flex h-auto" data-testid="student-analysis-tabs">
+                                    <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">均值对比</TabsTrigger>
+                                    <TabsTrigger value="dist" data-testid="student-analysis-tab-dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">分布对比</TabsTrigger>
+                                    <TabsTrigger value="error" data-testid="student-analysis-tab-error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">误差分析</TabsTrigger>
+                                    <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">样本代表性</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="mean" className="mt-6 space-y-4">
@@ -1039,20 +838,20 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 pt-6">
-                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("simple")}>
+                            <Button variant="outline" data-testid="student-analysis-export-simple" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("simple")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 简单随机抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("systematic")}>
+                            <Button variant="outline" data-testid="student-analysis-export-systematic" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("systematic")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 系统抽样结果
                             </Button>
-                            <Button variant="outline" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("stratified")}>
+                            <Button variant="outline" data-testid="student-analysis-export-stratified" className="w-full justify-start border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100" onClick={() => handleExport("stratified")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 分层抽样结果
                             </Button>
                             <div className="h-px bg-slate-800 my-2"></div>
-                            <Button variant="default" className="w-full justify-start bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" onClick={() => handleExport("all")}>
+                            <Button variant="default" data-testid="student-analysis-export-all" className="w-full justify-start bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" onClick={() => handleExport("all")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 导出全部数据
                             </Button>
@@ -1101,6 +900,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <Label htmlFor="report" className="text-slate-300">报告内容</Label>
                         <div className="space-y-2">
                             <RichTextEditor
+                                dataTestId="student-analysis-report"
+                                editorTestId="student-analysis-report-editor"
                                 id="report"
                                 placeholder="请在此撰写您的分析报告..."
                                 value={reportContent}
@@ -1124,17 +925,26 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             {/* Navigation */}
             <div className="flex justify-between items-center pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
+                <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmSubmitOpen(true)} disabled={!isValidLength} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
-                    <Send className="w-4 h-4 mr-2" />
-                    完成并预览报告
+                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting} data-testid="student-analysis-preview" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                    {isSubmitting ? (
+                        <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            进入预览中...
+                        </>
+                    ) : (
+                        <>
+                            <Send className="w-4 h-4 mr-2" />
+                            完成并预览报告
+                        </>
+                    )}
                 </Button>
             </div>
 
             <Dialog open={zoomChart !== null} onOpenChange={(open) => { if (!open) setZoomChart(null); }}>
-                <DialogContent className="max-w-6xl bg-slate-900 border-slate-800 text-slate-200">
+                <DialogContent className="max-w-6xl bg-slate-900 border-slate-800 text-slate-200" data-testid="student-analysis-zoom-dialog">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">
                             {zoomChart === "mean" && "均值对比（放大）"}
@@ -1179,58 +989,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     )}
                 </DialogContent>
             </Dialog>
-
-            {/* Confirm Submit Dialog */}
-            <AlertDialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">确认提交实验</AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="text-sm text-slate-400">
-                                您即将提交本次实验，包括：
-                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 mt-3 mb-3 space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                                        <span>问卷设计</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                                        <span>样本量规划</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                                        <span>抽样执行结果</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
-                                        <span>分析报告（{reportTextLength} 字）</span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 text-amber-400 bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
-                                    <AlertCircle className="w-4 h-4 shrink-0" />
-                                    <span>提交后将无法修改。确定提交吗？</span>
-                                </div>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isSubmitting} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSubmit} disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    提交中...
-                                </>
-                            ) : (
-                                "确认提交"
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
             <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-analysis-restore-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">恢复草稿</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400">检测到本地草稿，是否恢复？</AlertDialogDescription>
@@ -1238,23 +998,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     <AlertDialogFooter>
                         <AlertDialogCancel
                             className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-                            onClick={() => {
-                                if (draftKey) localStorage.removeItem(draftKey);
-                                draftResolvedRef.current = true;
-                                setRestoreDraftOpen(false);
-                            }}
+                            data-testid="student-analysis-restore-discard"
+                            onClick={discardPendingDraft}
                         >
                             放弃草稿
                         </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            onClick={() => {
-                                if (pendingDraft !== null) {
-                                    setReportContent(pendingDraft);
-                                }
-                                draftResolvedRef.current = true;
-                                setRestoreDraftOpen(false);
-                            }}
+                            data-testid="student-analysis-restore-apply"
+                            onClick={restorePendingDraft}
                         >
                             恢复草稿
                         </AlertDialogAction>
@@ -1263,7 +1015,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </AlertDialog>
 
             <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-analysis-conflict-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">检测到草稿冲突</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 leading-relaxed">
@@ -1275,14 +1027,16 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     <AlertDialogFooter>
                         <AlertDialogCancel
                             className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-                            onClick={handleKeepServerDraft}
+                            data-testid="student-analysis-conflict-server"
+                            onClick={keepServerDraft}
                         >
                             保留服务器版本
                         </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            data-testid="student-analysis-conflict-local"
                             onClick={() => {
-                                void handleKeepLocalDraft();
+                                void keepLocalDraft();
                             }}
                         >
                             保留本地版本

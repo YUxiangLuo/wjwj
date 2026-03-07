@@ -88,6 +88,82 @@ function buildValidSamplingResults() {
     };
 }
 
+test("experiment get parses serialized questionnaire, sample plan, and sampling results", async () => {
+    const questionnaire = buildValidQuestionnaire();
+    const samplePlan = buildValidSamplePlan();
+    const samplingResults = buildValidSamplingResults();
+
+    const { module } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ id: 40, topicId: 12 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
+                currentStage: 4,
+                status: 0,
+                questionnaire: JSON.stringify(questionnaire),
+                samplePlan: JSON.stringify(samplePlan),
+                samplingResults: JSON.stringify(samplingResults),
+                reportContent: "报告内容",
+                lastSavedAt: new Date("2026-03-05T08:00:00.000Z"),
+            }],
+            [{ excelRowCount: 200 }],
+        ],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "GET"
+    ), "40");
+
+    const response = await module.experimentRoutes.GET!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.data).toMatchObject({
+        id: 88,
+        taskId: 40,
+        currentStage: 4,
+        questionnaire,
+        samplePlan,
+        samplingResults,
+        reportContent: "报告内容",
+        populationSize: 200,
+        lastSavedAt: "2026-03-05T08:00:00.000Z",
+    });
+});
+
+test("experiment get blocks unopened tasks before creating experiment records", async () => {
+    const { module, operations } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{ openTime: new Date(Date.now() + 3600_000), deadline: new Date(Date.now() + 7200_000) }],
+        ],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "GET"
+    ), "40");
+
+    const response = await module.experimentRoutes.GET!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "TASK_NOT_OPEN",
+            message: "任务尚未开放",
+        },
+    });
+    expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
+});
+
 test("experiment save updates stage and recalculates sample size", async () => {
     const { module, operations } = await loadExperimentRoutes({
         select: [
@@ -99,6 +175,7 @@ test("experiment save updates stage and recalculates sample size", async () => {
                 currentStage: 1,
                 status: 0,
                 version: 3,
+                questionnaire: JSON.stringify(buildValidQuestionnaire()),
                 stage1CompletedAt: new Date("2026-03-01T00:00:00.000Z"),
                 stage2CompletedAt: null,
                 stage3CompletedAt: null,
@@ -142,6 +219,57 @@ test("experiment save updates stage and recalculates sample size", async () => {
             calculatedSampleSize: 132,
         },
     });
+});
+
+test("experiment save blocks invalid sample plan when advancing to stage 3", async () => {
+    const { module, operations } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
+                currentStage: 2,
+                status: 0,
+                version: 3,
+                questionnaire: JSON.stringify(buildValidQuestionnaire()),
+                samplePlan: JSON.stringify(buildValidSamplePlan()),
+                stage1CompletedAt: new Date("2026-03-01T00:00:00.000Z"),
+                stage2CompletedAt: new Date("2026-03-02T00:00:00.000Z"),
+                stage3CompletedAt: null,
+                stage4CompletedAt: null,
+            }],
+            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ topicId: 12, excelRowCount: 200 }],
+        ],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "PUT",
+        {
+            currentStage: 3,
+            samplePlan: {
+                confidenceLevel: "95",
+                marginOfError: 5,
+                recommendedSize: 132,
+                finalSampleSize: 29,
+            },
+        }
+    ), "40");
+
+    const response = await module.experimentRoutes.PUT!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "VALIDATION_ERROR",
+            message: "最终样本量不能小于30",
+        },
+    });
+    expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
 });
 
 test("experiment submit blocks incomplete experiments before any writes", async () => {
@@ -198,14 +326,14 @@ test("experiment submit marks experiment submitted, inserts submission, and noti
                     id: 88,
                     studentId: 11,
                     taskId: 40,
-                    currentStage: 4,
-                    status: 0,
-                    version: 3,
-                    questionnaire: buildValidQuestionnaire(),
-                    samplePlan: buildValidSamplePlan(),
-                    samplingResults: buildValidSamplingResults(),
-                    reportContent: "这是实验报告正文，用于验证提交逻辑与通知逻辑是否按预期执行。".repeat(10),
-                }],
+                currentStage: 4,
+                status: 0,
+                version: 3,
+                questionnaire: JSON.stringify(buildValidQuestionnaire()),
+                samplePlan: JSON.stringify(buildValidSamplePlan()),
+                samplingResults: JSON.stringify(buildValidSamplingResults()),
+                reportContent: "这是实验报告正文，用于验证提交逻辑与通知逻辑是否按预期执行。".repeat(10),
+            }],
                 [{
                     openTime: null,
                     deadline: new Date(Date.now() + 3600_000),

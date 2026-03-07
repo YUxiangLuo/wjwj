@@ -169,7 +169,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
@@ -207,7 +207,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                         <span className="text-xs font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">Z = {zValues[confidenceLevel]}</span>
                                     </div>
                                     <Select value={confidenceLevel} onValueChange={setConfidenceLevel}>
-                                        <SelectTrigger className="bg-slate-950/50 border-slate-800 text-slate-200 focus:ring-teal-500/50">
+                                        <SelectTrigger data-testid="student-sample-plan-confidence" className="bg-slate-950/50 border-slate-800 text-slate-200 focus:ring-teal-500/50">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -236,6 +236,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                                 }}
                                                 min={1}
                                                 max={10}
+                                                data-testid="student-sample-plan-margin-input"
                                                 className="w-16 h-7 text-sm font-bold text-teal-400 bg-slate-950/50 border-slate-800 text-center px-1"
                                             />
                                             <span className="text-sm font-bold text-teal-400">%</span>
@@ -278,6 +279,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                             onChange={(e) => setFinalSampleSize(parseInt(e.target.value) || 0)}
                                             min={minSize}
                                             max={maxSize}
+                                            data-testid="student-sample-plan-final-size"
                                             className={`bg-slate-950/50 border-slate-800 text-lg font-bold ${!isValidSize ? "text-rose-500 border-rose-500/50 focus-visible:ring-rose-500" : "text-emerald-400 focus-visible:ring-emerald-500"}`}
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">人</span>
@@ -286,6 +288,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 <Button
                                     variant="outline"
                                     onClick={() => setFinalSampleSize(recommendedSize)}
+                                    data-testid="student-sample-plan-reset"
                                     className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
                                 >
                                     <RotateCcw className="w-4 h-4 mr-2" />
@@ -362,11 +365,11 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
             </div>
 
             <div className="flex justify-between pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
+                <Button variant="outline" onClick={onPrev} data-testid="student-sample-plan-prev" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
                     上一阶段
                 </Button>
                 <div className="flex gap-3">
-                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize} data-testid="student-sample-plan-next" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                         确认并进入下一阶段
                     </Button>
                 </div>
@@ -374,7 +377,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
             {/* Confirm Next Stage Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-sample-plan-confirm-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认样本量规划</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base">
@@ -385,7 +388,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmNext} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sample-plan-confirm" className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

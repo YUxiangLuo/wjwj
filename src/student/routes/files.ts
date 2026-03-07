@@ -5,6 +5,7 @@ import { experiment, task, topic, topicAttachment } from "../../db/schema";
 import { error, getRouteParam, getSearchParams } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { resolveStoragePath } from "../../server/storage-files";
+import { parseStoredJson } from "../experiment/serialization";
 import { requireAuth } from "./auth";
 
 function toCsv(data: Record<string, unknown>[], extraHeaders: string[] = []) {
@@ -194,7 +195,11 @@ const exportRoutes: RouteDefinition = {
             return error("暂无抽样结果", "NO_DATA", 404);
         }
 
-        const results = exp.samplingResults as any;
+        const results = parseStoredJson<Record<string, unknown>>(exp.samplingResults);
+        if (!results) {
+            return error("暂无抽样结果", "NO_DATA", 404);
+        }
+
         const simpleData = (results.simple?.data ?? []) as Record<string, unknown>[];
         const systematicData = (results.systematic?.data ?? []) as Record<string, unknown>[];
         const stratifiedData = (results.stratified?.data ?? []) as Record<string, unknown>[];
