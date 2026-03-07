@@ -48,7 +48,7 @@ interface RecommendQuestionEditorProps {
 function parseOptions(options: unknown): string[] {
     if (Array.isArray(options)) return options as string[];
     if (typeof options === "string") {
-        if (!options.trim()) return ["", ""];
+        if (!options.trim()) return [];
         try {
             const parsed = JSON.parse(options);
             if (Array.isArray(parsed)) return parsed as string[];
@@ -57,7 +57,7 @@ function parseOptions(options: unknown): string[] {
             return options.split(",").map((s) => s.trim()).filter(Boolean);
         }
     }
-    return ["", ""];
+    return [];
 }
 
 export function RecommendQuestionEditor({

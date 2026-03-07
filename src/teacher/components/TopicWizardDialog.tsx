@@ -79,17 +79,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     } = props;
 
     // Recommend question editor state
-    const [editorOpen, setEditorOpen] = useState(false);
+    const [questionEditorOpen, setQuestionEditorOpen] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<TopicRecommendQuestion | undefined>(undefined);
 
     const handleAddQuestion = () => {
         setEditingQuestion(undefined);
-        setEditorOpen(true);
+        setQuestionEditorOpen(true);
     };
 
     const handleEditQuestion = (q: TopicRecommendQuestion) => {
         setEditingQuestion(q);
-        setEditorOpen(true);
+        setQuestionEditorOpen(true);
     };
 
     const handleSaveQuestion = (saved: TopicRecommendQuestion) => {
@@ -712,8 +712,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                                 {/* Question Editor Dialog */}
                                 <RecommendQuestionEditor
-                                    open={editorOpen}
-                                    onOpenChange={setEditorOpen}
+                                    open={questionEditorOpen}
+                                    onOpenChange={setQuestionEditorOpen}
                                     question={editingQuestion}
                                     topicId={editingTopicId ?? 0}
                                     onSave={handleSaveQuestion}
