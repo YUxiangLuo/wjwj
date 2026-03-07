@@ -213,7 +213,7 @@ export function SemesterManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Current Semester</p>
                             <p className="text-sm font-bold text-slate-100 mt-2">{loading ? "-" : summary.currentName}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <Star className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -235,7 +235,7 @@ export function SemesterManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">With Classes</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.withClasses}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                             <School className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -253,7 +253,7 @@ export function SemesterManagement() {
                             placeholder="搜索学期名称..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50 focus:ring-indigo-500/20"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 sm:w-64 focus:border-indigo-500/50 focus:ring-indigo-500/20"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "current" | "history")}>
                             <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36 focus:ring-indigo-500/20">
@@ -289,7 +289,7 @@ export function SemesterManagement() {
                                         <TableCell className="font-medium text-slate-200">{semester.name}</TableCell>
                                         <TableCell>
                                             {semester.isCurrent ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20">当前学期</Badge>
+                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">当前学期</Badge>
                                             ) : (
                                                 <Badge variant="secondary" className="bg-slate-800 text-slate-400 hover:bg-slate-700">历史学期</Badge>
                                             )}
@@ -304,12 +304,12 @@ export function SemesterManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {!semester.isCurrent && (
-                                                    <Button data-testid={`semester-set-current-${semester.id}`} variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 h-8">
+                                                    <Button data-testid={`semester-set-current-${semester.id}`} variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10 h-8">
                                                         <Star className="w-3.5 h-3.5 mr-1.5" />
                                                         设为当前
                                                     </Button>
                                                 )}
-                                                <Button data-testid={`semester-edit-open-${semester.id}`} variant="ghost" size="sm" onClick={() => openEdit(semester)} className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 h-8">
+                                                <Button data-testid={`semester-edit-open-${semester.id}`} variant="ghost" size="sm" onClick={() => openEdit(semester)} className="text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 h-8">
                                                     <Pencil className="w-3.5 h-3.5 mr-1.5" />
                                                     编辑
                                                 </Button>
@@ -318,7 +318,7 @@ export function SemesterManagement() {
                                                     size="sm"
                                                     data-testid={`semester-delete-${semester.id}`}
                                                     onClick={() => handleDelete(semester)}
-                                                    className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 h-8"
+                                                    className="text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 h-8"
                                                     disabled={semester.classCount > 0}
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 mr-1.5" />
@@ -333,7 +333,7 @@ export function SemesterManagement() {
                                         <TableCell colSpan={5} className="text-center py-16 text-slate-500">
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-slate-600" />
+                                                    <Search className="w-5 h-5 text-slate-500" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
                                             </div>
@@ -361,7 +361,7 @@ export function SemesterManagement() {
                                 placeholder="例如：2024-Fall"
                                 value={newSemesterName}
                                 onChange={(e) => setNewSemesterName(e.target.value)}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                             <p className="text-xs text-slate-500">建议格式：YYYY-Spring 或 YYYY-Fall</p>
                         </div>
@@ -405,7 +405,7 @@ export function SemesterManagement() {
                                 placeholder="例如：2024-Fall"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                     </div>

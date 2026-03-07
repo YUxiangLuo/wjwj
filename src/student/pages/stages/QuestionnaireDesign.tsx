@@ -35,10 +35,10 @@ const questionTypeLabels: Record<QuestionType, string> = {
 };
 
 const questionTypeColors: Record<QuestionType, string> = {
-    boolean: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+    boolean: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
     single: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-    multiple: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    scale: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    multiple: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+    scale: "bg-amber-500/10 text-amber-600 border-amber-500/20",
 };
 
 type ScoreStatus = "pass" | "warning" | "fail";
@@ -637,7 +637,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         editorClassName="min-h-[220px]"
                                     />
                                     <div className="flex justify-between text-xs">
-                                        <span className={welcomeTextLength < 20 || welcomeTextLength > 1000 ? "text-rose-400" : "text-emerald-400"}>
+                                        <span className={welcomeTextLength < 20 || welcomeTextLength > 1000 ? "text-rose-600" : "text-emerald-600"}>
                                             {welcomeTextLength > 1000
                                                 ? `已超出 ${welcomeTextLength - 1000} 字`
                                                 : welcomeTextLength < 20
@@ -716,7 +716,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                     onDrop={handleDrop(q.id)}
                                                     onDragEnd={handleDragEnd}
                                                 >
-                                                    <GripVertical className="w-4 h-4 text-slate-600 cursor-grab hover:text-slate-400" />
+                                                    <GripVertical className="w-4 h-4 text-slate-500 cursor-grab hover:text-slate-400" />
                                                     <span className="text-sm font-bold text-slate-400 w-8">Q{index + 1}</span>
                                                     <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-xs whitespace-nowrap`}>
                                                         {questionTypeLabels[q.type]}
@@ -765,7 +765,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                             variant="ghost"
                                                             size="icon"
                                                             data-testid={`student-questionnaire-delete-${q.id}`}
-                                                            className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                                                            className="h-8 w-8 text-rose-600 hover:text-rose-500 hover:bg-rose-500/10"
                                                             onClick={() => handleDeleteQuestion(q.id)}
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -779,7 +779,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             </Card>
 
                             {questions.length < 5 && (
-                                <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl text-sm flex items-center gap-2">
+                                <div className="p-3 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-sm flex items-center gap-2">
                                     <AlertCircle className="w-4 h-4" />
                                     还需添加 {5 - questions.length} 道题目才能继续
                                 </div>
@@ -852,7 +852,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         editorClassName="min-h-[220px]"
                                     />
                                     <div className="flex justify-between text-xs">
-                                        <span className={endingTextLength < 20 || endingTextLength > 1000 ? "text-rose-400" : "text-emerald-400"}>
+                                        <span className={endingTextLength < 20 || endingTextLength > 1000 ? "text-rose-600" : "text-emerald-600"}>
                                             {endingTextLength > 1000
                                                 ? `已超出 ${endingTextLength - 1000} 字`
                                                 : endingTextLength < 20
@@ -925,7 +925,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     ) : (
                                         <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className={`text-sm ${validation.title ? "text-emerald-400" : "text-rose-400"}`}>
+                                    <span className={`text-sm ${validation.title ? "text-emerald-600" : "text-rose-600"}`}>
                                         问卷标题：{title ? "已填写" : "未填写"}
                                     </span>
                                 </div>
@@ -935,7 +935,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     ) : (
                                         <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className={`text-sm ${validation.welcomeText ? "text-emerald-400" : "text-rose-400"}`}>
+                                    <span className={`text-sm ${validation.welcomeText ? "text-emerald-600" : "text-rose-600"}`}>
                                         欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
                                     </span>
                                 </div>
@@ -945,7 +945,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     ) : (
                                         <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className={`text-sm ${validation.questionCount ? "text-emerald-400" : "text-rose-400"}`}>
+                                    <span className={`text-sm ${validation.questionCount ? "text-emerald-600" : "text-rose-600"}`}>
                                         题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}
                                     </span>
                                 </div>
@@ -955,7 +955,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     ) : (
                                         <AlertCircle className="w-5 h-5 text-amber-500" />
                                     )}
-                                    <span className={`text-sm ${validation.questionTypes ? "text-emerald-400" : "text-amber-400"}`}>
+                                    <span className={`text-sm ${validation.questionTypes ? "text-emerald-600" : "text-amber-600"}`}>
                                         题型多样性：{new Set(questions.map((q) => q.type)).size} 种题型
                                         {validation.questionTypes ? "" : " (建议至少2种)"}
                                     </span>
@@ -966,7 +966,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     ) : (
                                         <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className={`text-sm ${validation.optionCount ? "text-emerald-400" : "text-rose-400"}`}>
+                                    <span className={`text-sm ${validation.optionCount ? "text-emerald-600" : "text-rose-600"}`}>
                                         选项数量：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
                                     </span>
                                 </div>
@@ -976,7 +976,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     ) : (
                                         <AlertCircle className="w-5 h-5 text-rose-500" />
                                     )}
-                                    <span className={`text-sm ${validation.endingText ? "text-emerald-400" : "text-rose-400"}`}>
+                                    <span className={`text-sm ${validation.endingText ? "text-emerald-600" : "text-rose-600"}`}>
                                         结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
                                     </span>
                                 </div>
@@ -986,7 +986,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         {warningCount > 0 ? ` 另有 ${warningCount} 项建议优化。` : ""}
                                     </div>
                                 ) : (
-                                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-300">
+                                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-500">
                                         仍有 {requiredMissingCount} 项必填检测未通过，需修复后才能继续。
                                     </div>
                                 )}
@@ -1023,10 +1023,10 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                             </div>
                                             <div
                                                 className={`text-xs mt-1 ${item.status === "pass"
-                                                    ? "text-emerald-400"
+                                                    ? "text-emerald-600"
                                                     : item.status === "warning"
-                                                        ? "text-amber-400"
-                                                        : "text-rose-400"
+                                                        ? "text-amber-600"
+                                                        : "text-rose-600"
                                                     }`}
                                             >
                                                 {item.message}
@@ -1056,18 +1056,18 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     <CardContent className="px-4 py-3">
                         <div className="flex items-center gap-2 text-sm">
                             {syncConflictOpen ? (
-                                <AlertCircle className="h-4 w-4 text-amber-400" />
+                                <AlertCircle className="h-4 w-4 text-amber-600" />
                             ) : isOnline ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
                             ) : (
-                                <AlertCircle className="h-4 w-4 text-rose-400" />
+                                <AlertCircle className="h-4 w-4 text-rose-600" />
                             )}
                             <span
                                 className={syncConflictOpen
                                     ? "text-amber-300"
                                     : isOnline
                                         ? "text-emerald-300"
-                                        : "text-rose-300"
+                                        : "text-rose-500"
                                 }
                             >
                                 {networkNotice}
@@ -1101,8 +1101,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     isCurrent
                                         ? "bg-indigo-600/15 text-indigo-300 border border-indigo-500/30"
                                         : isCompleted
-                                            ? "text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
-                                            : "text-slate-600"
+                                            ? "text-emerald-600 hover:bg-emerald-500/10 cursor-pointer"
+                                            : "text-slate-500"
                                 }`}
                             >
                                 {isCompleted ? (
@@ -1187,7 +1187,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认完成问卷设计</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
-                            确认后问卷设计将被<strong className="text-indigo-400">锁定</strong>。如需修改，您需要返回本阶段重新设计，届时后续阶段的数据将被<strong className="text-rose-400">清空</strong>。
+                            确认后问卷设计将被<strong className="text-indigo-500">锁定</strong>。如需修改，您需要返回本阶段重新设计，届时后续阶段的数据将被<strong className="text-rose-600">清空</strong>。
                             <br /><br />
                             确定继续吗？
                         </AlertDialogDescription>

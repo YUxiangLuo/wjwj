@@ -29,7 +29,7 @@ function QuestionPreview({ question, index }: { question: Question; index: numbe
         <Card className="bg-slate-800/50 border-slate-700/50">
             <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-bold mt-0.5">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-sm font-bold mt-0.5">
                         {index + 1}
                     </span>
                     <div className="space-y-2 flex-1">
@@ -55,7 +55,7 @@ function QuestionPreview({ question, index }: { question: Question; index: numbe
                             <div className="text-xs text-slate-500 bg-slate-900/40 inline-flex items-center gap-2 px-3 py-1.5 rounded border border-slate-700/50">
                                 <span>量表范围：{question.scaleMin ?? 1} - {question.scaleMax ?? 10}</span>
                                 {(question.scaleMinLabel || question.scaleMaxLabel) && (
-                                    <span className="text-slate-600">
+                                    <span className="text-slate-500">
                                         ({question.scaleMinLabel ?? "Min"} ~ {question.scaleMaxLabel ?? "Max"})
                                     </span>
                                 )}
@@ -172,7 +172,7 @@ export function SubmissionPreview() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
             </div>
         );
     }
@@ -223,7 +223,7 @@ export function SubmissionPreview() {
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
                 <CardHeader className="border-b border-slate-700/30 pb-4">
                     <CardTitle className="flex items-center gap-3 text-2xl text-slate-100">
-                        <FileText className="w-6 h-6 text-indigo-400" />
+                        <FileText className="w-6 h-6 text-indigo-500" />
                         提交前预览
                     </CardTitle>
                     <CardDescription className="text-slate-400">
@@ -291,7 +291,7 @@ export function SubmissionPreview() {
 
                                 <div className="rounded-lg border border-slate-800 bg-slate-900/30 p-4">
                                     <h3 className="text-base font-semibold text-slate-100 mb-3 flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-emerald-400" />
+                                        <FileText className="w-4 h-4 text-emerald-600" />
                                         阶段四：分析报告
                                     </h3>
                                     {reportContent ? (
@@ -346,13 +346,13 @@ export function SubmissionPreview() {
 
             <div className="flex flex-col items-end gap-4 pb-12">
                 {!canSubmit && (
-                    <div className="text-sm text-red-400 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20 flex items-center gap-2">
+                    <div className="text-sm text-red-600 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20 flex items-center gap-2">
                         <AlertCircle className="w-4 h-4" />
                         {submitBlocker}
                     </div>
                 )}
                 {error && (
-                    <div className="text-sm text-red-400 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20">
+                    <div className="text-sm text-red-600 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20">
                         {error}
                     </div>
                 )}

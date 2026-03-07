@@ -170,7 +170,7 @@ export function StudentManagement() {
                         返回
                     </Button>
                 </Link>
-                <span className="text-slate-600">/</span>
+                <span className="text-slate-500">/</span>
                 <span className="text-sm text-slate-500">班级</span>
                 <span className="text-sm font-medium text-slate-200">{classInfo?.name}</span>
             </div>
@@ -198,7 +198,7 @@ export function StudentManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">正常账号</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -209,7 +209,7 @@ export function StudentManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已禁用</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -230,7 +230,7 @@ export function StudentManagement() {
                                 placeholder="搜索学生"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)} className="border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
@@ -262,7 +262,7 @@ export function StudentManagement() {
                                     <TableCell colSpan={7} className="text-center py-12 text-slate-500">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                                                <Search className="w-5 h-5 text-slate-600" />
+                                                <Search className="w-5 h-5 text-slate-500" />
                                             </div>
                                             <p>暂无符合条件的数据</p>
                                         </div>
@@ -275,14 +275,14 @@ export function StudentManagement() {
                                     <TableCell className="text-slate-400">{student.email || "-"}</TableCell>
                                     <TableCell>
                                         {student.status === 1 ? (
-                                            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">正常</Badge>
+                                            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">正常</Badge>
                                         ) : (
                                             <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已禁用</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell>
                                         {student.isFirstLogin === 1 ? (
-                                            <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10">是</Badge>
+                                            <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-500/10">是</Badge>
                                         ) : (
                                             <span className="text-slate-500 text-xs">否</span>
                                         )}
@@ -290,13 +290,13 @@ export function StudentManagement() {
                                     <TableCell className="text-slate-500 text-xs">{student.lastLogin ? new Date(student.lastLogin).toLocaleString() : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                 <RotateCcw className="w-4 h-4" />
                                             </Button>
-                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10" : "text-slate-400 hover:text-slate-100"}`}>
+                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10" : "text-slate-400 hover:text-slate-100"}`}>
                                                 <UserX className={`w-4 h-4 ${student.status === 0 ? "text-slate-500" : ""}`} />
                                             </Button>
-                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" title="删除" onClick={() => handleDelete(student)}>
+                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" title="删除" onClick={() => handleDelete(student)}>
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>

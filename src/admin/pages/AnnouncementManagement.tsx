@@ -260,7 +260,7 @@ export function AnnouncementManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Published</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <Send className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -271,7 +271,7 @@ export function AnnouncementManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Drafts</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <Archive className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -288,7 +288,7 @@ export function AnnouncementManagement() {
                                         : "暂无"}
                             </p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                             <Send className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -306,7 +306,7 @@ export function AnnouncementManagement() {
                             placeholder="搜索标题或内容"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 sm:w-64 focus:border-indigo-500/50"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "published" | "draft")}>
                             <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
@@ -333,9 +333,9 @@ export function AnnouncementManagement() {
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-medium text-slate-200">{announcement.title}</h4>
                                             {announcement.status === 1 ? (
-                                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">已发布</Badge>
+                                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">已发布</Badge>
                                             ) : (
-                                                <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20">草稿</Badge>
+                                                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">草稿</Badge>
                                             )}
                                             <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700">
                                                 {targetScopeLabels[announcement.targetScope] ?? "全体用户"}
@@ -347,7 +347,7 @@ export function AnnouncementManagement() {
                                         <RichTextContent html={announcement.content} />
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        <Button data-testid={`announcement-edit-open-${announcement.id}`} variant="ghost" size="sm" onClick={() => openEditModal(announcement)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                        <Button data-testid={`announcement-edit-open-${announcement.id}`} variant="ghost" size="sm" onClick={() => openEditModal(announcement)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                             <Pencil className="w-3.5 h-3.5 mr-1" />
                                             编辑
                                         </Button>
@@ -356,7 +356,7 @@ export function AnnouncementManagement() {
                                             size="sm"
                                             data-testid={`announcement-toggle-publish-${announcement.id}`}
                                             onClick={() => handleTogglePublish(announcement)}
-                                            className={`h-8 ${announcement.status === 1 ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
+                                            className={`h-8 ${announcement.status === 1 ? "text-amber-600 hover:text-amber-500 hover:bg-amber-500/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                         >
                                             {announcement.status === 1 ? (
                                                 <>
@@ -376,7 +376,7 @@ export function AnnouncementManagement() {
                                             data-testid={`announcement-stats-${announcement.id}`}
                                             onClick={() => handleViewStats(announcement)}
                                             disabled={announcement.status !== 1}
-                                            className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
+                                            className="h-8 text-slate-400 hover:text-blue-600 hover:bg-blue-500/10"
                                         >
                                             <BarChart3 className="w-3.5 h-3.5 mr-1" />
                                             统计
@@ -386,7 +386,7 @@ export function AnnouncementManagement() {
                                             size="sm"
                                             data-testid={`announcement-delete-${announcement.id}`}
                                             onClick={() => handleDelete(announcement)}
-                                            className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                                            className="h-8 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
                                         >
                                             <Trash2 className="w-3.5 h-3.5 mr-1" />
                                             删除
@@ -422,7 +422,7 @@ export function AnnouncementManagement() {
                                 placeholder="请输入公告标题"
                                 value={newAnnouncement.title}
                                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
@@ -496,7 +496,7 @@ export function AnnouncementManagement() {
                                 placeholder="请输入公告标题"
                                 value={editForm.title}
                                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
@@ -550,7 +550,7 @@ export function AnnouncementManagement() {
                                     </div>
                                     <div className="bg-slate-950 p-4 rounded-lg flex flex-col items-center border border-slate-800">
                                         <Eye className="w-5 h-5 text-slate-500 mb-2" />
-                                        <span className="text-2xl font-bold text-emerald-400">{currentStats.readCount}</span>
+                                        <span className="text-2xl font-bold text-emerald-600">{currentStats.readCount}</span>
                                         <span className="text-xs text-slate-500">已阅读</span>
                                     </div>
                                 </div>

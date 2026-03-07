@@ -239,7 +239,7 @@ export function ClassManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Students</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.studentTotal}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -250,7 +250,7 @@ export function ClassManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Current Term</p>
                             <p className="text-sm font-bold text-slate-100 mt-2">{loading ? "-" : summary.currentSemesterName}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <CalendarDays className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -261,7 +261,7 @@ export function ClassManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Teachers</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                             <UserCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -280,7 +280,7 @@ export function ClassManagement() {
                             data-testid="class-search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 sm:w-64 focus:border-indigo-500/50"
                         />
                         <Select value={filterSemester} onValueChange={setFilterSemester}>
                             <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
@@ -345,12 +345,12 @@ export function ClassManagement() {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => navigate(`/student?classId=${cls.id}`)}
-                                                    className="h-8 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10"
+                                                    className="h-8 text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10"
                                                 >
                                                     <Users className="w-3.5 h-3.5 mr-1" />
                                                     学生
                                                 </Button>
-                                                <Button data-testid={`class-edit-open-${cls.id}`} variant="ghost" size="sm" onClick={() => openEditModal(cls)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                <Button data-testid={`class-edit-open-${cls.id}`} variant="ghost" size="sm" onClick={() => openEditModal(cls)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                     <Pencil className="w-3.5 h-3.5 mr-1" />
                                                     编辑
                                                 </Button>
@@ -359,7 +359,7 @@ export function ClassManagement() {
                                                     size="sm"
                                                     data-testid={`class-delete-${cls.id}`}
                                                     onClick={() => handleDelete(cls)}
-                                                    className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                                                    className="h-8 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 mr-1" />
                                                     删除
@@ -373,7 +373,7 @@ export function ClassManagement() {
                                         <TableCell colSpan={6} className="text-center py-16 text-slate-500">
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-slate-600" />
+                                                    <Search className="w-5 h-5 text-slate-500" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
                                             </div>
@@ -402,7 +402,7 @@ export function ClassManagement() {
                                 placeholder="请输入班级名称"
                                 value={newClass.name}
                                 onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
@@ -465,7 +465,7 @@ export function ClassManagement() {
                                 placeholder="请输入班级名称"
                                 value={editForm.name}
                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">

@@ -11,9 +11,9 @@ interface SurveySimulationProps {
 }
 
 const mockSummary = [
-    { label: "总答卷数", value: "384", icon: Activity, color: "text-indigo-400", bg: "bg-indigo-500/10" },
-    { label: "完成率", value: "94%", icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-    { label: "满意度均值", value: "4.2/5", icon: PieChartIcon, color: "text-amber-400", bg: "bg-amber-500/10" },
+    { label: "总答卷数", value: "384", icon: Activity, color: "text-indigo-500", bg: "bg-indigo-500/10" },
+    { label: "完成率", value: "94%", icon: CheckCircle, color: "text-emerald-600", bg: "bg-emerald-500/10" },
+    { label: "满意度均值", value: "4.2/5", icon: PieChartIcon, color: "text-amber-600", bg: "bg-amber-500/10" },
 ];
 
 const mockInsights = [
@@ -42,7 +42,7 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div>
-                        <div className="text-sm text-indigo-400 font-semibold uppercase tracking-wider">调查结果模拟</div>
+                        <div className="text-sm text-indigo-500 font-semibold uppercase tracking-wider">调查结果模拟</div>
                         <div className="text-2xl font-bold text-slate-100 mt-1">模拟数据分析与统计</div>
                     </div>
                 </div>

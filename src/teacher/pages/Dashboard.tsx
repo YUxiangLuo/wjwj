@@ -19,9 +19,9 @@ function StatCard({ icon: Icon, label, value, color, loading, to }: {
     // Map colors to class names
     const colorStyles: Record<string, { bg: string, text: string, border: string }> = {
         blue: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20" },
-        emerald: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
-        rose: { bg: "bg-rose-500/10", text: "text-rose-400", border: "border-rose-500/20" },
-        amber: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20" },
+        emerald: { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/20" },
+        rose: { bg: "bg-rose-500/10", text: "text-rose-600", border: "border-rose-500/20" },
+        amber: { bg: "bg-amber-500/10", text: "text-amber-600", border: "border-amber-500/20" },
         slate: { bg: "bg-slate-800", text: "text-slate-400", border: "border-slate-700" },
     };
 
@@ -117,15 +117,15 @@ export function Dashboard() {
                 const latest = unread[0]!;
                 return (
                     <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <Megaphone className="w-5 h-5 text-amber-400 shrink-0" />
+                        <Megaphone className="w-5 h-5 text-amber-600 shrink-0" />
                         <div className="flex-1 min-w-0">
                             <span className="text-sm text-amber-200 font-medium truncate block">{latest.title}</span>
                         </div>
-                        <span className="text-xs text-amber-400/70 shrink-0">{unread.length} 条未读</span>
+                        <span className="text-xs text-amber-600/70 shrink-0">{unread.length} 条未读</span>
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 h-7 text-xs px-2 shrink-0"
+                            className="text-amber-600 hover:text-amber-500 hover:bg-amber-500/10 h-7 text-xs px-2 shrink-0"
                             onClick={() => setShowAnnouncements(true)}
                         >
                             查看详情
@@ -176,14 +176,14 @@ export function Dashboard() {
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-800/50 hover:border-slate-700 transition-all gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar className="w-10 h-10 border border-slate-700">
-                                            <AvatarFallback className="bg-indigo-950 text-indigo-400 text-sm font-semibold">{item.student[0]}</AvatarFallback>
+                                            <AvatarFallback className="bg-indigo-950 text-indigo-500 text-sm font-semibold">{item.student[0]}</AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <div className="text-sm font-medium text-slate-200">{item.student}</div>
                                             <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
                                                 <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{item.class}</span>
                                                 <span>·</span>
-                                                <span className="text-indigo-400">{item.topic}</span>
+                                                <span className="text-indigo-500">{item.topic}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -212,25 +212,25 @@ export function Dashboard() {
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-800/50 hover:border-slate-700 transition-all gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar className="w-10 h-10 border border-slate-700">
-                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-rose-950 text-rose-400" : "bg-emerald-950 text-emerald-400"}`}>{item.student[0]}</AvatarFallback>
+                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-rose-950 text-rose-600" : "bg-emerald-950 text-emerald-600"}`}>{item.student[0]}</AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <div className="text-sm font-medium text-slate-200">{item.student}</div>
                                             <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
                                                 <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{item.class}</span>
                                                 <span>·</span>
-                                                <span className="text-indigo-400">{item.topic}</span>
+                                                <span className="text-indigo-500">{item.topic}</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         {item.rejected ? (
-                                            <span className="flex items-center gap-1 text-xs text-rose-400">
+                                            <span className="flex items-center gap-1 text-xs text-rose-600">
                                                 <XCircle className="w-3.5 h-3.5" />
                                                 已驳回
                                             </span>
                                         ) : (
-                                            <span className="flex items-center gap-1 text-xs text-emerald-400">
+                                            <span className="flex items-center gap-1 text-xs text-emerald-600">
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                 {item.score ?? "-"} 分
                                             </span>
@@ -285,7 +285,7 @@ export function Dashboard() {
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100 flex items-center gap-2">
-                            <Megaphone className="w-5 h-5 text-amber-400" />
+                            <Megaphone className="w-5 h-5 text-amber-600" />
                             系统公告
                         </DialogTitle>
                         <DialogDescription className="sr-only">
@@ -303,7 +303,7 @@ export function Dashboard() {
                                     onClick={() => handleAnnouncementClick(item)}
                                 >
                                     <div className="flex items-start gap-2">
-                                        {item.isRead === 0 && <Circle className="w-2 h-2 mt-1.5 text-amber-400 fill-amber-400 shrink-0" />}
+                                        {item.isRead === 0 && <Circle className="w-2 h-2 mt-1.5 text-amber-600 fill-amber-400 shrink-0" />}
                                         <div className="flex-1 min-w-0">
                                             <div className={`text-sm font-medium truncate ${item.isRead === 0 ? "text-slate-100" : "text-slate-400"}`}>
                                                 {item.title}
@@ -312,7 +312,7 @@ export function Dashboard() {
                                                 {new Date(item.createdAt).toLocaleString("zh-CN")}
                                             </div>
                                         </div>
-                                        <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
+                                        <ChevronRight className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                                     </div>
                                 </button>
                             ))

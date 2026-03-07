@@ -93,7 +93,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
             >
                 <DialogHeader>
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
                             <Eye className="w-5 h-5" />
                         </div>
                         <div>
@@ -103,9 +103,9 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             </DialogDescription>
                             <div className="flex items-center gap-2 mt-1">
                                 {topic.status === 1 ? (
-                                    <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">已发布</Badge>
+                                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs">已发布</Badge>
                                 ) : (
-                                    <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">草稿</Badge>
+                                    <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">草稿</Badge>
                                 )}
                                 <span className="text-xs text-slate-500">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN")}</span>
                             </div>
@@ -121,7 +121,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             onClick={() => setActiveTab(key)}
                             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-md transition-colors border-b-2 whitespace-nowrap ${
                                 activeTab === key
-                                    ? "text-indigo-400 border-indigo-400 bg-indigo-500/5"
+                                    ? "text-indigo-500 border-indigo-400 bg-indigo-500/5"
                                     : "text-slate-500 border-transparent hover:text-slate-300 hover:bg-slate-800/50"
                             }`}
                         >
@@ -169,9 +169,9 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 text-center">
                                             <div className="text-2xl font-bold text-slate-100">
                                                 {detail?.topic?.excelFilePath ? (
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto" />
+                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
                                                 ) : (
-                                                    <span className="text-slate-600">—</span>
+                                                    <span className="text-slate-500">—</span>
                                                 )}
                                             </div>
                                             <div className="text-xs text-slate-500 mt-1">数据文件</div>
@@ -194,7 +194,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                             <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
                                                                 {detail.excelInfo!.columns.map((col) => (
                                                                     <td key={col} className="px-3 py-1.5 text-slate-300 whitespace-nowrap max-w-[200px] truncate">
-                                                                        {row?.[col] != null ? String(row[col]) : <span className="text-slate-600">-</span>}
+                                                                        {row?.[col] != null ? String(row[col]) : <span className="text-slate-500">-</span>}
                                                                     </td>
                                                                 ))}
                                                             </tr>
@@ -223,7 +223,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                 {fieldMapping.identifier ? (
                                                     <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20">{fieldMapping.identifier}</Badge>
                                                 ) : (
-                                                    <span className="text-sm text-slate-600">未设置</span>
+                                                    <span className="text-sm text-slate-500">未设置</span>
                                                 )}
                                             </div>
                                             <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 space-y-3">
@@ -234,9 +234,9 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {fieldMapping.stratified.length > 0
                                                         ? fieldMapping.stratified.map((f) => (
-                                                            <Badge key={f} className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-xs">{f}</Badge>
+                                                            <Badge key={f} className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">{f}</Badge>
                                                         ))
-                                                        : <span className="text-sm text-slate-600">未设置</span>
+                                                        : <span className="text-sm text-slate-500">未设置</span>
                                                     }
                                                 </div>
                                             </div>
@@ -248,9 +248,9 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {fieldMapping.numeric.length > 0
                                                         ? fieldMapping.numeric.map((f) => (
-                                                            <Badge key={f} className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-xs">{f}</Badge>
+                                                            <Badge key={f} className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs">{f}</Badge>
                                                         ))
-                                                        : <span className="text-sm text-slate-600">未设置</span>
+                                                        : <span className="text-sm text-slate-500">未设置</span>
                                                     }
                                                 </div>
                                             </div>
@@ -268,7 +268,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         detail.attachments.map((a) => (
                                             <div key={a.id} className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-lg hover:border-slate-700 transition-colors">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                                                    <div className="w-9 h-9 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
                                                         <FileText className="w-4 h-4" />
                                                     </div>
                                                     <div>
@@ -283,7 +283,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     href={a.filePath}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                                                    className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
                                                 >
                                                     <ExternalLink className="w-3 h-3" />
                                                     查看
@@ -328,20 +328,20 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 text-center space-y-2">
                                             <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">问卷设计</div>
-                                            <div className="text-3xl font-bold text-indigo-400">{weightConfig.questionnaire}%</div>
+                                            <div className="text-3xl font-bold text-indigo-500">{weightConfig.questionnaire}%</div>
                                         </div>
                                         <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 text-center space-y-2">
                                             <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">实验过程</div>
-                                            <div className="text-3xl font-bold text-cyan-400">{weightConfig.process}%</div>
+                                            <div className="text-3xl font-bold text-cyan-600">{weightConfig.process}%</div>
                                         </div>
                                         <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 text-center space-y-2">
                                             <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">实验报告</div>
-                                            <div className="text-3xl font-bold text-amber-400">{weightConfig.report}%</div>
+                                            <div className="text-3xl font-bold text-amber-600">{weightConfig.report}%</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-center gap-2">
                                         <span className="text-sm text-slate-400">总权重：</span>
-                                        <span className={`text-lg font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-emerald-400" : "text-rose-400"}`}>
+                                        <span className={`text-lg font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-emerald-600" : "text-rose-600"}`}>
                                             {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
                                         </span>
                                     </div>

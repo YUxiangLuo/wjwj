@@ -14,9 +14,9 @@ export function TopicDeletedState({ backTo = "/", backText = "返回任务列表
             <Card className="border-rose-500/30 bg-rose-500/10">
                 <CardContent className="py-10 px-6 text-center space-y-4">
                     <div className="mx-auto w-12 h-12 rounded-full bg-rose-500/20 flex items-center justify-center">
-                        <AlertTriangle className="w-6 h-6 text-rose-400" />
+                        <AlertTriangle className="w-6 h-6 text-rose-600" />
                     </div>
-                    <h2 className="text-2xl font-bold text-rose-300">课题已删除</h2>
+                    <h2 className="text-2xl font-bold text-rose-500">课题已删除</h2>
                     <p className="text-sm text-rose-100/80 leading-relaxed max-w-md mx-auto">
                         该课题已被教师删除，相关任务已归档，当前页面不可继续操作。
                     </p>

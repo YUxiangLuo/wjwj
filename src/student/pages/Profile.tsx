@@ -105,7 +105,7 @@ export function Profile() {
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
                     <CardHeader className="border-b border-slate-700/30 pb-4">
                         <CardTitle className="flex items-center gap-2 text-slate-100">
-                            <User className="w-5 h-5 text-indigo-400" />
+                            <User className="w-5 h-5 text-indigo-500" />
                             基础资料
                         </CardTitle>
                         <CardDescription className="text-slate-400">这些信息来自教务系统，无法直接修改。</CardDescription>
@@ -150,7 +150,7 @@ export function Profile() {
                 <Card className="border-indigo-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
                     <CardHeader className="border-b border-slate-700/30 pb-4">
                         <CardTitle className="flex items-center gap-2 text-slate-100">
-                            <Key className="w-5 h-5 text-indigo-400" />
+                            <Key className="w-5 h-5 text-indigo-500" />
                             修改密码
                         </CardTitle>
                         <CardDescription className="text-slate-400">建议定期更新密码以保护账号安全。</CardDescription>
@@ -165,7 +165,7 @@ export function Profile() {
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
                                 autoComplete="current-password"
                                 data-testid="student-profile-password-current"
-                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
                         <div className="space-y-2">
@@ -177,7 +177,7 @@ export function Profile() {
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-new"
-                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
                         <div className="space-y-2">
@@ -189,26 +189,26 @@ export function Profile() {
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-confirm"
-                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                className="bg-slate-950/50 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                             />
                         </div>
                         <div className="rounded-lg border border-slate-700 bg-slate-950/60 p-3 text-xs space-y-1.5">
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>密码强度</span>
-                                <span className={strengthScore <= 2 ? "text-rose-400" : strengthScore <= 4 ? "text-amber-400" : "text-emerald-400"}>
+                                <span className={strengthScore <= 2 ? "text-rose-600" : strengthScore <= 4 ? "text-amber-600" : "text-emerald-600"}>
                                     {passwordStrengthLabel}
                                 </span>
                             </div>
-                            <div className={passwordRules.minLength ? "text-emerald-400" : "text-slate-500"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
-                            <div className={passwordRules.hasLetter ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
-                            <div className={passwordRules.hasNumber ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
-                            <div className={passwordRules.hasSpecial ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
-                            <div className={passwordRules.noStudentId ? "text-emerald-400" : "text-slate-500"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
-                            <div className={passwordRules.matched ? "text-emerald-400" : "text-slate-500"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
+                            <div className={passwordRules.minLength ? "text-emerald-600" : "text-slate-500"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
+                            <div className={passwordRules.hasLetter ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
+                            <div className={passwordRules.hasNumber ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
+                            <div className={passwordRules.hasSpecial ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
+                            <div className={passwordRules.noStudentId ? "text-emerald-600" : "text-slate-500"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
+                            <div className={passwordRules.matched ? "text-emerald-600" : "text-slate-500"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
-                        {error && <div className="text-sm text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20">{error}</div>}
+                        {error && <div className="text-sm text-red-600 bg-red-500/10 p-2 rounded border border-red-500/20">{error}</div>}
                         {success && (
-                            <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
+                            <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
                                 <CheckCircle2 className="w-4 h-4" />
                                 密码已更新
                             </div>

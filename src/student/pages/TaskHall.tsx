@@ -19,11 +19,11 @@ const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析�
 
 const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     not_started: { label: "未开始", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
-    in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" },
-    submitted: { label: "已提交", color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+    in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
+    submitted: { label: "已提交", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
     grading: { label: "批改中", color: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
-    graded: { label: "已批改", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-    rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
+    graded: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+    rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
 };
 
 function parseDeadline(deadline: string | null): Date | null {
@@ -69,7 +69,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
     if (!deadline) return null;
     if (status === "graded") return null;
     if (notOpenYet) {
-        return <span className="text-sm text-cyan-400">尚未开放</span>;
+        return <span className="text-sm text-cyan-800">尚未开放</span>;
     }
 
     const remainingMs = getRemainingMs(deadline);
@@ -86,7 +86,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
         const hours = Math.floor(remainingMs / hourMs);
         const minutes = Math.floor((remainingMs % hourMs) / minuteMs);
         return (
-            <span className="text-sm text-rose-400 font-medium flex items-center gap-1">
+            <span className="text-sm text-rose-600 font-medium flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
                 还剩 {hours} 小时 {minutes} 分钟
             </span>
@@ -97,7 +97,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
         const days = Math.floor(remainingMs / dayMs);
         const hours = Math.floor((remainingMs % dayMs) / hourMs);
         return (
-            <span className="text-sm text-amber-400 font-medium flex items-center gap-1">
+            <span className="text-sm text-amber-600 font-medium flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
                 还剩 {days} 天 {hours} 小时
             </span>
@@ -174,18 +174,18 @@ function TaskCard({ task }: TaskCardProps) {
                     {task.status === "graded" && task.score !== undefined && (
                         <div className="flex items-center gap-3 py-3 px-4 bg-emerald-500/10 rounded-lg border border-emerald-500/10">
                             <div className="p-2 bg-emerald-500/20 rounded-full">
-                                <Trophy className="w-5 h-5 text-emerald-400" />
+                                <Trophy className="w-5 h-5 text-emerald-600" />
                             </div>
                             <div>
-                                <div className="text-xs text-emerald-400/80 uppercase font-bold tracking-wider">最终得分</div>
-                                <span className="font-bold text-2xl text-emerald-400">{task.score}</span>
+                                <div className="text-xs text-emerald-600/80 uppercase font-bold tracking-wider">最终得分</div>
+                                <span className="font-bold text-2xl text-emerald-600">{task.score}</span>
                             </div>
                         </div>
                     )}
 
                     {/* Reject reason */}
                     {task.status === "rejected" && task.rejectReason && (
-                        <div className="p-3 bg-rose-500/10 rounded-lg border border-rose-500/20 text-sm text-rose-300">
+                        <div className="p-3 bg-rose-500/10 rounded-lg border border-rose-500/20 text-sm text-rose-500">
                             <div className="font-semibold mb-1 flex items-center gap-2">
                                 <AlertCircle className="w-3 h-3" /> 驳回理由
                             </div>
@@ -326,7 +326,7 @@ export function TaskHall() {
 
                 <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
                     <div className="space-y-4 max-w-xl">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-400">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-500">
                             <Sparkles className="h-3 w-3" />
                             <span>今天也要保持好奇心</span>
                         </div>
@@ -371,7 +371,7 @@ export function TaskHall() {
                             <div className="text-sm text-amber-200 font-medium line-clamp-1">{latestUnread.title}</div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="rounded-full text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 shrink-0" onClick={() => setShowAnnouncements(true)}>
+                    <Button variant="ghost" size="sm" className="rounded-full text-amber-600 hover:text-amber-500 hover:bg-amber-500/10 shrink-0" onClick={() => setShowAnnouncements(true)}>
                         查看详情
                     </Button>
                 </div>
@@ -381,33 +381,33 @@ export function TaskHall() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="student-stats-section">
                 <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group" data-testid="student-stat-in-progress">
                     <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-indigo-500/10 rounded-2xl text-indigo-400 group-hover:bg-indigo-500/20 group-hover:scale-110 transition-all duration-300">
+                        <div className="p-4 bg-indigo-500/10 rounded-2xl text-indigo-500 group-hover:bg-indigo-500/20 group-hover:scale-110 transition-all duration-300">
                             <FlaskConical className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-100 group-hover:text-indigo-400 transition-colors">{inProgressCount}</p>
+                            <p className="text-3xl font-bold text-slate-100 group-hover:text-indigo-500 transition-colors">{inProgressCount}</p>
                             <p className="text-sm text-slate-500">进行中的实验</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group" data-testid="student-stat-graded">
                     <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all duration-300">
+                        <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-600 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all duration-300">
                             <CheckCircle className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-100 group-hover:text-emerald-400 transition-colors">{gradedCount}</p>
+                            <p className="text-3xl font-bold text-slate-100 group-hover:text-emerald-600 transition-colors">{gradedCount}</p>
                             <p className="text-sm text-slate-500">已批改实验</p>
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm hover:border-slate-700 transition-colors group" data-testid="student-stat-average">
                     <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-purple-500/10 rounded-2xl text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all duration-300">
+                        <div className="p-4 bg-purple-500/10 rounded-2xl text-purple-600 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all duration-300">
                             <Trophy className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-100 group-hover:text-purple-400 transition-colors">{averageScore.toFixed(0) || "-"}</p>
+                            <p className="text-3xl font-bold text-slate-100 group-hover:text-purple-600 transition-colors">{averageScore.toFixed(0) || "-"}</p>
                             <p className="text-sm text-slate-500">平均得分</p>
                         </div>
                     </CardContent>
@@ -464,7 +464,7 @@ export function TaskHall() {
                             <BookOpen className="w-8 h-8 text-slate-700" />
                         </div>
                         <p className="text-lg text-slate-400 font-medium">暂无相关任务</p>
-                        <p className="text-sm text-slate-600 mt-1">当有新任务发布或状态变更时将出现在这里</p>
+                        <p className="text-sm text-slate-500 mt-1">当有新任务发布或状态变更时将出现在这里</p>
                     </div>
                 )}
             </div>
@@ -491,7 +491,7 @@ export function TaskHall() {
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-indigo-300 transition-colors ${!announcement.isRead ? "text-slate-100" : "text-slate-400"}`}>
+                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-indigo-600 transition-colors ${!announcement.isRead ? "text-slate-100" : "text-slate-400"}`}>
                                             {announcement.title}
                                         </div>
                                         {!announcement.isRead && <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0"></span>}

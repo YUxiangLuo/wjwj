@@ -43,9 +43,9 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
-                        <Upload className="w-12 h-12 mx-auto text-slate-600 mb-4" />
+                        <Upload className="w-12 h-12 mx-auto text-slate-500 mb-4" />
                         <p className="text-sm text-slate-400 mb-2">选择文件上传</p>
-                        <p className="text-xs text-slate-600">支持 .xlsx, .xls, .csv 格式</p>
+                        <p className="text-xs text-slate-500">支持 .xlsx, .xls, .csv 格式</p>
                         <Input
                             type="file"
                             data-testid="teacher-student-import-file"
@@ -54,23 +54,23 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             onChange={(e) => onImportFileChange(e.target.files?.[0] ?? null)}
                         />
                         {importFile && (
-                            <div className="text-xs text-emerald-400 mt-3 font-mono">已选择：{importFile.name}</div>
+                            <div className="text-xs text-emerald-600 mt-3 font-mono">已选择：{importFile.name}</div>
                         )}
                     </div>
-                    <Button data-testid="teacher-student-template-download" variant="link" className="text-indigo-400 hover:text-indigo-300 p-0 h-auto" onClick={onDownloadTemplate}>
+                    <Button data-testid="teacher-student-template-download" variant="link" className="text-indigo-500 hover:text-indigo-600 p-0 h-auto" onClick={onDownloadTemplate}>
                         <Download className="w-4 h-4 mr-1" />
                         下载导入模板
                     </Button>
                     {importResult && (
                         <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-400 space-y-2">
                             <div className="flex gap-4">
-                                <span className="text-emerald-400">成功：{importResult.successCount} 条</span>
-                                <span className={importResult.failureCount > 0 ? "text-rose-400" : ""}>失败：{importResult.failureCount} 条</span>
+                                <span className="text-emerald-600">成功：{importResult.successCount} 条</span>
+                                <span className={importResult.failureCount > 0 ? "text-rose-600" : ""}>失败：{importResult.failureCount} 条</span>
                             </div>
                             {importResult.errors.length > 0 && (
                                 <div className="max-h-32 overflow-y-auto text-xs space-y-1 bg-slate-900 p-2 rounded border border-slate-800">
                                     {importResult.errors.map((err, idx) => (
-                                        <div key={idx} className="text-rose-400">行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
+                                        <div key={idx} className="text-rose-600">行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
                                     ))}
                                 </div>
                             )}

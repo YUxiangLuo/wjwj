@@ -139,7 +139,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">正常账号</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -150,7 +150,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已停用</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -161,7 +161,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">覆盖班级</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{summary.classCount}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -182,7 +182,7 @@ export function AssistantManagement() {
                                 placeholder="搜索姓名/工号/邮箱"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
@@ -219,7 +219,7 @@ export function AssistantManagement() {
                                     <TableCell colSpan={6} className="text-center py-12 text-slate-500">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                                                <Users className="w-6 h-6 text-slate-600" />
+                                                <Users className="w-6 h-6 text-slate-500" />
                                             </div>
                                             <p>暂无符合条件的助教</p>
                                         </div>
@@ -240,21 +240,21 @@ export function AssistantManagement() {
                                     </TableCell>
                                     <TableCell>
                                         {ta.status === 1 ? (
-                                            <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20">正常</Badge>
+                                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">正常</Badge>
                                         ) : (
                                             <Badge variant="secondary" className="bg-slate-800 text-slate-400 border-slate-700">已停用</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex flex-wrap justify-end gap-2">
-                                            <Button data-testid={`teacher-assistant-assign-open-${ta.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openAssignModal(ta)}>
+                                            <Button data-testid={`teacher-assistant-assign-open-${ta.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10" onClick={() => openAssignModal(ta)}>
                                                 <UserCog className="w-3.5 h-3.5 mr-1" />分配班级
                                             </Button>
                                             <Button
                                                 data-testid={`teacher-assistant-reset-${ta.id}`}
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-8 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
+                                                className="h-8 text-slate-400 hover:text-blue-600 hover:bg-blue-500/10"
                                                 onClick={async () => {
                                                     const res = await teacherApi.updateAssistant(ta.id, { action: "reset_password" });
                                                     if (res.success) {
@@ -270,7 +270,7 @@ export function AssistantManagement() {
                                                 data-testid={`teacher-assistant-toggle-${ta.id}`}
                                                 variant="ghost"
                                                 size="sm"
-                                                className={`h-8 ${ta.status === 1 ? "text-slate-400 hover:text-amber-400 hover:bg-amber-500/10" : "text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10"}`}
+                                                className={`h-8 ${ta.status === 1 ? "text-slate-400 hover:text-amber-600 hover:bg-amber-500/10" : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10"}`}
                                                 onClick={async () => {
                                                     const res = await teacherApi.updateAssistant(ta.id, { action: "toggle_status" });
                                                     if (res.success) {
@@ -282,7 +282,7 @@ export function AssistantManagement() {
                                             >
                                                 {ta.status === 1 ? <><PauseCircle className="w-3.5 h-3.5 mr-1" />停用</> : <><CheckCircle2 className="w-3.5 h-3.5 mr-1" />启用</>}
                                             </Button>
-                                            <Button data-testid={`teacher-assistant-delete-${ta.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" onClick={() => setDeleteId(ta.id)}>
+                                            <Button data-testid={`teacher-assistant-delete-${ta.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" onClick={() => setDeleteId(ta.id)}>
                                                 <Trash2 className="w-3.5 h-3.5 mr-1" />移除
                                             </Button>
                                         </div>

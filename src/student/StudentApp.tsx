@@ -338,14 +338,14 @@ function StudentAppContent() {
                                             修改密码
                                         </button>
                                         <button
-                                            className="w-full flex items-center px-3 py-2.5 text-sm text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors cursor-pointer text-left"
+                                            className="w-full flex items-center px-3 py-2.5 text-sm text-rose-600 hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer text-left"
                                             data-testid="student-logout-trigger"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
                                                 setShowLogoutConfirm(true);
                                             }}
                                         >
-                                            <LogOut className="mr-2 h-4 w-4 text-rose-400" />
+                                            <LogOut className="mr-2 h-4 w-4 text-rose-600" />
                                             退出登录
                                         </button>
                                     </div>
@@ -420,18 +420,18 @@ function StudentAppContent() {
                         <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs space-y-1.5">
                             <div className="flex items-center justify-between text-slate-400">
                                 <span>密码强度</span>
-                                <span className={strengthScore <= 2 ? "text-rose-400" : strengthScore <= 4 ? "text-amber-400" : "text-emerald-400"}>
+                                <span className={strengthScore <= 2 ? "text-rose-600" : strengthScore <= 4 ? "text-amber-600" : "text-emerald-600"}>
                                     {passwordStrengthLabel}
                                 </span>
                             </div>
-                            <div className={passwordRules.minLength ? "text-emerald-400" : "text-slate-500"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
-                            <div className={passwordRules.hasLetter ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
-                            <div className={passwordRules.hasNumber ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
-                            <div className={passwordRules.hasSpecial ? "text-emerald-400" : "text-slate-500"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
-                            <div className={passwordRules.noStudentId ? "text-emerald-400" : "text-slate-500"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
-                            <div className={passwordRules.matched ? "text-emerald-400" : "text-slate-500"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
+                            <div className={passwordRules.minLength ? "text-emerald-600" : "text-slate-500"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
+                            <div className={passwordRules.hasLetter ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
+                            <div className={passwordRules.hasNumber ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
+                            <div className={passwordRules.hasSpecial ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
+                            <div className={passwordRules.noStudentId ? "text-emerald-600" : "text-slate-500"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
+                            <div className={passwordRules.matched ? "text-emerald-600" : "text-slate-500"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
-                        {passwordError && <div className="text-sm text-rose-400 bg-rose-900/20 p-2 rounded">{passwordError}</div>}
+                        {passwordError && <div className="text-sm text-rose-600 bg-rose-900/20 p-2 rounded">{passwordError}</div>}
                     </div>
                     <DialogFooter>
                         {!currentUser?.isFirstLogin && (
@@ -457,7 +457,7 @@ function StudentAppContent() {
                                 size="sm"
                                 onClick={() => markAllNotificationsAsRead()}
                                 disabled={!notifications || notifications.unreadCount === 0}
-                                className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                className="text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
                                 data-testid="student-notification-read-all"
                             >
                                 全部已读
@@ -496,7 +496,7 @@ function StudentAppContent() {
                                         <div className="flex items-start gap-1">
                                             <button
                                                 type="button"
-                                                className="h-7 w-7 rounded-md text-slate-500 hover:text-rose-300 hover:bg-rose-500/10 flex items-center justify-center"
+                                                className="h-7 w-7 rounded-md text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center"
                                                 onClick={() => deleteNotification(notice.id)}
                                                 title="删除通知"
                                             >

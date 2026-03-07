@@ -73,7 +73,7 @@ export function ClassManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">学生总数</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.studentTotal}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -84,7 +84,7 @@ export function ClassManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">学期数量</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.semesterCount}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <CalendarDays className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -105,7 +105,7 @@ export function ClassManagement() {
                                 placeholder="搜索班级名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 sm:w-64 focus:border-indigo-500/50"
                             />
                         </div>
                         <Select value={semesterFilter} onValueChange={setSemesterFilter}>
@@ -150,7 +150,7 @@ export function ClassManagement() {
                                         <TableCell className="text-slate-500 text-xs">{new Date(cls.createdAt).toLocaleDateString()}</TableCell>
                                         <TableCell className="text-right">
                                             <Link to={`/class/${cls.id}/students`}>
-                                                <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="sm" className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                     <Users className="w-3.5 h-3.5 mr-1" />
                                                     管理学生
                                                 </Button>
@@ -163,7 +163,7 @@ export function ClassManagement() {
                                         <TableCell colSpan={5} className="text-center py-16 text-slate-500">
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-slate-600" />
+                                                    <Search className="w-5 h-5 text-slate-500" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
                                             </div>

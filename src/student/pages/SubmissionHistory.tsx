@@ -10,9 +10,9 @@ import { TopicDeletedState } from "../components/TopicDeletedState";
 
 const statusConfig: Record<number, { label: string; color: string; icon: any }> = {
     0: { label: "批改草稿", color: "bg-slate-500/10 text-slate-400 border-slate-500/20", icon: FileText },
-    1: { label: "待批改", color: "bg-amber-500/10 text-amber-400 border-amber-500/20", icon: Clock },
-    2: { label: "已批改", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
-    3: { label: "被驳回", color: "bg-red-500/10 text-red-400 border-red-500/20", icon: XCircle },
+    1: { label: "待批改", color: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: Clock },
+    2: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: CheckCircle2 },
+    3: { label: "被驳回", color: "bg-red-500/10 text-red-600 border-red-500/20", icon: XCircle },
 };
 
 export function SubmissionHistory() {
@@ -44,7 +44,7 @@ export function SubmissionHistory() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
             </div>
         );
     }
@@ -120,9 +120,9 @@ export function SubmissionHistory() {
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-slate-400 text-sm">得分</span>
                                                             <span className={cn("text-xl font-bold font-mono",
-                                                                sub.totalScore >= 90 ? "text-emerald-400" :
-                                                                    sub.totalScore >= 60 ? "text-cyan-400" :
-                                                                        "text-red-400"
+                                                                sub.totalScore >= 90 ? "text-emerald-600" :
+                                                                    sub.totalScore >= 60 ? "text-cyan-600" :
+                                                                        "text-red-600"
                                                             )}>
                                                                 {sub.totalScore}
                                                             </span>
@@ -140,7 +140,7 @@ export function SubmissionHistory() {
                                                 </div>
 
                                                 {sub.rejectReason && (
-                                                    <div className="flex items-start gap-2 text-sm text-red-400/90 bg-red-400/5 px-3 py-2 rounded-md border border-red-500/10 mt-2">
+                                                    <div className="flex items-start gap-2 text-sm text-red-600/90 bg-red-400/5 px-3 py-2 rounded-md border border-red-500/10 mt-2">
                                                         <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                                                         <span>驳回原因：{sub.rejectReason}</span>
                                                     </div>

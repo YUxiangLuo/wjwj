@@ -351,7 +351,7 @@ export function SystemSettings() {
                                         data-testid={`settings-section-${section.id}`}
                                         onClick={() => setActiveSection(section.id)}
                                         className={`w-full justify-start gap-3 transition-all duration-200 ${isActive
-                                            ? "bg-indigo-600/10 text-indigo-400 font-medium border border-indigo-500/10"
+                                            ? "bg-indigo-600/10 text-indigo-500 font-medium border border-indigo-500/10"
                                             : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
                                             }`}
                                     >
@@ -368,7 +368,7 @@ export function SystemSettings() {
                 <Card className="flex-1 border-slate-800 bg-slate-900 shadow-sm relative">
                     <CardContent className="pt-6 space-y-6">
                         <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shadow-inner">
+                            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-inner">
                                 <SectionIcon className="w-6 h-6" />
                             </div>
                             <div>
@@ -389,7 +389,7 @@ export function SystemSettings() {
                                             data-testid="settings-system-name"
                                             value={settings.systemName}
                                             onChange={(e) => setSettings({ ...settings, systemName: e.target.value })}
-                                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                                         />
                                         <p className="text-xs text-slate-500">显示在浏览器标题栏和登录页</p>
                                     </div>
@@ -675,7 +675,7 @@ export function SystemSettings() {
                                             </Button>
                                         </div>
                                         {lastBackupId && (
-                                            <div className="text-xs text-emerald-400 font-mono flex items-center gap-2">
+                                            <div className="text-xs text-emerald-600 font-mono flex items-center gap-2">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                                                 最近备份ID：{lastBackupId}
                                             </div>
@@ -735,7 +735,7 @@ export function SystemSettings() {
                                 className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
                             />
                         </div>
-                        {passwordError && <div className="text-sm text-rose-400 bg-rose-500/10 p-2 rounded border border-rose-500/20">{passwordError}</div>}
+                        {passwordError && <div className="text-sm text-rose-600 bg-rose-500/10 p-2 rounded border border-rose-500/20">{passwordError}</div>}
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
@@ -815,7 +815,7 @@ export function SystemSettings() {
                                 placeholder="再次输入密码"
                             />
                         </div>
-                        {restoreError && <div className="text-sm text-rose-400 bg-rose-500/10 p-2 rounded border border-rose-500/20">{restoreError}</div>}
+                        {restoreError && <div className="text-sm text-rose-600 bg-rose-500/10 p-2 rounded border border-rose-500/20">{restoreError}</div>}
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowRestoreModal(false)} disabled={restoreLoading} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
