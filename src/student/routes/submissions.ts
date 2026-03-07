@@ -1,39 +1,12 @@
-import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import { db } from "../../db";
 import { assistant, experiment, submission, task, teacher, topic } from "../../db/schema";
 import { error, getRouteParam, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { resolveStoragePath } from "../../server/storage-files";
+import { getStudentTaskAccessError } from "../experiment/task-access";
 import { requireAuth } from "./auth";
-
-async function getTaskAccessError(taskId: number, classId: number): Promise<Response | null> {
-    const [activeRow] = await db
-        .select({ id: task.id })
-        .from(task)
-        .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(task.id, taskId), eq(task.classId, classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
-
-    if (activeRow) return null;
-
-    const [deletedRow] = await db
-        .select({ id: task.id })
-        .from(task)
-        .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(
-            and(
-                eq(task.id, taskId),
-                eq(task.classId, classId),
-                or(isNotNull(task.deletedAt), eq(topic.isDeleted, 1), isNotNull(topic.deletedAt))
-            )
-        );
-
-    if (deletedRow) {
-        return error("课题已删除", "TOPIC_DELETED", 410);
-    }
-
-    return error("任务不存在", "NOT_FOUND", 404);
-}
 
 const submissionsByTaskRoutes: RouteDefinition = {
     async GET(req) {
@@ -44,7 +17,7 @@ const submissionsByTaskRoutes: RouteDefinition = {
         const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
 
-        const taskAccessError = await getTaskAccessError(taskId, currentStudent.classId);
+        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
         if (taskAccessError) return taskAccessError;
 
         const [exp] = await db
@@ -69,14 +42,16 @@ const submissionsByTaskRoutes: RouteDefinition = {
             .where(eq(submission.experimentId, exp.id))
             .orderBy(desc(submission.submittedAt));
 
-        const teacherIds = submissions
-            .filter((s) => s.gradedByType === 2 && s.gradedById)
-            .map((s) => s.gradedById!)
-            .filter((id, idx, arr) => arr.indexOf(id) === idx);
-        const assistantIds = submissions
-            .filter((s) => s.gradedByType === 3 && s.gradedById)
-            .map((s) => s.gradedById!)
-            .filter((id, idx, arr) => arr.indexOf(id) === idx);
+        const teacherIds = [...new Set(
+            submissions
+                .filter((s) => s.gradedByType === 2 && s.gradedById)
+                .map((s) => s.gradedById!)
+        )];
+        const assistantIds = [...new Set(
+            submissions
+                .filter((s) => s.gradedByType === 3 && s.gradedById)
+                .map((s) => s.gradedById!)
+        )];
 
         const teachers =
             teacherIds.length > 0
@@ -221,12 +196,10 @@ const submissionDownloadRoutes: RouteDefinition = {
         const filePath = type === "questionnaire" ? row.questionnairePdfPath : row.reportPdfPath;
         if (!filePath) return error("文件不存在", "NOT_FOUND", 404);
 
-        const baseDir = path.resolve(process.cwd(), "storage");
-        const normalizedPath = filePath.replace(/\\/g, "/").replace(/^\/+/, "");
-        const relativePath = normalizedPath.startsWith("storage/") ? normalizedPath.slice("storage/".length) : normalizedPath;
-        const fullPath = path.resolve(baseDir, relativePath);
-
-        if (!fullPath.startsWith(baseDir + path.sep) && fullPath !== baseDir) {
+        let fullPath: string;
+        try {
+            fullPath = resolveStoragePath(filePath);
+        } catch {
             return error("无效的文件路径", "INVALID_PATH", 400);
         }
 

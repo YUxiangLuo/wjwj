@@ -11,7 +11,8 @@ const EDITABLE_STATUSES: TaskStatus[] = ["not_started", "in_progress", "rejected
 const COMPLETED_STATUSES: TaskStatus[] = ["submitted", "grading", "graded"];
 
 export function isTaskNotOpenYet(publishedAt: string) {
-    return Number.isFinite(new Date(publishedAt).getTime()) && new Date(publishedAt).getTime() > Date.now();
+    const publishedTime = new Date(publishedAt).getTime();
+    return Number.isFinite(publishedTime) && publishedTime > Date.now();
 }
 
 export function isTaskDeadlinePassed(deadline: string | null) {
