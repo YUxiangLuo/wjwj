@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, FileText, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, FileText, Send, Loader2, CheckCircle2, AlertCircle, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -212,12 +212,20 @@ export function SubmissionPreview() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-preview">
-            <Link to={`/task/${task.id}/experiment`}>
-                <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800">
-                    <ArrowLeft className="w-4 h-4" />
-                    返回修改
-                </Button>
-            </Link>
+            <div className="flex items-center gap-3">
+                <Link to={`/task/${task.id}/questionnaire-preview`}>
+                    <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+                        <ArrowLeft className="w-4 h-4" />
+                        返回问卷预览
+                    </Button>
+                </Link>
+                <Link to={`/task/${task.id}/experiment`}>
+                    <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+                        <ArrowLeft className="w-4 h-4" />
+                        返回修改
+                    </Button>
+                </Link>
+            </div>
 
             <Card className="border-indigo-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
@@ -307,6 +315,14 @@ export function SubmissionPreview() {
                         </TabsContent>
 
                         <TabsContent value="questionnaire" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
+                            {/* Link to immersive preview */}
+                            <Link to={`/task/${task.id}/questionnaire-preview`}>
+                                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/15 transition-colors cursor-pointer">
+                                    <Eye className="w-4 h-4" />
+                                    <span className="text-sm font-medium">打开沉浸式问卷预览</span>
+                                </div>
+                            </Link>
+
                             <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-800">
                                 {!questionnaire ? (
                                     <div className="text-sm text-slate-500 italic">暂无问卷内容</div>

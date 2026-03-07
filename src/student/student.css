@@ -192,3 +192,45 @@ body {
     color: var(--color-foreground);
     font-feature-settings: "rlig" 1, "calt" 1;
 }
+
+/* ═══ Immersive Questionnaire Preview ═══ */
+.immersive-preview {
+    /* Always light-theme paper surface – not affected by dark mode */
+    color-scheme: light;
+}
+
+.immersive-slide {
+    animation-duration: 0.45s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
+}
+
+.immersive-slide-enter-next {
+    animation-name: immersive-enter-next;
+}
+
+.immersive-slide-enter-prev {
+    animation-name: immersive-enter-prev;
+}
+
+@keyframes immersive-enter-next {
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes immersive-enter-prev {
+    from {
+        opacity: 0;
+        transform: translateX(-40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}

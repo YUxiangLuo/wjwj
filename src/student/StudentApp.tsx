@@ -20,6 +20,7 @@ import {
 import { TaskHall } from "./pages/TaskHall";
 import { TopicDetails } from "./pages/TopicDetails";
 import { ExperimentLayout } from "./pages/ExperimentLayout";
+import { ImmersiveQuestionnairePreview } from "./pages/ImmersiveQuestionnairePreview";
 import { SubmissionPreview } from "./pages/SubmissionPreview";
 import { SubmissionHistory } from "./pages/SubmissionHistory";
 import { SubmissionDetailPage } from "./pages/SubmissionDetail";
@@ -363,6 +364,7 @@ function StudentAppContent() {
                     <Route path="login" element={<Login />} />
                     <Route path="task/:taskId" element={<TopicDetails />} />
                     <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
+                    <Route path="task/:taskId/questionnaire-preview" element={<ImmersiveQuestionnairePreview />} />
                     <Route path="task/:taskId/preview" element={<SubmissionPreview />} />
                     <Route path="task/:taskId/history" element={<SubmissionHistory />} />
                     <Route path="submissions/:submissionId" element={<SubmissionDetailPage />} />

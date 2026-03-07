@@ -286,7 +286,7 @@ export function ExperimentLayout() {
             case 4:
                 return <AnalysisReport onPrev={handlePrevStage} onSubmit={() => {
                     if (taskId) {
-                        navigate(`/task/${taskId}/preview`);
+                        navigate(`/task/${taskId}/questionnaire-preview`);
                     }
                 }} />;
             default:
