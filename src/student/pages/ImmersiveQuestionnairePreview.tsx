@@ -217,10 +217,12 @@ function DotNav({
         }
         const sorted = Array.from(neighborhood).sort((a, b) => a - b);
         for (let i = 0; i < sorted.length; i++) {
-            if (i > 0 && sorted[i]! - sorted[i - 1]! > 1) {
+            const cur = sorted[i];
+            const prev = sorted[i - 1];
+            if (i > 0 && cur !== undefined && prev !== undefined && cur - prev > 1) {
                 visibleIndices.push("ellipsis");
             }
-            visibleIndices.push(sorted[i]!);
+            if (cur !== undefined) visibleIndices.push(cur);
         }
     }
 
@@ -332,7 +334,11 @@ export function ImmersiveQuestionnairePreview() {
     /* Keyboard navigation */
     useEffect(() => {
         function handleKey(e: KeyboardEvent) {
-            if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " ") {
+            // Ignore keyboard navigation when focus is on interactive elements
+            const tag = (e.target as HTMLElement)?.tagName;
+            if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || tag === "BUTTON") return;
+
+            if (e.key === "ArrowRight" || e.key === "ArrowDown") {
                 e.preventDefault();
                 goNext();
             } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {

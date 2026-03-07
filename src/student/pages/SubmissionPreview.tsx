@@ -215,7 +215,7 @@ export function SubmissionPreview() {
             <div className="flex items-center gap-3">
                 <Link to={`/task/${task.id}/questionnaire-preview`}>
                     <Button variant="ghost" className="gap-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800">
-                        <ArrowLeft className="w-4 h-4" />
+                        <Eye className="w-4 h-4" />
                         返回问卷预览
                     </Button>
                 </Link>
