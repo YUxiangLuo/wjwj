@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, FileText, Send, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, FileText, Send, Loader2, CheckCircle2, AlertCircle, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +23,7 @@ import {
     getSystematicAcceptedRange,
 } from "../experiment/systematic-sampling";
 import { getPreviewSubmitBlocker } from "../experiment/preview-submit";
+import { ImmersiveReportPreview } from "../components/ImmersiveReportPreview";
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
@@ -78,6 +79,7 @@ export function SubmissionPreview() {
     const [error, setError] = useState<string | null>(null);
     const [topicDeleted, setTopicDeleted] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [showFullPreview, setShowFullPreview] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -222,10 +224,16 @@ export function SubmissionPreview() {
             <Card className="border-indigo-500/20 bg-slate-900/40 backdrop-blur-xl shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
                 <CardHeader className="border-b border-slate-700/30 pb-4">
-                    <CardTitle className="flex items-center gap-3 text-2xl text-slate-100">
-                        <FileText className="w-6 h-6 text-indigo-500" />
-                        提交前预览
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-3 text-2xl text-slate-100">
+                            <FileText className="w-6 h-6 text-indigo-500" />
+                            提交前预览
+                        </CardTitle>
+                        <Button variant="outline" size="sm" className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200" onClick={() => setShowFullPreview(true)}>
+                            <Maximize2 className="w-4 h-4 mr-1.5" />
+                            全屏预览
+                        </Button>
+                    </div>
                     <CardDescription className="text-slate-400">
                         课题：<span className="text-slate-300 font-medium">{task.name}</span>
                     </CardDescription>
@@ -398,6 +406,14 @@ export function SubmissionPreview() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {showFullPreview && (
+                <ImmersiveReportPreview
+                    experiment={experiment}
+                    taskName={task.name}
+                    onClose={() => setShowFullPreview(false)}
+                />
+            )}
         </div>
     );
 }
