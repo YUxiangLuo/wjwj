@@ -27,7 +27,7 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
     const classIdValue = parseOptionalId(classId);
     const topicIdValue = parseOptionalId(topicId);
     const taskIdValue = parseOptionalId(taskId);
-    const conditions: unknown[] = [eq(class_.teacherId, currentTeacherId)];
+    const conditions = [eq(class_.teacherId, currentTeacherId)];
 
     if (semesterName && semesterName !== "all") {
         conditions.push(eq(semester.name, semesterName));
@@ -105,7 +105,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
         const topicId = params.get("topicId");
         const classIdValue = parseOptionalId(classId);
         const topicIdValue = parseOptionalId(topicId);
-        const conditions: unknown[] = [eq(class_.teacherId, currentTeacherId)];
+        const conditions = [eq(class_.teacherId, currentTeacherId)];
 
         if (Number.isNaN(classIdValue) || Number.isNaN(topicIdValue)) {
             return error("查询参数无效", "INVALID_PARAM", 400);

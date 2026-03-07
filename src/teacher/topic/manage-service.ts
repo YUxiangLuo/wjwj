@@ -64,7 +64,11 @@ export async function updateTeacherTopicBasics(params: {
             return fail("课题不存在", "NOT_FOUND", 404);
         }
 
-        const publishReadinessError = validateTopicPublishReadiness(topicInfo);
+        const publishReadinessError = validateTopicPublishReadiness({
+            excelFilePath: topicInfo.excelFilePath,
+            fieldMapping: topicInfo.fieldMapping as Record<string, unknown> | string | null | undefined,
+            weightConfig: topicInfo.weightConfig as Record<string, unknown> | string | null | undefined,
+        });
         if (publishReadinessError) return fail(publishReadinessError);
     }
 

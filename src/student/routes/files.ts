@@ -172,6 +172,16 @@ const attachmentDownloadRoutes: RouteDefinition = {
     },
 };
 
+interface SamplingResultSection {
+    data?: Record<string, unknown>[];
+}
+
+interface SamplingResultsExportData {
+    simple?: SamplingResultSection;
+    systematic?: SamplingResultSection;
+    stratified?: SamplingResultSection;
+}
+
 const exportRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -195,7 +205,7 @@ const exportRoutes: RouteDefinition = {
             return error("暂无抽样结果", "NO_DATA", 404);
         }
 
-        const results = parseStoredJson<Record<string, unknown>>(exp.samplingResults);
+        const results = parseStoredJson<SamplingResultsExportData>(exp.samplingResults);
         if (!results) {
             return error("暂无抽样结果", "NO_DATA", 404);
         }

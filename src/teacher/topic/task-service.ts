@@ -52,7 +52,11 @@ export async function publishTopicTasks(params: {
         return fail("只能发布已发布课题", "VALIDATION_ERROR");
     }
 
-    const publishReadinessError = validateTopicPublishReadiness(topicRow);
+    const publishReadinessError = validateTopicPublishReadiness({
+        excelFilePath: topicRow.excelFilePath,
+        fieldMapping: topicRow.fieldMapping as Record<string, unknown> | string | null | undefined,
+        weightConfig: topicRow.weightConfig as Record<string, unknown> | string | null | undefined,
+    });
     if (publishReadinessError) {
         return fail(publishReadinessError, "VALIDATION_ERROR");
     }

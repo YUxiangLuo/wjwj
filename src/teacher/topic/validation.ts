@@ -22,8 +22,8 @@ interface TopicWeightConfigInput {
 
 interface TopicPublishReadyInput {
     excelFilePath?: string | null;
-    fieldMapping?: TopicFieldMappingInput | string | null;
-    weightConfig?: TopicWeightConfigInput | string | null;
+    fieldMapping?: TopicFieldMappingInput | Record<string, unknown> | string | null;
+    weightConfig?: TopicWeightConfigInput | Record<string, unknown> | string | null;
 }
 
 interface TopicAttachmentInput {
@@ -40,7 +40,7 @@ interface TopicRecommendQuestionInput {
     sortOrder?: number;
 }
 
-function parseObjectLike<T extends object>(value: T | string | null | undefined): T | null {
+function parseObjectLike<T extends object>(value: unknown): T | null {
     if (!value) return null;
     if (typeof value === "string") {
         try {
@@ -51,7 +51,7 @@ function parseObjectLike<T extends object>(value: T | string | null | undefined)
         }
     }
 
-    return typeof value === "object" ? value : null;
+    return typeof value === "object" ? (value as T) : null;
 }
 
 export function validateParsedExcelUpload(parsed: ParsedExcelFile) {

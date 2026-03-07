@@ -1,10 +1,10 @@
-export function parseStoredJson<T>(value: T | string | null | undefined): T | null {
+export function parseStoredJson<T>(value: unknown): T | null {
     if (value === null || value === undefined) {
         return null;
     }
 
     if (typeof value !== "string") {
-        return value;
+        return typeof value === "object" ? (value as T) : null;
     }
 
     const trimmed = value.trim();

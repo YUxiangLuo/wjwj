@@ -54,7 +54,7 @@ const gradingRoutes: RouteDefinition = {
 
         const params = getSearchParams(req);
         const status = params.get("status");
-        const conditions: unknown[] = [sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`];
+        const conditions = [sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`];
 
         if (status === "pending") {
             conditions.push(eq(submission.status, 1));
