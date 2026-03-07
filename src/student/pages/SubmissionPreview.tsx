@@ -316,11 +316,12 @@ export function SubmissionPreview() {
 
                         <TabsContent value="questionnaire" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
                             {/* Link to immersive preview */}
-                            <Link to={`/task/${task.id}/questionnaire-preview`}>
-                                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/15 transition-colors cursor-pointer">
-                                    <Eye className="w-4 h-4" />
-                                    <span className="text-sm font-medium">打开沉浸式问卷预览</span>
-                                </div>
+                            <Link
+                                to={`/task/${task.id}/questionnaire-preview`}
+                                className="flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/15 transition-colors cursor-pointer"
+                            >
+                                <Eye className="w-4 h-4" />
+                                <span className="text-sm font-medium">打开沉浸式问卷预览</span>
                             </Link>
 
                             <div className="bg-slate-800/30 rounded-xl p-6 border border-slate-800">

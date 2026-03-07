@@ -73,10 +73,6 @@ function ImmersiveQuestion({ question, index, total }: { question: Question; ind
 
                 {question.type === "scale" && (
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between text-sm text-neutral-500 mb-2">
-                            <span>{question.scaleMinLabel ?? `${question.scaleMin ?? 1}`}</span>
-                            <span>{question.scaleMaxLabel ?? `${question.scaleMax ?? 10}`}</span>
-                        </div>
                         <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
                             {Array.from(
                                 { length: (question.scaleMax ?? 10) - (question.scaleMin ?? 1) + 1 },
@@ -90,9 +86,9 @@ function ImmersiveQuestion({ question, index, total }: { question: Question; ind
                                 </div>
                             ))}
                         </div>
-                        <div className="flex items-center justify-between text-xs text-neutral-400 mt-1">
-                            <span>{question.scaleMinLabel || ""}</span>
-                            <span>{question.scaleMaxLabel || ""}</span>
+                        <div className="flex items-center justify-between text-sm text-neutral-500">
+                            <span>{question.scaleMinLabel || `${question.scaleMin ?? 1}`}</span>
+                            <span>{question.scaleMaxLabel || `${question.scaleMax ?? 10}`}</span>
                         </div>
                     </div>
                 )}
@@ -310,6 +306,13 @@ export function ImmersiveQuestionnairePreview() {
         () => 1 + questions.length + 1,
         [questions.length],
     );
+
+    // Reset slide state when questionnaire changes (e.g. different taskId)
+    useEffect(() => {
+        setCurrentSlide(0);
+        setVisited(new Set([0]));
+        setSlideDir("next");
+    }, [totalSlides]);
 
     const allVisited = visited.size >= totalSlides;
 
