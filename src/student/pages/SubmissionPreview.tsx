@@ -330,10 +330,10 @@ export function SubmissionPreview() {
                                             )}
                                         </div>
 
-                                        <div className="mt-6 pt-4 border-t border-white/10">
+                                        <div className="mt-6 pt-4 border-t border-slate-50/10">
                                             <RichTextContent
                                                 html={questionnaire.endingText ?? ""}
-                                                className="text-sm text-slate-400 bg-slate-900/30 p-3 rounded-lg border border-white/5"
+                                                className="text-sm text-slate-400 bg-slate-900/30 p-3 rounded-lg border border-slate-50/5"
                                             />
                                         </div>
                                     </>
