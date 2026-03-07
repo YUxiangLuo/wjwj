@@ -27,14 +27,12 @@ import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { authApi } from "./api-client";
 import { Login } from "./pages/Login";
 import { clearLoginSuccess, setLoginRedirectReason, useLoginSuccessRecovery } from "@/hooks/useAuthRecovery";
+import { STUDENT_LOGIN_REDIRECT_REASON_KEY, STUDENT_LOGIN_SUCCESS_KEY } from "./auth-keys";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useTheme } from "@/components/ThemeProvider";
 import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
 import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import "./student.css";
-
-const LOGIN_REDIRECT_REASON_KEY = "student_login_redirect_reason";
-const LOGIN_SUCCESS_KEY = "student_login_success";
 
 function StudentAppContent() {
     const location = useLocation();
@@ -69,8 +67,8 @@ function StudentAppContent() {
         setShowNotifications(false);
         setShowAuthDialog(false);
         setShowLogoutConfirm(false);
-        clearLoginSuccess(LOGIN_SUCCESS_KEY);
-        setLoginRedirectReason(LOGIN_REDIRECT_REASON_KEY, message);
+        clearLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
+        setLoginRedirectReason(STUDENT_LOGIN_REDIRECT_REASON_KEY, message);
         clearAuthState();
         navigate("/login", { replace: true });
     }
@@ -103,11 +101,11 @@ function StudentAppContent() {
             setAuthDialogCode(null);
             return;
         }
-        const hasLoginFlag = sessionStorage.getItem(LOGIN_SUCCESS_KEY) === "1";
+        const hasLoginFlag = sessionStorage.getItem(STUDENT_LOGIN_SUCCESS_KEY) === "1";
         if (hasLoginFlag && (authErrorCode === "AUTH_004" || authErrorCode === "AUTH_005")) {
             setAuthDialogCode(authErrorCode);
             setShowAuthDialog(true);
-            clearLoginSuccess(LOGIN_SUCCESS_KEY);
+            clearLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
         } else {
             setShowAuthDialog(false);
             setAuthDialogCode(null);
@@ -128,7 +126,7 @@ function StudentAppContent() {
 
     const isRecoveringLogin = useLoginSuccessRecovery({
         enabled: !isLoginPage && !currentUser,
-        loginSuccessKey: LOGIN_SUCCESS_KEY,
+        loginSuccessKey: STUDENT_LOGIN_SUCCESS_KEY,
         onRecover: async () => {
             await refreshUser();
             await Promise.all([refreshNotifications(), refreshSession()]);
@@ -193,7 +191,7 @@ function StudentAppContent() {
         try {
             await authApi.logout();
         } finally {
-            clearLoginSuccess(LOGIN_SUCCESS_KEY);
+            clearLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
             clearAuthState();
             navigate("/login", { replace: true });
         }

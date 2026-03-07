@@ -6,9 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { markLoginSuccess, useLoginRedirectReason } from "@/hooks/useAuthRecovery";
 import { authApi } from "../api-client";
-
-const LOGIN_REDIRECT_REASON_KEY = "student_login_redirect_reason";
-const LOGIN_SUCCESS_KEY = "student_login_success";
+import { STUDENT_LOGIN_REDIRECT_REASON_KEY, STUDENT_LOGIN_SUCCESS_KEY } from "../auth-keys";
 
 export function Login() {
     const navigate = useNavigate();
@@ -18,7 +16,7 @@ export function Login() {
     const [password, setPassword] = useState("");
 
     useLoginRedirectReason({
-        redirectReasonKey: LOGIN_REDIRECT_REASON_KEY,
+        redirectReasonKey: STUDENT_LOGIN_REDIRECT_REASON_KEY,
         onReason: setError,
     });
 
@@ -37,7 +35,7 @@ export function Login() {
                 password,
             });
             if (res.success && res.data) {
-                markLoginSuccess(LOGIN_SUCCESS_KEY);
+                markLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
                 navigate("/", { replace: true });
             } else {
                 setError(res.error?.message || "登录失败，请检查账号密码");

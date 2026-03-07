@@ -3,6 +3,8 @@
  * 学生端前端 API 调用工具
  */
 
+import { shouldDispatchSessionExpired, createSessionExpiredInterceptor } from "@/lib/session-expired";
+
 // ============================================================
 // Types
 // ============================================================
@@ -214,24 +216,19 @@ export interface SubmissionDetail {
 // API Client
 // ============================================================
 
-const STUDENT_SESSION_EXPIRED_ERROR_CODES = new Set(["AUTH_004", "AUTH_005", "UNAUTHORIZED", "ACCOUNT_NOT_FOUND"]);
+const interceptSessionExpired = createSessionExpiredInterceptor("/api/student/login", "student:session-expired");
 
 export function shouldDispatchStudentSessionExpired(
     url: string,
     status: number,
     response: Pick<ApiResponse<unknown>, "error"> | null | undefined,
 ) {
-    if (status !== 401 || url.includes("/api/student/login")) return false;
-    return STUDENT_SESSION_EXPIRED_ERROR_CODES.has(response?.error?.code ?? "");
+    return shouldDispatchSessionExpired(url, status, response, "/api/student/login");
 }
 
 async function parseApiResponse<T>(url: string, res: Response): Promise<ApiResponse<T>> {
     const data = await res.json();
-    if (typeof window !== "undefined" && shouldDispatchStudentSessionExpired(url, res.status, data as ApiResponse<unknown>)) {
-        window.dispatchEvent(new CustomEvent("student:session-expired", {
-            detail: { message: (data as ApiResponse<unknown>).error?.message ?? "会话已过期，请重新登录" },
-        }));
-    }
+    interceptSessionExpired(url, res.status, data as ApiResponse<unknown>);
     return data as ApiResponse<T>;
 }
 

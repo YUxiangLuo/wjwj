@@ -11,6 +11,7 @@ import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import "./teacher.css";
 import { authApi, teacherApi, type TeacherNotification, type TeacherUser } from "./api-client";
+import { TEACHER_LOGIN_REDIRECT_REASON_KEY, TEACHER_LOGIN_SUCCESS_KEY } from "./auth-keys";
 import { useTheme } from "@/components/ThemeProvider";
 import { TEACHER_PASSWORD_POLICY } from "@/lib/password-policy";
 import { Toaster } from "sonner";
@@ -62,9 +63,6 @@ const pageTitles: Record<string, string> = {
     "/export": "成绩导出",
 };
 
-const LOGIN_REDIRECT_REASON_KEY = "teacher_login_redirect_reason";
-const LOGIN_SUCCESS_KEY = "teacher_login_success";
-
 export function TeacherApp() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -103,8 +101,8 @@ export function TeacherApp() {
         setAuthState("guest");
         setTeacherUser(null);
         setSessionExpiresAt(null);
-        clearLoginSuccess(LOGIN_SUCCESS_KEY);
-        setLoginRedirectReason(LOGIN_REDIRECT_REASON_KEY, message);
+        clearLoginSuccess(TEACHER_LOGIN_SUCCESS_KEY);
+        setLoginRedirectReason(TEACHER_LOGIN_REDIRECT_REASON_KEY, message);
         navigate("/login", { replace: true });
     }
 
@@ -162,7 +160,7 @@ export function TeacherApp() {
         },
         onUnauthenticated: (response) => {
             if (response?.error?.code === "AUTH_004" || response?.error?.code === "AUTH_005") {
-                setLoginRedirectReason(LOGIN_REDIRECT_REASON_KEY, response.error.message ?? "会话已过期，请重新登录");
+                setLoginRedirectReason(TEACHER_LOGIN_REDIRECT_REASON_KEY, response.error.message ?? "会话已过期，请重新登录");
             }
             setAuthState("guest");
             setTeacherUser(null);
@@ -172,7 +170,7 @@ export function TeacherApp() {
 
     const isRecoveringLogin = useLoginSuccessRecovery({
         enabled: !isLoginPage && authState === "guest",
-        loginSuccessKey: LOGIN_SUCCESS_KEY,
+        loginSuccessKey: TEACHER_LOGIN_SUCCESS_KEY,
         onRecover: () => {
             setAuthState("checking");
         },
@@ -213,7 +211,7 @@ export function TeacherApp() {
     const handleLogout = async () => {
         try {
             await authApi.logout();
-            clearLoginSuccess(LOGIN_SUCCESS_KEY);
+            clearLoginSuccess(TEACHER_LOGIN_SUCCESS_KEY);
             setAuthState("guest");
             setTeacherUser(null);
             setSessionExpiresAt(null);

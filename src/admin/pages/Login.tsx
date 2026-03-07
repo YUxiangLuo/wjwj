@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { markLoginSuccess } from "@/hooks/useAuthRecovery";
 import { authApi } from "../api-client";
-
-const LOGIN_SUCCESS_KEY = "admin_login_success";
+import { ADMIN_LOGIN_SUCCESS_KEY } from "../auth-keys";
 
 export function Login() {
     const navigate = useNavigate();
@@ -31,7 +30,7 @@ export function Login() {
                 password,
             });
             if (res.success) {
-                markLoginSuccess(LOGIN_SUCCESS_KEY);
+                markLoginSuccess(ADMIN_LOGIN_SUCCESS_KEY);
                 navigate("/", { replace: true });
             } else {
                 setError(res.error?.message ?? "登录失败");

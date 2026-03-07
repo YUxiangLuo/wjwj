@@ -6,9 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { markLoginSuccess, useLoginRedirectReason } from "@/hooks/useAuthRecovery";
 import { authApi } from "../api-client";
-
-const LOGIN_REDIRECT_REASON_KEY = "teacher_login_redirect_reason";
-const LOGIN_SUCCESS_KEY = "teacher_login_success";
+import { TEACHER_LOGIN_REDIRECT_REASON_KEY, TEACHER_LOGIN_SUCCESS_KEY } from "../auth-keys";
 
 export function Login() {
     const navigate = useNavigate();
@@ -18,7 +16,7 @@ export function Login() {
     const [password, setPassword] = useState("");
 
     useLoginRedirectReason({
-        redirectReasonKey: LOGIN_REDIRECT_REASON_KEY,
+        redirectReasonKey: TEACHER_LOGIN_REDIRECT_REASON_KEY,
         onReason: setError,
     });
 
@@ -37,7 +35,7 @@ export function Login() {
                 password,
             });
             if (res.success) {
-                markLoginSuccess(LOGIN_SUCCESS_KEY);
+                markLoginSuccess(TEACHER_LOGIN_SUCCESS_KEY);
                 // 如果是助教，直接跳转到批改页面
                 if (res.data?.user?.type === "assistant") {
                     navigate("/grading", { replace: true });

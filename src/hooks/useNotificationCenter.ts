@@ -89,11 +89,13 @@ export function useNotificationCenter<TItem, TResponse>(options: UseNotification
         const res = await markOne(id);
         if (!res.success) return false;
 
+        let unreadDelta = 0;
         setItems((prev) => {
-            const next = applyNotificationRead(prev, id, getItemId, isItemRead, markItemRead);
-            setUnreadCount((current) => Math.max(current - next.unreadDelta, 0));
-            return next.items;
+            const result = applyNotificationRead(prev, id, getItemId, isItemRead, markItemRead);
+            unreadDelta = result.unreadDelta;
+            return result.items;
         });
+        setUnreadCount((current) => Math.max(current - unreadDelta, 0));
         return true;
     }, [getItemId, isItemRead, markItemRead, markOne]);
 

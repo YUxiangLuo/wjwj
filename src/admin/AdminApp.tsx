@@ -31,6 +31,7 @@ import { clearLoginSuccess, useAuthBootstrap, useLoginSuccessRecovery } from "@/
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { usePollingTask } from "@/hooks/usePollingTask";
 import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
+import { ADMIN_LOGIN_SUCCESS_KEY } from "./auth-keys";
 import { SemesterManagement } from "./pages/SemesterManagement";
 import { TeacherManagement } from "./pages/TeacherManagement";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -64,8 +65,6 @@ const pageTitles: Record<string, string> = {
     "/announcement": "公告管理",
     "/settings": "系统设置",
 };
-
-const LOGIN_SUCCESS_KEY = "admin_login_success";
 
 export function AdminApp() {
     const location = useLocation();
@@ -173,7 +172,7 @@ export function AdminApp() {
 
     const isRecoveringLogin = useLoginSuccessRecovery({
         enabled: !isLoginPage && authState === "guest",
-        loginSuccessKey: LOGIN_SUCCESS_KEY,
+        loginSuccessKey: ADMIN_LOGIN_SUCCESS_KEY,
         onRecover: () => {
             setAuthState("checking");
         },
@@ -182,7 +181,7 @@ export function AdminApp() {
     const handleLogout = async () => {
         try {
             await authApi.logout();
-            clearLoginSuccess(LOGIN_SUCCESS_KEY);
+            clearLoginSuccess(ADMIN_LOGIN_SUCCESS_KEY);
             setAuthState("guest");
             setAdminUser(null);
             setSessionExpiresAt(null);

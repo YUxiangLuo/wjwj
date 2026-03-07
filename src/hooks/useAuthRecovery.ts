@@ -109,6 +109,11 @@ export function useLoginSuccessRecovery({
     const [isRecovering, setIsRecovering] = useState(false);
     const hasPendingRecovery = enabled && hasLoginSuccess(loginSuccessKey);
     const activeRecoveryIdRef = useRef(0);
+    const onRecoverRef = useRef(onRecover);
+
+    useEffect(() => {
+        onRecoverRef.current = onRecover;
+    }, [onRecover]);
 
     useEffect(() => {
         if (!enabled) {
@@ -128,12 +133,12 @@ export function useLoginSuccessRecovery({
         activeRecoveryIdRef.current = recoveryId;
         setIsRecovering(true);
 
-        Promise.resolve(onRecover()).finally(() => {
+        Promise.resolve(onRecoverRef.current()).finally(() => {
             if (activeRecoveryIdRef.current === recoveryId) {
                 setIsRecovering(false);
             }
         });
-    }, [enabled, hasPendingRecovery, loginSuccessKey, onRecover]);
+    }, [enabled, hasPendingRecovery, loginSuccessKey]);
 
     return isRecovering || hasPendingRecovery;
 }
