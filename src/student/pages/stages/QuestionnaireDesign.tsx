@@ -14,12 +14,13 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List } from "lucide-react";
+import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List, Play, RotateCcw } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
+import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
 import { useDraftSync } from "../../draft-sync";
 import { experimentApi, tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
 
@@ -75,8 +76,12 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [recommendQuestions, setRecommendQuestions] = useState<RecommendQuestion[]>([]);
-    const [previewAnswers, setPreviewAnswers] = useState<Record<string, string | string[] | number>>({});
     const [recommendCollapsed, setRecommendCollapsed] = useState(false);
+
+    // Immersive preview state
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewCompleted, setPreviewCompleted] = useState(false);
+    const [previewContentHash, setPreviewContentHash] = useState("");
     const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
 
     useEffect(() => {
@@ -100,6 +105,23 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         questions,
     }), [title, welcomeText, endingText, questions]);
 
+    // Content fingerprint for detecting changes after preview completion
+    const contentFingerprint = useMemo(
+        () => `${title}|${welcomeText}|${endingText}|${questions.map(q =>
+            q.id + q.type + q.content
+            + (q.options ?? []).join(";")
+            + (q.minSelect ?? "") + (q.maxSelect ?? "")
+            + (q.scaleMin ?? "") + (q.scaleMax ?? "")
+            + (q.scaleMinLabel ?? "") + (q.scaleMaxLabel ?? "")
+        ).join(",")}`,
+        [title, welcomeText, endingText, questions],
+    );
+    const isPreviewValid = previewCompleted && previewContentHash === contentFingerprint;
+    const handlePreviewComplete = useCallback(() => {
+        setPreviewCompleted(true);
+        setPreviewContentHash(contentFingerprint);
+    }, [contentFingerprint]);
+
     const normalizeQuestionnaireData = useCallback((raw: unknown): QuestionnaireData => {
         const data = raw && typeof raw === "object" ? (raw as Partial<QuestionnaireData>) : {};
         return {
@@ -121,19 +143,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         () => normalizeQuestionnaireData(initialData),
         [initialData, normalizeQuestionnaireData]
     );
-
-    useEffect(() => {
-        setPreviewAnswers((prev) => {
-            const allowed = new Set(questions.map((q) => q.id));
-            const next: Record<string, string | string[] | number> = {};
-            Object.entries(prev).forEach(([key, value]) => {
-                if (allowed.has(key)) {
-                    next[key] = value;
-                }
-            });
-            return next;
-        });
-    }, [questions]);
 
     const parseQuestionnaireDraft = useCallback((raw: string) => {
         try {
@@ -188,7 +197,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         { num: 1, title: "欢迎语设置" },
         { num: 2, title: "题目设计" },
         { num: 3, title: "结束语设置" },
-        { num: 4, title: "预览确认" },
+        { num: 4, title: "模拟填写" },
     ];
 
     // Question management
@@ -365,14 +374,17 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         questionCount: questions.length >= 5 && questions.length <= 50,
         optionCount: invalidOptionQuestions.length === 0,
         questionTypes: new Set(questions.map((q) => q.type)).size >= 2,
+        previewCompleted: isPreviewValid,
     };
 
-    const canProceed =
+    const basicValidationPassed =
         validation.title &&
         validation.welcomeText &&
         validation.endingText &&
         validation.questionCount &&
         validation.optionCount;
+
+    const canProceed = basicValidationPassed && validation.previewCompleted;
 
     const scoreItems = useMemo<ScoreItem[]>(() => {
         const items: ScoreItem[] = [];
@@ -452,8 +464,9 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         validation.endingText,
         validation.questionCount,
         validation.optionCount,
+        validation.previewCompleted,
     ].filter(Boolean).length;
-    const requiredMissingCount = 5 - requiredFailCount;
+    const requiredMissingCount = 6 - requiredFailCount;
     const warningCount = validation.questionTypes ? 0 : 1;
 
     const handleConfirmComplete = async () => {
@@ -464,138 +477,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         // Clear localStorage draft after successful stage completion
         clearLocalDraft();
         onNext();
-    };
-
-    const answeredCount = questions.filter((q) => {
-        const answer = previewAnswers[q.id];
-        if (answer === undefined || answer === null) return false;
-        if (Array.isArray(answer)) return answer.length > 0;
-        if (typeof answer === "number") return true;
-        return String(answer).trim().length > 0;
-    }).length;
-
-    const setSingleAnswer = (questionId: string, value: string) => {
-        setPreviewAnswers((prev) => ({ ...prev, [questionId]: value }));
-    };
-
-    const toggleMultipleAnswer = (question: Question, option: string) => {
-        setPreviewAnswers((prev) => {
-            const current = Array.isArray(prev[question.id]) ? (prev[question.id] as string[]) : [];
-            if (current.includes(option)) {
-                return { ...prev, [question.id]: current.filter((item) => item !== option) };
-            }
-
-            const maxSelect = question.maxSelect ?? question.options?.length ?? 10;
-            if (current.length >= maxSelect) {
-                return prev;
-            }
-            return { ...prev, [question.id]: [...current, option] };
-        });
-    };
-
-    const renderPreviewQuestion = (question: Question, index: number) => {
-        const answer = previewAnswers[question.id];
-
-        return (
-            <div key={question.id} className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 space-y-3">
-                <div className="flex items-start gap-2">
-                    <span className="font-semibold text-neutral-700">Q{index + 1}.</span>
-                    <div className="flex-1 space-y-2">
-                        <div className="text-sm text-neutral-700 font-medium leading-relaxed">{question.content}</div>
-                        <Badge variant="outline" className={`text-[10px] ${questionTypeColors[question.type]}`}>
-                            {questionTypeLabels[question.type]}
-                        </Badge>
-                    </div>
-                </div>
-
-                {question.type === "boolean" && (
-                    <div className="space-y-2 pl-6">
-                        {["是", "否"].map((option) => (
-                            <label key={option} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name={`preview_${question.id}`}
-                                    checked={answer === option}
-                                    onChange={() => setSingleAnswer(question.id, option)}
-                                />
-                                {option}
-                            </label>
-                        ))}
-                    </div>
-                )}
-
-                {question.type === "single" && (
-                    <div className="space-y-2 pl-6">
-                        {(question.options ?? []).map((option) => (
-                            <label key={option} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name={`preview_${question.id}`}
-                                    checked={answer === option}
-                                    onChange={() => setSingleAnswer(question.id, option)}
-                                />
-                                {option}
-                            </label>
-                        ))}
-                    </div>
-                )}
-
-                {question.type === "multiple" && (
-                    <div className="space-y-2 pl-6">
-                        <div className="text-xs text-neutral-500">
-                            最少选择 {question.minSelect ?? 1} 项，最多选择 {question.maxSelect ?? question.options?.length ?? 10} 项
-                        </div>
-                        {(question.options ?? []).map((option) => {
-                            const selected = Array.isArray(answer) ? answer.includes(option) : false;
-                            const selectedCount = Array.isArray(answer) ? answer.length : 0;
-                            const maxSelect = question.maxSelect ?? question.options?.length ?? 10;
-                            const disabled = !selected && selectedCount >= maxSelect;
-
-                            return (
-                                <label key={option} className={`flex items-center gap-2 text-sm ${disabled ? "text-neutral-400" : "text-neutral-700"} ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selected}
-                                        disabled={disabled}
-                                        onChange={() => toggleMultipleAnswer(question, option)}
-                                    />
-                                    {option}
-                                </label>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {question.type === "scale" && (
-                    <div className="space-y-2 pl-6">
-                        <div className="flex justify-between text-xs text-neutral-500">
-                            <span>{question.scaleMinLabel || "最低"}</span>
-                            <span>{question.scaleMaxLabel || "最高"}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {Array.from({
-                                length: (question.scaleMax ?? 10) - (question.scaleMin ?? 1) + 1,
-                            }).map((_, i) => {
-                                const value = (question.scaleMin ?? 1) + i;
-                                const selected = answer === value;
-                                return (
-                                    <button
-                                        key={value}
-                                        type="button"
-                                        onClick={() => setPreviewAnswers((prev) => ({ ...prev, [question.id]: value }))}
-                                        className={`h-8 min-w-8 rounded-md border text-xs font-medium transition-colors ${selected
-                                            ? "bg-indigo-600 border-indigo-600 text-white"
-                                            : "bg-white border-neutral-300 text-neutral-700 hover:bg-indigo-50 hover:border-indigo-300"}`}
-                                    >
-                                        {value}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
     };
 
     const renderStep = () => {
@@ -873,46 +754,70 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             case 4:
                 return (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
-                            <CardHeader>
-                                <CardTitle className="text-slate-100">问卷预览</CardTitle>
-                                <CardDescription className="text-slate-400">完整交互式预览，可直接测试题目作答体验</CardDescription>
-                            </CardHeader>
-                            <CardContent className="bg-slate-950/30 py-6 px-4 sm:px-6 rounded-xl inner-shadow">
-                                <div className="w-full max-w-2xl mx-auto rounded-3xl border border-neutral-200 bg-white p-6 shadow-xl text-neutral-800">
-                                    <div className="space-y-3 border-b border-neutral-200 pb-4">
-                                        <div className="text-base font-bold text-neutral-900">{title || "问卷标题"}</div>
-                                        <RichTextContent
-                                            html={welcomeText}
-                                            className="text-xs text-neutral-600 leading-relaxed"
-                                            emptyFallback="欢迎语将在这里展示"
-                                        />
-                                        <div className="text-[11px] text-neutral-500">
-                                            已试填 {answeredCount} / {questions.length} 题
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                        {/* Immersive preview CTA */}
+                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm overflow-hidden">
+                            {isPreviewValid ? (
+                                <CardContent className="py-8">
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+                                            <CheckCircle className="w-7 h-7 text-emerald-500" />
+                                        </div>
+                                        <div className="text-center">
+                                            <h3 className="text-lg font-semibold text-emerald-400">模拟填写已完成</h3>
+                                            <p className="text-sm text-slate-400 mt-1">您已体验了受访者视角的问卷填写过程</p>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => setPreviewOpen(true)}
+                                            data-testid="student-questionnaire-redo-preview"
+                                            className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                                        >
+                                            <RotateCcw className="w-4 h-4 mr-2" />
+                                            重新模拟填写
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            ) : (
+                                <div>
+                                    <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border-b border-indigo-500/20 px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                                                <Play className="w-5 h-5 text-indigo-400" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-base font-semibold text-indigo-200">模拟填写体验</h3>
+                                                <p className="text-xs text-indigo-300/70 mt-0.5">请以受访者身份完整体验一次问卷填写</p>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <div className="mt-4 max-h-[520px] overflow-y-auto pr-1 space-y-3">
-                                        {questions.length === 0 ? (
-                                            <div className="rounded-xl bg-neutral-50 p-4 text-sm text-neutral-400 text-center italic border border-neutral-200">
-                                                还没有题目
-                                            </div>
-                                        ) : (
-                                            questions.map((q, index) => renderPreviewQuestion(q, index))
-                                        )}
-                                    </div>
-
-                                    <div className="mt-5 pt-3 border-t border-neutral-200">
-                                        <RichTextContent
-                                            html={endingText}
-                                            className="text-xs text-neutral-600 leading-relaxed"
-                                            emptyFallback="结束语将在这里展示"
-                                        />
-                                    </div>
+                                    <CardContent className="py-8">
+                                        <div className="flex flex-col items-center gap-5">
+                                            <p className="text-sm text-slate-400 text-center max-w-md leading-relaxed">
+                                                在进入下一阶段之前，您需要以受访者的视角完整填写一次自己设计的问卷。
+                                                这将帮助您发现问卷中可能存在的问题，提升问卷质量。
+                                            </p>
+                                            <Button
+                                                onClick={() => setPreviewOpen(true)}
+                                                disabled={!basicValidationPassed}
+                                                size="lg"
+                                                data-testid="student-questionnaire-start-preview"
+                                                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 px-8"
+                                            >
+                                                <Play className="w-5 h-5 mr-2" />
+                                                开始模拟填写
+                                            </Button>
+                                            {!basicValidationPassed && (
+                                                <p className="text-xs text-amber-500">请先完成下方校验清单中的必填项</p>
+                                            )}
+                                        </div>
+                                    </CardContent>
                                 </div>
-                            </CardContent>
+                            )}
                         </Card>
+
+                        {/* Validation checklist and score */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm h-fit">
                             <CardHeader>
                                 <CardTitle className="text-slate-100">校验清单</CardTitle>
@@ -980,6 +885,16 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
                                     </span>
                                 </div>
+                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.previewCompleted ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                    {validation.previewCompleted ? (
+                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                    ) : (
+                                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                                    )}
+                                    <span className={`text-sm ${validation.previewCompleted ? "text-emerald-600" : "text-rose-600"}`}>
+                                        模拟填写：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次）"}
+                                    </span>
+                                </div>
                                 {requiredMissingCount === 0 ? (
                                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
                                         问卷结构完整，可进入下一阶段。
@@ -1036,6 +951,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 </div>
                             </CardContent>
                         </Card>
+                        </div>
                     </div>
                 );
         }
@@ -1256,6 +1172,15 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Immersive Questionnaire Preview Overlay */}
+            {previewOpen && (
+                <ImmersiveQuestionnairePreview
+                    questionnaire={questionnaireData}
+                    onComplete={handlePreviewComplete}
+                    onClose={() => setPreviewOpen(false)}
+                />
+            )}
         </div>
     );
 }
