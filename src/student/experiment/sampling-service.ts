@@ -39,6 +39,9 @@ export function parseSamplingSeed(rawSeed: unknown) {
                 return { seed: undefined, errorMessage: "seed 需为整数" };
             } else {
                 seed = Number.parseInt(trimmedSeed, 10);
+                if (!Number.isSafeInteger(seed)) {
+                    return { seed: undefined, errorMessage: "seed 值超出安全范围" };
+                }
             }
         } else {
             return { seed: undefined, errorMessage: "seed 需为整数" };

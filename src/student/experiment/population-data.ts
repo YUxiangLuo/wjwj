@@ -1,6 +1,6 @@
 import * as fs from "node:fs/promises";
-import * as path from "node:path";
 import * as XLSX from "xlsx";
+import { resolveStoragePath } from "../../server/storage-files";
 
 export interface TopicFieldMapping {
     identifier?: string;
@@ -10,21 +10,11 @@ export interface TopicFieldMapping {
 }
 
 export async function readPopulationData(filePath: string): Promise<Record<string, any>[]> {
-    let normalizedPath = filePath.replace(/\\/g, "/").trim();
-    if (normalizedPath.startsWith("/")) {
-        normalizedPath = normalizedPath.slice(1);
-    }
-
-    if (!normalizedPath || !normalizedPath.startsWith("storage/")) {
+    let fullPath: string;
+    try {
+        fullPath = resolveStoragePath(filePath);
+    } catch {
         console.error("Invalid population data path:", filePath);
-        return [];
-    }
-
-    const storageBaseDir = path.resolve(process.cwd(), "storage");
-    const fullPath = path.resolve(process.cwd(), normalizedPath);
-
-    if (!fullPath.startsWith(storageBaseDir + path.sep) && fullPath !== storageBaseDir) {
-        console.error("Path traversal attempt blocked:", filePath);
         return [];
     }
 
