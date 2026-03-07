@@ -255,6 +255,11 @@ const gradingDetailRoutes: RouteDefinition = {
 
         const isDraft = body.action === "draft";
 
+        // Validate status: only 2 (graded) or 3 (rejected) for final submissions
+        if (!isDraft && body.status !== 2 && body.status !== 3) {
+            return error("无效的批改状态", "VALIDATION_ERROR", 400);
+        }
+
         // Validate score ranges before touching the DB
         const scores = [body.scoreQuestionnaire, body.scoreProcess, body.scoreReport];
         if (scores.some((s) => !Number.isFinite(s) || s < 0 || s > 100)) {

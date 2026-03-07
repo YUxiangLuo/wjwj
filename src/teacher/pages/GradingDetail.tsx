@@ -76,6 +76,11 @@ export function GradingDetail() {
         setLoading(true);
         setLastSavedAt(null);
         draftResolvedRef.current = false;
+        // Reset stale state so auto-save cannot post old data to a new submissionId
+        setData(null);
+        setScores({ questionnaire: "0", process: "0", report: "0" });
+        setComment("");
+        serverSnapshotRef.current = "";
         const res = await teacherApi.getSubmissionDetail(id);
         if (res.success && res.data) {
             setData(res.data);
@@ -117,6 +122,9 @@ export function GradingDetail() {
             } catch {
                 draftResolvedRef.current = true;
             }
+        } else if (!res.success) {
+            toast.error(`加载失败: ${res.error?.message ?? "未知错误"}`);
+            draftResolvedRef.current = true;
         }
         setLoading(false);
     }
@@ -271,21 +279,23 @@ export function GradingDetail() {
         if (!submissionId) return;
         setSavingDraft(true);
 
-        // Save current work first
-        const payload = {
-            scoreQuestionnaire: parseFloat(scores.questionnaire) || 0,
-            scoreProcess: parseFloat(scores.process) || 0,
-            scoreReport: parseFloat(scores.report) || 0,
-            totalScore: parseFloat(totalScore.toFixed(2)),
-            comment: comment,
-            status: 0,
-            action: "draft",
-        };
-        const saveRes = await teacherApi.submitGrade(Number(submissionId), payload);
-        if (!saveRes.success) {
-            setSavingDraft(false);
-            toast.error("保存失败: " + (saveRes.error?.message ?? "未知错误"));
-            return;
+        // Save current work first (skip if readonly)
+        if (!data?.readonly && data?.status !== 2 && data?.status !== 3) {
+            const payload = {
+                scoreQuestionnaire: parseFloat(scores.questionnaire) || 0,
+                scoreProcess: parseFloat(scores.process) || 0,
+                scoreReport: parseFloat(scores.report) || 0,
+                totalScore: parseFloat(totalScore.toFixed(2)),
+                comment: comment,
+                status: 0,
+                action: "draft",
+            };
+            const saveRes = await teacherApi.submitGrade(Number(submissionId), payload);
+            if (!saveRes.success) {
+                setSavingDraft(false);
+                toast.error("保存失败: " + (saveRes.error?.message ?? "未知错误"));
+                return;
+            }
         }
 
         // Find next pending submission
