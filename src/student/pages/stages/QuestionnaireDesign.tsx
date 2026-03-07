@@ -14,8 +14,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List } from "lucide-react";
-import { RichTextContent } from "@/components/RichTextContent";
+import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
@@ -41,26 +41,18 @@ const questionTypeColors: Record<QuestionType, string> = {
     scale: "bg-amber-500/10 text-amber-600 border-amber-500/20",
 };
 
-type ScoreStatus = "pass" | "warning" | "fail";
-
-interface ScoreItem {
-    label: string;
-    points: number;
-    status: ScoreStatus;
-    message: string;
-}
-
 function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
+export function QuestionnaireDesign(_props: QuestionnaireDesignProps) {
     const { experiment, saveExperiment } = useExperiment();
+    const navigateRouter = useNavigate();
 
     // Initialize from experiment data
     const initialData = experiment?.questionnaire as QuestionnaireData | null;
 
-    const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+    const [step, setStep] = useState<1 | 2 | 3>(1);
     const [title, setTitle] = useState(initialData?.title ?? "");
     const [welcomeText, setWelcomeText] = useState(initialData?.welcomeText ?? "");
     const [endingText, setEndingText] = useState(initialData?.endingText ?? "");
@@ -75,7 +67,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
     const [recommendQuestions, setRecommendQuestions] = useState<RecommendQuestion[]>([]);
-    const [previewAnswers, setPreviewAnswers] = useState<Record<string, string | string[] | number>>({});
     const [recommendCollapsed, setRecommendCollapsed] = useState(false);
     const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
 
@@ -121,19 +112,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         () => normalizeQuestionnaireData(initialData),
         [initialData, normalizeQuestionnaireData]
     );
-
-    useEffect(() => {
-        setPreviewAnswers((prev) => {
-            const allowed = new Set(questions.map((q) => q.id));
-            const next: Record<string, string | string[] | number> = {};
-            Object.entries(prev).forEach(([key, value]) => {
-                if (allowed.has(key)) {
-                    next[key] = value;
-                }
-            });
-            return next;
-        });
-    }, [questions]);
 
     const parseQuestionnaireDraft = useCallback((raw: string) => {
         try {
@@ -188,7 +166,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         { num: 1, title: "欢迎语设置" },
         { num: 2, title: "题目设计" },
         { num: 3, title: "结束语设置" },
-        { num: 4, title: "预览确认" },
     ];
 
     // Question management
@@ -374,229 +351,15 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         validation.questionCount &&
         validation.optionCount;
 
-    const scoreItems = useMemo<ScoreItem[]>(() => {
-        const items: ScoreItem[] = [];
-
-        items.push({
-            label: "标题完整性",
-            points: validation.title ? 10 : 0,
-            status: validation.title ? "pass" : "fail",
-            message: validation.title ? "标题长度符合要求" : "标题需为1-100字",
-        });
-
-        items.push({
-            label: "欢迎语质量",
-            points: validation.welcomeText ? (welcomeTextLength >= 80 ? 15 : 12) : 0,
-            status: validation.welcomeText ? "pass" : "fail",
-            message: validation.welcomeText ? "欢迎语字数符合要求" : "欢迎语需在20-1000字之间",
-        });
-
-        items.push({
-            label: "结束语质量",
-            points: validation.endingText ? (endingTextLength >= 80 ? 15 : 12) : 0,
-            status: validation.endingText ? "pass" : "fail",
-            message: validation.endingText ? "结束语字数符合要求" : "结束语需在20-1000字之间",
-        });
-
-        items.push({
-            label: "题目数量",
-            points: validation.questionCount ? 20 : 0,
-            status: validation.questionCount ? "pass" : "fail",
-            message: validation.questionCount ? "题目数量在5-50题范围内" : "题目数量需在5-50题",
-        });
-
-        items.push({
-            label: "选项配置",
-            points: validation.optionCount ? 20 : 0,
-            status: validation.optionCount ? "pass" : "fail",
-            message: validation.optionCount
-                ? "单选/多选题选项配置有效"
-                : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 配置无效`,
-        });
-
-        const diversityScore = validation.questionCount
-            ? (validation.questionTypes ? 20 : 12)
-            : 0;
-        items.push({
-            label: "题型多样性",
-            points: diversityScore,
-            status: validation.questionCount
-                ? (validation.questionTypes ? "pass" : "warning")
-                : "fail",
-            message: validation.questionCount
-                ? (validation.questionTypes ? "题型结构较均衡" : "建议至少包含2种题型")
-                : "请先满足题目数量要求",
-        });
-
-        return items;
-    }, [
-        invalidOptionQuestions,
-        validation.title,
-        validation.welcomeText,
-        validation.endingText,
-        validation.questionCount,
-        validation.optionCount,
-        validation.questionTypes,
-        welcomeTextLength,
-        endingTextLength,
-    ]);
-
-    const preliminaryScore = useMemo(() => {
-        const total = scoreItems.reduce((sum, item) => sum + item.points, 0);
-        return Math.max(0, Math.min(100, Math.round(total)));
-    }, [scoreItems]);
-
-    const requiredFailCount = [
-        validation.title,
-        validation.welcomeText,
-        validation.endingText,
-        validation.questionCount,
-        validation.optionCount,
-    ].filter(Boolean).length;
-    const requiredMissingCount = 5 - requiredFailCount;
-    const warningCount = validation.questionTypes ? 0 : 1;
-
     const handleConfirmComplete = async () => {
-        // Save final data
+        // Save final data before navigating to immersive preview
         await saveNow();
-        // Move to next stage
-        await saveExperiment({ currentStage: 2 });
-        // Clear localStorage draft after successful stage completion
         clearLocalDraft();
-        onNext();
+        if (experiment?.taskId) {
+            navigateRouter(`/task/${experiment.taskId}/questionnaire-preview`);
+        }
     };
 
-    const answeredCount = questions.filter((q) => {
-        const answer = previewAnswers[q.id];
-        if (answer === undefined || answer === null) return false;
-        if (Array.isArray(answer)) return answer.length > 0;
-        if (typeof answer === "number") return true;
-        return String(answer).trim().length > 0;
-    }).length;
-
-    const setSingleAnswer = (questionId: string, value: string) => {
-        setPreviewAnswers((prev) => ({ ...prev, [questionId]: value }));
-    };
-
-    const toggleMultipleAnswer = (question: Question, option: string) => {
-        setPreviewAnswers((prev) => {
-            const current = Array.isArray(prev[question.id]) ? (prev[question.id] as string[]) : [];
-            if (current.includes(option)) {
-                return { ...prev, [question.id]: current.filter((item) => item !== option) };
-            }
-
-            const maxSelect = question.maxSelect ?? question.options?.length ?? 10;
-            if (current.length >= maxSelect) {
-                return prev;
-            }
-            return { ...prev, [question.id]: [...current, option] };
-        });
-    };
-
-    const renderPreviewQuestion = (question: Question, index: number) => {
-        const answer = previewAnswers[question.id];
-
-        return (
-            <div key={question.id} className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 space-y-3">
-                <div className="flex items-start gap-2">
-                    <span className="font-semibold text-neutral-700">Q{index + 1}.</span>
-                    <div className="flex-1 space-y-2">
-                        <div className="text-sm text-neutral-700 font-medium leading-relaxed">{question.content}</div>
-                        <Badge variant="outline" className={`text-[10px] ${questionTypeColors[question.type]}`}>
-                            {questionTypeLabels[question.type]}
-                        </Badge>
-                    </div>
-                </div>
-
-                {question.type === "boolean" && (
-                    <div className="space-y-2 pl-6">
-                        {["是", "否"].map((option) => (
-                            <label key={option} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name={`preview_${question.id}`}
-                                    checked={answer === option}
-                                    onChange={() => setSingleAnswer(question.id, option)}
-                                />
-                                {option}
-                            </label>
-                        ))}
-                    </div>
-                )}
-
-                {question.type === "single" && (
-                    <div className="space-y-2 pl-6">
-                        {(question.options ?? []).map((option) => (
-                            <label key={option} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name={`preview_${question.id}`}
-                                    checked={answer === option}
-                                    onChange={() => setSingleAnswer(question.id, option)}
-                                />
-                                {option}
-                            </label>
-                        ))}
-                    </div>
-                )}
-
-                {question.type === "multiple" && (
-                    <div className="space-y-2 pl-6">
-                        <div className="text-xs text-neutral-500">
-                            最少选择 {question.minSelect ?? 1} 项，最多选择 {question.maxSelect ?? question.options?.length ?? 10} 项
-                        </div>
-                        {(question.options ?? []).map((option) => {
-                            const selected = Array.isArray(answer) ? answer.includes(option) : false;
-                            const selectedCount = Array.isArray(answer) ? answer.length : 0;
-                            const maxSelect = question.maxSelect ?? question.options?.length ?? 10;
-                            const disabled = !selected && selectedCount >= maxSelect;
-
-                            return (
-                                <label key={option} className={`flex items-center gap-2 text-sm ${disabled ? "text-neutral-400" : "text-neutral-700"} ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                                    <input
-                                        type="checkbox"
-                                        checked={selected}
-                                        disabled={disabled}
-                                        onChange={() => toggleMultipleAnswer(question, option)}
-                                    />
-                                    {option}
-                                </label>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {question.type === "scale" && (
-                    <div className="space-y-2 pl-6">
-                        <div className="flex justify-between text-xs text-neutral-500">
-                            <span>{question.scaleMinLabel || "最低"}</span>
-                            <span>{question.scaleMaxLabel || "最高"}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            {Array.from({
-                                length: (question.scaleMax ?? 10) - (question.scaleMin ?? 1) + 1,
-                            }).map((_, i) => {
-                                const value = (question.scaleMin ?? 1) + i;
-                                const selected = answer === value;
-                                return (
-                                    <button
-                                        key={value}
-                                        type="button"
-                                        onClick={() => setPreviewAnswers((prev) => ({ ...prev, [question.id]: value }))}
-                                        className={`h-8 min-w-8 rounded-md border text-xs font-medium transition-colors ${selected
-                                            ? "bg-indigo-600 border-indigo-600 text-white"
-                                            : "bg-white border-neutral-300 text-neutral-700 hover:bg-indigo-50 hover:border-indigo-300"}`}
-                                    >
-                                        {value}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     const renderStep = () => {
         switch (step) {
@@ -871,173 +634,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     </div>
                 );
 
-            case 4:
-                return (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
-                            <CardHeader>
-                                <CardTitle className="text-slate-100">问卷预览</CardTitle>
-                                <CardDescription className="text-slate-400">完整交互式预览，可直接测试题目作答体验</CardDescription>
-                            </CardHeader>
-                            <CardContent className="bg-slate-950/30 py-6 px-4 sm:px-6 rounded-xl inner-shadow">
-                                <div className="w-full max-w-2xl mx-auto rounded-3xl border border-neutral-200 bg-white p-6 shadow-xl text-neutral-800">
-                                    <div className="space-y-3 border-b border-neutral-200 pb-4">
-                                        <div className="text-base font-bold text-neutral-900">{title || "问卷标题"}</div>
-                                        <RichTextContent
-                                            html={welcomeText}
-                                            className="text-xs text-neutral-600 leading-relaxed"
-                                            emptyFallback="欢迎语将在这里展示"
-                                        />
-                                        <div className="text-[11px] text-neutral-500">
-                                            已试填 {answeredCount} / {questions.length} 题
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 max-h-[520px] overflow-y-auto pr-1 space-y-3">
-                                        {questions.length === 0 ? (
-                                            <div className="rounded-xl bg-neutral-50 p-4 text-sm text-neutral-400 text-center italic border border-neutral-200">
-                                                还没有题目
-                                            </div>
-                                        ) : (
-                                            questions.map((q, index) => renderPreviewQuestion(q, index))
-                                        )}
-                                    </div>
-
-                                    <div className="mt-5 pt-3 border-t border-neutral-200">
-                                        <RichTextContent
-                                            html={endingText}
-                                            className="text-xs text-neutral-600 leading-relaxed"
-                                            emptyFallback="结束语将在这里展示"
-                                        />
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm h-fit">
-                            <CardHeader>
-                                <CardTitle className="text-slate-100">校验清单</CardTitle>
-                                <CardDescription className="text-slate-400">确认问卷信息完善后再进入下一阶段</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.title ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.title ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                    ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
-                                    )}
-                                    <span className={`text-sm ${validation.title ? "text-emerald-600" : "text-rose-600"}`}>
-                                        问卷标题：{title ? "已填写" : "未填写"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.welcomeText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.welcomeText ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                    ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
-                                    )}
-                                    <span className={`text-sm ${validation.welcomeText ? "text-emerald-600" : "text-rose-600"}`}>
-                                        欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.questionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.questionCount ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                    ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
-                                    )}
-                                    <span className={`text-sm ${validation.questionCount ? "text-emerald-600" : "text-rose-600"}`}>
-                                        题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.questionTypes ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
-                                    {validation.questionTypes ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                    ) : (
-                                        <AlertCircle className="w-5 h-5 text-amber-500" />
-                                    )}
-                                    <span className={`text-sm ${validation.questionTypes ? "text-emerald-600" : "text-amber-600"}`}>
-                                        题型多样性：{new Set(questions.map((q) => q.type)).size} 种题型
-                                        {validation.questionTypes ? "" : " (建议至少2种)"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.optionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.optionCount ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                    ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
-                                    )}
-                                    <span className={`text-sm ${validation.optionCount ? "text-emerald-600" : "text-rose-600"}`}>
-                                        选项数量：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.endingText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.endingText ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                    ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
-                                    )}
-                                    <span className={`text-sm ${validation.endingText ? "text-emerald-600" : "text-rose-600"}`}>
-                                        结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
-                                    </span>
-                                </div>
-                                {requiredMissingCount === 0 ? (
-                                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
-                                        问卷结构完整，可进入下一阶段。
-                                        {warningCount > 0 ? ` 另有 ${warningCount} 项建议优化。` : ""}
-                                    </div>
-                                ) : (
-                                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-500">
-                                        仍有 {requiredMissingCount} 项必填检测未通过，需修复后才能继续。
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm h-fit">
-                            <CardHeader>
-                                <CardTitle className="text-slate-100">初步评分（机器评分）</CardTitle>
-                                <CardDescription className="text-slate-400">供参考，满分100分</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 flex items-center justify-between">
-                                    <div>
-                                        <div className="text-xs uppercase tracking-wider text-indigo-300">当前得分</div>
-                                        <div className="text-3xl font-bold text-indigo-200">{preliminaryScore}</div>
-                                    </div>
-                                    <div className="text-xs text-indigo-300/80">
-                                        {preliminaryScore >= 90
-                                            ? "问卷结构优秀"
-                                            : preliminaryScore >= 75
-                                                ? "问卷结构良好"
-                                                : preliminaryScore >= 60
-                                                    ? "可继续优化"
-                                                    : "建议先完善基础项"}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    {scoreItems.map((item) => (
-                                        <div key={item.label} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-sm text-slate-200">{item.label}</span>
-                                                <span className="text-xs font-mono text-slate-400">{item.points} 分</span>
-                                            </div>
-                                            <div
-                                                className={`text-xs mt-1 ${item.status === "pass"
-                                                    ? "text-emerald-600"
-                                                    : item.status === "warning"
-                                                        ? "text-amber-600"
-                                                        : "text-rose-600"
-                                                    }`}
-                                            >
-                                                {item.message}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
         }
     };
 
@@ -1091,7 +687,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             <button
                                 onClick={() => {
                                     if (s.num <= step) {
-                                        setStep(s.num as 1 | 2 | 3 | 4);
+                                        setStep(s.num as 1 | 2 | 3);
                                     }
                                 }}
                                 disabled={s.num > step}
@@ -1128,16 +724,16 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             <div className="flex justify-between items-center pt-4 border-t border-slate-800/50">
                 <Button
                     variant="outline"
-                    onClick={() => step > 1 && setStep((step - 1) as 1 | 2 | 3 | 4)}
+                    onClick={() => step > 1 && setStep((step - 1) as 1 | 2 | 3)}
                     disabled={step === 1}
                     data-testid="student-questionnaire-prev"
                     className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
                 >
                     上一步
                 </Button>
-                {step < 4 ? (
+                {step < 3 ? (
                     <Button
-                        onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)}
+                        onClick={() => setStep((step + 1) as 1 | 2 | 3)}
                         disabled={step === 2 && questions.length < 5}
                         data-testid="student-questionnaire-next"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
@@ -1151,8 +747,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         data-testid="student-questionnaire-complete"
                         className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20"
                     >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        确认完成，进入下一阶段
+                        <Eye className="w-4 h-4 mr-2" />
+                        预览问卷
                     </Button>
                 )}
             </div>
@@ -1181,20 +777,20 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Confirm Next Stage Dialog */}
+            {/* Confirm Preview Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
                 <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-complete-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">确认完成问卷设计</AlertDialogTitle>
+                        <AlertDialogTitle className="text-slate-100">进入问卷预览</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
-                            确认后问卷设计将被<strong className="text-indigo-500">锁定</strong>。如需修改，您需要返回本阶段重新设计，届时后续阶段的数据将被<strong className="text-rose-600">清空</strong>。
+                            即将进入沉浸式问卷预览，你将以受访者的视角完整体验问卷填写流程。
                             <br /><br />
-                            确定继续吗？
+                            预览完成后可确认进入下一阶段，或返回继续修改。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmComplete} data-testid="student-questionnaire-complete-confirm" className="bg-emerald-600 hover:bg-emerald-700 text-white">确认完成</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmComplete} data-testid="student-questionnaire-complete-confirm" className="bg-emerald-600 hover:bg-emerald-700 text-white">进入预览</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

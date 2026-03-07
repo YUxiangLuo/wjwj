@@ -23,6 +23,7 @@ import { ExperimentLayout } from "./pages/ExperimentLayout";
 import { SubmissionPreview } from "./pages/SubmissionPreview";
 import { SubmissionHistory } from "./pages/SubmissionHistory";
 import { SubmissionDetailPage } from "./pages/SubmissionDetail";
+import { QuestionnairePreview } from "./pages/QuestionnairePreview";
 import { Profile } from "./pages/Profile";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { authApi } from "./api-client";
@@ -37,6 +38,7 @@ function StudentAppContent() {
     const { theme, toggleTheme } = useTheme();
     const isTaskHall = location.pathname === "/";
     const isLoginPage = location.pathname === "/login";
+    const isQuestionnairePreview = /^\/task\/\d+\/questionnaire-preview$/.test(location.pathname);
     const {
         currentUser,
         isLoading,
@@ -163,7 +165,15 @@ function StudentAppContent() {
         return <Navigate to="/login" replace />;
     }
 
-    // 未登录时显示提示（实际应该跳转到登录页）
+    // Immersive questionnaire preview — render full-screen without header/main wrapper
+    if (isQuestionnairePreview && currentUser) {
+        return (
+            <Routes>
+                <Route path="task/:taskId/questionnaire-preview" element={<QuestionnairePreview />} />
+            </Routes>
+        );
+    }
+
     const displayName = currentUser?.name ?? "访客";
     const displayInitial = displayName.charAt(0);
     const passwordPolicy = evaluatePasswordRules({
@@ -363,6 +373,7 @@ function StudentAppContent() {
                     <Route path="login" element={<Login />} />
                     <Route path="task/:taskId" element={<TopicDetails />} />
                     <Route path="task/:taskId/experiment" element={<ExperimentLayout />} />
+                    <Route path="task/:taskId/questionnaire-preview" element={<QuestionnairePreview />} />
                     <Route path="task/:taskId/preview" element={<SubmissionPreview />} />
                     <Route path="task/:taskId/history" element={<SubmissionHistory />} />
                     <Route path="submissions/:submissionId" element={<SubmissionDetailPage />} />
