@@ -1,4 +1,5 @@
-import { CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Sparkles, Upload, X } from "lucide-react";
+import { useState } from "react";
+import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import type { TopicDetail, TopicRecommendQuestion } from "../api-client";
 import { teacherApi } from "../api-client";
+import { RecommendQuestionEditor } from "./RecommendQuestionEditor";
 
 interface FieldMappingState {
     identifier?: string;
@@ -75,6 +77,50 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         onSaveRecommendQuestions,
         onSaveWeights,
     } = props;
+
+    // Recommend question editor state
+    const [editorOpen, setEditorOpen] = useState(false);
+    const [editingQuestion, setEditingQuestion] = useState<TopicRecommendQuestion | undefined>(undefined);
+
+    const handleAddQuestion = () => {
+        setEditingQuestion(undefined);
+        setEditorOpen(true);
+    };
+
+    const handleEditQuestion = (q: TopicRecommendQuestion) => {
+        setEditingQuestion(q);
+        setEditorOpen(true);
+    };
+
+    const handleSaveQuestion = (saved: TopicRecommendQuestion) => {
+        setRecommendQuestions((prev) => {
+            const idx = prev.findIndex((q) => q.id === saved.id);
+            if (idx >= 0) {
+                // Update existing
+                const next = [...prev];
+                next[idx] = saved;
+                return next;
+            }
+            // Add new
+            return [...prev, { ...saved, sortOrder: prev.length }];
+        });
+    };
+
+    const handleDeleteQuestion = (idx: number) => {
+        setRecommendQuestions((prev) => prev.filter((_, i) => i !== idx));
+    };
+
+    const handleMoveQuestion = (idx: number, direction: "up" | "down") => {
+        setRecommendQuestions((prev) => {
+            const next = [...prev];
+            const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+            if (targetIdx < 0 || targetIdx >= next.length) return prev;
+            const temp = next[idx]!;
+            next[idx] = next[targetIdx]!;
+            next[targetIdx] = temp;
+            return next;
+        });
+    };
 
     const normalizeColumnName = (value: string) => value.toLowerCase().replace(/[\s_-]/g, "");
     const tokenizeColumnName = (value: string) => value.toLowerCase().split(/[\s_-]+/).filter(Boolean);
@@ -571,66 +617,107 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-slate-300">推荐题目</Label>
-                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={() => setRecommendQuestions(prev => ([...prev, { id: Date.now(), topicId: editingTopicId ?? 0, questionType: 1, content: "", options: "", sortOrder: prev.length }]))} className="bg-indigo-600 hover:bg-indigo-700">
+                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-indigo-600 hover:bg-indigo-700">
                                         + 添加题目
                                     </Button>
                                 </div>
-                                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                                    {recommendQuestions.map((q, idx) => (
-                                        <div key={q.id} className="border border-slate-800 bg-slate-950 rounded-lg p-4 space-y-3 relative group">
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-slate-500 text-xs font-mono w-6">{idx + 1}.</span>
-                                                <Select value={String(q.questionType)} onValueChange={(v) => {
-                                                    const next = [...recommendQuestions];
-                                                    next[idx] = { ...q, questionType: Number(v) };
-                                                    setRecommendQuestions(next);
-                                                }}>
-                                                    <SelectTrigger className="w-32 bg-slate-900 border-slate-800 text-slate-300 h-8 text-xs">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                                                        <SelectItem value="1">判断题</SelectItem>
-                                                        <SelectItem value="2">单选题</SelectItem>
-                                                        <SelectItem value="3">多选题</SelectItem>
-                                                        <SelectItem value="4">量表题</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="absolute top-2 right-2 text-slate-500 hover:text-rose-600 hover:bg-rose-500/10 h-8 w-8 p-0"
-                                                    onClick={() => setRecommendQuestions(prev => prev.filter((_, i) => i !== idx))}
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </Button>
+                                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                                    {recommendQuestions.map((q, idx) => {
+                                        const typeLabel: Record<number, string> = { 1: "判断题", 2: "单选题", 3: "多选题", 4: "量表题" };
+                                        const typeBadgeColor: Record<number, string> = {
+                                            1: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+                                            2: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+                                            3: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+                                            4: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+                                        };
+                                        const optionsArr = Array.isArray(q.options) ? q.options as string[] : [];
+                                        return (
+                                            <div key={q.id} className="border border-slate-800 bg-slate-950 rounded-lg p-4 relative group hover:border-slate-700 transition-colors">
+                                                <div className="flex items-start gap-3">
+                                                    {/* Reorder buttons */}
+                                                    <div className="flex flex-col gap-0.5 pt-0.5">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-slate-500 hover:text-slate-300 disabled:opacity-30"
+                                                            disabled={idx === 0}
+                                                            onClick={() => handleMoveQuestion(idx, "up")}
+                                                        >
+                                                            <ArrowUp className="w-3.5 h-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-6 w-6 text-slate-500 hover:text-slate-300 disabled:opacity-30"
+                                                            disabled={idx === recommendQuestions.length - 1}
+                                                            onClick={() => handleMoveQuestion(idx, "down")}
+                                                        >
+                                                            <ArrowDown className="w-3.5 h-3.5" />
+                                                        </Button>
+                                                    </div>
+
+                                                    {/* Content area */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                            <span className="text-slate-500 text-xs font-mono">{idx + 1}.</span>
+                                                            <span className={`text-xs px-2 py-0.5 rounded-full border ${typeBadgeColor[q.questionType] ?? "bg-slate-500/10 text-slate-500 border-slate-500/20"}`}>
+                                                                {typeLabel[q.questionType] ?? "未知"}
+                                                            </span>
+                                                        </div>
+                                                        <p data-testid={`teacher-topic-question-content-${idx}`} className="text-sm text-slate-200 leading-relaxed">
+                                                            {q.content || <span className="text-slate-500 italic">未填写题目内容</span>}
+                                                        </p>
+                                                        {(q.questionType === 2 || q.questionType === 3) && optionsArr.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                                {optionsArr.map((opt, i) => (
+                                                                    <span key={i} className="text-xs px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-slate-700/50">
+                                                                        {String.fromCharCode(65 + i)}. {opt}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {q.questionType === 1 && (
+                                                            <p className="text-xs text-slate-500 mt-1">选项：是 / 否</p>
+                                                        )}
+                                                        {q.questionType === 4 && (
+                                                            <p className="text-xs text-slate-500 mt-1">量表：1-10 分</p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Action buttons */}
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
+                                                            onClick={() => handleEditQuestion(q)}
+                                                        >
+                                                            <Pencil className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-slate-500 hover:text-rose-600 hover:bg-rose-500/10"
+                                                            onClick={() => handleDeleteQuestion(idx)}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <Input
-                                                data-testid={`teacher-topic-question-content-${idx}`}
-                                                placeholder="题目内容"
-                                                value={q.content}
-                                                onChange={(e) => {
-                                                    const next = [...recommendQuestions];
-                                                    next[idx] = { ...q, content: e.target.value };
-                                                    setRecommendQuestions(next);
-                                                }}
-                                                className="bg-slate-900 border-slate-800 text-slate-200 placeholder:text-slate-500"
-                                            />
-                                            <Input
-                                                data-testid={`teacher-topic-question-options-${idx}`}
-                                                placeholder="选项（逗号分隔，判断题无需填写）"
-                                                value={typeof q.options === "string" ? q.options : (q.options ? JSON.stringify(q.options) : "")}
-                                                onChange={(e) => {
-                                                    const next = [...recommendQuestions];
-                                                    next[idx] = { ...q, options: e.target.value };
-                                                    setRecommendQuestions(next);
-                                                }}
-                                                className="bg-slate-900 border-slate-800 text-slate-200 placeholder:text-slate-500 text-sm"
-                                                disabled={q.questionType === 1 || q.questionType === 4}
-                                            />
-                                        </div>
-                                    ))}
-                                    {recommendQuestions.length === 0 && <div className="text-center text-slate-500 py-8">暂无推荐题目</div>}
+                                        );
+                                    })}
+                                    {recommendQuestions.length === 0 && <div className="text-center text-slate-500 py-8">暂无推荐题目，点击「+ 添加题目」开始创建</div>}
                                 </div>
+
+                                {/* Question Editor Dialog */}
+                                <RecommendQuestionEditor
+                                    open={editorOpen}
+                                    onOpenChange={setEditorOpen}
+                                    question={editingQuestion}
+                                    topicId={editingTopicId ?? 0}
+                                    onSave={handleSaveQuestion}
+                                />
                             </div>
                         )}
 
