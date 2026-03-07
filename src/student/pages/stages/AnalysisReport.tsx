@@ -677,18 +677,18 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     <CardContent className="px-4 py-3">
                         <div className="flex items-center gap-2 text-sm">
                             {syncConflictOpen ? (
-                                <AlertCircle className="h-4 w-4 text-amber-400" />
+                                <AlertCircle className="h-4 w-4 text-amber-600" />
                             ) : isOnline ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
                             ) : (
-                                <AlertCircle className="h-4 w-4 text-rose-400" />
+                                <AlertCircle className="h-4 w-4 text-rose-600" />
                             )}
                             <span
                                 className={syncConflictOpen
                                     ? "text-amber-300"
                                     : isOnline
                                         ? "text-emerald-300"
-                                        : "text-rose-300"
+                                        : "text-rose-500"
                                 }
                             >
                                 {networkNotice}
@@ -909,7 +909,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 editorClassName="min-h-[400px]"
                             />
                             <div className="text-right text-xs">
-                                <span className={reportTextLength < minLength || reportTextLength > maxLength ? "text-rose-400" : "text-emerald-400"}>
+                                <span className={reportTextLength < minLength || reportTextLength > maxLength ? "text-rose-600" : "text-emerald-600"}>
                                     {reportTextLength > maxLength
                                         ? `已超出 ${reportTextLength - maxLength} 字`
                                         : reportTextLength < minLength

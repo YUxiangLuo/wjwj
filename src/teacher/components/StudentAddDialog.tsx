@@ -40,7 +40,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             placeholder="请输入学号"
                             value={form.id}
                             onChange={(e) => onFormChange({ ...form, id: e.target.value })}
-                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                         />
                     </div>
                     <div className="space-y-2">
@@ -51,7 +51,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             placeholder="请输入姓名"
                             value={form.name}
                             onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                         />
                     </div>
                     <div className="space-y-2">
@@ -63,7 +63,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             placeholder="请输入邮箱"
                             value={form.email}
                             onChange={(e) => onFormChange({ ...form, email: e.target.value })}
-                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                         />
                     </div>
                 </div>

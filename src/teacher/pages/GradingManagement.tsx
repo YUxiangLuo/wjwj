@@ -35,9 +35,9 @@ export function GradingManagement() {
     const getStatusBadge = (status: number, score?: number | null) => {
         switch (status) {
             case 0: return <Badge variant="secondary" className="bg-slate-500/10 text-slate-400 border-slate-500/20 hover:bg-slate-500/20"><FileEdit className="w-3 h-3 mr-1" /> 批改草稿</Badge>;
-            case 1: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"><Clock className="w-3 h-3 mr-1" /> 待批改</Badge>;
-            case 2: return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</Badge>;
-            case 3: return <Badge variant="destructive" className="bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20"><XCircle className="w-3 h-3 mr-1" /> 已驳回</Badge>;
+            case 1: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"><Clock className="w-3 h-3 mr-1" /> 待批改</Badge>;
+            case 2: return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</Badge>;
+            case 3: return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20"><XCircle className="w-3 h-3 mr-1" /> 已驳回</Badge>;
             default: return <Badge variant="outline" className="text-slate-400 border-slate-700">未知状态</Badge>;
         }
     };
@@ -51,7 +51,7 @@ export function GradingManagement() {
         return (
             <Badge 
                 variant="outline" 
-                className={`text-xs ${isTeacher ? 'text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-purple-400 border-purple-500/30 bg-purple-500/10'}`}
+                className={`text-xs ${isTeacher ? 'text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-purple-600 border-purple-500/30 bg-purple-500/10'}`}
             >
                 <UserCheck className="w-3 h-3 mr-1" />
                 {isTeacher ? '教师' : '助教'}: {item.gradedByName}
@@ -115,7 +115,7 @@ export function GradingManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">待批改</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.pending}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <Clock className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -126,7 +126,7 @@ export function GradingManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已批改</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.graded}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -137,7 +137,7 @@ export function GradingManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已驳回</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.rejected}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center border border-rose-500/20">
                             <AlertTriangle className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -158,7 +158,7 @@ export function GradingManagement() {
                                 placeholder="搜索学生/课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <Select value={filterClass} onValueChange={setFilterClass}>
@@ -202,7 +202,7 @@ export function GradingManagement() {
                         filteredSubmissions.length === 0 ?
                             <div className="flex flex-col items-center justify-center py-12 text-slate-500">
                                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mb-3">
-                                    <ClipboardList className="w-6 h-6 text-slate-600" />
+                                    <ClipboardList className="w-6 h-6 text-slate-500" />
                                 </div>
                                 <p>暂无待批改作业</p>
                             </div>
@@ -219,7 +219,7 @@ export function GradingManagement() {
                                                     <span className="font-semibold text-slate-200">{sub.studentName}</span>
                                                     <span className="text-xs font-mono text-slate-500">({sub.studentId})</span>
                                                 </div>
-                                                <div className="text-sm text-slate-400 mt-1">{sub.className} · <span className="text-indigo-400">{sub.topic}</span></div>
+                                                <div className="text-sm text-slate-400 mt-1">{sub.className} · <span className="text-indigo-500">{sub.topic}</span></div>
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
@@ -247,7 +247,7 @@ export function GradingManagement() {
                                             </Button>
                                         )}
                                         {sub.status === 3 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-400 hover:text-rose-600 hover:bg-rose-500/10">
                                                 查看原因
                                             </Button>
                                         )}

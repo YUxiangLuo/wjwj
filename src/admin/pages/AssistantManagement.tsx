@@ -243,7 +243,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Active</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -254,7 +254,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Disabled</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -265,7 +265,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Locked</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.locked}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center border border-rose-500/20">
                             <Unlock className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -276,7 +276,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Linked Teachers</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                             <UserRound className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -295,7 +295,7 @@ export function AssistantManagement() {
                                 data-testid="assistant-search-input"
                                 value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 sm:w-64 focus:border-indigo-500/50"
+                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 sm:w-64 focus:border-indigo-500/50"
                         />
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
                             <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
@@ -337,9 +337,9 @@ export function AssistantManagement() {
                                         <TableCell className="text-slate-300">{assistant.teacherName}</TableCell>
                                         <TableCell>
                                             {assistant.isLocked ? (
-                                                <Badge variant="destructive" className="bg-rose-500/10 text-rose-400 hover:bg-rose-500/20">已锁定</Badge>
+                                                <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20">已锁定</Badge>
                                             ) : assistant.status === 1 ? (
-                                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">正常</Badge>
+                                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">正常</Badge>
                                             ) : (
                                                 <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已停用</Badge>
                                             )}
@@ -350,12 +350,12 @@ export function AssistantManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {assistant.isLocked && (
-                                                    <Button data-testid={`assistant-unlock-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleUnlock(assistant)} className="h-8 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10">
+                                                    <Button data-testid={`assistant-unlock-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleUnlock(assistant)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
                                                         <Unlock className="w-3.5 h-3.5 mr-1" />
                                                         解锁
                                                     </Button>
                                                 )}
-                                                <Button data-testid={`assistant-reset-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10">
+                                                <Button data-testid={`assistant-reset-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置
                                                 </Button>
@@ -364,7 +364,7 @@ export function AssistantManagement() {
                                                     size="sm"
                                                     data-testid={`assistant-toggle-status-${assistant.id}`}
                                                     onClick={() => handleToggleStatus(assistant)}
-                                                    className={`h-8 ${assistant.status === 1 ? "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}`}
+                                                    className={`h-8 ${assistant.status === 1 ? "text-rose-600 hover:text-rose-500 hover:bg-rose-500/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                                 >
                                                     {assistant.status === 1 ? "停用" : "启用"}
                                                 </Button>
@@ -373,7 +373,7 @@ export function AssistantManagement() {
                                                     size="sm"
                                                     data-testid={`assistant-delete-${assistant.id}`}
                                                     onClick={() => handleDelete(assistant)}
-                                                    className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                                                    className="h-8 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 mr-1" />
                                                     删除
@@ -387,7 +387,7 @@ export function AssistantManagement() {
                                         <TableCell colSpan={8} className="text-center py-16 text-slate-500">
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-slate-600" />
+                                                    <Search className="w-5 h-5 text-slate-500" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
                                             </div>
@@ -415,7 +415,7 @@ export function AssistantManagement() {
                                 placeholder="请输入账号"
                                 value={newAssistant.account}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, account: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
@@ -426,7 +426,7 @@ export function AssistantManagement() {
                                 placeholder="请输入姓名"
                                 value={newAssistant.name}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, name: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">

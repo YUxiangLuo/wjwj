@@ -314,7 +314,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                     <div className="flex flex-wrap items-center justify-between gap-6">
                         <div className="flex items-center gap-3">
                             <div className="bg-slate-800 p-2.5 rounded-xl border border-slate-700">
-                                <Target className="w-5 h-5 text-indigo-400" />
+                                <Target className="w-5 h-5 text-indigo-500" />
                             </div>
                             <div>
                                 <div className="text-sm font-medium text-slate-400">规划样本量</div>
@@ -334,7 +334,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                         <div className="w-px h-10 bg-slate-800 hidden sm:block"></div>
                         <div className="flex items-center gap-3">
                             <div className="bg-slate-800 p-2.5 rounded-xl border border-slate-700">
-                                <Layers className="w-5 h-5 text-amber-400" />
+                                <Layers className="w-5 h-5 text-amber-600" />
                             </div>
                             <div>
                                 <div className="text-sm font-medium text-slate-400">完成进度</div>
@@ -417,10 +417,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <>
                                             <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4">
                                                 <div className="bg-emerald-500/20 p-3 rounded-full">
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
+                                                    <p className="text-emerald-600 font-medium text-lg">抽样完成</p>
                                                     <p className="text-emerald-200/70 text-sm mt-1">共成功抽取 {simpleResult.sampleCount} 个样本{executionTimes.simple !== null && `，耗时 ${executionTimes.simple} ms`}</p>
                                                     {simpleResult.seed && (
                                                         <p className="text-xs text-emerald-500/50 mt-1 font-mono">Random Seed: {simpleResult.seed}</p>
@@ -494,7 +494,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <div className="space-y-3">
                                             <Label className="text-slate-300">预计抽取数量</Label>
                                             <div className={`p-2.5 border rounded-md flex items-center justify-between ${isKValid ? "border-slate-700 bg-slate-900" : "border-rose-500/50 bg-rose-500/10"}`}>
-                                                <span className={`font-mono font-bold ${isKValid ? "text-slate-200" : "text-rose-400"}`}>{formatSystematicRange(systematicSampleCountRange)}</span>
+                                                <span className={`font-mono font-bold ${isKValid ? "text-slate-200" : "text-rose-600"}`}>{formatSystematicRange(systematicSampleCountRange)}</span>
                                                 <span className="text-xs text-slate-500">允许范围: {formatSystematicRange(systematicAcceptedRange)}</span>
                                             </div>
                                             {systematicSampleCountRange.min !== systematicSampleCountRange.max && (
@@ -503,7 +503,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 </p>
                                             )}
                                             {!isKValid && (
-                                                <p className="text-xs text-rose-400 mt-1">
+                                                <p className="text-xs text-rose-600 mt-1">
                                                     当前 K 值的实际样本量可能超出允许范围，请调整 K 值
                                                 </p>
                                             )}
@@ -540,10 +540,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <div className="space-y-4">
                                             <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4">
                                                 <div className="bg-emerald-500/20 p-3 rounded-full">
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
+                                                    <p className="text-emerald-600 font-medium text-lg">抽样完成</p>
                                                     <p className="text-emerald-200/70 text-sm mt-1">K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本{executionTimes.systematic !== null && `，耗时 ${executionTimes.systematic} ms`}</p>
                                                 </div>
                                                 <Button variant="ghost" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-rerun" className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
@@ -677,7 +677,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     <TableCell colSpan={3} className="text-right text-slate-300 pr-4">合计 Total</TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
-                                                            <span className={isStratifiedValid ? "text-emerald-400" : "text-rose-400"}>
+                                                            <span className={isStratifiedValid ? "text-emerald-600" : "text-rose-600"}>
                                                                 {stratifiedTotal}
                                                             </span>
                                                             <span className="text-slate-500 text-xs">/ {n}</span>
@@ -689,7 +689,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     </div>
 
                                     {!isStratifiedValid && layers.length > 0 && (
-                                        <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl text-xs flex items-center gap-2">
+                                        <div className="p-3 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-xs flex items-center gap-2">
                                             <Target className="w-4 h-4 shrink-0" />
                                             各层样本数之和必须等于目标样本量 {n}（当前：{stratifiedTotal}）
                                         </div>
@@ -710,10 +710,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <div className="space-y-4">
                                             <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4">
                                                 <div className="bg-emerald-500/20 p-3 rounded-full">
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-emerald-400 font-medium text-lg">抽样完成</p>
+                                                    <p className="text-emerald-600 font-medium text-lg">抽样完成</p>
                                                     <p className="text-emerald-200/70 text-sm mt-1">按 {STRATIFY_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified !== null && `，耗时 ${executionTimes.stratified} ms`}</p>
                                                 </div>
                                                 <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-rerun" className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
@@ -843,7 +843,7 @@ function SamplePreviewTable({ data, total }: { data: unknown[]; total: number })
                 </Table>
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-slate-500">
                     显示第 {start + 1}-{end} 条，共 {Math.max(total, samples.length)} 条
                 </p>
                 <div className="flex items-center gap-2">

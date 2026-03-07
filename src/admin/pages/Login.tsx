@@ -65,7 +65,7 @@ export function Login() {
                         <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-sky-500/20 rounded-full blur-3xl" />
                         <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-slate-100 mb-6">
                             探索数据背后的<br />
-                            <span className="text-indigo-400">数学真理</span>
+                            <span className="text-indigo-500">数学真理</span>
                         </h1>
                     </div>
 
@@ -75,19 +75,19 @@ export function Login() {
 
                     <div className="mt-12 flex gap-8">
                         <div className="flex flex-col gap-2">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-indigo-400 shadow-lg">
+                            <div className="w-12 h-12 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-indigo-500 shadow-lg">
                                 <LineChart className="w-6 h-6" />
                             </div>
                             <span className="text-sm font-medium text-slate-300">实时可视化</span>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-sky-400 shadow-lg">
+                            <div className="w-12 h-12 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-sky-600 shadow-lg">
                                 <PieChart className="w-6 h-6" />
                             </div>
                             <span className="text-sm font-medium text-slate-300">动态交互</span>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-emerald-400 shadow-lg">
+                            <div className="w-12 h-12 rounded-2xl bg-slate-800/50 border border-slate-700 flex items-center justify-center text-emerald-600 shadow-lg">
                                 <ShieldCheck className="w-6 h-6" />
                             </div>
                             <span className="text-sm font-medium text-slate-300">精准评估</span>
@@ -132,7 +132,7 @@ export function Login() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     autoComplete="username"
-                                    className="h-12 bg-slate-900 border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-slate-100 placeholder:text-slate-600 rounded-xl transition-all"
+                                    className="h-12 bg-slate-900 border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-slate-100 placeholder:text-slate-500 rounded-xl transition-all"
                                 />
                             </div>
                             <div className="space-y-2.5">
@@ -150,13 +150,13 @@ export function Login() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     autoComplete="current-password"
-                                    className="h-12 bg-slate-900 border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-slate-100 placeholder:text-slate-600 rounded-xl transition-all"
+                                    className="h-12 bg-slate-900 border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-slate-100 placeholder:text-slate-500 rounded-xl transition-all"
                                 />
                             </div>
                         </div>
 
                         {error && (
-                            <div className="p-4 text-sm text-rose-300 bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center gap-3 animate-in slide-in-from-top-2">
+                            <div className="p-4 text-sm text-rose-500 bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center gap-3 animate-in slide-in-from-top-2">
                                 <div className="w-2 h-2 rounded-full bg-rose-500" />
                                 {error}
                             </div>

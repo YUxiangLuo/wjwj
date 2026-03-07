@@ -143,7 +143,7 @@ export function TaskManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">待批改</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.pendingTotal}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center border border-rose-500/20">
                             <AlertTriangle className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -154,7 +154,7 @@ export function TaskManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已完成</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.completedTotal}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -165,7 +165,7 @@ export function TaskManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">总提交数</p>
                             <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.totalSubmissions}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <CalendarDays className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -186,7 +186,7 @@ export function TaskManagement() {
                                 placeholder="搜索课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <Select value={classFilter} onValueChange={setClassFilter}>
@@ -234,16 +234,16 @@ export function TaskManagement() {
                                         </TableCell>
                                         <TableCell>
                                             {task.pending && task.pending > 0 ? (
-                                                <Badge variant="secondary" className="bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20">
+                                                <Badge variant="secondary" className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20">
                                                     {task.pending}
                                                 </Badge>
                                             ) : (
-                                                <span className="text-slate-600 text-xs">-</span>
+                                                <span className="text-slate-500 text-xs">-</span>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="sm" asChild className="h-8 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10">
                                                     <Link to={`/task/${task.id}/progress`}>
                                                         <BarChart3 className="w-3.5 h-3.5 mr-1" />
                                                         进度
@@ -258,12 +258,12 @@ export function TaskManagement() {
                                                         setExtendDeadline("");
                                                         setShowExtendModal(true);
                                                     }}
-                                                    className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10"
+                                                    className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
                                                 >
                                                     <Clock className="w-3.5 h-3.5 mr-1" />
                                                     延时
                                                 </Button>
-                                                <Button variant="ghost" size="sm" asChild className="h-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10">
                                                     <Link to="/grading">批改</Link>
                                                 </Button>
                                             </div>
@@ -275,7 +275,7 @@ export function TaskManagement() {
                                         <TableCell colSpan={7} className="text-center py-16 text-slate-500">
                                             <div className="flex flex-col items-center gap-2">
                                                 <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-slate-600" />
+                                                    <Search className="w-5 h-5 text-slate-500" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
                                             </div>

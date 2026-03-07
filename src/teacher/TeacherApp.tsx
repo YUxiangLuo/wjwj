@@ -289,7 +289,7 @@ export function TeacherApp() {
         if (authState === "checking") {
             return (
                 <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                    <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                    <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
                 </div>
             );
         }
@@ -302,7 +302,7 @@ export function TeacherApp() {
     if (authState === "checking") {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
             </div>
         );
     }
@@ -344,16 +344,16 @@ export function TeacherApp() {
                                 onClick={() => setIsSidebarOpen(false)}
                                 className={`flex items-center justify-between px-3 py-2.5 text-sm rounded-lg transition-all duration-200 group
                                     ${isActive
-                                        ? "bg-indigo-500/10 text-indigo-400"
+                                        ? "bg-indigo-500/10 text-indigo-500"
                                         : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-indigo-400" : "text-slate-500 group-hover:text-slate-300"}`} />
+                                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-indigo-500" : "text-slate-500 group-hover:text-slate-300"}`} />
                                     <span className="font-medium">{item.label}</span>
                                 </div>
                                 {item.path === "/grading" && pendingGradingCount > 0 && (
-                                    <Badge className="bg-rose-500/20 text-rose-400 border-none hover:bg-rose-500/30">
+                                    <Badge className="bg-rose-500/20 text-rose-600 border-none hover:bg-rose-500/30">
                                         {pendingGradingCount}
                                     </Badge>
                                 )}
@@ -365,7 +365,7 @@ export function TeacherApp() {
                 <div className="p-4 border-t border-slate-800">
                     <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50 border border-slate-800">
                         <Avatar className="w-9 h-9 border border-slate-700">
-                            <AvatarFallback className={`text-xs font-semibold ${teacherUser?.type === "assistant" ? "bg-purple-950 text-purple-400" : "bg-indigo-950 text-indigo-400"}`}>
+                            <AvatarFallback className={`text-xs font-semibold ${teacherUser?.type === "assistant" ? "bg-purple-950 text-purple-600" : "bg-indigo-950 text-indigo-500"}`}>
                                 {teacherUser?.name?.charAt(0) ?? (teacherUser?.type === "assistant" ? "助" : "师")}
                             </AvatarFallback>
                         </Avatar>
@@ -373,7 +373,7 @@ export function TeacherApp() {
                             <div className="text-sm font-medium text-slate-200 truncate">{teacherUser?.name ?? (teacherUser?.type === "assistant" ? "助教" : "教师")}</div>
                             <div className="text-xs text-slate-500 truncate">
                                 {teacherUser?.type === "assistant" ? (
-                                    <span className="text-purple-400">助教 · {teacherUser?.account ?? ""}</span>
+                                    <span className="text-purple-600">助教 · {teacherUser?.account ?? ""}</span>
                                 ) : (
                                     teacherUser?.employeeId ?? ""
                                 )}
@@ -419,7 +419,7 @@ export function TeacherApp() {
                             variant="ghost"
                             size="icon"
                             data-testid="teacher-open-notifications"
-                            className="relative text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10"
+                            className="relative text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
                             onClick={async () => {
                                 await loadNotifications();
                                 setShowNotifications(true);
@@ -457,7 +457,7 @@ export function TeacherApp() {
                                 size="icon"
                                 data-testid="teacher-logout"
                                 onClick={handleLogout}
-                                className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10"
+                                className="text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
                                 title="退出登录"
                             >
                                 <LogOut className="w-5 h-5" />
@@ -562,7 +562,7 @@ export function TeacherApp() {
                             notifications.map((item) => (
                                 <div key={item.id} className="border border-slate-800 rounded-lg p-4 bg-slate-950 hover:bg-slate-800/30 transition-colors">
                                     <div className="flex items-center justify-between mb-2">
-                                        <div className={`text-sm font-medium ${item.isRead ? "text-slate-400" : "text-indigo-400"}`}>
+                                        <div className={`text-sm font-medium ${item.isRead ? "text-slate-400" : "text-indigo-500"}`}>
                                             {item.title}
                                             {!item.isRead && <span className="ml-2 w-1.5 h-1.5 inline-block rounded-full bg-indigo-500"></span>}
                                         </div>
@@ -573,7 +573,7 @@ export function TeacherApp() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="mt-3 h-7 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                            className="mt-3 h-7 text-xs text-indigo-500 hover:text-indigo-300 hover:bg-indigo-500/10"
                                             onClick={async () => {
                                                 await teacherApi.readNotification(item.id);
                                                 loadNotifications();
@@ -607,7 +607,7 @@ export function TeacherApp() {
             <Dialog open={showSessionWarning && !sessionExpired} onOpenChange={setShowSessionWarning}>
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
-                        <DialogTitle className="text-amber-400 flex items-center gap-2">
+                        <DialogTitle className="text-amber-600 flex items-center gap-2">
                             <Clock className="w-5 h-5" />
                             会话即将过期
                         </DialogTitle>
@@ -630,7 +630,7 @@ export function TeacherApp() {
             <Dialog open={sessionExpired}>
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200" onInteractOutside={(e) => e.preventDefault()}>
                     <DialogHeader>
-                        <DialogTitle className="text-rose-400 flex items-center gap-2">
+                        <DialogTitle className="text-rose-600 flex items-center gap-2">
                             <Clock className="w-5 h-5" />
                             会话已过期
                         </DialogTitle>

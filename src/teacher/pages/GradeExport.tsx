@@ -154,7 +154,7 @@ export function GradeExport() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已完成任务</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.completedTasks}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -165,7 +165,7 @@ export function GradeExport() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">提交总数</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.totalSubmissions}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -176,7 +176,7 @@ export function GradeExport() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已批改</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.totalGraded}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                             <FileSpreadsheet className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -228,7 +228,7 @@ export function GradeExport() {
                             variant="outline"
                             disabled={selectedCount === 0}
                             onClick={() => exportExcel()}
-                            className="border-indigo-600 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="border-indigo-600 bg-indigo-600/10 text-indigo-500 hover:bg-indigo-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <FileSpreadsheet className="w-4 h-4 mr-2" />
                             批量导出 ({selectedCount})
@@ -271,7 +271,7 @@ export function GradeExport() {
                                     <TableCell colSpan={6} className="text-center py-12 text-slate-500">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
-                                                <Search className="w-6 h-6 text-slate-600" />
+                                                <Search className="w-6 h-6 text-slate-500" />
                                             </div>
                                             <p>暂无符合条件的数据</p>
                                         </div>
@@ -295,7 +295,7 @@ export function GradeExport() {
                                             <Progress value={task.total > 0 ? (task.graded / task.total) * 100 : 0} className="w-20 h-1.5 bg-slate-800 [&>div]:bg-emerald-500" />
                                             <span className="text-xs text-slate-500">{task.graded}/{task.total}</span>
                                             {task.graded === task.total && task.total > 0 && (
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20 text-[10px] h-5">已完成</Badge>
+                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 text-[10px] h-5">已完成</Badge>
                                             )}
                                         </div>
                                     </TableCell>
@@ -305,7 +305,7 @@ export function GradeExport() {
                                             data-testid={`teacher-export-single-${task.taskId}`}
                                             variant="ghost"
                                             size="sm"
-                                            className="h-8 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10"
+                                            className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
                                             onClick={() => exportExcel(task.taskId)}
                                         >
                                             <Download className="w-3.5 h-3.5 mr-1" />

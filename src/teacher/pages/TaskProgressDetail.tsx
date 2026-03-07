@@ -11,12 +11,12 @@ import { teacherApi, type TaskProgressData } from "../api-client";
 const STATUS_CONFIG = {
     not_started: { label: "未开始", color: "text-slate-400", bgColor: "bg-slate-500/10", borderColor: "border-slate-500/20" },
     stage1: { label: "问卷设计", color: "text-blue-400", bgColor: "bg-blue-500/10", borderColor: "border-blue-500/20" },
-    stage2: { label: "样本规划", color: "text-cyan-400", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/20" },
+    stage2: { label: "样本规划", color: "text-cyan-600", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/20" },
     stage3: { label: "抽样执行", color: "text-violet-400", bgColor: "bg-violet-500/10", borderColor: "border-violet-500/20" },
-    stage4: { label: "分析报告", color: "text-amber-400", bgColor: "bg-amber-500/10", borderColor: "border-amber-500/20" },
+    stage4: { label: "分析报告", color: "text-amber-600", bgColor: "bg-amber-500/10", borderColor: "border-amber-500/20" },
     submitted: { label: "已提交", color: "text-yellow-400", bgColor: "bg-yellow-500/10", borderColor: "border-yellow-500/20" },
-    graded: { label: "已批改", color: "text-emerald-400", bgColor: "bg-emerald-500/10", borderColor: "border-emerald-500/20" },
-    rejected: { label: "已驳回", color: "text-rose-400", bgColor: "bg-rose-500/10", borderColor: "border-rose-500/20" },
+    graded: { label: "已批改", color: "text-emerald-600", bgColor: "bg-emerald-500/10", borderColor: "border-emerald-500/20" },
+    rejected: { label: "已驳回", color: "text-rose-600", bgColor: "bg-rose-500/10", borderColor: "border-rose-500/20" },
 } as const;
 
 type StatusKey = keyof typeof STATUS_CONFIG;
@@ -213,7 +213,7 @@ export function TaskProgressDetail() {
                                             <span className={`w-2 h-2 rounded-full ${PROGRESS_COLORS[key]}`} />
                                             <span className="text-slate-400">{cfg.label}</span>
                                             <span className={`font-medium ${cfg.color}`}>{count}</span>
-                                            <span className="text-slate-600">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
+                                            <span className="text-slate-500">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
                                         </div>
                                     );
                                 })}
@@ -233,7 +233,7 @@ export function TaskProgressDetail() {
                             placeholder="搜索学号/姓名"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 h-8 text-sm"
+                            className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 h-8 text-sm"
                         />
                     </div>
                 </div>
@@ -272,7 +272,7 @@ export function TaskProgressDetail() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-7 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                                                    className="h-7 text-xs text-indigo-500 hover:text-indigo-300 hover:bg-indigo-500/10"
                                                     onClick={() => navigate(`/grading/${s.submissionId}`)}
                                                 >
                                                     {s.status === "submitted" ? (
@@ -282,7 +282,7 @@ export function TaskProgressDetail() {
                                                     )}
                                                 </Button>
                                             ) : (
-                                                <span className="text-xs text-slate-600">-</span>
+                                                <span className="text-xs text-slate-500">-</span>
                                             )}
                                         </TableCell>
                                     </TableRow>

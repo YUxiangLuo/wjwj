@@ -188,7 +188,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             rows={3}
                             maxLength={500}
                             data-testid="student-question-content"
-                            className="bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
+                            className="bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                         />
                         <p className="text-xs text-slate-500 text-right">
                             {content.length}/500
@@ -215,7 +215,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     onClick={addOption}
                                     disabled={options.length >= 10}
                                     data-testid="student-question-add-option"
-                                    className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-300"
+                                    className="border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/10 hover:text-indigo-300"
                                 >
                                     <Plus className="w-4 h-4 mr-1" />
                                     添加选项
@@ -224,7 +224,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             <div className="space-y-2">
                                 {options.map((option, index) => (
                                     <div key={index} className="flex items-center gap-2">
-                                        <GripVertical className="w-4 h-4 text-slate-600" />
+                                        <GripVertical className="w-4 h-4 text-slate-500" />
                                         <span className="text-sm text-slate-500 w-6 font-mono">
                                             {String.fromCharCode(65 + index)}.
                                         </span>
@@ -234,7 +234,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                             onChange={(e) => updateOption(index, e.target.value)}
                                             maxLength={200}
                                             data-testid={`student-question-option-${index + 1}`}
-                                            className="flex-1 bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                            className="flex-1 bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                                         />
                                         <Button
                                             variant="ghost"
@@ -242,7 +242,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                             onClick={() => removeOption(index)}
                                             disabled={options.length <= 2}
                                             data-testid={`student-question-remove-option-${index + 1}`}
-                                            className="h-9 w-9 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                            className="h-9 w-9 text-slate-500 hover:text-rose-600 hover:bg-rose-500/10"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </Button>

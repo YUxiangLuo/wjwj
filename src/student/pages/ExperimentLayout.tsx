@@ -329,8 +329,8 @@ export function ExperimentLayout() {
                         <div className="flex items-center gap-4">
                             {deadlineInfo && (
                                 <span className={`text-xs font-medium flex items-center gap-1 hidden sm:flex ${
-                                    deadlineInfo.level === "urgent" ? "text-rose-400" :
-                                    deadlineInfo.level === "warning" ? "text-amber-400" :
+                                    deadlineInfo.level === "urgent" ? "text-rose-600" :
+                                    deadlineInfo.level === "warning" ? "text-amber-600" :
                                     deadlineInfo.level === "expired" ? "text-slate-500" :
                                     "text-slate-400"
                                 }`}>
@@ -360,7 +360,7 @@ export function ExperimentLayout() {
 
                     {saveError && (
                         <div
-                            className="mb-2 rounded-lg border border-rose-900/30 bg-rose-900/20 px-3 py-2 text-sm text-rose-300"
+                            className="mb-2 rounded-lg border border-rose-900/30 bg-rose-900/20 px-3 py-2 text-sm text-rose-500"
                             data-testid="student-experiment-save-error"
                         >
                             {saveError}
@@ -394,15 +394,15 @@ export function ExperimentLayout() {
                                             isCurrent
                                                 ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
                                                 : isCompleted
-                                                    ? "text-emerald-400/80 hover:bg-emerald-500/10 cursor-pointer"
-                                                    : "text-slate-600"
+                                                    ? "text-emerald-600/80 hover:bg-emerald-500/10 cursor-pointer"
+                                                    : "text-slate-500"
                                         }`}
                                     >
                                         <span className="relative flex-shrink-0">
                                             {isCompleted ? (
                                                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                                             ) : (
-                                                <Icon className={`w-3.5 h-3.5 ${isCurrent ? "text-indigo-400" : "text-slate-600"}`} />
+                                                <Icon className={`w-3.5 h-3.5 ${isCurrent ? "text-indigo-500" : "text-slate-500"}`} />
                                             )}
                                         </span>
                                         <span className="hidden sm:inline">{stage.name}</span>
@@ -411,7 +411,7 @@ export function ExperimentLayout() {
                                 </div>
                             );
                         })}
-                        <div className="ml-auto text-xs font-bold text-indigo-400 font-mono flex-shrink-0">
+                        <div className="ml-auto text-xs font-bold text-indigo-500 font-mono flex-shrink-0">
                             {Math.round((currentStage / stages.length) * 100)}%
                         </div>
                     </div>
@@ -425,7 +425,7 @@ export function ExperimentLayout() {
                         return (
                             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-800/50">
                                 <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex-shrink-0">
-                                    <StageIcon className="w-4 h-4 text-indigo-400" />
+                                    <StageIcon className="w-4 h-4 text-indigo-500" />
                                 </div>
                                 <div className="min-w-0">
                                     <div className="text-sm font-semibold text-slate-200">
@@ -451,7 +451,7 @@ export function ExperimentLayout() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认返回阶段</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
-                            返回到“<span className="text-indigo-400 font-medium">{targetStage ? stages[targetStage - 1]!.name : ""}</span>”将导致以下后续阶段的数据被<strong className="text-rose-400">永久清空</strong>：
+                            返回到“<span className="text-indigo-500 font-medium">{targetStage ? stages[targetStage - 1]!.name : ""}</span>”将导致以下后续阶段的数据被<strong className="text-rose-600">永久清空</strong>：
                             <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-slate-400">
                                 {targetStage !== null && targetStage <= 1 && <li>样本量规划数据</li>}
                                 {targetStage !== null && targetStage <= 2 && <li>抽样执行结果</li>}

@@ -182,7 +182,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         <CardContent className="pt-6">
                             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-950/50 border border-slate-800">
                                 <span className="text-slate-400">总体规模 (N)</span>
-                                <span className="text-2xl font-bold text-indigo-400">{N.toLocaleString()} <span className="text-sm font-normal text-slate-500">人</span></span>
+                                <span className="text-2xl font-bold text-indigo-500">{N.toLocaleString()} <span className="text-sm font-normal text-slate-500">人</span></span>
                             </div>
                         </CardContent>
                     </Card>
@@ -204,7 +204,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 <div className="space-y-4">
                                     <div className="flex justify-between">
                                         <Label className="text-slate-300">置信水平</Label>
-                                        <span className="text-xs font-mono text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">Z = {zValues[confidenceLevel]}</span>
+                                        <span className="text-xs font-mono text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded">Z = {zValues[confidenceLevel]}</span>
                                     </div>
                                     <Select value={confidenceLevel} onValueChange={setConfidenceLevel}>
                                         <SelectTrigger data-testid="student-sample-plan-confidence" className="bg-slate-950/50 border-slate-800 text-slate-200 focus:ring-teal-500/50">
@@ -280,7 +280,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                             min={minSize}
                                             max={maxSize}
                                             data-testid="student-sample-plan-final-size"
-                                            className={`bg-slate-950/50 border-slate-800 text-lg font-bold ${!isValidSize ? "text-rose-500 border-rose-500/50 focus-visible:ring-rose-500" : "text-emerald-400 focus-visible:ring-emerald-500"}`}
+                                            className={`bg-slate-950/50 border-slate-800 text-lg font-bold ${!isValidSize ? "text-rose-500 border-rose-500/50 focus-visible:ring-rose-500" : "text-emerald-600 focus-visible:ring-emerald-500"}`}
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">人</span>
                                     </div>
@@ -297,7 +297,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             </div>
 
                             {!isValidSize ? (
-                                <div className="p-3 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-xl text-sm flex items-center gap-2">
+                                <div className="p-3 bg-rose-500/10 text-rose-600 border border-rose-500/20 rounded-xl text-sm flex items-center gap-2">
                                     <Info className="w-4 h-4" />
                                     样本量超出有效范围，建议在 {minSize} - {maxSize.toLocaleString()} 之间
                                 </div>
@@ -330,9 +330,9 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             <div className="rounded-xl bg-slate-900/50 p-3 border border-slate-800">
                                 <p className="text-xs text-slate-500 mb-2 font-medium">常用 Z 值参考</p>
                                 <div className="grid grid-cols-3 gap-2 text-xs text-slate-400 text-center">
-                                    <div className="bg-slate-950 rounded p-1">90%<br /><span className="text-slate-600">1.645</span></div>
-                                    <div className="bg-slate-950 rounded p-1 text-emerald-400 font-medium ring-1 ring-emerald-500/20">95%<br /><span className="text-emerald-600">1.96</span></div>
-                                    <div className="bg-slate-950 rounded p-1">99%<br /><span className="text-slate-600">2.576</span></div>
+                                    <div className="bg-slate-950 rounded p-1">90%<br /><span className="text-slate-500">1.645</span></div>
+                                    <div className="bg-slate-950 rounded p-1 text-emerald-600 font-medium ring-1 ring-emerald-500/20">95%<br /><span className="text-emerald-600">1.96</span></div>
+                                    <div className="bg-slate-950 rounded p-1">99%<br /><span className="text-slate-500">2.576</span></div>
                                 </div>
                             </div>
                         </CardContent>
@@ -357,7 +357,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             </div>
                             <div className="flex justify-between text-sm py-1 pt-2">
                                 <span className="text-slate-500">最终设定</span>
-                                <span className="text-indigo-400 font-mono font-bold text-lg">{finalSampleSize}</span>
+                                <span className="text-indigo-500 font-mono font-bold text-lg">{finalSampleSize}</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -381,9 +381,9 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认样本量规划</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base">
-                            您设定的最终样本量为 <strong className="text-emerald-400 text-lg">{finalSampleSize}</strong>。
+                            您设定的最终样本量为 <strong className="text-emerald-600 text-lg">{finalSampleSize}</strong>。
                             <br /><br />
-                            确认后将进入抽样执行阶段。如需修改，您需要返回本阶段，届时后续阶段（抽样执行、分析报告）的数据将被<strong className="text-rose-400">清空</strong>。
+                            确认后将进入抽样执行阶段。如需修改，您需要返回本阶段，届时后续阶段（抽样执行、分析报告）的数据将被<strong className="text-rose-600">清空</strong>。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

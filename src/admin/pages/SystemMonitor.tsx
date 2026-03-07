@@ -160,18 +160,18 @@ export function SystemMonitor() {
     const getLevelBadge = (level: string) => {
         switch (level) {
             case "ERROR":
-                return <Badge variant="destructive" className="bg-rose-500/10 text-rose-400 hover:bg-rose-500/20">{level}</Badge>;
+                return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20">{level}</Badge>;
             case "WARN":
-                return <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20">{level}</Badge>;
+                return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">{level}</Badge>;
             default:
                 return <Badge variant="secondary" className="bg-slate-800 text-slate-300 hover:bg-slate-700">{level}</Badge>;
         }
     };
 
     const getMetricColor = (value: number, thresholds: [number, number]) => {
-        if (value > thresholds[1]) return "text-rose-400";
-        if (value > thresholds[0]) return "text-amber-400";
-        return "text-emerald-400";
+        if (value > thresholds[1]) return "text-rose-600";
+        if (value > thresholds[0]) return "text-amber-600";
+        return "text-emerald-600";
     };
 
     return (
@@ -281,9 +281,9 @@ export function SystemMonitor() {
             {alerts.length > 0 && (
                 <Card className="border-slate-800 bg-slate-900 shadow-sm">
                     <CardHeader className="flex flex-row items-center gap-2 border-b border-slate-800 pb-4">
-                        <AlertTriangle className="w-5 h-5 text-amber-400" />
+                        <AlertTriangle className="w-5 h-5 text-amber-600" />
                         <CardTitle className="text-base text-slate-100">系统告警</CardTitle>
-                        <Badge variant="outline" className="ml-auto bg-amber-500/10 text-amber-400 border-amber-500/20">{alerts.length} 条</Badge>
+                        <Badge variant="outline" className="ml-auto bg-amber-500/10 text-amber-600 border-amber-500/20">{alerts.length} 条</Badge>
                     </CardHeader>
                     <CardContent className="space-y-2 pt-4">
                         {alerts.map((alert, i) => (
@@ -300,8 +300,8 @@ export function SystemMonitor() {
                                 }`} />
                                 <Badge variant="outline" className={
                                     alert.level === "critical"
-                                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
-                                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                        ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                                        : "bg-amber-500/10 text-amber-600 border-amber-500/20"
                                 }>
                                     {alert.level === "critical" ? "严重" : "警告"}
                                 </Badge>
@@ -323,18 +323,18 @@ export function SystemMonitor() {
                 <CardContent className="space-y-2 pt-4 max-h-[400px] overflow-y-auto custom-scrollbar">
                     {logs.map((log) => (
                         <div key={log.id} className="flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-sm sm:flex-row sm:items-start group hover:bg-slate-950 transition-colors">
-                            <div className="text-xs text-slate-600 font-mono sm:w-20 pt-1 group-hover:text-slate-500 transition-colors">
+                            <div className="text-xs text-slate-500 font-mono sm:w-20 pt-1 group-hover:text-slate-400 transition-colors">
                                 {new Date(log.time).toLocaleTimeString("zh-CN")}
                             </div>
                             <div className="min-w-[70px]">
                                 {getLevelBadge(log.level)}
                             </div>
                             <span className="text-slate-300 flex-1 font-mono text-xs sm:text-sm py-0.5">{log.message}</span>
-                            <span className="text-xs text-slate-600 italic px-2 py-0.5 rounded bg-slate-900 border border-slate-800">{log.source}</span>
+                            <span className="text-xs text-slate-500 italic px-2 py-0.5 rounded bg-slate-900 border border-slate-800">{log.source}</span>
                         </div>
                     ))}
                     {logs.length === 0 && (
-                        <div className="text-center py-8 text-slate-600 text-sm">暂无日志记录</div>
+                        <div className="text-center py-8 text-slate-500 text-sm">暂无日志记录</div>
                     )}
                 </CardContent>
             </Card>

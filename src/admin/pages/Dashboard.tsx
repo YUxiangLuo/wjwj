@@ -19,13 +19,13 @@ function KpiCard({ icon: Icon, value, label, trend, trendUp, loading }: {
         <Card className="shadow-lg shadow-black/20 border-slate-800 bg-slate-900 hover:border-indigo-500/30 transition-all duration-300 group">
             <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-xl bg-slate-800/50 text-indigo-400 flex items-center justify-center border border-slate-700/50 group-hover:bg-indigo-500/10 group-hover:text-indigo-300 transition-colors">
+                    <div className="w-12 h-12 rounded-xl bg-slate-800/50 text-indigo-500 flex items-center justify-center border border-slate-700/50 group-hover:bg-indigo-500/10 group-hover:text-indigo-300 transition-colors">
                         <Icon className="w-6 h-6" />
                     </div>
                     {trend ? (
                         <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${trendUp
-                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                : "bg-rose-500/10 text-rose-600 border-rose-500/20"
                             }`}>
                             {trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
                             {trend}
@@ -136,9 +136,9 @@ export function Dashboard() {
     }
 
     function getStatusIndicator(value: number, warnThreshold: number, criticalThreshold: number) {
-        if (value > criticalThreshold) return "text-rose-400";
-        if (value > warnThreshold) return "text-amber-400";
-        return "text-emerald-400";
+        if (value > criticalThreshold) return "text-rose-600";
+        if (value > warnThreshold) return "text-amber-600";
+        return "text-emerald-600";
     }
 
     const hasAlert = metrics.cpu > 70 || metrics.memory > 75 || metrics.disk > 80;
@@ -207,7 +207,7 @@ export function Dashboard() {
                             <p className="text-xs text-slate-500 mt-1">管理员可直接查看人数分布</p>
                         </div>
                         <div className="text-sm font-mono text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700/50">
-                            Total: <span className="text-indigo-400 font-bold">{totalUsers}</span>
+                            Total: <span className="text-indigo-500 font-bold">{totalUsers}</span>
                         </div>
                     </CardHeader>
                     <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">

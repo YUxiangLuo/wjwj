@@ -22,11 +22,11 @@ const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析�
 
 const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     not_started: { label: "未开始", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
-    in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" },
-    submitted: { label: "已提交", color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
-    grading: { label: "批改中", color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
-    graded: { label: "已批改", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-    rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
+    in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
+    submitted: { label: "已提交", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+    grading: { label: "批改中", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+    graded: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+    rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
 };
 
 function parseDeadline(deadline: string | null): Date | null {
@@ -90,10 +90,10 @@ function getFileIcon(type: string) {
         return <Image className="w-5 h-5 text-blue-400" />;
     }
     if (lowerType.includes("video") || lowerType.includes("mp4")) {
-        return <Play className="w-5 h-5 text-purple-400" />;
+        return <Play className="w-5 h-5 text-purple-600" />;
     }
     if (lowerType.includes("pdf")) {
-        return <FileText className="w-5 h-5 text-rose-400" />;
+        return <FileText className="w-5 h-5 text-rose-600" />;
     }
     if (lowerType.includes("doc") || lowerType.includes("word")) {
         return <FileText className="w-5 h-5 text-blue-500" />;
@@ -236,7 +236,7 @@ export function TopicDetails() {
                 <CardContent className="py-6 px-6">
                     <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-2 max-w-2xl">
-                            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-400 border border-indigo-500/20">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-500 border border-indigo-500/20">
                                 <BookOpen className="w-3 h-3" />
                                 实验目标
                             </div>
@@ -285,7 +285,7 @@ export function TopicDetails() {
                                                     {getFileIcon(file.type)}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-medium text-slate-200 truncate group-hover:text-indigo-400 transition-colors">{file.name}</p>
+                                                    <p className="text-sm font-medium text-slate-200 truncate group-hover:text-indigo-500 transition-colors">{file.name}</p>
                                                     <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
                                                 </div>
                                             </div>
@@ -321,13 +321,13 @@ export function TopicDetails() {
                     {task.status === "rejected" && task.rejectReason && (
                         <Card className="rounded-2xl border-rose-500/20 bg-rose-500/10">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-base text-rose-400 flex items-center gap-2">
+                                <CardTitle className="text-base text-rose-600 flex items-center gap-2">
                                     <AlertTriangle className="w-4 h-4" />
                                     驳回理由
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-rose-300 text-sm leading-relaxed opacity-90">{task.rejectReason}</p>
+                                <p className="text-rose-500 text-sm leading-relaxed opacity-90">{task.rejectReason}</p>
                             </CardContent>
                         </Card>
                     )}
@@ -335,14 +335,14 @@ export function TopicDetails() {
                     {task.status === "graded" && task.score !== undefined && (
                         <Card className="rounded-2xl border-emerald-500/20 bg-emerald-500/10">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-base text-emerald-400 flex items-center gap-2">
+                                <CardTitle className="text-base text-emerald-600 flex items-center gap-2">
                                     <CheckCircle className="w-4 h-4" />
                                     实验成绩
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-baseline gap-2">
-                                    <span className="text-5xl font-bold text-emerald-400 tracking-tight">{task.score}</span>
+                                    <span className="text-5xl font-bold text-emerald-600 tracking-tight">{task.score}</span>
                                     <span className="text-emerald-500 font-medium">分</span>
                                 </div>
                             </CardContent>
@@ -402,7 +402,7 @@ export function TopicDetails() {
                                 <Button size="lg" className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300" disabled>{action.text}</Button>
                             )}
                             {!canStartExperiment && ["not_started", "in_progress", "rejected"].includes(task.status) && (
-                                <div className="flex items-center justify-center gap-1.5 text-xs text-rose-400 bg-rose-500/10 p-2 rounded-lg">
+                                <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 bg-rose-500/10 p-2 rounded-lg">
                                     <AlertTriangle className="w-3 h-3" />
                                     {notOpenYet ? "任务尚未开放，暂不可操作" : "任务已截止，无法继续操作"}
                                 </div>
@@ -438,7 +438,7 @@ export function TopicDetails() {
                                     `}>
                                         {isCompleted ? <CheckCircle className="w-5 h-5" /> : stageNum}
                                     </div>
-                                    <span className={`text-xs mt-3 font-medium transition-colors duration-300 ${isCurrent ? "text-indigo-400" : isCompleted ? "text-emerald-500" : "text-slate-500"}`}>
+                                    <span className={`text-xs mt-3 font-medium transition-colors duration-300 ${isCurrent ? "text-indigo-500" : isCompleted ? "text-emerald-500" : "text-slate-500"}`}>
                                         {stage}
                                     </span>
                                 </div>
@@ -456,7 +456,7 @@ export function TopicDetails() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-100">确认重新开始实验</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
-                            重新开始将<strong className="text-rose-400">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
+                            重新开始将<strong className="text-rose-600">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
                             <br />
                             确定继续吗？
                         </AlertDialogDescription>

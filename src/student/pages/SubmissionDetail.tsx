@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 
 const statusConfig: Record<number, { label: string; color: string }> = {
     0: { label: "批改草稿", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
-    1: { label: "待批改", color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
-    2: { label: "已批改", color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-    3: { label: "被驳回", color: "bg-red-500/10 text-red-400 border-red-500/20" },
+    1: { label: "待批改", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+    2: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+    3: { label: "被驳回", color: "bg-red-500/10 text-red-600 border-red-500/20" },
 };
 
 export function SubmissionDetailPage() {
@@ -59,7 +59,7 @@ export function SubmissionDetailPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
             </div>
         );
     }
@@ -109,7 +109,7 @@ export function SubmissionDetailPage() {
                         )}
                         {detail.graderName && (
                             <div className="flex items-center gap-1.5">
-                                <User className="w-4 h-4 text-indigo-400" />
+                                <User className="w-4 h-4 text-indigo-500" />
                                 <span>批改人: <span className="text-slate-300 ml-1">{detail.graderName}</span></span>
                             </div>
                         )}
@@ -137,8 +137,8 @@ export function SubmissionDetailPage() {
                             <div className="absolute inset-0 bg-indigo-500/5" />
                             <div className="text-xs text-indigo-300 mb-1 uppercase tracking-wider font-semibold relative">总分</div>
                             <div className={cn("text-3xl font-bold font-mono relative",
-                                (detail.totalScore ?? 0) >= 90 ? "text-emerald-400" :
-                                    (detail.totalScore ?? 0) >= 60 ? "text-cyan-400" : "text-slate-100"
+                                (detail.totalScore ?? 0) >= 90 ? "text-emerald-600" :
+                                    (detail.totalScore ?? 0) >= 60 ? "text-cyan-600" : "text-slate-100"
                             )}>
                                 {detail.totalScore ?? "-"}
                             </div>
@@ -149,7 +149,7 @@ export function SubmissionDetailPage() {
                     {detail.teacherComment && (
                         <div className="bg-slate-800/30 rounded-xl p-5 border border-slate-700/50">
                             <h4 className="text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-indigo-400" />
+                                <FileText className="w-4 h-4 text-indigo-500" />
                                 教师评语
                             </h4>
                             <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line pl-6 border-l-2 border-indigo-500/30">
@@ -161,7 +161,7 @@ export function SubmissionDetailPage() {
                     {/* Reject Reason */}
                     {detail.rejectReason && (
                         <div className="bg-red-500/10 rounded-xl p-5 border border-red-500/20">
-                            <h4 className="text-sm font-medium text-red-400 mb-2 flex items-center gap-2">
+                            <h4 className="text-sm font-medium text-red-600 mb-2 flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4" />
                                 驳回理由
                             </h4>

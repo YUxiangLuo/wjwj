@@ -320,7 +320,7 @@ export function TopicManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已发布</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <Layers className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -331,7 +331,7 @@ export function TopicManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">草稿</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <FileText className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -342,7 +342,7 @@ export function TopicManagement() {
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">数据行数</p>
                             <p className="text-2xl font-semibold text-slate-100 mt-1">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                             <Layers className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -363,7 +363,7 @@ export function TopicManagement() {
                                 placeholder="搜索课题名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-600 focus:border-indigo-500/50"
+                                className="pl-9 bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
@@ -386,16 +386,16 @@ export function TopicManagement() {
                         <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-slate-800 rounded-lg p-5 bg-slate-950 hover:bg-slate-900 hover:border-slate-700 transition-all">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
                                 <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                                    <div className="w-12 h-12 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
                                         <BookOpen className="w-6 h-6" />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-semibold text-slate-100 text-lg">{topic.name}</h4>
                                             {topic.status === 1 ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20">已发布</Badge>
+                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">已发布</Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20">草稿</Badge>
+                                                <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20">草稿</Badge>
                                             )}
                                         </div>
                                         <div className="text-xs text-slate-500 mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString()}</div>
@@ -414,19 +414,19 @@ export function TopicManagement() {
                                     {topic.status === 0 ? (
                                         <>
                                             <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
-                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
+                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     ) : (
                                         <>
                                             <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button
                                                 data-testid={`teacher-topic-copy-${topic.id}`}
                                                 variant="ghost"
                                                 size="sm"
-                                                className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
+                                                className="text-slate-400 hover:text-cyan-600 hover:bg-cyan-500/10"
                                                 onClick={async () => {
                                                     const res = await teacherApi.copyTopic(topic.id);
                                                     if (res.success) {
@@ -438,7 +438,7 @@ export function TopicManagement() {
                                             >
                                                 复制
                                             </Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     )}
                                 </div>
