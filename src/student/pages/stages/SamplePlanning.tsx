@@ -18,6 +18,7 @@ import {
 import { Calculator, Users, Info, CheckCircle, RotateCcw } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
+import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -165,8 +166,10 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const handleConfirmNext = async () => {
         const samplePlanData = buildSamplePlanData();
         await saveExperiment({ samplePlan: samplePlanData, currentStage: 3 });
-        onNext();
+        setShowLaunch(true);
     };
+
+    const [showLaunch, setShowLaunch] = useState(false);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
@@ -392,6 +395,17 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {showLaunch && (
+                <ImmersiveExperimentLaunch
+                    populationSize={N}
+                    sampleSize={finalSampleSize}
+                    confidenceLevel={confidenceLevel}
+                    marginOfError={marginOfError[0] ?? 5}
+                    onComplete={() => { setShowLaunch(false); onNext(); }}
+                    onClose={() => { setShowLaunch(false); onNext(); }}
+                />
+            )}
         </div>
     );
 }
