@@ -76,6 +76,11 @@ export function GradingDetail() {
         setLoading(true);
         setLastSavedAt(null);
         draftResolvedRef.current = false;
+        // Reset stale state so auto-save cannot post old data to a new submissionId
+        setData(null);
+        setScores({ questionnaire: "0", process: "0", report: "0" });
+        setComment("");
+        serverSnapshotRef.current = "";
         const res = await teacherApi.getSubmissionDetail(id);
         if (res.success && res.data) {
             setData(res.data);
