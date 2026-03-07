@@ -21,12 +21,13 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, AlertCircle, Maximize2, CheckCircle } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, AlertCircle, Maximize2, CheckCircle, MonitorPlay } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { useDraftSync } from "../../draft-sync";
 import { experimentApi } from "../../api-client";
+import { ImmersiveAnalysisDashboard } from "../../components/ImmersiveAnalysisDashboard";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -436,6 +437,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
+    const [showDashboard, setShowDashboard] = useState(false);
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
@@ -702,10 +704,16 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
                         <CardHeader className="border-b border-slate-800 pb-4">
-                            <CardTitle className="flex items-center gap-2 text-slate-100">
-                                <BarChart3 className="w-5 h-5 text-indigo-500" />
-                                图表分析
-                            </CardTitle>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2 text-slate-100">
+                                    <BarChart3 className="w-5 h-5 text-indigo-500" />
+                                    图表分析
+                                </CardTitle>
+                                <Button variant="outline" size="sm" className="border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200" onClick={() => setShowDashboard(true)}>
+                                    <MonitorPlay className="w-4 h-4 mr-1.5" />
+                                    全屏仪表盘
+                                </Button>
+                            </div>
                             <CardDescription className="text-slate-400">基于阶段三真实抽样结果自动生成</CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6">
@@ -1044,6 +1052,16 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {showDashboard && (
+                <ImmersiveAnalysisDashboard
+                    methodRows={methodRows}
+                    populationStats={populationStats}
+                    numericFields={numericFields}
+                    categoricalFields={categoricalFields}
+                    onClose={() => setShowDashboard(false)}
+                />
+            )}
         </div>
     );
 }
