@@ -45,15 +45,19 @@ interface RecommendQuestionEditorProps {
 }
 
 /** Parse the options field (which may be string[], JSON string, or comma-separated string) into a string[] */
-function parseOptions(options: unknown): string[] {
+export function parseOptions(options: unknown): string[] {
     if (Array.isArray(options)) return options as string[];
     if (typeof options === "string") {
         if (!options.trim()) return [];
         try {
             const parsed = JSON.parse(options);
             if (Array.isArray(parsed)) return parsed as string[];
+            // JSON-encoded string (e.g. `"a,b"`) — treat as comma-separated
+            if (typeof parsed === "string") {
+                return parsed.split(",").map((s) => s.trim()).filter(Boolean);
+            }
         } catch {
-            // comma-separated fallback
+            // not valid JSON — comma-separated fallback
             return options.split(",").map((s) => s.trim()).filter(Boolean);
         }
     }
@@ -135,7 +139,8 @@ export function RecommendQuestionEditor({
     };
 
     const isValid = () => {
-        if (!content.trim() || content.length > 500) return false;
+        const trimmedContent = content.trim();
+        if (!trimmedContent || trimmedContent.length > 500) return false;
 
         if (questionType === 2 || questionType === 3) {
             const validOptions = options.filter((o) => o.trim());

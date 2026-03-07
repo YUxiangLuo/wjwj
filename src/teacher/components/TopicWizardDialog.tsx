@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import type { TopicDetail, TopicRecommendQuestion } from "../api-client";
 import { teacherApi } from "../api-client";
-import { RecommendQuestionEditor } from "./RecommendQuestionEditor";
+import { RecommendQuestionEditor, parseOptions } from "./RecommendQuestionEditor";
 
 interface FieldMappingState {
     identifier?: string;
@@ -118,7 +118,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
             const temp = next[idx]!;
             next[idx] = next[targetIdx]!;
             next[targetIdx] = temp;
-            return next;
+            // Recompute sortOrder based on new array positions
+            return next.map((q, i) => ({ ...q, sortOrder: i }));
         });
     };
 
@@ -630,7 +631,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             3: "bg-amber-500/10 text-amber-500 border-amber-500/20",
                                             4: "bg-purple-500/10 text-purple-500 border-purple-500/20",
                                         };
-                                        const optionsArr = Array.isArray(q.options) ? q.options as string[] : [];
+                                        const optionsArr = parseOptions(q.options);
                                         return (
                                             <div key={q.id} className="border border-slate-800 bg-slate-950 rounded-lg p-4 relative group hover:border-slate-700 transition-colors">
                                                 <div className="flex items-start gap-3">

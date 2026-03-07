@@ -233,7 +233,7 @@ export function TopicManagement() {
             questionType: q.questionType,
             content: q.content,
             options: q.options,
-            sortOrder: q.sortOrder ?? idx,
+            sortOrder: idx,
         }));
         const res = await teacherApi.updateRecommendQuestions(editingTopicId, items);
         if (res.success) {

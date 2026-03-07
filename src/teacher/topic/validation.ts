@@ -143,8 +143,13 @@ export function validateRecommendQuestionItems(items: TopicRecommendQuestionInpu
         if (!content || content.length > 500) return "题目内容长度需在1-500字";
 
         if (item.questionType === 2 || item.questionType === 3) {
-            const rawOptions = typeof item.options === "string" ? item.options : "";
-            const options = rawOptions.split(",").map((option) => option.trim()).filter(Boolean);
+            let options: string[];
+            if (Array.isArray(item.options)) {
+                options = item.options.filter((o: unknown) => typeof o === "string" && o.trim()).map((o: string) => o.trim());
+            } else {
+                const rawOptions = typeof item.options === "string" ? item.options : "";
+                options = rawOptions.split(",").map((option) => option.trim()).filter(Boolean);
+            }
             if (options.length < 2 || options.length > 10) return "选项数量需在2-10之间";
             if (options.some((option) => option.length > 200)) return "选项内容长度不能超过200";
         }
