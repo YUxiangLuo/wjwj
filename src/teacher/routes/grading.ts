@@ -4,6 +4,7 @@ import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, student, submission, task, teacher, topic } from "../../db/schema";
 import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { parseStoredJson } from "../../student/experiment/serialization";
 import {
     ASSISTANT_USER_TYPE,
     TEACHER_USER_TYPE,
@@ -220,6 +221,9 @@ const gradingDetailRoutes: RouteDefinition = {
 
         return json({
             ...row,
+            questionnaire: parseStoredJson(row.questionnaire),
+            samplePlan: parseStoredJson(row.samplePlan),
+            samplingResults: parseStoredJson(row.samplingResults),
             weights,
             readonly: lockedByOther,
             isAssistant,
