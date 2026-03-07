@@ -26,6 +26,7 @@ import {
 import { CheckCircle2, Play, RefreshCw, Loader2, Users, Target, Layers, ArrowRight, BarChart3, Database } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
+import { ImmersiveSamplingAnimation } from "../../components/ImmersiveSamplingAnimation";
 import {
     formatSystematicRange,
     getSystematicAcceptedRange,
@@ -132,6 +133,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
+    const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
 
     const parseSeed = useCallback((seedText: string) => {
         const trimmed = seedText.trim();
@@ -169,6 +171,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     // Execute sampling with real API
     const executeSimple = async () => {
         setExecuting("simple");
+        setAnimatingMethod(null);
         const startTime = performance.now();
         try {
             const seed = parseSeed(simpleSeed);
@@ -192,6 +195,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeSystematic = async () => {
         if (kValue < 1) return;
         setExecuting("systematic");
+        setAnimatingMethod(null);
         const startTime = performance.now();
         try {
             const seed = parseSeed(systematicSeed);
@@ -215,6 +219,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     const executeStratified = async () => {
         setExecuting("stratified");
+        setAnimatingMethod(null);
         const startTime = performance.now();
         // Construct layers payload mapping current counts to layer names
         const layersPayload = layers.map((layer, i) => ({
@@ -404,7 +409,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     {!simpleResult?.completed ? (
                                         <div className="bg-slate-950/50 rounded-xl p-8 text-center border border-slate-800 border-dashed">
                                             <div className="mb-4 text-slate-400">尚未执行抽样</div>
-                                            <Button onClick={executeSimple} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                                            <Button onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                                                 {executing === "simple" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -527,7 +532,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                                     {!systematicResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={executeSystematic} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("systematic")} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 w-auto px-8">
                                                 {executing === "systematic" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -697,7 +702,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                                     {!stratifiedResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-run" className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("stratified")} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-run" className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/20 w-auto px-8">
                                                 {executing === "stratified" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -783,6 +788,24 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Immersive Sampling Animation Overlay */}
+            {animatingMethod && (
+                <ImmersiveSamplingAnimation
+                    method={animatingMethod}
+                    populationSize={N}
+                    sampleSize={animatingMethod === "systematic" ? Math.ceil(N / kValue) : n}
+                    kValue={animatingMethod === "systematic" ? kValue : undefined}
+                    stratifyBy={animatingMethod === "stratified" ? stratifyBy : undefined}
+                    layers={animatingMethod === "stratified" ? layers.map((l, i) => ({ ...l, sampleCount: layerSampleCounts[i] ?? 0 })) : undefined}
+                    onAnimationComplete={() => {
+                        if (animatingMethod === "simple") executeSimple();
+                        else if (animatingMethod === "systematic") executeSystematic();
+                        else if (animatingMethod === "stratified") executeStratified();
+                    }}
+                    onClose={() => setAnimatingMethod(null)}
+                />
+            )}
         </div>
     );
 }
