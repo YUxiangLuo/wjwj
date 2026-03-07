@@ -1,38 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authApi, meApi } from "../api-client";
-import { useStudent } from "../contexts/StudentContext";
+import { markLoginSuccess, useLoginRedirectReason } from "@/hooks/useAuthRecovery";
+import { authApi } from "../api-client";
+
+const LOGIN_REDIRECT_REASON_KEY = "student_login_redirect_reason";
+const LOGIN_SUCCESS_KEY = "student_login_success";
 
 export function Login() {
     const navigate = useNavigate();
-    const { refreshUser, refreshNotifications } = useStudent();
     const [loading, setLoading] = useState(false);
-    const [checking, setChecking] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
 
-    useEffect(() => {
-        let cancelled = false;
-        meApi
-            .get()
-            .then((res) => {
-                if (cancelled) return;
-                if (res.success) {
-                    navigate("/", { replace: true });
-                }
-            })
-            .finally(() => {
-                if (!cancelled) setChecking(false);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [navigate]);
+    useLoginRedirectReason({
+        redirectReasonKey: LOGIN_REDIRECT_REASON_KEY,
+        onReason: setError,
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,9 +37,7 @@ export function Login() {
                 password,
             });
             if (res.success && res.data) {
-                sessionStorage.setItem("student_login_success", "1");
-                await refreshUser();
-                await refreshNotifications();
+                markLoginSuccess(LOGIN_SUCCESS_KEY);
                 navigate("/", { replace: true });
             } else {
                 setError(res.error?.message || "登录失败，请检查账号密码");
@@ -62,14 +48,6 @@ export function Login() {
             setLoading(false);
         }
     };
-
-    if (checking) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-        );
-    }
 
     return (
         <div className="min-h-screen grid lg:grid-cols-2 bg-slate-950 font-sans text-slate-200">

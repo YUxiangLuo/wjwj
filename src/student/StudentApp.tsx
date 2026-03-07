@@ -3,9 +3,8 @@ import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyR
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 import {
     AlertDialog,
@@ -27,9 +26,15 @@ import { Profile } from "./pages/Profile";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { authApi } from "./api-client";
 import { Login } from "./pages/Login";
+import { clearLoginSuccess, setLoginRedirectReason, useLoginSuccessRecovery } from "@/hooks/useAuthRecovery";
+import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useTheme } from "@/components/ThemeProvider";
-import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
+import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
+import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import "./student.css";
+
+const LOGIN_REDIRECT_REASON_KEY = "student_login_redirect_reason";
+const LOGIN_SUCCESS_KEY = "student_login_success";
 
 function StudentAppContent() {
     const location = useLocation();
@@ -50,18 +55,31 @@ function StudentAppContent() {
         refreshSession,
         sessionExpiresAt,
         authErrorCode,
+        clearAuthState,
     } = useStudent();
 
     const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    const [passwordSaving, setPasswordSaving] = useState(false);
-    const [passwordError, setPasswordError] = useState<string | null>(null);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [showSessionWarning, setShowSessionWarning] = useState(false);
-    const [showSessionExpired, setShowSessionExpired] = useState(false);
     const [showAuthDialog, setShowAuthDialog] = useState(false);
     const [authDialogCode, setAuthDialogCode] = useState<string | null>(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+    function redirectToLoginWithReason(message: string) {
+        setShowSessionWarning(false);
+        setShowNotifications(false);
+        setShowAuthDialog(false);
+        setShowLogoutConfirm(false);
+        clearLoginSuccess(LOGIN_SUCCESS_KEY);
+        setLoginRedirectReason(LOGIN_REDIRECT_REASON_KEY, message);
+        clearAuthState();
+        navigate("/login", { replace: true });
+    }
+
+    const { showSessionWarning, setShowSessionWarning } = useSessionWarningTimeout({
+        enabled: !!currentUser && !isLoginPage,
+        sessionExpiresAt,
+        onExpire: redirectToLoginWithReason,
+    });
 
     useEffect(() => {
         if (currentUser?.isFirstLogin) {
@@ -69,17 +87,27 @@ function StudentAppContent() {
         }
     }, [currentUser]);
 
+    const passwordChange = usePasswordChange({
+        policy: STUDENT_PASSWORD_POLICY,
+        forbiddenSubstrings: [currentUser?.studentId],
+        onSubmit: authApi.changePassword,
+        onSuccess: async () => {
+            setShowPasswordModal(false);
+            await refreshUser();
+        },
+    });
+
     useEffect(() => {
         if (!authErrorCode) {
             setShowAuthDialog(false);
             setAuthDialogCode(null);
             return;
         }
-        const hasLoginFlag = sessionStorage.getItem("student_login_success") === "1";
+        const hasLoginFlag = sessionStorage.getItem(LOGIN_SUCCESS_KEY) === "1";
         if (hasLoginFlag && (authErrorCode === "AUTH_004" || authErrorCode === "AUTH_005")) {
             setAuthDialogCode(authErrorCode);
             setShowAuthDialog(true);
-            sessionStorage.removeItem("student_login_success");
+            clearLoginSuccess(LOGIN_SUCCESS_KEY);
         } else {
             setShowAuthDialog(false);
             setAuthDialogCode(null);
@@ -91,6 +119,21 @@ function StudentAppContent() {
         setAuthDialogCode(null);
         navigate("/login", { replace: true });
     }, [navigate]);
+
+    useSessionExpiryEvent({
+        enabled: !!currentUser && !isLoginPage,
+        eventName: "student:session-expired",
+        onExpire: redirectToLoginWithReason,
+    });
+
+    const isRecoveringLogin = useLoginSuccessRecovery({
+        enabled: !isLoginPage && !currentUser,
+        loginSuccessKey: LOGIN_SUCCESS_KEY,
+        onRecover: async () => {
+            await refreshUser();
+            await Promise.all([refreshNotifications(), refreshSession()]);
+        },
+    });
 
     const authStatusDialog = authDialogCode && showAuthDialog ? (
         <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
@@ -110,31 +153,8 @@ function StudentAppContent() {
         </Dialog>
     ) : null;
 
-    useEffect(() => {
-        if (!sessionExpiresAt) return;
-        const expiresAt = new Date(sessionExpiresAt).getTime();
-        if (!Number.isFinite(expiresAt)) return;
-        const now = Date.now();
-        const warnAt = expiresAt - 5 * 60 * 1000;
-
-        const warnDelay = Math.max(0, warnAt - now);
-        const expireDelay = Math.max(0, expiresAt - now);
-
-        const warnTimer = window.setTimeout(() => {
-            setShowSessionWarning(true);
-        }, warnDelay);
-        const expireTimer = window.setTimeout(() => {
-            setShowSessionExpired(true);
-        }, expireDelay);
-
-        return () => {
-            window.clearTimeout(warnTimer);
-            window.clearTimeout(expireTimer);
-        };
-    }, [sessionExpiresAt]);
-
     // 显示加载状态
-    if (isLoading) {
+    if (isLoading || isRecoveringLogin) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
@@ -143,6 +163,9 @@ function StudentAppContent() {
     }
 
     if (isLoginPage) {
+        if (currentUser) {
+            return <Navigate to="/" replace />;
+        }
         return (
             <>
                 <Login />
@@ -166,76 +189,13 @@ function StudentAppContent() {
     // 未登录时显示提示（实际应该跳转到登录页）
     const displayName = currentUser?.name ?? "访客";
     const displayInitial = displayName.charAt(0);
-    const passwordPolicy = evaluatePasswordRules({
-        password: passwordForm.newPassword,
-        confirmPassword: passwordForm.confirmPassword,
-        minLength: STUDENT_PASSWORD_POLICY.minLength,
-        forbiddenSubstrings: [currentUser?.studentId],
-    });
-    const passwordRules = {
-        minLength: passwordPolicy.minLength,
-        hasLetter: passwordPolicy.hasLetter,
-        hasNumber: passwordPolicy.hasNumber,
-        hasSpecial: passwordPolicy.hasSpecial,
-        noStudentId: passwordPolicy.noForbiddenSubstring,
-        matched: passwordPolicy.matched ?? false,
-    };
-    const strengthScore = passwordPolicy.score;
-    const passwordStrengthLabel = passwordPolicy.strengthLabel;
-
     const handleLogout = async () => {
         try {
             await authApi.logout();
         } finally {
-            sessionStorage.removeItem("student_login_success");
+            clearLoginSuccess(LOGIN_SUCCESS_KEY);
+            clearAuthState();
             navigate("/login", { replace: true });
-        }
-    };
-
-    const handleChangePassword = async () => {
-        setPasswordError(null);
-        if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-            setPasswordError("请填写完整信息");
-            return;
-        }
-        if (passwordForm.newPassword === passwordForm.currentPassword) {
-            setPasswordError("新密码不能与当前密码相同");
-            return;
-        }
-        if (!passwordRules.minLength) {
-            setPasswordError(`新密码长度至少为${STUDENT_PASSWORD_POLICY.minLength}位`);
-            return;
-        }
-        if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {
-            setPasswordError("新密码需包含字母、数字和特殊字符");
-            return;
-        }
-        if (!passwordRules.noStudentId) {
-            setPasswordError("新密码不能包含学号");
-            return;
-        }
-        if (!passwordRules.matched) {
-            setPasswordError("两次输入的新密码不一致");
-            return;
-        }
-
-        setPasswordSaving(true);
-        try {
-            const res = await authApi.changePassword({
-                currentPassword: passwordForm.currentPassword,
-                newPassword: passwordForm.newPassword,
-            });
-            if (res.success) {
-                setShowPasswordModal(false);
-                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                await refreshUser();
-            } else {
-                setPasswordError(res.error?.message ?? "修改失败");
-            }
-        } catch (err) {
-            setPasswordError(err instanceof Error ? err.message : "修改失败");
-        } finally {
-            setPasswordSaving(false);
         }
     };
 
@@ -330,7 +290,7 @@ function StudentAppContent() {
                                             data-testid="student-open-password-modal"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
-                                                setPasswordError(null);
+                                                passwordChange.clearError();
                                                 setShowPasswordModal(true);
                                             }}
                                         >
@@ -371,81 +331,29 @@ function StudentAppContent() {
                 </Routes>
             </main>
 
-            <Dialog open={showPasswordModal} onOpenChange={(open) => {
-                if (currentUser?.isFirstLogin) return;
-                setShowPasswordModal(open);
-            }}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">{currentUser?.isFirstLogin ? "首次登录请修改密码" : "修改密码"}</DialogTitle>
-                        <DialogDescription className="text-slate-400">为保证账号安全，请设置新密码。</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="currentPassword" className="text-slate-300">当前密码</Label>
-                            <Input
-                                id="currentPassword"
-                                type="password"
-                                value={passwordForm.currentPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                                autoComplete="current-password"
-                                data-testid="student-password-current"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="newPassword" className="text-slate-300">新密码</Label>
-                            <Input
-                                id="newPassword"
-                                type="password"
-                                value={passwordForm.newPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                autoComplete="new-password"
-                                data-testid="student-password-new"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="confirmPassword" className="text-slate-300">确认新密码</Label>
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                value={passwordForm.confirmPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                autoComplete="new-password"
-                                data-testid="student-password-confirm"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs space-y-1.5">
-                            <div className="flex items-center justify-between text-slate-400">
-                                <span>密码强度</span>
-                                <span className={strengthScore <= 2 ? "text-rose-600" : strengthScore <= 4 ? "text-amber-600" : "text-emerald-600"}>
-                                    {passwordStrengthLabel}
-                                </span>
-                            </div>
-                            <div className={passwordRules.minLength ? "text-emerald-600" : "text-slate-500"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
-                            <div className={passwordRules.hasLetter ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
-                            <div className={passwordRules.hasNumber ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
-                            <div className={passwordRules.hasSpecial ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
-                            <div className={passwordRules.noStudentId ? "text-emerald-600" : "text-slate-500"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
-                            <div className={passwordRules.matched ? "text-emerald-600" : "text-slate-500"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
-                        </div>
-                        {passwordError && <div className="text-sm text-rose-600 bg-rose-900/20 p-2 rounded">{passwordError}</div>}
-                    </div>
-                    <DialogFooter>
-                        {!currentUser?.isFirstLogin && (
-                            <Button variant="ghost" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving} className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">
-                                取消
-                            </Button>
-                        )}
-                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white" data-testid="student-password-save">
-                            {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                            保存
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <PasswordChangeDialog
+                open={showPasswordModal}
+                onOpenChange={setShowPasswordModal}
+                allowClose={!currentUser?.isFirstLogin}
+                title={currentUser?.isFirstLogin ? "首次登录请修改密码" : "修改密码"}
+                description="为保证账号安全，请设置新密码。"
+                form={passwordChange.form}
+                onFieldChange={passwordChange.setField}
+                error={passwordChange.error}
+                saving={passwordChange.saving}
+                onSubmit={passwordChange.submit}
+                submitLabel="保存"
+                submitTestId="student-password-save"
+                fieldTestIds={{
+                    currentPassword: "student-password-current",
+                    newPassword: "student-password-new",
+                    confirmPassword: "student-password-confirm",
+                }}
+                showPolicyHints={true}
+                policyMinLength={STUDENT_PASSWORD_POLICY.minLength}
+                rules={passwordChange.rules}
+                forbiddenHintLabel="学号"
+            />
 
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
                 <DialogContent className="max-w-lg bg-slate-900 border-slate-800 text-slate-200">
@@ -537,18 +445,6 @@ function StudentAppContent() {
                         >
                             继续使用
                         </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={showSessionExpired} onOpenChange={setShowSessionExpired}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">会话已过期</DialogTitle>
-                        <DialogDescription className="text-slate-400">请重新登录以继续使用系统。</DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button onClick={() => navigate("/login", { replace: true })} className="bg-indigo-600 hover:bg-indigo-700 text-white">重新登录</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -7,14 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import "./teacher.css";
 import { authApi, teacherApi, type TeacherNotification, type TeacherUser } from "./api-client";
 import { useTheme } from "@/components/ThemeProvider";
-import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
+import { TEACHER_PASSWORD_POLICY } from "@/lib/password-policy";
 import { Toaster } from "sonner";
+import {
+    clearLoginSuccess,
+    setLoginRedirectReason,
+    useAuthBootstrap,
+    useLoginSuccessRecovery,
+} from "@/hooks/useAuthRecovery";
+import { useNotificationCenter } from "@/hooks/useNotificationCenter";
+import { usePollingTask } from "@/hooks/usePollingTask";
+import { usePasswordChange } from "@/hooks/usePasswordChange";
+import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
 
 import { Dashboard } from "./pages/Dashboard";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -54,6 +63,7 @@ const pageTitles: Record<string, string> = {
 };
 
 const LOGIN_REDIRECT_REASON_KEY = "teacher_login_redirect_reason";
+const LOGIN_SUCCESS_KEY = "teacher_login_success";
 
 export function TeacherApp() {
     const location = useLocation();
@@ -74,59 +84,99 @@ export function TeacherApp() {
     const [authState, setAuthState] = useState<"checking" | "authed" | "guest">("checking");
     const [teacherUser, setTeacherUser] = useState<TeacherUser | null>(null);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    const [passwordSaving, setPasswordSaving] = useState(false);
-    const [passwordError, setPasswordError] = useState<string | null>(null);
-    const [showNotifications, setShowNotifications] = useState(false);
-    const [notifications, setNotifications] = useState<TeacherNotification[]>([]);
-    const [unreadCount, setUnreadCount] = useState(0);
     const [pendingGradingCount, setPendingGradingCount] = useState(0);
-    const [showSessionWarning, setShowSessionWarning] = useState(false);
-    const [sessionExpired, setSessionExpired] = useState(false);
     const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
 
-    useEffect(() => {
-        let cancelled = false;
-        if (authState !== "checking") return;
+    const passwordChange = usePasswordChange({
+        policy: TEACHER_PASSWORD_POLICY,
+        forbiddenSubstrings: [teacherUser?.type === "teacher" ? teacherUser.employeeId : teacherUser?.account],
+        onSubmit: authApi.changePassword,
+        onSuccess: () => {
+            setShowPasswordModal(false);
+            setTeacherUser((prev) => (prev ? { ...prev, isFirstLogin: 0 } : prev));
+        },
+    });
 
-        authApi
-            .me()
-            .then((res) => {
-                if (cancelled) return;
-                if (res.success) {
-                    setAuthState("authed");
-                    setTeacherUser(res.data ?? null);
-                    setSessionExpiresAt(res.data?.sessionExpiresAt ?? null);
-                    if (res.data?.isFirstLogin) {
-                        setShowPasswordModal(true);
-                    }
-                } else {
-                    if (res.error?.code === "AUTH_004" || res.error?.code === "AUTH_005") {
-                        sessionStorage.setItem(LOGIN_REDIRECT_REASON_KEY, res.error.message);
-                    }
-                    setAuthState("guest");
-                    setTeacherUser(null);
-                }
-            })
-            .catch(() => {
-                if (cancelled) return;
-                setAuthState("guest");
-                setTeacherUser(null);
-            });
+    function redirectToLoginWithReason(message: string) {
+        setShowSessionWarning(false);
+        setShowNotifications(false);
+        setAuthState("guest");
+        setTeacherUser(null);
+        setSessionExpiresAt(null);
+        clearLoginSuccess(LOGIN_SUCCESS_KEY);
+        setLoginRedirectReason(LOGIN_REDIRECT_REASON_KEY, message);
+        navigate("/login", { replace: true });
+    }
 
-        return () => {
-            cancelled = true;
-        };
-    }, [authState]);
+    const { showSessionWarning, setShowSessionWarning } = useSessionWarningTimeout({
+        enabled: authState === "authed",
+        sessionExpiresAt,
+        onExpire: redirectToLoginWithReason,
+    });
 
-    useEffect(() => {
-        if (isLoginPage || authState !== "guest") return;
-        const justLoggedIn = sessionStorage.getItem("teacher_login_success") === "1";
-        if (justLoggedIn) {
-            sessionStorage.removeItem("teacher_login_success");
+    const {
+        items: notifications,
+        unreadCount,
+        isOpen: showNotifications,
+        setIsOpen: setShowNotifications,
+        load: loadNotifications,
+        open: openNotifications,
+        markAsRead: markNotificationAsRead,
+        markAllAsRead,
+    } = useNotificationCenter<TeacherNotification, { notifications: TeacherNotification[]; unreadCount: number }>({
+        list: teacherApi.getNotifications,
+        markOne: teacherApi.readNotification,
+        markAll: teacherApi.readAllNotifications,
+        normalize: (data) => ({
+            items: data.notifications,
+            unreadCount: data.unreadCount,
+        }),
+        getItemId: (item) => item.id,
+        isItemRead: (item) => item.isRead === 1,
+        markItemRead: (item) => ({ ...item, isRead: 1 }),
+    });
+
+    useSessionExpiryEvent({
+        enabled: !isLoginPage && authState === "authed",
+        eventName: "teacher:session-expired",
+        onExpire: redirectToLoginWithReason,
+    });
+
+    usePollingTask({
+        enabled: authState === "authed",
+        task: () => loadNotifications({ includeItems: false }),
+        intervalMs: 60_000,
+        runOnFocus: true,
+    });
+
+    useAuthBootstrap({
+        enabled: authState === "checking",
+        fetchCurrentUser: authApi.me,
+        onAuthenticated: (response) => {
+            setAuthState("authed");
+            setTeacherUser(response.data ?? null);
+            setSessionExpiresAt(response.data?.sessionExpiresAt ?? null);
+            if (response.data?.isFirstLogin) {
+                setShowPasswordModal(true);
+            }
+        },
+        onUnauthenticated: (response) => {
+            if (response?.error?.code === "AUTH_004" || response?.error?.code === "AUTH_005") {
+                setLoginRedirectReason(LOGIN_REDIRECT_REASON_KEY, response.error.message ?? "会话已过期，请重新登录");
+            }
+            setAuthState("guest");
+            setTeacherUser(null);
+            setSessionExpiresAt(null);
+        },
+    });
+
+    const isRecoveringLogin = useLoginSuccessRecovery({
+        enabled: !isLoginPage && authState === "guest",
+        loginSuccessKey: LOGIN_SUCCESS_KEY,
+        onRecover: () => {
             setAuthState("checking");
-        }
-    }, [isLoginPage, authState]);
+        },
+    });
 
     useEffect(() => {
         if (authState !== "authed" || !teacherUser) return;
@@ -163,125 +213,20 @@ export function TeacherApp() {
     const handleLogout = async () => {
         try {
             await authApi.logout();
+            clearLoginSuccess(LOGIN_SUCCESS_KEY);
             setAuthState("guest");
             setTeacherUser(null);
+            setSessionExpiresAt(null);
         } finally {
             navigate("/login", { replace: true });
         }
     };
-
-    const loadNotifications = async (withList = true) => {
-        const res = await teacherApi.getNotifications();
-        if (res.success && res.data) {
-            if (withList) {
-                setNotifications(res.data.notifications);
-            }
-            setUnreadCount(res.data.unreadCount);
-        }
-    };
-
-    useEffect(() => {
-        if (authState !== "authed") return;
-        let cancelled = false;
-        const refreshUnread = async () => {
-            if (cancelled) return;
-            await loadNotifications(false);
-        };
-
-        refreshUnread();
-        const onFocus = () => {
-            refreshUnread();
-        };
-        window.addEventListener("focus", onFocus);
-        const timer = window.setInterval(refreshUnread, 60_000);
-
-        return () => {
-            cancelled = true;
-            window.removeEventListener("focus", onFocus);
-            window.clearInterval(timer);
-        };
-    }, [authState]);
-
-    // Session timeout monitoring
-    useEffect(() => {
-        if (authState !== "authed" || !sessionExpiresAt) return;
-
-        const check = () => {
-            const remaining = new Date(sessionExpiresAt).getTime() - Date.now();
-            if (remaining <= 0) {
-                setSessionExpired(true);
-                setShowSessionWarning(false);
-            } else if (remaining <= 5 * 60 * 1000) {
-                setShowSessionWarning(true);
-            }
-        };
-
-        check();
-        const timer = window.setInterval(check, 30_000);
-        return () => window.clearInterval(timer);
-    }, [authState, sessionExpiresAt]);
 
     const handleExtendSession = async () => {
         const res = await authApi.me();
         if (res.success && res.data) {
             setSessionExpiresAt(res.data.sessionExpiresAt ?? null);
             setShowSessionWarning(false);
-            setSessionExpired(false);
-        }
-    };
-
-    const handleChangePassword = async () => {
-        setPasswordError(null);
-        const accountId = teacherUser?.type === "teacher" ? teacherUser.employeeId : teacherUser?.account;
-        const passwordRules = evaluatePasswordRules({
-            password: passwordForm.newPassword,
-            confirmPassword: passwordForm.confirmPassword,
-            minLength: TEACHER_PASSWORD_POLICY.minLength,
-            forbiddenSubstrings: [accountId],
-        });
-
-        if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-            setPasswordError("请填写完整信息");
-            return;
-        }
-        if (!passwordRules.minLength) {
-            setPasswordError(`新密码长度至少为${TEACHER_PASSWORD_POLICY.minLength}位`);
-            return;
-        }
-        if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {
-            setPasswordError("新密码需包含字母、数字和特殊字符");
-            return;
-        }
-        if (passwordForm.newPassword === passwordForm.currentPassword) {
-            setPasswordError("新密码不能与当前密码相同");
-            return;
-        }
-        if (!passwordRules.noForbiddenSubstring) {
-            setPasswordError("新密码不能包含工号/账号");
-            return;
-        }
-        if (!passwordRules.matched) {
-            setPasswordError("两次输入的新密码不一致");
-            return;
-        }
-
-        setPasswordSaving(true);
-        try {
-            const res = await authApi.changePassword({
-                currentPassword: passwordForm.currentPassword,
-                newPassword: passwordForm.newPassword,
-            });
-            if (res.success) {
-                setShowPasswordModal(false);
-                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                setTeacherUser(prev => (prev ? { ...prev, isFirstLogin: 0 } : prev));
-            } else {
-                setPasswordError(res.error?.message ?? "修改失败");
-            }
-        } catch (err) {
-            setPasswordError(err instanceof Error ? err.message : "修改失败");
-        } finally {
-            setPasswordSaving(false);
         }
     };
 
@@ -300,6 +245,14 @@ export function TeacherApp() {
     }
 
     if (authState === "checking") {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+            </div>
+        );
+    }
+
+    if (isRecoveringLogin) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-950">
                 <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -420,10 +373,7 @@ export function TeacherApp() {
                             size="icon"
                             data-testid="teacher-open-notifications"
                             className="relative text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
-                            onClick={async () => {
-                                await loadNotifications();
-                                setShowNotifications(true);
-                            }}
+                            onClick={() => { void openNotifications(); }}
                         >
                             <Bell className="w-5 h-5" />
                             {unreadCount > 0 && (
@@ -447,7 +397,10 @@ export function TeacherApp() {
                                 variant="ghost"
                                 size="sm"
                                 data-testid="teacher-change-password-open"
-                                onClick={() => setShowPasswordModal(true)}
+                                onClick={() => {
+                                    passwordChange.clearError();
+                                    setShowPasswordModal(true);
+                                }}
                                 className="text-slate-400 hover:text-slate-200"
                             >
                                 修改密码
@@ -487,66 +440,20 @@ export function TeacherApp() {
             </main>
 
             {/* Password Modal */}
-            <Dialog open={showPasswordModal} onOpenChange={(open) => {
-                if (teacherUser?.isFirstLogin) return;
-                setShowPasswordModal(open);
-            }}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">{teacherUser?.isFirstLogin ? "首次登录请修改密码" : "修改密码"}</DialogTitle>
-                        <DialogDescription className="text-slate-400">
-                            为保证账号安全，请设置新密码。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div className="space-y-2">
-                            <Label htmlFor="currentPassword">当前密码</Label>
-                            <Input
-                                id="currentPassword"
-                                type="password"
-                                value={passwordForm.currentPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                                autoComplete="current-password"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="newPassword">新密码</Label>
-                            <Input
-                                id="newPassword"
-                                type="password"
-                                value={passwordForm.newPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                autoComplete="new-password"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="confirmPassword">确认新密码</Label>
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                value={passwordForm.confirmPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                autoComplete="new-password"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
-                            />
-                        </div>
-                        {passwordError && <div className="text-sm text-rose-500 bg-rose-500/10 p-2 rounded">{passwordError}</div>}
-                    </div>
-                    <DialogFooter>
-                        {!teacherUser?.isFirstLogin && (
-                            <Button variant="ghost" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
-                                取消
-                            </Button>
-                        )}
-                        <Button data-testid="teacher-password-submit" onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                            {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                            保存
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <PasswordChangeDialog
+                open={showPasswordModal}
+                onOpenChange={setShowPasswordModal}
+                allowClose={!teacherUser?.isFirstLogin}
+                title={teacherUser?.isFirstLogin ? "首次登录请修改密码" : "修改密码"}
+                description="为保证账号安全，请设置新密码。"
+                form={passwordChange.form}
+                onFieldChange={passwordChange.setField}
+                error={passwordChange.error}
+                saving={passwordChange.saving}
+                onSubmit={passwordChange.submit}
+                submitLabel="保存"
+                submitTestId="teacher-password-submit"
+            />
 
             {/* Notifications Modal */}
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
@@ -575,8 +482,7 @@ export function TeacherApp() {
                                             size="sm"
                                             className="mt-3 h-7 text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
                                             onClick={async () => {
-                                                await teacherApi.readNotification(item.id);
-                                                loadNotifications();
+                                                await markNotificationAsRead(item.id);
                                             }}
                                         >
                                             标记已读
@@ -591,8 +497,7 @@ export function TeacherApp() {
                             variant="ghost"
                             data-testid="teacher-notification-read-all"
                             onClick={async () => {
-                                await teacherApi.readAllNotifications();
-                                loadNotifications();
+                                await markAllAsRead();
                             }}
                             className="text-slate-400 hover:text-slate-200 hover:bg-slate-800"
                         >
@@ -604,7 +509,7 @@ export function TeacherApp() {
             </Dialog>
 
             {/* Session Warning Dialog */}
-            <Dialog open={showSessionWarning && !sessionExpired} onOpenChange={setShowSessionWarning}>
+            <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
                     <DialogHeader>
                         <DialogTitle className="text-amber-600 flex items-center gap-2">
@@ -626,25 +531,6 @@ export function TeacherApp() {
                 </DialogContent>
             </Dialog>
 
-            {/* Session Expired Dialog */}
-            <Dialog open={sessionExpired}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200" onInteractOutside={(e) => e.preventDefault()}>
-                    <DialogHeader>
-                        <DialogTitle className="text-rose-600 flex items-center gap-2">
-                            <Clock className="w-5 h-5" />
-                            会话已过期
-                        </DialogTitle>
-                        <DialogDescription className="text-slate-400">
-                            您的登录会话已过期，请重新登录。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button onClick={() => { setSessionExpired(false); navigate("/login", { replace: true }); }} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                            重新登录
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

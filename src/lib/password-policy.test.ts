@@ -4,6 +4,7 @@ import {
     STUDENT_PASSWORD_POLICY,
     TEACHER_PASSWORD_POLICY,
     evaluatePasswordRules,
+    validatePasswordChange,
 } from "./password-policy";
 
 test("admin password policy rejects username and short passwords", () => {
@@ -42,4 +43,22 @@ test("student password strength counts account exclusion as part of score", () =
     expect(result.score).toBe(4);
     expect(result.strengthLabel).toBe("中");
     expect(result.isPolicyValid).toBe(false);
+});
+
+test("validatePasswordChange returns forbidden label specific error messages", () => {
+    expect(validatePasswordChange({
+        currentPassword: "old-pass",
+        newPassword: "Teacher@T001",
+        confirmPassword: "Teacher@T001",
+        policy: TEACHER_PASSWORD_POLICY,
+        forbiddenSubstrings: ["T001"],
+    }).errorMessage).toBe("新密码不能包含工号/账号");
+
+    expect(validatePasswordChange({
+        currentPassword: "old-pass",
+        newPassword: "Student@2024006",
+        confirmPassword: "Student@2024006",
+        policy: STUDENT_PASSWORD_POLICY,
+        forbiddenSubstrings: ["2024006"],
+    }).errorMessage).toBe("新密码不能包含学号");
 });

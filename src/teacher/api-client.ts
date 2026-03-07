@@ -222,6 +222,27 @@ export interface GradeExportRow {
 // API Client
 // ============================================================
 
+const TEACHER_SESSION_EXPIRED_ERROR_CODES = new Set(["AUTH_004", "AUTH_005", "UNAUTHORIZED", "ACCOUNT_NOT_FOUND"]);
+
+export function shouldDispatchTeacherSessionExpired(
+    url: string,
+    status: number,
+    response: Pick<ApiResponse<unknown>, "error"> | null | undefined,
+) {
+    if (status !== 401 || url.includes("/api/teacher/login")) return false;
+    return TEACHER_SESSION_EXPIRED_ERROR_CODES.has(response?.error?.code ?? "");
+}
+
+async function parseApiResponse<T>(url: string, res: Response): Promise<ApiResponse<T>> {
+    const data = await res.json();
+    if (typeof window !== "undefined" && shouldDispatchTeacherSessionExpired(url, res.status, data as ApiResponse<unknown>)) {
+        window.dispatchEvent(new CustomEvent("teacher:session-expired", {
+            detail: { message: (data as ApiResponse<unknown>).error?.message ?? "会话已过期，请重新登录" },
+        }));
+    }
+    return data as ApiResponse<T>;
+}
+
 async function request<T>(
     url: string,
     options?: RequestInit
@@ -236,8 +257,7 @@ async function request<T>(
             ...options,
         });
 
-        const data = await res.json();
-        return data as ApiResponse<T>;
+        return await parseApiResponse<T>(url, res);
     } catch (error) {
         return {
             success: false,
@@ -303,8 +323,7 @@ export const teacherApi = {
                     body: formData,
                     credentials: "include",
                 });
-                const data = await res.json();
-                return data as ApiResponse<{ filePath: string; rowCount: number; colCount: number; columns: string[]; preview: any[] }>; 
+                return await parseApiResponse<{ filePath: string; rowCount: number; colCount: number; columns: string[]; preview: any[] }>(`/api/teacher/topics/${id}/excel`, res);
             } catch (error) {
                 return {
                     success: false,
@@ -329,8 +348,7 @@ export const teacherApi = {
                     body: formData,
                     credentials: "include",
                 });
-                const data = await res.json();
-                return data as ApiResponse<{ id: number; filePath: string }>; 
+                return await parseApiResponse<{ id: number; filePath: string }>(`/api/teacher/topics/${id}/attachments`, res);
             } catch (error) {
                 return {
                     success: false,
@@ -426,8 +444,7 @@ export const teacherApi = {
                 credentials: "include",
             });
 
-            const data = await res.json();
-            return data as ApiResponse<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> }>;
+            return await parseApiResponse<{ successCount: number; failureCount: number; errors: Array<{ row: number; reason: string }> }>(`/api/teacher/classes/${classId}/students/import`, res);
         } catch (error) {
             return {
                 success: false,

@@ -1,6 +1,6 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { class_, task, topic } from "../../db/schema";
+import { class_, notification, task, topic } from "../../db/schema";
 import { notifyStudentsByClassIds } from "../routes/auth";
 import { validateTopicPublishReadiness } from "./validation";
 
@@ -143,6 +143,12 @@ export async function extendTopicTaskDeadline(params: {
 
     await db.transaction(async (tx) => {
         await tx.update(task).set({ deadline: newDeadline }).where(eq(task.id, params.taskId));
+        await tx.delete(notification).where(and(
+            eq(notification.receiverType, 4),
+            eq(notification.type, "DEADLINE_REMINDER"),
+            eq(notification.relatedType, "task"),
+            eq(notification.relatedId, params.taskId),
+        ));
         await notifyStudentsByClassIds([row.classId], {
             type: "TASK_EXTENDED",
             title: "截止时间已延长",

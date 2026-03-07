@@ -8,6 +8,7 @@ interface StudentContextValue {
     isAuthenticated: boolean;
     refreshUser: () => Promise<void>;
     authErrorCode: string | null;
+    clearAuthState: () => void;
 
     // 会话
     sessionExpiresAt: string | null;
@@ -31,6 +32,15 @@ export function StudentProvider({ children }: { children: ReactNode }) {
     const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
     const [authErrorCode, setAuthErrorCode] = useState<string | null>(null);
     const refreshSeq = useRef(0);
+
+    const clearAuthState = useCallback(() => {
+        refreshSeq.current += 1;
+        setCurrentUser(null);
+        setNotifications(null);
+        setSessionExpiresAt(null);
+        setAuthErrorCode(null);
+        setIsLoading(false);
+    }, []);
 
     // 获取当前用户
     const refreshUser = useCallback(async () => {
@@ -159,6 +169,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!currentUser,
         refreshUser,
         authErrorCode,
+        clearAuthState,
         sessionExpiresAt,
         refreshSession,
         notifications,

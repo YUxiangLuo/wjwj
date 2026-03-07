@@ -4,7 +4,10 @@ import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { markLoginSuccess } from "@/hooks/useAuthRecovery";
 import { authApi } from "../api-client";
+
+const LOGIN_SUCCESS_KEY = "admin_login_success";
 
 export function Login() {
     const navigate = useNavigate();
@@ -28,7 +31,7 @@ export function Login() {
                 password,
             });
             if (res.success) {
-                sessionStorage.setItem("admin_login_success", "1");
+                markLoginSuccess(LOGIN_SUCCESS_KEY);
                 navigate("/", { replace: true });
             } else {
                 setError(res.error?.message ?? "登录失败");

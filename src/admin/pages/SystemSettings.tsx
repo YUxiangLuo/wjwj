@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Settings, FlaskConical, Shield, Database, Save, Loader2, Lock, ArrowLeft, FileText, Bell } from "lucide-react";
+import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
+import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
+import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { settingsApi, systemApi, authApi, type BackupInfo } from "../api-client";
 import { validateAdminSettingsPayload } from "../settings-validation";
 import { toast } from "sonner";
@@ -52,9 +54,6 @@ export function SystemSettings() {
     const [backupList, setBackupList] = useState<BackupInfo[]>([]);
     const [backupListLoading, setBackupListLoading] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    const [passwordSaving, setPasswordSaving] = useState(false);
-    const [passwordError, setPasswordError] = useState<string | null>(null);
     const [adminUsername, setAdminUsername] = useState<string | null>(null);
     const [settings, setSettings] = useState({
         systemName: "抽样统计虚拟仿真系统",
@@ -80,6 +79,15 @@ export function SystemSettings() {
 
     const activeMeta = sections.find((section) => section.id === activeSection) ?? sections[0]!;
     const SectionIcon = activeMeta.icon;
+    const passwordChange = usePasswordChange({
+        policy: ADMIN_PASSWORD_POLICY,
+        forbiddenSubstrings: [adminUsername],
+        onSubmit: authApi.changePassword,
+        onSuccess: () => {
+            setShowPasswordModal(false);
+            toast.success("密码修改成功");
+        },
+    });
 
     useEffect(() => {
         loadSettings();
@@ -269,61 +277,6 @@ export function SystemSettings() {
             setRestoreError("恢复失败");
         } finally {
             setRestoreLoading(false);
-        }
-    };
-
-    const handleChangePassword = async () => {
-        setPasswordError(null);
-        const passwordRules = evaluatePasswordRules({
-            password: passwordForm.newPassword,
-            confirmPassword: passwordForm.confirmPassword,
-            minLength: ADMIN_PASSWORD_POLICY.minLength,
-            forbiddenSubstrings: [adminUsername],
-        });
-
-        if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-            setPasswordError("请填写完整信息");
-            return;
-        }
-        if (passwordForm.newPassword === passwordForm.currentPassword) {
-            setPasswordError("新密码不能与当前密码相同");
-            return;
-        }
-        if (!passwordRules.minLength) {
-            setPasswordError(`新密码长度至少为${ADMIN_PASSWORD_POLICY.minLength}位`);
-            return;
-        }
-        if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {
-            setPasswordError("新密码需包含字母、数字和特殊字符");
-            return;
-        }
-        if (!passwordRules.noForbiddenSubstring) {
-            setPasswordError("新密码不能包含用户名");
-            return;
-        }
-        if (!passwordRules.matched) {
-            setPasswordError("两次输入的新密码不一致");
-            return;
-        }
-
-        setPasswordSaving(true);
-        try {
-            const res = await authApi.changePassword({
-                currentPassword: passwordForm.currentPassword,
-                newPassword: passwordForm.newPassword,
-            });
-            if (res.success) {
-                setShowPasswordModal(false);
-                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                toast.success("密码修改成功");
-            } else {
-                setPasswordError(res.error?.message ?? "修改失败");
-            }
-        } catch (error) {
-            console.error("Failed to change password:", error);
-            setPasswordError("修改失败");
-        } finally {
-            setPasswordSaving(false);
         }
     };
 
@@ -536,7 +489,10 @@ export function SystemSettings() {
                                     </div>
 
                                     <div className="pt-4 border-t border-slate-800 mt-2">
-                                        <Button variant="outline" onClick={() => setShowPasswordModal(true)} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800 w-full sm:w-auto">
+                                        <Button variant="outline" onClick={() => {
+                                            passwordChange.clearError();
+                                            setShowPasswordModal(true);
+                                        }} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800 w-full sm:w-auto">
                                             <Lock className="w-4 h-4 mr-2" />
                                             修改管理员密码
                                         </Button>
@@ -695,59 +651,19 @@ export function SystemSettings() {
                 </Card>
             </div>
 
-            <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">修改管理员密码</DialogTitle>
-                        <DialogDescription className="text-slate-400">为了账号安全，建议定期更改密码。</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="currentPassword" className="text-slate-300">当前密码</Label>
-                            <Input
-                                id="currentPassword"
-                                type="password"
-                                value={passwordForm.currentPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                                autoComplete="current-password"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="newPassword" className="text-slate-300">新密码</Label>
-                            <Input
-                                id="newPassword"
-                                type="password"
-                                value={passwordForm.newPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                autoComplete="new-password"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="confirmPassword" className="text-slate-300">确认新密码</Label>
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                value={passwordForm.confirmPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                autoComplete="new-password"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
-                            />
-                        </div>
-                        {passwordError && <div className="text-sm text-rose-600 bg-rose-500/10 p-2 rounded border border-rose-500/20">{passwordError}</div>}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowPasswordModal(false)} disabled={passwordSaving} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
-                            取消
-                        </Button>
-                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                            {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                            确认修改
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <PasswordChangeDialog
+                open={showPasswordModal}
+                onOpenChange={setShowPasswordModal}
+                allowClose={true}
+                title="修改管理员密码"
+                description="为了账号安全，建议定期更改密码。"
+                form={passwordChange.form}
+                onFieldChange={passwordChange.setField}
+                error={passwordChange.error}
+                saving={passwordChange.saving}
+                onSubmit={passwordChange.submit}
+                submitLabel="确认修改"
+            />
 
             <Dialog open={showRestoreModal} onOpenChange={setShowRestoreModal}>
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">

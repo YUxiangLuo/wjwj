@@ -169,3 +169,43 @@ test("task publish rejects published topics with incomplete configuration", asyn
     expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
     expect(notifications).toHaveLength(0);
 });
+
+test("task extend clears old deadline reminders before notifying students about the new deadline", async () => {
+    const originalDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const newDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const { module, operations, notifications } = await loadTaskRoutes({
+        teacherId: 9,
+        select: [[{
+            id: 88,
+            classId: 101,
+            deadline: originalDeadline,
+        }]],
+    });
+
+    const request = createJsonRequest(
+        "https://example.com/api/teacher/tasks/88/extend",
+        "PUT",
+        { deadline: newDeadline }
+    ) as Request & { params?: Record<string, string> };
+    request.params = { id: "88" };
+
+    const response = await module.taskExtendRoutes.PUT!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual({ success: true });
+
+    expect(operations.some((operation) => operation.kind === "transaction")).toBe(true);
+    expect(operations.some((operation) => operation.kind === "update")).toBe(true);
+    expect(operations.some((operation) => operation.kind === "delete")).toBe(true);
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({
+        classIds: [101],
+        payload: {
+            type: "TASK_EXTENDED",
+            title: "截止时间已延长",
+            relatedType: "task",
+            relatedId: 88,
+        },
+    });
+});

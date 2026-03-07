@@ -26,6 +26,19 @@ export interface PasswordRuleResult {
     isValid: boolean;
 }
 
+export interface PasswordChangeValidationOptions {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+    policy: PasswordPolicySpec;
+    forbiddenSubstrings?: Array<string | null | undefined>;
+}
+
+export interface PasswordChangeValidationResult {
+    rules: PasswordRuleResult;
+    errorMessage: string | null;
+}
+
 export const ADMIN_PASSWORD_POLICY: PasswordPolicySpec = {
     minLength: 12,
     forbiddenLabel: "用户名",
@@ -83,4 +96,39 @@ export function evaluatePasswordRules(options: PasswordRuleOptions): PasswordRul
         isPolicyValid,
         isValid,
     };
+}
+
+export function validatePasswordChange(options: PasswordChangeValidationOptions): PasswordChangeValidationResult {
+    const rules = evaluatePasswordRules({
+        password: options.newPassword,
+        confirmPassword: options.confirmPassword,
+        minLength: options.policy.minLength,
+        forbiddenSubstrings: options.forbiddenSubstrings,
+    });
+
+    if (!options.currentPassword || !options.newPassword || !options.confirmPassword) {
+        return { rules, errorMessage: "请填写完整信息" };
+    }
+
+    if (options.newPassword === options.currentPassword) {
+        return { rules, errorMessage: "新密码不能与当前密码相同" };
+    }
+
+    if (!rules.minLength) {
+        return { rules, errorMessage: `新密码长度至少为${options.policy.minLength}位` };
+    }
+
+    if (!rules.hasLetter || !rules.hasNumber || !rules.hasSpecial) {
+        return { rules, errorMessage: "新密码需包含字母、数字和特殊字符" };
+    }
+
+    if (!rules.noForbiddenSubstring) {
+        return { rules, errorMessage: `新密码不能包含${options.policy.forbiddenLabel}` };
+    }
+
+    if (!rules.matched) {
+        return { rules, errorMessage: "两次输入的新密码不一致" };
+    }
+
+    return { rules, errorMessage: null };
 }

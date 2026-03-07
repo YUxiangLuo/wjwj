@@ -8,9 +8,8 @@ import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "reac
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -26,7 +25,12 @@ import { Dashboard } from "./pages/Dashboard";
 import { authApi, systemApi, type AdminUser, type AdminNotification } from "./api-client";
 import { Toaster } from "sonner";
 import { useTheme } from "@/components/ThemeProvider";
-import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
+import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
+import { useNotificationCenter } from "@/hooks/useNotificationCenter";
+import { clearLoginSuccess, useAuthBootstrap, useLoginSuccessRecovery } from "@/hooks/useAuthRecovery";
+import { usePasswordChange } from "@/hooks/usePasswordChange";
+import { usePollingTask } from "@/hooks/usePollingTask";
+import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
 import { SemesterManagement } from "./pages/SemesterManagement";
 import { TeacherManagement } from "./pages/TeacherManagement";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -61,6 +65,8 @@ const pageTitles: Record<string, string> = {
     "/settings": "系统设置",
 };
 
+const LOGIN_SUCCESS_KEY = "admin_login_success";
+
 export function AdminApp() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -68,139 +74,115 @@ export function AdminApp() {
     const currentPath = location.pathname;
     const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
     const pageTitle = pageTitles[currentPath] ?? "管理后台";
-    const [unreadCount, setUnreadCount] = useState(0);
-    const [notifications, setNotifications] = useState<AdminNotification[]>([]);
-    const [notificationsLoading, setNotificationsLoading] = useState(false);
-    const [showNotifications, setShowNotifications] = useState(false);
     const [authState, setAuthState] = useState<"checking" | "authed" | "guest">("checking");
     const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
     const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
-    const [showSessionWarning, setShowSessionWarning] = useState(false);
     const [showSessionExpired, setShowSessionExpired] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    const [passwordSaving, setPasswordSaving] = useState(false);
-    const [passwordError, setPasswordError] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-    useEffect(() => {
+    const passwordChange = usePasswordChange({
+        policy: ADMIN_PASSWORD_POLICY,
+        forbiddenSubstrings: [adminUser?.username],
+        onSubmit: authApi.changePassword,
+        onSuccess: () => {
+            setShowPasswordModal(false);
+            setAdminUser((prev) => (prev ? { ...prev, isFirstLogin: 0 } : prev));
+        },
+    });
+
+    const {
+        items: notifications,
+        unreadCount,
+        loading: notificationsLoading,
+        isOpen: showNotifications,
+        setIsOpen: setShowNotifications,
+        load: fetchNotifications,
+        open: openNotifications,
+        markAsRead: handleMarkNotificationRead,
+        markAllAsRead: handleMarkAllRead,
+    } = useNotificationCenter<AdminNotification, { count: number; items: AdminNotification[]; sessionExpiresAt?: string | null }>({
+        list: systemApi.getNotifications,
+        markOne: systemApi.markNotificationRead,
+        markAll: systemApi.markAllNotificationsRead,
+        normalize: (data) => ({
+            items: data.items ?? [],
+            unreadCount: data.count ?? 0,
+        }),
+        getItemId: (item) => item.id,
+        isItemRead: (item) => item.isRead === 1,
+        markItemRead: (item) => ({ ...item, isRead: 1 }),
+        onLoaded: (data) => {
+            if (data.sessionExpiresAt) {
+                setSessionExpiresAt(data.sessionExpiresAt);
+            }
+        },
+    });
+
+    const handleTimedSessionExpiry = () => {
+        setShowSessionWarning(false);
+        setAuthState("guest");
+        setAdminUser(null);
+        setSessionExpiresAt(null);
+        navigate("/login", { replace: true });
+    };
+
+    const handleRemoteSessionExpiry = () => {
         if (isLoginPage || authState !== "authed") return;
-        fetchNotifications();
-        const interval = setInterval(fetchNotifications, 60000);
-        return () => clearInterval(interval);
-    }, [isLoginPage, authState]);
-
-    useEffect(() => {
-        let cancelled = false;
-        if (authState !== "checking") return;
-
-        authApi.me()
-            .then((res) => {
-                if (cancelled) return;
-                if (res.success) {
-                    setAuthState("authed");
-                    setAdminUser(res.data ?? null);
-                    setSessionExpiresAt(res.data?.sessionExpiresAt ?? null);
-                    if (res.data?.isFirstLogin) setShowPasswordModal(true);
-                } else {
-                    setAuthState("guest");
-                    setAdminUser(null);
-                    setSessionExpiresAt(null);
-                }
-            })
-            .catch(() => {
-                if (cancelled) return;
-                setAuthState("guest");
-                setAdminUser(null);
-                setSessionExpiresAt(null);
-            });
-
-        return () => { cancelled = true; };
-    }, [authState]);
-
-    useEffect(() => {
-        if (isLoginPage || authState !== "guest") return;
-        const justLoggedIn = sessionStorage.getItem("admin_login_success") === "1";
-        if (justLoggedIn) {
-            sessionStorage.removeItem("admin_login_success");
-            setAuthState("checking");
-        }
-    }, [isLoginPage, authState]);
-
-    const fetchNotifications = async () => {
-        setNotificationsLoading(true);
-        try {
-            const res = await systemApi.getNotifications();
-            if (res.success && res.data) {
-                setUnreadCount(res.data.count);
-                setNotifications(res.data.items ?? []);
-                if (res.data.sessionExpiresAt) setSessionExpiresAt(res.data.sessionExpiresAt);
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setNotificationsLoading(false);
-        }
+        setShowSessionWarning(false);
+        setShowNotifications(false);
+        setAuthState("guest");
+        setAdminUser(null);
+        setSessionExpiresAt(null);
+        setShowSessionExpired(true);
     };
 
-    const handleMarkNotificationRead = async (id: number) => {
-        try {
-            const res = await systemApi.markNotificationRead(id);
-            if (res.success) {
-                setNotifications(prev => prev.map(item => item.id === id ? { ...item, isRead: 1 } : item));
-                setUnreadCount(prev => Math.max(prev - 1, 0));
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
+    const { showSessionWarning, setShowSessionWarning } = useSessionWarningTimeout({
+        enabled: authState === "authed",
+        sessionExpiresAt,
+        onExpire: handleTimedSessionExpiry,
+    });
 
-    const handleMarkAllRead = async () => {
-        try {
-            const res = await systemApi.markAllNotificationsRead();
-            if (res.success) {
-                setNotifications(prev => prev.map(item => ({ ...item, isRead: 1 })));
-                setUnreadCount(0);
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    };
+    useSessionExpiryEvent({
+        enabled: !isLoginPage && authState === "authed",
+        eventName: "admin:session-expired",
+        onExpire: handleRemoteSessionExpiry,
+    });
 
-    useEffect(() => {
-        if (authState !== "authed" || !sessionExpiresAt) return;
-        const interval = setInterval(() => {
-            const remainingMs = new Date(sessionExpiresAt).getTime() - Date.now();
-            if (remainingMs <= 0) {
-                setShowSessionWarning(false);
-                setAuthState("guest");
-                setAdminUser(null);
-                setSessionExpiresAt(null);
-                navigate("/login", { replace: true });
-                return;
-            }
-            if (remainingMs <= 5 * 60 * 1000) setShowSessionWarning(true);
-        }, 30000);
-        return () => clearInterval(interval);
-    }, [authState, sessionExpiresAt, navigate]);
+    usePollingTask({
+        enabled: !isLoginPage && authState === "authed",
+        task: () => fetchNotifications({ includeItems: false }),
+        intervalMs: 60_000,
+    });
 
-    useEffect(() => {
-        const handleSessionExpired = () => {
-            if (isLoginPage || authState !== "authed") return;
-            setShowSessionWarning(false);
-            setShowNotifications(false);
+    useAuthBootstrap({
+        enabled: authState === "checking",
+        fetchCurrentUser: authApi.me,
+        onAuthenticated: (response) => {
+            setAuthState("authed");
+            setAdminUser(response.data ?? null);
+            setSessionExpiresAt(response.data?.sessionExpiresAt ?? null);
+            if (response.data?.isFirstLogin) setShowPasswordModal(true);
+        },
+        onUnauthenticated: () => {
             setAuthState("guest");
             setAdminUser(null);
             setSessionExpiresAt(null);
-            setShowSessionExpired(true);
-        };
-        window.addEventListener("admin:session-expired", handleSessionExpired as EventListener);
-        return () => { window.removeEventListener("admin:session-expired", handleSessionExpired as EventListener); };
-    }, [authState, isLoginPage]);
+        },
+    });
+
+    const isRecoveringLogin = useLoginSuccessRecovery({
+        enabled: !isLoginPage && authState === "guest",
+        loginSuccessKey: LOGIN_SUCCESS_KEY,
+        onRecover: () => {
+            setAuthState("checking");
+        },
+    });
 
     const handleLogout = async () => {
         try {
             await authApi.logout();
+            clearLoginSuccess(LOGIN_SUCCESS_KEY);
             setAuthState("guest");
             setAdminUser(null);
             setSessionExpiresAt(null);
@@ -219,60 +201,6 @@ export function AdminApp() {
         }
     };
 
-    const handleChangePassword = async () => {
-        setPasswordError(null);
-        const passwordRules = evaluatePasswordRules({
-            password: passwordForm.newPassword,
-            confirmPassword: passwordForm.confirmPassword,
-            minLength: ADMIN_PASSWORD_POLICY.minLength,
-            forbiddenSubstrings: [adminUser?.username],
-        });
-
-        if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-            setPasswordError("请填写完整信息");
-            return;
-        }
-        if (passwordForm.newPassword === passwordForm.currentPassword) {
-            setPasswordError("新密码不能与当前密码相同");
-            return;
-        }
-        if (!passwordRules.minLength) {
-            setPasswordError(`新密码长度至少为${ADMIN_PASSWORD_POLICY.minLength}位`);
-            return;
-        }
-        if (!passwordRules.hasLetter || !passwordRules.hasNumber || !passwordRules.hasSpecial) {
-            setPasswordError("新密码需包含字母、数字和特殊字符");
-            return;
-        }
-        if (!passwordRules.noForbiddenSubstring) {
-            setPasswordError("新密码不能包含用户名");
-            return;
-        }
-        if (!passwordRules.matched) {
-            setPasswordError("两次输入的新密码不一致");
-            return;
-        }
-
-        setPasswordSaving(true);
-        try {
-            const res = await authApi.changePassword({
-                currentPassword: passwordForm.currentPassword,
-                newPassword: passwordForm.newPassword,
-            });
-            if (res.success) {
-                setShowPasswordModal(false);
-                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                setAdminUser(prev => (prev ? { ...prev, isFirstLogin: 0 } : prev));
-            } else {
-                setPasswordError(res.error?.message ?? "修改失败");
-            }
-        } catch (err) {
-            setPasswordError(err instanceof Error ? err.message : "修改失败");
-        } finally {
-            setPasswordSaving(false);
-        }
-    };
-
     if (isLoginPage) {
         if (authState === "checking") {
             return (
@@ -286,6 +214,14 @@ export function AdminApp() {
     }
 
     if (authState === "checking") {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            </div>
+        );
+    }
+
+    if (isRecoveringLogin) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-950">
                 <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
@@ -403,10 +339,7 @@ export function AdminApp() {
                                 variant="ghost"
                                 size="icon"
                                 className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-                                onClick={() => {
-                                    setShowNotifications(true);
-                                    if (!notifications.length) fetchNotifications();
-                                }}
+                                onClick={() => { void openNotifications(); }}
                                 aria-label="打开通知中心"
                             >
                                 <Bell className="w-5 h-5" />
@@ -470,58 +403,19 @@ export function AdminApp() {
                 </div>
             </main>
 
-            <Dialog open={showPasswordModal} onOpenChange={() => { }}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-100">首次登录请修改密码</DialogTitle>
-                        <DialogDescription className="text-slate-400">
-                            为保证账号安全，请先修改管理员密码。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="currentPassword" className="text-slate-300">当前密码</Label>
-                            <Input
-                                id="currentPassword"
-                                type="password"
-                                className="bg-slate-950 border-slate-800 focus:ring-indigo-500/20"
-                                value={passwordForm.currentPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                                autoComplete="current-password"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="newPassword" className="text-slate-300">新密码</Label>
-                            <Input
-                                id="newPassword"
-                                type="password"
-                                className="bg-slate-950 border-slate-800 focus:ring-indigo-500/20"
-                                value={passwordForm.newPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                autoComplete="new-password"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="confirmPassword" className="text-slate-300">确认新密码</Label>
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                className="bg-slate-950 border-slate-800 focus:ring-indigo-500/20"
-                                value={passwordForm.confirmPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                autoComplete="new-password"
-                            />
-                        </div>
-                        {passwordError && <div className="text-sm text-rose-600 flex items-center gap-2"><div className="w-1 h-1 rounded-full bg-rose-500" />{passwordError}</div>}
-                    </div>
-                    <DialogFooter>
-                        <Button onClick={handleChangePassword} disabled={passwordSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full sm:w-auto">
-                            {passwordSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                            保存新密码
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <PasswordChangeDialog
+                open={showPasswordModal}
+                onOpenChange={setShowPasswordModal}
+                allowClose={false}
+                title="首次登录请修改密码"
+                description="为保证账号安全，请先修改管理员密码。"
+                form={passwordChange.form}
+                onFieldChange={passwordChange.setField}
+                error={passwordChange.error}
+                saving={passwordChange.saving}
+                onSubmit={passwordChange.submit}
+                submitLabel="保存新密码"
+            />
 
             <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -562,7 +456,7 @@ export function AdminApp() {
                     </DialogHeader>
                     <div className="flex justify-between items-center my-2">
                         <span className="text-sm text-slate-400">未读 {unreadCount} 条</span>
-                        <Button variant="ghost" size="sm" onClick={handleMarkAllRead} disabled={unreadCount === 0} className="text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10">
+                        <Button variant="ghost" size="sm" onClick={() => { void handleMarkAllRead(); }} disabled={unreadCount === 0} className="text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10">
                             全部已读
                         </Button>
                     </div>
@@ -576,7 +470,7 @@ export function AdminApp() {
                                 <button
                                     key={item.id}
                                     type="button"
-                                    onClick={() => item.isRead ? null : handleMarkNotificationRead(item.id)}
+                                    onClick={() => item.isRead ? null : void handleMarkNotificationRead(item.id)}
                                     className={`w-full text-left p-4 rounded-lg border transition-all duration-200 hover:border-slate-700 ${item.isRead ? "bg-slate-950/50 border-transparent opacity-70" : "bg-slate-800/50 border-slate-700/50 shadow-sm"
                                         }`}
                                 >
