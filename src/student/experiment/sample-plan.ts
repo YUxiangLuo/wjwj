@@ -1,3 +1,9 @@
+const Z_SCORES = new Map<number, number>([
+    [0.90, 1.645],
+    [0.95, 1.96],
+    [0.99, 2.576],
+]);
+
 export function calculateFinitePopulationSampleSize(params: {
     confidenceLevel: unknown;
     marginOfError: unknown;
@@ -12,7 +18,9 @@ export function calculateFinitePopulationSampleSize(params: {
     const errorValue = Number(params.marginOfError);
     const errorRatio = errorValue > 1 ? errorValue / 100 : errorValue;
 
-    const z = confidenceRatio >= 0.99 ? 2.576 : confidenceRatio >= 0.95 ? 1.96 : confidenceRatio >= 0.9 ? 1.645 : 1.96;
+    const z = Z_SCORES.get(confidenceRatio);
+    if (z === undefined) return null;
+
     const e = errorRatio;
     const N = params.populationSize;
     const p = 0.5;

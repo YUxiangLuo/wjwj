@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,12 @@ const FIELD_LABELS: Record<string, string> = {
     "gender": "性别",
     "education": "学历",
     "age": "年龄段",
-    "income": "收入水平"
+    "age_group": "年龄段",
+    "income": "收入水平",
+    "city": "城市",
+    "city_tier": "城市等级",
+    "monthly_expense": "月支出",
+    "spending": "消费支出",
 };
 
 export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
@@ -135,37 +141,27 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
 
-    const parseSeed = useCallback((seedText: string) => {
+    const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
-        if (!trimmed) return undefined;
+        if (!trimmed) return { seed: undefined, error: null };
+        if (!/^-?\d+$/.test(trimmed)) return { seed: undefined, error: "随机种子需为整数" };
         const parsed = Number.parseInt(trimmed, 10);
-        return Number.isFinite(parsed) ? parsed : undefined;
+        if (!Number.isSafeInteger(parsed)) return { seed: undefined, error: "随机种子值超出安全整数范围" };
+        return { seed: parsed, error: null };
     }, []);
 
-    const buildSamplingResultsPayload = useCallback((next: Partial<SamplingResultsData>) => {
+    const buildSamplingResultsPayload = useCallback((next?: Partial<SamplingResultsData>) => {
         const payload: SamplingResultsData = {};
         if (simpleResult) payload.simple = simpleResult;
         if (systematicResult) payload.systematic = systematicResult;
         if (stratifiedResult) payload.stratified = stratifiedResult;
-        return { ...payload, ...next };
+        return next ? { ...payload, ...next } : payload;
     }, [simpleResult, systematicResult, stratifiedResult]);
 
     // Save results when they change
     const saveResults = useCallback(async () => {
-        const samplingResults: SamplingResultsData = {};
-
-        if (simpleResult) {
-            samplingResults.simple = simpleResult;
-        }
-        if (systematicResult) {
-            samplingResults.systematic = systematicResult;
-        }
-        if (stratifiedResult) {
-            samplingResults.stratified = stratifiedResult;
-        }
-
-        await saveExperiment({ samplingResults });
-    }, [simpleResult, systematicResult, stratifiedResult, saveExperiment]);
+        await saveExperiment({ samplingResults: buildSamplingResultsPayload() });
+    }, [buildSamplingResultsPayload, saveExperiment]);
 
 
     // Execute sampling with real API
@@ -174,7 +170,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         setAnimatingMethod(null);
         const startTime = performance.now();
         try {
-            const seed = parseSeed(simpleSeed);
+            const { seed, error: seedError } = parseSeed(simpleSeed);
+            if (seedError) { toast.error(seedError); setExecuting(null); return; }
             const res = await experimentApi.executeSampling(experiment?.taskId!, "simple", {
                 sampleSize: n,
                 seed,
@@ -184,9 +181,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setSimpleResult(nextSimple);
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ simple: nextSimple }) });
+            } else {
+                toast.error(res.message || "简单随机抽样执行失败");
             }
         } catch (e) {
-            console.error(e);
+            toast.error("简单随机抽样执行失败，请检查网络后重试");
         } finally {
             setExecuting(null);
         }
@@ -198,7 +197,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         setAnimatingMethod(null);
         const startTime = performance.now();
         try {
-            const seed = parseSeed(systematicSeed);
+            const { seed, error: seedError } = parseSeed(systematicSeed);
+            if (seedError) { toast.error(seedError); setExecuting(null); return; }
             const res = await experimentApi.executeSampling(experiment?.taskId!, "systematic", {
                 kValue,
                 sampleSize: Math.ceil(N / kValue),
@@ -209,9 +209,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setSystematicResult(nextSystematic);
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ systematic: nextSystematic }) });
+            } else {
+                toast.error(res.message || "系统抽样执行失败");
             }
         } catch (e) {
-            console.error(e);
+            toast.error("系统抽样执行失败，请检查网络后重试");
         } finally {
             setExecuting(null);
         }
@@ -230,7 +232,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         }));
 
         try {
-            const seed = parseSeed(stratifiedSeed);
+            const { seed, error: seedError } = parseSeed(stratifiedSeed);
+            if (seedError) { toast.error(seedError); setExecuting(null); return; }
             const res = await experimentApi.executeSampling(experiment?.taskId!, "stratified", {
                 stratifyBy,
                 layers: layersPayload,
@@ -241,9 +244,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setStratifiedResult(nextStratified);
                 setExecutionTimes(prev => ({ ...prev, stratified: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: nextStratified }) });
+            } else {
+                toast.error(res.message || "分层抽样执行失败");
             }
         } catch (e) {
-            console.error(e);
+            toast.error("分层抽样执行失败，请检查网络后重试");
         } finally {
             setExecuting(null);
         }
@@ -719,7 +724,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 </div>
                                                 <div>
                                                     <p className="text-emerald-600 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-200/70 text-sm mt-1">按 {STRATIFY_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified !== null && `，耗时 ${executionTimes.stratified} ms`}</p>
+                                                    <p className="text-emerald-200/70 text-sm mt-1">按 {FIELD_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified !== null && `，耗时 ${executionTimes.stratified} ms`}</p>
                                                 </div>
                                                 <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-rerun" className="ml-auto text-slate-400 hover:text-slate-100 hover:bg-slate-800">
                                                     <RefreshCw className="w-4 h-4" />
@@ -810,12 +815,6 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     );
 }
 
-const STRATIFY_LABELS: Record<string, string> = {
-    "gender": "性别",
-    "education": "学历",
-    "age": "年龄段",
-    "income": "收入"
-};
 
 
 // Sample preview table component
@@ -826,7 +825,7 @@ function SamplePreviewTable({ data, total }: { data: unknown[]; total: number })
 
     useEffect(() => {
         setPage(1);
-    }, [samples.length]);
+    }, [data]);
 
     if (samples.length === 0) {
         return <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">暂无抽样数据</div>;

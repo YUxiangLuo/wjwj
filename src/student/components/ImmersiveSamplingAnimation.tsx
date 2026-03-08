@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { X, CheckCircle2, Users, Target, Layers, Shuffle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -70,6 +70,60 @@ function shuffleIndices(count: number, rng: () => number): number[] {
     return arr;
 }
 
+// ─── Memoized dot grid to avoid re-creating 1000 DOM nodes on each tick ───
+const DotGrid = memo(function DotGrid({
+    visiblePopCount,
+    currentSelectIndex,
+    dotSelectedAt,
+    layerAssignment,
+    method,
+}: {
+    visiblePopCount: number;
+    currentSelectIndex: number;
+    dotSelectedAt: Int32Array;
+    layerAssignment: number[] | undefined;
+    method: SamplingMethod;
+}) {
+    return (
+        <div
+            className="grid gap-[2px]"
+            style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)` }}
+        >
+            {Array.from({ length: TOTAL_DOTS }, (_, i) => {
+                const visible = i < visiblePopCount;
+                const selected = dotSelectedAt[i]! >= 0 && dotSelectedAt[i]! < currentSelectIndex;
+                const layerIdx = layerAssignment?.[i] ?? 0;
+
+                let bgClass: string;
+                if (selected) {
+                    if (method === "stratified") {
+                        bgClass = `${lc(layerIdx).bg} ring-1 ${lc(layerIdx).ring} scale-125`;
+                    } else if (method === "simple") {
+                        bgClass = "bg-indigo-500 ring-1 ring-indigo-400 scale-125";
+                    } else {
+                        bgClass = "bg-teal-500 ring-1 ring-teal-400 scale-125";
+                    }
+                } else if (visible) {
+                    if (method === "stratified" && layerAssignment) {
+                        bgClass = `${lc(layerIdx).bg} opacity-20`;
+                    } else {
+                        bgClass = "bg-slate-700";
+                    }
+                } else {
+                    bgClass = "bg-transparent";
+                }
+
+                return (
+                    <div
+                        key={i}
+                        className={`aspect-square rounded-[2px] transition-all duration-150 ${bgClass}`}
+                    />
+                );
+            })}
+        </div>
+    );
+});
+
 // ─── Phase state machine ──────────────────────────────────
 type Phase =
     | { type: "intro" }          // show method name + brief explanation
@@ -89,7 +143,6 @@ export function ImmersiveSamplingAnimation({
 }: Props) {
     const [phase, setPhase] = useState<Phase>({ type: "intro" });
     const [visiblePopCount, setVisiblePopCount] = useState(0);
-    const [selectedSet, setSelectedSet] = useState<Set<number>>(new Set());
     const [currentSelectIndex, setCurrentSelectIndex] = useState(0);
     const animFrameRef = useRef(0);
     const hasCalledComplete = useRef(false);
@@ -102,7 +155,7 @@ export function ImmersiveSamplingAnimation({
     }, []);
 
     // ─── Precompute which dots get selected ───────────────
-    const { selectionOrder, layerAssignment } = useMemo(() => {
+    const { selectionOrder, layerAssignment, dotSelectedAt } = useMemo(() => {
         const rng = mulberry32(42);
 
         let selection: number[] = [];
@@ -126,9 +179,16 @@ export function ImmersiveSamplingAnimation({
             layerMap = new Array(TOTAL_DOTS).fill(0);
             let offset = 0;
             const layerDotCounts = layers.map((l) => Math.round((l.count / populationSize) * TOTAL_DOTS));
-            // Fix rounding
+            // Fix rounding: adjust the largest layer to ensure sum === TOTAL_DOTS
             const layerTotal = layerDotCounts.reduce((a, b) => a + b, 0);
-            if (layerTotal < TOTAL_DOTS && layerDotCounts.length > 0) layerDotCounts[layerDotCounts.length - 1]! += TOTAL_DOTS - layerTotal;
+            if (layerTotal !== TOTAL_DOTS && layerDotCounts.length > 0) {
+                // Find the largest layer to absorb the rounding difference
+                let maxIdx = 0;
+                for (let i = 1; i < layerDotCounts.length; i++) {
+                    if (layerDotCounts[i]! > layerDotCounts[maxIdx]!) maxIdx = i;
+                }
+                layerDotCounts[maxIdx]! += TOTAL_DOTS - layerTotal;
+            }
 
             for (let li = 0; li < layers.length; li++) {
                 const dotCount = layerDotCounts[li] ?? 0;
@@ -152,7 +212,13 @@ export function ImmersiveSamplingAnimation({
             }
         }
 
-        return { selectionOrder: selection, layerAssignment: layerMap };
+        // Precompute a lookup: for each dot, at which selection step it gets highlighted (-1 = never)
+        const selectedAtMap = new Int32Array(TOTAL_DOTS).fill(-1);
+        for (let step = 0; step < selection.length; step++) {
+            selectedAtMap[selection[step]!] = step;
+        }
+
+        return { selectionOrder: selection, layerAssignment: layerMap, dotSelectedAt: selectedAtMap };
     }, [method, populationSize, sampleSize, kValue, layers]);
 
     // ─── Phase transitions ────────────────────────────────
@@ -195,8 +261,6 @@ export function ImmersiveSamplingAnimation({
         const batchSize = Math.max(1, Math.ceil(total / 60)); // ~60 frames total
         const interval = setInterval(() => {
             index = Math.min(index + batchSize, total);
-            const newSet = new Set(selectionOrder.slice(0, index));
-            setSelectedSet(newSet);
             setCurrentSelectIndex(index);
             if (index >= total) {
                 clearInterval(interval);
@@ -227,7 +291,8 @@ export function ImmersiveSamplingAnimation({
             return `将按固定间隔 K=${kValue} 从总体中等距抽取样本，以确保样本均匀覆盖整个总体。`;
         } else {
             const layerNames = (layers ?? []).map((l) => l.name).join("、");
-            return `先按"${stratifyBy === "gender" ? "性别" : stratifyBy === "education" ? "学历" : stratifyBy === "age" ? "年龄段" : stratifyBy === "income" ? "收入水平" : stratifyBy}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
+            const fieldLabel: Record<string, string> = { gender: "性别", education: "学历", age: "年龄段", age_group: "年龄段", income: "收入水平", city: "城市", city_tier: "城市等级" };
+            return `先按"${fieldLabel[stratifyBy ?? ""] ?? stratifyBy}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
         }
     }, [method, populationSize, sampleSize, kValue, stratifyBy, layers]);
 
@@ -324,45 +389,13 @@ export function ImmersiveSamplingAnimation({
                         {/* Dot grid */}
                         {phase.type !== "complete" && (
                             <div className="relative bg-slate-900/50 rounded-2xl border border-slate-800 p-4 overflow-hidden">
-                                <div
-                                    className="grid gap-[2px]"
-                                    style={{
-                                        gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`,
-                                    }}
-                                >
-                                    {Array.from({ length: TOTAL_DOTS }, (_, i) => {
-                                        const visible = i < visiblePopCount;
-                                        const selected = selectedSet.has(i);
-                                        const layerIdx = layerAssignment?.[i] ?? 0;
-
-                                        let bgClass: string;
-                                        if (selected) {
-                                            if (method === "stratified") {
-                                                bgClass = `${lc(layerIdx).bg} ring-1 ${lc(layerIdx).ring} scale-125`;
-                                            } else if (method === "simple") {
-                                                bgClass = "bg-indigo-500 ring-1 ring-indigo-400 scale-125";
-                                            } else {
-                                                bgClass = "bg-teal-500 ring-1 ring-teal-400 scale-125";
-                                            }
-                                        } else if (visible) {
-                                            if (method === "stratified" && layerAssignment) {
-                                                // Show layer color at reduced opacity
-                                                bgClass = `${lc(layerIdx).bg} opacity-20`;
-                                            } else {
-                                                bgClass = "bg-slate-700";
-                                            }
-                                        } else {
-                                            bgClass = "bg-transparent";
-                                        }
-
-                                        return (
-                                            <div
-                                                key={i}
-                                                className={`aspect-square rounded-[2px] transition-all duration-150 ${bgClass}`}
-                                            />
-                                        );
-                                    })}
-                                </div>
+                                <DotGrid
+                                    visiblePopCount={visiblePopCount}
+                                    currentSelectIndex={currentSelectIndex}
+                                    dotSelectedAt={dotSelectedAt}
+                                    layerAssignment={layerAssignment}
+                                    method={method}
+                                />
 
                                 {/* Systematic: show interval indicator */}
                                 {method === "systematic" && phase.type === "sampling" && (
@@ -382,7 +415,7 @@ export function ImmersiveSamplingAnimation({
                                 <span className={
                                     method === "simple" ? "text-indigo-400" : method === "systematic" ? "text-teal-400" : "text-amber-400"
                                 }>
-                                    已选中 {selectedSet.size} / {selectionOrder.length}
+                                    已选中 {currentSelectIndex} / {selectionOrder.length}
                                 </span>
                             </div>
                         )}
