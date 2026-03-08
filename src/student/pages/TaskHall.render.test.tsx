@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { Announcement, StudentTask } from "../api-client";
 
@@ -11,6 +11,17 @@ mock.module("@/components/ui/dialog", () => ({
     DialogDescription: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
     DialogHeader: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
     DialogTitle: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+}));
+
+mock.module("@/components/ui/alert-dialog", () => ({
+    AlertDialog: ({ children, open }: { children: ReactNode; open?: boolean }) => (open ? <div data-testid="mock-alert-dialog">{children}</div> : null),
+    AlertDialogContent: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    AlertDialogDescription: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    AlertDialogFooter: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    AlertDialogHeader: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    AlertDialogTitle: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    AlertDialogCancel: ({ children, className, onClick }: { children: ReactNode; className?: string; onClick?: () => void }) => <button className={className} onClick={onClick}>{children}</button>,
+    AlertDialogAction: ({ children, className, onClick }: { children: ReactNode; className?: string; onClick?: () => void }) => <button className={className} onClick={onClick}>{children}</button>,
 }));
 
 const { TaskHall } = await import("./TaskHall");
@@ -61,6 +72,11 @@ afterAll(async () => {
     restoreDom = null;
 });
 
+function LocationProbe() {
+    const location = useLocation();
+    return <div data-testid="location-probe">{location.pathname}</div>;
+}
+
 test("TaskHall renders stats and filters by real task status", async () => {
     const tasks: StudentTask[] = [
         buildTask({ id: 1, status: "not_started", name: "未开始任务" }),
@@ -92,6 +108,7 @@ test("TaskHall renders stats and filters by real task status", async () => {
 
     const view = render(
         <MemoryRouter>
+            <LocationProbe />
             <TaskHall />
         </MemoryRouter>
     );
@@ -156,6 +173,7 @@ test("TaskHall opens announcements and marks unread items as read when selected"
 
     const view = render(
         <MemoryRouter>
+            <LocationProbe />
             <TaskHall />
         </MemoryRouter>
     );
@@ -179,4 +197,68 @@ test("TaskHall opens announcements and marks unread items as read when selected"
 
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof mock>;
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/student/announcements/11/read"))).toBe(true);
+});
+
+test("TaskHall rejected task card confirms restart and resets experiment", async () => {
+    const tasks: StudentTask[] = [
+        buildTask({
+            id: 7,
+            status: "rejected",
+            name: "被驳回任务",
+            progress: 100,
+            currentStage: 4,
+            rejectReason: "请补充数据分析",
+        }),
+    ];
+
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+
+        if (url.endsWith("/api/student/tasks")) {
+            return new Response(JSON.stringify({ success: true, data: tasks }), {
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+
+        if (url.endsWith("/api/student/announcements")) {
+            return new Response(JSON.stringify({ success: true, data: [] }), {
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+
+        if (url.endsWith("/api/student/tasks/7/reset")) {
+            expect(init?.method).toBe("POST");
+            expect(init?.body).toBe(JSON.stringify({ resetToStage: 1, clearQuestionnaire: true }));
+            return new Response(JSON.stringify({ success: true, data: { currentStage: 1, status: 0 } }), {
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+
+        throw new Error(`Unhandled fetch: ${url} ${init?.method ?? "GET"}`);
+    }) as unknown as typeof fetch;
+
+    const view = render(
+        <MemoryRouter>
+            <LocationProbe />
+            <TaskHall />
+        </MemoryRouter>
+    );
+
+    await waitFor(() => {
+        expect(view.getByTestId("student-task-primary-7")).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId("student-task-primary-7"));
+
+    await waitFor(() => {
+        expect(view.getByText("确认重新开始实验")).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByText("确认重新开始"));
+
+    await waitFor(() => {
+        const fetchMock = globalThis.fetch as unknown as ReturnType<typeof mock>;
+        expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/student/tasks/7/reset"))).toBe(true);
+        expect(view.getByTestId("location-probe").textContent).toBe("/task/7/experiment");
+    });
 });

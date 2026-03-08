@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard, FileText, FlaskConical, CheckCircle,
     ChevronRight, Clock, AlertCircle, Loader2, Sparkles, Trophy, BookOpen
@@ -9,9 +9,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { getRichTextPlainText } from "@/utils/rich-text";
-import { tasksApi, announcementsApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
+import { announcementsApi, experimentApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
 
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
@@ -128,6 +138,8 @@ interface TaskCardProps {
 }
 
 function TaskCard({ task }: TaskCardProps) {
+    const navigate = useNavigate();
+    const [showRestartConfirm, setShowRestartConfirm] = useState(false);
     const status = statusConfig[task.status];
     const deadlinePassed = isDeadlinePassed(task.deadline);
     const notOpenYet = isTaskNotOpenYet(task.publishedAt);
@@ -154,10 +166,21 @@ function TaskCard({ task }: TaskCardProps) {
     const action = getActionButton();
     const disabled = !isTaskActionable(task) && ACTIVE_TASK_STATUSES.includes(task.status);
     const showHistory = ["submitted", "grading", "graded", "rejected"].includes(task.status);
+    const isRejected = task.status === "rejected";
+
+    const handlePrimaryAction = async () => {
+        if (disabled) return;
+        if (isRejected) {
+            setShowRestartConfirm(true);
+            return;
+        }
+        navigate(`/task/${task.id}`);
+    };
 
     return (
-        <Card className="rounded-2xl border-slate-800 bg-slate-900/60 backdrop-blur-sm shadow-lg hover:shadow-indigo-500/10 transition-all hover:-translate-y-1" data-testid={`student-task-card-${task.id}`}>
-            <CardHeader className="pb-3 text-slate-200">
+        <>
+            <Card className="rounded-2xl border-slate-800 bg-slate-900/60 backdrop-blur-sm shadow-lg hover:shadow-indigo-500/10 transition-all hover:-translate-y-1" data-testid={`student-task-card-${task.id}`}>
+                <CardHeader className="pb-3 text-slate-200">
                 <div className="flex justify-between items-start gap-2">
                     <CardTitle className="text-lg line-clamp-1 text-slate-100">{task.name}</CardTitle>
                     <Badge variant="outline" className={`${status.color} border whitespace-nowrap`}>{status.label}</Badge>
@@ -165,8 +188,8 @@ function TaskCard({ task }: TaskCardProps) {
                 <CardDescription className="line-clamp-2 text-slate-400">
                     {task.description ? getRichTextPlainText(task.description) : null}
                 </CardDescription>
-            </CardHeader>
-            <CardContent>
+                </CardHeader>
+                <CardContent>
                 <div className="space-y-4">
                     {/* Progress */}
                     {task.status !== "graded" && task.status !== "rejected" && (
@@ -219,16 +242,16 @@ function TaskCard({ task }: TaskCardProps) {
 
                     {/* Action button */}
                     <div className="flex gap-2">
-                        <Link to={`/task/${task.id}`} className={`flex-1 ${disabled ? "pointer-events-none opacity-50" : ""}`}>
-                            <Button
-                                className={`w-full ${action.variant === 'default' ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20' : ''} ${action.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''} ${action.variant === 'outline' ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100' : ''}`}
-                                variant="ghost"
-                                disabled={disabled}
-                            >
-                                {action.text}
-                                <ChevronRight className="w-4 h-4 ml-1 opacity-70" />
-                            </Button>
-                        </Link>
+                        <Button
+                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20' : ''} ${action.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''} ${action.variant === 'outline' ? 'border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100' : ''}`}
+                            variant="ghost"
+                            disabled={disabled}
+                            onClick={() => { void handlePrimaryAction(); }}
+                            data-testid={`student-task-primary-${task.id}`}
+                        >
+                            {action.text}
+                            <ChevronRight className="w-4 h-4 ml-1 opacity-70" />
+                        </Button>
                         {showHistory && (
                             <Link to={`/task/${task.id}/history`}>
                                 <Button variant="outline" size="icon" className="border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-100" title="历史记录">
@@ -243,8 +266,39 @@ function TaskCard({ task }: TaskCardProps) {
                         </div>
                     )}
                 </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+
+            <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
+                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-100">确认重新开始实验</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
+                            重新开始将<strong className="text-rose-600">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
+                            <br />
+                            确定继续吗？
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-rose-600 hover:bg-rose-700 text-white"
+                            onClick={async () => {
+                                const res = await experimentApi.reset(task.id, {
+                                    resetToStage: 1,
+                                    clearQuestionnaire: true,
+                                });
+                                if (res.success) {
+                                    navigate(`/task/${task.id}/experiment`);
+                                }
+                            }}
+                        >
+                            确认重新开始
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }
 

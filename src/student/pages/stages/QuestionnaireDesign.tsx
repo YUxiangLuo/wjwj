@@ -73,6 +73,14 @@ export function canAdvanceQuestionnaireStep(step: 1 | 2 | 3 | 4, validation: Que
     }
 }
 
+export function getPreviewCompletionState(contentFingerprint: string) {
+    return {
+        previewCompleted: true,
+        previewContentHash: contentFingerprint,
+        previewOpen: false,
+    };
+}
+
 function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
@@ -142,6 +150,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const handlePreviewComplete = useCallback(() => {
         setPreviewCompleted(true);
         setPreviewContentHash(contentFingerprint);
+        setPreviewOpen(false);
     }, [contentFingerprint]);
 
     const normalizeQuestionnaireData = useCallback((raw: unknown): QuestionnaireData => {

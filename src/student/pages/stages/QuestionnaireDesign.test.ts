@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { canAdvanceQuestionnaireStep } from "./QuestionnaireDesign";
+import { canAdvanceQuestionnaireStep, getPreviewCompletionState } from "./QuestionnaireDesign";
 
 const baseValidation = {
     title: true,
@@ -30,4 +30,14 @@ test("questionnaire step 3 requires ending text", () => {
 test("questionnaire step 4 requires preview completion", () => {
     expect(canAdvanceQuestionnaireStep(4, { ...baseValidation, previewCompleted: false })).toBe(false);
     expect(canAdvanceQuestionnaireStep(4, baseValidation)).toBe(true);
+});
+
+test("questionnaire preview completion closes overlay and keeps content hash", () => {
+    const state = getPreviewCompletionState("title|welcome|ending|questions");
+
+    expect(state).toEqual({
+        previewCompleted: true,
+        previewContentHash: "title|welcome|ending|questions",
+        previewOpen: false,
+    });
 });
