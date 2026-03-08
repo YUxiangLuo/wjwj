@@ -24,6 +24,7 @@ export function AssistantAddDialog(props: AssistantAddDialogProps) {
         onFormChange,
         onSubmit,
     } = props;
+    const canSubmit = form.studentId.trim().length > 0 && form.name.trim().length > 0;
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -60,7 +61,7 @@ export function AssistantAddDialog(props: AssistantAddDialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
-                    <Button data-testid="teacher-assistant-add-submit" onClick={onSubmit} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认添加</Button>
+                    <Button data-testid="teacher-assistant-add-submit" onClick={onSubmit} disabled={!canSubmit} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认添加</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

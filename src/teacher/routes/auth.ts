@@ -80,6 +80,11 @@ function writeTeacherAuthCache(req: Request, auth: TeacherAuthResult) {
     (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] = auth;
 }
 
+async function invalidateTeacherUserSession(userType: number, userId: number, message: string, code: string): Promise<TeacherAuthResult> {
+    await clearUserSessionForUser(userType, userId);
+    return { user: null, error: error(message, code, 401) };
+}
+
 export function getTeacherAuth(req: Request): TeacherAuthResult {
     const cached = readTeacherAuthCache(req);
     if (!cached) {
@@ -176,12 +181,22 @@ export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResul
 
         if (currentSession.userType === TEACHER_USER_TYPE) {
             const [t] = await db
-                .select({ id: teacher.id, employeeId: teacher.employeeId, name: teacher.name, isFirstLogin: teacher.isFirstLogin })
+                .select({
+                    id: teacher.id,
+                    employeeId: teacher.employeeId,
+                    name: teacher.name,
+                    isFirstLogin: teacher.isFirstLogin,
+                    status: teacher.status,
+                })
                 .from(teacher)
                 .where(eq(teacher.id, currentSession.session.userId));
 
             if (!t) {
-                return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+                return invalidateTeacherUserSession(TEACHER_USER_TYPE, currentSession.session.userId, "账户不存在", "ACCOUNT_NOT_FOUND");
+            }
+
+            if (t.status !== 1) {
+                return invalidateTeacherUserSession(TEACHER_USER_TYPE, currentSession.session.userId, "账号已停用，请联系管理员", "ACCOUNT_DISABLED");
             }
 
             const { expiresAt } = await extendUserSession(
@@ -205,12 +220,23 @@ export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResul
 
         if (currentSession.userType === ASSISTANT_USER_TYPE) {
             const [a] = await db
-                .select({ id: assistant.id, account: assistant.account, name: assistant.name, isFirstLogin: assistant.isFirstLogin, creatorTeacherId: assistant.creatorTeacherId })
+                .select({
+                    id: assistant.id,
+                    account: assistant.account,
+                    name: assistant.name,
+                    isFirstLogin: assistant.isFirstLogin,
+                    creatorTeacherId: assistant.creatorTeacherId,
+                    status: assistant.status,
+                })
                 .from(assistant)
                 .where(eq(assistant.id, currentSession.session.userId));
 
             if (!a) {
-                return { user: null, error: error("账户不存在", "ACCOUNT_NOT_FOUND", 401) };
+                return invalidateTeacherUserSession(ASSISTANT_USER_TYPE, currentSession.session.userId, "账户不存在", "ACCOUNT_NOT_FOUND");
+            }
+
+            if (a.status !== 1) {
+                return invalidateTeacherUserSession(ASSISTANT_USER_TYPE, currentSession.session.userId, "账号已被停用，请联系教师", "ACCOUNT_DISABLED");
             }
 
             const { expiresAt } = await extendUserSession(

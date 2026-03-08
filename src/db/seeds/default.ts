@@ -1011,7 +1011,7 @@ async function seed() {
         "Qian Er Questionnaire PDF",
         [
             "Topic: Consumer Behavior Analysis",
-            "Student: Qian Er (2024002)",
+            "Student: Qian Er (2024001)",
             "Fixture: questionnaire preview and download for teacher and assistant grading.",
         ],
     );
@@ -1020,7 +1020,7 @@ async function seed() {
         "Qian Er Report PDF",
         [
             "Topic: Consumer Behavior Analysis",
-            "Student: Qian Er (2024002)",
+            "Student: Qian Er (2024001)",
             "Fixture: report preview and download for teacher and assistant grading.",
         ],
     );

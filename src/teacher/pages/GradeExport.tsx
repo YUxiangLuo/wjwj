@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { teacherApi, type GradeExportPreviewItem, type TeacherClass, type Topic } from "../api-client";
 import { toast } from "sonner";
+import { formatLocalDateStamp } from "@/utils/format";
 
 export function GradeExport() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -119,7 +120,7 @@ export function GradeExport() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
-            link.download = `grade-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+            link.download = `grade-export-${formatLocalDateStamp()}.xlsx`;
             document.body.appendChild(link);
             link.click();
             link.remove();

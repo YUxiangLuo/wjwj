@@ -42,7 +42,9 @@ export function setLoginRedirectReason(
     message: string,
     storage: StorageLike | null = getSessionStorage(),
 ) {
-    storage?.setItem(redirectReasonKey, message);
+    if (!storage) return;
+    if (storage.getItem(redirectReasonKey)) return;
+    storage.setItem(redirectReasonKey, message);
 }
 
 export function consumeLoginRedirectReason(

@@ -94,6 +94,10 @@ test("teacher session-expired helper only matches real auth expiry responses", (
         error: { code: "AUTH_005", message: "您的账号已在其他设备登录" },
     })).toBe(true);
 
+    expect(shouldDispatchTeacherSessionExpired("/api/teacher/me", 401, {
+        error: { code: "ACCOUNT_DISABLED", message: "账号已被停用，请联系教师" },
+    })).toBe(true);
+
     expect(shouldDispatchTeacherSessionExpired("/api/teacher/login", 401, {
         error: { code: "AUTH_005", message: "您的账号已在其他设备登录" },
     })).toBe(false);

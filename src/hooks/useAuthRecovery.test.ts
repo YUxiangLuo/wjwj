@@ -52,3 +52,12 @@ test("consumeLoginRedirectReason returns the message once and clears it", () => 
     expect(consumeLoginRedirectReason("student_login_redirect_reason", storage)).toBe("会话已过期，请重新登录");
     expect(consumeLoginRedirectReason("student_login_redirect_reason", storage)).toBeNull();
 });
+
+test("setLoginRedirectReason preserves the first redirect reason until it is consumed", () => {
+    const storage = createStorage();
+
+    setLoginRedirectReason("teacher_login_redirect_reason", "账号已被停用，请联系教师", storage);
+    setLoginRedirectReason("teacher_login_redirect_reason", "您的账号已在其他设备登录", storage);
+
+    expect(consumeLoginRedirectReason("teacher_login_redirect_reason", storage)).toBe("账号已被停用，请联系教师");
+});

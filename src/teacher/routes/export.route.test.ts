@@ -11,6 +11,9 @@ async function loadExportRoutes(options: {
     });
 
     mock.module("../../db", () => ({ db }));
+    mock.module("../../utils/format", () => ({
+        formatLocalDateStamp: () => "2026-03-09",
+    }));
     mock.module("./auth", () => ({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
@@ -61,5 +64,35 @@ test("grade export preview accepts semester filter and joins semester data", asy
         expect.arrayContaining([
             expect.objectContaining({ type: "innerJoin", table: semester }),
         ])
+    );
+});
+
+test("grade export excel uses local date stamp for download filename", async () => {
+    const { module } = await loadExportRoutes({
+        select: [[{
+            studentId: "2024001",
+            studentName: "钱二",
+            className: "统计学原理 A班",
+            topicName: "消费者行为分析实验",
+            submittedAt: new Date("2026-03-09T04:25:06+08:00"),
+            scoreQuestionnaire: "28.00",
+            scoreProcess: "26.00",
+            scoreReport: "35.00",
+            totalScore: "30.20",
+            status: 2,
+            gradedByType: 2,
+            gradedById: 9,
+            gradedByName: "张教授（演示）",
+            gradedAt: new Date("2026-03-09T04:25:06+08:00"),
+        }]],
+    });
+
+    const response = await module.gradeExportExcelRoutes.GET!(
+        new Request("https://example.com/api/teacher/grade-export/excel?taskId=12")
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Disposition")).toBe(
+        "attachment; filename=grade-export-2026-03-09.xlsx"
     );
 });

@@ -52,8 +52,14 @@ export function AssistantManagement() {
     }
 
     async function handleAddAssistant() {
-        if (!newAssistant.name || !newAssistant.studentId) return;
-        const res = await teacherApi.createAssistant(newAssistant);
+        const name = newAssistant.name.trim();
+        const studentId = newAssistant.studentId.trim();
+        if (!name || !studentId) {
+            toast.error("请输入工号和姓名");
+            return;
+        }
+
+        const res = await teacherApi.createAssistant({ name, studentId });
         if (res.success) {
             setShowAddModal(false);
             setNewAssistant({ name: "", studentId: "" });

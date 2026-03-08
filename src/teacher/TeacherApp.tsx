@@ -211,7 +211,12 @@ export function TeacherApp() {
             }
         },
         onUnauthenticated: (response) => {
-            if (response?.error?.code === "AUTH_004" || response?.error?.code === "AUTH_005") {
+            if (
+                response?.error?.code === "AUTH_004"
+                || response?.error?.code === "AUTH_005"
+                || response?.error?.code === "ACCOUNT_DISABLED"
+                || response?.error?.code === "ACCOUNT_NOT_FOUND"
+            ) {
                 setLoginRedirectReason(TEACHER_LOGIN_REDIRECT_REASON_KEY, response.error.message ?? "会话已过期，请重新登录");
             }
             setAuthState("guest");

@@ -182,7 +182,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ simple: nextSimple }) });
             } else {
-                toast.error(res.message || "简单随机抽样执行失败");
+                toast.error(res.error?.message || "简单随机抽样执行失败");
             }
         } catch (e) {
             toast.error("简单随机抽样执行失败，请检查网络后重试");
@@ -210,7 +210,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ systematic: nextSystematic }) });
             } else {
-                toast.error(res.message || "系统抽样执行失败");
+                toast.error(res.error?.message || "系统抽样执行失败");
             }
         } catch (e) {
             toast.error("系统抽样执行失败，请检查网络后重试");
@@ -245,7 +245,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, stratified: Math.round(performance.now() - startTime) }));
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: nextStratified }) });
             } else {
-                toast.error(res.message || "分层抽样执行失败");
+                toast.error(res.error?.message || "分层抽样执行失败");
             }
         } catch (e) {
             toast.error("分层抽样执行失败，请检查网络后重试");

@@ -88,7 +88,7 @@ test("TaskHall renders stats and filters by real task status", async () => {
         }
 
         throw new Error(`Unhandled fetch: ${url} ${init?.method ?? "GET"}`);
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const view = render(
         <MemoryRouter>
@@ -152,7 +152,7 @@ test("TaskHall opens announcements and marks unread items as read when selected"
         }
 
         throw new Error(`Unhandled fetch: ${url} ${init?.method ?? "GET"}`);
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const view = render(
         <MemoryRouter>
@@ -177,6 +177,6 @@ test("TaskHall opens announcements and marks unread items as read when selected"
         expect(view.getByText("今晚 22:00 维护。")).toBeTruthy();
     });
 
-    const fetchMock = globalThis.fetch as ReturnType<typeof mock>;
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof mock>;
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/student/announcements/11/read"))).toBe(true);
 });

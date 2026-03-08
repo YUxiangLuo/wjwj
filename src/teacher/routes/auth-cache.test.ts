@@ -1,4 +1,5 @@
 import { expect, mock, test } from "bun:test";
+import { userSession } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
 
 async function loadTeacherAuthModule(options: {
@@ -33,6 +34,7 @@ test("teacher auth cache avoids duplicate DB work across layered teacher auth he
                 employeeId: "T001",
                 name: "教师甲",
                 isFirstLogin: 0,
+                status: 1,
             }],
         ],
         config: {
@@ -68,6 +70,7 @@ test("withPrimaryTeacherAuth injects teacher auth context for wrapped handlers",
                 employeeId: "T001",
                 name: "教师甲",
                 isFirstLogin: 0,
+                status: 1,
             }],
         ],
         config: {
@@ -124,4 +127,80 @@ test("requireTeacherAuth returns a kicked-offline error when the session token n
             message: "您的账号已在其他设备登录",
         },
     });
+});
+
+test("requireTeacherAuth clears disabled teacher sessions", async () => {
+    const { module, operations } = await loadTeacherAuthModule({
+        select: [
+            [{
+                id: 5,
+                sessionToken: "teacher-session",
+                userType: 2,
+                userId: 11,
+                expiresAt: new Date(Date.now() + 60_000),
+            }],
+            [{
+                id: 11,
+                employeeId: "T001",
+                name: "教师甲",
+                isFirstLogin: 0,
+                status: 0,
+            }],
+        ],
+    });
+
+    const request = new Request("https://example.com/api/teacher/me", {
+        headers: { cookie: "teacher_session=teacher-session" },
+    });
+    const auth = await module.requireTeacherAuth(request);
+    const payload = await auth.error?.json() as any;
+
+    expect(auth.user).toBeNull();
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "ACCOUNT_DISABLED",
+            message: "账号已停用，请联系管理员",
+        },
+    });
+    expect(operations.find((operation) => operation.kind === "delete" && operation.table === userSession)).toBeDefined();
+});
+
+test("requireTeacherAuth clears disabled assistant sessions", async () => {
+    const { module, operations } = await loadTeacherAuthModule({
+        select: [
+            [],
+            [{
+                id: 6,
+                sessionToken: "assistant-session",
+                userType: 3,
+                userId: 21,
+                expiresAt: new Date(Date.now() + 60_000),
+            }],
+            [{
+                id: 21,
+                account: "A900",
+                name: "助教浏览器",
+                isFirstLogin: 0,
+                creatorTeacherId: 11,
+                status: 0,
+            }],
+        ],
+    });
+
+    const request = new Request("https://example.com/api/teacher/me", {
+        headers: { cookie: "teacher_session=assistant-session" },
+    });
+    const auth = await module.requireTeacherAuth(request);
+    const payload = await auth.error?.json() as any;
+
+    expect(auth.user).toBeNull();
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "ACCOUNT_DISABLED",
+            message: "账号已被停用，请联系教师",
+        },
+    });
+    expect(operations.find((operation) => operation.kind === "delete" && operation.table === userSession)).toBeDefined();
 });
