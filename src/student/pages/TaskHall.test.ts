@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getNextActionableTask, isTaskActionable, type StudentTask } from "./TaskHall";
+import { getNextActionableTask, isTaskActionable, isTaskOngoing, type StudentTask } from "./TaskHall";
 
 function buildTask(overrides: Partial<StudentTask> = {}): StudentTask {
     return {
@@ -61,5 +61,15 @@ describe("TaskHall task selection", () => {
         ];
 
         expect(getNextActionableTask(tasks)).toBeNull();
+    });
+
+    test("in-progress filter semantics only include actionable in-progress and rejected tasks", () => {
+        expect(isTaskOngoing(buildTask({ status: "not_started" }))).toBe(false);
+        expect(isTaskOngoing(buildTask({ status: "in_progress" }))).toBe(true);
+        expect(isTaskOngoing(buildTask({ status: "rejected" }))).toBe(true);
+        expect(isTaskOngoing(buildTask({ status: "submitted" }))).toBe(false);
+        expect(isTaskOngoing(buildTask({ status: "in_progress", deadline: new Date(Date.now() - 60_000).toISOString() }))).toBe(false);
+        expect(isTaskOngoing(buildTask({ status: "rejected", deadline: new Date(Date.now() - 60_000).toISOString() }))).toBe(false);
+        expect(isTaskOngoing(buildTask({ status: "rejected", publishedAt: new Date(Date.now() + 60_000).toISOString() }))).toBe(false);
     });
 });

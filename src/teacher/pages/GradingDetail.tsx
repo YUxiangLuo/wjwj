@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type SubmissionDetail } from "../api-client";
+import { didPendingGradingCountChange, dispatchTeacherGradingQueueUpdated } from "../grading-queue-events";
 import { toast } from "sonner";
 
 const COMMENT_TEMPLATES = [
@@ -65,6 +66,7 @@ export function GradingDetail() {
     const serverSnapshotRef = useRef("");
     const saveInFlightRef = useRef(false);
     const draftResolvedRef = useRef(false);
+    const submissionStatusRef = useRef<number | null>(null);
 
     const draftKey = submissionId ? `teacher_grading_draft_${submissionId}` : null;
 
@@ -93,6 +95,7 @@ export function GradingDetail() {
             setComment(res.data.teacherComment ?? "");
             setWeights(res.data.weights ?? { questionnaire: 30, process: 30, report: 40 });
             setRejectReason(res.data.rejectReason ?? "");
+            submissionStatusRef.current = res.data.status;
 
             // Initialize server snapshot for auto-save comparison
             const serverData = {
@@ -165,6 +168,20 @@ export function GradingDetail() {
         return () => window.clearInterval(timer);
     }, [data?.pdfStatus, submissionId]);
 
+    const totalScore = (
+        (parseFloat(scores.questionnaire) || 0) * (weights.questionnaire / 100) +
+        (parseFloat(scores.process) || 0) * (weights.process / 100) +
+        (parseFloat(scores.report) || 0) * (weights.report / 100)
+    );
+
+    const updatePendingQueueStatus = useCallback((nextStatus: number) => {
+        const previousStatus = submissionStatusRef.current;
+        if (didPendingGradingCountChange(previousStatus, nextStatus)) {
+            dispatchTeacherGradingQueueUpdated();
+        }
+        submissionStatusRef.current = nextStatus;
+    }, []);
+
     // ─── Auto-save ───────────────────────────────────────────────
     const buildGradingSnapshot = useCallback(() => ({
         scores,
@@ -204,11 +221,12 @@ export function GradingDetail() {
                 setLastSavedAt(new Date().toLocaleTimeString("zh-CN", {
                     hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
                 }));
+                updatePendingQueueStatus(0);
             }
         } finally {
             saveInFlightRef.current = false;
         }
-    }, [submissionId, data, buildGradingSnapshot, weights]);
+    }, [submissionId, data, buildGradingSnapshot, updatePendingQueueStatus, weights]);
 
     const autoSaveRef = useRef(autoSave);
     useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
@@ -248,12 +266,6 @@ export function GradingDetail() {
         return () => window.removeEventListener("beforeunload", handler);
     }, [buildGradingSnapshot]);
 
-    const totalScore = (
-        (parseFloat(scores.questionnaire) || 0) * (weights.questionnaire / 100) +
-        (parseFloat(scores.process) || 0) * (weights.process / 100) +
-        (parseFloat(scores.report) || 0) * (weights.report / 100)
-    );
-
     async function handleSubmit(status: number) { // 2=Graded, 3=Rejected
         if (!submissionId) return;
         if (data?.readonly) return;
@@ -273,6 +285,7 @@ export function GradingDetail() {
 
         setSaving(false);
         if (res.success) {
+            updatePendingQueueStatus(status);
             if (draftKey) localStorage.removeItem(draftKey);
             toast.success("提交成功");
             navigate("/grading");
@@ -304,6 +317,7 @@ export function GradingDetail() {
             setLastSavedAt(new Date().toLocaleTimeString("zh-CN", {
                 hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
             }));
+            updatePendingQueueStatus(0);
             toast.success("草稿已保存");
         } else {
             toast.error("保存失败: " + res.error?.message);
@@ -332,6 +346,7 @@ export function GradingDetail() {
                 toast.error("保存失败: " + (saveRes.error?.message ?? "未知错误"));
                 return;
             }
+            updatePendingQueueStatus(0);
         }
 
         // Find next pending submission

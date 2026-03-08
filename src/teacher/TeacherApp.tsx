@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock, Sun, Moon
 } from "lucide-react";
@@ -25,6 +25,7 @@ import { useNotificationCenter } from "@/hooks/useNotificationCenter";
 import { usePollingTask } from "@/hooks/usePollingTask";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
+import { createLatestRequestGate } from "@/lib/latest-request-gate";
 
 import { Dashboard } from "./pages/Dashboard";
 import { ClassManagement } from "./pages/ClassManagement";
@@ -37,6 +38,7 @@ import { AssistantManagement } from "./pages/AssistantManagement";
 import { GradeExport } from "./pages/GradeExport";
 import { TaskProgressDetail } from "./pages/TaskProgressDetail";
 import { Login } from "./pages/Login";
+import { TEACHER_GRADING_QUEUE_UPDATED_EVENT } from "./grading-queue-events";
 
 const teacherMenuItems = [
     { path: "/", label: "首页概览", icon: LayoutDashboard },
@@ -84,6 +86,49 @@ export function TeacherApp() {
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [pendingGradingCount, setPendingGradingCount] = useState(0);
     const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
+    const pendingCountGateRef = useRef(createLatestRequestGate());
+
+    const refreshPendingGradingCount = useCallback(async () => {
+        if (authState !== "authed" || !teacherUser) {
+            pendingCountGateRef.current.invalidate();
+            setPendingGradingCount(0);
+            return;
+        }
+
+        const requestId = pendingCountGateRef.current.start();
+        const applyPendingCount = (count: number) => {
+            if (!pendingCountGateRef.current.isCurrent(requestId)) return;
+            setPendingGradingCount(count);
+        };
+
+        try {
+            if (teacherUser.type === "assistant") {
+                const res = await teacherApi.getGradingList("pending");
+                applyPendingCount(res.success && res.data ? res.data.length : 0);
+                return;
+            }
+
+            const res = await teacherApi.getStats();
+            const pending = res.success && res.data?.stats
+                ? (res.data.stats.find((item) => item.label === "待批改作业")?.value ?? 0)
+                : 0;
+            applyPendingCount(pending);
+        } catch {
+            applyPendingCount(0);
+        }
+    }, [authState, teacherUser]);
+
+    useEffect(() => {
+        if (authState === "authed" && teacherUser) return;
+        pendingCountGateRef.current.invalidate();
+        setPendingGradingCount(0);
+    }, [authState, teacherUser]);
+
+    useEffect(() => {
+        return () => {
+            pendingCountGateRef.current.invalidate();
+        };
+    }, []);
 
     const passwordChange = usePasswordChange({
         policy: TEACHER_PASSWORD_POLICY,
@@ -147,6 +192,13 @@ export function TeacherApp() {
         runOnFocus: true,
     });
 
+    usePollingTask({
+        enabled: authState === "authed",
+        task: refreshPendingGradingCount,
+        intervalMs: 60_000,
+        runOnFocus: true,
+    });
+
     useAuthBootstrap({
         enabled: authState === "checking",
         fetchCurrentUser: authApi.me,
@@ -177,36 +229,17 @@ export function TeacherApp() {
     });
 
     useEffect(() => {
-        if (authState !== "authed" || !teacherUser) return;
-        let cancelled = false;
+        if (authState !== "authed") return;
 
-        if (teacherUser.type === "assistant") {
-            teacherApi.getGradingList("pending").then((res) => {
-                if (cancelled) return;
-                if (res.success && res.data) {
-                    setPendingGradingCount(res.data.length);
-                }
-            }).catch(() => {
-                if (cancelled) return;
-                setPendingGradingCount(0);
-            });
-        } else {
-            teacherApi.getStats().then((res) => {
-                if (cancelled) return;
-                if (res.success && res.data?.stats) {
-                    const pending = res.data.stats.find((item) => item.label === "待批改作业")?.value ?? 0;
-                    setPendingGradingCount(pending);
-                }
-            }).catch(() => {
-                if (cancelled) return;
-                setPendingGradingCount(0);
-            });
-        }
-
-        return () => {
-            cancelled = true;
+        const handleQueueUpdated = () => {
+            void refreshPendingGradingCount();
         };
-    }, [authState, teacherUser]);
+
+        window.addEventListener(TEACHER_GRADING_QUEUE_UPDATED_EVENT, handleQueueUpdated);
+        return () => {
+            window.removeEventListener(TEACHER_GRADING_QUEUE_UPDATED_EVENT, handleQueueUpdated);
+        };
+    }, [authState, refreshPendingGradingCount]);
 
     const handleLogout = async () => {
         try {

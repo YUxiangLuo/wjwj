@@ -18,7 +18,6 @@ export type { TaskStatus, StudentTask };
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ["not_started", "in_progress", "rejected"];
-
 const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     not_started: { label: "未开始", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
     in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
@@ -71,6 +70,10 @@ export function isTaskActionable(task: Pick<StudentTask, "status" | "deadline" |
     return ACTIVE_TASK_STATUSES.includes(task.status)
         && !isDeadlinePassed(task.deadline)
         && !isTaskNotOpenYet(task.publishedAt);
+}
+
+export function isTaskOngoing(task: Pick<StudentTask, "status" | "deadline" | "publishedAt">) {
+    return (task.status === "in_progress" || task.status === "rejected") && isTaskActionable(task);
 }
 
 export function getNextActionableTask(tasks: StudentTask[]) {
@@ -303,7 +306,7 @@ export function TaskHall() {
     const filteredTasks = tasks.filter(task => {
         if (filter === "all") return true;
         if (filter === "in_progress") {
-            return isTaskActionable(task);
+            return isTaskOngoing(task);
         }
         if (filter === "submitted") return ["submitted", "grading"].includes(task.status);
         if (filter === "graded") return task.status === "graded";
@@ -311,7 +314,7 @@ export function TaskHall() {
     });
 
     // Calculate stats
-    const inProgressCount = tasks.filter(isTaskActionable).length;
+    const inProgressCount = tasks.filter(isTaskOngoing).length;
     const gradedCount = tasks.filter(t => t.status === "graded").length;
     const averageScore = tasks
         .filter(t => t.status === "graded" && t.score !== undefined)
