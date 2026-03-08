@@ -46,6 +46,7 @@ export function SubmissionDetailPage() {
     }
 
     useEffect(() => {
+        pollCountRef.current = 0;
         void loadDetail();
     }, [submissionId]);
 
