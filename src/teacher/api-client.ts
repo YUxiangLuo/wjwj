@@ -122,6 +122,8 @@ export interface SubmissionDetail extends GradingItem {
     samplingResults?: any;
     questionnairePdfPath?: string | null;
     reportPdfPath?: string | null;
+    pdfStatus?: "pending" | "generating" | "ready" | "failed";
+    pdfStatusMessage?: string | null;
     scoreQuestionnaire: number | null;
     scoreProcess: number | null;
     scoreReport: number | null;

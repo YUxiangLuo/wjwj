@@ -26,6 +26,7 @@ async function loadExperimentRoutes(options: {
 } = {}) {
     const { db, operations } = createMockDb(options);
 
+    mock.restore();
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
         requireAuth: async () => ({
@@ -41,6 +42,9 @@ async function loadExperimentRoutes(options: {
             error: null,
             sessionExpiresAt: null,
         }),
+    }));
+    mock.module("../experiment/submission-pdf", () => ({
+        kickSubmissionPdfProcessing: () => undefined,
     }));
 
     const module = await import("./experiment");
@@ -315,17 +319,13 @@ test("experiment submit blocks incomplete experiments before any writes", async 
 });
 
 test("experiment submit marks experiment submitted, inserts submission, and notifies teacher and assistants", async () => {
-    const originalSetTimeout = globalThis.setTimeout;
-    globalThis.setTimeout = (() => 0) as unknown as typeof setTimeout;
-
-    try {
-        const { module, operations } = await loadExperimentRoutes({
-            select: [
-                [{ id: 40 }],
-                [{
-                    id: 88,
-                    studentId: 11,
-                    taskId: 40,
+    const { module, operations } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
                 currentStage: 4,
                 status: 0,
                 version: 3,
@@ -334,55 +334,57 @@ test("experiment submit marks experiment submitted, inserts submission, and noti
                 samplingResults: JSON.stringify(buildValidSamplingResults()),
                 reportContent: "这是实验报告正文，用于验证提交逻辑与通知逻辑是否按预期执行。".repeat(10),
             }],
-                [{
-                    openTime: null,
-                    deadline: new Date(Date.now() + 3600_000),
-                    topicName: "抽样调查",
-                    populationSize: 200,
-                    teacherId: 21,
-                    classId: 7,
-                }],
-                [{ assistantId: 31 }, { assistantId: 32 }],
-            ],
-            update: [[{ affectedRows: 1 }]],
-            insert: [[{ insertId: 501 }]],
-        });
+            [{
+                openTime: null,
+                deadline: new Date(Date.now() + 3600_000),
+                topicName: "抽样调查",
+                populationSize: 200,
+                teacherId: 21,
+                classId: 7,
+            }],
+            [{ assistantId: 31 }, { assistantId: 32 }],
+        ],
+        update: [[{ affectedRows: 1 }]],
+        insert: [[{ insertId: 501 }]],
+    });
 
-        const request = withRouteParam(createJsonRequest(
-            "https://example.com/api/student/tasks/40/submit",
-            "POST"
-        ), "40");
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/submit",
+        "POST"
+    ), "40");
 
-        const response = await module.submitRoutes.POST!(request);
-        const payload = await response.json() as any;
+    const response = await module.submitRoutes.POST!(request);
+    const payload = await response.json() as any;
 
-        expect(response.status).toBe(200);
-        expect(payload).toEqual({
-            success: true,
-            data: { success: true },
-        });
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({
+        success: true,
+        data: { success: true },
+    });
 
-        const experimentUpdate = operations.find((operation) => operation.kind === "update");
-        expect(experimentUpdate?.set).toMatchObject({
-            status: 1,
-            version: 4,
-            lastSavedAt: expect.any(Date),
-        });
+    const experimentUpdate = operations.find((operation) => operation.kind === "update");
+    expect(experimentUpdate?.set).toMatchObject({
+        status: 1,
+        version: 4,
+        lastSavedAt: expect.any(Date),
+    });
 
-        const submissionInsert = operations.find((operation) => operation.kind === "insert" && (operation.values as any)?.experimentId === 88);
-        expect(submissionInsert?.values).toMatchObject({
-            experimentId: 88,
-            status: 1,
-            submittedAt: expect.any(Date),
-        });
+    const submissionInsert = operations.find((operation) => operation.kind === "insert" && (operation.values as any)?.experimentId === 88);
+    expect(submissionInsert?.values).toMatchObject({
+        experimentId: 88,
+        pdfSnapshotQuestionnaire: buildValidQuestionnaire(),
+        pdfSnapshotReportContent: "这是实验报告正文，用于验证提交逻辑与通知逻辑是否按预期执行。".repeat(10),
+        pdfSnapshotTopicName: "抽样调查",
+        pdfSnapshotStudentName: "Alice",
+        status: 1,
+        pdfStatus: 0,
+        submittedAt: expect.any(Date),
+    });
 
-        const notificationInserts = operations.filter((operation) => operation.kind === "insert" && (operation.values as any)?.type === "NEW_SUBMISSION");
-        expect(notificationInserts).toHaveLength(3);
-        expect(notificationInserts.map((operation) => (operation.values as any)?.receiverType)).toEqual([2, 3, 3]);
-        expect(notificationInserts.map((operation) => (operation.values as any)?.receiverId)).toEqual([21, 31, 32]);
-    } finally {
-        globalThis.setTimeout = originalSetTimeout;
-    }
+    const notificationInserts = operations.filter((operation) => operation.kind === "insert" && (operation.values as any)?.type === "NEW_SUBMISSION");
+    expect(notificationInserts).toHaveLength(3);
+    expect(notificationInserts.map((operation) => (operation.values as any)?.receiverType)).toEqual([2, 3, 3]);
+    expect(notificationInserts.map((operation) => (operation.values as any)?.receiverId)).toEqual([21, 31, 32]);
 });
 
 test("experiment reset clears downstream progress and reopens rejected experiments", async () => {

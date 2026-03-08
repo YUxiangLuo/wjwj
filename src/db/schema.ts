@@ -377,6 +377,15 @@ export const submission = mysqlTable(
         experimentId: bigint("experiment_id", { mode: "number", unsigned: true }).notNull(),
         questionnairePdfPath: varchar("questionnaire_pdf_path", { length: 500 }),
         reportPdfPath: varchar("report_pdf_path", { length: 500 }),
+        pdfSnapshotQuestionnaire: json("pdf_snapshot_questionnaire"),
+        pdfSnapshotReportContent: text("pdf_snapshot_report_content"),
+        pdfSnapshotTopicName: varchar("pdf_snapshot_topic_name", { length: 200 }),
+        pdfSnapshotStudentName: varchar("pdf_snapshot_student_name", { length: 100 }),
+        pdfStatus: tinyint("pdf_status").notNull().default(0), // 0-Pending, 1-Generating, 2-Ready, 3-Failed
+        pdfGenerationAttempts: int("pdf_generation_attempts", { unsigned: true }).notNull().default(0),
+        pdfLastAttemptAt: datetime("pdf_last_attempt_at", { mode: "date" }),
+        pdfGeneratedAt: datetime("pdf_generated_at", { mode: "date" }),
+        pdfError: varchar("pdf_error", { length: 500 }),
         scoreQuestionnaire: decimal("score_questionnaire", { precision: 5, scale: 2 }),
         scoreProcess: decimal("score_process", { precision: 5, scale: 2 }),
         scoreReport: decimal("score_report", { precision: 5, scale: 2 }),
@@ -396,6 +405,7 @@ export const submission = mysqlTable(
         experimentIdIdx: index("idx_experiment_id").on(t.experimentId),
         experimentSubmittedIdIdx: index("idx_experiment_submitted_id").on(t.experimentId, t.submittedAt, t.id),
         statusIdx: index("idx_status").on(t.status),
+        pdfStatusAttemptIdx: index("idx_pdf_status_attempt").on(t.pdfStatus, t.pdfLastAttemptAt, t.id),
         lockedIdx: index("idx_locked").on(t.lockedAt),
     })
 );

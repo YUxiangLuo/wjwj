@@ -8,6 +8,7 @@ import { teacherApiRoutes } from "./teacher/api";
 import { redirect } from "react-router-dom";
 import { startBackgroundJobs } from "./server/background-jobs";
 import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./server/template-files";
+import { kickSubmissionPdfProcessing } from "./student/experiment/submission-pdf";
 
 type RouteRequest = Request & { params: Record<string, string> };
 
@@ -75,6 +76,11 @@ const server = serve({
 
 console.log(`🚀 Server running at ${server.url}`);
 
+if (process.env.DISABLE_SUBMISSION_PDF !== "1") {
+    // Recover pending submission PDFs even when the dedicated worker is not running.
+    kickSubmissionPdfProcessing();
+}
+
 if (process.env.RUN_IN_PROCESS_SCHEDULERS === "1") {
-  startBackgroundJobs();
+    startBackgroundJobs();
 }

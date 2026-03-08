@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Loader2, FileText, CheckCircle2, AlertCircle, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,22 +18,55 @@ export function SubmissionDetailPage() {
     const { submissionId } = useParams();
     const [detail, setDetail] = useState<SubmissionDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshingPdf, setRefreshingPdf] = useState(false);
+    const pollCountRef = useRef(0);
 
-    useEffect(() => {
-        async function load() {
-            if (!submissionId) return;
+    async function loadDetail(options?: { background?: boolean }) {
+        if (!submissionId) return;
+
+        const isBackground = options?.background === true;
+        if (isBackground) {
+            setRefreshingPdf(true);
+        } else {
             setLoading(true);
-            try {
-                const res = await submissionsApi.getDetail(Number(submissionId));
-                if (res.success && res.data) {
-                    setDetail(res.data);
-                }
-            } finally {
+        }
+
+        try {
+            const res = await submissionsApi.getDetail(Number(submissionId));
+            if (res.success && res.data) {
+                setDetail(res.data);
+            }
+        } finally {
+            if (isBackground) {
+                setRefreshingPdf(false);
+            } else {
                 setLoading(false);
             }
         }
-        load();
+    }
+
+    useEffect(() => {
+        void loadDetail();
     }, [submissionId]);
+
+    useEffect(() => {
+        if (!submissionId || !detail) return;
+        if (detail.pdfStatus === "ready" || detail.pdfStatus === "failed") return;
+
+        const MAX_POLLS = 60;
+        const BASE_INTERVAL = 5000;
+        const MAX_INTERVAL = 30000;
+
+        if (pollCountRef.current >= MAX_POLLS) return;
+
+        const delay = Math.min(BASE_INTERVAL * Math.pow(1.5, pollCountRef.current), MAX_INTERVAL);
+        const timer = window.setTimeout(() => {
+            pollCountRef.current += 1;
+            void loadDetail({ background: true });
+        }, delay);
+
+        return () => window.clearTimeout(timer);
+    }, [detail, submissionId]);
 
     const handleDownload = async (type: "questionnaire" | "report") => {
         if (!detail) return;
@@ -192,6 +225,18 @@ export function SubmissionDetailPage() {
                             下载报告 PDF
                         </Button>
                     </div>
+
+                    {detail.pdfStatus !== "ready" && detail.pdfStatusMessage && (
+                        <div className={cn(
+                            "rounded-xl border px-4 py-3 text-sm flex items-center justify-between gap-3",
+                            detail.pdfStatus === "failed"
+                                ? "border-red-500/30 bg-red-500/10 text-red-300"
+                                : "border-cyan-500/20 bg-cyan-500/10 text-cyan-200"
+                        )}>
+                            <span>{detail.pdfStatusMessage}</span>
+                            {refreshingPdf && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

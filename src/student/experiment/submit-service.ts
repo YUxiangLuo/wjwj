@@ -1,7 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, submission } from "../../db/schema";
-import { scheduleSubmissionPdfGeneration } from "./submission-pdf";
+import { getAffectedRows } from "../../db/utils";
+import { kickSubmissionPdfProcessing } from "./submission-pdf";
+import { SubmissionPdfStatus } from "./pdf-status";
 import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "./status";
 import {
@@ -43,12 +45,6 @@ interface SubmitSuccess {
 
 function fail(message: string, code: string, status = 400): SubmitFailure {
     return { ok: false, message, code, status };
-}
-
-function getAffectedRows(result: unknown) {
-    if (!result || typeof result !== "object") return 0;
-    const value = (result as { affectedRows?: unknown }).affectedRows;
-    return typeof value === "number" ? value : 0;
 }
 
 function normalizePopulationSize(populationSize: SubmitTaskInfo["populationSize"]) {
@@ -131,7 +127,12 @@ export async function submitStudentExperiment(params: {
         const nextSubmittedAt = new Date();
         const [submissionResult] = await tx.insert(submission).values({
             experimentId: params.experimentRecord.id,
+            pdfSnapshotQuestionnaire: questionnaire,
+            pdfSnapshotReportContent: params.experimentRecord.reportContent ?? "",
+            pdfSnapshotTopicName: params.taskInfo.topicName ?? "未命名课题",
+            pdfSnapshotStudentName: params.student.name ?? params.student.studentId,
             status: ExperimentStatus.SUBMITTED,
+            pdfStatus: SubmissionPdfStatus.PENDING,
             submittedAt: nextSubmittedAt,
         });
 
@@ -159,16 +160,8 @@ export async function submitStudentExperiment(params: {
 
     const { submissionId, submittedAt, lastSavedAt } = transactionResult;
 
-    scheduleSubmissionPdfGeneration({
-        submissionId,
-        taskId: params.taskId,
-        teacherId: params.taskInfo.teacherId ?? null,
-        studentId: params.student.id,
-        studentName: params.student.name ?? "",
-        topicName: params.taskInfo.topicName ?? "",
-        questionnaire: questionnaire as any | null,
-        reportContent: params.experimentRecord.reportContent ?? "",
-    });
+    // Best-effort inline kick for fast feedback; durable retry is handled by the PDF background job.
+    kickSubmissionPdfProcessing();
 
     return { ok: true as const, submissionId, submittedAt, lastSavedAt };
 }

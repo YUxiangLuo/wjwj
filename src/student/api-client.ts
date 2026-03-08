@@ -205,6 +205,8 @@ export interface SubmissionDetail {
     graderName: string | null;
     questionnairePdfPath: string | null;
     reportPdfPath: string | null;
+    pdfStatus: "pending" | "generating" | "ready" | "failed";
+    pdfStatusMessage: string | null;
     weights: {
         questionnaire: number;
         process: number;

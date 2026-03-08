@@ -4,6 +4,7 @@ import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, student, submission, task, teacher, topic } from "../../db/schema";
 import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { getSubmissionPdfMessage, getSubmissionPdfState } from "../../student/experiment/pdf-status";
 import { parseStoredJson } from "../../student/experiment/serialization";
 import {
     ASSISTANT_USER_TYPE,
@@ -161,6 +162,8 @@ const gradingDetailRoutes: RouteDefinition = {
                 samplingResults: experiment.samplingResults,
                 questionnairePdfPath: submission.questionnairePdfPath,
                 reportPdfPath: submission.reportPdfPath,
+                pdfStatus: submission.pdfStatus,
+                pdfGenerationAttempts: submission.pdfGenerationAttempts,
                 scoreQuestionnaire: submission.scoreQuestionnaire,
                 scoreProcess: submission.scoreProcess,
                 scoreReport: submission.scoreReport,
@@ -228,6 +231,17 @@ const gradingDetailRoutes: RouteDefinition = {
             readonly: lockedByOther,
             isAssistant,
             gradedByName,
+            pdfStatus: getSubmissionPdfState({
+                status: row.pdfStatus,
+                questionnairePdfPath: row.questionnairePdfPath,
+                reportPdfPath: row.reportPdfPath,
+            }),
+            pdfStatusMessage: getSubmissionPdfMessage({
+                status: row.pdfStatus,
+                attempts: row.pdfGenerationAttempts,
+                questionnairePdfPath: row.questionnairePdfPath,
+                reportPdfPath: row.reportPdfPath,
+            }),
         });
     },
 

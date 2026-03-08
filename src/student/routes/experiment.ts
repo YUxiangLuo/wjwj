@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, topic } from "../../db/schema";
+import { getAffectedRows } from "../../db/utils";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { buildStratifiedStats, readPopulationData } from "../experiment/population-data";
@@ -28,12 +29,6 @@ import { requireAuth } from "./auth";
 
 function getTaskId(req: Request): number {
     return Number.parseInt(getRouteParam(req, "id") ?? "", 10);
-}
-
-function getAffectedRows(result: unknown) {
-    if (!result || typeof result !== "object") return 0;
-    const value = (result as { affectedRows?: unknown }).affectedRows;
-    return typeof value === "number" ? value : 0;
 }
 
 const experimentRoutes: RouteDefinition = {

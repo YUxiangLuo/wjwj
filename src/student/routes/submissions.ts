@@ -6,6 +6,7 @@ import { error, getRouteParam, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { resolveStoragePath } from "../../server/storage-files";
 import { getStudentTaskAccessError } from "../experiment/task-access";
+import { getSubmissionPdfMessage, getSubmissionPdfState } from "../experiment/pdf-status";
 import { requireAuth } from "./auth";
 
 const submissionsByTaskRoutes: RouteDefinition = {
@@ -109,6 +110,8 @@ const submissionDetailRoutes: RouteDefinition = {
                 gradedById: submission.gradedById,
                 questionnairePdfPath: submission.questionnairePdfPath,
                 reportPdfPath: submission.reportPdfPath,
+                pdfStatus: submission.pdfStatus,
+                pdfGenerationAttempts: submission.pdfGenerationAttempts,
                 taskId: experiment.taskId,
                 topicId: task.topicId,
                 topicName: topic.name,
@@ -166,6 +169,17 @@ const submissionDetailRoutes: RouteDefinition = {
             graderName,
             questionnairePdfPath: row.questionnairePdfPath ?? null,
             reportPdfPath: row.reportPdfPath ?? null,
+            pdfStatus: getSubmissionPdfState({
+                status: row.pdfStatus,
+                questionnairePdfPath: row.questionnairePdfPath,
+                reportPdfPath: row.reportPdfPath,
+            }),
+            pdfStatusMessage: getSubmissionPdfMessage({
+                status: row.pdfStatus,
+                attempts: row.pdfGenerationAttempts,
+                questionnairePdfPath: row.questionnairePdfPath,
+                reportPdfPath: row.reportPdfPath,
+            }),
             weights,
         });
     },

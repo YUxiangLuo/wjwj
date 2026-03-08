@@ -37,6 +37,7 @@ import {
     userSession,
 } from "../schema";
 import { eq, and, inArray } from "drizzle-orm";
+import { SubmissionPdfStatus } from "../../student/experiment/pdf-status";
 
 // ── helpers ──────────────────────────────────────────────────
 const seedBaseDate = new Date();
@@ -62,6 +63,7 @@ function resolveStorageAbsolutePath(relativePath: string) {
 async function writePdfFixture(relativePath: string, title: string, lines: string[]) {
     const absolutePath = resolveStorageAbsolutePath(relativePath);
     await mkdir(dirname(absolutePath), { recursive: true });
+    const fontPath = resolve(process.cwd(), "public", "fonts", "NotoSansSC-Regular.otf");
 
     const doc = new PDFDocument({ size: "A4", margin: 48 });
     const chunks: Uint8Array[] = [];
@@ -75,6 +77,10 @@ async function writePdfFixture(relativePath: string, title: string, lines: strin
         });
         doc.on("error", reject);
     });
+
+    if (await Bun.file(fontPath).exists()) {
+        doc.font(fontPath);
+    }
 
     doc.fontSize(18).text(title);
     doc.moveDown();
@@ -1080,8 +1086,18 @@ async function seed() {
         // Fetch experiment row to get its id
         const expDef = experiments[s.expIdx]!;
         const [expRow] = await db
-            .select()
+            .select({
+                id: experiment.id,
+                questionnaire: experiment.questionnaire,
+                reportContent: experiment.reportContent,
+                studentName: student.name,
+                studentIdText: student.studentId,
+                topicName: topic.name,
+            })
             .from(experiment)
+            .innerJoin(student, eq(experiment.studentId, student.id))
+            .innerJoin(task, eq(experiment.taskId, task.id))
+            .innerJoin(topic, eq(task.topicId, topic.id))
             .where(
                 and(
                     eq(experiment.studentId, studentIds[expDef.studentIdx]!),
@@ -1091,7 +1107,16 @@ async function seed() {
         if (!expRow) continue;
 
         const submissionSeed = {
+            pdfStatus: s.questionnairePdfPath && s.reportPdfPath ? SubmissionPdfStatus.READY : SubmissionPdfStatus.PENDING,
+            pdfGenerationAttempts: s.questionnairePdfPath && s.reportPdfPath ? 1 : 0,
+            pdfLastAttemptAt: null,
+            pdfGeneratedAt: s.questionnairePdfPath && s.reportPdfPath ? daysAgo(s.submittedAgo ?? 1) : null,
+            pdfError: null,
             experimentId: expRow.id,
+            pdfSnapshotQuestionnaire: expRow.questionnaire ?? null,
+            pdfSnapshotReportContent: expRow.reportContent ?? "",
+            pdfSnapshotTopicName: expRow.topicName ?? "未命名课题",
+            pdfSnapshotStudentName: expRow.studentName ?? expRow.studentIdText,
             status: s.status,
             scoreQuestionnaire: s.scoreQ ?? null,
             scoreProcess: s.scoreP ?? null,

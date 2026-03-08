@@ -4,6 +4,7 @@ import { extname, join } from "node:path";
 import { createBackupArtifacts } from "../admin/backup";
 import { db } from "../db";
 import { admin, experiment, notification, operationLog, student, systemConfig, task, topic } from "../db/schema";
+import { processPendingSubmissionPdfs } from "../student/experiment/submission-pdf";
 
 const AUTO_BACKUP_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const AUTO_BACKUP_LEASE_MS = 60 * 60 * 1000;
@@ -13,12 +14,15 @@ const DEFAULT_NOTIFICATION_RETENTION_DAYS = 90;
 const DEADLINE_REMINDER_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const DEADLINE_REMINDER_LEASE_MS = 2 * 60 * 60 * 1000;
 const DEFAULT_DEADLINE_REMINDER_HOURS = 24;
+const SUBMISSION_PDF_CHECK_INTERVAL_MS = 10 * 1000;
+const SUBMISSION_PDF_LEASE_MS = 60 * 1000;
 
 const schedulerOwnerId = `scheduler-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
 
 let autoBackupRunning = false;
 let notificationCleanupRunning = false;
 let deadlineReminderRunning = false;
+let submissionPdfRunning = false;
 
 function getFrequencyMs(freq: string) {
     switch (freq) {
@@ -369,6 +373,21 @@ async function checkAndSendDeadlineReminders() {
     }
 }
 
+async function checkAndProcessSubmissionPdfs() {
+    if (submissionPdfRunning) return;
+    submissionPdfRunning = true;
+
+    try {
+        await runWithLease("submission_pdf", SUBMISSION_PDF_LEASE_MS, async () => {
+            await processPendingSubmissionPdfs();
+        });
+    } catch (error) {
+        console.error("Submission PDF scheduler failed:", error);
+    } finally {
+        submissionPdfRunning = false;
+    }
+}
+
 export function startBackgroundJobs() {
     const timers: Array<ReturnType<typeof setInterval>> = [];
 
@@ -385,6 +404,11 @@ export function startBackgroundJobs() {
     if (process.env.DISABLE_DEADLINE_REMINDER !== "1") {
         timers.push(setInterval(checkAndSendDeadlineReminders, DEADLINE_REMINDER_CHECK_INTERVAL_MS));
         void checkAndSendDeadlineReminders();
+    }
+
+    if (process.env.DISABLE_SUBMISSION_PDF !== "1") {
+        timers.push(setInterval(checkAndProcessSubmissionPdfs, SUBMISSION_PDF_CHECK_INTERVAL_MS));
+        void checkAndProcessSubmissionPdfs();
     }
 
     return () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, Save, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, Save, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -56,6 +56,7 @@ export function GradingDetail() {
     const [rejectReason, setRejectReason] = useState("");
     const [showTemplates, setShowTemplates] = useState(false);
     const [savingDraft, setSavingDraft] = useState(false);
+    const [refreshingPdfState, setRefreshingPdfState] = useState(false);
 
     // Auto-save state & refs
     const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
@@ -128,6 +129,41 @@ export function GradingDetail() {
         }
         setLoading(false);
     }
+
+    async function refreshPdfState() {
+        if (!submissionId) return;
+
+        setRefreshingPdfState(true);
+        try {
+            const res = await teacherApi.getSubmissionDetail(Number(submissionId));
+            const detail = res.success ? (res.data ?? null) : null;
+            if (detail) {
+                setData((prev) => prev
+                    ? {
+                        ...prev,
+                        questionnairePdfPath: detail.questionnairePdfPath ?? null,
+                        reportPdfPath: detail.reportPdfPath ?? null,
+                        pdfStatus: detail.pdfStatus,
+                        pdfStatusMessage: detail.pdfStatusMessage ?? null,
+                    }
+                    : detail
+                );
+            }
+        } finally {
+            setRefreshingPdfState(false);
+        }
+    }
+
+    useEffect(() => {
+        if (!submissionId || !data) return;
+        if (data.pdfStatus === "ready" || data.pdfStatus === "failed") return;
+
+        const timer = window.setInterval(() => {
+            void refreshPdfState();
+        }, 10000);
+
+        return () => window.clearInterval(timer);
+    }, [data?.pdfStatus, submissionId]);
 
     // ─── Auto-save ───────────────────────────────────────────────
     const buildGradingSnapshot = useCallback(() => ({
@@ -452,6 +488,26 @@ export function GradingDetail() {
                             <div className="leading-6 text-rose-100/90">{data.rejectReason}</div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {data.pdfStatus !== "ready" && data.pdfStatusMessage && (
+                <div className={`mx-6 mt-6 rounded-xl border px-4 py-3 text-sm flex items-center justify-between gap-3 ${
+                    data.pdfStatus === "failed"
+                        ? "border-red-500/30 bg-red-500/10 text-red-200"
+                        : "border-cyan-500/20 bg-cyan-500/10 text-cyan-100"
+                }`}>
+                    <span>{data.pdfStatusMessage}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { void refreshPdfState(); }}
+                        disabled={refreshingPdfState}
+                        className="gap-2 border-current/20 bg-transparent text-current hover:bg-white/5"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${refreshingPdfState ? "animate-spin" : ""}`} />
+                        刷新 PDF 状态
+                    </Button>
                 </div>
             )}
 
