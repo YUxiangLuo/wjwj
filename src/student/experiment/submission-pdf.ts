@@ -119,7 +119,7 @@ async function writePdf(filePath: string, build: (doc: InstanceType<typeof PDFDo
             build(doc);
             doc.end();
         } catch (error) {
-            doc.end();
+            try { doc.end(); } catch { /* ignore close errors */ }
             settle(() => reject(error));
         }
 
@@ -296,7 +296,7 @@ async function claimSubmissionPdfJobs(limit: number) {
                 ),
                 and(
                     eq(submission.pdfStatus, SubmissionPdfStatus.GENERATING),
-                    lte(submission.pdfLastAttemptAt, staleGeneratingCutoff)
+                    or(isNull(submission.pdfLastAttemptAt), lte(submission.pdfLastAttemptAt, staleGeneratingCutoff))
                 )
             )
         ))
@@ -462,7 +462,11 @@ async function processClaimedSubmissionPdfJob(job: ClaimedSubmissionPdfJob) {
             reportPdfPath: reportStoragePath,
         });
     } catch (error) {
-        await cleanupAbsoluteFiles([questionnaireTempPath, reportTempPath]);
+        try {
+            await cleanupAbsoluteFiles([questionnaireTempPath, reportTempPath]);
+        } catch (cleanupError) {
+            console.error(`Failed to clean up temp PDF files for #${job.submissionId}:`, cleanupError);
+        }
         const errorMessage = sanitizePdfError(error);
 
         await markSubmissionPdfFailed({
