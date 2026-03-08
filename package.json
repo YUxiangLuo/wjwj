@@ -25,7 +25,9 @@
     "db:seed": "bun run src/db/seeds/default.ts",
     "db:reset": "bun run db:clean && bun run db:push && bun run db:seed",
     "e2e:admin": "bun run scripts/e2e/admin-smoke.ts",
-    "e2e:admin:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/admin-smoke.ts"
+    "e2e:admin:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/admin-smoke.ts",
+    "e2e:teacher": "bun run scripts/e2e/teacher-smoke.ts",
+    "e2e:teacher:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/teacher-smoke.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
