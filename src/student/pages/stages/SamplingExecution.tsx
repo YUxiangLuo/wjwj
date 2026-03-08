@@ -261,7 +261,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         isSystematicRangeWithinAcceptedRange(systematicSampleCountRange, systematicAcceptedRange);
 
     const stratifiedTotal = layerSampleCounts.reduce((a, b) => a + b, 0);
-    const isStratifiedValid = layers.length > 0 && stratifiedTotal === n;
+    const layerOverflows = layers.map((l, i) => (layerSampleCounts[i] ?? 0) > l.count);
+    const hasLayerOverflow = layerOverflows.some(Boolean);
+    const isStratifiedValid = layers.length > 0 && stratifiedTotal === n && !hasLayerOverflow;
 
     const allCompleted = simpleResult?.completed && systematicResult?.completed && stratifiedResult?.completed;
 
@@ -273,17 +275,23 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     // Allocation helpers
     const normalizeCountsToTarget = (counts: number[]) => {
-        const normalized = counts.map((count) => Math.max(0, Math.round(count)));
+        const caps = layers.map((l) => l.count);
+        const normalized = counts.map((count, i) => Math.max(0, Math.min(Math.round(count), caps[i] ?? Infinity)));
         if (normalized.length === 0) return normalized;
 
         let total = normalized.reduce((sum, count) => sum + count, 0);
         let cursor = 0;
-        while (total < n) {
+        let safetyLimit = normalized.length * 2;
+        while (total < n && safetyLimit > 0) {
             const idx = cursor % normalized.length;
             const current = normalized[idx] ?? 0;
-            normalized[idx] = current + 1;
-            total += 1;
+            const cap = caps[idx] ?? Infinity;
+            if (current < cap) {
+                normalized[idx] = current + 1;
+                total += 1;
+            }
             cursor += 1;
+            safetyLimit -= 1;
         }
 
         cursor = 0;
@@ -671,7 +679,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                                 value={layerSampleCounts[index] ?? 0}
                                                                 onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
                                                                 data-testid={`student-sampling-layer-count-${index + 1}`}
-                                                                className="w-20 h-8 bg-slate-900 border-slate-700 text-slate-200 text-center"
+                                                                className={`w-20 h-8 bg-slate-900 text-slate-200 text-center ${layerOverflows[index] ? "border-rose-500" : "border-slate-700"}`}
                                                                 min={0}
                                                             />
                                                         </TableCell>
@@ -701,7 +709,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     {!isStratifiedValid && layers.length > 0 && (
                                         <div className="p-3 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-xs flex items-center gap-2">
                                             <Target className="w-4 h-4 shrink-0" />
-                                            各层样本数之和必须等于目标样本量 {n}（当前：{stratifiedTotal}）
+                                            {hasLayerOverflow
+                                                ? `部分层的样本数超过了该层总体人数，请调整`
+                                                : `各层样本数之和必须等于目标样本量 ${n}（当前：${stratifiedTotal}）`}
                                         </div>
                                     )}
 
