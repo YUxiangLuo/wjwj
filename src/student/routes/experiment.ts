@@ -45,9 +45,18 @@ const experimentRoutes: RouteDefinition = {
         const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
         if (taskAccessError) return taskAccessError;
 
+        const [existingExperiment] = await db
+            .select()
+            .from(experiment)
+            .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
+
         const taskSchedule = await findStudentTaskSchedule(taskId, currentStudent.classId);
         const openError = ensureTaskIsOpen(taskSchedule?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
+
+        if (hasTaskDeadlinePassed(taskSchedule?.deadline) && !existingExperiment) {
+            return error("任务已截止", "TASK_DEADLINE");
+        }
 
         const taskInfo = await findStudentTaskTopicInfo(taskId, currentStudent.classId);
 
@@ -55,7 +64,7 @@ const experimentRoutes: RouteDefinition = {
             return error("任务不存在", "NOT_FOUND", 404);
         }
 
-        const exp = await getOrCreateStudentExperiment(currentStudent.id, taskId);
+        const exp = existingExperiment ?? await getOrCreateStudentExperiment(currentStudent.id, taskId);
 
         if (!exp) {
             return error("创建实验记录失败", "CREATE_FAILED", 500);

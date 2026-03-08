@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RichTextContent } from "@/components/RichTextContent";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -82,6 +83,15 @@ function getDeadlineLabel(deadline: string | null) {
     const dayMs = 24 * 60 * 60 * 1000;
     const days = Math.ceil(remainingMs / dayMs);
     return days <= 1 ? "即将截止" : `剩余 ${days} 天`;
+}
+
+function getOpeningLabel(publishedAt: string) {
+    const t = new Date(publishedAt);
+    if (Number.isNaN(t.getTime())) return "未知";
+    const ms = t.getTime() - Date.now();
+    if (ms <= 0) return "已开放";
+    const days = Math.ceil(ms / 86400000);
+    return days <= 1 ? "即将开放" : `${days} 天后开放`;
 }
 
 function getFileIcon(type: string) {
@@ -169,7 +179,24 @@ export function TopicDetails() {
     const deadlinePassed = isDeadlinePassed(task.deadline);
     const openAt = new Date(task.publishedAt);
     const notOpenYet = !Number.isNaN(openAt.getTime()) && openAt.getTime() > Date.now();
-    const canStartExperiment = ["not_started", "in_progress", "rejected"].includes(task.status) && !deadlinePassed && !notOpenYet;
+    const isActiveStatus = ["not_started", "in_progress", "rejected"].includes(task.status);
+    const canStartExperiment = isActiveStatus && !deadlinePassed && !notOpenYet;
+    const effectiveStatus = deadlinePassed && isActiveStatus
+        ? { label: "已截止", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" }
+        : notOpenYet && isActiveStatus
+            ? { label: "未开放", color: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" }
+            : status;
+    const effectiveStatusDotClass = deadlinePassed && isActiveStatus
+        ? "bg-slate-500"
+        : notOpenYet && isActiveStatus
+            ? "bg-cyan-400"
+            : task.status === "in_progress"
+                ? "bg-indigo-500 animate-pulse"
+                : task.status === "not_started"
+                    ? "bg-slate-500"
+                    : task.status === "rejected"
+                        ? "bg-rose-500"
+                        : "bg-emerald-500";
 
     const getActionButton = () => {
         switch (task.status) {
@@ -229,7 +256,7 @@ export function TopicDetails() {
                         {task.deadline && <span>截止于 {formatDateTime(task.deadline)}</span>}
                     </div>
                 </div>
-                <Badge variant="outline" className={`${status.color} px-3 py-1 text-sm h-8`}>{status.label}</Badge>
+                <Badge variant="outline" className={`${effectiveStatus.color} px-3 py-1 text-sm h-8`}>{effectiveStatus.label}</Badge>
             </div>
 
             <Card className="rounded-3xl border-slate-800 bg-gradient-to-r from-indigo-900/20 via-slate-900/40 to-slate-900/20 shadow-lg">
@@ -244,9 +271,17 @@ export function TopicDetails() {
                             <p className="text-sm text-slate-400">按步骤推进，及时提交，体验完整的数据分析流程。</p>
                         </div>
                         <div className="rounded-2xl bg-slate-900/80 border border-slate-800 px-6 py-4 shadow-sm backdrop-blur-sm min-w-[200px]">
-                            <div className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wider">截止状态</div>
-                            <div className="text-2xl font-bold text-slate-200">{getDeadlineLabel(task.deadline)}</div>
-                            <div className="text-xs text-slate-500 mt-1 font-mono">{task.deadline ? formatDateTime(task.deadline) : "未设置截止时间"}</div>
+                            <div className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wider">
+                                {notOpenYet ? "开放状态" : "截止状态"}
+                            </div>
+                            <div className="text-2xl font-bold text-slate-200">
+                                {notOpenYet ? getOpeningLabel(task.publishedAt) : getDeadlineLabel(task.deadline)}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1 font-mono">
+                                {notOpenYet
+                                    ? `开放于 ${formatDateTime(task.publishedAt)}`
+                                    : task.deadline ? formatDateTime(task.deadline) : "未设置截止时间"}
+                            </div>
                         </div>
                     </div>
                 </CardContent>
@@ -262,9 +297,11 @@ export function TopicDetails() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6">
-                            <div className="prose prose-sm prose-invert max-w-none text-slate-300">
-                                <div className="whitespace-pre-line leading-relaxed">{task.description}</div>
-                            </div>
+                            <RichTextContent
+                                html={task.description ?? ""}
+                                className="prose prose-sm prose-invert max-w-none text-slate-300 leading-relaxed"
+                                emptyFallback="暂无描述"
+                            />
                         </CardContent>
                     </Card>
 
@@ -364,8 +401,8 @@ export function TopicDetails() {
                             <div className="space-y-1">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider font-medium">任务状态</div>
                                 <div className="flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-full ${task.status === 'in_progress' ? 'bg-indigo-500 animate-pulse' : task.status === 'not_started' ? 'bg-slate-500' : 'bg-emerald-500'}`}></span>
-                                    <span className="text-sm font-medium text-slate-200">{status.label}</span>
+                                    <span className={`w-2 h-2 rounded-full ${effectiveStatusDotClass}`}></span>
+                                    <span className="text-sm font-medium text-slate-200">{effectiveStatus.label}</span>
                                 </div>
                             </div>
                             <div className="w-full h-px bg-slate-800" />

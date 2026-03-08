@@ -130,12 +130,6 @@ export function Profile() {
                                     {currentUser?.className ?? "-"}
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-slate-400">班级编号</Label>
-                                <div className="px-3 py-2 rounded-md bg-slate-800/50 border border-slate-700/50 text-slate-200 font-mono">
-                                    {currentUser?.classId?.toString() ?? "-"}
-                                </div>
-                            </div>
                         </div>
 
                         <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start gap-3">

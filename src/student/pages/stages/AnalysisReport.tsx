@@ -101,6 +101,11 @@ function calculateStdError(rows: SampleRow[], field: string) {
     return stdDev / Math.sqrt(values.length);
 }
 
+const EXCLUDED_ID_FIELDS = new Set(["id", "_id", "序号", "编号"]);
+function isExcludedIdField(field: string) {
+    return EXCLUDED_ID_FIELDS.has(field.toLowerCase().trim());
+}
+
 function collectNumericFields(rows: SampleRow[]) {
     const fieldStats = new Map<string, { numericCount: number; totalCount: number }>();
 
@@ -119,7 +124,7 @@ function collectNumericFields(rows: SampleRow[]) {
     }
 
     return Array.from(fieldStats.entries())
-        .filter(([, stat]) => stat.totalCount > 0 && stat.numericCount / stat.totalCount >= 0.8 && stat.numericCount >= 2)
+        .filter(([field, stat]) => stat.totalCount > 0 && stat.numericCount / stat.totalCount >= 0.8 && stat.numericCount >= 2 && !isExcludedIdField(field))
         .map(([field]) => field)
         .sort();
 }
@@ -140,7 +145,7 @@ function collectCategoricalFields(
         }
     }
 
-    return Array.from(fields).sort();
+    return Array.from(fields).filter(f => !isExcludedIdField(f)).sort();
 }
 
 function buildDistributionRows(

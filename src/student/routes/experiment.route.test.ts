@@ -100,8 +100,6 @@ test("experiment get parses serialized questionnaire, sample plan, and sampling 
     const { module } = await loadExperimentRoutes({
         select: [
             [{ id: 40 }],
-            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
-            [{ id: 40, topicId: 12 }],
             [{
                 id: 88,
                 studentId: 11,
@@ -114,6 +112,8 @@ test("experiment get parses serialized questionnaire, sample plan, and sampling 
                 reportContent: "报告内容",
                 lastSavedAt: new Date("2026-03-05T08:00:00.000Z"),
             }],
+            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ id: 40, topicId: 12 }],
             [{ excelRowCount: 200 }],
         ],
     });
@@ -145,6 +145,7 @@ test("experiment get blocks unopened tasks before creating experiment records", 
     const { module, operations } = await loadExperimentRoutes({
         select: [
             [{ id: 40 }],
+            [],
             [{ openTime: new Date(Date.now() + 3600_000), deadline: new Date(Date.now() + 7200_000) }],
         ],
     });
@@ -164,6 +165,51 @@ test("experiment get blocks unopened tasks before creating experiment records", 
             code: "TASK_NOT_OPEN",
             message: "任务尚未开放",
         },
+    });
+    expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
+});
+
+test("experiment get allows reading existing experiment data after deadline without creating a new record", async () => {
+    const questionnaire = buildValidQuestionnaire();
+
+    const { module, operations } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
+                currentStage: 2,
+                status: 0,
+                questionnaire: JSON.stringify(questionnaire),
+                samplePlan: null,
+                samplingResults: null,
+                reportContent: "已保存的截止后内容",
+                lastSavedAt: new Date("2026-03-05T08:00:00.000Z"),
+            }],
+            [{ openTime: null, deadline: new Date(Date.now() - 3600_000) }],
+            [{ id: 40, topicId: 12 }],
+            [{ excelRowCount: 200 }],
+        ],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "GET"
+    ), "40");
+
+    const response = await module.experimentRoutes.GET!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.data).toMatchObject({
+        id: 88,
+        taskId: 40,
+        currentStage: 2,
+        questionnaire,
+        reportContent: "已保存的截止后内容",
+        populationSize: 200,
     });
     expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
 });

@@ -10,12 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
+import { getRichTextPlainText } from "@/utils/rich-text";
 import { tasksApi, announcementsApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
 
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
+const ACTIVE_TASK_STATUSES: TaskStatus[] = ["not_started", "in_progress", "rejected"];
 
 const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     not_started: { label: "未开始", color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
@@ -63,6 +65,16 @@ function isDeadlinePassed(deadline: string | null) {
     const remaining = getRemainingMs(deadline);
     if (remaining === null) return false;
     return remaining <= 0;
+}
+
+export function isTaskActionable(task: Pick<StudentTask, "status" | "deadline" | "publishedAt">) {
+    return ACTIVE_TASK_STATUSES.includes(task.status)
+        && !isDeadlinePassed(task.deadline)
+        && !isTaskNotOpenYet(task.publishedAt);
+}
+
+export function getNextActionableTask(tasks: StudentTask[]) {
+    return tasks.find(isTaskActionable) ?? null;
 }
 
 function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | null; status: TaskStatus; notOpenYet: boolean }) {
@@ -137,7 +149,7 @@ function TaskCard({ task }: TaskCardProps) {
     };
 
     const action = getActionButton();
-    const disabled = (deadlinePassed || notOpenYet) && ["not_started", "in_progress", "rejected"].includes(task.status);
+    const disabled = !isTaskActionable(task) && ACTIVE_TASK_STATUSES.includes(task.status);
     const showHistory = ["submitted", "grading", "graded", "rejected"].includes(task.status);
 
     return (
@@ -148,7 +160,7 @@ function TaskCard({ task }: TaskCardProps) {
                     <Badge variant="outline" className={`${status.color} border whitespace-nowrap`}>{status.label}</Badge>
                 </div>
                 <CardDescription className="line-clamp-2 text-slate-400">
-                    {task.description}
+                    {task.description ? getRichTextPlainText(task.description) : null}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -291,7 +303,7 @@ export function TaskHall() {
     const filteredTasks = tasks.filter(task => {
         if (filter === "all") return true;
         if (filter === "in_progress") {
-            return ["not_started", "in_progress", "rejected"].includes(task.status);
+            return isTaskActionable(task);
         }
         if (filter === "submitted") return ["submitted", "grading"].includes(task.status);
         if (filter === "graded") return task.status === "graded";
@@ -299,14 +311,12 @@ export function TaskHall() {
     });
 
     // Calculate stats
-    const inProgressCount = tasks.filter(t =>
-        ["not_started", "in_progress", "rejected"].includes(t.status)
-    ).length;
+    const inProgressCount = tasks.filter(isTaskActionable).length;
     const gradedCount = tasks.filter(t => t.status === "graded").length;
     const averageScore = tasks
         .filter(t => t.status === "graded" && t.score !== undefined)
         .reduce((acc, t, _, arr) => acc + (t.score || 0) / arr.length, 0);
-    const nextTask = tasks.find(t => ["not_started", "in_progress", "rejected"].includes(t.status)) ?? tasks[0];
+    const nextTask = getNextActionableTask(tasks);
 
     if (loading) {
         return (
