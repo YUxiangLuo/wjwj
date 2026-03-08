@@ -492,7 +492,7 @@ export function SystemSettings() {
                                         <Button variant="outline" onClick={() => {
                                             passwordChange.clearError();
                                             setShowPasswordModal(true);
-                                        }} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800 w-full sm:w-auto">
+                                        }} data-testid="settings-change-password-open" className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800 w-full sm:w-auto">
                                             <Lock className="w-4 h-4 mr-2" />
                                             修改管理员密码
                                         </Button>
@@ -663,6 +663,12 @@ export function SystemSettings() {
                 saving={passwordChange.saving}
                 onSubmit={passwordChange.submit}
                 submitLabel="确认修改"
+                submitTestId="settings-change-password-submit"
+                fieldTestIds={{
+                    currentPassword: "settings-change-password-current",
+                    newPassword: "settings-change-password-new",
+                    confirmPassword: "settings-change-password-confirm",
+                }}
             />
 
             <Dialog open={showRestoreModal} onOpenChange={setShowRestoreModal}>
@@ -683,7 +689,7 @@ export function SystemSettings() {
                                 value={restoreForm.backupId}
                                 onValueChange={(value) => setRestoreForm({ ...restoreForm, backupId: value })}
                             >
-                                <SelectTrigger id="restoreBackupId" className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger id="restoreBackupId" data-testid="settings-backup-restore-select" className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder={backupListLoading ? "加载中..." : "请选择备份"} />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -711,6 +717,7 @@ export function SystemSettings() {
                             <Label htmlFor="restorePassword" className="text-slate-300">管理员密码</Label>
                             <Input
                                 id="restorePassword"
+                                data-testid="settings-backup-restore-password"
                                 type="password"
                                 value={restoreForm.password}
                                 onChange={(e) => setRestoreForm({ ...restoreForm, password: e.target.value })}
@@ -723,6 +730,7 @@ export function SystemSettings() {
                             <Label htmlFor="restoreConfirmPassword" className="text-slate-300">确认管理员密码</Label>
                             <Input
                                 id="restoreConfirmPassword"
+                                data-testid="settings-backup-restore-confirm-password"
                                 type="password"
                                 value={restoreForm.confirmPassword}
                                 onChange={(e) => setRestoreForm({ ...restoreForm, confirmPassword: e.target.value })}
@@ -737,7 +745,7 @@ export function SystemSettings() {
                         <Button variant="ghost" onClick={() => setShowRestoreModal(false)} disabled={restoreLoading} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
                             取消
                         </Button>
-                        <Button onClick={handleConfirmRestore} disabled={restoreLoading} className="bg-rose-600 hover:bg-rose-700 text-white">
+                        <Button data-testid="settings-backup-restore-submit" onClick={handleConfirmRestore} disabled={restoreLoading} className="bg-rose-600 hover:bg-rose-700 text-white">
                             {restoreLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                             确认恢复
                         </Button>

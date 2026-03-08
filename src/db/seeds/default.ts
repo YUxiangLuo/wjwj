@@ -1188,6 +1188,10 @@ async function seed() {
     console.log("🔔 通知…");
 
     const notifDefs = [
+        // 管理员通知
+        { rt: USER.admin, rid: 1, type: "SYSTEM_ALERT", title: "系统运行状态正常", content: "今日凌晨自动巡检已完成，系统核心服务运行正常。", isRead: 0 },
+        { rt: USER.admin, rid: 1, type: "BACKUP_CREATED", title: "备份已完成", content: "例行备份 backup_daily_demo 已生成，可在系统设置中查看。", isRead: 0 },
+        { rt: USER.admin, rid: 1, type: "SETTINGS_UPDATED", title: "系统设置已更新", content: "最近一次系统设置变更已成功保存。", isRead: 1 },
         // 学生通知
         { rt: USER.student, rid: studentIds[0]!, type: "TASK_ASSIGNED", title: "新任务发布", content: "您有一个新的实验任务：消费者行为分析实验，请及时完成。", isRead: 0 },
         { rt: USER.student, rid: studentIds[0]!, type: "TASK_ASSIGNED", title: "新任务发布", content: "您有一个新的实验任务：市场调研基础方法，截止日期临近，请抓紧。", isRead: 0 },

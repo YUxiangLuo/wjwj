@@ -155,6 +155,39 @@ test("student login returns a readable lockout duration when account is already 
     });
 });
 
+test("deleted student login returns account disabled after password verification", async () => {
+    const password = "Student@2026";
+    const hashed = await Bun.password.hash(password);
+    const { module, operations } = await loadStudentAuthModule({
+        select: [[{
+            id: 11,
+            studentId: "20230001",
+            name: "Alice",
+            classId: 7,
+            status: 1,
+            isFirstLogin: 0,
+            deletedAt: new Date("2026-03-08T00:00:00.000Z"),
+            password: hashed,
+            loginFailCount: 0,
+            lockedUntil: null,
+        }]],
+    });
+
+    const response = await module.loginRoutes.POST!(createJsonRequest(
+        "https://example.com/api/student/login",
+        "POST",
+        { studentId: "20230001", password }
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(403);
+    expect(payload.error).toMatchObject({
+        code: "ACCOUNT_DISABLED",
+        message: "账号已被停用，请联系教师",
+    });
+    expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
+});
+
 test("student me route returns profile and extends session expiry", async () => {
     const now = Date.now();
     const { module, operations } = await loadStudentAuthModule({

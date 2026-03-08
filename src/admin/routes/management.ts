@@ -113,6 +113,7 @@ const semesterRoutes: RouteDefinition = {
     async POST(req) {
         const body = await parseBody<{ name: string; setAsCurrent?: boolean }>(req);
         if (!body.name?.trim()) return error("学期名称不能为空", "VALIDATION_ERROR");
+        if (body.name.trim().length > 20) return error("学期名称不能超过20个字符", "VALIDATION_ERROR");
 
         const [existing] = await db.select().from(semester).where(eq(semester.name, body.name.trim()));
         if (existing) return error("学期名称已存在", "DUPLICATE_NAME");
@@ -501,7 +502,7 @@ const classUpdateRoutes = {
         if (!c) return error("班级不存在", "NOT_FOUND", 404);
 
         await db.transaction(async (tx) => {
-            await tx.update(student).set({ deletedAt: new Date() }).where(eq(student.classId, id));
+            await tx.update(student).set({ deletedAt: new Date(), status: 0 }).where(eq(student.classId, id));
             await tx.delete(class_).where(eq(class_.id, id));
         });
         return json({ success: true });

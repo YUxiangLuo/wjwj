@@ -439,7 +439,7 @@ export function AnnouncementManagement() {
                         <div className="space-y-2">
                             <Label className="text-slate-300">发布范围</Label>
                             <Select value={newAnnouncement.targetScope} onValueChange={(v) => setNewAnnouncement({ ...newAnnouncement, targetScope: v })}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger data-testid="announcement-create-target-scope" className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder="选择发布范围" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">

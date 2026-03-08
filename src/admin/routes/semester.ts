@@ -19,6 +19,10 @@ const semesterUpdateRoutes: RouteDefinition = {
             return error("学期名称不能为空", "VALIDATION_ERROR");
         }
 
+        if (name.length > 20) {
+            return error("学期名称不能超过20个字符", "VALIDATION_ERROR");
+        }
+
         const [existing] = await db
             .select()
             .from(semester)

@@ -283,7 +283,7 @@ export function ClassManagement() {
                             className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 sm:w-64 focus:border-indigo-500/50"
                         />
                         <Select value={filterSemester} onValueChange={setFilterSemester}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
+                            <SelectTrigger data-testid="class-filter-semester" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -294,7 +294,7 @@ export function ClassManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
+                            <SelectTrigger data-testid="class-filter-teacher" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
                             <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -325,7 +325,7 @@ export function ClassManagement() {
                             </TableHeader>
                             <TableBody>
                                 {filteredClasses.map((cls) => (
-                                    <TableRow key={cls.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                    <TableRow key={cls.id} data-testid={`class-row-${cls.id}`} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                         <TableCell className="font-medium text-slate-200">{cls.name}</TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
@@ -408,7 +408,7 @@ export function ClassManagement() {
                         <div className="space-y-2">
                             <Label className="text-slate-300">所属学期</Label>
                             <Select value={newClass.semesterId} onValueChange={(v) => setNewClass({ ...newClass, semesterId: v })}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger data-testid="class-create-semester" className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder="选择学期" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -421,7 +421,7 @@ export function ClassManagement() {
                         <div className="space-y-2">
                             <Label className="text-slate-300">授课教师</Label>
                             <Select value={newClass.teacherId} onValueChange={(v) => setNewClass({ ...newClass, teacherId: v })}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger data-testid="class-create-teacher" className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -476,7 +476,7 @@ export function ClassManagement() {
                         <div className="space-y-2">
                             <Label className="text-slate-300">授课教师</Label>
                             <Select value={editForm.teacherId} onValueChange={(v) => setEditForm({ ...editForm, teacherId: v })}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger data-testid="class-edit-teacher" className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">

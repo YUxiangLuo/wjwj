@@ -122,7 +122,7 @@ const loginRoutes: RouteDefinition = {
             );
         }
 
-        if (s.status !== 1) {
+        if (s.deletedAt || s.status !== 1) {
             return error("账号已被停用，请联系教师", "ACCOUNT_DISABLED", 403);
         }
 

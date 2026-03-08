@@ -325,12 +325,13 @@ export function TeacherManagement() {
                             </TableHeader>
                             <TableBody>
                                 {teachers.map((teacher) => (
-                                    <TableRow key={teacher.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                    <TableRow key={teacher.id} data-testid={`teacher-row-${teacher.employeeId}`} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                         <TableCell className="font-mono text-indigo-300">{teacher.employeeId}</TableCell>
                                         <TableCell className="font-medium text-slate-200">{teacher.name}</TableCell>
                                         <TableCell>{getStatusBadge(teacher)}</TableCell>
                                         <TableCell className="text-slate-300">
                                             <button
+                                                data-testid={`teacher-view-classes-${teacher.employeeId}`}
                                                 onClick={() => handleViewClasses(teacher)}
                                                 className="flex items-center gap-1 hover:text-indigo-500 transition-colors cursor-pointer"
                                                 title="查看关联班级"
@@ -345,23 +346,23 @@ export function TeacherManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {teacher.isLocked && (
-                                                    <Button variant="ghost" size="sm" onClick={() => handleUnlock(teacher)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
+                                                    <Button data-testid={`teacher-unlock-${teacher.employeeId}`} variant="ghost" size="sm" onClick={() => handleUnlock(teacher)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
                                                         <Unlock className="w-3.5 h-3.5 mr-1" />
                                                         解锁
                                                     </Button>
                                                 )}
-                                                    <Button variant="ghost" size="sm" onClick={() => openEditModal(teacher)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
+                                                    <Button data-testid={`teacher-edit-open-${teacher.employeeId}`} variant="ghost" size="sm" onClick={() => openEditModal(teacher)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                         <Pencil className="w-3.5 h-3.5 mr-1" />
                                                         编辑
                                                     </Button>
-                                                    <Button data-testid={`teacher-reset-${teacher.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
+                                                    <Button data-testid={`teacher-reset-${teacher.employeeId}`} variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                         size="sm"
-                                                        data-testid={`teacher-toggle-status-${teacher.id}`}
+                                                        data-testid={`teacher-toggle-status-${teacher.employeeId}`}
                                                         onClick={() => handleToggleStatus(teacher)}
                                                     className={`h-8 ${teacher.status === 1 ? "text-rose-600 hover:text-rose-500 hover:bg-rose-500/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                                 >

@@ -414,6 +414,12 @@ export function AdminApp() {
                 saving={passwordChange.saving}
                 onSubmit={passwordChange.submit}
                 submitLabel="保存新密码"
+                submitTestId="admin-first-login-password-submit"
+                fieldTestIds={{
+                    currentPassword: "admin-first-login-current-password",
+                    newPassword: "admin-first-login-new-password",
+                    confirmPassword: "admin-first-login-confirm-password",
+                }}
             />
 
             <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
@@ -455,7 +461,14 @@ export function AdminApp() {
                     </DialogHeader>
                     <div className="flex justify-between items-center my-2">
                         <span className="text-sm text-slate-400">未读 {unreadCount} 条</span>
-                        <Button variant="ghost" size="sm" onClick={() => { void handleMarkAllRead(); }} disabled={unreadCount === 0} className="text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10">
+                        <Button
+                            data-testid="admin-notifications-mark-all-read"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { void handleMarkAllRead(); }}
+                            disabled={unreadCount === 0}
+                            className="text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
+                        >
                             全部已读
                         </Button>
                     </div>
@@ -469,6 +482,7 @@ export function AdminApp() {
                                 <button
                                     key={item.id}
                                     type="button"
+                                    data-testid={`admin-notification-item-${item.id}`}
                                     onClick={() => item.isRead ? null : void handleMarkNotificationRead(item.id)}
                                     className={`w-full text-left p-4 rounded-lg border transition-all duration-200 hover:border-slate-700 ${item.isRead ? "bg-slate-950/50 border-transparent opacity-70" : "bg-slate-800/50 border-slate-700/50 shadow-sm"
                                         }`}

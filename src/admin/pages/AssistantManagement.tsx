@@ -331,7 +331,7 @@ export function AssistantManagement() {
                             </TableHeader>
                             <TableBody>
                                 {filteredAssistants.map((assistant) => (
-                                    <TableRow key={assistant.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                    <TableRow key={assistant.id} data-testid={`assistant-row-${assistant.account}`} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                         <TableCell className="font-mono text-indigo-300">{assistant.account}</TableCell>
                                         <TableCell className="font-medium text-slate-200">{assistant.name}</TableCell>
                                         <TableCell className="text-slate-300">{assistant.teacherName}</TableCell>
@@ -350,19 +350,19 @@ export function AssistantManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {assistant.isLocked && (
-                                                    <Button data-testid={`assistant-unlock-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleUnlock(assistant)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
+                                                    <Button data-testid={`assistant-unlock-${assistant.account}`} variant="ghost" size="sm" onClick={() => handleUnlock(assistant)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
                                                         <Unlock className="w-3.5 h-3.5 mr-1" />
                                                         解锁
                                                     </Button>
                                                 )}
-                                                <Button data-testid={`assistant-reset-${assistant.id}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
+                                                <Button data-testid={`assistant-reset-${assistant.account}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    data-testid={`assistant-toggle-status-${assistant.id}`}
+                                                    data-testid={`assistant-toggle-status-${assistant.account}`}
                                                     onClick={() => handleToggleStatus(assistant)}
                                                     className={`h-8 ${assistant.status === 1 ? "text-rose-600 hover:text-rose-500 hover:bg-rose-500/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                                 >
@@ -371,7 +371,7 @@ export function AssistantManagement() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    data-testid={`assistant-delete-${assistant.id}`}
+                                                    data-testid={`assistant-delete-${assistant.account}`}
                                                     onClick={() => handleDelete(assistant)}
                                                     className="h-8 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
                                                 >
@@ -432,7 +432,7 @@ export function AssistantManagement() {
                         <div className="space-y-2">
                             <Label className="text-slate-300">所属教师</Label>
                             <Select value={newAssistant.teacherId} onValueChange={(v) => setNewAssistant({ ...newAssistant, teacherId: v })}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger data-testid="assistant-create-teacher" className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">

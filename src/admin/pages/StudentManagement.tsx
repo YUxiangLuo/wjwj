@@ -317,7 +317,7 @@ export function StudentManagement() {
                                 />
                             </div>
                             <Select value={filterClass} onValueChange={setFilterClass}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-44">
+                                <SelectTrigger data-testid="student-filter-class" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-44">
                                     <SelectValue placeholder="全部班级" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -328,7 +328,7 @@ export function StudentManagement() {
                                 </SelectContent>
                             </Select>
                             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
+                                <SelectTrigger data-testid="student-filter-status" className="bg-slate-950 border-slate-800 text-slate-200 sm:w-36">
                                     <SelectValue placeholder="状态筛选" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -359,7 +359,7 @@ export function StudentManagement() {
                                 </TableHeader>
                                 <TableBody>
                                     {filteredStudents.map((student) => (
-                                        <TableRow key={student.id} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
+                                        <TableRow key={student.id} data-testid={`student-row-${student.studentId}`} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
                                             <TableCell className="font-mono text-indigo-300">{student.studentId}</TableCell>
                                             <TableCell className="font-medium text-slate-200">{student.name}</TableCell>
                                             <TableCell className="text-slate-300">{student.className}</TableCell>
@@ -382,7 +382,7 @@ export function StudentManagement() {
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {student.isLocked && (
-                                                        <Button variant="ghost" size="sm" onClick={() => handleUnlock(student)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
+                                                        <Button data-testid={`student-unlock-${student.studentId}`} variant="ghost" size="sm" onClick={() => handleUnlock(student)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
                                                             <Unlock className="w-3.5 h-3.5 mr-1" />
                                                             解锁
                                                         </Button>
@@ -390,20 +390,21 @@ export function StudentManagement() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
+                                                        data-testid={`student-open-experiments-${student.studentId}`}
                                                         onClick={() => openExperimentsModal(student)}
                                                         className="h-8 text-slate-400 hover:text-blue-600 hover:bg-blue-500/10"
                                                     >
                                                         <Search className="w-3.5 h-3.5 mr-1" />
                                                         实验
                                                     </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => handleResetPassword(student)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
+                                                    <Button data-testid={`student-reset-${student.studentId}`} variant="ghost" size="sm" onClick={() => handleResetPassword(student)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                         <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                         重置
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        data-testid={`student-open-transfer-${student.id}`}
+                                                        data-testid={`student-open-transfer-${student.studentId}`}
                                                         onClick={() => openTransferModal(student)}
                                                         className="h-8 text-slate-400 hover:text-purple-600 hover:bg-purple-500/10"
                                                     >
@@ -413,7 +414,7 @@ export function StudentManagement() {
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        data-testid={`student-toggle-status-${student.id}`}
+                                                        data-testid={`student-toggle-status-${student.studentId}`}
                                                         onClick={() => handleToggleStatus(student)}
                                                         className={`h-8 ${student.status === 1 ? "text-rose-600 hover:text-rose-500 hover:bg-rose-500/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                                     >
@@ -454,7 +455,7 @@ export function StudentManagement() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-slate-300">目标班级</label>
                             <Select value={targetClassId} onValueChange={setTargetClassId}>
-                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger data-testid="student-transfer-target-class" className="bg-slate-950 border-slate-800 text-slate-200">
                                     <SelectValue placeholder="选择新班级" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
