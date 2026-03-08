@@ -10,6 +10,7 @@ import {
     teacherPasswordRoutes,
     withPrimaryTeacherAuth,
     withTeacherAuth,
+    withTeacherAuthAllowFirstLogin,
 } from "./routes/auth";
 import { gradeExportDataRoutes, gradeExportExcelRoutes, gradeExportPreviewRoutes } from "./routes/export";
 import { gradingDetailRoutes, gradingRoutes, teacherPdfDownloadRoutes } from "./routes/grading";
@@ -43,9 +44,9 @@ import {
 export const teacherApiRoutes = {
     // Auth
     "/api/teacher/login": teacherLoginRoutes,
-    "/api/teacher/me": withTeacherAuth(teacherMeRoutes),
+    "/api/teacher/me": withTeacherAuthAllowFirstLogin(teacherMeRoutes),
     "/api/teacher/logout": teacherLogoutRoutes,
-    "/api/teacher/password": withTeacherAuth(teacherPasswordRoutes),
+    "/api/teacher/password": withTeacherAuthAllowFirstLogin(teacherPasswordRoutes),
 
     "/api/teacher/dashboard": withPrimaryTeacherAuth(dashboardRoutes),
     "/api/teacher/classes": withPrimaryTeacherAuth(classRoutes),

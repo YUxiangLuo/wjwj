@@ -241,6 +241,84 @@ test("student me route returns profile and extends session expiry", async () => 
     });
 });
 
+test("student requireAuth blocks protected access before first password change", async () => {
+    const now = Date.now();
+    const { module } = await loadStudentAuthModule({
+        select: [
+            [{
+                id: 5,
+                sessionToken: "session-token",
+                userType: 4,
+                userId: 11,
+                expiresAt: new Date(now + 60_000),
+            }],
+            [{
+                id: 11,
+                studentId: "20230001",
+                name: "Alice",
+                classId: 7,
+                status: 1,
+                isFirstLogin: 1,
+            }],
+        ],
+    });
+
+    const result = await module.requireAuth(createJsonRequest(
+        "https://example.com/api/student/tasks",
+        "GET",
+        undefined,
+        { cookie: "student_session=session-token" }
+    ));
+
+    expect(result.student).toBeNull();
+    expect(result.error?.status).toBe(403);
+    expect(await result.error?.json()).toEqual({
+        success: false,
+        error: {
+            code: "PASSWORD_CHANGE_REQUIRED",
+            message: "首次登录请先修改密码",
+        },
+    });
+});
+
+test("student me route still allows first-login user bootstrap", async () => {
+    const now = Date.now();
+    const { module } = await loadStudentAuthModule({
+        select: [
+            [{
+                id: 5,
+                sessionToken: "session-token",
+                userType: 4,
+                userId: 11,
+                expiresAt: new Date(now + 60_000),
+            }],
+            [{
+                id: 11,
+                studentId: "20230001",
+                name: "Alice",
+                classId: 7,
+                status: 1,
+                isFirstLogin: 1,
+            }],
+            [{ className: "统计1班" }],
+        ],
+    });
+
+    const response = await module.meRoutes.GET!(createJsonRequest(
+        "https://example.com/api/student/me",
+        "GET",
+        undefined,
+        { cookie: "student_session=session-token" }
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toMatchObject({
+        studentId: "20230001",
+        isFirstLogin: 1,
+    });
+});
+
 test("student session route without token returns auth expired error", async () => {
     const { module } = await loadStudentAuthModule();
     const response = await module.sessionRoutes.GET!(createJsonRequest(

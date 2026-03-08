@@ -230,6 +230,50 @@ export function AdminApp() {
 
     if (authState !== "authed") return <Navigate to="/login" replace />;
 
+    if (adminUser?.isFirstLogin) {
+        return (
+            <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center px-6">
+                <div className="w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl shadow-slate-950/40">
+                    <div className="space-y-3 text-center">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-bold text-white shadow-lg shadow-indigo-500/20">
+                            A
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-100">首次登录需完成密码更新</h1>
+                        <p className="text-sm leading-6 text-slate-400">
+                            修改管理员密码前，系统设置、用户管理和通知功能暂不可访问。
+                        </p>
+                    </div>
+
+                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-400">
+                        当前账号：<span className="font-mono text-slate-200">{adminUser.username}</span>
+                    </div>
+                </div>
+
+                <PasswordChangeDialog
+                    open={showPasswordModal}
+                    onOpenChange={setShowPasswordModal}
+                    allowClose={false}
+                    title="首次登录请修改密码"
+                    description="为保证账号安全，请先修改管理员密码。"
+                    form={passwordChange.form}
+                    onFieldChange={passwordChange.setField}
+                    error={passwordChange.error}
+                    saving={passwordChange.saving}
+                    onSubmit={passwordChange.submit}
+                    submitLabel="保存新密码"
+                    submitTestId="admin-first-login-password-submit"
+                    fieldTestIds={{
+                        currentPassword: "admin-first-login-current-password",
+                        newPassword: "admin-first-login-new-password",
+                        confirmPassword: "admin-first-login-confirm-password",
+                    }}
+                />
+
+                <Toaster richColors position="top-right" theme={theme} />
+            </div>
+        );
+    }
+
     return (
         <div className="flex min-h-screen bg-slate-950 text-slate-200 font-sans antialiased">
             <Toaster richColors position="top-right" theme={theme} />

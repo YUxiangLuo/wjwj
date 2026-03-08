@@ -36,6 +36,10 @@ export interface AdminInfo {
     isFirstLogin: number;
 }
 
+interface AdminAuthOptions {
+    allowFirstLogin?: boolean;
+}
+
 interface AdminAuthSession {
     id: number;
     sessionToken: string;
@@ -78,9 +82,14 @@ export function getAdminUser(req: Request): AdminInfo {
     return auth.admin;
 }
 
-export async function requireAdminAuth(req: Request): Promise<AdminAuthResult> {
+export async function requireAdminAuth(req: Request, options?: AdminAuthOptions): Promise<AdminAuthResult> {
     const cached = readAdminAuthCache(req);
-    if (cached) return cached;
+    if (cached) {
+        if (cached.admin?.isFirstLogin === 1 && !options?.allowFirstLogin) {
+            return { admin: null, error: error("首次登录请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403) };
+        }
+        return cached;
+    }
 
     const auth = await (async () => {
         const currentSession = await loadActiveUserSession(
@@ -111,6 +120,9 @@ export async function requireAdminAuth(req: Request): Promise<AdminAuthResult> {
     })();
 
     writeAdminAuthCache(req, auth);
+    if (auth.admin?.isFirstLogin === 1 && !options?.allowFirstLogin) {
+        return { admin: null, error: error("首次登录请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403) };
+    }
     return auth;
 }
 
@@ -126,12 +138,33 @@ function wrapAdminRoute(handler?: RouteHandler): RouteHandler | undefined {
     };
 }
 
+function wrapAdminRouteAllowFirstLogin(handler?: RouteHandler): RouteHandler | undefined {
+    if (!handler) {
+        return undefined;
+    }
+
+    return async (req) => {
+        const auth = await requireAdminAuth(req, { allowFirstLogin: true });
+        if (auth.error) return auth.error;
+        return handler(req);
+    };
+}
+
 export function withAdminAuth(routes: RouteDefinition): RouteDefinition {
     return {
         GET: wrapAdminRoute(routes.GET),
         POST: wrapAdminRoute(routes.POST),
         PUT: wrapAdminRoute(routes.PUT),
         DELETE: wrapAdminRoute(routes.DELETE),
+    };
+}
+
+export function withAdminAuthAllowFirstLogin(routes: RouteDefinition): RouteDefinition {
+    return {
+        GET: wrapAdminRouteAllowFirstLogin(routes.GET),
+        POST: wrapAdminRouteAllowFirstLogin(routes.POST),
+        PUT: wrapAdminRouteAllowFirstLogin(routes.PUT),
+        DELETE: wrapAdminRouteAllowFirstLogin(routes.DELETE),
     };
 }
 

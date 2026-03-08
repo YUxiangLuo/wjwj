@@ -185,6 +185,54 @@ function StudentAppContent() {
         return <Navigate to="/login" replace />;
     }
 
+    if (currentUser.isFirstLogin) {
+        return (
+            <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center px-6">
+                <div className="w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl shadow-slate-950/40">
+                    <div className="space-y-3 text-center">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-bold text-white shadow-lg shadow-indigo-500/20">
+                            L
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-100">首次登录需完成密码更新</h1>
+                        <p className="text-sm leading-6 text-slate-400">
+                            为保护账号安全，修改密码前暂不开放任务、通知和实验操作。
+                        </p>
+                    </div>
+
+                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-400">
+                        当前账号：<span className="font-mono text-slate-200">{currentUser.studentId}</span>
+                    </div>
+                </div>
+
+                <PasswordChangeDialog
+                    open={showPasswordModal}
+                    onOpenChange={setShowPasswordModal}
+                    allowClose={false}
+                    title="首次登录请修改密码"
+                    description="为保证账号安全，请设置新密码。"
+                    form={passwordChange.form}
+                    onFieldChange={passwordChange.setField}
+                    error={passwordChange.error}
+                    saving={passwordChange.saving}
+                    onSubmit={passwordChange.submit}
+                    submitLabel="保存"
+                    submitTestId="student-password-save"
+                    fieldTestIds={{
+                        currentPassword: "student-password-current",
+                        newPassword: "student-password-new",
+                        confirmPassword: "student-password-confirm",
+                    }}
+                    showPolicyHints={true}
+                    policyMinLength={STUDENT_PASSWORD_POLICY.minLength}
+                    rules={passwordChange.rules}
+                    forbiddenHintLabel="学号"
+                />
+
+                <Toaster richColors position="top-right" theme={theme} />
+            </div>
+        );
+    }
+
     // 未登录时显示提示（实际应该跳转到登录页）
     const displayName = currentUser?.name ?? "访客";
     const displayInitial = displayName.charAt(0);

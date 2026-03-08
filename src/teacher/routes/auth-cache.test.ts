@@ -204,3 +204,115 @@ test("requireTeacherAuth clears disabled assistant sessions", async () => {
     });
     expect(operations.find((operation) => operation.kind === "delete" && operation.table === userSession)).toBeDefined();
 });
+
+test("requireTeacherAuth blocks teacher protected access before first password change", async () => {
+    const { module } = await loadTeacherAuthModule({
+        select: [
+            [{
+                id: 5,
+                sessionToken: "teacher-session",
+                userType: 2,
+                userId: 11,
+                expiresAt: new Date(Date.now() + 60_000),
+            }],
+            [{
+                id: 11,
+                employeeId: "T001",
+                name: "教师甲",
+                isFirstLogin: 1,
+                status: 1,
+            }],
+        ],
+        config: {
+            "session.teacher_timeout_minutes": 120,
+        },
+    });
+
+    const request = new Request("https://example.com/api/teacher/topics", {
+        headers: { cookie: "teacher_session=teacher-session" },
+    });
+    const auth = await module.requireTeacherAuth(request);
+    const payload = await auth.error?.json() as any;
+
+    expect(auth.user).toBeNull();
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "PASSWORD_CHANGE_REQUIRED",
+            message: "首次登录请先修改密码",
+        },
+    });
+});
+
+test("requireTeacherAuth allows first-login bootstrap when explicitly requested", async () => {
+    const { module } = await loadTeacherAuthModule({
+        select: [
+            [{
+                id: 5,
+                sessionToken: "teacher-session",
+                userType: 2,
+                userId: 11,
+                expiresAt: new Date(Date.now() + 60_000),
+            }],
+            [{
+                id: 11,
+                employeeId: "T001",
+                name: "教师甲",
+                isFirstLogin: 1,
+                status: 1,
+            }],
+        ],
+        config: {
+            "session.teacher_timeout_minutes": 120,
+        },
+    });
+
+    const request = new Request("https://example.com/api/teacher/me", {
+        headers: { cookie: "teacher_session=teacher-session" },
+    });
+    const auth = await module.requireTeacherAuth(request, { allowFirstLogin: true });
+
+    expect(auth.error).toBeNull();
+    expect(auth.user).toMatchObject({ employeeId: "T001", isFirstLogin: 1, type: "teacher" });
+});
+
+test("requireTeacherAuth blocks assistant protected access before first password change", async () => {
+    const { module } = await loadTeacherAuthModule({
+        select: [
+            [],
+            [{
+                id: 6,
+                sessionToken: "assistant-session",
+                userType: 3,
+                userId: 21,
+                expiresAt: new Date(Date.now() + 60_000),
+            }],
+            [{
+                id: 21,
+                account: "A001",
+                name: "助教甲",
+                isFirstLogin: 1,
+                creatorTeacherId: 11,
+                status: 1,
+            }],
+        ],
+        config: {
+            "session.teacher_timeout_minutes": 120,
+        },
+    });
+
+    const request = new Request("https://example.com/api/teacher/grading", {
+        headers: { cookie: "teacher_session=assistant-session" },
+    });
+    const auth = await module.requireTeacherAuth(request);
+    const payload = await auth.error?.json() as any;
+
+    expect(auth.user).toBeNull();
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "PASSWORD_CHANGE_REQUIRED",
+            message: "首次登录请先修改密码",
+        },
+    });
+});

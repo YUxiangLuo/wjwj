@@ -13,6 +13,10 @@ function isLockActive(lockedAt: Date | null, lockTimeoutMinutes: number) {
     return Date.now() < expiresAt;
 }
 
+function getVisibleRejectReason(status: string, rejectReason: string | null | undefined) {
+    return status === "rejected" ? (rejectReason ?? undefined) : undefined;
+}
+
 async function isTopicDeletedForTask(taskId: number, classId: number) {
     const [deletedRow] = await db
         .select({ id: task.id })
@@ -137,7 +141,7 @@ const tasksRoutes: RouteDefinition = {
                 progress,
                 currentStage: exp?.currentStage ?? 0,
                 score: sub?.totalScore === null || sub?.totalScore === undefined ? undefined : Number(sub.totalScore),
-                rejectReason: sub?.rejectReason ?? undefined,
+                rejectReason: getVisibleRejectReason(status, sub?.rejectReason),
             };
         });
 
@@ -261,7 +265,7 @@ const taskDetailRoutes: RouteDefinition = {
             score: submissionInfo?.totalScore === null || submissionInfo?.totalScore === undefined
                 ? undefined
                 : Number(submissionInfo.totalScore),
-            rejectReason: submissionInfo?.rejectReason ?? undefined,
+            rejectReason: getVisibleRejectReason(status, submissionInfo?.rejectReason),
         });
     },
 };

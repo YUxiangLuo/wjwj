@@ -300,6 +300,46 @@ export function TeacherApp() {
         return <Navigate to="/login" replace />;
     }
 
+    if (teacherUser?.isFirstLogin) {
+        const accountLabel = teacherUser.type === "assistant" ? teacherUser.account : teacherUser.employeeId;
+        return (
+            <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center px-6">
+                <div className="w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl shadow-slate-950/40">
+                    <div className="space-y-3 text-center">
+                        <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-lg ${teacherUser.type === "assistant" ? "bg-purple-600 shadow-purple-500/20" : "bg-indigo-600 shadow-indigo-500/20"}`}>
+                            {teacherUser.type === "assistant" ? "助" : "师"}
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-100">首次登录需完成密码更新</h1>
+                        <p className="text-sm leading-6 text-slate-400">
+                            为保护账号安全，修改密码前暂不开放课程、批改、通知和导出操作。
+                        </p>
+                    </div>
+
+                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-400">
+                        当前账号：<span className="font-mono text-slate-200">{accountLabel ?? teacherUser.name}</span>
+                    </div>
+                </div>
+
+                <PasswordChangeDialog
+                    open={showPasswordModal}
+                    onOpenChange={setShowPasswordModal}
+                    allowClose={false}
+                    title="首次登录请修改密码"
+                    description="为保证账号安全，请设置新密码。"
+                    form={passwordChange.form}
+                    onFieldChange={passwordChange.setField}
+                    error={passwordChange.error}
+                    saving={passwordChange.saving}
+                    onSubmit={passwordChange.submit}
+                    submitLabel="保存"
+                    submitTestId="teacher-password-submit"
+                />
+
+                <Toaster richColors position="top-right" theme={theme} />
+            </div>
+        );
+    }
+
     return (
         <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden">
             <Toaster richColors position="top-right" theme={theme} />

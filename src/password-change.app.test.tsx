@@ -9,7 +9,7 @@ const inputChangeHandlers = new Map<string, React.ComponentProps<"input">["onCha
 
 mock.module("@/components/ui/dialog", () => ({
     Dialog: ({ children }: { children: ReactNode }) => <div data-testid="mock-dialog-root">{children}</div>,
-    DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    DialogContent: ({ children, className, showCloseButton = true }: { children: ReactNode; className?: string; showCloseButton?: boolean }) => <div className={className}>{showCloseButton ? <button data-testid="mock-dialog-close">Close</button> : null}{children}</div>,
     DialogFooter: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
     DialogHeader: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
     DialogTitle: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
@@ -160,4 +160,34 @@ test("shared password dialog resets form and closes after successful submit", as
         expect((view.getByTestId("student-password-new") as HTMLInputElement).value).toBe("");
         expect((view.getByTestId("student-password-confirm") as HTMLInputElement).value).toBe("");
     });
+});
+
+test("shared password dialog hides close affordance when closing is disabled", () => {
+    const submit = mock(async () => ({ success: true }));
+    const passwordChange = {
+        form: { currentPassword: "", newPassword: "", confirmPassword: "" },
+        setField: () => undefined,
+        error: null,
+        saving: false,
+        submit,
+        rules: undefined,
+    };
+
+    const view = render(
+        <PasswordChangeDialog
+            open={true}
+            onOpenChange={() => undefined}
+            allowClose={false}
+            title="首次登录请修改密码"
+            description="请先更新密码。"
+            form={passwordChange.form}
+            onFieldChange={passwordChange.setField}
+            error={passwordChange.error}
+            saving={passwordChange.saving}
+            onSubmit={passwordChange.submit}
+            submitLabel="保存"
+        />
+    );
+
+    expect(view.queryByTestId("mock-dialog-close")).toBeNull();
 });

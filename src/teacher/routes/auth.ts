@@ -49,6 +49,10 @@ interface TeacherAuthResult {
     session?: AuthSession;
 }
 
+interface TeacherAuthOptions {
+    allowFirstLogin?: boolean;
+}
+
 type TeacherRequestContext = Request & {
     [TEACHER_AUTH_CACHE]?: TeacherAuthResult;
     [PRIMARY_TEACHER_CONTEXT]?: number;
@@ -159,9 +163,14 @@ export async function notifyStudentById(
     });
 }
 
-export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResult> {
+export async function requireTeacherAuth(req: Request, options?: TeacherAuthOptions): Promise<TeacherAuthResult> {
     const cached = readTeacherAuthCache(req);
-    if (cached) return cached;
+    if (cached) {
+        if (cached.user?.isFirstLogin === 1 && !options?.allowFirstLogin) {
+            return { user: null, error: error("首次登录请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403) };
+        }
+        return cached;
+    }
 
     const auth = await (async () => {
         const currentSession = await loadActiveUserSession(
@@ -263,6 +272,9 @@ export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResul
     })();
 
     writeTeacherAuthCache(req, auth);
+    if (auth.user?.isFirstLogin === 1 && !options?.allowFirstLogin) {
+        return { user: null, error: error("首次登录请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403) };
+    }
     return auth;
 }
 
@@ -314,6 +326,18 @@ function wrapTeacherRoute(handler?: RouteHandler): RouteHandler | undefined {
     };
 }
 
+function wrapTeacherRouteAllowFirstLogin(handler?: RouteHandler): RouteHandler | undefined {
+    if (!handler) {
+        return undefined;
+    }
+
+    return async (req) => {
+        const auth = await requireTeacherAuth(req, { allowFirstLogin: true });
+        if (auth.error) return auth.error;
+        return handler(req);
+    };
+}
+
 function wrapPrimaryTeacherRoute(handler?: RouteHandler): RouteHandler | undefined {
     if (!handler) {
         return undefined;
@@ -332,6 +356,15 @@ export function withTeacherAuth(routes: RouteDefinition): RouteDefinition {
         POST: wrapTeacherRoute(routes.POST),
         PUT: wrapTeacherRoute(routes.PUT),
         DELETE: wrapTeacherRoute(routes.DELETE),
+    };
+}
+
+export function withTeacherAuthAllowFirstLogin(routes: RouteDefinition): RouteDefinition {
+    return {
+        GET: wrapTeacherRouteAllowFirstLogin(routes.GET),
+        POST: wrapTeacherRouteAllowFirstLogin(routes.POST),
+        PUT: wrapTeacherRouteAllowFirstLogin(routes.PUT),
+        DELETE: wrapTeacherRouteAllowFirstLogin(routes.DELETE),
     };
 }
 

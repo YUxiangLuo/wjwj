@@ -32,6 +32,7 @@ import {
     getAdminAuth,
     getAdminUser,
     withAdminAuth,
+    withAdminAuthAllowFirstLogin,
 } from "./routes/auth";
 import { backupCreateRoutes, backupListRoutes, backupRestoreRoutes } from "./routes/backup";
 import {
@@ -407,9 +408,9 @@ const systemLogsRoutes = {
 export const adminApiRoutes = {
     // Auth
     "/api/admin/login": adminLoginRoutes,
-    "/api/admin/me": withAdminAuth(adminMeRoutes),
+    "/api/admin/me": withAdminAuthAllowFirstLogin(adminMeRoutes),
     "/api/admin/logout": adminLogoutRoutes,
-    "/api/admin/password": withAdminAuth(adminPasswordRoutes),
+    "/api/admin/password": withAdminAuthAllowFirstLogin(adminPasswordRoutes),
 
     // Stats
     "/api/admin/stats": withAdminAuth(statsRoutes),

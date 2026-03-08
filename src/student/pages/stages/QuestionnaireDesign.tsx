@@ -51,6 +51,28 @@ interface ScoreItem {
     message: string;
 }
 
+interface QuestionnaireStepValidation {
+    title: boolean;
+    welcomeText: boolean;
+    endingText: boolean;
+    questionCount: boolean;
+    optionCount: boolean;
+    previewCompleted: boolean;
+}
+
+export function canAdvanceQuestionnaireStep(step: 1 | 2 | 3 | 4, validation: QuestionnaireStepValidation) {
+    switch (step) {
+        case 1:
+            return validation.title && validation.welcomeText;
+        case 2:
+            return validation.questionCount && validation.optionCount;
+        case 3:
+            return validation.endingText;
+        case 4:
+            return validation.previewCompleted;
+    }
+}
+
 function generateId(): string {
     return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
@@ -385,6 +407,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         validation.optionCount;
 
     const canProceed = basicValidationPassed && validation.previewCompleted;
+    const canAdvanceToNextStep = canAdvanceQuestionnaireStep(step, validation);
 
     const scoreItems = useMemo<ScoreItem[]>(() => {
         const items: ScoreItem[] = [];
@@ -1054,7 +1077,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 {step < 4 ? (
                     <Button
                         onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)}
-                        disabled={step === 2 && questions.length < 5}
+                        disabled={!canAdvanceToNextStep}
                         data-testid="student-questionnaire-next"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
                     >

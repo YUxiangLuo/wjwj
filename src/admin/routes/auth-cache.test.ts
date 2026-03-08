@@ -96,3 +96,70 @@ test("withAdminAuth injects admin auth context for wrapped handlers", async () =
     expect(operations.filter((operation) => operation.kind === "select")).toHaveLength(2);
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(1);
 });
+
+test("requireAdminAuth blocks protected access before first password change", async () => {
+    const { module } = await loadAdminAuthModule({
+        select: [
+            [{
+                id: 6,
+                sessionToken: "admin-session",
+                userType: 1,
+                userId: 3,
+                expiresAt: new Date(Date.now() + 60_000),
+            }],
+            [{
+                id: 3,
+                username: "admin",
+                isFirstLogin: 1,
+            }],
+        ],
+        config: {
+            "session.admin_timeout_minutes": 30,
+        },
+    });
+
+    const request = new Request("https://example.com/api/admin/stats", {
+        headers: { cookie: "admin_session=admin-session" },
+    });
+    const auth = await module.requireAdminAuth(request);
+    const payload = await auth.error?.json() as any;
+
+    expect(auth.admin).toBeNull();
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "PASSWORD_CHANGE_REQUIRED",
+            message: "首次登录请先修改密码",
+        },
+    });
+});
+
+test("requireAdminAuth allows first-login bootstrap when explicitly requested", async () => {
+    const { module } = await loadAdminAuthModule({
+        select: [
+            [{
+                id: 6,
+                sessionToken: "admin-session",
+                userType: 1,
+                userId: 3,
+                expiresAt: new Date(Date.now() + 60_000),
+            }],
+            [{
+                id: 3,
+                username: "admin",
+                isFirstLogin: 1,
+            }],
+        ],
+        config: {
+            "session.admin_timeout_minutes": 30,
+        },
+    });
+
+    const request = new Request("https://example.com/api/admin/me", {
+        headers: { cookie: "admin_session=admin-session" },
+    });
+    const auth = await module.requireAdminAuth(request, { allowFirstLogin: true });
+
+    expect(auth.error).toBeNull();
+    expect(auth.admin).toMatchObject({ username: "admin", isFirstLogin: 1 });
+});

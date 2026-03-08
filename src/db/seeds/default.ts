@@ -205,24 +205,31 @@ async function seed() {
             .onDuplicateKeyUpdate({ set: { configValue: c.value, valueType: c.valueType } });
     }
 
-    await db
-        .insert(admin)
-        .values({
-            username: "admin",
-            password: hashedPassword,
-            isFirstLogin: 0,
-            loginFailCount: 0,
-            lockedUntil: null,
-        })
-        .onDuplicateKeyUpdate({
-            set: {
-                username: "admin",
+    const adminsData = [
+        { username: "admin", isFirstLogin: 0 },
+        { username: "admin_first", isFirstLogin: 1 },
+    ] as const;
+
+    for (const adm of adminsData) {
+        await db
+            .insert(admin)
+            .values({
+                username: adm.username,
                 password: hashedPassword,
-                isFirstLogin: 0,
+                isFirstLogin: adm.isFirstLogin,
                 loginFailCount: 0,
                 lockedUntil: null,
-            },
-        });
+            })
+            .onDuplicateKeyUpdate({
+                set: {
+                    username: adm.username,
+                    password: hashedPassword,
+                    isFirstLogin: adm.isFirstLogin,
+                    loginFailCount: 0,
+                    lockedUntil: null,
+                },
+            });
+    }
 
     // ========================================================
     // 2. 学期  (往期 / 当前 / 下学期)
@@ -1309,14 +1316,14 @@ async function seed() {
     console.log("══════════════════════════════════════════");
     console.log(`🔑 通用密码: ${defaultPassword}`);
     console.log("");
-    console.log("👤 管理员:   admin");
+    console.log("👤 管理员:   admin  |  admin_first (首次登录)");
     console.log("👨‍🏫 教师:     teacher (演示)  |  T002  |  T003  |  T004 (首次登录)  |  T005 (已停用)  |  T006 (已锁定)");
     console.log("👩‍🏫 助教:     assistant (演示)  |  A002  |  A003  |  A004 (首次登录)  |  A005 (已锁定)");
     console.log("👨‍🎓 学生:     student (演示)  |  2024001-2024014 (A班)  |  2024101-2024108 (B班)");
     console.log("                2024201-2024204 (数据挖掘)  |  2023001-2023003 (往期)");
     console.log("");
     console.log("📌 特殊账号:");
-    console.log("   T004 / A004 / 2024013 → 首次登录（需修改密码）");
+    console.log("   admin_first / T004 / A004 / 2024013 → 首次登录（需修改密码）");
     console.log("   T005             → 已停用教师");
     console.log("   T006             → 已锁定教师");
     console.log("   A005             → 已锁定助教");

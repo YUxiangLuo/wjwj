@@ -64,7 +64,7 @@ export async function getCurrentStudent(req: Request) {
     return { student: null, errorCode: "AUTH_004", errorMessage: "会话已过期，请重新登录" };
 }
 
-export async function requireAuth(req: Request) {
+export async function requireAuth(req: Request, options?: { allowFirstLogin?: boolean }) {
     const current = await getCurrentStudent(req);
     if (!current.student) {
         return {
@@ -74,6 +74,9 @@ export async function requireAuth(req: Request) {
     }
     if (current.student.status !== 1) {
         return { student: null, error: error("账号已被禁用", "ACCOUNT_DISABLED", 403) };
+    }
+    if (current.student.isFirstLogin === 1 && !options?.allowFirstLogin) {
+        return { student: null, error: error("首次登录请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403) };
     }
     return { student: current.student, error: null, sessionExpiresAt: current.sessionExpiresAt ?? null };
 }
@@ -166,7 +169,7 @@ const logoutRoutes: RouteDefinition = {
 
 const passwordRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requireAuth(req);
+        const auth = await requireAuth(req, { allowFirstLogin: true });
         if (auth.error) return auth.error;
 
         const body = await parseBody<{ currentPassword: string; newPassword: string }>(req);
@@ -212,7 +215,7 @@ const passwordRoutes: RouteDefinition = {
 
 const meRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requireAuth(req);
+        const auth = await requireAuth(req, { allowFirstLogin: true });
         if (auth.error) return auth.error;
         const currentStudent = auth.student!;
 

@@ -58,7 +58,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
             if (!allowClose && !nextOpen) return;
             onOpenChange(nextOpen);
         }}>
-            <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+            <DialogContent className="bg-slate-900 border-slate-800 text-slate-200" showCloseButton={allowClose}>
                 <DialogHeader>
                     <DialogTitle className="text-slate-100">{title}</DialogTitle>
                     <DialogDescription className="text-slate-400">{description}</DialogDescription>
