@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -28,350 +28,32 @@ import { RichTextEditor } from "../../components/RichTextEditor";
 import { useDraftSync } from "../../draft-sync";
 import { experimentApi } from "../../api-client";
 import { ImmersiveAnalysisDashboard } from "../../components/ImmersiveAnalysisDashboard";
+import {
+    type MethodKey,
+    type SampleRow,
+    type ChartSeries,
+    type ChartRow,
+    METHOD_META,
+    POPULATION_SERIES,
+    calculateMean,
+    calculateStdError,
+    collectNumericFields,
+    collectCategoricalFields,
+    buildDistributionRows,
+    buildRepresentativenessRows,
+} from "./analysis-utils";
+import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 
 interface AnalysisReportProps {
     onPrev: () => void;
     onSubmit: () => void;
 }
 
-type MethodKey = "simple" | "systematic" | "stratified";
 type ZoomChartType = "mean" | "dist" | "error" | "represent" | null;
-type SampleRow = Record<string, unknown>;
 
-interface ChartSeries {
-    key: string;
-    label: string;
-    color: string;
-}
-
-interface ChartRow {
-    label: string;
-    values: Record<string, number>;
-}
-
-const METHOD_META: Record<MethodKey, { label: string; color: string }> = {
-    simple: { label: "简单随机", color: "#6366f1" },
-    systematic: { label: "系统抽样", color: "#14b8a6" },
-    stratified: { label: "分层抽样", color: "#f59e0b" },
-};
-
-const POPULATION_SERIES: ChartSeries = { key: "population", label: "总体", color: "#94a3b8" };
-
-function sanitizeFileName(input: string) {
-    return input.replace(/[\\/:*?"<>|\s]+/g, "_").replace(/_+/g, "_");
-}
-
-function escapeXml(input: string) {
-    return input
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&apos;");
-}
-
-function toNumber(value: unknown): number | null {
-    if (typeof value === "number" && Number.isFinite(value)) return value;
-    if (typeof value === "string") {
-        const normalized = value.trim().replace(/,/g, "");
-        if (!normalized) return null;
-        const parsed = Number(normalized);
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-    return null;
-}
-
-function calculateMean(rows: SampleRow[], field: string) {
-    const values = rows
-        .map((row) => toNumber(row[field]))
-        .filter((value): value is number => value !== null);
-    if (values.length === 0) return 0;
-    return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function calculateStdError(rows: SampleRow[], field: string) {
-    const values = rows
-        .map((row) => toNumber(row[field]))
-        .filter((value): value is number => value !== null);
-    if (values.length <= 1) return 0;
-
-    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-    const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1);
-    const stdDev = Math.sqrt(variance);
-    return stdDev / Math.sqrt(values.length);
-}
-
-const EXCLUDED_ID_FIELDS = new Set(["id", "_id", "序号", "编号"]);
-function isExcludedIdField(field: string) {
-    return EXCLUDED_ID_FIELDS.has(field.toLowerCase().trim());
-}
-
-function collectNumericFields(rows: SampleRow[]) {
-    const fieldStats = new Map<string, { numericCount: number; totalCount: number }>();
-
-    for (const row of rows) {
-        for (const key of Object.keys(row)) {
-            const stat = fieldStats.get(key) ?? { numericCount: 0, totalCount: 0 };
-            const rawValue = row[key];
-            if (rawValue !== null && rawValue !== undefined && String(rawValue).trim() !== "") {
-                stat.totalCount += 1;
-                if (toNumber(rawValue) !== null) {
-                    stat.numericCount += 1;
-                }
-            }
-            fieldStats.set(key, stat);
-        }
-    }
-
-    return Array.from(fieldStats.entries())
-        .filter(([field, stat]) => stat.totalCount > 0 && stat.numericCount / stat.totalCount >= 0.8 && stat.numericCount >= 2 && !isExcludedIdField(field))
-        .map(([field]) => field)
-        .sort();
-}
-
-function collectCategoricalFields(
-    rows: SampleRow[],
-    populationStats: Record<string, Record<string, number>>
-) {
-    const fields = new Set<string>(Object.keys(populationStats));
-
-    for (const row of rows) {
-        for (const key of Object.keys(row)) {
-            const rawValue = row[key];
-            if (rawValue === null || rawValue === undefined) continue;
-            if (toNumber(rawValue) === null) {
-                fields.add(key);
-            }
-        }
-    }
-
-    return Array.from(fields).filter(f => !isExcludedIdField(f)).sort();
-}
-
-function buildDistributionRows(
-    field: string,
-    methodRows: Record<MethodKey, SampleRow[]>,
-    populationStats: Record<string, Record<string, number>>
-) {
-    if (!field) {
-        return { rows: [] as ChartRow[], withPopulation: false };
-    }
-
-    const categories = new Set<string>();
-
-    (Object.keys(methodRows) as MethodKey[]).forEach((method) => {
-        for (const row of methodRows[method]) {
-            const raw = row[field];
-            if (raw === null || raw === undefined) continue;
-            const category = String(raw).trim();
-            if (category) categories.add(category);
-        }
-    });
-
-    const populationFieldStats = populationStats[field];
-    if (populationFieldStats) {
-        Object.keys(populationFieldStats).forEach((category) => categories.add(category));
-    }
-
-    const orderedCategories = Array.from(categories).sort((a, b) => a.localeCompare(b, "zh-CN"));
-    const rows = orderedCategories.map((category) => {
-        const values: Record<string, number> = {};
-
-        (Object.keys(methodRows) as MethodKey[]).forEach((method) => {
-            const rowsOfMethod = methodRows[method];
-            if (rowsOfMethod.length === 0) {
-                values[method] = 0;
-                return;
-            }
-
-            const count = rowsOfMethod.filter((row) => String(row[field] ?? "").trim() === category).length;
-            values[method] = (count / rowsOfMethod.length) * 100;
-        });
-
-        if (populationFieldStats) {
-            const totalPopulation = Object.values(populationFieldStats).reduce((sum, value) => sum + value, 0);
-            const categoryCount = populationFieldStats[category] ?? 0;
-            values.population = totalPopulation > 0 ? (categoryCount / totalPopulation) * 100 : 0;
-        }
-
-        return { label: category, values };
-    });
-
-    return { rows, withPopulation: Boolean(populationFieldStats) };
-}
-
-function buildRepresentativenessRows(
-    numericFields: string[],
-    categoricalFields: string[],
-    methodRows: Record<MethodKey, SampleRow[]>,
-    populationStats: Record<string, Record<string, number>>
-) {
-    const rows: ChartRow[] = [];
-
-    // Numeric fields: populationStats only contains categorical distributions,
-    // so we use the combined-sample mean as a proxy for the population mean.
-    for (const field of numericFields) {
-        const allValues: number[] = [];
-        for (const method of Object.keys(methodRows) as MethodKey[]) {
-            for (const row of methodRows[method]) {
-                const v = toNumber(row[field]);
-                if (v !== null) allValues.push(v);
-            }
-        }
-        if (allValues.length === 0) continue;
-        const combinedMean = allValues.reduce((s, v) => s + v, 0) / allValues.length;
-        if (combinedMean === 0) continue;
-
-        const values: Record<string, number> = {};
-        for (const method of Object.keys(METHOD_META) as MethodKey[]) {
-            const methodMean = calculateMean(methodRows[method], field);
-            values[method] = Math.abs(methodMean - combinedMean) / Math.abs(combinedMean) * 100;
-        }
-        rows.push({ label: `${field}（均值偏差）`, values });
-    }
-
-    // Categorical fields: average absolute proportion difference vs population.
-    // Categories are the union of population and sample categories.
-    for (const field of categoricalFields) {
-        const popFieldStats = populationStats[field];
-        if (!popFieldStats) continue;
-        const totalPop = Object.values(popFieldStats).reduce((s, v) => s + v, 0);
-        if (totalPop === 0) continue;
-
-        // Build union of population + sample categories
-        const categorySet = new Set<string>(Object.keys(popFieldStats));
-        for (const method of Object.keys(methodRows) as MethodKey[]) {
-            for (const row of methodRows[method]) {
-                const val = String(row[field] ?? "").trim();
-                if (val) categorySet.add(val);
-            }
-        }
-        const categories = Array.from(categorySet);
-
-        const values: Record<string, number> = {};
-
-        for (const method of Object.keys(METHOD_META) as MethodKey[]) {
-            const mRows = methodRows[method];
-            if (mRows.length === 0) { values[method] = 0; continue; }
-
-            // Precompute frequency map for this method and field (single pass)
-            const categoryCounts: Record<string, number> = {};
-            for (const row of mRows) {
-                const key = String(row[field] ?? "").trim();
-                categoryCounts[key] = (categoryCounts[key] ?? 0) + 1;
-            }
-
-            let totalDiff = 0;
-            for (const cat of categories) {
-                const popProp = (popFieldStats[cat] ?? 0) / totalPop * 100;
-                const sampleCount = categoryCounts[cat] ?? 0;
-                const sampleProp = (sampleCount / mRows.length) * 100;
-                totalDiff += Math.abs(sampleProp - popProp);
-            }
-            values[method] = totalDiff / categories.length;
-        }
-        rows.push({ label: `${field}（分布偏差）`, values });
-    }
-
-    return rows;
-}
-
-function triggerSvgDownload(fileName: string, svgContent: string) {
-    const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-}
-
-function downloadChartAsSvg(params: {
-    title: string;
-    rows: ChartRow[];
-    series: ChartSeries[];
-    fileName: string;
-    unit?: string;
-}) {
-    const { title, rows, series, fileName, unit = "" } = params;
-    if (rows.length === 0 || series.length === 0) return;
-
-    const values = rows.flatMap((row) => series.map((s) => row.values[s.key] ?? 0));
-    const maxValue = Math.max(...values, 1);
-
-    const width = 1080;
-    const height = 620;
-    const margin = { top: 90, right: 60, bottom: 150, left: 90 };
-    const plotWidth = width - margin.left - margin.right;
-    const plotHeight = height - margin.top - margin.bottom;
-    const groupWidth = plotWidth / rows.length;
-    const barGroupWidth = groupWidth * 0.72;
-    const barWidth = barGroupWidth / Math.max(series.length, 1);
-
-    const gridLines = Array.from({ length: 6 }, (_, i) => {
-        const ratio = i / 5;
-        const y = margin.top + plotHeight * (1 - ratio);
-        const value = maxValue * ratio;
-        return { y, value };
-    });
-
-    const legend = series
-        .map((s, index) => {
-            const x = margin.left + index * 180;
-            return `
-      <rect x="${x}" y="38" width="14" height="14" rx="3" fill="${s.color}" />
-      <text x="${x + 22}" y="49" fill="#cbd5e1" font-size="14">${escapeXml(s.label)}</text>
-    `;
-        })
-        .join("\n");
-
-    const bars = rows
-        .map((row, rowIndex) => {
-            const groupStart = margin.left + rowIndex * groupWidth + (groupWidth - barGroupWidth) / 2;
-            const rowBars = series
-                .map((s, seriesIndex) => {
-                    const value = row.values[s.key] ?? 0;
-                    const barHeight = maxValue > 0 ? (value / maxValue) * plotHeight : 0;
-                    const x = groupStart + seriesIndex * barWidth;
-                    const y = margin.top + plotHeight - barHeight;
-                    const labelY = y - 8;
-                    return `
-          <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(barWidth - 4, 1).toFixed(2)}" height="${barHeight.toFixed(2)}" rx="4" fill="${s.color}" />
-          <text x="${(x + (barWidth - 4) / 2).toFixed(2)}" y="${labelY.toFixed(2)}" text-anchor="middle" fill="#94a3b8" font-size="11">${value.toFixed(2)}${escapeXml(unit)}</text>
-        `;
-                })
-                .join("\n");
-
-            const labelX = groupStart + barGroupWidth / 2;
-            return `
-        ${rowBars}
-        <text x="${labelX.toFixed(2)}" y="${(margin.top + plotHeight + 28).toFixed(2)}" text-anchor="middle" fill="#cbd5e1" font-size="12">${escapeXml(row.label)}</text>
-      `;
-        })
-        .join("\n");
-
-    const grid = gridLines
-        .map((line) => `
-      <line x1="${margin.left}" y1="${line.y.toFixed(2)}" x2="${(margin.left + plotWidth).toFixed(2)}" y2="${line.y.toFixed(2)}" stroke="#334155" stroke-width="1" />
-      <text x="${margin.left - 12}" y="${(line.y + 4).toFixed(2)}" text-anchor="end" fill="#64748b" font-size="11">${line.value.toFixed(1)}${escapeXml(unit)}</text>
-    `)
-        .join("\n");
-
-    const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <rect width="100%" height="100%" fill="#020617" />
-  <text x="${margin.left}" y="30" fill="#e2e8f0" font-size="22" font-weight="700">${escapeXml(title)}</text>
-  ${legend}
-  ${grid}
-  <line x1="${margin.left}" y1="${margin.top + plotHeight}" x2="${margin.left + plotWidth}" y2="${margin.top + plotHeight}" stroke="#475569" stroke-width="1.2" />
-  <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + plotHeight}" stroke="#475569" stroke-width="1.2" />
-  ${bars}
-</svg>`.trim();
-
-    triggerSvgDownload(fileName, svg);
-}
+// ---------------------------------------------------------------------------
+// ChartBars — horizontal bar chart component
+// ---------------------------------------------------------------------------
 
 function ChartBars({
     rows,
@@ -435,15 +117,90 @@ function ChartBars({
     );
 }
 
+// ---------------------------------------------------------------------------
+// ChartTabPanel — reusable tab content wrapper
+// ---------------------------------------------------------------------------
+
+function ChartTabPanel({
+    description,
+    rows,
+    series,
+    unit,
+    emptyMessage,
+    onZoom,
+    onDownload,
+    fieldSelector,
+}: {
+    description: string;
+    rows: ChartRow[];
+    series: ChartSeries[];
+    unit?: string;
+    emptyMessage: string;
+    onZoom: () => void;
+    onDownload: () => void;
+    fieldSelector?: ReactNode;
+}) {
+    return (
+        <div className="mt-6 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="text-sm text-slate-400">{description}</div>
+                <div className="flex items-center gap-2">
+                    {fieldSelector}
+                    <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={onZoom}>
+                        <Maximize2 className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={onDownload}>
+                        <Download className="w-4 h-4" />
+                    </Button>
+                </div>
+            </div>
+            <ChartBars rows={rows} series={series} unit={unit} emptyMessage={emptyMessage} />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// FieldSelect — field selector dropdown
+// ---------------------------------------------------------------------------
+
+function FieldSelect({
+    value,
+    onChange,
+    fields,
+    placeholder,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    fields: string[];
+    placeholder: string;
+}) {
+    return (
+        <Select value={value} onValueChange={onChange}>
+            <SelectTrigger className="w-[220px] bg-slate-950 border-slate-800 text-slate-200">
+                <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                {fields.map((field) => (
+                    <SelectItem key={field} value={field}>{field}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const { experiment, saveExperiment } = useExperiment();
 
-    // Initialize from saved data
     const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
     const [showDashboard, setShowDashboard] = useState(false);
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
+    const [statsLoading, setStatsLoading] = useState(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
 
@@ -453,6 +210,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const maxLength = 5000;
     const reportTextLength = useMemo(() => getRichTextPlainLength(reportContent), [reportContent]);
     const isValidLength = reportTextLength >= minLength && reportTextLength <= maxLength;
+
+    // ---- Data derivation ----
 
     const methodRows = useMemo<Record<MethodKey, SampleRow[]>>(() => ({
         simple: ((experiment?.samplingResults as any)?.simple?.data ?? []) as SampleRow[],
@@ -482,36 +241,37 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     useEffect(() => {
         async function loadPopulationStats() {
             if (!experiment?.taskId) return;
-            const res = await experimentApi.getStats(experiment.taskId);
-            if (res.success && res.data?.stats) {
-                setPopulationStats(res.data.stats);
+            setStatsLoading(true);
+            try {
+                const res = await experimentApi.getStats(experiment.taskId);
+                if (res.success && res.data?.stats) {
+                    setPopulationStats(res.data.stats);
+                }
+            } catch (error) {
+                console.error("Failed to load population stats:", error);
+            } finally {
+                setStatsLoading(false);
             }
         }
 
-        loadPopulationStats().catch((error) => {
-            console.error("Failed to load population stats:", error);
-        });
+        void loadPopulationStats();
     }, [experiment?.taskId]);
+
+    // ---- Chart data (memoized) ----
 
     const meanRows = useMemo<ChartRow[]>(() => {
         if (!selectedNumericField) return [];
-
         return (Object.keys(METHOD_META) as MethodKey[]).map((method) => ({
             label: METHOD_META[method].label,
-            values: {
-                value: calculateMean(methodRows[method], selectedNumericField),
-            },
+            values: { value: calculateMean(methodRows[method], selectedNumericField) },
         }));
     }, [methodRows, selectedNumericField]);
 
     const errorRows = useMemo<ChartRow[]>(() => {
         if (!selectedNumericField) return [];
-
         return (Object.keys(METHOD_META) as MethodKey[]).map((method) => ({
             label: METHOD_META[method].label,
-            values: {
-                value: calculateStdError(methodRows[method], selectedNumericField),
-            },
+            values: { value: calculateStdError(methodRows[method], selectedNumericField) },
         }));
     }, [methodRows, selectedNumericField]);
 
@@ -525,34 +285,47 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         return buildRepresentativenessRows(numericFields, categoricalFields, methodRows, populationStats);
     }, [numericFields, categoricalFields, methodRows, populationStats]);
 
-    const meanSeries: ChartSeries[] = [
-        {
-            key: "value",
-            label: selectedNumericField || "均值",
-            color: "#60a5fa",
-        },
-    ];
+    // ---- Series (memoized) ----
 
-    const errorSeries: ChartSeries[] = [
-        {
-            key: "value",
-            label: `${selectedNumericField || "字段"} 标准误`,
-            color: "#f59e0b",
-        },
-    ];
+    const meanSeries = useMemo<ChartSeries[]>(() => [
+        { key: "value", label: selectedNumericField || "均值", color: "#60a5fa" },
+    ], [selectedNumericField]);
 
-    const distributionSeries: ChartSeries[] = [
+    const errorSeries = useMemo<ChartSeries[]>(() => [
+        { key: "value", label: `${selectedNumericField || "字段"} 标准误`, color: "#f59e0b" },
+    ], [selectedNumericField]);
+
+    const distributionSeries = useMemo<ChartSeries[]>(() => [
         { key: "simple", label: METHOD_META.simple.label, color: METHOD_META.simple.color },
         { key: "systematic", label: METHOD_META.systematic.label, color: METHOD_META.systematic.color },
         { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
         ...(distributionResult.withPopulation ? [POPULATION_SERIES] : []),
-    ];
+    ], [distributionResult.withPopulation]);
 
-    const representativenessSeries: ChartSeries[] = [
+    const representativenessSeries = useMemo<ChartSeries[]>(() => [
         { key: "simple", label: METHOD_META.simple.label, color: METHOD_META.simple.color },
         { key: "systematic", label: METHOD_META.systematic.label, color: METHOD_META.systematic.color },
         { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
-    ];
+    ], []);
+
+    // ---- Zoom dialog config (lookup map) ----
+
+    const zoomConfig = useMemo<Record<Exclude<ZoomChartType, null>, {
+        title: string;
+        rows: ChartRow[];
+        series: ChartSeries[];
+        unit?: string;
+        emptyMessage: string;
+    }>>(() => ({
+        mean: { title: "均值对比（放大）", rows: meanRows, series: meanSeries, emptyMessage: "暂无可用于均值分析的数值字段" },
+        dist: { title: "分布对比（放大）", rows: distributionRows, series: distributionSeries, unit: "%", emptyMessage: "暂无可用于分布分析的分类字段" },
+        error: { title: "误差分析（放大）", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于误差分析的数值字段" },
+        represent: { title: "样本代表性（放大）", rows: representativenessRows, series: representativenessSeries, unit: "%", emptyMessage: "暂无可用于代表性分析的数据" },
+    }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representativenessRows, representativenessSeries]);
+
+    const activeZoom = zoomChart ? zoomConfig[zoomChart] : null;
+
+    // ---- Draft sync ----
 
     const saveReportContent = useCallback(async (nextContent: string) => {
         return saveExperiment({ reportContent: nextContent });
@@ -593,12 +366,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         serialize: serializeReport,
     });
 
+    // ---- Handlers ----
+
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            // Save final report content before preview
             await saveNow();
-            // Clear localStorage draft after successful submission
             clearLocalDraft();
             onSubmit();
         } finally {
@@ -669,6 +442,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         });
     };
 
+    // ---- Render ----
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
             {networkNotice && (
@@ -719,7 +494,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     全屏仪表盘
                                 </Button>
                             </div>
-                            <CardDescription className="text-slate-400">基于阶段三真实抽样结果自动生成</CardDescription>
+                            <CardDescription className="text-slate-400">
+                                {statsLoading ? "正在加载总体统计数据…" : "基于阶段三真实抽样结果自动生成"}
+                            </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6">
                             <Tabs defaultValue="mean">
@@ -730,111 +507,63 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-800 data-[state=active]:text-slate-50 text-slate-400">样本代表性</TabsTrigger>
                                 </TabsList>
 
-                                <TabsContent value="mean" className="mt-6 space-y-4">
-                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                                        <div className="text-sm text-slate-400">比较各抽样方法在同一数值变量上的均值。</div>
-                                        <div className="flex items-center gap-2">
-                                            <Select value={selectedNumericField} onValueChange={setSelectedNumericField}>
-                                                <SelectTrigger className="w-[220px] bg-slate-950 border-slate-800 text-slate-200">
-                                                    <SelectValue placeholder="选择数值变量" />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                                                    {numericFields.map((field) => (
-                                                        <SelectItem key={field} value={field}>{field}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={() => setZoomChart("mean")}>
-                                                <Maximize2 className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={downloadMeanChart}>
-                                                <Download className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <ChartBars
+                                <TabsContent value="mean">
+                                    <ChartTabPanel
+                                        description="比较各抽样方法在同一数值变量上的均值。"
                                         rows={meanRows}
                                         series={meanSeries}
                                         emptyMessage="暂无可用于均值分析的数值字段"
+                                        onZoom={() => setZoomChart("mean")}
+                                        onDownload={downloadMeanChart}
+                                        fieldSelector={
+                                            <FieldSelect value={selectedNumericField} onChange={setSelectedNumericField} fields={numericFields} placeholder="选择数值变量" />
+                                        }
                                     />
                                 </TabsContent>
 
-                                <TabsContent value="dist" className="mt-6 space-y-4">
-                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                                        <div className="text-sm text-slate-400">比较各抽样方法在分类变量上的分布占比（含总体对照）。</div>
-                                        <div className="flex items-center gap-2">
-                                            <Select value={selectedCategoricalField} onValueChange={setSelectedCategoricalField}>
-                                                <SelectTrigger className="w-[220px] bg-slate-950 border-slate-800 text-slate-200">
-                                                    <SelectValue placeholder="选择分类变量" />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                                                    {categoricalFields.map((field) => (
-                                                        <SelectItem key={field} value={field}>{field}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={() => setZoomChart("dist")}>
-                                                <Maximize2 className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={downloadDistributionChart}>
-                                                <Download className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <ChartBars
+                                <TabsContent value="dist">
+                                    <ChartTabPanel
+                                        description="比较各抽样方法在分类变量上的分布占比（含总体对照）。"
                                         rows={distributionRows}
                                         series={distributionSeries}
                                         unit="%"
                                         emptyMessage="暂无可用于分布分析的分类字段"
+                                        onZoom={() => setZoomChart("dist")}
+                                        onDownload={downloadDistributionChart}
+                                        fieldSelector={
+                                            <FieldSelect
+                                                value={selectedCategoricalField}
+                                                onChange={setSelectedCategoricalField}
+                                                fields={categoricalFields}
+                                                placeholder="选择分类变量"
+                                            />
+                                        }
                                     />
                                 </TabsContent>
 
-                                <TabsContent value="error" className="mt-6 space-y-4">
-                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                                        <div className="text-sm text-slate-400">比较各抽样方法在同一变量上的抽样标准误。</div>
-                                        <div className="flex items-center gap-2">
-                                            <Select value={selectedNumericField} onValueChange={setSelectedNumericField}>
-                                                <SelectTrigger className="w-[220px] bg-slate-950 border-slate-800 text-slate-200">
-                                                    <SelectValue placeholder="选择数值变量" />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                                                    {numericFields.map((field) => (
-                                                        <SelectItem key={field} value={field}>{field}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={() => setZoomChart("error")}>
-                                                <Maximize2 className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={downloadErrorChart}>
-                                                <Download className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <ChartBars
+                                <TabsContent value="error">
+                                    <ChartTabPanel
+                                        description="比较各抽样方法在同一变量上的抽样标准误。"
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
+                                        onZoom={() => setZoomChart("error")}
+                                        onDownload={downloadErrorChart}
+                                        fieldSelector={
+                                            <FieldSelect value={selectedNumericField} onChange={setSelectedNumericField} fields={numericFields} placeholder="选择数值变量" />
+                                        }
                                     />
                                 </TabsContent>
 
-                                <TabsContent value="represent" className="mt-6 space-y-4">
-                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                                        <div className="text-sm text-slate-400">比较各抽样方法样本与总体关键指标的偏差程度（%）。</div>
-                                        <div className="flex items-center gap-2">
-                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={() => setZoomChart("represent")}>
-                                                <Maximize2 className="w-4 h-4" />
-                                            </Button>
-                                            <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700" onClick={downloadRepresentativenessChart}>
-                                                <Download className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <ChartBars
+                                <TabsContent value="represent">
+                                    <ChartTabPanel
+                                        description="比较各抽样方法样本与总体关键指标的偏差程度（%）。"
                                         rows={representativenessRows}
                                         series={representativenessSeries}
                                         unit="%"
                                         emptyMessage="暂无可用于代表性分析的数据"
+                                        onZoom={() => setZoomChart("represent")}
+                                        onDownload={downloadRepresentativenessChart}
                                     />
                                 </TabsContent>
                             </Tabs>
@@ -956,52 +685,27 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </Button>
             </div>
 
+            {/* Zoom dialog */}
             <Dialog open={zoomChart !== null} onOpenChange={(open) => { if (!open) setZoomChart(null); }}>
                 <DialogContent className="max-w-6xl bg-slate-900 border-slate-800 text-slate-200" data-testid="student-analysis-zoom-dialog">
                     <DialogHeader>
                         <DialogTitle className="text-slate-100">
-                            {zoomChart === "mean" && "均值对比（放大）"}
-                            {zoomChart === "dist" && "分布对比（放大）"}
-                            {zoomChart === "error" && "误差分析（放大）"}
-                            {zoomChart === "represent" && "样本代表性（放大）"}
+                            {activeZoom?.title}
                         </DialogTitle>
                     </DialogHeader>
-                    {zoomChart === "mean" && (
+                    {activeZoom && (
                         <ChartBars
-                            rows={meanRows}
-                            series={meanSeries}
-                            emptyMessage="暂无可用于均值分析的数值字段"
-                            heightClass="h-[65vh]"
-                        />
-                    )}
-                    {zoomChart === "dist" && (
-                        <ChartBars
-                            rows={distributionRows}
-                            series={distributionSeries}
-                            unit="%"
-                            emptyMessage="暂无可用于分布分析的分类字段"
-                            heightClass="h-[65vh]"
-                        />
-                    )}
-                    {zoomChart === "error" && (
-                        <ChartBars
-                            rows={errorRows}
-                            series={errorSeries}
-                            emptyMessage="暂无可用于误差分析的数值字段"
-                            heightClass="h-[65vh]"
-                        />
-                    )}
-                    {zoomChart === "represent" && (
-                        <ChartBars
-                            rows={representativenessRows}
-                            series={representativenessSeries}
-                            unit="%"
-                            emptyMessage="暂无可用于代表性分析的数据"
+                            rows={activeZoom.rows}
+                            series={activeZoom.series}
+                            unit={activeZoom.unit}
+                            emptyMessage={activeZoom.emptyMessage}
                             heightClass="h-[65vh]"
                         />
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Restore draft dialog */}
             <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
                 <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-analysis-restore-dialog">
                     <AlertDialogHeader>
@@ -1027,6 +731,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </AlertDialogContent>
             </AlertDialog>
 
+            {/* Sync conflict dialog */}
             <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
                 <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-analysis-conflict-dialog">
                     <AlertDialogHeader>
