@@ -16,7 +16,7 @@ interface PasswordChangeDialogProps {
     onFieldChange: (field: keyof PasswordFormState, value: string) => void;
     error: string | null;
     saving: boolean;
-    onSubmit: () => void | Promise<void>;
+    onSubmit: () => void | Promise<unknown>;
     submitLabel: string;
     submitTestId?: string;
     fieldTestIds?: Partial<Record<keyof PasswordFormState, string>>;

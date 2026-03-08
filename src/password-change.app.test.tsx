@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import { act, useState } from "react";
+import { act, type ReactNode, useState } from "react";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import { installDomGlobals } from "@/test-utils/dom";
@@ -8,19 +8,17 @@ import { installDomGlobals } from "@/test-utils/dom";
 const inputChangeHandlers = new Map<string, React.ComponentProps<"input">["onChange"]>();
 
 mock.module("@/components/ui/dialog", () => ({
-    Dialog: ({ children }: { children: unknown }) => <div data-testid="mock-dialog-root">{children}</div>,
-    DialogContent: ({ children, className }: { children: unknown; className?: string }) => <div className={className}>{children}</div>,
-    DialogFooter: ({ children, className }: { children: unknown; className?: string }) => <div className={className}>{children}</div>,
-    DialogHeader: ({ children, className }: { children: unknown; className?: string }) => <div className={className}>{children}</div>,
-    DialogTitle: ({ children, className }: { children: unknown; className?: string }) => <div className={className}>{children}</div>,
-    DialogDescription: ({ children, className }: { children: unknown; className?: string }) => <div className={className}>{children}</div>,
+    Dialog: ({ children }: { children: ReactNode }) => <div data-testid="mock-dialog-root">{children}</div>,
+    DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    DialogFooter: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    DialogHeader: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    DialogTitle: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    DialogDescription: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
 }));
 
 mock.module("@/components/ui/input", () => ({
-    Input: (props: React.ComponentProps<"input">) => {
-        const testId = typeof props["data-testid"] === "string"
-            ? props["data-testid"]
-            : props.id;
+    Input: (props: React.ComponentProps<"input"> & { "data-testid"?: string }) => {
+        const testId = props["data-testid"] ?? props.id;
         if (testId) {
             inputChangeHandlers.set(testId, props.onChange);
         }
