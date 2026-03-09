@@ -86,8 +86,8 @@ export function useNotificationCenter<TItem, TResponse>(options: UseNotification
     }, [list, normalize]);
 
     const open = useCallback(async () => {
-        await load({ includeItems: true });
         setIsOpen(true);
+        await load({ includeItems: true });
     }, [load]);
 
     const markAsRead = useCallback(async (id: number) => {

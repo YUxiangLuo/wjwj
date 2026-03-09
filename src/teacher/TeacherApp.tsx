@@ -160,6 +160,7 @@ export function TeacherApp() {
     const {
         items: notifications,
         unreadCount,
+        loading: notificationsLoading,
         isOpen: showNotifications,
         setIsOpen: setShowNotifications,
         load: loadNotifications,
@@ -539,7 +540,11 @@ export function TeacherApp() {
                         <DialogDescription className="text-slate-600 dark:text-slate-400">最近通知</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
-                        {notifications.length === 0 ? (
+                        {notificationsLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+                            </div>
+                        ) : notifications.length === 0 ? (
                             <div className="text-sm text-slate-500 text-center py-8">暂无通知</div>
                         ) : (
                             notifications.map((item) => (
