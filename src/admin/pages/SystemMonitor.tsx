@@ -33,11 +33,11 @@ function MetricCard({ label, value, unit, icon: Icon, color }: {
     color: string;
 }) {
     return (
-        <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
+        <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
             <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-slate-400">{label}</span>
-                    <div className="w-10 h-10 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center border border-slate-700">
+                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{label}</span>
+                    <div className="w-10 h-10 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex items-center justify-center border border-slate-300 dark:border-slate-700">
                         <Icon className="w-5 h-5" />
                     </div>
                 </div>
@@ -45,7 +45,7 @@ function MetricCard({ label, value, unit, icon: Icon, color }: {
                     <span className={`text-3xl font-bold tracking-tight ${color}`}>{value}</span>
                     <span className="text-sm font-medium text-slate-500 mb-1.5">{unit}</span>
                 </div>
-                <Progress value={Math.min(value, 100)} className={`h-2 bg-slate-800 ${color.replace("text-", "[&>div]:bg-")}`} />
+                <Progress value={Math.min(value, 100)} className={`h-2 bg-slate-200 dark:bg-slate-800 ${color.replace("text-", "[&>div]:bg-")}`} />
             </CardContent>
         </Card>
     );
@@ -164,7 +164,7 @@ export function SystemMonitor() {
             case "WARN":
                 return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">{level}</Badge>;
             default:
-                return <Badge variant="secondary" className="bg-slate-800 text-slate-300 hover:bg-slate-700">{level}</Badge>;
+                return <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700">{level}</Badge>;
         }
     };
 
@@ -178,19 +178,19 @@ export function SystemMonitor() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-100">系统监控</h2>
-                    <p className="text-sm text-slate-400 mt-1">查看系统资源占用与日志动态。</p>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">系统监控</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">查看系统资源占用与日志动态。</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-400 px-3 py-1.5 rounded-md bg-slate-900 border border-slate-800">
-                        <span className={`w-2 h-2 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-slate-600"}`} />
+                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 px-3 py-1.5 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                        <span className={`w-2 h-2 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-slate-400 dark:bg-slate-600"}`} />
                         {isLive ? "实时监控中" : "监控已暂停"}
                     </div>
-                    <Button data-testid="monitor-export-report" variant="outline" onClick={handleExportReport} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
+                    <Button data-testid="monitor-export-report" variant="outline" onClick={handleExportReport} className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
                         <Download className="w-4 h-4 mr-2" />
                         导出报告
                     </Button>
-                    <Button data-testid="monitor-refresh" variant="outline" onClick={fetchData} disabled={loading} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
+                    <Button data-testid="monitor-refresh" variant="outline" onClick={fetchData} disabled={loading} className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                         刷新
                     </Button>
@@ -198,7 +198,7 @@ export function SystemMonitor() {
                         data-testid={isLive ? "monitor-pause" : "monitor-resume"}
                         variant={isLive ? "secondary" : "default"}
                         onClick={() => setIsLive(!isLive)}
-                        className={isLive ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-indigo-600 hover:bg-indigo-700 text-white"}
+                        className={isLive ? "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700" : "bg-indigo-600 hover:bg-indigo-700 text-white"}
                     >
                         {isLive ? (
                             <>
@@ -242,47 +242,47 @@ export function SystemMonitor() {
                     value={metrics.network}
                     unit="Mbps"
                     icon={Wifi}
-                    color="text-blue-400"
+                    color="text-blue-600 dark:text-blue-400"
                 />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
                     <CardContent className="p-5">
-                        <div className="flex items-center gap-2 text-slate-400 mb-2">
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 mb-2">
                             <Users className="w-4 h-4" />
                             <span className="text-sm font-medium">活跃在线用户</span>
                         </div>
-                        <div className="text-3xl font-bold text-slate-100">{metrics.activeConnections}</div>
+                        <div className="text-3xl font-bold text-slate-900 dark:text-slate-100">{metrics.activeConnections}</div>
                         {metrics.activeByRole && metrics.activeByRole.length > 0 && (
                             <div className="mt-3 space-y-1">
                                 {metrics.activeByRole.map((r) => (
                                     <div key={r.role} className="flex items-center justify-between text-xs">
                                         <span className="text-slate-500">{r.role}</span>
-                                        <span className="text-slate-300 font-mono">{r.count}</span>
+                                        <span className="text-slate-700 dark:text-slate-300 font-mono">{r.count}</span>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </CardContent>
                 </Card>
-                <Card className="border-slate-800 bg-slate-900 shadow-sm">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
                     <CardContent className="p-5">
-                        <div className="flex items-center gap-2 text-slate-400 mb-2">
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 mb-2">
                             <LogIn className="w-4 h-4" />
                             <span className="text-sm font-medium">今日登录次数</span>
                         </div>
-                        <div className="text-3xl font-bold text-slate-100">{metrics.todayLogins ?? 0}</div>
+                        <div className="text-3xl font-bold text-slate-900 dark:text-slate-100">{metrics.todayLogins ?? 0}</div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* 告警区域 */}
             {alerts.length > 0 && (
-                <Card className="border-slate-800 bg-slate-900 shadow-sm">
-                    <CardHeader className="flex flex-row items-center gap-2 border-b border-slate-800 pb-4">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
+                    <CardHeader className="flex flex-row items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
                         <AlertTriangle className="w-5 h-5 text-amber-600" />
-                        <CardTitle className="text-base text-slate-100">系统告警</CardTitle>
+                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">系统告警</CardTitle>
                         <Badge variant="outline" className="ml-auto bg-amber-500/10 text-amber-600 border-amber-500/20">{alerts.length} 条</Badge>
                     </CardHeader>
                     <CardContent className="space-y-2 pt-4">
@@ -305,32 +305,32 @@ export function SystemMonitor() {
                                 }>
                                     {alert.level === "critical" ? "严重" : "警告"}
                                 </Badge>
-                                <span className="text-sm text-slate-300">{alert.message}</span>
+                                <span className="text-sm text-slate-700 dark:text-slate-300">{alert.message}</span>
                             </div>
                         ))}
                     </CardContent>
                 </Card>
             )}
 
-            <Card className="border-slate-800 bg-slate-900 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                     <div className="flex items-center gap-2">
-                        <TerminalSquare className="w-5 h-5 text-slate-400" />
-                        <CardTitle className="text-base text-slate-100">系统日志</CardTitle>
+                        <TerminalSquare className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">系统日志</CardTitle>
                     </div>
                     <span className="text-xs text-slate-500 font-mono">Total {logs.length} logs</span>
                 </CardHeader>
                 <CardContent className="space-y-2 pt-4 max-h-[400px] overflow-y-auto custom-scrollbar">
                     {logs.map((log) => (
-                        <div key={log.id} className="flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-sm sm:flex-row sm:items-start group hover:bg-slate-950 transition-colors">
-                            <div className="text-xs text-slate-500 font-mono sm:w-20 pt-1 group-hover:text-slate-400 transition-colors">
+                        <div key={log.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/50 p-3 text-sm sm:flex-row sm:items-start group hover:bg-white dark:hover:bg-slate-950 transition-colors">
+                            <div className="text-xs text-slate-500 font-mono sm:w-20 pt-1 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors">
                                 {new Date(log.time).toLocaleTimeString("zh-CN")}
                             </div>
                             <div className="min-w-[70px]">
                                 {getLevelBadge(log.level)}
                             </div>
-                            <span className="text-slate-300 flex-1 font-mono text-xs sm:text-sm py-0.5">{log.message}</span>
-                            <span className="text-xs text-slate-500 italic px-2 py-0.5 rounded bg-slate-900 border border-slate-800">{log.source}</span>
+                            <span className="text-slate-700 dark:text-slate-300 flex-1 font-mono text-xs sm:text-sm py-0.5">{log.message}</span>
+                            <span className="text-xs text-slate-500 italic px-2 py-0.5 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">{log.source}</span>
                         </div>
                     ))}
                     {logs.length === 0 && (

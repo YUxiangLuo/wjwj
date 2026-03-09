@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 
 const statusConfig: Record<number, { label: string; color: string; icon: any }> = {
-    0: { label: "批改草稿", color: "bg-slate-500/10 text-slate-400 border-slate-500/20", icon: FileText },
+    0: { label: "批改草稿", color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20", icon: FileText },
     1: { label: "待批改", color: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: Clock },
     2: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: CheckCircle2 },
     3: { label: "被驳回", color: "bg-red-500/10 text-red-600 border-red-500/20", icon: XCircle },
@@ -57,13 +57,13 @@ export function SubmissionHistory() {
         <div className="space-y-6 max-w-5xl mx-auto" data-testid="student-submission-history">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 dark:from-white to-slate-600 dark:to-slate-400">
                         提交记录
                     </h2>
-                    <p className="text-slate-400 text-sm mt-1">查看该任务的历史提交与批改状态</p>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">查看该任务的历史提交与批改状态</p>
                 </div>
                 <Link to={`/task/${taskId}`}>
-                    <Button variant="outline" className="gap-2 border-slate-700 hover:bg-slate-800 text-slate-300">
+                    <Button variant="outline" className="gap-2 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
                         <ArrowLeft className="w-4 h-4" />
                         返回任务详情
                     </Button>
@@ -72,12 +72,12 @@ export function SubmissionHistory() {
 
             <div className="space-y-4">
                 {submissions.length === 0 ? (
-                    <Card className="border-dashed border-slate-700 bg-slate-900/30">
+                    <Card className="border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/30 dark:bg-slate-900/30">
                         <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className="w-12 h-12 rounded-full bg-slate-800/50 flex items-center justify-center mb-4">
+                            <div className="w-12 h-12 rounded-full bg-slate-200/50 dark:bg-slate-800/50 flex items-center justify-center mb-4">
                                 <FileText className="w-6 h-6 text-slate-500" />
                             </div>
-                            <h3 className="text-lg font-medium text-slate-300">暂无提交记录</h3>
+                            <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300">暂无提交记录</h3>
                             <p className="text-slate-500 mt-2 max-w-sm">
                                 当你完成实验并提交报告后，这里将显示你的提交历史和老师的反馈。
                             </p>
@@ -92,7 +92,7 @@ export function SubmissionHistory() {
                             <Card
                                 key={sub.id}
                                 data-testid={`student-submission-row-${sub.id}`}
-                                className="group border-slate-700/50 bg-slate-900/50 hover:bg-slate-800/50 hover:border-indigo-500/30 transition-all duration-300 backdrop-blur-sm overflow-hidden"
+                                className="group border-slate-300/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-900/50 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-indigo-500/30 transition-all duration-300 backdrop-blur-sm overflow-hidden"
                             >
                                 <CardContent className="p-0">
                                     <div className="flex flex-col md:flex-row items-stretch">
@@ -111,14 +111,14 @@ export function SubmissionHistory() {
                                                         {status.label}
                                                     </Badge>
                                                     <span className="text-sm text-slate-500">
-                                                        提交时间：<span className="text-slate-300 font-mono">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN") : "-"}</span>
+                                                        提交时间：<span className="text-slate-700 dark:text-slate-300 font-mono">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN") : "-"}</span>
                                                     </span>
                                                 </div>
 
                                                 <div className="flex items-center gap-6 mt-2">
                                                     {sub.totalScore !== null ? (
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-slate-400 text-sm">得分</span>
+                                                            <span className="text-slate-600 dark:text-slate-400 text-sm">得分</span>
                                                             <span className={cn("text-xl font-bold font-mono",
                                                                 sub.totalScore >= 90 ? "text-emerald-600" :
                                                                     sub.totalScore >= 60 ? "text-cyan-600" :
@@ -134,7 +134,7 @@ export function SubmissionHistory() {
                                                     {sub.graderName && (
                                                         <div className="flex items-center gap-2 text-sm text-slate-500">
                                                             <span>批改人:</span>
-                                                            <span className="text-slate-300">{sub.graderName}</span>
+                                                            <span className="text-slate-700 dark:text-slate-300">{sub.graderName}</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -149,7 +149,7 @@ export function SubmissionHistory() {
 
                                             <div className="w-full md:w-auto flex flex-row md:flex-col gap-2">
                                                 <Link to={`/submissions/${sub.id}`} className="w-full md:w-auto">
-                                                    <Button variant="outline" size="sm" className="w-full gap-2 border-slate-700 bg-slate-800/50 text-slate-300 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all">
+                                                    <Button variant="outline" size="sm" className="w-full gap-2 border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:text-white hover:bg-indigo-600 hover:border-indigo-500 transition-all">
                                                         <FileText className="w-4 h-4" />
                                                         查看详情
                                                     </Button>

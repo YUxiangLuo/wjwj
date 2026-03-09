@@ -30,17 +30,17 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
 
     return (
         <AlertDialog open={state.open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+            <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="text-slate-100">确认操作</AlertDialogTitle>
-                    <AlertDialogDescription className="text-slate-400">
+                    <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认操作</AlertDialogTitle>
+                    <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
                         {state.type === "delete" && "确认删除该学生吗？此操作不可恢复。"}
                         {state.type === "reset" && "确认重置该学生的密码为学号吗？"}
                         {state.type === "toggle" && `确认${state.student?.status === 1 ? "禁用" : "启用"}该学生账号吗？`}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={onCancel} className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
+                    <AlertDialogCancel onClick={onCancel} className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                         取消
                     </AlertDialogCancel>
                     <AlertDialogAction data-testid="teacher-student-confirm-submit" onClick={onConfirm} className={state.type === "delete" ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}>

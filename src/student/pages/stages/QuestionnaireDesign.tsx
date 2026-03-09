@@ -37,7 +37,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
 
 const questionTypeColors: Record<QuestionType, string> = {
     boolean: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
-    single: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+    single: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
     multiple: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
     scale: "bg-amber-500/10 text-amber-600 border-amber-500/20",
 };
@@ -516,17 +516,17 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             case 1:
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                        <Card className="lg:col-span-2 rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                        <Card className="lg:col-span-2 rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2 text-slate-100">
+                                <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                                     <MessageSquare className="w-5 h-5 text-indigo-500" />
                                     欢迎语设置
                                 </CardTitle>
-                                <CardDescription className="text-slate-400">设置问卷的标题和欢迎语，让受访者了解调查目的</CardDescription>
+                                <CardDescription className="text-slate-600 dark:text-slate-400">设置问卷的标题和欢迎语，让受访者了解调查目的</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="title" className="text-slate-300">问卷标题 *</Label>
+                                    <Label htmlFor="title" className="text-slate-700 dark:text-slate-300">问卷标题 *</Label>
                                     <Input
                                         id="title"
                                         placeholder="请输入问卷标题"
@@ -534,12 +534,12 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         onChange={(e) => setTitle(e.target.value)}
                                         maxLength={100}
                                         data-testid="student-questionnaire-title"
-                                        className="bg-slate-950/50 border-slate-800 focus:border-indigo-500"
+                                        className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 focus:border-indigo-500"
                                     />
                                     <p className="text-xs text-slate-500 text-right">{title.length}/100</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="welcome" className="text-slate-300">欢迎语 *（至少20字）</Label>
+                                    <Label htmlFor="welcome" className="text-slate-700 dark:text-slate-300">欢迎语 *（至少20字）</Label>
                                     <RichTextEditor
                                         dataTestId="student-questionnaire-welcome"
                                         editorTestId="student-questionnaire-welcome-editor"
@@ -564,16 +564,16 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         </Card>
                         <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm h-fit">
                             <CardHeader>
-                                <CardTitle className="text-base text-indigo-300 flex items-center gap-2">
+                                <CardTitle className="text-base text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
                                     <HelpCircle className="w-4 h-4" />
                                     小贴士
                                 </CardTitle>
-                                <CardDescription className="text-indigo-300/70">好的欢迎语能提高数据质量。</CardDescription>
+                                <CardDescription className="text-indigo-700/70 dark:text-indigo-300/70">好的欢迎语能提高数据质量。</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4 text-sm text-indigo-200/80 leading-relaxed">
+                            <CardContent className="space-y-4 text-sm text-indigo-800/80 dark:text-indigo-200/80 leading-relaxed">
                                 <p>建议说明调查目的、预计用时与隐私保护方式。</p>
                                 <p>保持简洁友好，最好控制在 200 字以内。</p>
-                                <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/20 p-3 text-xs text-indigo-300">
+                                <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/20 p-3 text-xs text-indigo-700 dark:text-indigo-300">
                                     <span className="font-semibold block mb-1">示例：</span>
                                     感谢参与本次调查，本问卷约 3 分钟完成，数据仅用于教学分析。
                                 </div>
@@ -586,14 +586,14 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 return (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
                         <div className="lg:col-span-2 space-y-4">
-                            <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
-                                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
+                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                                <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                                     <div>
-                                        <CardTitle className="text-slate-100 flex items-center gap-2">
+                                        <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
                                             <List className="w-5 h-5 text-indigo-500" />
                                             题目列表
                                         </CardTitle>
-                                        <CardDescription className="text-slate-400 mt-1">
+                                        <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
                                             已添加 {questions.length} 道题目（最少5题，最多50题）
                                         </CardDescription>
                                     </div>
@@ -609,7 +609,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 </CardHeader>
                                 <CardContent className="space-y-4 pt-6" data-testid="student-questionnaire-list">
                                     {questions.length === 0 ? (
-                                        <div className="text-center py-16 text-slate-500 bg-slate-950/30 rounded-xl border border-dashed border-slate-800">
+                                        <div className="text-center py-16 text-slate-500 bg-white/30 dark:bg-slate-950/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
                                             <p>暂无题目，点击「添加题目」开始设计问卷</p>
                                         </div>
                                     ) : (
@@ -618,9 +618,9 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                 <div
                                                     key={q.id}
                                                     data-testid={`student-questionnaire-item-${q.id}`}
-                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all group hover:bg-slate-800 ${dragOverId === q.id && draggingId !== q.id
+                                                    className={`flex items-center gap-3 p-3 rounded-xl border transition-all group hover:bg-slate-200 dark:hover:bg-slate-800 ${dragOverId === q.id && draggingId !== q.id
                                                         ? "border-indigo-500 ring-1 ring-indigo-500/50 bg-indigo-500/10"
-                                                        : "border-slate-800 bg-slate-950/50"
+                                                        : "border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/50"
                                                         } ${draggingId === q.id ? "opacity-50" : ""}`}
                                                     draggable
                                                     onDragStart={handleDragStart(q.id)}
@@ -629,18 +629,18 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                     onDrop={handleDrop(q.id)}
                                                     onDragEnd={handleDragEnd}
                                                 >
-                                                    <GripVertical className="w-4 h-4 text-slate-500 cursor-grab hover:text-slate-400" />
-                                                    <span className="text-sm font-bold text-slate-400 w-8">Q{index + 1}</span>
+                                                    <GripVertical className="w-4 h-4 text-slate-500 cursor-grab hover:text-slate-600 dark:hover:text-slate-400" />
+                                                    <span className="text-sm font-bold text-slate-600 dark:text-slate-400 w-8">Q{index + 1}</span>
                                                     <Badge variant="outline" className={`${questionTypeColors[q.type]} px-2 py-0.5 text-xs whitespace-nowrap`}>
                                                         {questionTypeLabels[q.type]}
                                                     </Badge>
-                                                    <span className="flex-1 text-sm text-slate-300 truncate font-medium">{q.content}</span>
+                                                    <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 truncate font-medium">{q.content}</span>
                                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             data-testid={`student-questionnaire-move-up-${q.id}`}
-                                                            className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
+                                                            className="h-8 w-8 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
                                                             onClick={() => moveQuestion(index, "up")}
                                                             disabled={index === 0}
                                                         >
@@ -650,7 +650,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                             variant="ghost"
                                                             size="icon"
                                                             data-testid={`student-questionnaire-move-down-${q.id}`}
-                                                            className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
+                                                            className="h-8 w-8 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
                                                             onClick={() => moveQuestion(index, "down")}
                                                             disabled={index === questions.length - 1}
                                                         >
@@ -660,7 +660,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                             variant="ghost"
                                                             size="icon"
                                                             data-testid={`student-questionnaire-duplicate-${q.id}`}
-                                                            className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
+                                                            className="h-8 w-8 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
                                                             onClick={() => handleDuplicateQuestion(q)}
                                                         >
                                                             <Copy className="w-4 h-4" />
@@ -669,7 +669,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                             variant="ghost"
                                                             size="icon"
                                                             data-testid={`student-questionnaire-edit-${q.id}`}
-                                                            className="h-8 w-8 text-slate-400 hover:text-slate-100 hover:bg-slate-700"
+                                                            className="h-8 w-8 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
                                                             <Edit2 className="w-4 h-4" />
@@ -699,30 +699,30 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             )}
                         </div>
                         <div className="space-y-4">
-                            <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                                 <CardHeader className="cursor-pointer select-none" onClick={() => setRecommendCollapsed(!recommendCollapsed)}>
                                     <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base text-slate-200">推荐题目</CardTitle>
-                                        <span className={`text-slate-400 transition-transform duration-200 ${recommendCollapsed ? "" : "rotate-180"}`}>▲</span>
+                                        <CardTitle className="text-base text-slate-800 dark:text-slate-200">推荐题目</CardTitle>
+                                        <span className={`text-slate-600 dark:text-slate-400 transition-transform duration-200 ${recommendCollapsed ? "" : "rotate-180"}`}>▲</span>
                                     </div>
-                                    <CardDescription className="text-slate-400">可直接引用教师提供的推荐题目</CardDescription>
+                                    <CardDescription className="text-slate-600 dark:text-slate-400">可直接引用教师提供的推荐题目</CardDescription>
                                 </CardHeader>
                                 {!recommendCollapsed && (
                                     <CardContent className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                         {recommendQuestions.length === 0 && (
-                                            <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4 text-sm text-slate-500 text-center">
+                                            <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-4 text-sm text-slate-500 text-center">
                                                 暂无推荐题目
                                             </div>
                                         )}
                                         {recommendQuestions.map((rq) => (
-                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-900 transition-colors">
+                                            <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                                                 <div className="space-y-1">
-                                                    <div className="text-sm font-medium text-slate-300 line-clamp-2">{rq.content}</div>
+                                                    <div className="text-sm font-medium text-slate-700 dark:text-slate-300 line-clamp-2">{rq.content}</div>
                                                     <div className="text-xs text-slate-500">
                                                         类型：{questionTypeLabels[{ 1: "boolean", 2: "single", 3: "multiple", 4: "scale" }[rq.questionType] as QuestionType]}
                                                     </div>
                                                 </div>
-                                                <Button size="sm" variant="outline" className="w-full mt-1 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100" onClick={() => handleUseRecommend(rq)}>
+                                                <Button size="sm" variant="outline" className="w-full mt-1 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleUseRecommend(rq)}>
                                                     使用此题
                                                 </Button>
                                             </div>
@@ -730,11 +730,11 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     </CardContent>
                                 )}
                             </Card>
-                            <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                                 <CardHeader>
-                                    <CardTitle className="text-base text-slate-200">设计建议</CardTitle>
+                                    <CardTitle className="text-base text-slate-800 dark:text-slate-200">设计建议</CardTitle>
                                 </CardHeader>
-                                <CardContent className="text-sm text-slate-400 space-y-2">
+                                <CardContent className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
                                     <p>• 建议至少包含 2 种题型，提升回答质量。</p>
                                     <p>• 同一类型的题目控制在 10 题以内。</p>
                                     <p>• 题目表述应清晰无歧义。</p>
@@ -747,14 +747,14 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             case 3:
                 return (
                     <div className="flex justify-center animate-in fade-in slide-in-from-right-4 duration-300">
-                        <Card className="w-full max-w-2xl rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                        <Card className="w-full max-w-2xl rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                             <CardHeader>
-                                <CardTitle className="text-slate-100">结束语设置</CardTitle>
-                                <CardDescription className="text-slate-400">设置问卷的结束语，感谢受访者参与</CardDescription>
+                                <CardTitle className="text-slate-900 dark:text-slate-100">结束语设置</CardTitle>
+                                <CardDescription className="text-slate-600 dark:text-slate-400">设置问卷的结束语，感谢受访者参与</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="ending" className="text-slate-300">结束语 *（至少20字）</Label>
+                                    <Label htmlFor="ending" className="text-slate-700 dark:text-slate-300">结束语 *（至少20字）</Label>
                                     <RichTextEditor
                                         dataTestId="student-questionnaire-ending"
                                         editorTestId="student-questionnaire-ending-editor"
@@ -775,7 +775,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                         <span className="text-slate-500">{endingTextLength}/1000</span>
                                     </div>
                                 </div>
-                                <div className="rounded-xl bg-indigo-900/20 border border-indigo-500/20 p-3 text-xs text-indigo-300 flex items-start gap-2">
+                                <div className="rounded-xl bg-indigo-900/20 border border-indigo-500/20 p-3 text-xs text-indigo-700 dark:text-indigo-300 flex items-start gap-2">
                                     <HelpCircle className="w-4 h-4 shrink-0 mt-0.5" />
                                     提示：感谢语中可以提示下一步操作或后续联系信息。
                                 </div>
@@ -788,7 +788,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 return (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                         {/* Immersive preview CTA */}
-                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm overflow-hidden">
+                        <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm overflow-hidden">
                             {isPreviewValid ? (
                                 <CardContent className="py-8">
                                     <div className="flex flex-col items-center gap-4">
@@ -796,14 +796,14 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                             <CheckCircle className="w-7 h-7 text-emerald-500" />
                                         </div>
                                         <div className="text-center">
-                                            <h3 className="text-lg font-semibold text-emerald-400">模拟填写已完成</h3>
-                                            <p className="text-sm text-slate-400 mt-1">您已体验了受访者视角的问卷填写过程</p>
+                                            <h3 className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">模拟填写已完成</h3>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">您已体验了受访者视角的问卷填写过程</p>
                                         </div>
                                         <Button
                                             variant="outline"
                                             onClick={() => setPreviewOpen(true)}
                                             data-testid="student-questionnaire-redo-preview"
-                                            className="border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                                            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                                         >
                                             <RotateCcw className="w-4 h-4 mr-2" />
                                             重新模拟填写
@@ -815,17 +815,17 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border-b border-indigo-500/20 px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                                                <Play className="w-5 h-5 text-indigo-400" />
+                                                <Play className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                                             </div>
                                             <div>
-                                                <h3 className="text-base font-semibold text-indigo-200">模拟填写体验</h3>
-                                                <p className="text-xs text-indigo-300/70 mt-0.5">请以受访者身份完整体验一次问卷填写</p>
+                                                <h3 className="text-base font-semibold text-indigo-800 dark:text-indigo-200">模拟填写体验</h3>
+                                                <p className="text-xs text-indigo-700/70 dark:text-indigo-300/70 mt-0.5">请以受访者身份完整体验一次问卷填写</p>
                                             </div>
                                         </div>
                                     </div>
                                     <CardContent className="py-8">
                                         <div className="flex flex-col items-center gap-5">
-                                            <p className="text-sm text-slate-400 text-center max-w-md leading-relaxed">
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 text-center max-w-md leading-relaxed">
                                                 在进入下一阶段之前，您需要以受访者的视角完整填写一次自己设计的问卷。
                                                 这将帮助您发现问卷中可能存在的问题，提升问卷质量。
                                             </p>
@@ -850,10 +850,10 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
                         {/* Validation checklist and score */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm h-fit">
+                        <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
                             <CardHeader>
-                                <CardTitle className="text-slate-100">校验清单</CardTitle>
-                                <CardDescription className="text-slate-400">确认问卷信息完善后再进入下一阶段</CardDescription>
+                                <CardTitle className="text-slate-900 dark:text-slate-100">校验清单</CardTitle>
+                                <CardDescription className="text-slate-600 dark:text-slate-400">确认问卷信息完善后再进入下一阶段</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.title ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
@@ -928,7 +928,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     </span>
                                 </div>
                                 {requiredMissingCount === 0 ? (
-                                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">
+                                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
                                         问卷结构完整，可进入下一阶段。
                                         {warningCount > 0 ? ` 另有 ${warningCount} 项建议优化。` : ""}
                                     </div>
@@ -940,18 +940,18 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             </CardContent>
                         </Card>
 
-                        <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm h-fit">
+                        <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
                             <CardHeader>
-                                <CardTitle className="text-slate-100">初步评分（机器评分）</CardTitle>
-                                <CardDescription className="text-slate-400">供参考，满分100分</CardDescription>
+                                <CardTitle className="text-slate-900 dark:text-slate-100">初步评分（机器评分）</CardTitle>
+                                <CardDescription className="text-slate-600 dark:text-slate-400">供参考，满分100分</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 flex items-center justify-between">
                                     <div>
-                                        <div className="text-xs uppercase tracking-wider text-indigo-300">当前得分</div>
-                                        <div className="text-3xl font-bold text-indigo-200">{preliminaryScore}</div>
+                                        <div className="text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300">当前得分</div>
+                                        <div className="text-3xl font-bold text-indigo-800 dark:text-indigo-200">{preliminaryScore}</div>
                                     </div>
-                                    <div className="text-xs text-indigo-300/80">
+                                    <div className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
                                         {preliminaryScore >= 90
                                             ? "问卷结构优秀"
                                             : preliminaryScore >= 75
@@ -963,10 +963,10 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 </div>
                                 <div className="space-y-2">
                                     {scoreItems.map((item) => (
-                                        <div key={item.label} className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                                        <div key={item.label} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40 p-3">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-sm text-slate-200">{item.label}</span>
-                                                <span className="text-xs font-mono text-slate-400">{item.points} 分</span>
+                                                <span className="text-sm text-slate-800 dark:text-slate-200">{item.label}</span>
+                                                <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{item.points} 分</span>
                                             </div>
                                             <div
                                                 className={`text-xs mt-1 ${item.status === "pass"
@@ -1012,9 +1012,9 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             )}
                             <span
                                 className={syncConflictOpen
-                                    ? "text-amber-300"
+                                    ? "text-amber-700 dark:text-amber-300"
                                     : isOnline
-                                        ? "text-emerald-300"
+                                        ? "text-emerald-700 dark:text-emerald-300"
                                         : "text-rose-500"
                                 }
                             >
@@ -1034,7 +1034,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     return (
                         <div key={s.num} className="flex items-center gap-2">
                             {idx > 0 && (
-                                <div className={`w-6 h-px ${isCompleted || isCurrent ? "bg-indigo-500/40" : "bg-slate-800"}`} />
+                                <div className={`w-6 h-px ${isCompleted || isCurrent ? "bg-indigo-500/40" : "bg-slate-200 dark:bg-slate-800"}`} />
                             )}
                             <button
                                 onClick={() => {
@@ -1047,7 +1047,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 aria-label={`第 ${s.num} 步: ${s.title}`}
                                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 disabled:cursor-not-allowed ${
                                     isCurrent
-                                        ? "bg-indigo-600/15 text-indigo-300 border border-indigo-500/30"
+                                        ? "bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30"
                                         : isCompleted
                                             ? "text-emerald-600 hover:bg-emerald-500/10 cursor-pointer"
                                             : "text-slate-500"
@@ -1059,7 +1059,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
                                         isCurrent
                                             ? "bg-indigo-600 text-white"
-                                            : "bg-slate-800 text-slate-500 border border-slate-700"
+                                            : "bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700"
                                     }`}>
                                         {s.num}
                                     </span>
@@ -1073,13 +1073,13 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             {renderStep()}
 
-            <div className="flex justify-between items-center pt-4 border-t border-slate-800/50">
+            <div className="flex justify-between items-center pt-4 border-t border-slate-200/50 dark:border-slate-800/50">
                 <Button
                     variant="outline"
                     onClick={() => step > 1 && setStep((step - 1) as 1 | 2 | 3 | 4)}
                     disabled={step === 1}
                     data-testid="student-questionnaire-prev"
-                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
+                    className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100"
                 >
                     上一步
                 </Button>
@@ -1115,15 +1115,15 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-delete-dialog">
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-delete-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">确认删除</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认删除</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
                             确定要删除这道题目吗？此操作无法撤销。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={confirmDelete} data-testid="student-questionnaire-delete-confirm" className="bg-rose-600 hover:bg-rose-700 text-white">删除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -1131,33 +1131,33 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             {/* Confirm Next Stage Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-complete-dialog">
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-complete-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">确认完成问卷设计</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400 text-base leading-relaxed">
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认完成问卷设计</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
                             确认后问卷设计将被<strong className="text-indigo-500">锁定</strong>。如需修改，您需要返回本阶段重新设计，届时后续阶段的数据将被<strong className="text-rose-600">清空</strong>。
                             <br /><br />
                             确定继续吗？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmComplete} data-testid="student-questionnaire-complete-confirm" className="bg-emerald-600 hover:bg-emerald-700 text-white">确认完成</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-restore-dialog">
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-restore-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">恢复草稿</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
                             检测到本地草稿，是否恢复？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
-                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-questionnaire-restore-discard"
                             onClick={discardPendingDraft}
                         >
@@ -1175,10 +1175,10 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             </AlertDialog>
 
             <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-questionnaire-conflict-dialog">
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-conflict-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">检测到草稿冲突</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400 leading-relaxed">
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 leading-relaxed">
                             本地草稿和服务器草稿都发生了变化。请选择要保留的版本。
                             <br />
                             <span className="text-slate-500">保留本地版本将覆盖服务器当前草稿。</span>
@@ -1186,7 +1186,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
-                            className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-questionnaire-conflict-server"
                             onClick={keepServerDraft}
                         >

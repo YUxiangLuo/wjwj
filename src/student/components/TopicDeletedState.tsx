@@ -21,7 +21,7 @@ export function TopicDeletedState({ backTo = "/", backText = "返回任务列表
                         该课题已被教师删除，相关任务已归档，当前页面不可继续操作。
                     </p>
                     <Link to={backTo}>
-                        <Button className="bg-slate-800 hover:bg-slate-700 text-slate-100">
+                        <Button className="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100">
                             {backText}
                         </Button>
                     </Link>

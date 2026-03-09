@@ -30,7 +30,7 @@ function ToolbarButton({ title, onClick, children }: ToolbarButtonProps) {
                 event.preventDefault();
                 onClick();
             }}
-            className="h-8 w-8 rounded-md border border-slate-700 bg-slate-900 text-slate-300 hover:text-slate-100 hover:bg-slate-800 flex items-center justify-center transition-colors"
+            className="h-8 w-8 rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 flex items-center justify-center transition-colors"
         >
             {children}
         </button>
@@ -79,10 +79,10 @@ export function RichTextEditor({
 
     return (
         <div
-            className={cn("rounded-xl border border-slate-800 bg-slate-950/40", className)}
+            className={cn("rounded-xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40", className)}
             data-testid={dataTestId}
         >
-            <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2">
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 px-3 py-2">
                 <ToolbarButton title="加粗" onClick={() => executeCommand("bold")}>
                     <Bold className="h-4 w-4" />
                 </ToolbarButton>
@@ -92,7 +92,7 @@ export function RichTextEditor({
                 <ToolbarButton title="下划线" onClick={() => executeCommand("underline")}>
                     <Underline className="h-4 w-4" />
                 </ToolbarButton>
-                <div className="mx-1 h-5 w-px bg-slate-700" />
+                <div className="mx-1 h-5 w-px bg-slate-300 dark:bg-slate-700" />
                 <ToolbarButton title="无序列表" onClick={() => executeCommand("insertUnorderedList")}>
                     <List className="h-4 w-4" />
                 </ToolbarButton>
@@ -115,7 +115,7 @@ export function RichTextEditor({
                     suppressContentEditableWarning
                     data-testid={editorTestId}
                     className={cn(
-                        "min-h-[180px] p-4 text-sm text-slate-200 leading-relaxed outline-none rich-text-content [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:mb-1",
+                        "min-h-[180px] p-4 text-sm text-slate-800 dark:text-slate-200 leading-relaxed outline-none rich-text-content [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:mb-1",
                         editorClassName
                     )}
                     onFocus={() => setFocused(true)}

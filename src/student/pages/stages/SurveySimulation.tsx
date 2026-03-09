@@ -43,7 +43,7 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
                 <div className="flex items-center gap-3">
                     <div>
                         <div className="text-sm text-indigo-500 font-semibold uppercase tracking-wider">调查结果模拟</div>
-                        <div className="text-2xl font-bold text-slate-100 mt-1">模拟数据分析与统计</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">模拟数据分析与统计</div>
                     </div>
                 </div>
                 <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
@@ -52,20 +52,20 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
                 </Button>
             </div>
 
-            <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                 <CardContent className="py-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-slate-300">日期范围</Label>
-                            <Input placeholder="2026-01-01 ~ 2026-01-22" className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500" />
+                            <Label className="text-slate-700 dark:text-slate-300">日期范围</Label>
+                            <Input placeholder="2026-01-01 ~ 2026-01-22" className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-slate-300">细分人群</Label>
+                            <Label className="text-slate-700 dark:text-slate-300">细分人群</Label>
                             <Select defaultValue="all">
-                                <SelectTrigger className="bg-slate-950/50 border-slate-800 text-slate-200">
+                                <SelectTrigger className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                     <SelectItem value="all">全部样本</SelectItem>
                                     <SelectItem value="female">女性</SelectItem>
                                     <SelectItem value="male">男性</SelectItem>
@@ -74,8 +74,8 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-slate-300">标签</Label>
-                            <Input placeholder="如：高频用户" className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500" />
+                            <Label className="text-slate-700 dark:text-slate-300">标签</Label>
+                            <Input placeholder="如：高频用户" className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500" />
                         </div>
                     </div>
                 </CardContent>
@@ -83,7 +83,7 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {mockSummary.map((item) => (
-                    <Card key={item.label} className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm overflow-hidden relative">
+                    <Card key={item.label} className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm overflow-hidden relative">
                         <div className={`absolute top-0 right-0 p-4 opacity-10 ${item.color}`}>
                             <item.icon className="w-24 h-24 transform translate-x-4 -translate-y-4" />
                         </div>
@@ -92,8 +92,8 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
                                 <item.icon className={`w-6 h-6 ${item.color}`} />
                             </div>
                             <div>
-                                <div className="text-sm text-slate-400 font-medium">{item.label}</div>
-                                <div className="text-3xl font-bold text-slate-100 mt-1">{item.value}</div>
+                                <div className="text-sm text-slate-600 dark:text-slate-400 font-medium">{item.label}</div>
+                                <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">{item.value}</div>
                             </div>
                         </CardContent>
                     </Card>
@@ -101,25 +101,25 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-slate-100">
+                        <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                             <BarChartIcon className="w-5 h-5 text-indigo-500" />
                             人口统计分布
                         </CardTitle>
-                        <CardDescription className="text-slate-400">年龄段/群体占比对比</CardDescription>
+                        <CardDescription className="text-slate-600 dark:text-slate-400">年龄段/群体占比对比</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <BarChart data={mockBarData} />
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
+                <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-slate-100">
+                        <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                             <PieChartIcon className="w-5 h-5 text-teal-500" />
                             偏好分布
                         </CardTitle>
-                        <CardDescription className="text-slate-400">选项偏好占比</CardDescription>
+                        <CardDescription className="text-slate-600 dark:text-slate-400">选项偏好占比</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-6">
                         <PieChart data={mockPieData} />
@@ -129,15 +129,15 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
 
             <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-indigo-300">
+                    <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
                         <BrainCircuit className="w-5 h-5" />
                         关键洞察
                     </CardTitle>
-                    <CardDescription className="text-indigo-200/60">从模拟结果中提取的结论</CardDescription>
+                    <CardDescription className="text-indigo-800/60 dark:text-indigo-200/60">从模拟结果中提取的结论</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-4">
                     {mockInsights.map((insight) => (
-                        <div key={insight.id} className="rounded-xl bg-slate-900/50 border border-indigo-500/20 p-4 text-sm text-indigo-200 flex items-start gap-3">
+                        <div key={insight.id} className="rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-indigo-500/20 p-4 text-sm text-indigo-800 dark:text-indigo-200 flex items-start gap-3">
                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 shrink-0"></div>
                             {insight.text}
                         </div>
@@ -145,8 +145,8 @@ export function SurveySimulation({ onPrev, onSubmit }: SurveySimulationProps) {
                 </CardContent>
             </Card>
 
-            <div className="flex justify-between pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
+            <div className="flex justify-between pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
+                <Button variant="outline" onClick={onPrev} className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
                     上一阶段
                 </Button>
                 <Button onClick={onSubmit} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
@@ -164,14 +164,14 @@ function BarChart({ data }: { data: Array<{ label: string; value: number }> }) {
     const max = Math.max(...data.map((d) => d.value), 1);
     const chartHeight = 160;
     return (
-        <div className="h-64 rounded-xl bg-slate-950/30 border border-slate-800 px-8 py-6 relative">
+        <div className="h-64 rounded-xl bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 px-8 py-6 relative">
             {/* Grid lines */}
             <div className="absolute inset-0 flex flex-col justify-between px-8 py-6 pointer-events-none">
-                <div className="w-full h-px bg-slate-800/50"></div>
-                <div className="w-full h-px bg-slate-800/50"></div>
-                <div className="w-full h-px bg-slate-800/50"></div>
-                <div className="w-full h-px bg-slate-800/50"></div>
-                <div className="w-full h-px bg-slate-800/50"></div>
+                <div className="w-full h-px bg-slate-200/50 dark:bg-slate-800/50"></div>
+                <div className="w-full h-px bg-slate-200/50 dark:bg-slate-800/50"></div>
+                <div className="w-full h-px bg-slate-200/50 dark:bg-slate-800/50"></div>
+                <div className="w-full h-px bg-slate-200/50 dark:bg-slate-800/50"></div>
+                <div className="w-full h-px bg-slate-200/50 dark:bg-slate-800/50"></div>
             </div>
 
             <div className="flex h-full items-end justify-between gap-6 relative z-10">
@@ -182,11 +182,11 @@ function BarChart({ data }: { data: Array<{ label: string; value: number }> }) {
                                 className="w-full rounded-t-lg bg-gradient-to-t from-indigo-600 to-teal-400 opacity-80 group-hover:opacity-100 transition-opacity"
                                 style={{ height: `${Math.round((item.value / max) * chartHeight)}px` }}
                             />
-                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-slate-100 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                                 {item.value}%
                             </div>
                         </div>
-                        <div className="text-xs text-slate-400 font-medium">{item.label}</div>
+                        <div className="text-xs text-slate-600 dark:text-slate-400 font-medium">{item.label}</div>
                     </div>
                 ))}
             </div>
@@ -241,7 +241,7 @@ function PieChart({ data }: { data: Array<{ label: string; value: number; color:
     };
 
     return (
-        <div className="flex flex-col items-center gap-6 rounded-xl bg-slate-950/30 border border-slate-800 px-6 py-6">
+        <div className="flex flex-col items-center gap-6 rounded-xl bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 px-6 py-6">
             <div className="relative">
                 <svg width="160" height="160" viewBox="0 0 160 160" className="transform -rotate-90">
                     {segments.map((segment) => (
@@ -249,23 +249,23 @@ function PieChart({ data }: { data: Array<{ label: string; value: number; color:
                             key={segment.label}
                             d={describeArc(segment.startAngle, segment.endAngle)}
                             fill={segment.color}
-                            className="hover:opacity-80 transition-opacity cursor-pointer stroke-slate-900 stroke-2"
+                            className="hover:opacity-80 transition-opacity cursor-pointer stroke-slate-50 dark:stroke-slate-900 stroke-2"
                         />
                     ))}
                     {/* Inner circle for donut chart effect */}
-                    <circle cx="80" cy="80" r="40" className="fill-slate-950" />
+                    <circle cx="80" cy="80" r="40" className="fill-white dark:fill-slate-950" />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <span className="text-xs text-slate-500 font-medium">分布</span>
                 </div>
             </div>
 
-            <div className="grid w-full grid-cols-2 gap-3 text-xs text-slate-400">
+            <div className="grid w-full grid-cols-2 gap-3 text-xs text-slate-600 dark:text-slate-400">
                 {data.map((item) => (
                     <div key={item.label} className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full ring-2 ring-slate-900" style={{ backgroundColor: item.color }} />
+                        <span className="h-2 w-2 rounded-full ring-2 ring-slate-50 dark:ring-slate-900" style={{ backgroundColor: item.color }} />
                         <span>{item.label}</span>
-                        <span className="ml-auto font-mono text-slate-300">{item.value}%</span>
+                        <span className="ml-auto font-mono text-slate-700 dark:text-slate-300">{item.value}%</span>
                     </div>
                 ))}
             </div>

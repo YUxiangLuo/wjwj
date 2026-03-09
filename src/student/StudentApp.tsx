@@ -136,10 +136,10 @@ function StudentAppContent() {
 
     const authStatusDialog = authDialogCode && showAuthDialog ? (
         <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-            <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                 <DialogHeader>
-                    <DialogTitle className="text-slate-100">登录状态已变更</DialogTitle>
-                    <DialogDescription className="text-slate-400">
+                    <DialogTitle className="text-slate-900 dark:text-slate-100">登录状态已变更</DialogTitle>
+                    <DialogDescription className="text-slate-600 dark:text-slate-400">
                         {authDialogCode === "AUTH_005"
                             ? "您的账号已在其他设备登录。"
                             : "会话已过期，请重新登录。"}
@@ -155,7 +155,7 @@ function StudentAppContent() {
     // 显示加载状态
     if (isLoading || isRecoveringLogin) {
         return (
-            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+            <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
             </div>
         );
@@ -187,20 +187,20 @@ function StudentAppContent() {
 
     if (currentUser.isFirstLogin) {
         return (
-            <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl shadow-slate-950/40">
+            <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex items-center justify-center px-6">
+                <div className="w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-8 shadow-2xl shadow-slate-300/40 dark:shadow-slate-950/40">
                     <div className="space-y-3 text-center">
                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-bold text-white shadow-lg shadow-indigo-500/20">
                             L
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-100">首次登录需完成密码更新</h1>
-                        <p className="text-sm leading-6 text-slate-400">
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">首次登录需完成密码更新</h1>
+                        <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
                             为保护账号安全，修改密码前暂不开放任务、通知和实验操作。
                         </p>
                     </div>
 
-                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-400">
-                        当前账号：<span className="font-mono text-slate-200">{currentUser.studentId}</span>
+                    <div className="mt-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/50 p-4 text-sm text-slate-600 dark:text-slate-400">
+                        当前账号：<span className="font-mono text-slate-800 dark:text-slate-200">{currentUser.studentId}</span>
                     </div>
                 </div>
 
@@ -247,14 +247,14 @@ function StudentAppContent() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans selection:bg-indigo-500/30">
             {/* Header */}
-            <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-900/80 backdrop-blur supports-[backdrop-filter]:bg-slate-900/60">
+            <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur supports-[backdrop-filter]:bg-slate-50/60 dark:supports-[backdrop-filter]:bg-slate-900/60">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         {!isTaskHall && (
                             <Link to="/">
-                                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+                                <Button variant="ghost" size="icon" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
                                     <ArrowLeft className="w-5 h-5" />
                                 </Button>
                             </Link>
@@ -264,7 +264,7 @@ function StudentAppContent() {
                                 L
                             </div>
                             <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-slate-100 group-hover:text-slate-200 transition-colors">统计学虚拟仿真实验室</h1>
+                                <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">统计学虚拟仿真实验室</h1>
                                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Learning Lab</p>
                             </div>
                         </Link>
@@ -273,7 +273,7 @@ function StudentAppContent() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                            className="relative text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800"
                             data-testid="student-open-notifications"
                             onClick={() => {
                                 setShowNotifications(true);
@@ -282,7 +282,7 @@ function StudentAppContent() {
                         >
                             <Bell className="w-5 h-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold leading-5 text-center ring-2 ring-slate-900">
+                                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold leading-5 text-center ring-2 ring-slate-50 dark:ring-slate-900">
                                     {unreadCount > 99 ? "99+" : unreadCount}
                                 </span>
                             )}
@@ -291,7 +291,7 @@ function StudentAppContent() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                            className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800"
                             onClick={toggleTheme}
                             title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                             aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
@@ -302,10 +302,10 @@ function StudentAppContent() {
                         <div className="relative">
                             <Button
                                 variant="ghost"
-                                className="relative h-10 w-10 rounded-full hover:bg-slate-800 focus:ring-0 px-0"
+                                className="relative h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 focus:ring-0 px-0"
                                 onClick={() => setShowAuthDialog(prev => !prev)}
                             >
-                                <Avatar className="h-9 w-9 border border-slate-700 bg-slate-800">
+                                <Avatar className="h-9 w-9 border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800">
                                     <AvatarFallback className="bg-indigo-600 text-white font-medium text-sm" data-testid="student-avatar">
                                         {displayInitial}
                                     </AvatarFallback>
@@ -316,24 +316,24 @@ function StudentAppContent() {
                             {showAuthDialog && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowAuthDialog(false)}></div>
-                                    <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-800 bg-slate-900 shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="px-3 py-2.5 border-b border-slate-800 bg-slate-900/50">
-                                            <p className="text-sm font-medium leading-none text-slate-100">{displayName}</p>
+                                    <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="px-3 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                                            <p className="text-sm font-medium leading-none text-slate-900 dark:text-slate-100">{displayName}</p>
                                             <p className="text-xs leading-none text-slate-500 mt-1.5">{currentUser.studentId}</p>
                                         </div>
                                         <button
-                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors cursor-pointer text-left"
+                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer text-left"
                                             data-testid="student-nav-profile"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
                                                 navigate("/profile");
                                             }}
                                         >
-                                            <User className="mr-2 h-4 w-4 text-slate-400" />
+                                            <User className="mr-2 h-4 w-4 text-slate-600 dark:text-slate-400" />
                                             个人信息
                                         </button>
                                         <button
-                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100 transition-colors cursor-pointer text-left"
+                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer text-left"
                                             data-testid="student-open-password-modal"
                                             onClick={() => {
                                                 setShowAuthDialog(false);
@@ -341,7 +341,7 @@ function StudentAppContent() {
                                                 setShowPasswordModal(true);
                                             }}
                                         >
-                                            <KeyRound className="mr-2 h-4 w-4 text-slate-400" />
+                                            <KeyRound className="mr-2 h-4 w-4 text-slate-600 dark:text-slate-400" />
                                             修改密码
                                         </button>
                                         <button
@@ -403,9 +403,9 @@ function StudentAppContent() {
             />
 
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent className="max-w-lg bg-slate-900 border-slate-800 text-slate-200">
+                <DialogContent className="max-w-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center justify-between text-slate-100">
+                        <DialogTitle className="flex items-center justify-between text-slate-900 dark:text-slate-100">
                             通知
                             <Button
                                 variant="ghost"
@@ -418,7 +418,7 @@ function StudentAppContent() {
                                 全部已读
                             </Button>
                         </DialogTitle>
-                        <DialogDescription className="text-slate-400">查看任务与批改提醒</DialogDescription>
+                        <DialogDescription className="text-slate-600 dark:text-slate-400">查看任务与批改提醒</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                         {!notifications || notifications.notifications.length === 0 ? (
@@ -427,7 +427,7 @@ function StudentAppContent() {
                             notifications.notifications.map((notice) => (
                                 <div
                                     key={notice.id}
-                                    className={`p-3 rounded-lg border transition-all ${notice.isRead ? "bg-slate-950 border-slate-800/50 opacity-70" : "bg-slate-800 border-slate-700 shadow-sm hover:bg-slate-800/80"}`}
+                                    className={`p-3 rounded-lg border transition-all ${notice.isRead ? "bg-white dark:bg-slate-950 border-slate-200/50 dark:border-slate-800/50 opacity-70" : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm hover:bg-slate-200/80 dark:hover:bg-slate-800/80"}`}
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <button
@@ -439,11 +439,11 @@ function StudentAppContent() {
                                             }}
                                         >
                                             <div>
-                                                <div className="text-sm font-medium text-slate-200">
+                                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
                                                     {notice.title}
                                                     {!notice.isRead && <span className="ml-2 inline-block w-1.5 h-1.5 bg-rose-500 rounded-full align-middle"></span>}
                                                 </div>
-                                                <div className="text-xs text-slate-400 mt-1 line-clamp-2">
+                                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
                                                     {notice.content}
                                                 </div>
                                             </div>
@@ -475,13 +475,13 @@ function StudentAppContent() {
             </Dialog>
 
             <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-100">会话即将过期</DialogTitle>
-                        <DialogDescription className="text-slate-400">会话将在 5 分钟内过期，是否继续？</DialogDescription>
+                        <DialogTitle className="text-slate-900 dark:text-slate-100">会话即将过期</DialogTitle>
+                        <DialogDescription className="text-slate-600 dark:text-slate-400">会话将在 5 分钟内过期，是否继续？</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowSessionWarning(false)} className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">稍后</Button>
+                        <Button variant="ghost" onClick={() => setShowSessionWarning(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">稍后</Button>
                         <Button
                             onClick={async () => {
                                 await refreshUser();
@@ -497,15 +497,15 @@ function StudentAppContent() {
             </Dialog>
 
             <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">确认退出登录？</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认退出登录？</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
                             退出后需要重新登录才能继续使用实验系统。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={async () => {
                                 setShowLogoutConfirm(false);

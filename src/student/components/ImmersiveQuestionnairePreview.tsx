@@ -289,7 +289,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         : "animate-in fade-in slide-in-from-left-4 duration-300";
 
     return (
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-50 via-white to-indigo-50/40" data-testid="immersive-questionnaire-preview">
+        <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-50 dark:from-slate-950 via-white dark:via-slate-900 to-indigo-50/40 dark:to-indigo-950/40" data-testid="immersive-questionnaire-preview">
             {/* Progress bar */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gray-100 z-10">
                 <div

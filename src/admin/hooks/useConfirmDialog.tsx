@@ -48,10 +48,10 @@ export function useConfirmDialog() {
                 if (!open) close(false);
             }}
         >
-            <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+            <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                 <AlertDialogHeader>
-                    <AlertDialogTitle className="text-slate-100">{options?.title}</AlertDialogTitle>
-                    <AlertDialogDescription className="text-slate-400 whitespace-pre-line">
+                    <AlertDialogTitle className="text-slate-900 dark:text-slate-100">{options?.title}</AlertDialogTitle>
+                    <AlertDialogDescription className="text-slate-600 dark:text-slate-400 whitespace-pre-line">
                         {options?.description}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -59,7 +59,7 @@ export function useConfirmDialog() {
                     <AlertDialogCancel
                         data-testid="confirm-dialog-cancel"
                         onClick={() => close(false)}
-                        className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
+                        className="bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100"
                     >
                         {options?.cancelLabel ?? "取消"}
                     </AlertDialogCancel>

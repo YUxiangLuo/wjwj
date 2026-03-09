@@ -37,12 +37,12 @@ const METHOD_META: Record<SamplingMethod, { label: string; color: string; accent
 };
 
 const LAYER_COLORS = [
-    { bg: "bg-rose-500", ring: "ring-rose-400", text: "text-rose-400" },
-    { bg: "bg-sky-500", ring: "ring-sky-400", text: "text-sky-400" },
-    { bg: "bg-emerald-500", ring: "ring-emerald-400", text: "text-emerald-400" },
-    { bg: "bg-amber-500", ring: "ring-amber-400", text: "text-amber-400" },
-    { bg: "bg-violet-500", ring: "ring-violet-400", text: "text-violet-400" },
-    { bg: "bg-pink-500", ring: "ring-pink-400", text: "text-pink-400" },
+    { bg: "bg-rose-500", ring: "ring-rose-400", text: "text-rose-600 dark:text-rose-400" },
+    { bg: "bg-sky-500", ring: "ring-sky-400", text: "text-sky-600 dark:text-sky-400" },
+    { bg: "bg-emerald-500", ring: "ring-emerald-400", text: "text-emerald-600 dark:text-emerald-400" },
+    { bg: "bg-amber-500", ring: "ring-amber-400", text: "text-amber-600 dark:text-amber-400" },
+    { bg: "bg-violet-500", ring: "ring-violet-400", text: "text-violet-600 dark:text-violet-400" },
+    { bg: "bg-pink-500", ring: "ring-pink-400", text: "text-pink-600 dark:text-pink-400" },
 ] as const;
 
 function lc(index: number) {
@@ -107,7 +107,7 @@ const DotGrid = memo(function DotGrid({
                     if (method === "stratified" && layerAssignment) {
                         bgClass = `${lc(layerIdx).bg} opacity-20`;
                     } else {
-                        bgClass = "bg-slate-700";
+                        bgClass = "bg-slate-300 dark:bg-slate-700";
                     }
                 } else {
                     bgClass = "bg-transparent";
@@ -299,9 +299,9 @@ export function ImmersiveSamplingAnimation({
     const Icon = meta.icon;
 
     return (
-        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col" data-testid="immersive-sampling-animation">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col" data-testid="immersive-sampling-animation">
             {/* Progress bar */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-slate-800 z-10">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-slate-200 dark:bg-slate-800 z-10">
                 <div
                     className={`h-full transition-all duration-300 ease-out ${
                         method === "simple" ? "bg-indigo-500" : method === "systematic" ? "bg-teal-500" : "bg-amber-500"
@@ -317,11 +317,11 @@ export function ImmersiveSamplingAnimation({
                         method === "simple" ? "bg-indigo-500/20" : method === "systematic" ? "bg-teal-500/20" : "bg-amber-500/20"
                     }`}>
                         <Icon className={`w-5 h-5 ${
-                            method === "simple" ? "text-indigo-400" : method === "systematic" ? "text-teal-400" : "text-amber-400"
+                            method === "simple" ? "text-indigo-600 dark:text-indigo-400" : method === "systematic" ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400"
                         }`} />
                     </div>
                     <div>
-                        <h2 className="text-sm font-semibold text-slate-200">{meta.label}</h2>
+                        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{meta.label}</h2>
                         <p className="text-xs text-slate-500">
                             {phase.type === "intro" && "准备中..."}
                             {phase.type === "populating" && "生成总体..."}
@@ -333,7 +333,7 @@ export function ImmersiveSamplingAnimation({
                 {phase.type !== "complete" && (
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-slate-800 transition-colors"
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
                         aria-label="关闭"
                     >
                         <X className="w-5 h-5" />
@@ -350,11 +350,11 @@ export function ImmersiveSamplingAnimation({
                             method === "simple" ? "bg-indigo-500/20" : method === "systematic" ? "bg-teal-500/20" : "bg-amber-500/20"
                         }`}>
                             <Icon className={`w-10 h-10 ${
-                                method === "simple" ? "text-indigo-400" : method === "systematic" ? "text-teal-400" : "text-amber-400"
+                                method === "simple" ? "text-indigo-600 dark:text-indigo-400" : method === "systematic" ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400"
                             }`} />
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-100">{meta.label}</h1>
-                        <p className="text-slate-400 leading-relaxed">{introText}</p>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{meta.label}</h1>
+                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{introText}</p>
                         <div className="flex items-center justify-center gap-6 text-sm">
                             <div className="flex items-center gap-2 text-slate-500">
                                 <Users className="w-4 h-4" />
@@ -380,7 +380,7 @@ export function ImmersiveSamplingAnimation({
                                 {layers.map((layer, i) => (
                                     <div key={layer.name} className="flex items-center gap-2">
                                         <div className={`w-3 h-3 rounded-full ${lc(i).bg}`} />
-                                        <span className="text-xs text-slate-400">{layer.name}</span>
+                                        <span className="text-xs text-slate-600 dark:text-slate-400">{layer.name}</span>
                                     </div>
                                 ))}
                             </div>
@@ -388,7 +388,7 @@ export function ImmersiveSamplingAnimation({
 
                         {/* Dot grid */}
                         {phase.type !== "complete" && (
-                            <div className="relative bg-slate-900/50 rounded-2xl border border-slate-800 p-4 overflow-hidden">
+                            <div className="relative bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 overflow-hidden">
                                 <DotGrid
                                     visiblePopCount={visiblePopCount}
                                     currentSelectIndex={currentSelectIndex}
@@ -400,7 +400,7 @@ export function ImmersiveSamplingAnimation({
                                 {/* Systematic: show interval indicator */}
                                 {method === "systematic" && phase.type === "sampling" && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className="inline-flex items-center gap-2 bg-slate-900/90 border border-teal-500/30 text-teal-400 text-xs font-mono px-3 py-1.5 rounded-full">
+                                        <span className="inline-flex items-center gap-2 bg-slate-50/90 dark:bg-slate-900/90 border border-teal-500/30 text-teal-600 dark:text-teal-400 text-xs font-mono px-3 py-1.5 rounded-full">
                                             间隔 K = {kValue}，等距抽取
                                         </span>
                                     </div>
@@ -413,7 +413,7 @@ export function ImmersiveSamplingAnimation({
                             <div className="flex items-center justify-between px-2 text-xs text-slate-500 animate-in fade-in duration-200">
                                 <span>总体 {TOTAL_DOTS} 个数据点</span>
                                 <span className={
-                                    method === "simple" ? "text-indigo-400" : method === "systematic" ? "text-teal-400" : "text-amber-400"
+                                    method === "simple" ? "text-indigo-600 dark:text-indigo-400" : method === "systematic" ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400"
                                 }>
                                     已选中 {currentSelectIndex} / {selectionOrder.length}
                                 </span>
@@ -427,34 +427,34 @@ export function ImmersiveSamplingAnimation({
                                     <CheckCircle2 className="w-10 h-10 text-emerald-500" />
                                 </div>
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-slate-100">抽样执行完成</h2>
-                                    <p className="text-slate-400">
+                                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">抽样执行完成</h2>
+                                    <p className="text-slate-600 dark:text-slate-400">
                                         {meta.label}已成功完成，正在获取样本数据...
                                     </p>
                                 </div>
 
                                 {/* Method-specific summary */}
-                                <div className="max-w-sm mx-auto bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
+                                <div className="max-w-sm mx-auto bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">抽样方法</span>
-                                        <span className="text-slate-200 font-medium">{meta.label}</span>
+                                        <span className="text-slate-800 dark:text-slate-200 font-medium">{meta.label}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">总体规模</span>
-                                        <span className="text-slate-200 font-mono">{populationSize.toLocaleString()}</span>
+                                        <span className="text-slate-800 dark:text-slate-200 font-mono">{populationSize.toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-500">目标样本量</span>
-                                        <span className="text-slate-200 font-mono">{sampleSize}</span>
+                                        <span className="text-slate-800 dark:text-slate-200 font-mono">{sampleSize}</span>
                                     </div>
                                     {method === "systematic" && kValue && (
                                         <div className="flex justify-between text-sm">
                                             <span className="text-slate-500">间隔 K</span>
-                                            <span className="text-slate-200 font-mono">{kValue}</span>
+                                            <span className="text-slate-800 dark:text-slate-200 font-mono">{kValue}</span>
                                         </div>
                                     )}
                                     {method === "stratified" && layers && (
-                                        <div className="pt-2 border-t border-slate-800 space-y-2">
+                                        <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
                                             <div className="text-xs text-slate-500 text-left">各层分配：</div>
                                             {layers.map((layer, i) => (
                                                 <div key={layer.name} className="flex justify-between text-sm">
@@ -462,7 +462,7 @@ export function ImmersiveSamplingAnimation({
                                                         <div className={`w-2 h-2 rounded-full ${lc(i).bg}`} />
                                                         {layer.name}
                                                     </span>
-                                                    <span className="text-slate-300 font-mono">{layer.sampleCount}</span>
+                                                    <span className="text-slate-700 dark:text-slate-300 font-mono">{layer.sampleCount}</span>
                                                 </div>
                                             ))}
                                         </div>

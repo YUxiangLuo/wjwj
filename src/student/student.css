@@ -1,31 +1,13 @@
 /*
  * ═══════════════════════════════════════════════════════════════════
- * Theme Architecture
+ * Theme Architecture — light-first + dark: prefix
  * ═══════════════════════════════════════════════════════════════════
  *
- * The codebase was originally built for dark mode using Tailwind's
- * `slate-*` palette.  To support light mode *without* adding `dark:`
- * variants to every class, we **invert** the slate scale via CSS
- * custom properties:
+ * Components use standard Tailwind colors with `dark:` variants:
+ *   e.g. `bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200`
  *
- *   Light mode  →  slate-50 is the darkest, slate-950 is white
- *   Dark  mode  →  slate-50 is the lightest, slate-950 is near-black
- *                   (standard Tailwind mapping)
- *
- * This means a class like `text-slate-100` automatically becomes
- * dark text in light mode and light text in dark mode.
- *
- * ⚠  IMPORTANT RULES:
- *   1. Use `slate-*` for ALL neutral/gray tones so they adapt.
- *   2. NEVER use `text-white` as general text on slate backgrounds –
- *      use `text-slate-50` (or `text-slate-100`) instead.  `text-white`
- *      is fine on fixed-colour surfaces (e.g. `bg-indigo-600`).
- *   3. NEVER use `bg-white` for themed surfaces – use `bg-slate-950`
- *      or the semantic `bg-background` / `bg-card` token.
- *   4. For "always-light" UI sections (e.g. a paper-like questionnaire
- *      preview) use `neutral-*` which is NOT remapped.
- *   5. Semantic tokens (`bg-background`, `text-foreground`, `bg-card`,
- *      `bg-muted`, etc.) are always safe and adapt automatically.
+ * Semantic tokens (`bg-background`, `text-foreground`, `bg-card`,
+ * `bg-muted`, etc.) adapt automatically via CSS variables.
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -37,19 +19,6 @@
         "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
         "WenQuanYi Micro Hei", sans-serif, "Apple Color Emoji",
         "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-
-    /* Slate palette – resolved at runtime for theme switching */
-    --color-slate-50: var(--tw-slate-50);
-    --color-slate-100: var(--tw-slate-100);
-    --color-slate-200: var(--tw-slate-200);
-    --color-slate-300: var(--tw-slate-300);
-    --color-slate-400: var(--tw-slate-400);
-    --color-slate-500: var(--tw-slate-500);
-    --color-slate-600: var(--tw-slate-600);
-    --color-slate-700: var(--tw-slate-700);
-    --color-slate-800: var(--tw-slate-800);
-    --color-slate-900: var(--tw-slate-900);
-    --color-slate-950: var(--tw-slate-950);
 
     /* Semantic tokens */
     --color-border: var(--sem-border);
@@ -104,18 +73,6 @@
 :root {
     color-scheme: light;
 
-    --tw-slate-50: #020617;
-    --tw-slate-100: #0f172a;
-    --tw-slate-200: #1e293b;
-    --tw-slate-300: #334155;
-    --tw-slate-400: #475569;
-    --tw-slate-500: #64748b;
-    --tw-slate-600: #94a3b8;
-    --tw-slate-700: #cbd5e1;
-    --tw-slate-800: #e2e8f0;
-    --tw-slate-900: #f8fafc;
-    --tw-slate-950: #ffffff;
-
     --sem-background: #ffffff;
     --sem-foreground: #0f172a;
     --sem-card: #ffffff;
@@ -140,18 +97,6 @@
 /* ───── Dark mode ───── */
 .dark {
     color-scheme: dark;
-
-    --tw-slate-50: #f8fafc;
-    --tw-slate-100: #f1f5f9;
-    --tw-slate-200: #e2e8f0;
-    --tw-slate-300: #cbd5e1;
-    --tw-slate-400: #94a3b8;
-    --tw-slate-500: #64748b;
-    --tw-slate-600: #475569;
-    --tw-slate-700: #334155;
-    --tw-slate-800: #1e293b;
-    --tw-slate-900: #0f172a;
-    --tw-slate-950: #020617;
 
     --sem-background: hsl(240 10% 3.9%);
     --sem-foreground: hsl(0 0% 98%);
