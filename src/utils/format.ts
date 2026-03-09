@@ -1,4 +1,5 @@
 const APP_TIMEZONE = "Asia/Shanghai";
+const APP_TIMEZONE_OFFSET = "+08:00";
 
 const SAVE_TIME_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
     timeZone: APP_TIMEZONE,
@@ -12,15 +13,23 @@ export function formatSaveTime(): string {
     return SAVE_TIME_FORMATTER.format(new Date());
 }
 
-const DATE_STAMP_FORMATTER = new Intl.DateTimeFormat("en", {
+export function formatLocalDateStamp(date: Date = new Date()): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+const DATE_STAMP_CN_FORMATTER = new Intl.DateTimeFormat("en", {
     timeZone: APP_TIMEZONE,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
 });
 
-export function formatLocalDateStamp(date: Date = new Date()): string {
-    const parts = DATE_STAMP_FORMATTER.formatToParts(date);
+export function formatDateStampCN(date: Date = new Date()): string {
+    const parts = DATE_STAMP_CN_FORMATTER.formatToParts(date);
     const year = parts.find((p) => p.type === "year")!.value;
     const month = parts.find((p) => p.type === "month")!.value;
     const day = parts.find((p) => p.type === "day")!.value;
@@ -43,9 +52,9 @@ export function formatDateTimeCN(date: Date): string {
 }
 
 export function startOfDayCN(date: Date = new Date()): Date {
-    const parts = DATE_STAMP_FORMATTER.formatToParts(date);
+    const parts = DATE_STAMP_CN_FORMATTER.formatToParts(date);
     const year = parts.find((p) => p.type === "year")!.value;
     const month = parts.find((p) => p.type === "month")!.value;
     const day = parts.find((p) => p.type === "day")!.value;
-    return new Date(`${year}-${month}-${day}T00:00:00+08:00`);
+    return new Date(`${year}-${month}-${day}T00:00:00${APP_TIMEZONE_OFFSET}`);
 }

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { formatDateTimeCN, formatLocalDateStamp, formatSaveTime, startOfDayCN } from "./format";
+import { formatDateStampCN, formatDateTimeCN, formatLocalDateStamp, formatSaveTime, startOfDayCN } from "./format";
 
 test("formatLocalDateStamp uses local calendar date", () => {
     expect(formatLocalDateStamp(new Date(2026, 2, 9, 4, 25, 6))).toBe("2026-03-09");
@@ -25,10 +25,10 @@ test("formatDateTimeCN always uses Asia/Shanghai regardless of server timezone",
     expect(formatted).toContain("10:30:00");
 });
 
-test("formatLocalDateStamp uses Asia/Shanghai timezone for date boundary", () => {
+test("formatDateStampCN uses Asia/Shanghai timezone for date boundary", () => {
     // 2026-03-09T23:00:00Z (UTC) = 2026-03-10T07:00:00+08:00 (CST)
     const utcDate = new Date("2026-03-09T23:00:00Z");
-    expect(formatLocalDateStamp(utcDate)).toBe("2026-03-10");
+    expect(formatDateStampCN(utcDate)).toBe("2026-03-10");
 });
 
 test("startOfDayCN returns midnight in Asia/Shanghai", () => {

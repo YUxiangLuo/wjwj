@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { class_, experiment, semester, student, submission, task, topic } from "../../db/schema";
 import { error, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { formatDateTimeCN, formatLocalDateStamp } from "../../utils/format";
+import { formatDateStampCN, formatDateTimeCN } from "../../utils/format";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 function activeEntityFilters() {
@@ -219,7 +219,7 @@ const gradeExportExcelRoutes: RouteDefinition = {
         XLSX.utils.book_append_sheet(workbook, worksheet, "成绩导出");
 
         const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-        const fileName = `grade-export-${formatLocalDateStamp()}.xlsx`;
+        const fileName = `grade-export-${formatDateStampCN()}.xlsx`;
 
         return new Response(buffer, {
             headers: {
