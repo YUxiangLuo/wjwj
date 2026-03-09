@@ -273,7 +273,12 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         <CardContent className="pt-6 space-y-6">
                             <div className="flex flex-col md:flex-row items-end gap-4">
                                 <div className="flex-1 w-full space-y-2">
-                                    <Label htmlFor="finalSize" className="text-slate-700 dark:text-slate-300">设定样本量</Label>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <Label htmlFor="finalSize" className="text-slate-700 dark:text-slate-300">设定样本量</Label>
+                                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                            建议值 {recommendedSize.toLocaleString()} 人
+                                        </span>
+                                    </div>
                                     <div className="relative">
                                         <Input
                                             id="finalSize"
@@ -283,9 +288,9 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                             min={minSize}
                                             max={maxSize}
                                             data-testid="student-sample-plan-final-size"
-                                            className={`bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-lg font-bold ${!isValidSize ? "text-rose-500 border-rose-500/50 focus-visible:ring-rose-500" : "text-emerald-600 focus-visible:ring-emerald-500"}`}
+                                            className={`pr-16 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-lg font-bold ${!isValidSize ? "text-rose-500 border-rose-500/50 focus-visible:ring-rose-500" : "text-emerald-600 focus-visible:ring-emerald-500"}`}
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">人</span>
+                                        <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-slate-500 text-sm">人</span>
                                     </div>
                                 </div>
                                 <Button
