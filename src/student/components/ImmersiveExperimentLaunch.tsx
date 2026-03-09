@@ -19,7 +19,6 @@ const CONFIDENCE_LABELS: Record<string, string> = {
 type Phase =
     | { type: "intro" }
     | { type: "params" }
-    | { type: "countdown"; count: number }
     | { type: "launch" }
     | { type: "ready" };
 
@@ -48,17 +47,7 @@ export function ImmersiveExperimentLaunch({
                 timerRef.current = setTimeout(() => setPhase({ type: "params" }), 1200);
                 break;
             case "params":
-                timerRef.current = setTimeout(() => setPhase({ type: "countdown", count: 3 }), 2400);
-                break;
-            case "countdown":
-                if (phase.count > 1) {
-                    timerRef.current = setTimeout(
-                        () => setPhase({ type: "countdown", count: phase.count - 1 }),
-                        800
-                    );
-                } else {
-                    timerRef.current = setTimeout(() => setPhase({ type: "launch" }), 800);
-                }
+                timerRef.current = setTimeout(() => setPhase({ type: "launch" }), 2400);
                 break;
             case "launch":
                 timerRef.current = setTimeout(() => setPhase({ type: "ready" }), 1500);
@@ -168,20 +157,6 @@ export function ImmersiveExperimentLaunch({
                     </div>
                 )}
 
-                {/* countdown phase */}
-                {phase.type === "countdown" && (
-                    <div className="animate-in fade-in zoom-in-50 duration-300" key={phase.count}>
-                        <div
-                            className="text-[120px] font-black font-mono leading-none bg-gradient-to-b from-indigo-300 to-indigo-600 bg-clip-text text-transparent"
-                            style={{
-                                animation: "pulse 0.8s ease-in-out",
-                            }}
-                        >
-                            {phase.count}
-                        </div>
-                    </div>
-                )}
-
                 {/* launch phase */}
                 {phase.type === "launch" && (
                     <div className="animate-in fade-in zoom-in-50 duration-500">
@@ -212,11 +187,6 @@ export function ImmersiveExperimentLaunch({
                             进入抽样执行
                             <ChevronRight className="w-5 h-5" />
                         </button>
-                        <div className="mt-4">
-                            <button onClick={handleClose} className="text-sm text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-colors">
-                                跳过
-                            </button>
-                        </div>
                     </div>
                 )}
             </div>
