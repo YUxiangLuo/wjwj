@@ -39,6 +39,7 @@ function StudentAppContent() {
     const location = useLocation();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
+    const authMenuRef = useRef<HTMLDivElement | null>(null);
     const isTaskHall = location.pathname === "/";
     const isLoginPage = location.pathname === "/login";
     const {
@@ -112,6 +113,20 @@ function StudentAppContent() {
             setAuthDialogCode(null);
         }
     }, [authErrorCode]);
+
+    useEffect(() => {
+        if (!showAuthDialog) return;
+
+        const handlePointerDown = (event: PointerEvent) => {
+            const target = event.target;
+            if (!(target instanceof Node)) return;
+            if (authMenuRef.current?.contains(target)) return;
+            setShowAuthDialog(false);
+        };
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        return () => document.removeEventListener("pointerdown", handlePointerDown);
+    }, [showAuthDialog]);
 
     const handleReLogin = useCallback(() => {
         setShowAuthDialog(false);
@@ -299,7 +314,7 @@ function StudentAppContent() {
                             {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                         </Button>
 
-                        <div className="relative">
+                        <div ref={authMenuRef} className="relative">
                             <Button
                                 variant="ghost"
                                 className="relative h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 focus:ring-0 px-0"
@@ -314,9 +329,7 @@ function StudentAppContent() {
 
                             {/* Custom Dropdown Menu */}
                             {showAuthDialog && (
-                                <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setShowAuthDialog(false)}></div>
-                                    <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-200">
+                                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-200">
                                         <div className="px-3 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                                             <p className="text-sm font-medium leading-none text-slate-900 dark:text-slate-100">{displayName}</p>
                                             <p className="text-xs leading-none text-slate-500 mt-1.5">{currentUser.studentId}</p>
@@ -356,7 +369,6 @@ function StudentAppContent() {
                                             退出登录
                                         </button>
                                     </div>
-                                </>
                             )}
                         </div>
                     </div>
