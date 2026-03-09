@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard, FileText, FlaskConical, CheckCircle,
-    ChevronRight, Clock, AlertCircle, Loader2, Sparkles, Trophy, BookOpen
+    ChevronRight, Clock, AlertCircle, Loader2, Trophy, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -373,8 +373,6 @@ export function TaskHall() {
     const averageScore = tasks
         .filter(t => t.status === "graded" && t.score !== undefined)
         .reduce((acc, t, _, arr) => acc + (t.score || 0) / arr.length, 0);
-    const nextTask = getNextActionableTask(tasks);
-
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
@@ -385,48 +383,6 @@ export function TaskHall() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Hero Section */}
-            <section className="relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl shadow-indigo-500/10">
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
-                <div className="absolute inset-0 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-3xl z-0"></div>
-                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-900/40 via-purple-900/20 to-slate-50/20 dark:to-slate-900/20 z-0"></div>
-
-                <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-                    <div className="space-y-4 max-w-xl">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-500">
-                            <Sparkles className="h-3 w-3" />
-                            <span>今天也要保持好奇心</span>
-                        </div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
-                            欢迎回来，<br className="hidden md:block" />继续你的 <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">抽样探索</span>
-                        </h2>
-                        <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed">
-                            完成实验任务，提交分析报告，查看实时评估反馈。你的每一次实践都是向真理迈进的一步。
-                        </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-4 shrink-0">
-                        {nextTask ? (
-                            <Link to={`/task/${nextTask.id}`}>
-                                <Button size="lg" className="rounded-full px-8 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 w-full sm:w-auto h-12 text-base">
-                                    <FlaskConical className="w-4 h-4 mr-2" />
-                                    继续实验
-                                </Button>
-                            </Link>
-                        ) : (
-                            <Button size="lg" className="rounded-full px-8 bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700 w-full sm:w-auto h-12" disabled>
-                                暂无实验
-                            </Button>
-                        )}
-                        <Link to="/">
-                            <Button variant="outline" size="lg" className="rounded-full px-8 border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 w-full sm:w-auto h-12 text-base backdrop-blur-sm">
-                                <BookOpen className="w-4 h-4 mr-2" />
-                                浏览任务
-                            </Button>
-                        </Link>
-                    </div>
-                </div>
-            </section>
-
             {latestUnread && (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 flex items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-500">
                     <div className="flex items-center gap-4">
