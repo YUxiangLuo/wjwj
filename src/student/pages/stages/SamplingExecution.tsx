@@ -624,9 +624,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="flex flex-wrap items-end gap-4">
+                                    <div className="grid gap-4 rounded-2xl border border-slate-200/70 bg-white/40 p-4 dark:border-slate-800/70 dark:bg-slate-950/20 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[220px_220px_minmax(0,1fr)] xl:items-end">
                                         <div className="space-y-2">
-                                            <Label className="text-slate-700 dark:text-slate-300 text-xs">选择分层变量</Label>
+                                            <Label className="text-xs text-slate-700 dark:text-slate-300">选择分层变量</Label>
                                             <Select value={stratifyBy} onValueChange={setStratifyBy}>
                                                 <SelectTrigger data-testid="student-sampling-stratify-by" className="w-48 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
                                                     <SelectValue />
@@ -646,9 +646,12 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     )}
                                                 </SelectContent>
                                             </Select>
+                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                                                系统会根据该变量的总体分布，自动计算下方每层的占比。
+                                            </p>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label htmlFor="stratifiedSeed" className="text-slate-700 dark:text-slate-300 text-xs">随机种子（可选）</Label>
+                                            <Label htmlFor="stratifiedSeed" className="text-xs text-slate-700 dark:text-slate-300">随机种子（可选）</Label>
                                             <Input
                                                 id="stratifiedSeed"
                                                 type="number"
@@ -658,15 +661,27 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 data-testid="student-sampling-stratified-seed"
                                                 className="w-48 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
                                             />
+                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                                                留空时每次重新随机，填写后可复现同一组结果。
+                                            </p>
                                         </div>
-
-                                        <div className="flex gap-2 mb-0.5">
-                                            <Button variant="outline" size="sm" data-testid="student-sampling-alloc-proportional" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
-                                                按比例分配
-                                            </Button>
-                                            <Button variant="outline" size="sm" data-testid="student-sampling-alloc-equal" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={applyEqualAllocation} disabled={layers.length === 0}>
-                                                等额分配
-                                            </Button>
+                                        <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div className="space-y-1">
+                                                    <p className="text-sm font-medium text-amber-900 dark:text-amber-100">快速填充各层样本数</p>
+                                                    <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-200/80">
+                                                        `按比例分配` 会使用表格里的 `占比` 自动填写；`等额分配` 会尽量平均分配。填充后仍可手动修改右侧样本数。
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button variant="outline" size="sm" data-testid="student-sampling-alloc-proportional" className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100 dark:border-amber-400/20 dark:bg-slate-900/40 dark:text-amber-200 dark:hover:bg-amber-500/15" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
+                                                        按比例分配
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" data-testid="student-sampling-alloc-equal" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300 dark:hover:bg-slate-800" onClick={applyEqualAllocation} disabled={layers.length === 0}>
+                                                        等额分配
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -676,8 +691,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
                                                     <TableHead className="text-slate-600 dark:text-slate-400">层 (Layer)</TableHead>
                                                     <TableHead className="text-slate-600 dark:text-slate-400">人数 (N_h)</TableHead>
-                                                    <TableHead className="text-slate-600 dark:text-slate-400">占比</TableHead>
-                                                    <TableHead className="text-slate-600 dark:text-slate-400 w-[120px]">样本数 (n_h)</TableHead>
+                                                    <TableHead className="text-slate-600 dark:text-slate-400">占比（自动）</TableHead>
+                                                    <TableHead className="text-slate-600 dark:text-slate-400 w-[120px]">样本数 (n_h，可改)</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
