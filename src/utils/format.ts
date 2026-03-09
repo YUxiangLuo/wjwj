@@ -44,8 +44,8 @@ export function formatDateTimeCN(date: Date): string {
 
 export function startOfDayCN(date: Date = new Date()): Date {
     const parts = DATE_STAMP_FORMATTER.formatToParts(date);
-    const year = Number(parts.find((p) => p.type === "year")!.value);
-    const month = Number(parts.find((p) => p.type === "month")!.value);
-    const day = Number(parts.find((p) => p.type === "day")!.value);
-    return new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`);
+    const year = parts.find((p) => p.type === "year")!.value;
+    const month = parts.find((p) => p.type === "month")!.value;
+    const day = parts.find((p) => p.type === "day")!.value;
+    return new Date(`${year}-${month}-${day}T00:00:00+08:00`);
 }
