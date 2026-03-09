@@ -400,7 +400,9 @@ export function TopicDetails() {
 
                     <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
                         <CardContent className="pt-6 space-y-4">
-                            <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300">准备好开始了吗？</div>
+                            <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                                {task.status === "submitted" || task.status === "graded" ? "已提交实验内容" : "准备好开始了吗？"}
+                            </div>
                             {task.status === "rejected" ? (
                                 <Button
                                     size="lg"
