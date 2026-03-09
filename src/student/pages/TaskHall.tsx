@@ -243,7 +243,7 @@ function TaskCard({ task }: TaskCardProps) {
                     {/* Action button */}
                     <div className="flex gap-2">
                         <Button
-                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20' : ''} ${action.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''} ${action.variant === 'outline' ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' : ''}`}
+                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-indigo-600 hover:bg-indigo-700 text-white hover:text-white shadow-lg shadow-indigo-500/20' : ''} ${action.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700 text-white hover:text-white' : ''} ${action.variant === 'outline' ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' : ''}`}
                             variant="ghost"
                             disabled={disabled}
                             onClick={() => { void handlePrimaryAction(); }}
