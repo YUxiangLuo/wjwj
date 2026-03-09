@@ -315,20 +315,20 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
+                    <Card className="rounded-2xl border-sky-200 bg-sky-50/80 shadow-sm dark:border-sky-500/20 dark:bg-sky-500/10">
                         <CardHeader>
-                            <CardTitle className="text-base text-indigo-700 dark:text-indigo-300">学习指南</CardTitle>
-                            <CardDescription className="text-indigo-700/60 dark:text-indigo-300/60">理解公式与参数含义</CardDescription>
+                            <CardTitle className="text-base text-sky-900 dark:text-sky-200">学习指南</CardTitle>
+                            <CardDescription className="text-sky-700 dark:text-sky-300">理解公式与参数含义</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4 text-sm text-indigo-800/70 dark:text-indigo-200/70">
-                            <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/10 p-4 font-mono text-xs text-indigo-700 dark:text-indigo-300 space-y-1">
-                                <p className="opacity-50 mb-2">// 样本量计算公式</p>
+                        <CardContent className="space-y-4 text-sm text-sky-950/80 dark:text-sky-100/80">
+                            <div className="rounded-xl border border-sky-200 bg-white/80 p-4 font-mono text-xs text-sky-800 shadow-sm dark:border-sky-400/20 dark:bg-sky-950/40 dark:text-sky-200 space-y-1">
+                                <p className="mb-2 text-sky-500 dark:text-sky-300/70">// 样本量计算公式</p>
                                 <p>n₀ = (Z² × p × (1-p)) / E²</p>
                                 <p>n = n₀ / (1 + (n₀ - 1) / N)</p>
                             </div>
                             <div className="space-y-2 text-xs leading-relaxed">
-                                <p>• <strong className="text-indigo-700 dark:text-indigo-300">置信水平 (Z)</strong>：结果的可信程度。95% 意味着如果重复调查 100 次，有 95 次的结果都在误差范围内。</p>
-                                <p>• <strong className="text-indigo-700 dark:text-indigo-300">允许误差 (E)</strong>：结果与真实值的最大允许偏差。</p>
+                                <p>• <strong className="text-sky-900 dark:text-sky-200">置信水平 (Z)</strong>：结果的可信程度。95% 意味着如果重复调查 100 次，有 95 次的结果都在误差范围内。</p>
+                                <p>• <strong className="text-sky-900 dark:text-sky-200">允许误差 (E)</strong>：结果与真实值的最大允许偏差。</p>
                             </div>
                             <div className="rounded-xl bg-slate-50/50 dark:bg-slate-900/50 p-3 border border-slate-200 dark:border-slate-800">
                                 <p className="text-xs text-slate-500 mb-2 font-medium">常用 Z 值参考</p>
