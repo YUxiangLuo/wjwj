@@ -42,6 +42,13 @@ interface SamplingExecutionProps {
 
 type SamplingMethod = "simple" | "systematic" | "stratified";
 
+interface SamplingSuccessStateProps {
+    summary: string;
+    onRerun: () => void;
+    disabled: boolean;
+    rerunTestId: string;
+}
+
 const FIELD_LABELS: Record<string, string> = {
     "gender": "性别",
     "education": "学历",
@@ -53,6 +60,32 @@ const FIELD_LABELS: Record<string, string> = {
     "monthly_expense": "月支出",
     "spending": "消费支出",
 };
+
+function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }: SamplingSuccessStateProps) {
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
+                <div className="rounded-full bg-emerald-500/20 p-3">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                    <p className="text-lg font-medium text-emerald-600">抽样完成</p>
+                    <p className="mt-1 text-sm text-emerald-800/70 dark:text-emerald-200/70">{summary}</p>
+                </div>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onRerun}
+                    disabled={disabled}
+                    data-testid={rerunTestId}
+                    className="ml-auto rounded-full text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-500/15 dark:hover:text-emerald-200"
+                >
+                    <RefreshCw className="w-4 h-4" />
+                </Button>
+            </div>
+        </div>
+    );
+}
 
 export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const { populationSize, experiment, saveExperiment } = useExperiment();
@@ -432,24 +465,12 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                             </Button>
                                         </div>
                                     ) : (
-                                        <>
-                                            <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4">
-                                                <div className="bg-emerald-500/20 p-3 rounded-full">
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-emerald-600 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-800/70 dark:text-emerald-200/70 text-sm mt-1">共成功抽取 {simpleResult.sampleCount} 个样本{executionTimes.simple !== null && `，耗时 ${executionTimes.simple} ms`}</p>
-                                                    {simpleResult.seed && (
-                                                        <p className="text-xs text-emerald-500/50 mt-1 font-mono">Random Seed: {simpleResult.seed}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <Button variant="outline" onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-rerun" className="w-full border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15">
-                                                <RefreshCw className="w-4 h-4 mr-2" />
-                                                重新抽样
-                                            </Button>
-                                        </>
+                                        <SamplingSuccessState
+                                            summary={`共成功抽取 ${simpleResult.sampleCount} 个样本${executionTimes.simple !== null ? `，耗时 ${executionTimes.simple} ms` : ""}${simpleResult.seed ? `，Seed ${simpleResult.seed}` : ""}`}
+                                            onRerun={() => setAnimatingMethod("simple")}
+                                            disabled={executing !== null}
+                                            rerunTestId="student-sampling-simple-rerun"
+                                        />
                                     )}
                                 </CardContent>
                             </Card>
@@ -555,20 +576,12 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                             </Button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-4">
-                                            <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4">
-                                                <div className="bg-emerald-500/20 p-3 rounded-full">
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-emerald-600 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-800/70 dark:text-emerald-200/70 text-sm mt-1">K={systematicResult.kValue}，共抽取 {systematicResult.sampleCount} 个样本{executionTimes.systematic !== null && `，耗时 ${executionTimes.systematic} ms`}</p>
-                                                </div>
-                                                <Button variant="ghost" size="sm" onClick={executeSystematic} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-rerun" className="ml-auto text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
-                                                    <RefreshCw className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
+                                        <SamplingSuccessState
+                                            summary={`K=${systematicResult.kValue}，共抽取 ${systematicResult.sampleCount} 个样本${executionTimes.systematic !== null ? `，耗时 ${executionTimes.systematic} ms` : ""}`}
+                                            onRerun={() => setAnimatingMethod("systematic")}
+                                            disabled={executing !== null || !isKValid}
+                                            rerunTestId="student-sampling-systematic-rerun"
+                                        />
                                     )}
                                 </CardContent>
                             </Card>
@@ -727,20 +740,12 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                             </Button>
                                         </div>
                                     ) : (
-                                        <div className="space-y-4">
-                                            <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-4">
-                                                <div className="bg-emerald-500/20 p-3 rounded-full">
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-emerald-600 font-medium text-lg">抽样完成</p>
-                                                    <p className="text-emerald-800/70 dark:text-emerald-200/70 text-sm mt-1">按 {FIELD_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 {stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本{executionTimes.stratified !== null && `，耗时 ${executionTimes.stratified} ms`}</p>
-                                                </div>
-                                                <Button variant="ghost" size="sm" onClick={executeStratified} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-rerun" className="ml-auto text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
-                                                    <RefreshCw className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
+                                        <SamplingSuccessState
+                                            summary={`按 ${FIELD_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 ${stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本${executionTimes.stratified !== null ? `，耗时 ${executionTimes.stratified} ms` : ""}`}
+                                            onRerun={() => setAnimatingMethod("stratified")}
+                                            disabled={executing !== null || !isStratifiedValid || layers.length === 0}
+                                            rerunTestId="student-sampling-stratified-rerun"
+                                        />
                                     )}
                                 </CardContent>
                             </Card>
