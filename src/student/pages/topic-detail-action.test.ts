@@ -1,10 +1,15 @@
 import { expect, test } from "bun:test";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 
-test("submitted and graded task actions stay available after the editable window closes", () => {
+test("submitted, grading, and graded task actions stay available after the editable window closes", () => {
     expect(getTaskPrimaryAction(3, "submitted", false)).toEqual({
         text: "查看提交内容",
         link: "/task/3/history",
+        disabled: false,
+    });
+    expect(getTaskPrimaryAction(6, "grading", false)).toEqual({
+        text: "查看提交内容",
+        link: "/task/6/history",
         disabled: false,
     });
     expect(getTaskPrimaryAction(5, "graded", false)).toEqual({
@@ -55,5 +60,6 @@ test("availability hints only show for editable task states", () => {
     expect(shouldShowTaskAvailabilityHint("in_progress", false)).toBe(true);
     expect(shouldShowTaskAvailabilityHint("rejected", false)).toBe(true);
     expect(shouldShowTaskAvailabilityHint("submitted", false)).toBe(false);
+    expect(shouldShowTaskAvailabilityHint("grading", false)).toBe(false);
     expect(shouldShowTaskAvailabilityHint("graded", false)).toBe(false);
 });

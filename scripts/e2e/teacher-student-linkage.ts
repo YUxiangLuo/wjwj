@@ -1673,29 +1673,13 @@ async function testTeacherGradesStudentSubmission() {
     await logoutStudent(studentGradeSession);
 }
 
-async function isEligibleStudentCandidate(candidate: TeacherGradingItem) {
-    if (invalidRejectStudentIds.has(candidate.studentId)) {
-        return false;
-    }
-
-    const response = await httpJson<ApiEnvelope<{
-        user: {
-            id: number;
-            studentId: string;
-            name: string;
-            classId: number;
-            isFirstLogin: number;
-        };
-        expiresAt: string;
-    }>>("/api/student/login", {
-        method: "POST",
-        body: {
-            studentId: candidate.studentId,
-            password: "123456",
-        },
-    });
-
-    return response.status === 200 && response.body?.success === true && (response.body.data?.user.isFirstLogin ?? 1) === 0;
+function isEligibleStudentCandidate(candidate: TeacherGradingItem) {
+    // Students in the pending grading list have already submitted work, so they
+    // cannot be first-login, locked, or disabled. We only need to exclude the
+    // known problematic seed accounts.  Avoid POST /api/student/login here
+    // because it creates a real server session that can kick out already-logged-in
+    // students due to single-device enforcement.
+    return !invalidRejectStudentIds.has(candidate.studentId);
 }
 
 async function pickPendingCandidate(options: {
@@ -1710,7 +1694,7 @@ async function pickPendingCandidate(options: {
     const candidates = pendingItems.filter((item) => !excludedSubmissionIds.has(item.id) && !excludedStudentIds.has(item.studentId));
 
     for (const candidate of candidates) {
-        if (await isEligibleStudentCandidate(candidate)) {
+        if (isEligibleStudentCandidate(candidate)) {
             return candidate;
         }
     }

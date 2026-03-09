@@ -304,7 +304,7 @@ export function TeacherApp() {
         const accountLabel = teacherUser.type === "assistant" ? teacherUser.account : teacherUser.employeeId;
         return (
             <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-8 shadow-2xl shadow-white/40 dark:shadow-slate-950/40">
+                <div className="w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-8 shadow-2xl shadow-slate-300/40 dark:shadow-slate-950/40">
                     <div className="space-y-3 text-center">
                         <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-lg ${teacherUser.type === "assistant" ? "bg-purple-600 shadow-purple-500/20" : "bg-indigo-600 shadow-indigo-500/20"}`}>
                             {teacherUser.type === "assistant" ? "助" : "师"}

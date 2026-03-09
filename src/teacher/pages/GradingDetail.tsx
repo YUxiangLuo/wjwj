@@ -510,7 +510,7 @@ export function GradingDetail() {
                 <div className={`mx-6 mt-6 rounded-xl border px-4 py-3 text-sm flex items-center justify-between gap-3 ${
                     data.pdfStatus === "failed"
                         ? "border-red-500/30 bg-red-500/10 text-red-800 dark:text-red-200"
-                        : "border-cyan-500/20 bg-cyan-500/10 text-cyan-100"
+                        : "border-cyan-500/20 bg-cyan-500/10 text-cyan-800 dark:text-cyan-100"
                 }`}>
                     <span>{data.pdfStatusMessage}</span>
                     <Button
