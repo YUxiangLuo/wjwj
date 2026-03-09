@@ -244,9 +244,9 @@ export function TopicDetails() {
                 <Badge variant="outline" className={`${effectiveStatus.color} px-3 py-1 text-sm h-8`}>{effectiveStatus.label}</Badge>
             </div>
 
-            <Card className="rounded-3xl border-slate-200 dark:border-slate-800 bg-gradient-to-r from-indigo-900/20 via-slate-50/40 dark:via-slate-900/40 to-slate-50/20 dark:to-slate-900/20 shadow-lg">
-                <CardContent className="py-6 px-6">
-                    <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <Card className="rounded-3xl border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 shadow-sm">
+                <CardContent className="px-6 py-5">
+                    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                         <div className="space-y-2 max-w-2xl">
                             <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-500 border border-indigo-500/20">
                                 <BookOpen className="w-3 h-3" />
