@@ -14,6 +14,18 @@ const statusConfig: Record<number, { label: string; color: string }> = {
     3: { label: "被驳回", color: "bg-red-500/10 text-red-600 border-red-500/20" },
 };
 
+function getDownloadFileName(contentDisposition: string | null, fallback: string) {
+    if (!contentDisposition) return fallback;
+
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+        return decodeURIComponent(utf8Match[1]);
+    }
+
+    const plainMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+    return plainMatch?.[1] || fallback;
+}
+
 export function SubmissionDetailPage() {
     const { submissionId } = useParams();
     const [detail, setDetail] = useState<SubmissionDetail | null>(null);
@@ -77,10 +89,14 @@ export function SubmissionDetailPage() {
             });
             if (!res.ok) throw new Error("下载失败");
             const blob = await res.blob();
+            const fileName = getDownloadFileName(
+                res.headers.get("Content-Disposition"),
+                type === "questionnaire" ? "questionnaire.pdf" : "report.pdf"
+            );
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
-            link.download = type === "questionnaire" ? "questionnaire.pdf" : "report.pdf";
+            link.download = fileName.toLowerCase().endsWith(".pdf") ? fileName : `${fileName}.pdf`;
             document.body.appendChild(link);
             link.click();
             link.remove();

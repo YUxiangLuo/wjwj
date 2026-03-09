@@ -222,7 +222,7 @@ const submissionDownloadRoutes: RouteDefinition = {
             return new Response(fileBuffer, {
                 headers: {
                     "Content-Type": "application/pdf",
-                    "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(type === "questionnaire" ? "questionnaire.pdf" : "report.pdf")}`,
+                    "Content-Disposition": `attachment; filename="${type === "questionnaire" ? "questionnaire.pdf" : "report.pdf"}"; filename*=UTF-8''${encodeURIComponent(type === "questionnaire" ? "questionnaire.pdf" : "report.pdf")}`,
                 },
             });
         } catch {
