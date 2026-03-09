@@ -36,6 +36,24 @@ const METHOD_META: Record<SamplingMethod, { label: string; color: string; accent
     stratified: { label: "分层抽样", color: "from-amber-600/20 to-orange-600/20", accent: "amber", icon: Layers },
 };
 
+const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; sampling: string; complete: string }> = {
+    simple: {
+        populating: "构建总体样本池...",
+        sampling: "随机命中样本点...",
+        complete: "随机抽样完成",
+    },
+    systematic: {
+        populating: "排列总体顺序...",
+        sampling: "按固定间隔依次抽取...",
+        complete: "系统抽样完成",
+    },
+    stratified: {
+        populating: "按分层变量划分总体...",
+        sampling: "从各层分别抽取样本...",
+        complete: "分层抽样完成",
+    },
+};
+
 const LAYER_COLORS = [
     { bg: "bg-rose-500", ring: "ring-rose-400", text: "text-rose-600 dark:text-rose-400" },
     { bg: "bg-sky-500", ring: "ring-sky-400", text: "text-sky-600 dark:text-sky-400" },
@@ -131,6 +149,16 @@ type Phase =
     | { type: "sampling" }       // highlight selected dots one by one
     | { type: "complete" };      // show summary, allow proceed
 
+const STRATIFY_FIELD_LABELS: Record<string, string> = {
+    gender: "性别",
+    education: "学历",
+    age: "年龄段",
+    age_group: "年龄段",
+    income: "收入水平",
+    city: "城市",
+    city_tier: "城市等级",
+};
+
 export function ImmersiveSamplingAnimation({
     method,
     populationSize,
@@ -147,6 +175,9 @@ export function ImmersiveSamplingAnimation({
     const animFrameRef = useRef(0);
     const hasCalledComplete = useRef(false);
     const meta = METHOD_META[method];
+    const progressCopy = METHOD_PROGRESS_COPY[method];
+    const fieldLabel = STRATIFY_FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy;
+    const introDelay = method === "stratified" ? 1700 : 1200;
 
     // Prevent body scroll
     useEffect(() => {
@@ -225,27 +256,27 @@ export function ImmersiveSamplingAnimation({
     // Intro → Populating after 1.5s
     useEffect(() => {
         if (phase.type === "intro") {
-            const timer = setTimeout(() => setPhase({ type: "populating" }), 1500);
+            const timer = setTimeout(() => setPhase({ type: "populating" }), introDelay);
             return () => clearTimeout(timer);
         }
-    }, [phase]);
+    }, [phase, introDelay]);
 
     // Populating animation: fill grid rapidly
     useEffect(() => {
         if (phase.type !== "populating") return;
-        const batchSize = 50;
+        const batchSize = method === "stratified" ? 36 : 50;
         const interval = setInterval(() => {
             setVisiblePopCount((prev) => {
                 const next = Math.min(prev + batchSize, TOTAL_DOTS);
                 if (next >= TOTAL_DOTS) {
                     clearInterval(interval);
-                    setTimeout(() => setPhase({ type: "sampling" }), 400);
+                    setTimeout(() => setPhase({ type: "sampling" }), method === "stratified" ? 650 : 400);
                 }
                 return next;
             });
         }, 20);
         return () => clearInterval(interval);
-    }, [phase]);
+    }, [phase, method]);
 
     // Sampling animation: highlight selected dots progressively
     useEffect(() => {
@@ -258,7 +289,12 @@ export function ImmersiveSamplingAnimation({
 
         // Reveal in batches, speed up as we go
         let index = 0;
-        const batchSize = Math.max(1, Math.ceil(total / 60)); // ~60 frames total
+        const batchSize = method === "systematic"
+            ? 1
+            : method === "stratified"
+                ? Math.max(1, Math.ceil(total / 75))
+                : Math.max(1, Math.ceil(total / 60));
+        const tick = method === "systematic" ? 55 : method === "stratified" ? 45 : 35;
         const interval = setInterval(() => {
             index = Math.min(index + batchSize, total);
             setCurrentSelectIndex(index);
@@ -272,10 +308,10 @@ export function ImmersiveSamplingAnimation({
                     }
                 }, 600);
             }
-        }, 35);
+        }, tick);
 
         return () => clearInterval(interval);
-    }, [phase, selectionOrder, onAnimationComplete]);
+    }, [phase, selectionOrder, onAnimationComplete, method]);
 
     const progress =
         phase.type === "intro" ? 0
@@ -295,6 +331,24 @@ export function ImmersiveSamplingAnimation({
             return `先按"${fieldLabel[stratifyBy ?? ""] ?? stratifyBy}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
         }
     }, [method, populationSize, sampleSize, kValue, stratifyBy, layers]);
+
+    const systematicIndicator = useMemo(() => {
+        if (method !== "systematic" || phase.type !== "sampling" || selectionOrder.length === 0) {
+            return null;
+        }
+        const latestIndex = selectionOrder[Math.max(0, currentSelectIndex - 1)] ?? selectionOrder[0] ?? 0;
+        const col = latestIndex % GRID_COLS;
+        return `${((col + 0.5) / GRID_COLS) * 100}%`;
+    }, [method, phase.type, selectionOrder, currentSelectIndex]);
+
+    const stratifiedActiveLayer = useMemo(() => {
+        if (method !== "stratified" || !layers?.length || !layerAssignment?.length || phase.type !== "sampling") {
+            return null;
+        }
+        const currentDotIndex = selectionOrder[Math.max(0, currentSelectIndex - 1)] ?? selectionOrder[0];
+        if (currentDotIndex === undefined) return null;
+        return layerAssignment[currentDotIndex] ?? null;
+    }, [method, layers, layerAssignment, phase.type, selectionOrder, currentSelectIndex]);
 
     const Icon = meta.icon;
 
@@ -324,9 +378,9 @@ export function ImmersiveSamplingAnimation({
                         <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{meta.label}</h2>
                         <p className="text-xs text-slate-500">
                             {phase.type === "intro" && "准备中..."}
-                            {phase.type === "populating" && "生成总体..."}
-                            {phase.type === "sampling" && `正在抽样 ${currentSelectIndex}/${selectionOrder.length}`}
-                            {phase.type === "complete" && "抽样完成"}
+                            {phase.type === "populating" && progressCopy.populating}
+                            {phase.type === "sampling" && `${progressCopy.sampling} ${currentSelectIndex}/${selectionOrder.length}`}
+                            {phase.type === "complete" && progressCopy.complete}
                         </p>
                     </div>
                 </div>
@@ -375,7 +429,7 @@ export function ImmersiveSamplingAnimation({
                 {phase.type !== "intro" && (
                     <div className="w-full max-w-4xl space-y-4 animate-in fade-in duration-300">
                         {/* Legend for stratified */}
-                        {method === "stratified" && layers && phase.type !== "complete" && (
+                        {method === "stratified" && layers && (
                             <div className="flex flex-wrap items-center justify-center gap-4 mb-2">
                                 {layers.map((layer, i) => (
                                     <div key={layer.name} className="flex items-center gap-2">
@@ -389,6 +443,12 @@ export function ImmersiveSamplingAnimation({
                         {/* Dot grid */}
                         {phase.type !== "complete" && (
                             <div className="relative bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 overflow-hidden">
+                                {method === "stratified" && phase.type === "populating" && (
+                                    <div className="mb-3 flex items-center justify-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                                        <Layers className="w-3.5 h-3.5" />
+                                        <span>先按 {fieldLabel} 分层，再在各层内抽样</span>
+                                    </div>
+                                )}
                                 <DotGrid
                                     visiblePopCount={visiblePopCount}
                                     currentSelectIndex={currentSelectIndex}
@@ -399,9 +459,37 @@ export function ImmersiveSamplingAnimation({
 
                                 {/* Systematic: show interval indicator */}
                                 {method === "systematic" && phase.type === "sampling" && (
+                                    <>
+                                        {systematicIndicator && (
+                                            <div
+                                                className="pointer-events-none absolute inset-y-4 w-px bg-teal-400/60"
+                                                style={{ left: systematicIndicator }}
+                                            >
+                                                <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-teal-400 bg-white shadow-sm dark:bg-slate-950" />
+                                            </div>
+                                        )}
+                                        <div className="absolute bottom-3 left-0 right-0 text-center">
+                                            <span className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-slate-50/90 px-3 py-1.5 text-xs font-mono text-teal-600 dark:bg-slate-900/90 dark:text-teal-400">
+                                                间隔 K = {kValue}，沿固定步长依次前进
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
+
+                                {method === "simple" && phase.type === "sampling" && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className="inline-flex items-center gap-2 bg-slate-50/90 dark:bg-slate-900/90 border border-teal-500/30 text-teal-600 dark:text-teal-400 text-xs font-mono px-3 py-1.5 rounded-full">
-                                            间隔 K = {kValue}，等距抽取
+                                        <span className="inline-flex items-center gap-2 bg-slate-50/90 dark:bg-slate-900/90 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 text-xs px-3 py-1.5 rounded-full">
+                                            <Shuffle className="w-3.5 h-3.5" />
+                                            每个样本点被抽中的机会相同
+                                        </span>
+                                    </div>
+                                )}
+
+                                {method === "stratified" && phase.type === "sampling" && stratifiedActiveLayer !== null && layers?.[stratifiedActiveLayer] && (
+                                    <div className="absolute bottom-3 left-0 right-0 text-center">
+                                        <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-slate-50/90 px-3 py-1.5 text-xs text-amber-700 dark:bg-slate-900/90 dark:text-amber-300">
+                                            <div className={`h-2.5 w-2.5 rounded-full ${lc(stratifiedActiveLayer).bg}`} />
+                                            当前正在抽取 {layers[stratifiedActiveLayer].name} 层样本
                                         </span>
                                     </div>
                                 )}
@@ -429,7 +517,7 @@ export function ImmersiveSamplingAnimation({
                                 <div className="space-y-2">
                                     <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">抽样执行完成</h2>
                                     <p className="text-slate-600 dark:text-slate-400">
-                                        {meta.label}已成功完成，正在获取样本数据...
+                                        {meta.label}动画演示已完成，正在展示抽样结果。
                                     </p>
                                 </div>
 
