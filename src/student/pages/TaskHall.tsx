@@ -261,7 +261,7 @@ function TaskCard({ task }: TaskCardProps) {
                         )}
                     </div>
                     {disabled && (
-                        <div className="text-xs text-slate-500 text-center bg-slate-200/50 dark:bg-slate-800/50 py-1 rounded">
+                        <div className="px-4 py-2 text-xs text-slate-500 text-center bg-slate-200/50 dark:bg-slate-800/50 rounded-md">
                             {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
                         </div>
                     )}
