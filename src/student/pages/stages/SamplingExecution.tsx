@@ -445,7 +445,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                     )}
                                                 </div>
                                             </div>
-                                            <Button variant="outline" onClick={executeSimple} disabled={executing !== null} data-testid="student-sampling-simple-rerun" className="w-full border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15">
+                                            <Button variant="outline" onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-rerun" className="w-full border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/15">
                                                 <RefreshCw className="w-4 h-4 mr-2" />
                                                 重新抽样
                                             </Button>
