@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -832,10 +832,69 @@ function SamplePreviewTable({ data, total }: { data: unknown[]; total: number })
     const samples = (data as Array<Record<string, unknown>>) ?? [];
     const pageSize = 20;
     const [page, setPage] = useState(1);
+    const [scrollTrackWidth, setScrollTrackWidth] = useState(0);
+    const tableScrollRef = useRef<HTMLDivElement | null>(null);
+    const horizontalScrollRef = useRef<HTMLDivElement | null>(null);
+    const syncingRef = useRef<"table" | "track" | null>(null);
 
     useEffect(() => {
         setPage(1);
     }, [data]);
+
+    useEffect(() => {
+        const updateScrollTrackWidth = () => {
+            setScrollTrackWidth(tableScrollRef.current?.scrollWidth ?? 0);
+        };
+
+        updateScrollTrackWidth();
+
+        const tableEl = tableScrollRef.current;
+        if (!tableEl || typeof ResizeObserver === "undefined") {
+            window.addEventListener("resize", updateScrollTrackWidth);
+            return () => window.removeEventListener("resize", updateScrollTrackWidth);
+        }
+
+        const observer = new ResizeObserver(updateScrollTrackWidth);
+        observer.observe(tableEl);
+        const table = tableEl.querySelector("table");
+        if (table) observer.observe(table);
+        window.addEventListener("resize", updateScrollTrackWidth);
+
+        return () => {
+            observer.disconnect();
+            window.removeEventListener("resize", updateScrollTrackWidth);
+        };
+    }, [data, page]);
+
+    const syncHorizontalScroll = useCallback((source: "table" | "track") => {
+        const tableEl = tableScrollRef.current;
+        const trackEl = horizontalScrollRef.current;
+        if (!tableEl || !trackEl) return;
+
+        if (source === "table") {
+            trackEl.scrollLeft = tableEl.scrollLeft;
+        } else {
+            tableEl.scrollLeft = trackEl.scrollLeft;
+        }
+    }, []);
+
+    const handleTableScroll = useCallback(() => {
+        if (syncingRef.current === "track") {
+            syncingRef.current = null;
+            return;
+        }
+        syncingRef.current = "table";
+        syncHorizontalScroll("table");
+    }, [syncHorizontalScroll]);
+
+    const handleTrackScroll = useCallback(() => {
+        if (syncingRef.current === "table") {
+            syncingRef.current = null;
+            return;
+        }
+        syncingRef.current = "track";
+        syncHorizontalScroll("track");
+    }, [syncHorizontalScroll]);
 
     if (samples.length === 0) {
         return <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">暂无抽样数据</div>;
@@ -849,31 +908,46 @@ function SamplePreviewTable({ data, total }: { data: unknown[]; total: number })
     const rows = samples.slice(start, end);
 
     return (
-        <div className="w-full h-full flex flex-col">
-            <div className="flex-1 overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                <Table>
-                    <TableHeader className="bg-white/50 dark:bg-slate-950/50 sticky top-0">
-                        <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
-                            {keys.map((key) => (
-                                <TableHead key={key} className="text-xs text-slate-500 h-8 whitespace-nowrap">
-                                    {FIELD_LABELS[key] || key}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {rows.map((row, rowIndex) => (
-                            <TableRow key={`${start + rowIndex}`} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
+        <div className="flex h-full min-h-0 w-full flex-col">
+            <div
+                ref={tableScrollRef}
+                onScroll={handleTableScroll}
+                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 dark:border-slate-800"
+            >
+                <div className="min-w-max">
+                    <Table className="min-w-max">
+                        <TableHeader className="sticky top-0 bg-white/50 dark:bg-slate-950/50">
+                            <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
                                 {keys.map((key) => (
-                                    <TableCell key={`${start + rowIndex}-${key}`} className="py-2 text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap">
-                                        {String(row[key] ?? "")}
-                                    </TableCell>
+                                    <TableHead key={key} className="h-8 whitespace-nowrap text-xs text-slate-500">
+                                        {FIELD_LABELS[key] || key}
+                                    </TableHead>
                                 ))}
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                        </TableHeader>
+                        <TableBody>
+                            {rows.map((row, rowIndex) => (
+                                <TableRow key={`${start + rowIndex}`} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
+                                    {keys.map((key) => (
+                                        <TableCell key={`${start + rowIndex}-${key}`} className="py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                            {String(row[key] ?? "")}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
+            {scrollTrackWidth > 0 && (
+                <div
+                    ref={horizontalScrollRef}
+                    onScroll={handleTrackScroll}
+                    className="mt-2 overflow-x-auto overflow-y-hidden"
+                >
+                    <div className="h-1" style={{ width: scrollTrackWidth }} />
+                </div>
+            )}
             <div className="mt-3 flex items-center justify-between gap-2">
                 <p className="text-xs text-slate-500">
                     显示第 {start + 1}-{end} 条，共 {Math.max(total, samples.length)} 条
