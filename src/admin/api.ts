@@ -23,6 +23,7 @@ import {
     json,
     parseBody,
 } from "../server/http";
+import { startOfDayCN } from "../utils/format";
 import {
     ADMIN_USER_TYPE,
     adminLoginRoutes,
@@ -93,8 +94,7 @@ const statsRoutes = {
             .limit(1);
 
         // Today's Stats
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfDay = startOfDayCN();
 
         // Today Logins
         const [todayLogins] = await db

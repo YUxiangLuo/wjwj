@@ -7,6 +7,7 @@ import { db } from "../../db";
 import { experiment, notification, student, submission, task, topic } from "../../db/schema";
 import { getAffectedRows } from "../../db/utils";
 import { resolveStoragePath } from "../../server/storage-files";
+import { formatDateTimeCN } from "../../utils/format";
 import { getRichTextPlainText } from "../../utils/rich-text";
 import {
     MAX_SUBMISSION_PDF_ATTEMPTS,
@@ -154,7 +155,7 @@ async function generateQuestionnairePdf(params: {
         doc.moveDown(0.5);
         doc.fontSize(12).text(`课题：${params.meta.topicName}`);
         doc.text(`学生：${params.meta.studentName}`);
-        doc.text(`提交时间：${params.meta.submittedAt.toLocaleString("zh-CN")}`);
+        doc.text(`提交时间：${formatDateTimeCN(params.meta.submittedAt)}`);
         doc.moveDown();
 
         doc.fontSize(16).text(params.questionnaire.title || "未命名问卷");
@@ -194,7 +195,7 @@ async function generateReportPdf(params: {
         doc.moveDown(0.5);
         doc.fontSize(12).text(`课题：${params.meta.topicName}`);
         doc.text(`学生：${params.meta.studentName}`);
-        doc.text(`提交时间：${params.meta.submittedAt.toLocaleString("zh-CN")}`);
+        doc.text(`提交时间：${formatDateTimeCN(params.meta.submittedAt)}`);
         doc.moveDown();
         doc.fontSize(12).text(getRichTextPlainText(params.reportContent) || "");
     });
