@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { experimentApi, tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
+import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -198,23 +199,7 @@ export function TopicDetails() {
                         ? "bg-rose-500"
                         : "bg-emerald-500";
 
-    const getActionButton = () => {
-        switch (task.status) {
-            case "not_started":
-                return { text: "开始实验", link: `/task/${task.id}/experiment` };
-            case "in_progress":
-                return { text: "继续实验", link: `/task/${task.id}/experiment` };
-            case "submitted":
-            case "grading":
-                return { text: "查看提交内容", link: `/task/${task.id}/history` };
-            case "graded":
-                return { text: "查看成绩", link: `/task/${task.id}/history` };
-            case "rejected":
-                return { text: "重新开始", link: null };
-        }
-    };
-
-    const action = getActionButton();
+    const action = getTaskPrimaryAction(task.id, task.status, canStartExperiment);
 
     const handleDownload = async (file: TopicAttachment) => {
         try {
@@ -420,7 +405,7 @@ export function TopicDetails() {
                                 <Button
                                     size="lg"
                                     className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
-                                    disabled={!canStartExperiment}
+                                    disabled={action.disabled}
                                     onClick={() => setShowRestartConfirm(true)}
                                 >
                                     {action.text} <ChevronRight className="w-4 h-4 ml-1" />
@@ -430,7 +415,7 @@ export function TopicDetails() {
                                     <Button
                                         size="lg"
                                         className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 h-12 text-base font-medium"
-                                        disabled={!canStartExperiment}
+                                        disabled={action.disabled}
                                     >
                                         {action.text} <ChevronRight className="w-4 h-4 ml-1" />
                                     </Button>
@@ -438,7 +423,7 @@ export function TopicDetails() {
                             ) : (
                                 <Button size="lg" className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300" disabled>{action.text}</Button>
                             )}
-                            {!canStartExperiment && ["not_started", "in_progress", "rejected"].includes(task.status) && (
+                            {shouldShowTaskAvailabilityHint(task.status, canStartExperiment) && (
                                 <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 bg-rose-500/10 p-2 rounded-lg">
                                     <AlertTriangle className="w-3 h-3" />
                                     {notOpenYet ? "任务尚未开放，暂不可操作" : "任务已截止，无法继续操作"}

@@ -406,10 +406,8 @@ export function startBackgroundJobs() {
         void checkAndSendDeadlineReminders();
     }
 
-    if (process.env.DISABLE_SUBMISSION_PDF !== "1") {
-        timers.push(setInterval(checkAndProcessSubmissionPdfs, SUBMISSION_PDF_CHECK_INTERVAL_MS));
-        void checkAndProcessSubmissionPdfs();
-    }
+    timers.push(setInterval(checkAndProcessSubmissionPdfs, SUBMISSION_PDF_CHECK_INTERVAL_MS));
+    void checkAndProcessSubmissionPdfs();
 
     return () => {
         timers.forEach((timer) => clearInterval(timer));

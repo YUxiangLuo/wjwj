@@ -76,10 +76,8 @@ const server = serve({
 
 console.log(`🚀 Server running at ${server.url}`);
 
-if (process.env.DISABLE_SUBMISSION_PDF !== "1") {
-    // Recover pending submission PDFs even when the dedicated worker is not running.
-    kickSubmissionPdfProcessing();
-}
+// Recover pending submission PDFs even when the dedicated worker is not running.
+kickSubmissionPdfProcessing();
 
 if (process.env.RUN_IN_PROCESS_SCHEDULERS === "1") {
     startBackgroundJobs();
