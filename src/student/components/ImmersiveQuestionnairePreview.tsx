@@ -260,14 +260,14 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                             <span>{question.scaleMinLabel || "最低"}</span>
                             <span>{question.scaleMaxLabel || "最高"}</span>
                         </div>
-                        <div className="flex flex-wrap justify-center gap-2 sm:gap-3">
+                        <div className="grid grid-cols-5 gap-2 sm:grid-cols-10 sm:gap-2">
                             {values.map((val) => {
                                 const selected = answer === val;
                                 return (
                                     <button
                                         key={val}
                                         onClick={() => setScaleAnswer(question.id, val)}
-                                        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl text-base font-bold transition-all ${
+                                        className={`h-11 w-full rounded-xl text-base font-bold transition-all sm:h-12 ${
                                             selected
                                                 ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30 scale-110"
                                                 : "bg-white border-2 border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50"
