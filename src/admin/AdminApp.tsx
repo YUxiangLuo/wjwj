@@ -203,8 +203,8 @@ export function AdminApp() {
     if (isLoginPage) {
         if (authState === "checking") {
             return (
-                <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                    <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+                    <Loader2 className="w-6 h-6 animate-spin text-slate-600 dark:text-slate-400" />
                 </div>
             );
         }
@@ -214,16 +214,16 @@ export function AdminApp() {
 
     if (authState === "checking") {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-600 dark:text-slate-400" />
             </div>
         );
     }
 
     if (isRecoveringLogin) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950">
-                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-600 dark:text-slate-400" />
             </div>
         );
     }
@@ -232,20 +232,20 @@ export function AdminApp() {
 
     if (adminUser?.isFirstLogin) {
         return (
-            <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-slate-800 bg-slate-900/60 p-8 shadow-2xl shadow-slate-950/40">
+            <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex items-center justify-center px-6">
+                <div className="w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-8 shadow-2xl shadow-white/40 dark:shadow-slate-950/40">
                     <div className="space-y-3 text-center">
                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-bold text-white shadow-lg shadow-indigo-500/20">
                             A
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-100">首次登录需完成密码更新</h1>
-                        <p className="text-sm leading-6 text-slate-400">
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">首次登录需完成密码更新</h1>
+                        <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
                             修改管理员密码前，系统设置、用户管理和通知功能暂不可访问。
                         </p>
                     </div>
 
-                    <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-400">
-                        当前账号：<span className="font-mono text-slate-200">{adminUser.username}</span>
+                    <div className="mt-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/50 p-4 text-sm text-slate-600 dark:text-slate-400">
+                        当前账号：<span className="font-mono text-slate-800 dark:text-slate-200">{adminUser.username}</span>
                     </div>
                 </div>
 
@@ -275,25 +275,25 @@ export function AdminApp() {
     }
 
     return (
-        <div className="flex min-h-screen bg-slate-950 text-slate-200 font-sans antialiased">
+        <div className="flex min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans antialiased">
             <Toaster richColors position="top-right" theme={theme} />
 
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:flex lg:flex-col ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:flex lg:flex-col ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
                     }`}
             >
-                <div className="h-16 px-6 border-b border-slate-800 flex items-center justify-between lg:justify-start">
+                <div className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between lg:justify-start">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
                             <LayoutDashboard className="w-5 h-5" />
                         </div>
                         <div>
-                            <h1 className="text-sm font-bold text-slate-100 tracking-tight">抽样统计系统</h1>
+                            <h1 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">抽样统计系统</h1>
                             <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">Admin Portal</p>
                         </div>
                     </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-slate-100">
+                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
@@ -312,13 +312,13 @@ export function AdminApp() {
                                     flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-200 group
                                     ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
                                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
-                                        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-100"
+                                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100"
                                     }
                                 `}
                             >
                                 <Icon className={`w-4 h-4 transition-colors ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
                                         ? "text-white"
-                                        : "text-slate-500 group-hover:text-slate-300"
+                                        : "text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300"
                                     }`} />
                                 <span className="font-medium">{item.label}</span>
                             </NavLink>
@@ -326,15 +326,15 @@ export function AdminApp() {
                     })}
                 </nav>
 
-                <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                     <div className="flex items-center gap-3">
-                        <Avatar className="w-9 h-9 border border-slate-700 ring-2 ring-slate-900">
-                            <AvatarFallback className="bg-slate-800 text-indigo-500 text-sm font-medium">
+                        <Avatar className="w-9 h-9 border border-slate-300 dark:border-slate-700 ring-2 ring-slate-50 dark:ring-slate-900">
+                            <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-indigo-500 text-sm font-medium">
                                 {adminUser?.username?.charAt(0)?.toUpperCase() ?? "A"}
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-slate-200 truncate">{adminUser?.username ?? "管理员"}</div>
+                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{adminUser?.username ?? "管理员"}</div>
                             <div className="text-xs text-slate-500 truncate">Administrator</div>
                         </div>
                     </div>
@@ -350,17 +350,17 @@ export function AdminApp() {
             )}
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-950">
-                <header className="h-16 px-6 border-b border-slate-800 bg-slate-900/50 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between gap-6">
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white dark:bg-slate-950">
+                <header className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setIsSidebarOpen(true)}
-                            className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-slate-100 rounded-md hover:bg-slate-800"
+                            className="lg:hidden p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-md hover:bg-slate-200 dark:hover:bg-slate-800"
                         >
                             <Menu className="w-5 h-5" />
                         </button>
                         <div>
-                            <h2 className="text-lg font-semibold text-slate-100">{pageTitle}</h2>
+                            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{pageTitle}</h2>
                             <p className="hidden md:block text-xs text-slate-500">
                                 {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
                             </p>
@@ -368,10 +368,10 @@ export function AdminApp() {
                     </div>
 
                     <div className="flex items-center gap-4 flex-1 justify-end">
-                        <div className="hidden md:flex items-center gap-2 bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-1.5 w-64 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/50 transition-all">
+                        <div className="hidden md:flex items-center gap-2 bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 w-64 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500/50 transition-all">
                             <Search className="w-4 h-4 text-slate-500" />
                             <input
-                                className="bg-transparent text-sm text-slate-200 placeholder:text-slate-500 outline-none w-full"
+                                className="bg-transparent text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-500 outline-none w-full"
                                 placeholder="搜索功能或数据..."
                             />
                         </div>
@@ -381,20 +381,20 @@ export function AdminApp() {
                                 data-testid="admin-notifications-trigger"
                                 variant="ghost"
                                 size="icon"
-                                className="relative text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                                className="relative text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800"
                                 onClick={() => { void openNotifications(); }}
                                 aria-label="打开通知中心"
                             >
                                 <Bell className="w-5 h-5" />
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 ring-2 ring-slate-900 rounded-full animate-pulse"></span>
+                                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 ring-2 ring-slate-50 dark:ring-slate-900 rounded-full animate-pulse"></span>
                                 )}
                             </Button>
 
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                                className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800"
                                 onClick={toggleTheme}
                                 title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                                 aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
@@ -402,23 +402,23 @@ export function AdminApp() {
                                 {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                             </Button>
 
-                            <Separator orientation="vertical" className="h-6 bg-slate-800" />
+                            <Separator orientation="vertical" className="h-6 bg-slate-200 dark:bg-slate-800" />
 
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button data-testid="admin-logout-trigger" variant="ghost" size="icon" className="text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" title="退出登录">
+                                    <Button data-testid="admin-logout-trigger" variant="ghost" size="icon" className="text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" title="退出登录">
                                         <LogOut className="w-5 h-5" />
                                     </Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle className="text-slate-100">确认退出登录?</AlertDialogTitle>
-                                        <AlertDialogDescription className="text-slate-400">
+                                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认退出登录?</AlertDialogTitle>
+                                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
                                             您确定要退出当前账号吗？未保存的内容可能会丢失。
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-slate-100">取消</AlertDialogCancel>
+                                        <AlertDialogCancel className="bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
                                         <AlertDialogAction onClick={handleLogout} className="bg-rose-600 hover:bg-rose-700 text-white border-none">退出</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -467,25 +467,25 @@ export function AdminApp() {
             />
 
             <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-100">会话即将过期</DialogTitle>
-                        <DialogDescription className="text-slate-400">
+                        <DialogTitle className="text-slate-900 dark:text-slate-100">会话即将过期</DialogTitle>
+                        <DialogDescription className="text-slate-600 dark:text-slate-400">
                             您的会话将在 5 分钟内过期，是否继续保持登录状态？
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="outline" onClick={handleLogout} className="border-slate-700 hover:bg-slate-800 text-slate-300">退出登录</Button>
+                        <Button variant="outline" onClick={handleLogout} className="border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">退出登录</Button>
                         <Button onClick={handleExtendSession} className="bg-indigo-600 hover:bg-indigo-700">继续</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showSessionExpired} onOpenChange={setShowSessionExpired}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-100">会话已过期</DialogTitle>
-                        <DialogDescription className="text-slate-400">
+                        <DialogTitle className="text-slate-900 dark:text-slate-100">会话已过期</DialogTitle>
+                        <DialogDescription className="text-slate-600 dark:text-slate-400">
                             您的会话已过期，请重新登录。
                         </DialogDescription>
                     </DialogHeader>
@@ -496,15 +496,15 @@ export function AdminApp() {
             </Dialog>
 
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-lg">
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-100">通知</DialogTitle>
-                        <DialogDescription className="text-slate-400">
+                        <DialogTitle className="text-slate-900 dark:text-slate-100">通知</DialogTitle>
+                        <DialogDescription className="text-slate-600 dark:text-slate-400">
                             查看系统通知与操作提醒
                         </DialogDescription>
                     </DialogHeader>
                     <div className="flex justify-between items-center my-2">
-                        <span className="text-sm text-slate-400">未读 {unreadCount} 条</span>
+                        <span className="text-sm text-slate-600 dark:text-slate-400">未读 {unreadCount} 条</span>
                         <Button
                             data-testid="admin-notifications-mark-all-read"
                             variant="ghost"
@@ -528,23 +528,23 @@ export function AdminApp() {
                                     type="button"
                                     data-testid={`admin-notification-item-${item.id}`}
                                     onClick={() => item.isRead ? null : void handleMarkNotificationRead(item.id)}
-                                    className={`w-full text-left p-4 rounded-lg border transition-all duration-200 hover:border-slate-700 ${item.isRead ? "bg-slate-950/50 border-transparent opacity-70" : "bg-slate-800/50 border-slate-700/50 shadow-sm"
+                                    className={`w-full text-left p-4 rounded-lg border transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-700 ${item.isRead ? "bg-white/50 dark:bg-slate-950/50 border-transparent opacity-70" : "bg-slate-200/50 dark:bg-slate-800/50 border-slate-300/50 dark:border-slate-700/50 shadow-sm"
                                         }`}
                                 >
                                     <div className="flex items-center justify-between mb-1">
                                         <div className="flex items-center gap-2">
                                             {!item.isRead && <span className="flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-indigo-500/20" />}
-                                            <span className={`text-sm font-medium ${item.isRead ? "text-slate-400" : "text-slate-200"}`}>{item.title}</span>
+                                            <span className={`text-sm font-medium ${item.isRead ? "text-slate-600 dark:text-slate-400" : "text-slate-800 dark:text-slate-200"}`}>{item.title}</span>
                                         </div>
                                         <span className="text-xs text-slate-500 font-mono">
                                             {new Date(item.createdAt).toLocaleString("zh-CN", { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
-                                    <div className="text-sm text-slate-400 line-clamp-2 pl-4 border-l-2 border-slate-800">{item.content}</div>
+                                    <div className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 pl-4 border-l-2 border-slate-200 dark:border-slate-800">{item.content}</div>
                                 </button>
                             ))
                         ) : (
-                            <div className="text-center py-12 text-slate-500 bg-slate-950/30 rounded-lg border border-dashed border-slate-800">
+                            <div className="text-center py-12 text-slate-500 bg-white/30 dark:bg-slate-950/30 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
                                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
                                 暂无通知
                             </div>

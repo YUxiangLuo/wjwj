@@ -284,15 +284,15 @@ export function SystemSettings() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-100">系统设置</h2>
-                    <p className="text-sm text-slate-400 mt-1">集中管理系统参数、安全策略与备份方案。</p>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">系统设置</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">集中管理系统参数、安全策略与备份方案。</p>
                 </div>
             </div>
 
             <div className="flex flex-col gap-6 xl:flex-row">
                 {/* Navigation Sidebar */}
                 <div className="xl:w-64 shrink-0">
-                    <Card className="border-slate-800 bg-slate-900 shadow-sm overflow-hidden">
+                    <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm overflow-hidden">
                         <CardContent className="p-2 space-y-1">
                             {sections.map((section) => {
                                 const Icon = section.icon;
@@ -305,7 +305,7 @@ export function SystemSettings() {
                                         onClick={() => setActiveSection(section.id)}
                                         className={`w-full justify-start gap-3 transition-all duration-200 ${isActive
                                             ? "bg-indigo-600/10 text-indigo-500 font-medium border border-indigo-500/10"
-                                            : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                                            : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800"
                                             }`}
                                     >
                                         <Icon className="w-4 h-4" />
@@ -318,37 +318,37 @@ export function SystemSettings() {
                 </div>
 
                 {/* Main Content Area */}
-                <Card className="flex-1 border-slate-800 bg-slate-900 shadow-sm relative">
+                <Card className="flex-1 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm relative">
                     <CardContent className="pt-6 space-y-6">
                         <div className="flex items-start gap-4">
                             <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-inner">
                                 <SectionIcon className="w-6 h-6" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-semibold text-slate-100">{activeMeta.title}</h3>
+                                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{activeMeta.title}</h3>
                                 <p className="text-sm text-slate-500 mt-1">{sectionDescriptions[activeMeta.id]}</p>
                             </div>
                         </div>
 
-                        <Separator className="bg-slate-800" />
+                        <Separator className="bg-slate-200 dark:bg-slate-800" />
 
                         {activeSection === "general" && (
                             <div className="space-y-6">
                                 <div className="grid gap-6 max-w-2xl">
                                     <div className="space-y-3">
-                                        <Label htmlFor="systemName" className="text-slate-300">系统名称</Label>
+                                        <Label htmlFor="systemName" className="text-slate-700 dark:text-slate-300">系统名称</Label>
                                         <Input
                                             id="systemName"
                                             data-testid="settings-system-name"
                                             value={settings.systemName}
                                             onChange={(e) => setSettings({ ...settings, systemName: e.target.value })}
-                                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
+                                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                                         />
                                         <p className="text-xs text-slate-500">显示在浏览器标题栏和登录页</p>
                                     </div>
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
                                         <div className="space-y-0.5">
-                                            <div className="text-sm font-medium text-slate-200">维护模式</div>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">维护模式</div>
                                             <div className="text-xs text-slate-500">开启后仅管理员可访问系统，其他用户将看到维护提示</div>
                                         </div>
                                         <Switch
@@ -357,9 +357,9 @@ export function SystemSettings() {
                                             className="data-[state=checked]:bg-indigo-600"
                                         />
                                     </div>
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
                                         <div className="space-y-0.5">
-                                            <div className="text-sm font-medium text-slate-200">开放注册</div>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">开放注册</div>
                                             <div className="text-xs text-slate-500">允许新用户自行注册账号，关闭后仅管理员可添加</div>
                                         </div>
                                         <Switch
@@ -377,29 +377,29 @@ export function SystemSettings() {
                                 <div className="grid gap-6 max-w-2xl">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
-                                            <Label htmlFor="experimentTimeLimit" className="text-slate-300">实验时间限制 (分钟)</Label>
+                                            <Label htmlFor="experimentTimeLimit" className="text-slate-700 dark:text-slate-300">实验时间限制 (分钟)</Label>
                                             <Input
                                                 id="experimentTimeLimit"
                                                 type="number"
                                                 value={settings.experimentTimeLimit}
                                                 onChange={(e) => setSettings({ ...settings, experimentTimeLimit: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                         </div>
                                         <div className="space-y-3">
-                                            <Label htmlFor="autoSaveInterval" className="text-slate-300">自动保存间隔 (分钟)</Label>
+                                            <Label htmlFor="autoSaveInterval" className="text-slate-700 dark:text-slate-300">自动保存间隔 (分钟)</Label>
                                             <Input
                                                 id="autoSaveInterval"
                                                 type="number"
                                                 value={settings.autoSaveInterval}
                                                 onChange={(e) => setSettings({ ...settings, autoSaveInterval: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
                                         <div className="space-y-0.5">
-                                            <div className="text-sm font-medium text-slate-200">提交需审批</div>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">提交需审批</div>
                                             <div className="text-xs text-slate-500">学生提交实验报告后需要教师审批才能获得成绩</div>
                                         </div>
                                         <Switch
@@ -417,7 +417,7 @@ export function SystemSettings() {
                                 <div className="grid gap-6 max-w-2xl">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
-                                            <Label htmlFor="maxLoginAttempts" className="text-slate-300">最大登录尝试次数</Label>
+                                            <Label htmlFor="maxLoginAttempts" className="text-slate-700 dark:text-slate-300">最大登录尝试次数</Label>
                                             <Input
                                                 id="maxLoginAttempts"
                                                 data-testid="settings-max-login-attempts"
@@ -426,12 +426,12 @@ export function SystemSettings() {
                                                 max={10}
                                                 value={settings.maxLoginAttempts}
                                                 onChange={(e) => setSettings({ ...settings, maxLoginAttempts: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                             <p className="text-xs text-slate-500">连续失败后账号将被临时锁定（3 - 10）</p>
                                         </div>
                                         <div className="space-y-3">
-                                            <Label htmlFor="lockDurationMinutes" className="text-slate-300">锁定自动解锁 (分钟)</Label>
+                                            <Label htmlFor="lockDurationMinutes" className="text-slate-700 dark:text-slate-300">锁定自动解锁 (分钟)</Label>
                                             <Input
                                                 id="lockDurationMinutes"
                                                 data-testid="settings-lock-duration"
@@ -440,17 +440,17 @@ export function SystemSettings() {
                                                 max={60}
                                                 value={settings.lockDurationMinutes}
                                                 onChange={(e) => setSettings({ ...settings, lockDurationMinutes: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                             <p className="text-xs text-slate-500">锁定后自动解锁时间（10 - 60 分钟）</p>
                                         </div>
                                     </div>
 
                                     <div className="space-y-4 pt-2">
-                                        <h4 className="text-sm font-medium text-slate-400 border-b border-slate-800 pb-2">会话超时设置</h4>
+                                        <h4 className="text-sm font-medium text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">会话超时设置</h4>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="space-y-2">
-                                                <Label htmlFor="adminSessionTimeout" className="text-slate-300 text-xs">管理员 (15-60 分钟)</Label>
+                                                <Label htmlFor="adminSessionTimeout" className="text-slate-700 dark:text-slate-300 text-xs">管理员 (15-60 分钟)</Label>
                                                 <Input
                                                     id="adminSessionTimeout"
                                                     type="number"
@@ -458,11 +458,11 @@ export function SystemSettings() {
                                                     max={60}
                                                     value={settings.adminSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, adminSessionTimeout: parseInt(e.target.value) || 0 })}
-                                                    className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                    className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="teacherSessionTimeout" className="text-slate-300 text-xs">教师 (60-240 分钟)</Label>
+                                                <Label htmlFor="teacherSessionTimeout" className="text-slate-700 dark:text-slate-300 text-xs">教师 (60-240 分钟)</Label>
                                                 <Input
                                                     id="teacherSessionTimeout"
                                                     type="number"
@@ -470,11 +470,11 @@ export function SystemSettings() {
                                                     max={240}
                                                     value={settings.teacherSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, teacherSessionTimeout: parseInt(e.target.value) || 0 })}
-                                                    className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                    className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="studentSessionTimeout" className="text-slate-300 text-xs">学生 (120-480 分钟)</Label>
+                                                <Label htmlFor="studentSessionTimeout" className="text-slate-700 dark:text-slate-300 text-xs">学生 (120-480 分钟)</Label>
                                                 <Input
                                                     id="studentSessionTimeout"
                                                     type="number"
@@ -482,17 +482,17 @@ export function SystemSettings() {
                                                     max={480}
                                                     value={settings.studentSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, studentSessionTimeout: parseInt(e.target.value) || 0 })}
-                                                    className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                    className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                                 />
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="pt-4 border-t border-slate-800 mt-2">
+                                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800 mt-2">
                                         <Button variant="outline" onClick={() => {
                                             passwordChange.clearError();
                                             setShowPasswordModal(true);
-                                        }} data-testid="settings-change-password-open" className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800 w-full sm:w-auto">
+                                        }} data-testid="settings-change-password-open" className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 w-full sm:w-auto">
                                             <Lock className="w-4 h-4 mr-2" />
                                             修改管理员密码
                                         </Button>
@@ -506,7 +506,7 @@ export function SystemSettings() {
                                 <div className="grid gap-6 max-w-2xl">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
-                                            <Label htmlFor="excelMaxRows" className="text-slate-300">Excel 最大行数</Label>
+                                            <Label htmlFor="excelMaxRows" className="text-slate-700 dark:text-slate-300">Excel 最大行数</Label>
                                             <Input
                                                 id="excelMaxRows"
                                                 type="number"
@@ -514,24 +514,24 @@ export function SystemSettings() {
                                                 max={500000}
                                                 value={settings.excelMaxRows}
                                                 onChange={(e) => setSettings({ ...settings, excelMaxRows: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                             <p className="text-xs text-slate-500">允许上传的 Excel 文件最大行数（10,000 - 500,000）</p>
                                         </div>
                                         <div className="space-y-3">
-                                            <Label htmlFor="maxAttachmentSizeMb" className="text-slate-300">单个附件最大 (MB)</Label>
+                                            <Label htmlFor="maxAttachmentSizeMb" className="text-slate-700 dark:text-slate-300">单个附件最大 (MB)</Label>
                                             <Input
                                                 id="maxAttachmentSizeMb"
                                                 type="number"
                                                 value={settings.maxAttachmentSizeMb}
                                                 onChange={(e) => setSettings({ ...settings, maxAttachmentSizeMb: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                             <p className="text-xs text-slate-500">单个上传附件的最大文件大小</p>
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        <Label htmlFor="batchImportMaxRows" className="text-slate-300">批量导入最大行数</Label>
+                                        <Label htmlFor="batchImportMaxRows" className="text-slate-700 dark:text-slate-300">批量导入最大行数</Label>
                                         <Input
                                             id="batchImportMaxRows"
                                             type="number"
@@ -539,7 +539,7 @@ export function SystemSettings() {
                                             max={1000}
                                             value={settings.batchImportMaxRows}
                                             onChange={(e) => setSettings({ ...settings, batchImportMaxRows: parseInt(e.target.value) || 0 })}
-                                            className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50 max-w-xs"
+                                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50 max-w-xs"
                                         />
                                         <p className="text-xs text-slate-500">批量导入学生/数据时允许的最大行数（100 - 1,000）</p>
                                     </div>
@@ -552,24 +552,24 @@ export function SystemSettings() {
                                 <div className="grid gap-6 max-w-2xl">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
-                                            <Label htmlFor="deadlineReminderHours" className="text-slate-300">截止提醒提前时间 (小时)</Label>
+                                            <Label htmlFor="deadlineReminderHours" className="text-slate-700 dark:text-slate-300">截止提醒提前时间 (小时)</Label>
                                             <Input
                                                 id="deadlineReminderHours"
                                                 type="number"
                                                 value={settings.deadlineReminderHours}
                                                 onChange={(e) => setSettings({ ...settings, deadlineReminderHours: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                             <p className="text-xs text-slate-500">在任务截止前多少小时发送提醒通知</p>
                                         </div>
                                         <div className="space-y-3">
-                                            <Label htmlFor="notificationRetentionDays" className="text-slate-300">通知保留天数</Label>
+                                            <Label htmlFor="notificationRetentionDays" className="text-slate-700 dark:text-slate-300">通知保留天数</Label>
                                             <Input
                                                 id="notificationRetentionDays"
                                                 type="number"
                                                 value={settings.notificationRetentionDays}
                                                 onChange={(e) => setSettings({ ...settings, notificationRetentionDays: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                             <p className="text-xs text-slate-500">系统通知的保留天数，过期自动清理</p>
                                         </div>
@@ -581,9 +581,9 @@ export function SystemSettings() {
                         {activeSection === "backup" && (
                             <div className="space-y-6">
                                 <div className="grid gap-6 max-w-2xl">
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-950/50 border border-slate-800">
+                                    <div className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
                                         <div className="space-y-0.5">
-                                            <div className="text-sm font-medium text-slate-200">自动备份</div>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">自动备份</div>
                                             <div className="text-xs text-slate-500">定期自动备份数据库和文件，防止数据丢失</div>
                                         </div>
                                         <Switch
@@ -594,12 +594,12 @@ export function SystemSettings() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-3">
-                                            <Label className="text-slate-300">备份频率</Label>
+                                            <Label className="text-slate-700 dark:text-slate-300">备份频率</Label>
                                             <Select value={settings.backupFrequency} onValueChange={(v) => setSettings({ ...settings, backupFrequency: v })}>
-                                                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                                                <SelectTrigger className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                                     <SelectItem value="hourly">每小时</SelectItem>
                                                     <SelectItem value="daily">每天</SelectItem>
                                                     <SelectItem value="weekly">每周</SelectItem>
@@ -607,25 +607,25 @@ export function SystemSettings() {
                                             </Select>
                                         </div>
                                         <div className="space-y-3">
-                                            <Label htmlFor="backupRetentionDays" className="text-slate-300">保留天数</Label>
+                                            <Label htmlFor="backupRetentionDays" className="text-slate-700 dark:text-slate-300">保留天数</Label>
                                             <Input
                                                 id="backupRetentionDays"
                                                 type="number"
                                                 value={settings.backupRetentionDays}
                                                 onChange={(e) => setSettings({ ...settings, backupRetentionDays: parseInt(e.target.value) || 0 })}
-                                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500/50"
+                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-950/30 border border-slate-800 rounded-lg p-4 space-y-4 mt-2">
-                                        <h4 className="text-sm font-medium text-slate-300">手动备份与恢复</h4>
+                                    <div className="bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-4 mt-2">
+                                        <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">手动备份与恢复</h4>
                                         <div className="flex flex-col sm:flex-row gap-3">
                                             <Button data-testid="settings-backup-create" onClick={handleCreateBackup} disabled={backupLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                                                 {backupLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
                                                 立即备份
                                             </Button>
-                                            <Button data-testid="settings-backup-restore-open" variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading} className="border-slate-700 text-slate-300 hover:text-slate-100 hover:bg-slate-800">
+                                            <Button data-testid="settings-backup-restore-open" variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading} className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
                                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                                 恢复备份
                                             </Button>
@@ -641,7 +641,7 @@ export function SystemSettings() {
                             </div>
                         )}
 
-                        <div className="pt-6 mt-6 border-t border-slate-800 flex justify-end">
+                        <div className="pt-6 mt-6 border-t border-slate-200 dark:border-slate-800 flex justify-end">
                             <Button data-testid="settings-save" onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
                                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                                 保存设置
@@ -672,27 +672,27 @@ export function SystemSettings() {
             />
 
             <Dialog open={showRestoreModal} onOpenChange={setShowRestoreModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-100 flex items-center gap-2">
+                        <DialogTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
                             <Database className="w-5 h-5 text-amber-500" />
                             恢复备份
                         </DialogTitle>
-                        <DialogDescription className="text-slate-400">
+                        <DialogDescription className="text-slate-600 dark:text-slate-400">
                             恢复将清空当前数据库并覆盖数据，这是一个不可逆的操作。
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="restoreBackupId" className="text-slate-300">选择备份</Label>
+                            <Label htmlFor="restoreBackupId" className="text-slate-700 dark:text-slate-300">选择备份</Label>
                             <Select
                                 value={restoreForm.backupId}
                                 onValueChange={(value) => setRestoreForm({ ...restoreForm, backupId: value })}
                             >
-                                <SelectTrigger id="restoreBackupId" data-testid="settings-backup-restore-select" className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger id="restoreBackupId" data-testid="settings-backup-restore-select" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                     <SelectValue placeholder={backupListLoading ? "加载中..." : "请选择备份"} />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                     {backupList.map((item) => (
                                         <SelectItem key={item.backupId} value={item.backupId} disabled={!item.hasZip}>
                                             <span className="font-mono">{item.backupId}</span> {item.hasZip ? "" : "(不可用)"}
@@ -714,7 +714,7 @@ export function SystemSettings() {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="restorePassword" className="text-slate-300">管理员密码</Label>
+                            <Label htmlFor="restorePassword" className="text-slate-700 dark:text-slate-300">管理员密码</Label>
                             <Input
                                 id="restorePassword"
                                 data-testid="settings-backup-restore-password"
@@ -722,12 +722,12 @@ export function SystemSettings() {
                                 value={restoreForm.password}
                                 onChange={(e) => setRestoreForm({ ...restoreForm, password: e.target.value })}
                                 autoComplete="current-password"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-red-500/50 focus:ring-red-500/20"
+                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-red-500/50 focus:ring-red-500/20"
                                 placeholder="输入密码以确认操作"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="restoreConfirmPassword" className="text-slate-300">确认管理员密码</Label>
+                            <Label htmlFor="restoreConfirmPassword" className="text-slate-700 dark:text-slate-300">确认管理员密码</Label>
                             <Input
                                 id="restoreConfirmPassword"
                                 data-testid="settings-backup-restore-confirm-password"
@@ -735,14 +735,14 @@ export function SystemSettings() {
                                 value={restoreForm.confirmPassword}
                                 onChange={(e) => setRestoreForm({ ...restoreForm, confirmPassword: e.target.value })}
                                 autoComplete="current-password"
-                                className="bg-slate-950 border-slate-800 text-slate-200 focus:border-red-500/50 focus:ring-red-500/20"
+                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-red-500/50 focus:ring-red-500/20"
                                 placeholder="再次输入密码"
                             />
                         </div>
                         {restoreError && <div className="text-sm text-rose-600 bg-rose-500/10 p-2 rounded border border-rose-500/20">{restoreError}</div>}
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowRestoreModal(false)} disabled={restoreLoading} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                        <Button variant="ghost" onClick={() => setShowRestoreModal(false)} disabled={restoreLoading} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">
                             取消
                         </Button>
                         <Button data-testid="settings-backup-restore-submit" onClick={handleConfirmRestore} disabled={restoreLoading} className="bg-rose-600 hover:bg-rose-700 text-white">

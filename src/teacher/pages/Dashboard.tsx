@@ -18,24 +18,24 @@ function StatCard({ icon: Icon, label, value, color, loading, to }: {
 }) {
     // Map colors to class names
     const colorStyles: Record<string, { bg: string, text: string, border: string }> = {
-        blue: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20" },
+        blue: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", border: "border-blue-500/20" },
         emerald: { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/20" },
         rose: { bg: "bg-rose-500/10", text: "text-rose-600", border: "border-rose-500/20" },
         amber: { bg: "bg-amber-500/10", text: "text-amber-600", border: "border-amber-500/20" },
-        slate: { bg: "bg-slate-800", text: "text-slate-400", border: "border-slate-700" },
+        slate: { bg: "bg-slate-200 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-400", border: "border-slate-300 dark:border-slate-700" },
     };
 
     const style = colorStyles[color] || colorStyles.slate!;
 
     const card = (
-        <Card className={`border-slate-800 bg-slate-900 hover:border-slate-700 transition-all duration-200 ${to ? "cursor-pointer" : ""}`}>
+        <Card className={`border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 ${to ? "cursor-pointer" : ""}`}>
             <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-sm font-medium text-slate-500">{label}</p>
                         <div className="mt-2 flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-slate-100">
-                                {loading ? <div className="h-9 w-12 bg-slate-800 rounded animate-pulse" /> : value}
+                            <span className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+                                {loading ? <div className="h-9 w-12 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" /> : value}
                             </span>
                         </div>
                     </div>
@@ -106,8 +106,8 @@ export function Dashboard() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-100">教学概览</h2>
-                <p className="text-sm text-slate-400 mt-1">关注班级、课题与待批改任务。</p>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">教学概览</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">关注班级、课题与待批改任务。</p>
             </div>
 
             {/* Announcement Banner */}
@@ -119,7 +119,7 @@ export function Dashboard() {
                     <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                         <Megaphone className="w-5 h-5 text-amber-600 shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <span className="text-sm text-amber-200 font-medium truncate block">{latest.title}</span>
+                            <span className="text-sm text-amber-800 dark:text-amber-200 font-medium truncate block">{latest.title}</span>
                         </div>
                         <span className="text-xs text-amber-600/70 shrink-0">{unread.length} 条未读</span>
                         <Button
@@ -159,10 +159,10 @@ export function Dashboard() {
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 {/* Recent Submissions */}
-                <Card className="border-slate-800 bg-slate-900">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
-                        <CardTitle className="text-lg text-slate-100">最近提交</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+                        <CardTitle className="text-lg text-slate-900 dark:text-slate-100">最近提交</CardTitle>
+                        <Button variant="outline" size="sm" asChild className="border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                             <Link to="/grading">全部作业</Link>
                         </Button>
                     </CardHeader>
@@ -173,15 +173,15 @@ export function Dashboard() {
                             <div className="text-center text-sm text-slate-500 py-8">暂无提交记录</div>
                         ) : (
                             recentSubmissions.map((item, idx) => (
-                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-800/50 hover:border-slate-700 transition-all gap-4">
+                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-4">
                                     <div className="flex items-center gap-4">
-                                        <Avatar className="w-10 h-10 border border-slate-700">
+                                        <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
                                             <AvatarFallback className="bg-indigo-950 text-indigo-500 text-sm font-semibold">{item.student[0]}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <div className="text-sm font-medium text-slate-200">{item.student}</div>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.student}</div>
                                             <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                                                <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{item.class}</span>
+                                                <span className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">{item.class}</span>
                                                 <span>·</span>
                                                 <span className="text-indigo-500">{item.topic}</span>
                                             </div>
@@ -195,10 +195,10 @@ export function Dashboard() {
                 </Card>
 
                 {/* Recent Gradings */}
-                <Card className="border-slate-800 bg-slate-900">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-4">
-                        <CardTitle className="text-lg text-slate-100">最近批改</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-800 hover:text-slate-100">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+                        <CardTitle className="text-lg text-slate-900 dark:text-slate-100">最近批改</CardTitle>
+                        <Button variant="outline" size="sm" asChild className="border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
                             <Link to="/grading">批改列表</Link>
                         </Button>
                     </CardHeader>
@@ -209,15 +209,15 @@ export function Dashboard() {
                             <div className="text-center text-sm text-slate-500 py-8">暂无批改记录</div>
                         ) : (
                             recentGradings.map((item, idx) => (
-                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-950/30 hover:bg-slate-800/50 hover:border-slate-700 transition-all gap-4">
+                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-4">
                                     <div className="flex items-center gap-4">
-                                        <Avatar className="w-10 h-10 border border-slate-700">
+                                        <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
                                             <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-rose-950 text-rose-600" : "bg-emerald-950 text-emerald-600"}`}>{item.student[0]}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <div className="text-sm font-medium text-slate-200">{item.student}</div>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.student}</div>
                                             <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                                                <span className="bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{item.class}</span>
+                                                <span className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">{item.class}</span>
                                                 <span>·</span>
                                                 <span className="text-indigo-500">{item.topic}</span>
                                             </div>
@@ -244,9 +244,9 @@ export function Dashboard() {
                 </Card>
 
                 {/* Quick Actions */}
-                <Card className="border-slate-800 bg-slate-900 h-fit">
-                    <CardHeader className="border-b border-slate-800 pb-4">
-                        <CardTitle className="text-lg text-slate-100">快捷入口</CardTitle>
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 h-fit">
+                    <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
+                        <CardTitle className="text-lg text-slate-900 dark:text-slate-100">快捷入口</CardTitle>
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         <Button className="w-full justify-between h-12 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 group" asChild>
@@ -258,7 +258,7 @@ export function Dashboard() {
                                 <ArrowUpRight className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                             </Link>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-slate-100 hover:border-slate-600 transition-all group" asChild>
+                        <Button variant="outline" className="w-full justify-between h-12 border-slate-300 dark:border-slate-700 bg-slate-200/30 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600 transition-all group" asChild>
                             <Link to="/topic">
                                 <span className="flex items-center gap-2">
                                     <BookOpen className="w-4 h-4" />
@@ -267,7 +267,7 @@ export function Dashboard() {
                                 <ArrowUpRight className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                             </Link>
                         </Button>
-                        <Button variant="outline" className="w-full justify-between h-12 border-slate-700 bg-slate-800/30 text-slate-300 hover:bg-slate-800 hover:text-slate-100 hover:border-slate-600 transition-all group" asChild>
+                        <Button variant="outline" className="w-full justify-between h-12 border-slate-300 dark:border-slate-700 bg-slate-200/30 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600 transition-all group" asChild>
                             <Link to="/export">
                                 <span className="flex items-center gap-2">
                                     <GraduationCap className="w-4 h-4" />
@@ -282,9 +282,9 @@ export function Dashboard() {
 
             {/* Announcement List Dialog */}
             <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-lg max-h-[80vh] flex flex-col">
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-100 flex items-center gap-2">
+                        <DialogTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
                             <Megaphone className="w-5 h-5 text-amber-600" />
                             系统公告
                         </DialogTitle>
@@ -299,13 +299,13 @@ export function Dashboard() {
                             announcements.map(item => (
                                 <button
                                     key={item.id}
-                                    className="w-full text-left p-3 rounded-lg border border-slate-800 hover:bg-slate-800/50 hover:border-slate-700 transition-colors"
+                                    className="w-full text-left p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                                     onClick={() => handleAnnouncementClick(item)}
                                 >
                                     <div className="flex items-start gap-2">
                                         {item.isRead === 0 && <Circle className="w-2 h-2 mt-1.5 text-amber-600 fill-amber-400 shrink-0" />}
                                         <div className="flex-1 min-w-0">
-                                            <div className={`text-sm font-medium truncate ${item.isRead === 0 ? "text-slate-100" : "text-slate-400"}`}>
+                                            <div className={`text-sm font-medium truncate ${item.isRead === 0 ? "text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"}`}>
                                                 {item.title}
                                             </div>
                                             <div className="text-xs text-slate-500 mt-1">
@@ -323,9 +323,9 @@ export function Dashboard() {
 
             {/* Announcement Detail Dialog */}
             <Dialog open={!!selectedAnnouncement} onOpenChange={(open) => { if (!open) setSelectedAnnouncement(null); }}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 max-w-lg max-h-[80vh] flex flex-col">
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-100 text-base">{selectedAnnouncement?.title}</DialogTitle>
+                        <DialogTitle className="text-slate-900 dark:text-slate-100 text-base">{selectedAnnouncement?.title}</DialogTitle>
                         <DialogDescription className="sr-only">
                             查看系统公告的完整内容。
                         </DialogDescription>
@@ -336,7 +336,7 @@ export function Dashboard() {
                     <div className="flex-1 overflow-y-auto py-4">
                         <RichTextContent
                             html={selectedAnnouncement?.content ?? ""}
-                            className="text-sm text-slate-300 leading-relaxed"
+                            className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"
                         />
                     </div>
                 </DialogContent>

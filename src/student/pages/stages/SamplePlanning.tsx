@@ -175,30 +175,30 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-800 pb-4">
-                            <CardTitle className="flex items-center gap-2 text-slate-100">
+                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
+                            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                                 <Users className="w-5 h-5 text-indigo-500" />
                                 总体信息
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-6">
-                            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-950/50 border border-slate-800">
-                                <span className="text-slate-400">总体规模 (N)</span>
+                            <div className="flex items-center justify-between p-4 rounded-xl bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
+                                <span className="text-slate-600 dark:text-slate-400">总体规模 (N)</span>
                                 <span className="text-2xl font-bold text-indigo-500">{N.toLocaleString()} <span className="text-sm font-normal text-slate-500">人</span></span>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-800 pb-4">
+                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
                             <div className="flex items-center justify-between">
-                                <CardTitle className="flex items-center gap-2 text-slate-100">
+                                <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                                     <Calculator className="w-5 h-5 text-teal-500" />
                                     参数设置
                                 </CardTitle>
                             </div>
-                            <CardDescription className="text-slate-400 mt-1">
+                            <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
                                 调整置信水平和允许误差来计算建议样本量
                             </CardDescription>
                         </CardHeader>
@@ -206,14 +206,14 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-4">
                                     <div className="flex justify-between">
-                                        <Label className="text-slate-300">置信水平</Label>
+                                        <Label className="text-slate-700 dark:text-slate-300">置信水平</Label>
                                         <span className="text-xs font-mono text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded">Z = {zValues[confidenceLevel]}</span>
                                     </div>
                                     <Select value={confidenceLevel} onValueChange={setConfidenceLevel}>
-                                        <SelectTrigger data-testid="student-sample-plan-confidence" className="bg-slate-950/50 border-slate-800 text-slate-200 focus:ring-teal-500/50">
+                                        <SelectTrigger data-testid="student-sample-plan-confidence" className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:ring-teal-500/50">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                        <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                             <SelectItem value="90">90% (宽松)</SelectItem>
                                             <SelectItem value="95">95% (标准)</SelectItem>
                                             <SelectItem value="99">99% (严谨)</SelectItem>
@@ -226,7 +226,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <Label className="text-slate-300">允许误差 (Margin of Error)</Label>
+                                        <Label className="text-slate-700 dark:text-slate-300">允许误差 (Margin of Error)</Label>
                                         <div className="flex items-center gap-1">
                                             <Input
                                                 type="number"
@@ -240,9 +240,9 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                                 min={1}
                                                 max={10}
                                                 data-testid="student-sample-plan-margin-input"
-                                                className="w-16 h-7 text-sm font-bold text-teal-400 bg-slate-950/50 border-slate-800 text-center px-1"
+                                                className="w-16 h-7 text-sm font-bold text-teal-600 dark:text-teal-400 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-center px-1"
                                             />
-                                            <span className="text-sm font-bold text-teal-400">%</span>
+                                            <span className="text-sm font-bold text-teal-600 dark:text-teal-400">%</span>
                                         </div>
                                     </div>
                                     <Slider
@@ -262,18 +262,18 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         </CardContent>
                     </Card>
 
-                    <Card className={`rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm transition-colors ${!isValidSize ? "border-rose-500/50 ring-1 ring-rose-500/20" : ""}`}>
-                        <CardHeader className="border-b border-slate-800 pb-4">
-                            <CardTitle className="text-slate-100 flex items-center gap-2">
+                    <Card className={`rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm transition-colors ${!isValidSize ? "border-rose-500/50 ring-1 ring-rose-500/20" : ""}`}>
+                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
+                            <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
                                 <CheckCircle className="w-5 h-5 text-emerald-500" />
                                 最终样本量
                             </CardTitle>
-                            <CardDescription className="text-slate-400">您可以根据实际情况微调最终样本量</CardDescription>
+                            <CardDescription className="text-slate-600 dark:text-slate-400">您可以根据实际情况微调最终样本量</CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6 space-y-6">
                             <div className="flex flex-col md:flex-row items-end gap-4">
                                 <div className="flex-1 w-full space-y-2">
-                                    <Label htmlFor="finalSize" className="text-slate-300">设定样本量</Label>
+                                    <Label htmlFor="finalSize" className="text-slate-700 dark:text-slate-300">设定样本量</Label>
                                     <div className="relative">
                                         <Input
                                             id="finalSize"
@@ -283,7 +283,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                             min={minSize}
                                             max={maxSize}
                                             data-testid="student-sample-plan-final-size"
-                                            className={`bg-slate-950/50 border-slate-800 text-lg font-bold ${!isValidSize ? "text-rose-500 border-rose-500/50 focus-visible:ring-rose-500" : "text-emerald-600 focus-visible:ring-emerald-500"}`}
+                                            className={`bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-lg font-bold ${!isValidSize ? "text-rose-500 border-rose-500/50 focus-visible:ring-rose-500" : "text-emerald-600 focus-visible:ring-emerald-500"}`}
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">人</span>
                                     </div>
@@ -292,7 +292,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                     variant="outline"
                                     onClick={() => setFinalSampleSize(recommendedSize)}
                                     data-testid="student-sample-plan-reset"
-                                    className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100"
+                                    className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100"
                                 >
                                     <RotateCcw className="w-4 h-4 mr-2" />
                                     重置为建议值
@@ -305,7 +305,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                     样本量超出有效范围，建议在 {minSize} - {maxSize.toLocaleString()} 之间
                                 </div>
                             ) : (
-                                <div className="p-3 bg-slate-950/50 text-slate-500 border border-slate-800 rounded-xl text-xs flex justify-between">
+                                <div className="p-3 bg-white/50 dark:bg-slate-950/50 text-slate-500 border border-slate-200 dark:border-slate-800 rounded-xl text-xs flex justify-between">
                                     <span>最小建议: {minSize}</span>
                                     <span>最大建议 (总体50%): {maxSize.toLocaleString()}</span>
                                 </div>
@@ -317,46 +317,46 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 <div className="space-y-6">
                     <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
                         <CardHeader>
-                            <CardTitle className="text-base text-indigo-300">学习指南</CardTitle>
-                            <CardDescription className="text-indigo-300/60">理解公式与参数含义</CardDescription>
+                            <CardTitle className="text-base text-indigo-700 dark:text-indigo-300">学习指南</CardTitle>
+                            <CardDescription className="text-indigo-700/60 dark:text-indigo-300/60">理解公式与参数含义</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-4 text-sm text-indigo-200/70">
-                            <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/10 p-4 font-mono text-xs text-indigo-300 space-y-1">
+                        <CardContent className="space-y-4 text-sm text-indigo-800/70 dark:text-indigo-200/70">
+                            <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/10 p-4 font-mono text-xs text-indigo-700 dark:text-indigo-300 space-y-1">
                                 <p className="opacity-50 mb-2">// 样本量计算公式</p>
                                 <p>n₀ = (Z² × p × (1-p)) / E²</p>
                                 <p>n = n₀ / (1 + (n₀ - 1) / N)</p>
                             </div>
                             <div className="space-y-2 text-xs leading-relaxed">
-                                <p>• <strong className="text-indigo-300">置信水平 (Z)</strong>：结果的可信程度。95% 意味着如果重复调查 100 次，有 95 次的结果都在误差范围内。</p>
-                                <p>• <strong className="text-indigo-300">允许误差 (E)</strong>：结果与真实值的最大允许偏差。</p>
+                                <p>• <strong className="text-indigo-700 dark:text-indigo-300">置信水平 (Z)</strong>：结果的可信程度。95% 意味着如果重复调查 100 次，有 95 次的结果都在误差范围内。</p>
+                                <p>• <strong className="text-indigo-700 dark:text-indigo-300">允许误差 (E)</strong>：结果与真实值的最大允许偏差。</p>
                             </div>
-                            <div className="rounded-xl bg-slate-900/50 p-3 border border-slate-800">
+                            <div className="rounded-xl bg-slate-50/50 dark:bg-slate-900/50 p-3 border border-slate-200 dark:border-slate-800">
                                 <p className="text-xs text-slate-500 mb-2 font-medium">常用 Z 值参考</p>
-                                <div className="grid grid-cols-3 gap-2 text-xs text-slate-400 text-center">
-                                    <div className="bg-slate-950 rounded p-1">90%<br /><span className="text-slate-500">1.645</span></div>
-                                    <div className="bg-slate-950 rounded p-1 text-emerald-600 font-medium ring-1 ring-emerald-500/20">95%<br /><span className="text-emerald-600">1.96</span></div>
-                                    <div className="bg-slate-950 rounded p-1">99%<br /><span className="text-slate-500">2.576</span></div>
+                                <div className="grid grid-cols-3 gap-2 text-xs text-slate-600 dark:text-slate-400 text-center">
+                                    <div className="bg-white dark:bg-slate-950 rounded p-1">90%<br /><span className="text-slate-500">1.645</span></div>
+                                    <div className="bg-white dark:bg-slate-950 rounded p-1 text-emerald-600 font-medium ring-1 ring-emerald-500/20">95%<br /><span className="text-emerald-600">1.96</span></div>
+                                    <div className="bg-white dark:bg-slate-950 rounded p-1">99%<br /><span className="text-slate-500">2.576</span></div>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-slate-800 bg-slate-900/50 shadow-sm sticky top-24">
+                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm sticky top-24">
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-base text-slate-200">参数摘要</CardTitle>
+                            <CardTitle className="text-base text-slate-800 dark:text-slate-200">参数摘要</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 pt-4">
-                            <div className="flex justify-between text-sm py-1 border-b border-slate-800/50">
+                            <div className="flex justify-between text-sm py-1 border-b border-slate-200/50 dark:border-slate-800/50">
                                 <span className="text-slate-500">置信水平</span>
-                                <span className="text-slate-200 font-mono">{confidenceLevel}%</span>
+                                <span className="text-slate-800 dark:text-slate-200 font-mono">{confidenceLevel}%</span>
                             </div>
-                            <div className="flex justify-between text-sm py-1 border-b border-slate-800/50">
+                            <div className="flex justify-between text-sm py-1 border-b border-slate-200/50 dark:border-slate-800/50">
                                 <span className="text-slate-500">允许误差</span>
-                                <span className="text-slate-200 font-mono">{marginOfError[0]}%</span>
+                                <span className="text-slate-800 dark:text-slate-200 font-mono">{marginOfError[0]}%</span>
                             </div>
-                            <div className="flex justify-between text-sm py-1 border-b border-slate-800/50">
+                            <div className="flex justify-between text-sm py-1 border-b border-slate-200/50 dark:border-slate-800/50">
                                 <span className="text-slate-500">建议样本量</span>
-                                <span className="text-teal-400 font-mono font-bold">{recommendedSize}</span>
+                                <span className="text-teal-600 dark:text-teal-400 font-mono font-bold">{recommendedSize}</span>
                             </div>
                             <div className="flex justify-between text-sm py-1 pt-2">
                                 <span className="text-slate-500">最终设定</span>
@@ -367,8 +367,8 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 </div>
             </div>
 
-            <div className="flex justify-between pt-6 border-t border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} data-testid="student-sample-plan-prev" className="border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-slate-100">
+            <div className="flex justify-between pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
+                <Button variant="outline" onClick={onPrev} data-testid="student-sample-plan-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
                     上一阶段
                 </Button>
                 <div className="flex gap-3">
@@ -380,17 +380,17 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
             {/* Confirm Next Stage Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200" data-testid="student-sample-plan-confirm-dialog">
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-sample-plan-confirm-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-100">确认样本量规划</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400 text-base">
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认样本量规划</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 text-base">
                             您设定的最终样本量为 <strong className="text-emerald-600 text-lg">{finalSampleSize}</strong>。
                             <br /><br />
                             确认后将进入抽样执行阶段。如需修改，您需要返回本阶段，届时后续阶段（抽样执行、分析报告）的数据将被<strong className="text-rose-600">清空</strong>。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sample-plan-confirm" className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

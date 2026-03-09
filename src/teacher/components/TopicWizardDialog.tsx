@@ -275,18 +275,18 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="sm:max-w-5xl max-h-[90vh] flex flex-col bg-slate-900 border-slate-800 text-slate-200"
+                className="sm:max-w-5xl max-h-[90vh] flex flex-col bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                 onInteractOutside={(e) => e.preventDefault()}
                 onEscapeKeyDown={(e) => e.preventDefault()}
             >
                 <DialogHeader>
-                    <DialogTitle className="text-slate-100">{editingTopicId ? "编辑课题" : "创建新课题"}</DialogTitle>
+                    <DialogTitle className="text-slate-900 dark:text-slate-100">{editingTopicId ? "编辑课题" : "创建新课题"}</DialogTitle>
                     <DialogDescription className="sr-only">
                         通过六个步骤配置课题基础信息、总体数据、字段映射、辅助资料、推荐题目和评分权重。
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6 py-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                    <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-700">
+                <div className="space-y-6 py-4 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                    <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
                         {["基本信息", "上传数据", "字段映射", "辅助资料", "推荐题目", "评分权重"].map((step, idx) => {
                             const isCompleted = idx + 1 < currentStep;
                             const isCurrent = idx + 1 === currentStep;
@@ -298,13 +298,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             ? "bg-indigo-600 text-white ring-2 ring-indigo-500/30"
                                             : isCompleted
                                                 ? "bg-emerald-600/20 text-emerald-600 border border-emerald-500/30"
-                                                : "bg-slate-800 text-slate-400 border border-slate-700"
+                                                : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700"
                                         }`}
                                     >
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                                     </div>
                                     <span className={`text-xs ml-2 ${isCurrent ? "text-indigo-500 font-medium" : isCompleted ? "text-emerald-600/80" : "text-slate-500"}`}>{step}</span>
-                                    {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-slate-700" />}
+                                    {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-slate-300 dark:text-slate-700" />}
                                 </div>
                             );
                         })}
@@ -314,23 +314,23 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {currentStep === 1 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="space-y-2">
-                                    <Label htmlFor="topicName" className="text-slate-300">课题名称</Label>
+                                    <Label htmlFor="topicName" className="text-slate-700 dark:text-slate-300">课题名称</Label>
                                     <Input
                                         id="topicName"
                                         data-testid="teacher-topic-name"
                                         placeholder="请输入课题名称"
                                         value={newTopicName}
                                         onChange={e => setNewTopicName(e.target.value)}
-                                        className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500"
+                                        className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="topicDesc" className="text-slate-300">背景描述</Label>
+                                    <Label htmlFor="topicDesc" className="text-slate-700 dark:text-slate-300">背景描述</Label>
                                     <Textarea
                                         id="topicDesc"
                                         data-testid="teacher-topic-desc"
                                         placeholder="请输入课题背景描述"
-                                        className="min-h-40 resize-none bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500"
+                                        className="min-h-40 resize-none bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500"
                                         value={newTopicDesc}
                                         onChange={e => setNewTopicDesc(e.target.value)}
                                     />
@@ -341,7 +341,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {currentStep === 2 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-slate-300">上传总体数据（Excel）</Label>
+                                    <Label className="text-slate-700 dark:text-slate-300">上传总体数据（Excel）</Label>
                                     <div className="flex items-center gap-3">
                                         <a
                                             href="/templates/数据上传规范.pdf"
@@ -362,9 +362,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </a>
                                     </div>
                                 </div>
-                                <div className="border-2 border-dashed border-slate-700 bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
+                                <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
                                     <Upload className="w-10 h-10 mx-auto text-slate-500 mb-4" />
-                                    <p className="text-sm text-slate-400 mb-2">点击或拖拽上传 Excel 文件</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">点击或拖拽上传 Excel 文件</p>
                                     <p className="text-xs text-slate-500 mb-4">支持 .xlsx, .xls, .csv 格式，数据行数 1-100,000</p>
                                     <Input
                                         type="file"
@@ -378,7 +378,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         }}
                                     />
                                     <div className="flex items-center justify-center gap-3">
-                                        <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100">
+                                        <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100">
                                             选择文件
                                         </Button>
                                     </div>
@@ -386,7 +386,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 {uploadingExcel && <div className="flex items-center gap-2 text-sm text-indigo-500"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                 {excelInfo && (
                                     <div className="space-y-3">
-                                        <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 text-sm text-slate-300">
+                                        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300">
                                             <div className="flex items-center gap-2 text-emerald-600 mb-2">
                                                 <CheckCircle2 className="w-4 h-4" />
                                                 上传成功
@@ -395,21 +395,21 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                         {excelInfo.preview && excelInfo.preview.length > 0 && (
                                             <div className="space-y-2">
-                                                <div className="text-xs text-slate-400 font-medium">数据预览（前 {Math.min(excelInfo.preview.length, 5)} 行）</div>
-                                                <div className="overflow-x-auto border border-slate-800 rounded-lg">
+                                                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium">数据预览（前 {Math.min(excelInfo.preview.length, 5)} 行）</div>
+                                                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
                                                     <table className="w-full text-xs">
                                                         <thead>
-                                                            <tr className="bg-slate-800/50 border-b border-slate-800">
+                                                            <tr className="bg-slate-200/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
                                                                 {excelInfo.columns.map((col) => (
-                                                                    <th key={col} className="text-left px-3 py-2 text-slate-400 font-medium whitespace-nowrap">{col}</th>
+                                                                    <th key={col} className="text-left px-3 py-2 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">{col}</th>
                                                                 ))}
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             {excelInfo.preview.slice(0, 5).map((row, idx) => (
-                                                                <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                                                                <tr key={idx} className="border-b border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-200/30 dark:hover:bg-slate-800/30">
                                                                     {excelInfo!.columns.map((col) => (
-                                                                        <td key={col} className="px-3 py-1.5 text-slate-300 whitespace-nowrap max-w-[200px] truncate">
+                                                                        <td key={col} className="px-3 py-1.5 text-slate-700 dark:text-slate-300 whitespace-nowrap max-w-[200px] truncate">
                                                                             {row?.[col] != null ? String(row[col]) : <span className="text-slate-500">-</span>}
                                                                         </td>
                                                                     ))}
@@ -427,10 +427,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/60 p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <div className="text-sm font-medium text-slate-200">不知道怎么配？可先用智能推荐</div>
+                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">不知道怎么配？可先用智能推荐</div>
                                             <p className="mt-1 text-xs text-slate-500">
                                                 系统会根据字段名称和样例数据自动推荐标识符、分层变量和数值变量，你再按教学需要微调即可。
                                             </p>
@@ -439,7 +439,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             type="button"
                                             variant="outline"
                                             onClick={applyRecommendedMapping}
-                                            className="shrink-0 border-indigo-500/40 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200"
+                                            className="shrink-0 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-800 dark:hover:text-indigo-200"
                                         >
                                             <Sparkles className="mr-2 h-4 w-4" />
                                             智能推荐映射
@@ -448,7 +448,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-slate-300">标识符（必选 1 个）</Label>
+                                    <Label className="text-slate-700 dark:text-slate-300">标识符（必选 1 个）</Label>
                                     <Select
                                         value={fieldMapping.identifier ?? ""}
                                         onValueChange={(v) =>
@@ -459,10 +459,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 numeric: prev.numeric.filter((item) => item !== v),
                                             }))}
                                     >
-                                        <SelectTrigger data-testid="teacher-topic-mapping-identifier" className="bg-slate-950 border-slate-800 text-slate-200">
+                                        <SelectTrigger data-testid="teacher-topic-mapping-identifier" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                             <SelectValue placeholder="选择标识符字段" />
                                         </SelectTrigger>
-                                        <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                        <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                             {columns.map((c) => (
                                                 <SelectItem key={c} value={c}>{c}</SelectItem>
                                             ))}
@@ -476,8 +476,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <div
                                             key={rule.text}
                                             className={`rounded-md border px-3 py-2 text-xs ${rule.ok
-                                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                                                : "border-slate-700 bg-slate-900 text-slate-400"
+                                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                                : "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400"
                                                 }`}
                                         >
                                             {rule.ok ? "✓" : "○"} {rule.text}
@@ -487,14 +487,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-slate-300">分层变量（已选 {fieldMapping.stratified.length}）</Label>
+                                        <Label className="text-slate-700 dark:text-slate-300">分层变量（已选 {fieldMapping.stratified.length}）</Label>
                                         <p className="text-xs text-slate-500">用于按类别分组对比，建议 1-3 个，且每个字段唯一值不超过 20（如性别、学历、地区）。</p>
                                         {riskyStratifiedFields.length > 0 && (
                                             <p className="text-xs text-amber-600">
                                                 当前分层变量包含高基数或 ID 类字段（{riskyStratifiedFields.join("、")}），保存时可能失败，建议替换。
                                             </p>
                                         )}
-                                        <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                                        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.stratified.includes(c);
                                                 const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
@@ -510,13 +510,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         title={reason}
                                                         className={`flex items-center gap-2 text-sm p-1.5 rounded ${disabled
                                                             ? "text-slate-500 cursor-not-allowed"
-                                                            : "text-slate-300 hover:bg-slate-900 cursor-pointer"
+                                                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
                                                             }`}
                                                     >
                                                         <input
                                                             data-testid={`teacher-topic-mapping-stratified-${c}`}
                                                             type="checkbox"
-                                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                                            className="rounded border-slate-400 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
                                                             disabled={disabled}
                                                             checked={checked}
                                                             onChange={(e) => {
@@ -534,9 +534,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-slate-300">数值变量（已选 {fieldMapping.numeric.length}）</Label>
+                                        <Label className="text-slate-700 dark:text-slate-300">数值变量（已选 {fieldMapping.numeric.length}）</Label>
                                         <p className="text-xs text-slate-500">用于统计计算，建议选择连续值/可比较大小的字段。</p>
-                                        <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
+                                        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.numeric.includes(c);
                                                 const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
@@ -552,13 +552,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         title={reason}
                                                         className={`flex items-center gap-2 text-sm p-1.5 rounded ${disabled
                                                             ? "text-slate-500 cursor-not-allowed"
-                                                            : "text-slate-300 hover:bg-slate-900 cursor-pointer"
+                                                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
                                                             }`}
                                                     >
                                                         <input
                                                             data-testid={`teacher-topic-mapping-numeric-${c}`}
                                                             type="checkbox"
-                                                            className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                                            className="rounded border-slate-400 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
                                                             disabled={disabled}
                                                             checked={checked}
                                                             onChange={(e) => {
@@ -581,11 +581,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {currentStep === 4 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <Label className="text-slate-300">附件上传</Label>
+                                <Label className="text-slate-700 dark:text-slate-300">附件上传</Label>
                                 <Input
                                     data-testid="teacher-topic-attachment-file"
                                     type="file"
-                                    className="bg-slate-950 border-slate-800 text-slate-300 file:bg-slate-800 file:text-slate-300"
+                                    className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 file:bg-slate-200 dark:file:bg-slate-800 file:text-slate-700 dark:file:text-slate-300"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) onAttachmentUpload(file);
@@ -594,10 +594,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 {uploadingAttachment && <div className="flex items-center gap-2 text-sm text-indigo-500"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                 <div className="space-y-2 mt-4">
                                     {attachments.map((a) => (
-                                        <div key={a.id} className="flex items-center justify-between text-sm p-3 bg-slate-950 border border-slate-800 rounded-lg group">
+                                        <div key={a.id} className="flex items-center justify-between text-sm p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg group">
                                             <div className="flex items-center gap-3">
                                                 <FileText className="w-4 h-4 text-indigo-500" />
-                                                <span className="text-slate-300">{a.fileName}</span>
+                                                <span className="text-slate-700 dark:text-slate-300">{a.fileName}</span>
                                             </div>
                                             <Button
                                                 variant="ghost"
@@ -617,7 +617,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {currentStep === 5 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center">
-                                    <Label className="text-slate-300">推荐题目</Label>
+                                    <Label className="text-slate-700 dark:text-slate-300">推荐题目</Label>
                                     <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-indigo-600 hover:bg-indigo-700">
                                         + 添加题目
                                     </Button>
@@ -633,14 +633,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         };
                                         const optionsArr = parseOptions(q.options);
                                         return (
-                                            <div key={q.id} className="border border-slate-800 bg-slate-950 rounded-lg p-4 relative group hover:border-slate-700 transition-colors">
+                                            <div key={q.id} className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-lg p-4 relative group hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
                                                 <div className="flex items-start gap-3">
                                                     {/* Reorder buttons */}
                                                     <div className="flex flex-col gap-0.5 pt-0.5">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-6 w-6 text-slate-500 hover:text-slate-300 disabled:opacity-30"
+                                                            className="h-6 w-6 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-30"
                                                             disabled={idx === 0}
                                                             onClick={() => handleMoveQuestion(idx, "up")}
                                                         >
@@ -649,7 +649,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-6 w-6 text-slate-500 hover:text-slate-300 disabled:opacity-30"
+                                                            className="h-6 w-6 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 disabled:opacity-30"
                                                             disabled={idx === recommendQuestions.length - 1}
                                                             onClick={() => handleMoveQuestion(idx, "down")}
                                                         >
@@ -665,13 +665,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                 {typeLabel[q.questionType] ?? "未知"}
                                                             </span>
                                                         </div>
-                                                        <p data-testid={`teacher-topic-question-content-${idx}`} className="text-sm text-slate-200 leading-relaxed">
+                                                        <p data-testid={`teacher-topic-question-content-${idx}`} className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
                                                             {q.content || <span className="text-slate-500 italic">未填写题目内容</span>}
                                                         </p>
                                                         {(q.questionType === 2 || q.questionType === 3) && optionsArr.length > 0 && (
                                                             <div className="flex flex-wrap gap-1.5 mt-2">
                                                                 {optionsArr.map((opt, i) => (
-                                                                    <span key={i} className="text-xs px-2 py-0.5 bg-slate-800 text-slate-400 rounded border border-slate-700/50">
+                                                                    <span key={i} className="text-xs px-2 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded border border-slate-300/50 dark:border-slate-700/50">
                                                                         {String.fromCharCode(65 + i)}. {opt}
                                                                     </span>
                                                                 ))}
@@ -690,7 +690,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
+                                                            className="h-8 w-8 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
                                                             <Pencil className="w-4 h-4" />
@@ -725,8 +725,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {currentStep === 6 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 space-y-4">
-                                        <Label className="text-slate-300 text-lg">问卷设计权重</Label>
+                                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-6 space-y-4">
+                                        <Label className="text-slate-700 dark:text-slate-300 text-lg">问卷设计权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 data-testid="teacher-topic-weight-questionnaire"
@@ -735,13 +735,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 max={100}
                                                 value={weightConfig.questionnaire}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, questionnaire: Number(e.target.value) }))}
-                                                className="bg-slate-900 border-slate-800 text-slate-200 text-2xl font-bold h-16 text-center"
+                                                className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-2xl font-bold h-16 text-center"
                                             />
                                             <span className="text-slate-500 font-bold text-xl">%</span>
                                         </div>
                                     </div>
-                                    <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 space-y-4">
-                                        <Label className="text-slate-300 text-lg">实验过程权重</Label>
+                                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-6 space-y-4">
+                                        <Label className="text-slate-700 dark:text-slate-300 text-lg">实验过程权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 data-testid="teacher-topic-weight-process"
@@ -750,13 +750,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 max={100}
                                                 value={weightConfig.process}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, process: Number(e.target.value) }))}
-                                                className="bg-slate-900 border-slate-800 text-slate-200 text-2xl font-bold h-16 text-center"
+                                                className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-2xl font-bold h-16 text-center"
                                             />
                                             <span className="text-slate-500 font-bold text-xl">%</span>
                                         </div>
                                     </div>
-                                    <div className="bg-slate-950 border border-slate-800 rounded-lg p-6 space-y-4">
-                                        <Label className="text-slate-300 text-lg">实验报告权重</Label>
+                                    <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-6 space-y-4">
+                                        <Label className="text-slate-700 dark:text-slate-300 text-lg">实验报告权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 data-testid="teacher-topic-weight-report"
@@ -765,14 +765,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 max={100}
                                                 value={weightConfig.report}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, report: Number(e.target.value) }))}
-                                                className="bg-slate-900 border-slate-800 text-slate-200 text-2xl font-bold h-16 text-center"
+                                                className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 text-2xl font-bold h-16 text-center"
                                             />
                                             <span className="text-slate-500 font-bold text-xl">%</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-slate-950/50 p-4 rounded-lg flex justify-between items-center border border-slate-800">
-                                    <span className="text-slate-400">当前总权重</span>
+                                <div className="bg-white/50 dark:bg-slate-950/50 p-4 rounded-lg flex justify-between items-center border border-slate-200 dark:border-slate-800">
+                                    <span className="text-slate-600 dark:text-slate-400">当前总权重</span>
                                     <span className={`text-2xl font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-emerald-600" : "text-rose-600"}`}>
                                         {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
                                     </span>
@@ -781,13 +781,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         )}
                     </div>
                 </div>
-                <DialogFooter className="border-t border-slate-800 pt-4 flex-shrink-0">
+                <DialogFooter className="border-t border-slate-200 dark:border-slate-800 pt-4 flex-shrink-0">
                     <div className="flex items-center justify-between w-full">
                         <div className="text-xs text-slate-500">步骤 {currentStep} / 6</div>
                         <div className="flex gap-2">
-                            <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">关闭</Button>
+                            <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">关闭</Button>
                             {currentStep > 1 && (
-                                <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-slate-700 bg-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-700">上一步</Button>
+                                <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700">上一步</Button>
                             )}
                             {currentStep === 1 && (
                                 <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-indigo-600 hover:bg-indigo-700 text-white">{editingTopicId ? "保存并继续" : "下一步"}</Button>

@@ -176,12 +176,12 @@ export function RecommendQuestionEditor({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-900 border-slate-800 text-slate-200 sm:rounded-xl shadow-2xl shadow-indigo-500/10"
+                className="max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:rounded-xl shadow-2xl shadow-indigo-500/10"
                 data-testid="teacher-recommend-question-editor"
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 dark:from-white to-slate-600 dark:to-slate-400">
                         {isEditing ? "编辑推荐题目" : "添加推荐题目"}
                     </DialogTitle>
                 </DialogHeader>
@@ -190,17 +190,17 @@ export function RecommendQuestionEditor({
                     {/* Question Type Selection - only for new questions */}
                     {!isEditing && (
                         <div className="space-y-2">
-                            <Label className="text-slate-400">题目类型</Label>
+                            <Label className="text-slate-600 dark:text-slate-400">题目类型</Label>
                             <Tabs
                                 value={String(questionType)}
                                 onValueChange={(v) => setQuestionType(Number(v))}
                             >
-                                <TabsList className="grid grid-cols-4 w-full bg-slate-950/50 border border-slate-800 p-1">
+                                <TabsList className="grid grid-cols-4 w-full bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 p-1">
                                     {([1, 2, 3, 4] as const).map((t) => (
                                         <TabsTrigger
                                             key={t}
                                             value={String(t)}
-                                            className="text-xs data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-400 hover:text-slate-200"
+                                            className="text-xs data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                         >
                                             {questionTypeLabels[t]}
                                         </TabsTrigger>
@@ -215,7 +215,7 @@ export function RecommendQuestionEditor({
 
                     {/* Question Content */}
                     <div className="space-y-2">
-                        <Label htmlFor="rq-content" className="text-slate-300">
+                        <Label htmlFor="rq-content" className="text-slate-700 dark:text-slate-300">
                             题目内容 <span className="text-rose-500">*</span>
                         </Label>
                         <Textarea
@@ -226,7 +226,7 @@ export function RecommendQuestionEditor({
                             rows={3}
                             maxLength={500}
                             data-testid="teacher-recommend-question-content"
-                            className="bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
+                            className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                         />
                         <p className="text-xs text-slate-500 text-right">
                             {content.length}/500
@@ -235,8 +235,8 @@ export function RecommendQuestionEditor({
 
                     {/* Boolean type */}
                     {questionType === 1 && (
-                        <div className="p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
-                            <p className="text-sm text-slate-400">
+                        <div className="p-4 bg-slate-200/30 dark:bg-slate-800/30 rounded-lg border border-slate-300/50 dark:border-slate-700/50">
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
                                 判断题固定提供「是」和「否」两个选项
                             </p>
                         </div>
@@ -246,7 +246,7 @@ export function RecommendQuestionEditor({
                     {(questionType === 2 || questionType === 3) && (
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <Label className="text-slate-300">选项（2-10个）</Label>
+                                <Label className="text-slate-700 dark:text-slate-300">选项（2-10个）</Label>
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -270,7 +270,7 @@ export function RecommendQuestionEditor({
                                             value={option}
                                             onChange={(e) => updateOption(index, e.target.value)}
                                             maxLength={200}
-                                            className="flex-1 bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                            className="flex-1 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                                         />
                                         <Button
                                             variant="ghost"
@@ -290,12 +290,12 @@ export function RecommendQuestionEditor({
                     {/* Scale labels */}
                     {questionType === 4 && (
                         <div className="space-y-4">
-                            <p className="text-sm text-slate-400">
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
                                 量表范围：1 - 10 分
                             </p>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="rq-scaleMinLabel" className="text-slate-400">
+                                    <Label htmlFor="rq-scaleMinLabel" className="text-slate-600 dark:text-slate-400">
                                         左端标签 (1分)
                                     </Label>
                                     <Input
@@ -304,11 +304,11 @@ export function RecommendQuestionEditor({
                                         value={scaleMinLabel}
                                         onChange={(e) => setScaleMinLabel(e.target.value)}
                                         maxLength={50}
-                                        className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
+                                        className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="rq-scaleMaxLabel" className="text-slate-400">
+                                    <Label htmlFor="rq-scaleMaxLabel" className="text-slate-600 dark:text-slate-400">
                                         右端标签 (10分)
                                     </Label>
                                     <Input
@@ -317,7 +317,7 @@ export function RecommendQuestionEditor({
                                         value={scaleMaxLabel}
                                         onChange={(e) => setScaleMaxLabel(e.target.value)}
                                         maxLength={50}
-                                        className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
+                                        className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                                     />
                                 </div>
                             </div>
@@ -329,7 +329,7 @@ export function RecommendQuestionEditor({
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}
-                        className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                        className="border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                     >
                         取消
                     </Button>

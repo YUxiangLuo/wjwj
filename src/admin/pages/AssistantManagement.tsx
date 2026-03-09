@@ -216,8 +216,8 @@ export function AssistantManagement() {
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-100">助教管理</h2>
-                    <p className="text-sm text-slate-400 mt-1">维护助教账号与所绑定教师信息。</p>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">助教管理</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">维护助教账号与所绑定教师信息。</p>
                 </div>
                 <Button data-testid="assistant-create-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                     <Plus className="w-4 h-4 mr-1" />
@@ -226,55 +226,55 @@ export function AssistantManagement() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Assistants</p>
-                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Active</p>
-                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.active}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.active}</p>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Disabled</p>
-                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.disabled}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.disabled}</p>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Locked</p>
-                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.locked}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.locked}</p>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center border border-rose-500/20">
                             <Unlock className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-800 bg-slate-900 shadow-sm hover:border-slate-700 transition-colors">
+                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Linked Teachers</p>
-                            <p className="text-2xl font-bold text-slate-100 mt-1">{loading ? "-" : summary.teacherCount}</p>
+                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                             <UserRound className="w-5 h-5" />
@@ -283,10 +283,10 @@ export function AssistantManagement() {
                 </Card>
             </div>
 
-            <Card className="border-slate-800 bg-slate-900 shadow-sm">
-                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-800 pb-4">
+            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
+                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                     <div>
-                        <CardTitle className="text-base text-slate-100">助教列表</CardTitle>
+                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">助教列表</CardTitle>
                         <p className="text-xs text-slate-500 mt-1">共 {filteredAssistants.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
@@ -295,13 +295,13 @@ export function AssistantManagement() {
                                 data-testid="assistant-search-input"
                                 value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 sm:w-64 focus:border-indigo-500/50"
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 sm:w-64 focus:border-indigo-500/50"
                         />
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-                            <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200 sm:w-40">
+                            <SelectTrigger className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                 <SelectItem value="all">全部教师</SelectItem>
                                 {teachers.map((t) => (
                                     <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
@@ -318,33 +318,33 @@ export function AssistantManagement() {
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-slate-800 hover:bg-slate-900/50">
-                                    <TableHead className="text-slate-400">账号</TableHead>
-                                    <TableHead className="text-slate-400">姓名</TableHead>
-                                    <TableHead className="text-slate-400">所属教师</TableHead>
-                                    <TableHead className="text-slate-400">状态</TableHead>
-                                    <TableHead className="text-slate-400">绑定班级数</TableHead>
-                                    <TableHead className="text-slate-400">最后登录</TableHead>
-                                    <TableHead className="text-slate-400">创建时间</TableHead>
-                                    <TableHead className="text-slate-400 text-right">操作</TableHead>
+                                <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                                    <TableHead className="text-slate-600 dark:text-slate-400">账号</TableHead>
+                                    <TableHead className="text-slate-600 dark:text-slate-400">姓名</TableHead>
+                                    <TableHead className="text-slate-600 dark:text-slate-400">所属教师</TableHead>
+                                    <TableHead className="text-slate-600 dark:text-slate-400">状态</TableHead>
+                                    <TableHead className="text-slate-600 dark:text-slate-400">绑定班级数</TableHead>
+                                    <TableHead className="text-slate-600 dark:text-slate-400">最后登录</TableHead>
+                                    <TableHead className="text-slate-600 dark:text-slate-400">创建时间</TableHead>
+                                    <TableHead className="text-slate-600 dark:text-slate-400 text-right">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredAssistants.map((assistant) => (
-                                    <TableRow key={assistant.id} data-testid={`assistant-row-${assistant.account}`} className="border-slate-800 hover:bg-slate-800/50 transition-colors">
-                                        <TableCell className="font-mono text-indigo-300">{assistant.account}</TableCell>
-                                        <TableCell className="font-medium text-slate-200">{assistant.name}</TableCell>
-                                        <TableCell className="text-slate-300">{assistant.teacherName}</TableCell>
+                                    <TableRow key={assistant.id} data-testid={`assistant-row-${assistant.account}`} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <TableCell className="font-mono text-indigo-700 dark:text-indigo-300">{assistant.account}</TableCell>
+                                        <TableCell className="font-medium text-slate-800 dark:text-slate-200">{assistant.name}</TableCell>
+                                        <TableCell className="text-slate-700 dark:text-slate-300">{assistant.teacherName}</TableCell>
                                         <TableCell>
                                             {assistant.isLocked ? (
                                                 <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 hover:bg-rose-500/20">已锁定</Badge>
                                             ) : assistant.status === 1 ? (
                                                 <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">正常</Badge>
                                             ) : (
-                                                <Badge variant="destructive" className="bg-slate-700 text-slate-300 hover:bg-slate-600">已停用</Badge>
+                                                <Badge variant="destructive" className="bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-400 dark:hover:bg-slate-600">已停用</Badge>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-slate-300">{assistant.classCount}</TableCell>
+                                        <TableCell className="text-slate-700 dark:text-slate-300">{assistant.classCount}</TableCell>
                                         <TableCell className="text-slate-500 text-xs">{formatDate(assistant.lastLogin)}</TableCell>
                                         <TableCell className="text-slate-500 text-xs">{formatDate(assistant.createdAt)}</TableCell>
                                         <TableCell className="text-right">
@@ -355,7 +355,7 @@ export function AssistantManagement() {
                                                         解锁
                                                     </Button>
                                                 )}
-                                                <Button data-testid={`assistant-reset-${assistant.account}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
+                                                <Button data-testid={`assistant-reset-${assistant.account}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
                                                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                     重置
                                                 </Button>
@@ -373,7 +373,7 @@ export function AssistantManagement() {
                                                     size="sm"
                                                     data-testid={`assistant-delete-${assistant.account}`}
                                                     onClick={() => handleDelete(assistant)}
-                                                    className="h-8 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
+                                                    className="h-8 text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 mr-1" />
                                                     删除
@@ -386,7 +386,7 @@ export function AssistantManagement() {
                                     <TableRow>
                                         <TableCell colSpan={8} className="text-center py-16 text-slate-500">
                                             <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center">
+                                                <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center">
                                                     <Search className="w-5 h-5 text-slate-500" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
@@ -401,41 +401,41 @@ export function AssistantManagement() {
             </Card>
 
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[425px]">
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-[425px]">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-100">添加助教</DialogTitle>
-                        <DialogDescription className="text-slate-400">创建助教账号并绑定到指定教师名下。</DialogDescription>
+                        <DialogTitle className="text-slate-900 dark:text-slate-100">添加助教</DialogTitle>
+                        <DialogDescription className="text-slate-600 dark:text-slate-400">创建助教账号并绑定到指定教师名下。</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="account" className="text-slate-300">账号</Label>
+                            <Label htmlFor="account" className="text-slate-700 dark:text-slate-300">账号</Label>
                             <Input
                                 id="account"
                                 data-testid="assistant-create-account"
                                 placeholder="请输入账号"
                                 value={newAssistant.account}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, account: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
+                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="assistantName" className="text-slate-300">姓名</Label>
+                            <Label htmlFor="assistantName" className="text-slate-700 dark:text-slate-300">姓名</Label>
                             <Input
                                 id="assistantName"
                                 data-testid="assistant-create-name"
                                 placeholder="请输入姓名"
                                 value={newAssistant.name}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, name: e.target.value })}
-                                className="bg-slate-950 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
+                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-slate-300">所属教师</Label>
+                            <Label className="text-slate-700 dark:text-slate-300">所属教师</Label>
                             <Select value={newAssistant.teacherId} onValueChange={(v) => setNewAssistant({ ...newAssistant, teacherId: v })}>
-                                <SelectTrigger data-testid="assistant-create-teacher" className="bg-slate-950 border-slate-800 text-slate-200">
+                                <SelectTrigger data-testid="assistant-create-teacher" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                     {teachers.map((t) => (
                                         <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                                     ))}
@@ -447,7 +447,7 @@ export function AssistantManagement() {
                         </p>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                        <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">
                             取消
                         </Button>
                         <Button

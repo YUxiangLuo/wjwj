@@ -36,21 +36,21 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
+            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="text-slate-100">发布任务</DialogTitle>
+                    <DialogTitle className="text-slate-900 dark:text-slate-100">发布任务</DialogTitle>
                     <DialogDescription className="sr-only">
                         选择已发布课题、目标班级和任务截止时间。
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label className="text-slate-300">选择课题</Label>
+                        <Label className="text-slate-700 dark:text-slate-300">选择课题</Label>
                         <Select onValueChange={onSelectedTopicIdChange} value={selectedTopicId}>
-                            <SelectTrigger data-testid="teacher-task-topic-select" className="bg-slate-950 border-slate-800 text-slate-200">
+                            <SelectTrigger data-testid="teacher-task-topic-select" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                 <SelectValue placeholder="请选择课题" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                 {availableTopics.length === 0 ? <SelectItem value="none" disabled>暂无已发布课题</SelectItem> :
                                     availableTopics.map((t) => (
                                         <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
@@ -60,14 +60,14 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-slate-300">选择班级</Label>
-                        <div className="space-y-2 border border-slate-800 bg-slate-950 rounded-md p-3 max-h-40 overflow-y-auto">
+                        <Label className="text-slate-700 dark:text-slate-300">选择班级</Label>
+                        <div className="space-y-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-md p-3 max-h-40 overflow-y-auto">
                             {availableClasses.length === 0 ? <div className="text-sm text-slate-500">无班级</div> : availableClasses.map((cls) => (
-                                <label key={cls.id} className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer hover:bg-slate-900 p-1.5 rounded">
+                                <label key={cls.id} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 p-1.5 rounded">
                                     <input
                                         data-testid={`teacher-task-class-check-${cls.id}`}
                                         type="checkbox"
-                                        className="rounded border-slate-600 bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
+                                        className="rounded border-slate-400 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
                                         checked={selectedClassIds.includes(cls.id)}
                                         onChange={() => onToggleClass(cls.id)}
                                     />
@@ -77,19 +77,19 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="deadline" className="text-slate-300">截止时间（可选）</Label>
+                        <Label htmlFor="deadline" className="text-slate-700 dark:text-slate-300">截止时间（可选）</Label>
                         <Input
                             id="deadline"
                             data-testid="teacher-task-deadline"
                             type="datetime-local"
                             value={deadline}
                             onChange={(e) => onDeadlineChange(e.target.value)}
-                            className="bg-slate-950 border-slate-800 text-slate-200"
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                         />
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">取消</Button>
                     <Button data-testid="teacher-task-publish-submit" onClick={onPublish} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认发布</Button>
                 </DialogFooter>
             </DialogContent>

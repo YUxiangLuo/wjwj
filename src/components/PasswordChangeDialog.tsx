@@ -58,14 +58,14 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
             if (!allowClose && !nextOpen) return;
             onOpenChange(nextOpen);
         }}>
-            <DialogContent className="bg-slate-900 border-slate-800 text-slate-200" showCloseButton={allowClose}>
+            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" showCloseButton={allowClose}>
                 <DialogHeader>
-                    <DialogTitle className="text-slate-100">{title}</DialogTitle>
-                    <DialogDescription className="text-slate-400">{description}</DialogDescription>
+                    <DialogTitle className="text-slate-900 dark:text-slate-100">{title}</DialogTitle>
+                    <DialogDescription className="text-slate-600 dark:text-slate-400">{description}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                     <div className="space-y-2">
-                        <Label htmlFor="currentPassword" className="text-slate-300">当前密码</Label>
+                        <Label htmlFor="currentPassword" className="text-slate-700 dark:text-slate-300">当前密码</Label>
                         <Input
                             id="currentPassword"
                             type="password"
@@ -73,11 +73,11 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             onChange={(event) => onFieldChange("currentPassword", event.target.value)}
                             autoComplete="current-password"
                             data-testid={fieldTestIds?.currentPassword}
-                            className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="newPassword" className="text-slate-300">新密码</Label>
+                        <Label htmlFor="newPassword" className="text-slate-700 dark:text-slate-300">新密码</Label>
                         <Input
                             id="newPassword"
                             type="password"
@@ -85,11 +85,11 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             onChange={(event) => onFieldChange("newPassword", event.target.value)}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.newPassword}
-                            className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="text-slate-300">确认新密码</Label>
+                        <Label htmlFor="confirmPassword" className="text-slate-700 dark:text-slate-300">确认新密码</Label>
                         <Input
                             id="confirmPassword"
                             type="password"
@@ -97,12 +97,12 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             onChange={(event) => onFieldChange("confirmPassword", event.target.value)}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.confirmPassword}
-                            className="bg-slate-950 border-slate-800 text-slate-200 focus:border-indigo-500"
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                         />
                     </div>
                     {showPolicyHints && rules ? (
-                        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-xs space-y-1.5">
-                            <div className="flex items-center justify-between text-slate-400">
+                        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/60 p-3 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                                 <span>密码强度</span>
                                 <span className={getStrengthToneClassName(rules.score)}>{rules.strengthLabel}</span>
                             </div>
@@ -118,7 +118,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                 </div>
                 <DialogFooter>
                     {allowClose ? (
-                        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} className="text-slate-400 hover:text-slate-100 hover:bg-slate-800">
+                        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
                             取消
                         </Button>
                     ) : null}

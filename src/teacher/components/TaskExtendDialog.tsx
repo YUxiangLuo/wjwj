@@ -25,9 +25,9 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-md">
+            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="text-slate-100">延长截止时间</DialogTitle>
+                    <DialogTitle className="text-slate-900 dark:text-slate-100">延长截止时间</DialogTitle>
                     <DialogDescription className="sr-only">
                         为所选任务设置新的截止时间。
                     </DialogDescription>
@@ -37,19 +37,19 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                         {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="extendDeadline" className="text-slate-300">新截止时间</Label>
+                        <Label htmlFor="extendDeadline" className="text-slate-700 dark:text-slate-300">新截止时间</Label>
                         <Input
                             id="extendDeadline"
                             data-testid="teacher-task-extend-deadline"
                             type="datetime-local"
                             value={extendDeadline}
                             onChange={(e) => onExtendDeadlineChange(e.target.value)}
-                            className="bg-slate-950 border-slate-800 text-slate-200"
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                         />
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-slate-200 hover:bg-slate-800">取消</Button>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">取消</Button>
                     <Button data-testid="teacher-task-extend-submit" onClick={onConfirm} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认延长</Button>
                 </DialogFooter>
             </DialogContent>

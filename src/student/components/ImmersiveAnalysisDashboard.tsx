@@ -154,7 +154,7 @@ function MiniBarChart({
             {rows.map((r) => (
                 <div key={r.label} className="flex items-center gap-2">
                     <span className="w-16 text-[10px] text-slate-500 truncate text-right">{r.label}</span>
-                    <div className="flex-1 h-2 rounded bg-slate-800 overflow-hidden">
+                    <div className="flex-1 h-2 rounded bg-slate-200 dark:bg-slate-800 overflow-hidden">
                         <div
                             className="h-full rounded transition-all duration-1000 ease-out"
                             style={{
@@ -250,18 +250,18 @@ export function ImmersiveAnalysisDashboard({
 
     return (
         <div
-            className={`fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-sm flex flex-col transition-opacity duration-300 ${opacityClass}`}
+            className={`fixed inset-0 z-50 bg-white/95 dark:bg-slate-950/95 backdrop-blur-sm flex flex-col transition-opacity duration-300 ${opacityClass}`}
         >
             {/* top bar */}
-            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800/60">
+            <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200/60 dark:border-slate-800/60">
                 <div className="flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-sm font-medium text-slate-300">数据分析仪表盘</span>
-                    <span className="text-xs text-slate-600">LIVE DASHBOARD</span>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">数据分析仪表盘</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-600">LIVE DASHBOARD</span>
                 </div>
                 <button
                     onClick={handleClose}
-                    className="p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+                    className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
                 >
                     <X className="w-5 h-5" />
                 </button>
@@ -273,10 +273,10 @@ export function ImmersiveAnalysisDashboard({
             >
                 {/* header stats bar */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <StatCard label="总样本量" value={animTotal} color="text-indigo-400" />
-                    <StatCard label="抽样方法" value={animMethods} color="text-teal-400" />
-                    <StatCard label="数值变量" value={numericFields.length} color="text-amber-400" />
-                    <StatCard label="分类变量" value={categoricalFields.length} color="text-rose-400" />
+                    <StatCard label="总样本量" value={animTotal} color="text-indigo-600 dark:text-indigo-400" />
+                    <StatCard label="抽样方法" value={animMethods} color="text-teal-600 dark:text-teal-400" />
+                    <StatCard label="数值变量" value={numericFields.length} color="text-amber-600 dark:text-amber-400" />
+                    <StatCard label="分类变量" value={categoricalFields.length} color="text-rose-600 dark:text-rose-400" />
                 </div>
 
                 {/* field selectors */}
@@ -286,7 +286,7 @@ export function ImmersiveAnalysisDashboard({
                         <select
                             value={selectedNumField}
                             onChange={(e) => setSelectedNumField(e.target.value)}
-                            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+                            className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
                         >
                             {numericFields.map((f) => (
                                 <option key={f} value={f}>{f}</option>
@@ -298,7 +298,7 @@ export function ImmersiveAnalysisDashboard({
                         <select
                             value={selectedCatField}
                             onChange={(e) => setSelectedCatField(e.target.value)}
-                            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:border-indigo-500"
+                            className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-500"
                         >
                             {categoricalFields.map((f) => (
                                 <option key={f} value={f}>{f}</option>
@@ -323,7 +323,7 @@ export function ImmersiveAnalysisDashboard({
                         return (
                             <div
                                 key={m}
-                                className={`rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg ${meta.glow} transition-all duration-700`}
+                                className={`rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-5 shadow-lg ${meta.glow} transition-all duration-700`}
                                 style={{
                                     animationDelay: `${mi * 150}ms`,
                                     opacity: phase === "visible" ? 1 : 0,
@@ -340,7 +340,7 @@ export function ImmersiveAnalysisDashboard({
                                         <Icon className="w-5 h-5" style={{ color: meta.color }} />
                                     </div>
                                     <div>
-                                        <h3 className="text-sm font-semibold text-slate-200">{meta.label}</h3>
+                                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{meta.label}</h3>
                                         <p className="text-xs text-slate-500">{stat.count} 样本</p>
                                     </div>
                                 </div>
@@ -362,7 +362,7 @@ export function ImmersiveAnalysisDashboard({
                                 </div>
 
                                 {/* deviation indicator */}
-                                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-slate-800/60">
+                                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-slate-200/60 dark:bg-slate-800/60">
                                     <AlertTriangle className="w-3.5 h-3.5 text-slate-500" />
                                     <span className="text-[11px] text-slate-500">分布偏差</span>
                                     <span className="ml-auto text-sm font-mono" style={{ color: meta.color }}>
@@ -373,7 +373,7 @@ export function ImmersiveAnalysisDashboard({
                                 {/* mini distribution chart */}
                                 {distRows.length > 0 && (
                                     <div>
-                                        <div className="text-[10px] text-slate-600 uppercase tracking-wider mb-2">
+                                        <div className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-2">
                                             {selectedCatField} 分布
                                         </div>
                                         <MiniBarChart rows={distRows} color={meta.color} maxVal={maxDist} />
@@ -385,15 +385,15 @@ export function ImmersiveAnalysisDashboard({
                 </div>
 
                 {/* bottom: comparison chart (horizontal bars for mean comparison) */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-indigo-400" />
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-5">
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                         {selectedNumField ? `${selectedNumField} — 三方法对比` : "均值对比"}
                     </h3>
                     {selectedNumField ? (
                         <ComparisonBars stats={methodStats} />
                     ) : (
-                        <div className="text-sm text-slate-600 text-center py-8">无可用数值变量</div>
+                        <div className="text-sm text-slate-400 dark:text-slate-600 text-center py-8">无可用数值变量</div>
                     )}
                 </div>
             </div>
@@ -405,7 +405,7 @@ export function ImmersiveAnalysisDashboard({
 
 function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
     return (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 px-4 py-3">
             <div className="text-[11px] text-slate-500 mb-1">{label}</div>
             <div className={`text-2xl font-bold font-mono ${color}`}>{Math.round(value)}</div>
         </div>
@@ -425,7 +425,7 @@ function MetricBox({
 }) {
     const animated = useAnimatedNumber(value, 1000, delay);
     return (
-        <div className="rounded-lg bg-slate-800/50 px-3 py-2">
+        <div className="rounded-lg bg-slate-200/50 dark:bg-slate-800/50 px-3 py-2">
             <div className="text-[10px] text-slate-500 mb-0.5">{label}</div>
             <div className="text-lg font-bold font-mono" style={{ color }}>
                 {animated.toFixed(2)}
@@ -451,7 +451,7 @@ function ComparisonBars({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* mean bars */}
             <div>
-                <div className="text-[10px] text-slate-600 uppercase tracking-wider mb-3">均值</div>
+                <div className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-3">均值</div>
                 <div className="space-y-3">
                     {stats.map((s) => {
                         const meta = METHOD_META[s.method];
@@ -459,12 +459,12 @@ function ComparisonBars({
                         return (
                             <div key={s.method}>
                                 <div className="flex justify-between mb-1">
-                                    <span className="text-xs text-slate-400">{meta.label}</span>
+                                    <span className="text-xs text-slate-600 dark:text-slate-400">{meta.label}</span>
                                     <span className="text-xs font-mono" style={{ color: meta.color }}>
                                         {s.mean.toFixed(2)}
                                     </span>
                                 </div>
-                                <div className="h-3 rounded-full bg-slate-800 overflow-hidden">
+                                <div className="h-3 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                                     <div
                                         className="h-full rounded-full transition-all duration-1000 ease-out"
                                         style={{
@@ -481,7 +481,7 @@ function ComparisonBars({
 
             {/* std error bars */}
             <div>
-                <div className="text-[10px] text-slate-600 uppercase tracking-wider mb-3">标准误</div>
+                <div className="text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-wider mb-3">标准误</div>
                 <div className="space-y-3">
                     {stats.map((s) => {
                         const meta = METHOD_META[s.method];
@@ -489,12 +489,12 @@ function ComparisonBars({
                         return (
                             <div key={s.method}>
                                 <div className="flex justify-between mb-1">
-                                    <span className="text-xs text-slate-400">{meta.label}</span>
+                                    <span className="text-xs text-slate-600 dark:text-slate-400">{meta.label}</span>
                                     <span className="text-xs font-mono" style={{ color: meta.color }}>
                                         {s.stdErr.toFixed(4)}
                                     </span>
                                 </div>
-                                <div className="h-3 rounded-full bg-slate-800 overflow-hidden">
+                                <div className="h-3 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
                                     <div
                                         className="h-full rounded-full transition-all duration-1000 ease-out"
                                         style={{

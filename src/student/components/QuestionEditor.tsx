@@ -141,11 +141,11 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-900 border-slate-800 text-slate-200 sm:rounded-xl shadow-2xl shadow-indigo-500/10"
+                className="max-w-2xl max-h-[85vh] overflow-y-auto bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:rounded-xl shadow-2xl shadow-indigo-500/10"
                 data-testid="student-question-editor"
             >
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                    <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 dark:from-white to-slate-600 dark:to-slate-400">
                         {isEditing ? "编辑题目" : "添加题目"}
                     </DialogTitle>
                 </DialogHeader>
@@ -154,15 +154,15 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     {/* Question Type Selection - only for new questions */}
                     {!isEditing && (
                         <div className="space-y-2">
-                            <Label className="text-slate-400">题目类型</Label>
+                            <Label className="text-slate-600 dark:text-slate-400">题目类型</Label>
                             <Tabs value={type} onValueChange={(v) => setType(v as QuestionType)}>
-                                <TabsList className="grid grid-cols-4 w-full bg-slate-950/50 border border-slate-800 p-1" data-testid="student-question-type-list">
+                                <TabsList className="grid grid-cols-4 w-full bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 p-1" data-testid="student-question-type-list">
                                     {(Object.keys(questionTypeLabels) as QuestionType[]).map((t) => (
                                         <TabsTrigger
                                             key={t}
                                             value={t}
                                             data-testid={`student-question-type-${t}`}
-                                            className="text-xs data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-400 hover:text-slate-200"
+                                            className="text-xs data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                                         >
                                             {questionTypeLabels[t]}
                                         </TabsTrigger>
@@ -177,7 +177,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
 
                     {/* Question Content */}
                     <div className="space-y-2">
-                        <Label htmlFor="content" className="text-slate-300">
+                        <Label htmlFor="content" className="text-slate-700 dark:text-slate-300">
                             题目内容 <span className="text-rose-500">*</span>
                         </Label>
                         <Textarea
@@ -188,7 +188,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             rows={3}
                             maxLength={500}
                             data-testid="student-question-content"
-                            className="bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
+                            className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                         />
                         <p className="text-xs text-slate-500 text-right">
                             {content.length}/500
@@ -197,8 +197,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
 
                     {/* Boolean type - no extra config */}
                     {type === "boolean" && (
-                        <div className="p-4 bg-slate-800/30 rounded-lg border border-slate-700/50">
-                            <p className="text-sm text-slate-400">
+                        <div className="p-4 bg-slate-200/30 dark:bg-slate-800/30 rounded-lg border border-slate-300/50 dark:border-slate-700/50">
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
                                 判断题固定提供「是」和「否」两个选项
                             </p>
                         </div>
@@ -208,7 +208,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     {(type === "single" || type === "multiple") && (
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
-                                <Label className="text-slate-300">选项（2-10个）</Label>
+                                <Label className="text-slate-700 dark:text-slate-300">选项（2-10个）</Label>
                                 <Button
                                     variant="outline"
                                     size="sm"
@@ -234,7 +234,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                             onChange={(e) => updateOption(index, e.target.value)}
                                             maxLength={200}
                                             data-testid={`student-question-option-${index + 1}`}
-                                            className="flex-1 bg-slate-950/50 border-slate-800 text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
+                                            className="flex-1 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
                                         />
                                         <Button
                                             variant="ghost"
@@ -256,7 +256,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     {type === "multiple" && (
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="minSelect" className="text-slate-400">最少选择数</Label>
+                                <Label htmlFor="minSelect" className="text-slate-600 dark:text-slate-400">最少选择数</Label>
                                 <Input
                                     id="minSelect"
                                     type="number"
@@ -265,11 +265,11 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     value={minSelect}
                                     onChange={(e) => setMinSelect(parseInt(e.target.value) || 1)}
                                     data-testid="student-question-min-select"
-                                    className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
+                                    className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="maxSelect" className="text-slate-400">最多选择数</Label>
+                                <Label htmlFor="maxSelect" className="text-slate-600 dark:text-slate-400">最多选择数</Label>
                                 <Input
                                     id="maxSelect"
                                     type="number"
@@ -278,7 +278,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     value={maxSelect}
                                     onChange={(e) => setMaxSelect(parseInt(e.target.value) || options.length)}
                                     data-testid="student-question-max-select"
-                                    className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
+                                    className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                                 />
                             </div>
                         </div>
@@ -287,12 +287,12 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     {/* Scale labels */}
                     {type === "scale" && (
                         <div className="space-y-4">
-                            <p className="text-sm text-slate-400">
+                            <p className="text-sm text-slate-600 dark:text-slate-400">
                                 量表范围：1 - 10 分
                             </p>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="scaleMinLabel" className="text-slate-400">左端标签 (1分)</Label>
+                                    <Label htmlFor="scaleMinLabel" className="text-slate-600 dark:text-slate-400">左端标签 (1分)</Label>
                                     <Input
                                         id="scaleMinLabel"
                                         placeholder="例如：非常不满意"
@@ -300,11 +300,11 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         onChange={(e) => setScaleMinLabel(e.target.value)}
                                         maxLength={50}
                                         data-testid="student-question-scale-min-label"
-                                        className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
+                                        className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="scaleMaxLabel" className="text-slate-400">右端标签 (10分)</Label>
+                                    <Label htmlFor="scaleMaxLabel" className="text-slate-600 dark:text-slate-400">右端标签 (10分)</Label>
                                     <Input
                                         id="scaleMaxLabel"
                                         placeholder="例如：非常满意"
@@ -312,7 +312,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         onChange={(e) => setScaleMaxLabel(e.target.value)}
                                         maxLength={50}
                                         data-testid="student-question-scale-max-label"
-                                        className="bg-slate-950/50 border-slate-800 text-slate-200 focus:border-indigo-500"
+                                        className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                                     />
                                 </div>
                             </div>
@@ -325,7 +325,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         variant="outline"
                         onClick={() => onOpenChange(false)}
                         data-testid="student-question-cancel"
-                        className="border-slate-700 bg-transparent text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                        className="border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                     >
                         取消
                     </Button>
