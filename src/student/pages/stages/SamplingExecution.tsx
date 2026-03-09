@@ -917,9 +917,9 @@ function SamplePreviewTable({ data, total }: { data: unknown[]; total: number })
             <div
                 ref={tableScrollRef}
                 onScroll={handleTableScroll}
-                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 dark:border-slate-800"
+                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 dark:border-slate-800 [scrollbar-gutter:stable]"
             >
-                <div className="min-w-max">
+                <div className="min-w-max pr-3 [&_[data-slot=table-container]]:w-max [&_[data-slot=table-container]]:overflow-visible">
                     <Table className="min-w-max">
                         <TableHeader className="sticky top-0 bg-white/50 dark:bg-slate-950/50">
                             <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
