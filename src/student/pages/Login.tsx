@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,6 +180,25 @@ export function Login() {
                                     <>安全登录</>
                                 )}
                             </Button>
+                            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-4 space-y-3">
+                                <p className="text-xs font-medium tracking-[0.2em] text-slate-500 dark:text-slate-400 text-center">
+                                    其他端入口
+                                </p>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Link
+                                        to="/admin/login"
+                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-medium text-slate-700 dark:text-slate-200 transition-all hover:border-indigo-300 hover:text-indigo-600 dark:hover:border-indigo-500/60 dark:hover:text-indigo-300"
+                                    >
+                                        管理员登录
+                                    </Link>
+                                    <Link
+                                        to="/teacher/login"
+                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-medium text-slate-700 dark:text-slate-200 transition-all hover:border-indigo-300 hover:text-indigo-600 dark:hover:border-indigo-500/60 dark:hover:text-indigo-300"
+                                    >
+                                        教师登录
+                                    </Link>
+                                </div>
+                            </div>
                         </div>
                     </form>
 
