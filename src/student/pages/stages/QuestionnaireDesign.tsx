@@ -562,18 +562,18 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm h-fit">
+                        <Card className="h-fit rounded-2xl border-sky-200 bg-sky-50/80 shadow-sm dark:border-sky-500/20 dark:bg-sky-500/10">
                             <CardHeader>
-                                <CardTitle className="text-base text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                                <CardTitle className="flex items-center gap-2 text-base text-sky-900 dark:text-sky-200">
                                     <HelpCircle className="w-4 h-4" />
                                     小贴士
                                 </CardTitle>
-                                <CardDescription className="text-indigo-700/70 dark:text-indigo-300/70">好的欢迎语能提高数据质量。</CardDescription>
+                                <CardDescription className="text-sky-700 dark:text-sky-300">好的欢迎语能提高数据质量。</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4 text-sm text-indigo-800/80 dark:text-indigo-200/80 leading-relaxed">
+                            <CardContent className="space-y-4 text-sm leading-relaxed text-sky-950/80 dark:text-sky-100/80">
                                 <p>建议说明调查目的、预计用时与隐私保护方式。</p>
                                 <p>保持简洁友好，最好控制在 200 字以内。</p>
-                                <div className="rounded-xl bg-indigo-950/50 border border-indigo-500/20 p-3 text-xs text-indigo-700 dark:text-indigo-300">
+                                <div className="rounded-xl border border-sky-200 bg-white/80 p-3 text-xs text-sky-800 shadow-sm dark:border-sky-400/20 dark:bg-sky-950/40 dark:text-sky-200">
                                     <span className="font-semibold block mb-1">示例：</span>
                                     感谢参与本次调查，本问卷约 3 分钟完成，数据仅用于教学分析。
                                 </div>
