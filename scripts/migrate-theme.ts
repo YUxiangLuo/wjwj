@@ -57,9 +57,12 @@ const LEGACY_THEME_PATTERNS = [
     /--tw-slate-\d+/,
     /--color-slate-(?:50|100|200|300|400|500|600|700|800|900|950)\s*:/,
 ];
-
+const THEME_SOURCE_GLOB = "src/**/*.{tsx,ts,css}";
+const THEME_CODE_GLOB = "src/**/*.{tsx,ts}";
+// Matches quoted string/template literal segments so we can inspect Tailwind class tokens
+// without trying to parse the full TSX AST. Escaped characters remain inside the match.
 const STRING_LITERAL_RE = /(["'`])(?:\\.|(?!\1)[\s\S])*?\1/g;
-const RAW_SLATE_OR_WHITE_TOKEN_RE = new RegExp(
+const RAW_SLATE_TOKEN_RE = new RegExp(
     `^((?:[^\\s"'\\\`{}]+:)*)((?:${UTIL_RE}))\\-slate\\-(50|100|200|300|400|600|700|800|900|950)(?:${OPACITY_RE})?$`,
 );
 const LOW_CONTRAST_ACCENT_TOKEN_RE = new RegExp(
@@ -140,10 +143,10 @@ function validateClassTokens(path: string, source: string) {
 
         const tokens = literal.split(/\s+/).filter(Boolean);
         for (const token of tokens) {
-            const slateMatch = token.match(RAW_SLATE_OR_WHITE_TOKEN_RE);
+            const slateMatch = token.match(RAW_SLATE_TOKEN_RE);
             if (slateMatch) {
                 const [, mods = "", util = "", slateShade = ""] = slateMatch;
-                if (!mods.includes("dark:") && slateShade !== "500" && !hasDarkCompanionToken(tokens, mods, util)) {
+                if (!mods.includes("dark:") && !hasDarkCompanionToken(tokens, mods, util)) {
                     issues.push({
                         path,
                         reason: `missing dark: pair for ${token}`,
@@ -181,7 +184,7 @@ function validateClassTokens(path: string, source: string) {
 export async function collectThemeValidationIssues(root = ".") {
     const issues: ThemeValidationIssue[] = [];
 
-    for await (const path of new Bun.Glob("src/**/*.{tsx,ts,css}").scan(root)) {
+    for await (const path of new Bun.Glob(THEME_SOURCE_GLOB).scan(root)) {
         if (path.includes("migrate-theme")) continue;
 
         const original = await Bun.file(path).text();
@@ -207,7 +210,7 @@ async function applyMigration(root = ".") {
     let slateCount = 0;
     let accentCount = 0;
 
-    for await (const path of new Bun.Glob("src/**/*.{tsx,ts}").scan(root)) {
+    for await (const path of new Bun.Glob(THEME_CODE_GLOB).scan(root)) {
         if (path.endsWith(".css") || path.includes("migrate-theme")) continue;
 
         const original = await Bun.file(path).text();
@@ -239,8 +242,7 @@ async function main() {
         for (const issue of issues) {
             console.error(`  - ${issue.path}: ${issue.reason}`);
         }
-        process.exitCode = 1;
-        return;
+        process.exit(1);
     }
 
     await applyMigration(".");
