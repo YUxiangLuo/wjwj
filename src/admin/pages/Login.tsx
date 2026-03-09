@@ -12,8 +12,8 @@ export function Login() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
+    const [username, setUsername] = useState("admin");
+    const [password, setPassword] = useState("123456");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

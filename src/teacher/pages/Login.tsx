@@ -12,8 +12,8 @@ export function Login() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
+    const [username, setUsername] = useState("teacher");
+    const [password, setPassword] = useState("123456");
 
     useLoginRedirectReason({
         redirectReasonKey: TEACHER_LOGIN_REDIRECT_REASON_KEY,
