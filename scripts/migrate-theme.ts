@@ -57,7 +57,12 @@ const LEGACY_THEME_PATTERNS = [
     /--tw-slate-\d+/,
     /--color-slate-(?:50|100|200|300|400|500|600|700|800|900|950)\s*:/,
 ];
-const THEME_SOURCE_GLOB = "src/**/*.{tsx,ts,css}";
+const CSS_THEME_IMPORT_RE = /@import\s+"tailwindcss"/;
+const CSS_THEME_LIGHT_RE = /color-scheme:\s*light/;
+const CSS_THEME_DARK_RE = /color-scheme:\s*dark/;
+const CSS_THEME_VARIANT_RE = /@custom-variant\s+dark\s*\(/;
+const CSS_THEME_DARK_SELECTOR_RE = /\.dark\s*\{/;
+const THEME_SOURCE_GLOB = "{src,styles}/**/*.{tsx,ts,css}";
 const THEME_CODE_GLOB = "src/**/*.{tsx,ts}";
 // Matches quoted string/template literal segments so we can inspect Tailwind class tokens
 // without trying to parse the full TSX AST. Escaped characters remain inside the match.
@@ -126,6 +131,30 @@ function hasLegacyThemeTokens(source: string) {
     return LEGACY_THEME_PATTERNS.some((pattern) => pattern.test(source));
 }
 
+function validateCssThemeInfra(path: string, source: string) {
+    const issues: ThemeValidationIssue[] = [];
+
+    if (!CSS_THEME_IMPORT_RE.test(source)) {
+        return issues;
+    }
+
+    if (CSS_THEME_LIGHT_RE.test(source) && !CSS_THEME_VARIANT_RE.test(source)) {
+        issues.push({
+            path,
+            reason: "missing @custom-variant dark declaration",
+        });
+    }
+
+    if (CSS_THEME_LIGHT_RE.test(source) && (!CSS_THEME_DARK_RE.test(source) || !CSS_THEME_DARK_SELECTOR_RE.test(source))) {
+        issues.push({
+            path,
+            reason: "missing dark-mode CSS variable block",
+        });
+    }
+
+    return issues;
+}
+
 function extractStringLiterals(source: string) {
     return [...source.matchAll(STRING_LITERAL_RE)].map((match) => match[0].slice(1, -1));
 }
@@ -189,6 +218,8 @@ export async function collectThemeValidationIssues(root = ".") {
 
         const original = await Bun.file(path).text();
         if (path.endsWith(".css")) {
+            issues.push(...validateCssThemeInfra(path, original));
+
             if (hasLegacyThemeTokens(original)) {
                 issues.push({
                     path,
