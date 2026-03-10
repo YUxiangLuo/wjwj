@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { LayoutDashboard, School, BookOpen, ClipboardList, PenLine, ArrowUpRight, GraduationCap, Megaphone, X, ChevronRight, Circle, CheckCircle2, XCircle } from "lucide-react";
+import { LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Megaphone, ChevronRight, Circle, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -157,7 +157,7 @@ export function Dashboard() {
                 )}
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Recent Submissions */}
                 <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
                     <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
@@ -243,41 +243,7 @@ export function Dashboard() {
                     </CardContent>
                 </Card>
 
-                {/* Quick Actions */}
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 h-fit">
-                    <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                        <CardTitle className="text-lg text-slate-900 dark:text-slate-100">快捷入口</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pt-6 space-y-3">
-                        <Button className="w-full justify-between h-12 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 group" asChild>
-                            <Link to="/grading">
-                                <span className="flex items-center gap-2">
-                                    <PenLine className="w-4 h-4" />
-                                    进入批改
-                                </span>
-                                <ArrowUpRight className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                            </Link>
-                        </Button>
-                        <Button variant="outline" className="w-full justify-between h-12 border-slate-300 dark:border-slate-700 bg-slate-200/30 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600 transition-all group" asChild>
-                            <Link to="/topic">
-                                <span className="flex items-center gap-2">
-                                    <BookOpen className="w-4 h-4" />
-                                    创建新课题
-                                </span>
-                                <ArrowUpRight className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                            </Link>
-                        </Button>
-                        <Button variant="outline" className="w-full justify-between h-12 border-slate-300 dark:border-slate-700 bg-slate-200/30 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600 transition-all group" asChild>
-                            <Link to="/export">
-                                <span className="flex items-center gap-2">
-                                    <GraduationCap className="w-4 h-4" />
-                                    导出成绩
-                                </span>
-                                <ArrowUpRight className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                            </Link>
-                        </Button>
-                    </CardContent>
-                </Card>
+
             </div>
 
             {/* Announcement List Dialog */}
