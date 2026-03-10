@@ -1,12 +1,12 @@
 import { startBackgroundJobs } from "./server/background-jobs";
+import { registerLongRunningProcessSignals } from "./server/process-signals";
 
 const stop = startBackgroundJobs();
 
 console.log("Background worker running");
 
-for (const signal of ["SIGINT", "SIGTERM"]) {
-    process.on(signal, () => {
+registerLongRunningProcessSignals({
+    onShutdown: () => {
         stop();
-        process.exit(0);
-    });
-}
+    },
+});

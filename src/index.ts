@@ -7,6 +7,7 @@ import { studentApiRoutes } from "./student/api";
 import { teacherApiRoutes } from "./teacher/api";
 import { redirect } from "react-router-dom";
 import { startBackgroundJobs } from "./server/background-jobs";
+import { registerLongRunningProcessSignals } from "./server/process-signals";
 import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./server/template-files";
 import { kickSubmissionPdfProcessing } from "./student/experiment/submission-pdf";
 
@@ -81,6 +82,14 @@ console.log(`🚀 Server running at ${server.url}`);
 // Recover pending submission PDFs even when the dedicated worker is not running.
 kickSubmissionPdfProcessing();
 
-if (process.env.RUN_IN_PROCESS_SCHEDULERS === "1") {
-    startBackgroundJobs();
-}
+const stopBackgroundJobs = process.env.RUN_IN_PROCESS_SCHEDULERS === "1" ? startBackgroundJobs() : null;
+
+registerLongRunningProcessSignals({
+    onShutdown: async () => {
+        stopBackgroundJobs?.();
+        // Graceful drain with a 5s timeout to avoid hanging on long-lived connections.
+        const drain = server.stop();
+        const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
+        await Promise.race([drain, timeout]);
+    },
+});
