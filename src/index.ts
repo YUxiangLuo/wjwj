@@ -85,8 +85,8 @@ kickSubmissionPdfProcessing();
 const stopBackgroundJobs = process.env.RUN_IN_PROCESS_SCHEDULERS === "1" ? startBackgroundJobs() : null;
 
 registerLongRunningProcessSignals({
-    onShutdown: () => {
+    onShutdown: async () => {
         stopBackgroundJobs?.();
-        server.stop(true);
+        await server.stop();
     },
 });

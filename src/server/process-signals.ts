@@ -6,20 +6,19 @@ type SignalHandler = () => void;
 type SignalRegistrar = (signal: ManagedSignal, handler: SignalHandler) => void;
 
 type ProcessSignalOptions = {
-    onShutdown?: () => void;
-    onHangup?: () => void;
+    onShutdown?: () => void | Promise<void>;
     register?: SignalRegistrar;
-    exit?: (code?: number) => void;
+    exit?: () => void;
 };
 
+/** Call once per process to ignore SIGHUP and handle SIGINT/SIGTERM gracefully. */
 export function registerLongRunningProcessSignals({
     onShutdown,
-    onHangup,
     register = (signal, handler) => {
         process.on(signal, handler);
     },
-    exit = (code) => {
-        process.exit(code);
+    exit = () => {
+        process.exit(0);
     },
 }: ProcessSignalOptions = {}) {
     let shuttingDown = false;
@@ -27,12 +26,16 @@ export function registerLongRunningProcessSignals({
     const shutdown = () => {
         if (shuttingDown) return;
         shuttingDown = true;
-        onShutdown?.();
-        exit(0);
+        const result = onShutdown?.();
+        if (result && typeof result.then === "function") {
+            result.then(() => exit(), () => exit());
+        } else {
+            exit();
+        }
     };
 
     register(hangupSignal, () => {
-        onHangup?.();
+        // Intentionally ignored — terminal hangups should not kill the process.
     });
 
     for (const signal of shutdownSignals) {
