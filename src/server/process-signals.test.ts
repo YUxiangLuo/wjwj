@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test, spyOn } from "bun:test";
 import { registerLongRunningProcessSignals } from "./process-signals";
 
 test("registerLongRunningProcessSignals ignores SIGHUP", () => {
@@ -27,6 +27,7 @@ test("registerLongRunningProcessSignals ignores SIGHUP", () => {
 
 test("registerLongRunningProcessSignals shuts down once on termination signals", () => {
     const handlers = new Map<string, () => void>();
+    let exitCode: number | undefined;
     let exitCount = 0;
     let shutdownCalls = 0;
 
@@ -37,7 +38,8 @@ test("registerLongRunningProcessSignals shuts down once on termination signals",
         register: (signal, handler) => {
             handlers.set(signal, handler);
         },
-        exit: () => {
+        exit: (code) => {
+            exitCode = code;
             exitCount += 1;
         },
     });
@@ -47,6 +49,26 @@ test("registerLongRunningProcessSignals shuts down once on termination signals",
 
     expect(shutdownCalls).toBe(1);
     expect(exitCount).toBe(1);
+    expect(exitCode).toBe(130); // SIGINT = 128 + 2
+});
+
+test("registerLongRunningProcessSignals uses correct exit code per signal", () => {
+    for (const [signal, expectedCode] of [["SIGINT", 130], ["SIGTERM", 143]] as const) {
+        const handlers = new Map<string, () => void>();
+        let exitCode: number | undefined;
+
+        registerLongRunningProcessSignals({
+            register: (_signal, handler) => {
+                handlers.set(_signal, handler);
+            },
+            exit: (code) => {
+                exitCode = code;
+            },
+        });
+
+        handlers.get(signal)?.();
+        expect(exitCode).toBe(expectedCode);
+    }
 });
 
 test("registerLongRunningProcessSignals awaits async onShutdown before exit", async () => {
@@ -82,9 +104,7 @@ test("registerLongRunningProcessSignals awaits async onShutdown before exit", as
 test("registerLongRunningProcessSignals logs error and still exits on rejected shutdown", async () => {
     const handlers = new Map<string, () => void>();
     let exitCount = 0;
-    const errors: unknown[] = [];
-    const origError = console.error;
-    console.error = (...args: unknown[]) => errors.push(args);
+    const errorSpy = spyOn(console, "error").mockImplementation(() => {});
 
     try {
         registerLongRunningProcessSignals({
@@ -104,9 +124,9 @@ test("registerLongRunningProcessSignals logs error and still exits on rejected s
         await new Promise((r) => setTimeout(r, 10));
 
         expect(exitCount).toBe(1);
-        expect(errors.length).toBe(1);
-        expect((errors[0] as unknown[])[0]).toBe("Error during shutdown:");
+        expect(errorSpy).toHaveBeenCalledTimes(1);
+        expect(errorSpy.mock.calls[0][0]).toBe("Error during shutdown:");
     } finally {
-        console.error = origError;
+        errorSpy.mockRestore();
     }
 });
