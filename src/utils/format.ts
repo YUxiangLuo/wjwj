@@ -1,4 +1,5 @@
 const APP_TIMEZONE = "Asia/Shanghai";
+/** Must match APP_TIMEZONE — used in startOfDayCN to construct an ISO-8601 timestamp. */
 const APP_TIMEZONE_OFFSET = "+08:00";
 
 const SAVE_TIME_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
