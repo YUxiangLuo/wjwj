@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { class_, experiment, student, submission, task, topic } from "../../db/schema";
 import { json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { formatDateTimeCN } from "../../utils/format";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 const dashboardRoutes: RouteDefinition = {
@@ -68,7 +69,7 @@ const dashboardRoutes: RouteDefinition = {
                 student: sub.studentName,
                 class: sub.className,
                 topic: sub.topicName,
-                time: sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN") : "未知时间",
+                time: sub.submittedAt ? formatDateTimeCN(new Date(sub.submittedAt)) : "未知时间",
             })),
             recentGradings: recentGradings.map((g) => ({
                 student: g.studentName,
@@ -76,7 +77,7 @@ const dashboardRoutes: RouteDefinition = {
                 topic: g.topicName,
                 score: g.status === 2 ? g.totalScore : null,
                 rejected: g.status === 3,
-                time: g.gradedAt ? new Date(g.gradedAt).toLocaleString("zh-CN") : "未知时间",
+                time: g.gradedAt ? formatDateTimeCN(new Date(g.gradedAt)) : "未知时间",
             })),
         });
     },

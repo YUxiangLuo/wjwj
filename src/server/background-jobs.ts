@@ -5,6 +5,7 @@ import { createBackupArtifacts } from "../admin/backup";
 import { db } from "../db";
 import { admin, experiment, notification, operationLog, student, systemConfig, task, topic } from "../db/schema";
 import { processPendingSubmissionPdfs } from "../student/experiment/submission-pdf";
+import { formatDateTimeCN } from "../utils/format";
 
 const AUTO_BACKUP_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const AUTO_BACKUP_LEASE_MS = 60 * 60 * 1000;
@@ -347,7 +348,7 @@ async function checkAndSendDeadlineReminders() {
 
                 const existingReceiverIds = new Set(existingReminderRows.map((row) => row.receiverId));
                 const remainingHours = Math.max(1, Math.ceil((dueTask.deadline.getTime() - Date.now()) / (60 * 60 * 1000)));
-                const deadlineText = dueTask.deadline.toLocaleString("zh-CN");
+                const deadlineText = formatDateTimeCN(dueTask.deadline);
 
                 const reminderInserts = remindStudentIds
                     .filter((studentId) => !existingReceiverIds.has(studentId))

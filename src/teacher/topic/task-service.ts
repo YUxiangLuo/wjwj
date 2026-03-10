@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, notification, task, topic } from "../../db/schema";
+import { formatDateTimeCN } from "../../utils/format";
 import { notifyStudentsByClassIds } from "../routes/auth";
 import { validateTopicPublishReadiness } from "./validation";
 
@@ -97,7 +98,7 @@ export async function publishTopicTasks(params: {
                 }))
             );
 
-            const deadlineText = deadlineDate ? deadlineDate.toLocaleString("zh-CN") : "无限制";
+            const deadlineText = deadlineDate ? formatDateTimeCN(deadlineDate) : "无限制";
             await notifyStudentsByClassIds(toInsert, {
                 type: "TASK_PUBLISHED",
                 title: "新任务已发布",
@@ -152,7 +153,7 @@ export async function extendTopicTaskDeadline(params: {
         await notifyStudentsByClassIds([row.classId], {
             type: "TASK_EXTENDED",
             title: "截止时间已延长",
-            content: `任务截止时间已延长至 ${newDeadline.toLocaleString("zh-CN")}`,
+            content: `任务截止时间已延长至 ${formatDateTimeCN(newDeadline)}`,
             relatedType: "task",
             relatedId: params.taskId,
         }, tx);

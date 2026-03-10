@@ -4,7 +4,7 @@ import { db } from "../../db";
 import { class_, experiment, semester, student, submission, task, topic } from "../../db/schema";
 import { error, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { formatLocalDateStamp } from "../../utils/format";
+import { formatDateStampCN, formatDateTimeCN } from "../../utils/format";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 function activeEntityFilters() {
@@ -89,13 +89,13 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
         name: r.studentName,
         className: r.className,
         topicName: r.topicName,
-        submittedAt: r.submittedAt ? new Date(r.submittedAt).toLocaleString("zh-CN") : "",
+        submittedAt: r.submittedAt ? formatDateTimeCN(new Date(r.submittedAt)) : "",
         scoreQuestionnaire: r.scoreQuestionnaire ?? "",
         scoreProcess: r.scoreProcess ?? "",
         scoreReport: r.scoreReport ?? "",
         totalScore: r.totalScore ?? "",
         status: r.status === 2 ? "已批改" : r.status === 3 ? "已驳回" : r.status === 1 ? "待批改" : "草稿",
-        gradedAt: r.gradedAt ? new Date(r.gradedAt).toLocaleString("zh-CN") : "",
+        gradedAt: r.gradedAt ? formatDateTimeCN(new Date(r.gradedAt)) : "",
         gradedBy: r.gradedByName ?? "",
     }));
 }
@@ -219,7 +219,7 @@ const gradeExportExcelRoutes: RouteDefinition = {
         XLSX.utils.book_append_sheet(workbook, worksheet, "成绩导出");
 
         const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-        const fileName = `grade-export-${formatLocalDateStamp()}.xlsx`;
+        const fileName = `grade-export-${formatDateStampCN()}.xlsx`;
 
         return new Response(buffer, {
             headers: {

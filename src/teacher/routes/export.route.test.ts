@@ -12,7 +12,8 @@ async function loadExportRoutes(options: {
 
     mock.module("../../db", () => ({ db }));
     mock.module("../../utils/format", () => ({
-        formatLocalDateStamp: () => "2026-03-09",
+        formatDateStampCN: () => "2026-03-09",
+        formatDateTimeCN: () => "2026/03/09 04:25:06",
     }));
     mock.module("./auth", () => ({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
