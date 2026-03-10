@@ -87,6 +87,9 @@ const stopBackgroundJobs = process.env.RUN_IN_PROCESS_SCHEDULERS === "1" ? start
 registerLongRunningProcessSignals({
     onShutdown: async () => {
         stopBackgroundJobs?.();
-        await server.stop();
+        // Graceful drain with a 5s timeout to avoid hanging on long-lived connections.
+        const drain = server.stop();
+        const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
+        await Promise.race([drain, timeout]);
     },
 });

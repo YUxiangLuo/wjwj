@@ -28,7 +28,13 @@ export function registerLongRunningProcessSignals({
         shuttingDown = true;
         const result = onShutdown?.();
         if (result && typeof result.then === "function") {
-            result.then(() => exit(), () => exit());
+            result.then(
+                () => exit(),
+                (error) => {
+                    console.error("Error during shutdown:", error);
+                    exit();
+                },
+            );
         } else {
             exit();
         }

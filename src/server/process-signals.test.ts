@@ -78,3 +78,35 @@ test("registerLongRunningProcessSignals awaits async onShutdown before exit", as
     expect(cleanupDone).toBe(true);
     expect(exitCount).toBe(1);
 });
+
+test("registerLongRunningProcessSignals logs error and still exits on rejected shutdown", async () => {
+    const handlers = new Map<string, () => void>();
+    let exitCount = 0;
+    const errors: unknown[] = [];
+    const origError = console.error;
+    console.error = (...args: unknown[]) => errors.push(args);
+
+    try {
+        registerLongRunningProcessSignals({
+            onShutdown: async () => {
+                throw new Error("cleanup failed");
+            },
+            register: (signal, handler) => {
+                handlers.set(signal, handler);
+            },
+            exit: () => {
+                exitCount += 1;
+            },
+        });
+
+        handlers.get("SIGINT")?.();
+
+        await new Promise((r) => setTimeout(r, 10));
+
+        expect(exitCount).toBe(1);
+        expect(errors.length).toBe(1);
+        expect((errors[0] as unknown[])[0]).toBe("Error during shutdown:");
+    } finally {
+        console.error = origError;
+    }
+});
