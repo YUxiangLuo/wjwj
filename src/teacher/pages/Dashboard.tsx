@@ -173,21 +173,24 @@ export function Dashboard() {
                             <div className="text-center text-sm text-slate-500 py-8">暂无提交记录</div>
                         ) : (
                             recentSubmissions.map((item, idx) => (
-                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-4">
-                                    <div className="flex items-center gap-4">
+                                <div
+                                    key={idx}
+                                    data-testid={`teacher-dashboard-submission-${idx}`}
+                                    className="flex flex-col p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-3"
+                                >
+                                    <div className="flex items-start gap-4 w-full min-w-0">
                                         <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
                                             <AvatarFallback className="bg-indigo-950 text-indigo-500 text-sm font-semibold">{item.student[0]}</AvatarFallback>
                                         </Avatar>
-                                        <div>
+                                        <div className="min-w-0 space-y-1">
                                             <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.student}</div>
-                                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                            <div className="text-xs text-slate-500 flex flex-col items-start gap-1">
                                                 <span className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">{item.class}</span>
-                                                <span>·</span>
-                                                <span className="text-indigo-500">{item.topic}</span>
+                                                <span className="text-indigo-500 break-words">{item.topic}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-slate-500 font-mono">{item.time}</span>
+                                    <span className="pl-14 text-xs text-slate-500 font-mono">{item.time}</span>
                                 </div>
                             ))
                         )}
@@ -209,21 +212,24 @@ export function Dashboard() {
                             <div className="text-center text-sm text-slate-500 py-8">暂无批改记录</div>
                         ) : (
                             recentGradings.map((item, idx) => (
-                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-4">
-                                    <div className="flex items-center gap-4">
+                                <div
+                                    key={idx}
+                                    data-testid={`teacher-dashboard-grading-${idx}`}
+                                    className="flex flex-col p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-3"
+                                >
+                                    <div className="flex items-start gap-4 w-full min-w-0">
                                         <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
                                             <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-rose-950 text-rose-600" : "bg-emerald-950 text-emerald-600"}`}>{item.student[0]}</AvatarFallback>
                                         </Avatar>
-                                        <div>
+                                        <div className="min-w-0 space-y-1">
                                             <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.student}</div>
-                                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                                            <div className="text-xs text-slate-500 flex flex-col items-start gap-1">
                                                 <span className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">{item.class}</span>
-                                                <span>·</span>
-                                                <span className="text-indigo-500">{item.topic}</span>
+                                                <span className="text-indigo-500 break-words">{item.topic}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="pl-14 flex flex-col items-start gap-1">
                                         {item.rejected ? (
                                             <span className="flex items-center gap-1 text-xs text-rose-600">
                                                 <XCircle className="w-3.5 h-3.5" />
