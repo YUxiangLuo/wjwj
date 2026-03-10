@@ -3,7 +3,6 @@ const APP_TIMEZONE = "Asia/Shanghai";
 const APP_TIMEZONE_OFFSET = "+08:00";
 
 const SAVE_TIME_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: APP_TIMEZONE,
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

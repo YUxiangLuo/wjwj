@@ -13,7 +13,7 @@ async function loadExportRoutes(options: {
     mock.module("../../db", () => ({ db }));
     mock.module("../../utils/format", () => ({
         formatDateStampCN: () => "2026-03-09",
-        formatDateTimeCN: (d: Date) => d.toLocaleString("zh-CN"),
+        formatDateTimeCN: () => "2026/03/09 04:25:06",
     }));
     mock.module("./auth", () => ({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
