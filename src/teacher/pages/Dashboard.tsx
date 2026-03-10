@@ -242,8 +242,6 @@ export function Dashboard() {
                         )}
                     </CardContent>
                 </Card>
-
-
             </div>
 
             {/* Announcement List Dialog */}
