@@ -23,6 +23,12 @@ import { RichTextEditor } from "../../components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
 import { useDraftSync } from "../../draft-sync";
 import { experimentApi, tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
+import {
+    COMMON_SCALE_QUESTION_TEMPLATES,
+    createQuestionFromRecommendQuestion,
+    createQuestionFromScaleTemplate,
+    evaluateQuestionnaireDesign,
+} from "../../experiment/questionnaire-assistant";
 
 interface QuestionnaireDesignProps {
     onNext: () => void;
@@ -41,15 +47,6 @@ const questionTypeColors: Record<QuestionType, string> = {
     multiple: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
     scale: "bg-amber-500/10 text-amber-600 border-amber-500/20",
 };
-
-type ScoreStatus = "pass" | "warning" | "fail";
-
-interface ScoreItem {
-    label: string;
-    points: number;
-    status: ScoreStatus;
-    message: string;
-}
 
 interface QuestionnaireStepValidation {
     title: boolean;
@@ -335,34 +332,14 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         setDragOverId(null);
     };
 
-    const mapRecommendQuestion = (rq: RecommendQuestion): Question => {
-        const typeMap: Record<number, QuestionType> = {
-            1: "boolean",
-            2: "single",
-            3: "multiple",
-            4: "scale",
-        };
-        const mappedType = typeMap[rq.questionType] ?? "single";
-        const options = Array.isArray(rq.options)
-            ? (rq.options as string[])
-            : typeof rq.options === "string"
-                ? (() => { try { return JSON.parse(rq.options) as string[]; } catch { return []; } })()
-                : [];
-
-        return {
-            id: generateId(),
-            type: mappedType,
-            content: rq.content,
-            options: mappedType === "single" || mappedType === "multiple" ? options : undefined,
-            minSelect: mappedType === "multiple" ? 1 : undefined,
-            maxSelect: mappedType === "multiple" ? Math.min(3, Math.max(2, options.length)) : undefined,
-            scaleMin: mappedType === "scale" ? 1 : undefined,
-            scaleMax: mappedType === "scale" ? 10 : undefined,
-        };
+    const handleUseRecommend = (rq: RecommendQuestion) => {
+        setQuestions((prev) => [...prev, createQuestionFromRecommendQuestion(rq)]);
     };
 
-    const handleUseRecommend = (rq: RecommendQuestion) => {
-        setQuestions((prev) => [...prev, mapRecommendQuestion(rq)]);
+    const handleUseScaleTemplate = (templateId: string) => {
+        const template = COMMON_SCALE_QUESTION_TEMPLATES.find((item) => item.id === templateId);
+        if (!template) return;
+        setQuestions((prev) => [...prev, createQuestionFromScaleTemplate(template)]);
     };
 
     const invalidOptionQuestions = useMemo(() => {
@@ -418,77 +395,9 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const canProceed = basicValidationPassed && validation.previewCompleted;
     const canAdvanceToNextStep = canAdvanceQuestionnaireStep(step, validation);
 
-    const scoreItems = useMemo<ScoreItem[]>(() => {
-        const items: ScoreItem[] = [];
-
-        items.push({
-            label: "标题完整性",
-            points: validation.title ? 10 : 0,
-            status: validation.title ? "pass" : "fail",
-            message: validation.title ? "标题长度符合要求" : "标题需为1-100字",
-        });
-
-        items.push({
-            label: "欢迎语质量",
-            points: validation.welcomeText ? (welcomeTextLength >= 80 ? 15 : 12) : 0,
-            status: validation.welcomeText ? "pass" : "fail",
-            message: validation.welcomeText ? "欢迎语字数符合要求" : "欢迎语需在20-1000字之间",
-        });
-
-        items.push({
-            label: "结束语质量",
-            points: validation.endingText ? (endingTextLength >= 80 ? 15 : 12) : 0,
-            status: validation.endingText ? "pass" : "fail",
-            message: validation.endingText ? "结束语字数符合要求" : "结束语需在20-1000字之间",
-        });
-
-        items.push({
-            label: "题目数量",
-            points: validation.questionCount ? 20 : 0,
-            status: validation.questionCount ? "pass" : "fail",
-            message: validation.questionCount ? "题目数量在5-50题范围内" : "题目数量需在5-50题",
-        });
-
-        items.push({
-            label: "选项配置",
-            points: validation.optionCount ? 20 : 0,
-            status: validation.optionCount ? "pass" : "fail",
-            message: validation.optionCount
-                ? "单选/多选题选项配置有效"
-                : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 配置无效`,
-        });
-
-        const diversityScore = validation.questionCount
-            ? (validation.questionTypes ? 20 : 12)
-            : 0;
-        items.push({
-            label: "题型多样性",
-            points: diversityScore,
-            status: validation.questionCount
-                ? (validation.questionTypes ? "pass" : "warning")
-                : "fail",
-            message: validation.questionCount
-                ? (validation.questionTypes ? "题型结构较均衡" : "建议至少包含2种题型")
-                : "请先满足题目数量要求",
-        });
-
-        return items;
-    }, [
-        invalidOptionQuestions,
-        validation.title,
-        validation.welcomeText,
-        validation.endingText,
-        validation.questionCount,
-        validation.optionCount,
-        validation.questionTypes,
-        welcomeTextLength,
-        endingTextLength,
-    ]);
-
-    const preliminaryScore = useMemo(() => {
-        const total = scoreItems.reduce((sum, item) => sum + item.points, 0);
-        return Math.max(0, Math.min(100, Math.round(total)));
-    }, [scoreItems]);
+    const questionnaireScore = useMemo(() => evaluateQuestionnaireDesign(questionnaireData), [questionnaireData]);
+    const scoreItems = questionnaireScore.items;
+    const preliminaryScore = questionnaireScore.preliminaryScore;
 
     const requiredFailCount = [
         validation.title,
@@ -499,7 +408,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         validation.previewCompleted,
     ].filter(Boolean).length;
     const requiredMissingCount = 6 - requiredFailCount;
-    const warningCount = validation.questionTypes ? 0 : 1;
+    const warningCount = questionnaireScore.warningCount;
 
     const handleConfirmComplete = async () => {
         // Save final data
@@ -699,6 +608,31 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                             )}
                         </div>
                         <div className="space-y-4">
+                            <Card className="rounded-2xl border-indigo-200 bg-indigo-50/80 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-500/10">
+                                <CardHeader>
+                                    <CardTitle className="text-base text-indigo-900 dark:text-indigo-200">常用量表题模板</CardTitle>
+                                    <CardDescription className="text-indigo-700 dark:text-indigo-300">优先补齐满意度、态度、重要性等常见量表题，再结合教师推荐题细化内容。</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    {COMMON_SCALE_QUESTION_TEMPLATES.map((template) => (
+                                        <div key={template.id} className="rounded-xl border border-indigo-200/80 bg-white/80 p-3 dark:border-indigo-400/20 dark:bg-slate-950/40">
+                                            <div className="space-y-1">
+                                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{template.title}</div>
+                                                <div className="text-xs text-slate-500">{template.description}</div>
+                                                <div className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">示例：{template.question.content}</div>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="mt-3 w-full border-indigo-300 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-400/20 dark:text-indigo-200 dark:hover:bg-indigo-500/15"
+                                                onClick={() => handleUseScaleTemplate(template.id)}
+                                            >
+                                                插入模板题
+                                            </Button>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
                             <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                                 <CardHeader className="cursor-pointer select-none" onClick={() => setRecommendCollapsed(!recommendCollapsed)}>
                                     <div className="flex items-center justify-between">
@@ -735,9 +669,9 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                     <CardTitle className="text-base text-slate-800 dark:text-slate-200">设计建议</CardTitle>
                                 </CardHeader>
                                 <CardContent className="text-sm text-slate-600 dark:text-slate-400 space-y-2">
-                                    <p>• 建议至少包含 2 种题型，提升回答质量。</p>
-                                    <p>• 同一类型的题目控制在 10 题以内。</p>
-                                    <p>• 题目表述应清晰无歧义。</p>
+                                    <p>• 推荐题序：先放筛选/事实题，再放核心量表题，最后补充背景信息。</p>
+                                    <p>• 常用量表题建议至少准备 1-2 道，便于后续均值、满意度或态度分析。</p>
+                                    <p>• 同一类型的题目尽量控制在 10 题以内，避免受访者疲劳。</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -942,8 +876,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
                         <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
                             <CardHeader>
-                                <CardTitle className="text-slate-900 dark:text-slate-100">初步评分（机器评分）</CardTitle>
-                                <CardDescription className="text-slate-600 dark:text-slate-400">供参考，满分100分</CardDescription>
+                                <CardTitle className="text-slate-900 dark:text-slate-100">机器辅助评分（结构诊断）</CardTitle>
+                                <CardDescription className="text-slate-600 dark:text-slate-400">重点检查题序、量表配置和说明完整性，供参考使用</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 flex items-center justify-between">
@@ -1024,6 +958,31 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     </CardContent>
                 </Card>
             )}
+
+            <Card className="rounded-2xl border-indigo-200 bg-indigo-50/80 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-500/10">
+                <CardContent className="grid gap-4 px-6 py-5 md:grid-cols-4">
+                    <div>
+                        <p className="text-xs font-medium text-indigo-600 dark:text-indigo-300">步骤 1</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">明确目标与对象</p>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">在标题和欢迎语里说清调查目的、对象范围、预计耗时与保密说明。</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-medium text-indigo-600 dark:text-indigo-300">步骤 2</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">先筛选，再测量</p>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">题目设计建议先放基本情况/筛选题，再放核心量表题和补充题。</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-medium text-indigo-600 dark:text-indigo-300">步骤 3</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">完成回收引导</p>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">结束语中补充感谢、后续说明或提醒，形成完整的作答闭环。</p>
+                    </div>
+                    <div>
+                        <p className="text-xs font-medium text-indigo-600 dark:text-indigo-300">步骤 4</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">模拟填写自检</p>
+                        <p className="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">以受访者视角完整体验一遍，重点检查题序、文案和量表是否顺畅。</p>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Compact sub-step indicator */}
             <div className="flex items-center gap-2 px-1" data-testid="student-questionnaire-steps">

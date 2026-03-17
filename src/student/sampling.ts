@@ -68,3 +68,34 @@ export function performStratifiedSampling(data: any[], stratifyBy: string, layer
 
     return result;
 }
+
+export function performPpsSampling(data: any[], sizeField: string, n: number, random: () => number): any[] {
+    const sampleSize = Math.max(0, Math.min(Number(n) || 0, data.length));
+    if (sampleSize === 0) {
+        return [];
+    }
+
+    const weightedRows = data
+        .map((row) => {
+            const weight = Number(row?.[sizeField]);
+            if (!Number.isFinite(weight) || weight <= 0) {
+                return null;
+            }
+
+            const u = Math.max(random(), Number.MIN_VALUE);
+            return {
+                row,
+                key: -Math.log(u) / weight,
+            };
+        })
+        .filter((entry): entry is { row: any; key: number } => entry !== null);
+
+    if (weightedRows.length === 0) {
+        return [];
+    }
+
+    return weightedRows
+        .sort((left, right) => left.key - right.key)
+        .slice(0, Math.min(sampleSize, weightedRows.length))
+        .map((entry) => entry.row);
+}

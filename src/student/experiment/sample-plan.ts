@@ -7,6 +7,9 @@ const Z_SCORES = new Map<number, number>([
 export function calculateFinitePopulationSampleSize(params: {
     confidenceLevel: unknown;
     marginOfError: unknown;
+    expectedProportion?: unknown;
+    designEffect?: unknown;
+    nonResponseRate?: unknown;
     populationSize: number | null | undefined;
 }) {
     if (!params.populationSize || params.populationSize <= 0) {
@@ -23,12 +26,23 @@ export function calculateFinitePopulationSampleSize(params: {
 
     const e = errorRatio;
     const N = params.populationSize;
-    const p = 0.5;
+    const expectedProportionValue = Number(params.expectedProportion);
+    const expectedProportionRatio = expectedProportionValue > 1 ? expectedProportionValue / 100 : expectedProportionValue;
+    const p = Number.isFinite(expectedProportionRatio) && expectedProportionRatio > 0 && expectedProportionRatio < 1
+        ? expectedProportionRatio
+        : 0.5;
+    const designEffect = Math.max(1, Number(params.designEffect) || 1);
+    const nonResponseRateValue = Number(params.nonResponseRate);
+    const nonResponseRateRatio = nonResponseRateValue > 1 ? nonResponseRateValue / 100 : nonResponseRateValue;
+    const nonResponseFactor = Number.isFinite(nonResponseRateRatio) && nonResponseRateRatio >= 0 && nonResponseRateRatio < 1
+        ? 1 - nonResponseRateRatio
+        : 1;
 
     const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
     const n = n0 / (1 + (n0 - 1) / N);
+    const adjusted = (n * designEffect) / nonResponseFactor;
 
-    return Math.ceil(n);
+    return Math.ceil(adjusted);
 }
 
 export function attachCalculatedSampleSize(samplePlan: Record<string, any>, populationSize: number | null | undefined) {
@@ -39,6 +53,9 @@ export function attachCalculatedSampleSize(samplePlan: Record<string, any>, popu
     const calculatedSampleSize = calculateFinitePopulationSampleSize({
         confidenceLevel: samplePlan.confidenceLevel,
         marginOfError: samplePlan.marginOfError,
+        expectedProportion: samplePlan.expectedProportion,
+        designEffect: samplePlan.designEffect,
+        nonResponseRate: samplePlan.nonResponseRate,
         populationSize,
     });
 

@@ -107,6 +107,9 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
     const data = samplePlan as Record<string, unknown>;
     const confidenceLevel = toTrimmedString(data.confidenceLevel);
     const marginOfError = Number(data.marginOfError);
+    const expectedProportion = Number(data.expectedProportion ?? 50);
+    const designEffect = Number(data.designEffect ?? 1);
+    const nonResponseRate = Number(data.nonResponseRate ?? 0);
     const finalSampleSize = Number(data.finalSampleSize);
 
     if (!confidenceLevel) {
@@ -115,6 +118,18 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
 
     if (!Number.isFinite(marginOfError) || marginOfError < 1 || marginOfError > 10) {
         return "允许误差需在1%-10%之间";
+    }
+
+    if (!Number.isFinite(expectedProportion) || expectedProportion <= 0 || expectedProportion >= 100) {
+        return "预计比例需在1%-99%之间";
+    }
+
+    if (!Number.isFinite(designEffect) || designEffect < 1 || designEffect > 5) {
+        return "设计效应需在1.0-5.0之间";
+    }
+
+    if (!Number.isFinite(nonResponseRate) || nonResponseRate < 0 || nonResponseRate > 60) {
+        return "无回答率需在0%-60%之间";
     }
 
     if (!Number.isFinite(finalSampleSize) || finalSampleSize < 30) {

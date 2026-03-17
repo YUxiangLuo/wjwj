@@ -169,6 +169,7 @@ function OverviewSection({
         { label: "简单随机", done: samplingResults?.simple?.completed, count: samplingResults?.simple?.sampleCount },
         { label: "系统抽样", done: samplingResults?.systematic?.completed, count: samplingResults?.systematic?.sampleCount },
         { label: "分层抽样", done: samplingResults?.stratified?.completed, count: samplingResults?.stratified?.completed ? samplingResults?.stratified?.layers?.reduce((s, l) => s + l.sampleCount, 0) : undefined },
+        { label: "PPS 抽样", done: samplingResults?.pps?.completed, count: samplingResults?.pps?.sampleCount },
     ];
 
     return (

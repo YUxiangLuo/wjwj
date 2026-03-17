@@ -35,3 +35,18 @@ test("systematic sampling still accepts K values whose count range stays within 
 
     expect(result.result.sampleCount).toBe(10);
 });
+
+test("pps sampling requires a configured numeric size field", async () => {
+    const result = await executeSamplingAction({
+        method: "pps",
+        rawParams: { sizeField: "gender", seed: 2026 },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: { numeric: ["income"], stratified: ["gender"] },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+
+    expect(result.errorMessage).toBe("PPS 规模变量无效");
+});

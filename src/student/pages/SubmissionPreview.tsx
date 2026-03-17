@@ -273,6 +273,9 @@ export function SubmissionPreview() {
                                         <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
                                             <p>置信水平：{samplePlan.confidenceLevel}%</p>
                                             <p>允许误差：{samplePlan.marginOfError}%</p>
+                                            <p>预计比例：{samplePlan.expectedProportion ?? 50}%</p>
+                                            <p>设计效应：{(samplePlan.designEffect ?? 1).toFixed(1)}</p>
+                                            <p>无回答率：{samplePlan.nonResponseRate ?? 0}%</p>
                                             <p>建议样本量：{samplePlan.recommendedSize}</p>
                                             <p>最终样本量：{samplePlan.finalSampleSize}</p>
                                         </div>
@@ -287,6 +290,7 @@ export function SubmissionPreview() {
                                         <p>简单随机抽样：{samplingResults?.simple?.completed ? `已完成（${samplingResults.simple.sampleCount} 样本）` : "未完成"}</p>
                                         <p>系统抽样：{samplingResults?.systematic?.completed ? `已完成（${samplingResults.systematic.sampleCount} 样本）` : "未完成"}</p>
                                         <p>分层抽样：{samplingResults?.stratified?.completed ? "已完成" : "未完成"}</p>
+                                        <p>PPS 抽样：{samplingResults?.pps?.completed ? `已完成（${samplingResults.pps.sampleCount} 样本）` : "未执行"}</p>
                                     </div>
                                     {showSystematicSampleNote && (
                                         <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-800 dark:text-cyan-200">

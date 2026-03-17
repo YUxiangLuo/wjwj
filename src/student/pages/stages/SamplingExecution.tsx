@@ -34,13 +34,15 @@ import {
     getSystematicSampleCountRange,
     isSystematicRangeWithinAcceptedRange,
 } from "../../experiment/systematic-sampling";
+import { getEqualAllocation, getProportionalAllocation, getSqrtAllocation } from "../../experiment/stratified-allocation";
 
 interface SamplingExecutionProps {
     onNext: () => void;
     onPrev: () => void;
 }
 
-type SamplingMethod = "simple" | "systematic" | "stratified";
+type SamplingMethod = "simple" | "systematic" | "stratified" | "pps";
+type AnimatedSamplingMethod = Exclude<SamplingMethod, "pps">;
 
 interface SamplingSuccessStateProps {
     summary: string;
@@ -101,15 +103,19 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [simpleResult, setSimpleResult] = useState(initialResults?.simple ?? null);
     const [systematicResult, setSystematicResult] = useState(initialResults?.systematic ?? null);
     const [stratifiedResult, setStratifiedResult] = useState(initialResults?.stratified ?? null);
+    const [ppsResult, setPpsResult] = useState(initialResults?.pps ?? null);
 
     const [kValue, setKValue] = useState(initialResults?.systematic?.kValue ?? Math.round(N / n));
     const [stratifyBy, setStratifyBy] = useState(initialResults?.stratified?.stratifyBy ?? "gender");
+    const [ppsSizeField, setPpsSizeField] = useState(initialResults?.pps?.sizeField ?? "");
     const [simpleSeed, setSimpleSeed] = useState(initialResults?.simple?.seed ? String(initialResults.simple.seed) : "");
     const [systematicSeed, setSystematicSeed] = useState(initialResults?.systematic?.seed ? String(initialResults.systematic.seed) : "");
     const [stratifiedSeed, setStratifiedSeed] = useState(initialResults?.stratified?.seed ? String(initialResults.stratified.seed) : "");
-    const [executionTimes, setExecutionTimes] = useState<Record<SamplingMethod, number | null>>({ simple: null, systematic: null, stratified: null });
+    const [ppsSeed, setPpsSeed] = useState(initialResults?.pps?.seed ? String(initialResults.pps.seed) : "");
+    const [executionTimes, setExecutionTimes] = useState<Record<SamplingMethod, number | null>>({ simple: null, systematic: null, stratified: null, pps: null });
     // Stats state
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
+    const [numericFields, setNumericFields] = useState<string[]>([]);
     const [layers, setLayers] = useState<Array<{ name: string; count: number; ratio: number }>>([]);
     const [layerSampleCounts, setLayerSampleCounts] = useState<number[]>([]);
 
@@ -120,11 +126,19 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 if (res.success && res.data?.stats) {
                     setPopulationStats(res.data.stats);
                 }
+                if (res.success) {
+                    setNumericFields(res.data?.numericFields ?? []);
+                }
             }).catch((e) => {
                 console.error("Failed to load population stats:", e);
             });
         }
     }, [experiment?.taskId]);
+
+    useEffect(() => {
+        if (ppsSizeField || numericFields.length === 0) return;
+        setPpsSizeField(numericFields[0] ?? "");
+    }, [ppsSizeField, numericFields]);
 
     // Update layers when stratifyBy changes or stats load
     useEffect(() => {
@@ -172,7 +186,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
-    const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
+    const [animatingMethod, setAnimatingMethod] = useState<AnimatedSamplingMethod | null>(null);
 
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
@@ -188,8 +202,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         if (simpleResult) payload.simple = simpleResult;
         if (systematicResult) payload.systematic = systematicResult;
         if (stratifiedResult) payload.stratified = stratifiedResult;
+        if (ppsResult) payload.pps = ppsResult;
         return next ? { ...payload, ...next } : payload;
-    }, [simpleResult, systematicResult, stratifiedResult]);
+    }, [simpleResult, systematicResult, stratifiedResult, ppsResult]);
 
     // Save results when they change
     const saveResults = useCallback(async () => {
@@ -287,6 +302,32 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         }
     };
 
+    const executePps = async () => {
+        if (!ppsSizeField) return;
+        setExecuting("pps");
+        const startTime = performance.now();
+        try {
+            const { seed, error: seedError } = parseSeed(ppsSeed);
+            if (seedError) { toast.error(seedError); setExecuting(null); return; }
+            const res = await experimentApi.executeSampling(experiment?.taskId!, "pps", {
+                sizeField: ppsSizeField,
+                seed,
+            });
+            if (res.success && res.data?.result) {
+                const nextPps = res.data.result;
+                setPpsResult(nextPps);
+                setExecutionTimes(prev => ({ ...prev, pps: Math.round(performance.now() - startTime) }));
+                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ pps: nextPps }) });
+            } else {
+                toast.error(res.error?.message || "PPS 抽样执行失败");
+            }
+        } catch (e) {
+            toast.error("PPS 抽样执行失败，请检查网络后重试");
+        } finally {
+            setExecuting(null);
+        }
+    };
+
     // Validation
     const systematicAcceptedRange = getSystematicAcceptedRange(n);
     const systematicSampleCountRange = getSystematicSampleCountRange(N, kValue);
@@ -297,6 +338,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const layerOverflows = layers.map((l, i) => (layerSampleCounts[i] ?? 0) > l.count);
     const hasLayerOverflow = layerOverflows.some(Boolean);
     const isStratifiedValid = layers.length > 0 && stratifiedTotal === n && !hasLayerOverflow;
+    const isPpsValid = Boolean(ppsSizeField);
 
     const allCompleted = simpleResult?.completed && systematicResult?.completed && stratifiedResult?.completed;
 
@@ -306,50 +348,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         onNext();
     };
 
-    // Allocation helpers
-    const normalizeCountsToTarget = (counts: number[]) => {
-        const caps = layers.map((l) => l.count);
-        const normalized = counts.map((count, i) => Math.max(0, Math.min(Math.round(count), caps[i] ?? Infinity)));
-        if (normalized.length === 0) return normalized;
-
-        let total = normalized.reduce((sum, count) => sum + count, 0);
-        let cursor = 0;
-        let safetyLimit = normalized.length * 2;
-        while (total < n && safetyLimit > 0) {
-            const idx = cursor % normalized.length;
-            const current = normalized[idx] ?? 0;
-            const cap = caps[idx] ?? Infinity;
-            if (current < cap) {
-                normalized[idx] = current + 1;
-                total += 1;
-            }
-            cursor += 1;
-            safetyLimit -= 1;
-        }
-
-        cursor = 0;
-        while (total > n) {
-            const idx = cursor % normalized.length;
-            const current = normalized[idx] ?? 0;
-            if (current > 0) {
-                normalized[idx] = current - 1;
-                total -= 1;
-            }
-            cursor += 1;
-        }
-
-        return normalized;
-    };
-
     const applyProportionalAllocation = () => {
-        setLayerSampleCounts(normalizeCountsToTarget(layers.map((l) => n * l.ratio / 100)));
+        setLayerSampleCounts(getProportionalAllocation(layers, n));
     };
 
     const applyEqualAllocation = () => {
-        if (layers.length === 0) return;
-        const equalCount = Math.floor(n / layers.length);
-        const remainder = n % layers.length;
-        setLayerSampleCounts(normalizeCountsToTarget(layers.map((_, i) => equalCount + (i < remainder ? 1 : 0))));
+        setLayerSampleCounts(getEqualAllocation(layers, n));
+    };
+
+    const applySqrtAllocation = () => {
+        setLayerSampleCounts(getSqrtAllocation(layers, n));
     };
 
     const updateLayerCount = (index: number, value: number) => {
@@ -388,12 +396,15 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                 <Layers className="w-5 h-5 text-amber-600" />
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400">完成进度</div>
+                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400">必做进度</div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
                                         {[simpleResult?.completed, systematicResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/3
                                     </span>
                                     <span className="text-sm text-slate-500">种方法</span>
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                    PPS 抽样：{ppsResult?.completed ? "已完成" : "可选增强"}
                                 </div>
                             </div>
                         </div>
@@ -420,6 +431,12 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                         <div className="flex items-center gap-2">
                             <span>分层抽样</span>
                             {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                        </div>
+                    </TabsTrigger>
+                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">
+                        <div className="flex items-center gap-2">
+                            <span>PPS 抽样</span>
+                            {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                         </div>
                     </TabsTrigger>
                 </TabsList>
@@ -609,6 +626,110 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                     </div>
                 </TabsContent>
 
+                <TabsContent value="pps" className="mt-0 focus-visible:outline-none">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="lg:col-span-2 space-y-4">
+                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                                <CardHeader>
+                                    <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                        <div className="w-2 h-6 bg-violet-500 rounded-full mr-2"></div>
+                                        PPS 抽样（按规模概率）
+                                    </CardTitle>
+                                    <CardDescription className="text-slate-600 dark:text-slate-400 pt-1">
+                                        适合总体单位规模差异明显的场景。系统会根据规模变量的大小按概率抽取 {n} 个样本。
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6 pt-4">
+                                    <div className="grid gap-4 rounded-2xl border border-slate-200/70 bg-white/40 p-4 dark:border-slate-800/70 dark:bg-slate-950/20 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-slate-700 dark:text-slate-300">规模变量</Label>
+                                            <Select value={ppsSizeField} onValueChange={setPpsSizeField}>
+                                                <SelectTrigger data-testid="student-sampling-pps-size-field" className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                                                    <SelectValue placeholder={numericFields.length > 0 ? "选择规模变量" : "暂无可用数值字段"} />
+                                                </SelectTrigger>
+                                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                                    {numericFields.length > 0 ? numericFields.map((field) => (
+                                                        <SelectItem key={field} value={field}>
+                                                            {FIELD_LABELS[field] || field}
+                                                        </SelectItem>
+                                                    )) : (
+                                                        <SelectItem value="__empty" disabled>暂无数值字段</SelectItem>
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                                                建议选择能代表单位规模、销量、消费额或人群规模的数值字段作为 PPS 抽样权重。
+                                            </p>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="ppsSeed" className="text-xs text-slate-700 dark:text-slate-300">随机种子（可选）</Label>
+                                            <Input
+                                                id="ppsSeed"
+                                                type="number"
+                                                value={ppsSeed}
+                                                onChange={(e) => setPpsSeed(e.target.value)}
+                                                placeholder="留空则每次随机"
+                                                data-testid="student-sampling-pps-seed"
+                                                className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                                            />
+                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                                                固定随机种子后，可以复现相同的 PPS 抽样结果。
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {!isPpsValid && (
+                                        <div className="p-3 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-xs flex items-center gap-2">
+                                            <Target className="w-4 h-4 shrink-0" />
+                                            需要先在总体字段映射中配置数值型规模变量，才能执行 PPS 抽样。
+                                        </div>
+                                    )}
+
+                                    {!ppsResult?.completed ? (
+                                        <div className="flex justify-end">
+                                            <Button onClick={executePps} disabled={executing !== null || !isPpsValid} data-testid="student-sampling-pps-run" className="bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/20 w-auto px-8">
+                                                {executing === "pps" ? (
+                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                ) : (
+                                                    <Play className="w-4 h-4 mr-2" />
+                                                )}
+                                                执行 PPS 抽样
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <SamplingSuccessState
+                                            summary={`按 ${FIELD_LABELS[ppsResult.sizeField] || ppsResult.sizeField} 作为规模变量，共抽取 ${ppsResult.sampleCount} 个样本${executionTimes.pps !== null ? `，耗时 ${executionTimes.pps} ms` : ""}`}
+                                            onRerun={executePps}
+                                            disabled={executing !== null || !isPpsValid}
+                                            rerunTestId="student-sampling-pps-rerun"
+                                        />
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="space-y-4">
+                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-full">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-base text-slate-800 dark:text-slate-200">抽样预览</CardTitle>
+                                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">分页预览</Badge>
+                                    </div>
+                                    <CardDescription className="text-slate-600 dark:text-slate-400">展示部分 PPS 抽样结果数据</CardDescription>
+                                </CardHeader>
+                                <CardContent className="h-[300px] overflow-hidden">
+                                    {!ppsResult?.completed ? (
+                                        <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">
+                                            完成抽样后展示
+                                        </div>
+                                    ) : (
+                                        <SamplePreviewTable data={ppsResult.data ?? []} total={ppsResult.sampleCount} />
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </TabsContent>
+
                 {/* Stratified Sampling */}
                 <TabsContent value="stratified" className="mt-0 focus-visible:outline-none">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -670,12 +791,15 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 <div className="space-y-1">
                                                     <p className="text-sm font-medium text-amber-900 dark:text-amber-100">快速填充各层样本数</p>
                                                     <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-200/80">
-                                                        `按比例分配` 会使用表格里的 `占比` 自动填写；`等额分配` 会尽量平均分配。填充后仍可手动修改右侧样本数。
+                                                        `按比例分配` 按总体占比填写；`平方根分配` 会适当照顾小层样本；`等额分配` 则尽量平均分配。填充后仍可手动微调。
                                                     </p>
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <Button variant="outline" size="sm" data-testid="student-sampling-alloc-proportional" className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100 dark:border-amber-400/20 dark:bg-slate-900/40 dark:text-amber-200 dark:hover:bg-amber-500/15" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
                                                         按比例分配
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" data-testid="student-sampling-alloc-sqrt" className="border-indigo-300 bg-white text-indigo-700 hover:bg-indigo-100 dark:border-indigo-400/20 dark:bg-slate-900/40 dark:text-indigo-200 dark:hover:bg-indigo-500/15" onClick={applySqrtAllocation} disabled={layers.length === 0}>
+                                                        平方根分配
                                                     </Button>
                                                     <Button variant="outline" size="sm" data-testid="student-sampling-alloc-equal" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300 dark:hover:bg-slate-800" onClick={applyEqualAllocation} disabled={layers.length === 0}>
                                                         等额分配

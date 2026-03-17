@@ -104,6 +104,9 @@ export interface QuestionnaireData {
 export interface SamplePlanData {
     confidenceLevel: string;
     marginOfError: number;
+    expectedProportion?: number;
+    designEffect?: number;
+    nonResponseRate?: number;
     recommendedSize: number;
     finalSampleSize: number;
 }
@@ -131,6 +134,13 @@ export interface SamplingResultsData {
             ratio: number;
             sampleCount: number;
         }>;
+        seed?: number;
+        data?: unknown[];
+    };
+    pps?: {
+        completed: boolean;
+        sizeField: string;
+        sampleCount: number;
         seed?: number;
         data?: unknown[];
     };
@@ -340,7 +350,7 @@ export const experimentApi = {
 
     executeSampling: (
         taskId: number,
-        method: "simple" | "systematic" | "stratified",
+        method: "simple" | "systematic" | "stratified" | "pps",
         params: any
     ) =>
         request<{ success: boolean; result: any }>(
@@ -352,7 +362,7 @@ export const experimentApi = {
         ),
 
     getStats: (taskId: number) =>
-        request<{ stats: Record<string, Record<string, number>> }>(
+        request<{ stats: Record<string, Record<string, number>>; numericFields?: string[] }>(
             `/api/student/tasks/${taskId}/stats`
         ),
 };

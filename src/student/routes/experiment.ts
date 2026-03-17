@@ -4,7 +4,7 @@ import { experiment, topic } from "../../db/schema";
 import { getAffectedRows } from "../../db/utils";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { buildStratifiedStats, readPopulationData } from "../experiment/population-data";
+import { buildStratifiedStats, parseTopicFieldMapping, readPopulationData } from "../experiment/population-data";
 import { deserializeExperimentFields, parseStoredJson } from "../experiment/serialization";
 import { executeSamplingAction } from "../experiment/sampling-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
@@ -173,11 +173,12 @@ const statsRoutes: RouteDefinition = {
 
         const population = await readPopulationData(taskInfo.excelFilePath);
         const stats = buildStratifiedStats(population, taskInfo.fieldMapping);
+        const mapping = parseTopicFieldMapping(taskInfo.fieldMapping);
         if (Object.keys(stats).length === 0) {
-            return json({ stats: {} });
+            return json({ stats: {}, numericFields: mapping?.numeric ?? [] });
         }
 
-        return json({ stats });
+        return json({ stats, numericFields: mapping?.numeric ?? [] });
     },
 };
 
@@ -194,10 +195,10 @@ const samplingActionRoutes: RouteDefinition = {
         if (taskAccessError) return taskAccessError;
 
         const body = await parseBody<{
-            method: "simple" | "systematic" | "stratified";
+            method: "simple" | "systematic" | "stratified" | "pps";
             params: any;
         }>(req);
-        if (!["simple", "systematic", "stratified"].includes(body.method)) {
+        if (!["simple", "systematic", "stratified", "pps"].includes(body.method)) {
             return error("无效的抽样方法", "VALIDATION_ERROR", 400);
         }
         const [exp] = await db

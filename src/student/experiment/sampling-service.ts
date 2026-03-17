@@ -1,5 +1,6 @@
 import {
     createSeededRandom,
+    performPpsSampling,
     performSimpleSampling,
     performStratifiedSampling,
     performSystematicSampling,
@@ -12,7 +13,7 @@ import {
     isSystematicRangeWithinAcceptedRange,
 } from "./systematic-sampling";
 
-export type SamplingMethod = "simple" | "systematic" | "stratified";
+export type SamplingMethod = "simple" | "systematic" | "stratified" | "pps";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -184,6 +185,32 @@ export async function executeSamplingAction(params: {
             return {
                 ok: true as const,
                 result: { completed: true, stratifyBy, layers, stratifiedData: [], seed, data },
+            };
+        }
+        case "pps": {
+            const sizeField = toTrimmedString(parsedParams.sizeField);
+            if (!sizeField) {
+                return { ok: false as const, errorMessage: "请选择 PPS 的规模变量" };
+            }
+
+            const mapping = parseTopicFieldMapping(params.fieldMapping);
+            if (mapping?.numeric?.length && !mapping.numeric.includes(sizeField)) {
+                return { ok: false as const, errorMessage: "PPS 规模变量无效" };
+            }
+
+            const positiveRows = params.population.filter((row) => Number.isFinite(Number(row[sizeField])) && Number(row[sizeField]) > 0);
+            if (positiveRows.length === 0) {
+                return { ok: false as const, errorMessage: "所选规模变量没有可用于 PPS 抽样的正数值" };
+            }
+
+            if (params.targetSampleSize === null || params.targetSampleSize < 1) {
+                return { ok: false as const, errorMessage: "请先完成样本量规划后再执行 PPS 抽样" };
+            }
+
+            const data = await performPpsSampling(params.population, sizeField, params.targetSampleSize, random);
+            return {
+                ok: true as const,
+                result: { completed: true, sizeField, sampleCount: data.length, seed, data },
             };
         }
     }

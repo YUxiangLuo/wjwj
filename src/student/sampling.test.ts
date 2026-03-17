@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createSeededRandom, performSimpleSampling, performStratifiedSampling, performSystematicSampling } from "./sampling";
+import { createSeededRandom, performPpsSampling, performSimpleSampling, performStratifiedSampling, performSystematicSampling } from "./sampling";
 
 const population = Array.from({ length: 30 }, (_, i) => ({ id: i + 1, group: i % 3 === 0 ? "A" : "B" }));
 
@@ -60,6 +60,31 @@ test("systematic sampling on empty population returns empty array", async () => 
 test("systematic sampling step larger than population returns at most one item", async () => {
     const result = await performSystematicSampling(population, 100, createSeededRandom("large-step"));
     expect(result.length).toBeLessThanOrEqual(1);
+});
+
+test("pps sampling is deterministic with the same seed", async () => {
+    const weighted = [
+        { id: 1, size: 1 },
+        { id: 2, size: 2 },
+        { id: 3, size: 6 },
+        { id: 4, size: 9 },
+    ];
+    const first = await performPpsSampling(weighted, "size", 2, createSeededRandom("pps-seed"));
+    const second = await performPpsSampling(weighted, "size", 2, createSeededRandom("pps-seed"));
+
+    expect(first).toEqual(second);
+});
+
+test("pps sampling skips rows whose measure of size is not positive", async () => {
+    const weighted = [
+        { id: 1, size: 0 },
+        { id: 2, size: -1 },
+        { id: 3, size: 3 },
+        { id: 4, size: 5 },
+    ];
+    const result = await performPpsSampling(weighted, "size", 3, createSeededRandom("pps-filter"));
+    expect(result).toHaveLength(2);
+    expect(result.map((row) => row.id)).toEqual(expect.arrayContaining([3, 4]));
 });
 
 // Stratified sampling tests
