@@ -68,3 +68,73 @@ export function performStratifiedSampling(data: any[], stratifyBy: string, layer
 
     return result;
 }
+
+/**
+ * PPS (Probability Proportional to Size) sampling.
+ *
+ * Each unit's selection probability is proportional to its "size" value
+ * (given by `sizeField`). Uses systematic PPS selection:
+ *   1. Compute cumulative sizes.
+ *   2. Determine the sampling interval = totalSize / n.
+ *   3. Pick a random start in [0, interval).
+ *   4. Walk through cumulative sizes to select n units.
+ *
+ * Returns an array of selected data items.
+ */
+export function performPPSSampling(
+    data: any[],
+    sizeField: string,
+    n: number,
+    random: () => number,
+): any[] {
+    if (data.length === 0 || n <= 0) return [];
+
+    const sampleSize = Math.min(n, data.length);
+
+    // Build cumulative size array
+    const sizes: number[] = data.map((item) => {
+        const val = Number(item[sizeField]);
+        return Number.isFinite(val) && val > 0 ? val : 0;
+    });
+
+    const totalSize = sizes.reduce((a, b) => a + b, 0);
+    if (totalSize <= 0) {
+        // Fallback to simple random sampling when all sizes are zero
+        return performSimpleSampling(data, sampleSize, random);
+    }
+
+    const interval = totalSize / sampleSize;
+    const start = random() * interval;
+
+    const cumulative: number[] = [];
+    let cumSum = 0;
+    for (const size of sizes) {
+        cumSum += size;
+        cumulative.push(cumSum);
+    }
+
+    const selected: any[] = [];
+    const selectedIndices = new Set<number>();
+    let pointer = start;
+    let dataIdx = 0;
+
+    for (let i = 0; i < sampleSize; i++) {
+        // Find the unit where cumulative size crosses the pointer
+        while (dataIdx < cumulative.length - 1 && cumulative[dataIdx]! < pointer) {
+            dataIdx++;
+        }
+        if (!selectedIndices.has(dataIdx)) {
+            selectedIndices.add(dataIdx);
+            selected.push(data[dataIdx]);
+        }
+        pointer += interval;
+
+        // Wrap around if pointer exceeds totalSize (shouldn't happen with correct n)
+        if (pointer >= totalSize && i < sampleSize - 1) {
+            pointer -= totalSize;
+            dataIdx = 0;
+        }
+    }
+
+    return selected;
+}

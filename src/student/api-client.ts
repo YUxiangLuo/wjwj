@@ -124,6 +124,13 @@ export interface SamplingResultsData {
         seed?: number;
         data?: unknown[];
     };
+    pps?: {
+        completed: boolean;
+        sizeField: string;
+        sampleCount: number;
+        seed?: number;
+        data?: unknown[];
+    };
     stratified?: {
         completed: boolean;
         stratifyBy: string;

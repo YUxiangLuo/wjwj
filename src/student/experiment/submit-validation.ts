@@ -139,6 +139,7 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
     const data = samplingResults as Record<string, unknown>;
     const simple = data.simple as Record<string, unknown> | undefined;
     const systematic = data.systematic as Record<string, unknown> | undefined;
+    const pps = data.pps as Record<string, unknown> | undefined;
     const stratified = data.stratified as Record<string, unknown> | undefined;
 
     if (!simple || !isSamplingStepCompleted(simple.completed)) {
@@ -147,6 +148,10 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
 
     if (!systematic || !isSamplingStepCompleted(systematic.completed)) {
         return "请先完成系统抽样";
+    }
+
+    if (!pps || !isSamplingStepCompleted(pps.completed)) {
+        return "请先完成PPS抽样";
     }
 
     if (!stratified || !isSamplingStepCompleted(stratified.completed)) {
@@ -164,6 +169,11 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
         const maxExpected = Math.ceil(targetSampleSize * 1.2);
         if (systematicCount === null || systematicCount < minExpected || systematicCount > maxExpected) {
             return `系统抽样样本量需在 ${minExpected}-${maxExpected} 之间`;
+        }
+
+        const ppsCount = toInteger(pps.sampleCount);
+        if (ppsCount === null || ppsCount < 1) {
+            return "PPS抽样样本量需大于0";
         }
 
         const stratifiedLayers = Array.isArray(stratified.layers) ? stratified.layers : [];

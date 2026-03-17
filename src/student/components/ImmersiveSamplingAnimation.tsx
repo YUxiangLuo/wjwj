@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { X, CheckCircle2, Users, Target, Layers, Shuffle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type SamplingMethod = "simple" | "systematic" | "stratified";
+type SamplingMethod = "simple" | "systematic" | "pps" | "stratified";
 
 interface StratifiedLayer {
     name: string;
@@ -33,6 +33,7 @@ const TOTAL_DOTS = GRID_COLS * GRID_ROWS; // 1000 visual dots
 const METHOD_META: Record<SamplingMethod, { label: string; color: string; accent: string; icon: typeof Shuffle }> = {
     simple: { label: "简单随机抽样", color: "from-indigo-600/20 to-violet-600/20", accent: "indigo", icon: Shuffle },
     systematic: { label: "系统抽样", color: "from-teal-600/20 to-cyan-600/20", accent: "teal", icon: Target },
+    pps: { label: "PPS抽样", color: "from-purple-600/20 to-fuchsia-600/20", accent: "purple", icon: Target },
     stratified: { label: "分层抽样", color: "from-amber-600/20 to-orange-600/20", accent: "amber", icon: Layers },
 };
 
@@ -46,6 +47,11 @@ const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; samplin
         populating: "排列总体顺序...",
         sampling: "按固定间隔依次抽取...",
         complete: "系统抽样完成",
+    },
+    pps: {
+        populating: "计算各单位规模权重...",
+        sampling: "按规模概率系统选取...",
+        complete: "PPS抽样完成",
     },
     stratified: {
         populating: "按分层变量划分总体...",
@@ -195,7 +201,9 @@ export function ImmersiveSamplingAnimation({
         // Scale sample size to visual grid
         const visualSampleSize = Math.min(Math.round((sampleSize / populationSize) * TOTAL_DOTS), TOTAL_DOTS);
 
-        if (method === "simple") {
+        if (method === "simple" || method === "pps") {
+            // PPS visual animation is similar to simple random but we highlight
+            // it as "weighted" — the actual statistical weighting happens on the server.
             const shuffled = shuffleIndices(TOTAL_DOTS, rng);
             selection = shuffled.slice(0, visualSampleSize);
         } else if (method === "systematic") {

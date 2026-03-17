@@ -1,5 +1,6 @@
 import {
     createSeededRandom,
+    performPPSSampling,
     performSimpleSampling,
     performStratifiedSampling,
     performSystematicSampling,
@@ -12,7 +13,7 @@ import {
     isSystematicRangeWithinAcceptedRange,
 } from "./systematic-sampling";
 
-export type SamplingMethod = "simple" | "systematic" | "stratified";
+export type SamplingMethod = "simple" | "systematic" | "pps" | "stratified";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -111,6 +112,37 @@ export async function executeSamplingAction(params: {
             return {
                 ok: true as const,
                 result: { completed: true, kValue, sampleCount: data.length, seed, data },
+            };
+        }
+        case "pps": {
+            const sizeField = toTrimmedString(parsedParams.sizeField);
+            if (!sizeField) {
+                return { ok: false as const, errorMessage: "请选择规模变量" };
+            }
+
+            const hasField = params.population.some((row) => Object.prototype.hasOwnProperty.call(row, sizeField));
+            if (!hasField) {
+                return { ok: false as const, errorMessage: "规模变量不存在于总体数据中" };
+            }
+
+            const sampleSize = Number.parseInt(String(parsedParams.sampleSize ?? ""), 10);
+            if (!Number.isInteger(sampleSize) || sampleSize < 1 || sampleSize > params.population.length) {
+                return {
+                    ok: false as const,
+                    errorMessage: `样本量需为 1-${params.population.length} 之间的整数`,
+                };
+            }
+            if (params.targetSampleSize !== null && sampleSize !== params.targetSampleSize) {
+                return {
+                    ok: false as const,
+                    errorMessage: `PPS抽样样本量需等于目标样本量（${params.targetSampleSize}）`,
+                };
+            }
+
+            const data = await performPPSSampling(params.population, sizeField, sampleSize, random);
+            return {
+                ok: true as const,
+                result: { completed: true, sizeField, sampleCount: data.length, seed, data },
             };
         }
         case "stratified": {
