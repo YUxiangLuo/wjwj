@@ -170,6 +170,11 @@ export function ExperimentLayout() {
                     };
                 });
 
+                // Sync stage state so renderStage() reflects the change immediately
+                if (data.currentStage != null) {
+                    setCurrentStage(data.currentStage);
+                }
+
                 return true;
             }
             setSaveError(res.error?.message ?? "保存失败，请稍后重试");
@@ -190,11 +195,7 @@ export function ExperimentLayout() {
 
     const handleNextStage = useCallback(async () => {
         if (currentStage < 4) {
-            const newStage = currentStage + 1;
-            const success = await saveExperiment({ currentStage: newStage });
-            if (success) {
-                setCurrentStage(newStage);
-            }
+            await saveExperiment({ currentStage: currentStage + 1 });
         }
     }, [currentStage, saveExperiment]);
 

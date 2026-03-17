@@ -164,8 +164,8 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     const handleConfirmNext = async () => {
         const samplePlanData = buildSamplePlanData();
-        await saveExperiment({ samplePlan: samplePlanData, currentStage: 3 });
-        setShowLaunch(true);
+        const success = await saveExperiment({ samplePlan: samplePlanData, currentStage: 3 });
+        if (success) setShowLaunch(true);
     };
 
     const [showLaunch, setShowLaunch] = useState(false);
@@ -497,8 +497,8 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     sampleSize={finalSampleSize}
                     confidenceLevel={confidenceLevel}
                     marginOfError={marginOfError[0] ?? 5}
-                    onComplete={() => { setShowLaunch(false); onNext(); }}
-                    onClose={() => { setShowLaunch(false); onNext(); }}
+                    onComplete={() => setShowLaunch(false)}
+                    onClose={() => setShowLaunch(false)}
                 />
             )}
         </div>
