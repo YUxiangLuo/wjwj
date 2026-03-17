@@ -216,11 +216,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const methodRows = useMemo<Record<MethodKey, SampleRow[]>>(() => ({
         simple: ((experiment?.samplingResults as any)?.simple?.data ?? []) as SampleRow[],
         systematic: ((experiment?.samplingResults as any)?.systematic?.data ?? []) as SampleRow[],
+        pps: ((experiment?.samplingResults as any)?.pps?.data ?? []) as SampleRow[],
         stratified: ((experiment?.samplingResults as any)?.stratified?.data ?? []) as SampleRow[],
     }), [experiment?.samplingResults]);
 
     const allRows = useMemo(() => {
-        return [...methodRows.simple, ...methodRows.systematic, ...methodRows.stratified];
+        return [...methodRows.simple, ...methodRows.systematic, ...methodRows.pps, ...methodRows.stratified];
     }, [methodRows]);
 
     const numericFields = useMemo(() => collectNumericFields(allRows), [allRows]);
@@ -298,6 +299,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const distributionSeries = useMemo<ChartSeries[]>(() => [
         { key: "simple", label: METHOD_META.simple.label, color: METHOD_META.simple.color },
         { key: "systematic", label: METHOD_META.systematic.label, color: METHOD_META.systematic.color },
+        { key: "pps", label: METHOD_META.pps.label, color: METHOD_META.pps.color },
         { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
         ...(distributionResult.withPopulation ? [POPULATION_SERIES] : []),
     ], [distributionResult.withPopulation]);
@@ -305,6 +307,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const representativenessSeries = useMemo<ChartSeries[]>(() => [
         { key: "simple", label: METHOD_META.simple.label, color: METHOD_META.simple.color },
         { key: "systematic", label: METHOD_META.systematic.label, color: METHOD_META.systematic.color },
+        { key: "pps", label: METHOD_META.pps.label, color: METHOD_META.pps.color },
         { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
     ], []);
 
@@ -379,7 +382,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         }
     };
 
-    const handleExport = async (type: "simple" | "systematic" | "stratified" | "all") => {
+    const handleExport = async (type: MethodKey | "all") => {
         if (!experiment?.taskId) return;
         try {
             const res = await fetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
@@ -587,6 +590,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             <Button variant="outline" data-testid="student-analysis-export-systematic" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("systematic")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 系统抽样结果
+                            </Button>
+                            <Button variant="outline" data-testid="student-analysis-export-pps" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("pps")}>
+                                <FileText className="w-4 h-4 mr-2" />
+                                PPS抽样结果
                             </Button>
                             <Button variant="outline" data-testid="student-analysis-export-stratified" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("stratified")}>
                                 <FileText className="w-4 h-4 mr-2" />

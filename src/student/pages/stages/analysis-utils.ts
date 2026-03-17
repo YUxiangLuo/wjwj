@@ -1,4 +1,5 @@
-export type MethodKey = "simple" | "systematic" | "stratified";
+import type { MethodKey } from "../../api-client";
+export type { MethodKey };
 export type SampleRow = Record<string, unknown>;
 
 export interface ChartSeries {
@@ -15,6 +16,7 @@ export interface ChartRow {
 export const METHOD_META: Record<MethodKey, { label: string; color: string }> = {
     simple: { label: "简单随机", color: "#6366f1" },
     systematic: { label: "系统抽样", color: "#14b8a6" },
+    pps: { label: "PPS抽样", color: "#a855f7" },
     stratified: { label: "分层抽样", color: "#f59e0b" },
 };
 

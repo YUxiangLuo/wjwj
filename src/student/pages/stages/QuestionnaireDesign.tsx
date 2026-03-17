@@ -421,6 +421,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const scoreItems = useMemo<ScoreItem[]>(() => {
         const items: ScoreItem[] = [];
 
+        // 1. Title completeness (10 points)
         items.push({
             label: "标题完整性",
             points: validation.title ? 10 : 0,
@@ -428,59 +429,116 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
             message: validation.title ? "标题长度符合要求" : "标题需为1-100字",
         });
 
+        // 2. Welcome text quality (10 points, progressive)
+        const welcomeScore = !validation.welcomeText ? 0 : welcomeTextLength >= 150 ? 10 : welcomeTextLength >= 80 ? 8 : 6;
         items.push({
             label: "欢迎语质量",
-            points: validation.welcomeText ? (welcomeTextLength >= 80 ? 15 : 12) : 0,
-            status: validation.welcomeText ? "pass" : "fail",
-            message: validation.welcomeText ? "欢迎语字数符合要求" : "欢迎语需在20-1000字之间",
+            points: welcomeScore,
+            status: !validation.welcomeText ? "fail" : welcomeTextLength >= 80 ? "pass" : "warning",
+            message: !validation.welcomeText ? "欢迎语需在20-1000字之间" : welcomeTextLength >= 150 ? "欢迎语详细完整" : welcomeTextLength >= 80 ? "欢迎语内容较好" : "建议丰富欢迎语内容（≥80字更佳）",
         });
 
+        // 3. Ending text quality (10 points, progressive)
+        const endingScore = !validation.endingText ? 0 : endingTextLength >= 150 ? 10 : endingTextLength >= 80 ? 8 : 6;
         items.push({
             label: "结束语质量",
-            points: validation.endingText ? (endingTextLength >= 80 ? 15 : 12) : 0,
-            status: validation.endingText ? "pass" : "fail",
-            message: validation.endingText ? "结束语字数符合要求" : "结束语需在20-1000字之间",
+            points: endingScore,
+            status: !validation.endingText ? "fail" : endingTextLength >= 80 ? "pass" : "warning",
+            message: !validation.endingText ? "结束语需在20-1000字之间" : endingTextLength >= 150 ? "结束语详细完整" : endingTextLength >= 80 ? "结束语内容较好" : "建议丰富结束语内容（≥80字更佳）",
         });
 
+        // 4. Question count (15 points, progressive)
+        const qCount = questions.length;
+        const countScore = !validation.questionCount ? 0 : qCount >= 15 ? 15 : qCount >= 10 ? 12 : 8;
         items.push({
             label: "题目数量",
-            points: validation.questionCount ? 20 : 0,
-            status: validation.questionCount ? "pass" : "fail",
-            message: validation.questionCount ? "题目数量在5-50题范围内" : "题目数量需在5-50题",
+            points: countScore,
+            status: !validation.questionCount ? "fail" : qCount >= 10 ? "pass" : "warning",
+            message: !validation.questionCount ? "题目数量需在5-50题" : qCount >= 15 ? "题目数量丰富" : qCount >= 10 ? "题目数量良好" : "建议增加至10题以上",
         });
 
+        // 5. Option configuration (10 points)
         items.push({
             label: "选项配置",
-            points: validation.optionCount ? 20 : 0,
+            points: validation.optionCount ? 10 : 0,
             status: validation.optionCount ? "pass" : "fail",
             message: validation.optionCount
                 ? "单选/多选题选项配置有效"
                 : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 配置无效`,
         });
 
-        const diversityScore = validation.questionCount
-            ? (validation.questionTypes ? 20 : 12)
-            : 0;
+        // 6. Type diversity (15 points, based on number of types used)
+        const usedTypes = new Set(questions.map((q) => q.type));
+        const typeCount = usedTypes.size;
+        const typeScore = !validation.questionCount ? 0 : typeCount >= 4 ? 15 : typeCount >= 3 ? 12 : typeCount >= 2 ? 8 : 4;
         items.push({
             label: "题型多样性",
-            points: diversityScore,
-            status: validation.questionCount
-                ? (validation.questionTypes ? "pass" : "warning")
-                : "fail",
-            message: validation.questionCount
-                ? (validation.questionTypes ? "题型结构较均衡" : "建议至少包含2种题型")
-                : "请先满足题目数量要求",
+            points: typeScore,
+            status: !validation.questionCount ? "fail" : typeCount >= 3 ? "pass" : "warning",
+            message: !validation.questionCount
+                ? "请先满足题目数量要求"
+                : typeCount >= 4 ? "使用了全部4种题型" : typeCount >= 3 ? `使用了${typeCount}种题型` : "建议至少使用3种题型（含量表题）",
+        });
+
+        // 7. Scale question usage (10 points) - Customer feedback: encourage Likert scale questions
+        const scaleQuestions = questions.filter((q) => q.type === "scale");
+        const hasScaleQ = scaleQuestions.length > 0;
+        const scaleScore = !validation.questionCount ? 0 : scaleQuestions.length >= 2 ? 10 : hasScaleQ ? 7 : 0;
+        items.push({
+            label: "量表题使用",
+            points: scaleScore,
+            status: !validation.questionCount ? "fail" : scaleQuestions.length >= 2 ? "pass" : hasScaleQ ? "warning" : "fail",
+            message: !validation.questionCount
+                ? "请先满足题目数量要求"
+                : scaleQuestions.length >= 2 ? `已包含${scaleQuestions.length}道量表题` : hasScaleQ ? "建议包含至少2道量表题" : "建议添加量表题（如 Likert 量表）",
+        });
+
+        // 8. Question content quality (10 points) - check average content length
+        const avgContentLen = questions.length > 0 ? questions.reduce((sum, q) => sum + q.content.trim().length, 0) / questions.length : 0;
+        const contentScore = !validation.questionCount ? 0 : avgContentLen >= 20 ? 10 : avgContentLen >= 10 ? 7 : 4;
+        items.push({
+            label: "题目表述质量",
+            points: contentScore,
+            status: !validation.questionCount ? "fail" : avgContentLen >= 20 ? "pass" : "warning",
+            message: !validation.questionCount
+                ? "请先满足题目数量要求"
+                : avgContentLen >= 20 ? "题目表述清晰完整" : avgContentLen >= 10 ? "建议完善题目描述" : "题目表述过于简短",
+        });
+
+        // 9. Option richness for choice questions (10 points) - average options per choice question
+        const choiceQuestions = questions.filter((q) => q.type === "single" || q.type === "multiple");
+        const avgOptions = choiceQuestions.length > 0 ? choiceQuestions.reduce((sum, q) => sum + (q.options?.length ?? 0), 0) / choiceQuestions.length : 0;
+
+        let optionRichnessScore: number;
+        if (!validation.questionCount) {
+            optionRichnessScore = 0;
+        } else if (choiceQuestions.length === 0) {
+            optionRichnessScore = 10; // full points when all questions are boolean/scale
+        } else if (avgOptions >= 4) {
+            optionRichnessScore = 10;
+        } else if (avgOptions >= 3) {
+            optionRichnessScore = 7;
+        } else {
+            optionRichnessScore = 5;
+        }
+        items.push({
+            label: "选项丰富度",
+            points: optionRichnessScore,
+            status: !validation.questionCount ? "fail" : avgOptions >= 4 || choiceQuestions.length === 0 ? "pass" : "warning",
+            message: !validation.questionCount
+                ? "请先满足题目数量要求"
+                : choiceQuestions.length === 0 ? "无选择类题目" : avgOptions >= 4 ? "选项设置丰富" : "建议每题设置4个以上选项",
         });
 
         return items;
     }, [
         invalidOptionQuestions,
+        questions,
         validation.title,
         validation.welcomeText,
         validation.endingText,
         validation.questionCount,
         validation.optionCount,
-        validation.questionTypes,
         welcomeTextLength,
         endingTextLength,
     ]);

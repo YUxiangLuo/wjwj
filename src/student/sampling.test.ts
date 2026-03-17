@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { createSeededRandom, performSimpleSampling, performStratifiedSampling, performSystematicSampling } from "./sampling";
+import { createSeededRandom, performPPSSampling, performSimpleSampling, performStratifiedSampling, performSystematicSampling } from "./sampling";
 
 const population = Array.from({ length: 30 }, (_, i) => ({ id: i + 1, group: i % 3 === 0 ? "A" : "B" }));
 
@@ -136,4 +136,65 @@ test("stratified sampling with empty population returns empty array", async () =
 test("stratified sampling with empty layers returns empty array", async () => {
     const result = await performStratifiedSampling(stratifiedPop, "region", [], createSeededRandom("empty-layers"));
     expect(result).toEqual([]);
+});
+
+// PPS sampling tests
+
+const ppsPop = Array.from({ length: 50 }, (_, i) => ({
+    id: i + 1,
+    size: (i + 1) * 10, // sizes: 10, 20, 30, ..., 500
+}));
+
+test("PPS sampling is deterministic with same seed", async () => {
+    const seed = "pps-2026";
+    const first = await performPPSSampling(ppsPop, "size", 10, createSeededRandom(seed));
+    const second = await performPPSSampling(ppsPop, "size", 10, createSeededRandom(seed));
+    expect(first).toEqual(second);
+});
+
+test("PPS sampling changes with different seeds", async () => {
+    const first = await performPPSSampling(ppsPop, "size", 10, createSeededRandom("pps-a"));
+    const second = await performPPSSampling(ppsPop, "size", 10, createSeededRandom("pps-b"));
+    expect(first).not.toEqual(second);
+});
+
+test("PPS sampling returns exactly the requested sample count", async () => {
+    const result = await performPPSSampling(ppsPop, "size", 8, createSeededRandom("pps-check"));
+    expect(result.length).toBe(8);
+    for (const item of result) {
+        expect(ppsPop).toContainEqual(item);
+    }
+});
+
+test("PPS sampling on empty population returns empty array", async () => {
+    const result = await performPPSSampling([], "size", 5, createSeededRandom("pps-empty"));
+    expect(result).toEqual([]);
+});
+
+test("PPS sampling with n=0 returns empty array", async () => {
+    const result = await performPPSSampling(ppsPop, "size", 0, createSeededRandom("pps-zero"));
+    expect(result).toEqual([]);
+});
+
+test("PPS sampling falls back to simple random when all sizes are zero", async () => {
+    const zeroSizePop = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, size: 0 }));
+    const result = await performPPSSampling(zeroSizePop, "size", 5, createSeededRandom("pps-zero-size"));
+    expect(result.length).toBe(5);
+});
+
+test("PPS sampling falls back when size field is missing", async () => {
+    const noSizePop = Array.from({ length: 20 }, (_, i) => ({ id: i + 1 }));
+    const result = await performPPSSampling(noSizePop, "missing_field", 5, createSeededRandom("pps-no-field"));
+    expect(result.length).toBe(5);
+});
+
+test("PPS sampling returns exact count even with highly skewed sizes", async () => {
+    // One dominant unit with size 10000, rest have size 1 — systematic PPS may
+    // land on the dominant unit multiple times; we must still return n items.
+    const skewedPop = [
+        { id: 1, size: 10000 },
+        ...Array.from({ length: 49 }, (_, i) => ({ id: i + 2, size: 1 })),
+    ];
+    const result = await performPPSSampling(skewedPop, "size", 10, createSeededRandom("pps-skewed"));
+    expect(result.length).toBe(10);
 });

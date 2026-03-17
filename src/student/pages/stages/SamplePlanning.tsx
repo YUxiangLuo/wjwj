@@ -15,30 +15,15 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calculator, Users, Info, CheckCircle, RotateCcw } from "lucide-react";
+import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2 } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
 import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
+import { calculateFinitePopulationSampleSize } from "../../experiment/sample-plan";
 
 interface SamplePlanningProps {
     onNext: () => void;
     onPrev: () => void;
-}
-
-function computeRecommendedSampleSize(confidenceLevel: string, marginOfError: number, populationSize: number) {
-    const zValues: Record<string, number> = {
-        "90": 1.645,
-        "95": 1.96,
-        "99": 2.576,
-    };
-
-    const z = zValues[confidenceLevel] ?? 1.96;
-    const e = marginOfError / 100;
-    const p = 0.5;
-
-    const n0 = (z * z * p * (1 - p)) / (e * e);
-    const n = n0 / (1 + (n0 - 1) / populationSize);
-    return Math.ceil(n);
 }
 
 export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
@@ -49,6 +34,8 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     const [confidenceLevel, setConfidenceLevel] = useState(initialData?.confidenceLevel ?? "95");
     const [marginOfError, setMarginOfError] = useState([initialData?.marginOfError ?? 5]);
+    const [designEffect, setDesignEffect] = useState(initialData?.designEffect ?? 1);
+    const [nonResponseRate, setNonResponseRate] = useState(initialData?.nonResponseRate ?? 0);
     const [finalSampleSize, setFinalSampleSize] = useState(initialData?.finalSampleSize ?? 384);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const serverSnapshotRef = useRef("");
@@ -65,8 +52,14 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     // Calculate recommended sample size
     const calculateSampleSize = useCallback(() => {
-        return computeRecommendedSampleSize(confidenceLevel, marginOfError[0] ?? 5, N);
-    }, [confidenceLevel, marginOfError, N]);
+        return calculateFinitePopulationSampleSize({
+            confidenceLevel,
+            marginOfError: marginOfError[0] ?? 5,
+            populationSize: N,
+            designEffect,
+            nonResponseRate,
+        }) ?? 384;
+    }, [confidenceLevel, marginOfError, N, designEffect, nonResponseRate]);
 
     const recommendedSize = calculateSampleSize();
     const minSize = 30;
@@ -77,20 +70,26 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const buildSamplePlanData = useCallback((): SamplePlanData => ({
         confidenceLevel,
         marginOfError: marginOfError[0] ?? 5,
+        designEffect,
+        nonResponseRate,
         recommendedSize,
         finalSampleSize,
-    }), [confidenceLevel, marginOfError, recommendedSize, finalSampleSize]);
+    }), [confidenceLevel, marginOfError, designEffect, nonResponseRate, recommendedSize, finalSampleSize]);
 
     useEffect(() => {
         if (initialData) {
-            const initialRecommended = initialData.recommendedSize ?? computeRecommendedSampleSize(
-                initialData.confidenceLevel ?? "95",
-                initialData.marginOfError ?? 5,
-                N
-            );
+            const initialRecommended = initialData.recommendedSize ?? calculateFinitePopulationSampleSize({
+                confidenceLevel: initialData.confidenceLevel ?? "95",
+                marginOfError: initialData.marginOfError ?? 5,
+                populationSize: N,
+                designEffect: initialData.designEffect ?? 1,
+                nonResponseRate: initialData.nonResponseRate ?? 0,
+            }) ?? 384;
             serverSnapshotRef.current = JSON.stringify({
                 confidenceLevel: initialData.confidenceLevel ?? "95",
                 marginOfError: initialData.marginOfError ?? 5,
+                designEffect: initialData.designEffect ?? 1,
+                nonResponseRate: initialData.nonResponseRate ?? 0,
                 recommendedSize: initialRecommended,
                 finalSampleSize: initialData.finalSampleSize ?? initialRecommended,
             });
@@ -262,6 +261,85 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         </CardContent>
                     </Card>
 
+                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                                    <Settings2 className="w-5 h-5 text-amber-500" />
+                                    调整参数
+                                </CardTitle>
+                            </div>
+                            <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
+                                根据实际调查情况设置设计效应和预期无回答率
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-8 pt-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <Label className="text-slate-700 dark:text-slate-300">设计效应 (deff)</Label>
+                                        <span className="text-xs font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
+                                            deff = {designEffect.toFixed(1)}
+                                        </span>
+                                    </div>
+                                    <Input
+                                        type="number"
+                                        value={designEffect}
+                                        onChange={(e) => {
+                                            const v = parseFloat(e.target.value);
+                                            if (!Number.isNaN(v) && v >= 1 && v <= 5) {
+                                                setDesignEffect(Math.round(v * 10) / 10);
+                                            }
+                                        }}
+                                        min={1}
+                                        max={5}
+                                        step={0.1}
+                                        data-testid="student-sample-plan-deff"
+                                        className="bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:ring-amber-500/50"
+                                    />
+                                    <p className="text-xs text-slate-500">
+                                        设计效应反映复杂抽样设计对方差的影响。简单随机抽样时为 1.0，使用整群抽样时通常为 1.5-3.0。
+                                    </p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <Label className="text-slate-700 dark:text-slate-300">预期无回答率</Label>
+                                        <div className="flex items-center gap-1">
+                                            <Input
+                                                type="number"
+                                                value={Math.round(nonResponseRate * 100)}
+                                                onChange={(e) => {
+                                                    const v = parseInt(e.target.value);
+                                                    if (!Number.isNaN(v) && v >= 0 && v <= 50) {
+                                                        setNonResponseRate(v / 100);
+                                                    }
+                                                }}
+                                                min={0}
+                                                max={50}
+                                                data-testid="student-sample-plan-nrr-input"
+                                                className="w-16 h-7 text-sm font-bold text-amber-600 dark:text-amber-400 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-center px-1"
+                                            />
+                                            <span className="text-sm font-bold text-amber-600 dark:text-amber-400">%</span>
+                                        </div>
+                                    </div>
+                                    <Slider
+                                        value={[Math.round(nonResponseRate * 100)]}
+                                        onValueChange={(v) => setNonResponseRate((v[0] ?? 0) / 100)}
+                                        min={0}
+                                        max={50}
+                                        step={5}
+                                        data-testid="student-sample-plan-nrr"
+                                        className="py-4 [&>.relative>.absolute]:bg-amber-500"
+                                    />
+                                    <p className="text-xs text-slate-500">
+                                        预期无回答率用于补偿调查中不回应的比例。一般线上调查约 10%-30%，面对面调查约 5%-15%。
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
                     <Card className={`rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm transition-colors ${!isValidSize ? "border-rose-500/50 ring-1 ring-rose-500/20" : ""}`}>
                         <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
                             <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -329,11 +407,15 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             <div className="rounded-xl border border-sky-200 bg-white/80 p-4 font-mono text-xs text-sky-800 shadow-sm dark:border-sky-400/20 dark:bg-sky-950/40 dark:text-sky-200 space-y-1">
                                 <p className="mb-2 text-sky-500 dark:text-sky-300/70">// 样本量计算公式</p>
                                 <p>n₀ = (Z² × p × (1-p)) / E²</p>
-                                <p>n = n₀ / (1 + (n₀ - 1) / N)</p>
+                                <p>n₁ = n₀ / (1 + (n₀ - 1) / N)</p>
+                                <p className="mt-1 text-sky-500 dark:text-sky-300/70">// 调整公式</p>
+                                <p>n = n₁ × deff / (1 - NRR)</p>
                             </div>
                             <div className="space-y-2 text-xs leading-relaxed">
                                 <p>• <strong className="text-sky-900 dark:text-sky-200">置信水平 (Z)</strong>：结果的可信程度。95% 意味着如果重复调查 100 次，有 95 次的结果都在误差范围内。</p>
                                 <p>• <strong className="text-sky-900 dark:text-sky-200">允许误差 (E)</strong>：结果与真实值的最大允许偏差。</p>
+                                <p>• <strong className="text-sky-900 dark:text-sky-200">设计效应 (deff)</strong>：复杂抽样设计相对简单随机抽样的方差膨胀系数。整群抽样时 deff 通常 &gt; 1。</p>
+                                <p>• <strong className="text-sky-900 dark:text-sky-200">无回答率 (NRR)</strong>：预期调查中不回应的比例，用于扩大样本量以弥补无效问卷。</p>
                             </div>
                             <div className="rounded-xl bg-slate-50/50 dark:bg-slate-900/50 p-3 border border-slate-200 dark:border-slate-800">
                                 <p className="text-xs text-slate-500 mb-2 font-medium">常用 Z 值参考</p>
@@ -358,6 +440,14 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             <div className="flex justify-between text-sm py-1 border-b border-slate-200/50 dark:border-slate-800/50">
                                 <span className="text-slate-500">允许误差</span>
                                 <span className="text-slate-800 dark:text-slate-200 font-mono">{marginOfError[0]}%</span>
+                            </div>
+                            <div className="flex justify-between text-sm py-1 border-b border-slate-200/50 dark:border-slate-800/50">
+                                <span className="text-slate-500">设计效应</span>
+                                <span className="text-slate-800 dark:text-slate-200 font-mono">{designEffect.toFixed(1)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm py-1 border-b border-slate-200/50 dark:border-slate-800/50">
+                                <span className="text-slate-500">无回答率</span>
+                                <span className="text-slate-800 dark:text-slate-200 font-mono">{Math.round(nonResponseRate * 100)}%</span>
                             </div>
                             <div className="flex justify-between text-sm py-1 border-b border-slate-200/50 dark:border-slate-800/50">
                                 <span className="text-slate-500">建议样本量</span>

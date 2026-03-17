@@ -168,6 +168,7 @@ function OverviewSection({
     const methods = [
         { label: "简单随机", done: samplingResults?.simple?.completed, count: samplingResults?.simple?.sampleCount },
         { label: "系统抽样", done: samplingResults?.systematic?.completed, count: samplingResults?.systematic?.sampleCount },
+        { label: "PPS抽样", done: samplingResults?.pps?.completed, count: samplingResults?.pps?.sampleCount },
         { label: "分层抽样", done: samplingResults?.stratified?.completed, count: samplingResults?.stratified?.completed ? samplingResults?.stratified?.layers?.reduce((s, l) => s + l.sampleCount, 0) : undefined },
     ];
 
@@ -293,7 +294,7 @@ function SamplingSection({
         return <EmptyState text="暂无抽样数据" />;
     }
 
-    const methodCards: { key: string; label: string; color: string; data: { completed?: boolean; sampleCount?: number; seed?: number; kValue?: number; stratifyBy?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
+    const methodCards: { key: string; label: string; color: string; data: { completed?: boolean; sampleCount?: number; seed?: number; kValue?: number; stratifyBy?: string; sizeField?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
         {
             key: "simple",
             label: "简单随机抽样",
@@ -305,6 +306,12 @@ function SamplingSection({
             label: "系统抽样",
             color: "teal",
             data: samplingResults.systematic,
+        },
+        {
+            key: "pps",
+            label: "PPS抽样",
+            color: "purple",
+            data: samplingResults.pps,
         },
         {
             key: "stratified",

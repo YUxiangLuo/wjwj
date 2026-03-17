@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { X, BarChart3, TrendingUp, Layers, Activity, AlertTriangle } from "lucide-react";
-
-/* ── types ── */
-type MethodKey = "simple" | "systematic" | "stratified";
-type SampleRow = Record<string, unknown>;
+import type { MethodKey, SampleRow } from "../pages/stages/analysis-utils";
 
 interface MethodMeta {
     label: string;
@@ -24,10 +21,11 @@ interface Props {
 const METHOD_META: Record<MethodKey, MethodMeta> = {
     simple: { label: "简单随机抽样", color: "#6366f1", glow: "shadow-indigo-500/30", icon: BarChart3 },
     systematic: { label: "系统抽样", color: "#14b8a6", glow: "shadow-teal-500/30", icon: TrendingUp },
+    pps: { label: "PPS抽样", color: "#a855f7", glow: "shadow-purple-500/30", icon: Activity },
     stratified: { label: "分层抽样", color: "#f59e0b", glow: "shadow-amber-500/30", icon: Layers },
 };
 
-const METHODS: MethodKey[] = ["simple", "systematic", "stratified"];
+const METHODS: MethodKey[] = ["simple", "systematic", "pps", "stratified"];
 
 /* ── helpers ── */
 function toNumber(v: unknown): number | null {
@@ -73,9 +71,9 @@ function calcDeviation(
     populationStats: Record<string, Record<string, number>>
 ): Record<MethodKey, number> {
     const popField = populationStats[field];
-    if (!popField) return { simple: 0, systematic: 0, stratified: 0 };
+    if (!popField) return { simple: 0, systematic: 0, pps: 0, stratified: 0 };
     const totalPop = Object.values(popField).reduce((s, v) => s + v, 0);
-    if (!totalPop) return { simple: 0, systematic: 0, stratified: 0 };
+    if (!totalPop) return { simple: 0, systematic: 0, pps: 0, stratified: 0 };
 
     const categories = new Set(Object.keys(popField));
     for (const m of METHODS) {
@@ -213,10 +211,11 @@ export function ImmersiveAnalysisDashboard({
     }, [methodRows, selectedNumField]);
 
     const distributionData = useMemo<Record<MethodKey, Record<string, number>>>(() => {
-        if (!selectedCatField) return { simple: {}, systematic: {}, stratified: {} };
+        if (!selectedCatField) return { simple: {}, systematic: {}, pps: {}, stratified: {} };
         const result: Record<MethodKey, Record<string, number>> = {
             simple: {},
             systematic: {},
+            pps: {},
             stratified: {},
         };
         for (const m of METHODS) {
@@ -237,7 +236,7 @@ export function ImmersiveAnalysisDashboard({
     }, [distributionData, selectedCatField, populationStats]);
 
     const deviations = useMemo(() => {
-        if (!selectedCatField) return { simple: 0, systematic: 0, stratified: 0 };
+        if (!selectedCatField) return { simple: 0, systematic: 0, pps: 0, stratified: 0 };
         return calcDeviation(methodRows, selectedCatField, populationStats);
     }, [methodRows, selectedCatField, populationStats]);
 
