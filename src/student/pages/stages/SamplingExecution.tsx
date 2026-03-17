@@ -391,11 +391,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     const applyNeymanAllocation = () => {
-        // Neyman allocation: n_h ∝ N_h × S_h
-        // Since we don't have S_h (standard deviation per stratum), we approximate using N_h (size)
-        // which degenerates to proportional allocation when S_h is assumed equal.
-        // A more advanced implementation would use the actual standard deviations per stratum.
-        // For now, we use N_h * sqrt(N_h) as a proxy giving larger strata even more weight.
+        // Simplified Neyman allocation heuristic:
+        // True Neyman allocation uses n_h ∝ N_h × S_h (stratum size × stratum std dev),
+        // but we lack per-stratum standard deviations. This heuristic uses N_h^1.5
+        // to give disproportionately more samples to larger strata, approximating
+        // the Neyman principle when variability correlates with stratum size.
         if (layers.length === 0) return;
         const weights = layers.map((l) => l.count * Math.sqrt(l.count));
         const totalWeight = weights.reduce((a, b) => a + b, 0);

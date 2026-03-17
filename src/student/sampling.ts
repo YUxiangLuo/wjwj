@@ -120,7 +120,7 @@ export function performPPSSampling(
 
     for (let i = 0; i < sampleSize; i++) {
         // Find the unit where cumulative size crosses the pointer
-        while (dataIdx < cumulative.length - 1 && cumulative[dataIdx]! < pointer) {
+        while (dataIdx < cumulative.length - 1 && (cumulative[dataIdx] ?? 0) < pointer) {
             dataIdx++;
         }
         if (!selectedIndices.has(dataIdx)) {

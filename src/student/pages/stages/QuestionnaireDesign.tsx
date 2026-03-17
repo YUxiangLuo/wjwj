@@ -508,9 +508,19 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         // 9. Option richness for choice questions (10 points) - average options per choice question
         const choiceQuestions = questions.filter((q) => q.type === "single" || q.type === "multiple");
         const avgOptions = choiceQuestions.length > 0 ? choiceQuestions.reduce((sum, q) => sum + (q.options?.length ?? 0), 0) / choiceQuestions.length : 0;
-        const optionRichnessScore = !validation.questionCount || choiceQuestions.length === 0
-            ? (validation.questionCount && choiceQuestions.length === 0 ? 10 : 0) // full points if no choice questions (all boolean/scale)
-            : avgOptions >= 4 ? 10 : avgOptions >= 3 ? 7 : 5;
+
+        let optionRichnessScore: number;
+        if (!validation.questionCount) {
+            optionRichnessScore = 0;
+        } else if (choiceQuestions.length === 0) {
+            optionRichnessScore = 10; // full points when all questions are boolean/scale
+        } else if (avgOptions >= 4) {
+            optionRichnessScore = 10;
+        } else if (avgOptions >= 3) {
+            optionRichnessScore = 7;
+        } else {
+            optionRichnessScore = 5;
+        }
         items.push({
             label: "选项丰富度",
             points: optionRichnessScore,
