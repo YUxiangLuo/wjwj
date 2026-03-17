@@ -31,10 +31,10 @@ import { AnalysisReport } from "./stages/AnalysisReport";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 
 const stages = [
-    { name: "问卷设计", description: "设计调查问卷，包括标题、欢迎语、问题和结束语", icon: FileText },
-    { name: "样本量规划", description: "设置抽样参数，计算最优样本量", icon: Ruler },
-    { name: "抽样执行", description: "使用三种抽样方法从总体中抽取样本", icon: Play },
-    { name: "分析与报告", description: "分析抽样结果，撰写研究报告", icon: BarChart3 },
+    { name: "问卷设计", description: "第一步：围绕调研目标，设计包含判断题、单选题、多选题和量表题的调查问卷，设置标题、欢迎语和结束语", icon: FileText },
+    { name: "样本量规划", description: "第二步：根据置信水平、允许误差、设计效应和预期无回答率等参数，利用公式计算并确定最终调查样本量", icon: Ruler },
+    { name: "抽样执行", description: "第三步：在确定的样本量基础上，分别使用简单随机抽样、系统抽样、PPS抽样和分层抽样四种方法从总体中抽取样本", icon: Play },
+    { name: "分析与报告", description: "第四步：对比各抽样方法的结果差异，分析样本代表性，撰写调查研究报告", icon: BarChart3 },
 ] as const;
 
 // Context for experiment data

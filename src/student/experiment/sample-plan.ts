@@ -8,6 +8,8 @@ export function calculateFinitePopulationSampleSize(params: {
     confidenceLevel: unknown;
     marginOfError: unknown;
     populationSize: number | null | undefined;
+    designEffect?: unknown;
+    nonResponseRate?: unknown;
 }) {
     if (!params.populationSize || params.populationSize <= 0) {
         return null;
@@ -25,8 +27,21 @@ export function calculateFinitePopulationSampleSize(params: {
     const N = params.populationSize;
     const p = 0.5;
 
+    // Basic sample size with finite population correction
     const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
-    const n = n0 / (1 + (n0 - 1) / N);
+    let n = n0 / (1 + (n0 - 1) / N);
+
+    // Apply design effect (deff): accounts for complex sampling designs (e.g., cluster sampling)
+    const deff = Number(params.designEffect);
+    if (Number.isFinite(deff) && deff > 0) {
+        n = n * deff;
+    }
+
+    // Apply non-response rate adjustment: n_final = n / (1 - nonResponseRate)
+    const nrr = Number(params.nonResponseRate);
+    if (Number.isFinite(nrr) && nrr > 0 && nrr < 1) {
+        n = n / (1 - nrr);
+    }
 
     return Math.ceil(n);
 }
@@ -40,6 +55,8 @@ export function attachCalculatedSampleSize(samplePlan: Record<string, any>, popu
         confidenceLevel: samplePlan.confidenceLevel,
         marginOfError: samplePlan.marginOfError,
         populationSize,
+        designEffect: samplePlan.designEffect,
+        nonResponseRate: samplePlan.nonResponseRate,
     });
 
     if (calculatedSampleSize) {

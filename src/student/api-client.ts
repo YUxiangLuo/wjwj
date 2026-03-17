@@ -104,6 +104,8 @@ export interface QuestionnaireData {
 export interface SamplePlanData {
     confidenceLevel: string;
     marginOfError: number;
+    designEffect: number;
+    nonResponseRate: number;
     recommendedSize: number;
     finalSampleSize: number;
 }
