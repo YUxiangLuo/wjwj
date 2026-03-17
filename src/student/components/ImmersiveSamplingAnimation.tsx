@@ -16,6 +16,8 @@ interface Props {
     sampleSize: number;
     /** For systematic */
     kValue?: number;
+    /** For pps */
+    sizeField?: string;
     /** For stratified */
     stratifyBy?: string;
     layers?: StratifiedLayer[];
@@ -169,6 +171,7 @@ export function ImmersiveSamplingAnimation({
     populationSize,
     sampleSize,
     kValue,
+    sizeField,
     stratifyBy,
     layers,
     onAnimationComplete,
@@ -328,16 +331,24 @@ export function ImmersiveSamplingAnimation({
 
     // ─── Intro explanation text ───────────────────────────
     const introText = useMemo(() => {
+        const fieldLabel: Record<string, string> = {
+            gender: "性别", education: "学历",
+            age: "年龄段", age_group: "年龄段",
+            income: "收入水平", city: "城市", city_tier: "城市等级",
+            monthly_expense: "月支出", spending: "消费支出",
+        };
         if (method === "simple") {
             return `即将从 ${populationSize.toLocaleString()} 个总体中随机选取 ${sampleSize} 个样本，每个个体被选中的概率完全相等。`;
         } else if (method === "systematic") {
             return `将按固定间隔 K=${kValue} 从总体中等距抽取样本，以确保样本均匀覆盖整个总体。`;
+        } else if (method === "pps") {
+            const label = fieldLabel[sizeField ?? ""] ?? sizeField ?? "规模";
+            return `按"${label}"大小赋予不同选中概率，从 ${populationSize.toLocaleString()} 个总体中抽取 ${sampleSize} 个样本。`;
         } else {
             const layerNames = (layers ?? []).map((l) => l.name).join("、");
-            const fieldLabel: Record<string, string> = { gender: "性别", education: "学历", age: "年龄段", age_group: "年龄段", income: "收入水平", city: "城市", city_tier: "城市等级" };
-            return `先按"${fieldLabel[stratifyBy ?? ""] ?? stratifyBy}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
+            return `先按"${fieldLabel[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
         }
-    }, [method, populationSize, sampleSize, kValue, stratifyBy, layers]);
+    }, [method, populationSize, sampleSize, kValue, sizeField, stratifyBy, layers]);
 
     const systematicIndicator = useMemo(() => {
         if (method !== "systematic" || phase.type !== "sampling" || selectionOrder.length === 0) {

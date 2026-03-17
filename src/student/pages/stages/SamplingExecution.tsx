@@ -836,14 +836,14 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                             </p>
                                         </div>
                                         <div className="rounded-xl border border-amber-200/80 bg-amber-50/80 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
-                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                            <div className="space-y-2">
                                                 <div className="space-y-1">
                                                     <p className="text-sm font-medium text-amber-900 dark:text-amber-100">快速填充各层样本数</p>
                                                     <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-200/80">
                                                         `按比例分配` 按各层占比分配样本；`Neyman分配` 按各层规模加权分配更多样本给较大层；`等额分配` 平均分配。填充后仍可手动修改。
                                                     </p>
                                                 </div>
-                                                <div className="flex gap-2">
+                                                <div className="flex flex-wrap gap-2">
                                                     <Button variant="outline" size="sm" data-testid="student-sampling-alloc-proportional" className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100 dark:border-amber-400/20 dark:bg-slate-900/40 dark:text-amber-200 dark:hover:bg-amber-500/15" onClick={applyProportionalAllocation} disabled={layers.length === 0}>
                                                         按比例分配
                                                     </Button>
@@ -1005,6 +1005,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                     populationSize={N}
                     sampleSize={animatingMethod === "systematic" ? Math.ceil(N / kValue) : n}
                     kValue={animatingMethod === "systematic" ? kValue : undefined}
+                    sizeField={animatingMethod === "pps" ? ppsSizeField : undefined}
                     stratifyBy={animatingMethod === "stratified" ? stratifyBy : undefined}
                     layers={animatingMethod === "stratified" ? layers.map((l, i) => ({ ...l, sampleCount: layerSampleCounts[i] ?? 0 })) : undefined}
                     onAnimationComplete={() => {
