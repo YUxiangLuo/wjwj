@@ -179,6 +179,7 @@ interface SamplingResultSection {
 interface SamplingResultsExportData {
     simple?: SamplingResultSection;
     systematic?: SamplingResultSection;
+    pps?: SamplingResultSection;
     stratified?: SamplingResultSection;
 }
 
@@ -212,6 +213,7 @@ const exportRoutes: RouteDefinition = {
 
         const simpleData = (results.simple?.data ?? []) as Record<string, unknown>[];
         const systematicData = (results.systematic?.data ?? []) as Record<string, unknown>[];
+        const ppsData = (results.pps?.data ?? []) as Record<string, unknown>[];
         const stratifiedData = (results.stratified?.data ?? []) as Record<string, unknown>[];
 
         let data: Record<string, unknown>[] = [];
@@ -222,6 +224,9 @@ const exportRoutes: RouteDefinition = {
         } else if (type === "systematic") {
             data = systematicData;
             filename = "systematic_sampling.csv";
+        } else if (type === "pps") {
+            data = ppsData;
+            filename = "pps_sampling.csv";
         } else if (type === "stratified") {
             data = stratifiedData;
             filename = "stratified_sampling.csv";
@@ -229,6 +234,7 @@ const exportRoutes: RouteDefinition = {
             data = [
                 ...simpleData.map((row) => ({ __method: "simple", ...row })),
                 ...systematicData.map((row) => ({ __method: "systematic", ...row })),
+                ...ppsData.map((row) => ({ __method: "pps", ...row })),
                 ...stratifiedData.map((row) => ({ __method: "stratified", ...row })),
             ];
             filename = "all_sampling.csv";

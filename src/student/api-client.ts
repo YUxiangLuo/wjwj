@@ -349,7 +349,7 @@ export const experimentApi = {
 
     executeSampling: (
         taskId: number,
-        method: "simple" | "systematic" | "stratified",
+        method: "simple" | "systematic" | "pps" | "stratified",
         params: any
     ) =>
         request<{ success: boolean; result: any }>(
@@ -361,7 +361,7 @@ export const experimentApi = {
         ),
 
     getStats: (taskId: number) =>
-        request<{ stats: Record<string, Record<string, number>> }>(
+        request<{ stats: Record<string, Record<string, number>>; numericFields?: string[] }>(
             `/api/student/tasks/${taskId}/stats`
         ),
 };

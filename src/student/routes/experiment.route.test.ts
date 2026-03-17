@@ -79,6 +79,7 @@ function buildValidSamplingResults() {
     return {
         simple: { completed: true, sampleCount: 50, seed: 1, data: [{ id: 1 }] },
         systematic: { completed: true, kValue: 4, sampleCount: 48, seed: 2, data: [{ id: 2 }] },
+        pps: { completed: true, sizeField: "income", sampleCount: 50, seed: 4, data: [{ id: 4 }] },
         stratified: {
             completed: true,
             stratifyBy: "grade",

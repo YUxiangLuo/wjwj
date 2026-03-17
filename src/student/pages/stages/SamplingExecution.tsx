@@ -127,7 +127,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 if (res.success && res.data?.numericFields) {
                     setNumericFields(res.data.numericFields);
                     if (!ppsSizeField && res.data.numericFields.length > 0) {
-                        setPpsSizeField(res.data.numericFields[0]);
+                        setPpsSizeField(res.data.numericFields[0] ?? "");
                     }
                 }
             }).catch((e) => {

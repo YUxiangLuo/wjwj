@@ -591,6 +591,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 <FileText className="w-4 h-4 mr-2" />
                                 系统抽样结果
                             </Button>
+                            <Button variant="outline" data-testid="student-analysis-export-pps" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("pps")}>
+                                <FileText className="w-4 h-4 mr-2" />
+                                PPS抽样结果
+                            </Button>
                             <Button variant="outline" data-testid="student-analysis-export-stratified" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("stratified")}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 分层抽样结果
