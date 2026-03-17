@@ -840,6 +840,7 @@ async function seed() {
     const samplingResultsComplete = {
         simple: { completed: true, sampleCount: 400, seed: 42, data: buildSampleRows(400, { offset: 0 }) },
         systematic: { completed: true, kValue: 25, sampleCount: 400, seed: 42, data: buildSampleRows(400, { offset: 400 }) },
+        pps: { completed: true, sizeField: "income", sampleCount: 400, seed: 42, data: buildSampleRows(400, { offset: 800 }) },
         stratified: {
             completed: true,
             stratifyBy: "gender",
@@ -848,7 +849,7 @@ async function seed() {
                 { name: "女", count: 5200, ratio: 0.52, sampleCount: 208 },
             ],
             seed: 42,
-            data: buildSampleRows(400, { offset: 800, stratifiedByGender: true }),
+            data: buildSampleRows(400, { offset: 1200, stratifiedByGender: true }),
         },
     };
 
