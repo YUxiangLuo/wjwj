@@ -24,6 +24,12 @@ export interface ScaleQuestionTemplate {
     question: Question;
 }
 
+const INTRO_QUALITY_KEYWORDS = {
+    purpose: ["目的", "主题", "研究", "调查"],
+    duration: ["用时", "分钟", "耗时"],
+    privacy: ["匿名", "保密", "仅用于", "仅供"],
+} as const;
+
 const recommendTypeMap: Record<number, QuestionType> = {
     1: "boolean",
     2: "single",
@@ -186,16 +192,28 @@ export function evaluateQuestionnaireDesign(questionnaire: QuestionnaireData): Q
     const lastQuestion = questions[questions.length - 1];
 
     const introKeywords = [
-        includesAnyKeyword(welcomeText, ["目的", "主题", "研究", "调查"]),
-        includesAnyKeyword(welcomeText, ["用时", "分钟", "耗时"]),
-        includesAnyKeyword(welcomeText, ["匿名", "保密", "仅用于", "仅供"]),
+        includesAnyKeyword(welcomeText, [...INTRO_QUALITY_KEYWORDS.purpose]),
+        includesAnyKeyword(welcomeText, [...INTRO_QUALITY_KEYWORDS.duration]),
+        includesAnyKeyword(welcomeText, [...INTRO_QUALITY_KEYWORDS.privacy]),
     ].filter(Boolean).length;
+    const introStatus: ScoreStatus = title && welcomeText.length >= 40
+        ? (introKeywords >= 2 ? "pass" : "warning")
+        : "fail";
+    const endingStatus: ScoreStatus = endingText.length >= 40 ? "pass" : endingText.length >= 20 ? "warning" : "fail";
+    const countStatus: ScoreStatus = questions.length >= 8 && questions.length <= 20 ? "pass" : questions.length >= 5 && questions.length <= 30 ? "warning" : "fail";
+    const typeStatus: ScoreStatus = questionTypes.size >= 3 ? "pass" : questionTypes.size >= 2 ? "warning" : "fail";
+    const scaleStatus: ScoreStatus = scaleQuestions.length >= 2 && labeledScaleQuestions.length === scaleQuestions.length ? "pass" : "warning";
+    const orderStatus: ScoreStatus = questions.length >= 5 && firstQuestion && firstQuestion.type !== "scale" && lastQuestion && lastQuestion.type !== "multiple"
+        ? "pass"
+        : questions.length >= 5
+            ? "warning"
+            : "fail";
 
     const scoreItems: QuestionnaireScoreItem[] = [
         {
             label: "研究说明完整性",
             points: title && welcomeText.length >= 40 ? (introKeywords >= 2 ? 15 : 11) : 0,
-            status: title && welcomeText.length >= 40 ? (introKeywords >= 2 ? "pass" : "warning") : "fail",
+            status: introStatus,
             message: title && welcomeText.length >= 40
                 ? introKeywords >= 2
                     ? "欢迎语已交代调查目的、预计耗时或保密说明。"
@@ -205,7 +223,7 @@ export function evaluateQuestionnaireDesign(questionnaire: QuestionnaireData): Q
         {
             label: "结束语与回收提示",
             points: endingText.length >= 40 ? 10 : endingText.length >= 20 ? 7 : 0,
-            status: endingText.length >= 40 ? "pass" : endingText.length >= 20 ? "warning" : "fail",
+            status: endingStatus,
             message: endingText.length >= 40
                 ? "结束语较完整，已具备感谢或后续提示。"
                 : endingText.length >= 20
@@ -215,7 +233,7 @@ export function evaluateQuestionnaireDesign(questionnaire: QuestionnaireData): Q
         {
             label: "题量与覆盖面",
             points: questions.length >= 8 && questions.length <= 20 ? 20 : questions.length >= 5 && questions.length <= 30 ? 16 : 0,
-            status: questions.length >= 8 && questions.length <= 20 ? "pass" : questions.length >= 5 && questions.length <= 30 ? "warning" : "fail",
+            status: countStatus,
             message: questions.length >= 8 && questions.length <= 20
                 ? "题量适中，便于控制答题负担。"
                 : questions.length >= 5 && questions.length <= 30
@@ -225,7 +243,7 @@ export function evaluateQuestionnaireDesign(questionnaire: QuestionnaireData): Q
         {
             label: "题型搭配",
             points: questionTypes.size >= 3 ? 15 : questionTypes.size >= 2 ? 11 : 4,
-            status: questionTypes.size >= 3 ? "pass" : questionTypes.size >= 2 ? "warning" : "fail",
+            status: typeStatus,
             message: questionTypes.size >= 3
                 ? "同时包含筛选题、选择题和量表题，结构较均衡。"
                 : questionTypes.size >= 2
@@ -235,7 +253,7 @@ export function evaluateQuestionnaireDesign(questionnaire: QuestionnaireData): Q
         {
             label: "量表题配置",
             points: scaleQuestions.length >= 2 && labeledScaleQuestions.length === scaleQuestions.length ? 25 : scaleQuestions.length >= 1 ? 16 : 6,
-            status: scaleQuestions.length >= 2 && labeledScaleQuestions.length === scaleQuestions.length ? "pass" : scaleQuestions.length >= 1 ? "warning" : "warning",
+            status: scaleStatus,
             message: scaleQuestions.length >= 2 && labeledScaleQuestions.length === scaleQuestions.length
                 ? "量表题数量和端点标签较完整，可支持常见态度/满意度分析。"
                 : scaleQuestions.length >= 1
@@ -245,7 +263,7 @@ export function evaluateQuestionnaireDesign(questionnaire: QuestionnaireData): Q
         {
             label: "题序逻辑",
             points: questions.length >= 5 && firstQuestion && firstQuestion.type !== "scale" && lastQuestion && lastQuestion.type !== "multiple" ? 15 : questions.length >= 5 ? 10 : 0,
-            status: questions.length >= 5 && firstQuestion && firstQuestion.type !== "scale" && lastQuestion && lastQuestion.type !== "multiple" ? "pass" : questions.length >= 5 ? "warning" : "fail",
+            status: orderStatus,
             message: questions.length >= 5 && firstQuestion && firstQuestion.type !== "scale" && lastQuestion && lastQuestion.type !== "multiple"
                 ? "题序较清晰，先进入基本/筛选题，再过渡到核心测量题。"
                 : questions.length >= 5

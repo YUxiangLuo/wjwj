@@ -198,7 +198,10 @@ export async function executeSamplingAction(params: {
                 return { ok: false as const, errorMessage: "PPS 规模变量无效" };
             }
 
-            const positiveRows = params.population.filter((row) => Number.isFinite(Number(row[sizeField])) && Number(row[sizeField]) > 0);
+            const positiveRows = params.population.filter((row) => {
+                const measure = Number(row[sizeField]);
+                return Number.isFinite(measure) && measure > 0;
+            });
             if (positiveRows.length === 0) {
                 return { ok: false as const, errorMessage: "所选规模变量没有可用于 PPS 抽样的正数值" };
             }

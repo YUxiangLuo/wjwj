@@ -302,7 +302,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                                 }}
                                                 min={1}
                                                 max={99}
-                                                data-testid="student-sample-plan-proportion-input"
+                                                data-testid="student-sample-plan-expected-proportion"
                                                 className="w-16 h-7 text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 text-center px-1"
                                             />
                                             <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">%</span>

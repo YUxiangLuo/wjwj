@@ -340,7 +340,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const isStratifiedValid = layers.length > 0 && stratifiedTotal === n && !hasLayerOverflow;
     const isPpsValid = Boolean(ppsSizeField);
 
-    const allCompleted = simpleResult?.completed && systematicResult?.completed && stratifiedResult?.completed;
+    const requiredMethodsCompleted = simpleResult?.completed && systematicResult?.completed && stratifiedResult?.completed;
 
     const handleConfirmNext = async () => {
         await saveResults();
@@ -414,6 +414,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-6">
+                <div className="rounded-xl border border-slate-200 bg-white/60 px-4 py-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-400">
+                    当前阶段仍以简单随机、系统抽样、分层抽样作为必做比较方法；PPS 抽样作为可选增强，用于展示规模不等总体的抽样思路。
+                </div>
                 <TabsList className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl w-full flex h-auto" data-testid="student-sampling-tabs">
                     <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">
                         <div className="flex items-center gap-2">
@@ -918,8 +921,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-200 dark:bg-slate-800 text-slate-500"}>
-                    {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${[simpleResult?.completed, systematicResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/3)`}
+                <Button onClick={() => setConfirmNextOpen(true)} disabled={!requiredMethodsCompleted} data-testid="student-sampling-next" className={requiredMethodsCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-200 dark:bg-slate-800 text-slate-500"}>
+                    {requiredMethodsCompleted ? "完成本阶段" : `请完成所有抽样方法 (${[simpleResult?.completed, systematicResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/3)`}
                     <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
             </div>

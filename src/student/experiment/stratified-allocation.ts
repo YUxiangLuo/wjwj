@@ -4,10 +4,12 @@ export interface AllocationLayer {
     ratio: number;
 }
 
+const NORMALIZATION_LOOP_FACTOR = 2;
+
 export function normalizeAllocationToTarget(layers: AllocationLayer[], counts: number[], targetSampleSize: number) {
     const caps = layers.map((layer) => layer.count);
     const normalized = counts.map((count, index) =>
-        Math.max(0, Math.min(Math.round(count), caps[index] ?? Number.POSITIVE_INFINITY))
+        Math.max(0, Math.min(Math.round(count), caps[index] ?? targetSampleSize))
     );
 
     if (normalized.length === 0) {
@@ -16,12 +18,13 @@ export function normalizeAllocationToTarget(layers: AllocationLayer[], counts: n
 
     let total = normalized.reduce((sum, count) => sum + count, 0);
     let cursor = 0;
-    let safetyLimit = normalized.length * Math.max(targetSampleSize, 1) * 2;
+    // Two full passes per target unit are enough here because each loop changes the total by at most 1.
+    let safetyLimit = normalized.length * Math.max(targetSampleSize, 1) * NORMALIZATION_LOOP_FACTOR;
 
     while (total < targetSampleSize && safetyLimit > 0) {
         const index = cursor % normalized.length;
         const current = normalized[index] ?? 0;
-        const cap = caps[index] ?? Number.POSITIVE_INFINITY;
+        const cap = caps[index] ?? targetSampleSize;
         if (current < cap) {
             normalized[index] = current + 1;
             total += 1;
@@ -31,7 +34,7 @@ export function normalizeAllocationToTarget(layers: AllocationLayer[], counts: n
     }
 
     cursor = 0;
-    safetyLimit = normalized.length * Math.max(total, 1) * 2;
+    safetyLimit = normalized.length * Math.max(total, 1) * NORMALIZATION_LOOP_FACTOR;
     while (total > targetSampleSize && safetyLimit > 0) {
         const index = cursor % normalized.length;
         const current = normalized[index] ?? 0;

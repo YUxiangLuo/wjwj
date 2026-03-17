@@ -82,6 +82,7 @@ export function performPpsSampling(data: any[], sizeField: string, n: number, ra
                 return null;
             }
 
+            // Guard against log(0), which would otherwise produce Infinity and break the PPS key ranking.
             const u = Math.max(random(), Number.MIN_VALUE);
             return {
                 row,

@@ -27,6 +27,8 @@ export function calculateFinitePopulationSampleSize(params: {
     const e = errorRatio;
     const N = params.populationSize;
     const expectedProportionValue = Number(params.expectedProportion);
+    // Values > 1 are interpreted as percentages from the UI (e.g. 50 -> 50%),
+    // while values between 0 and 1 are treated as decimal ratios for backward compatibility.
     const expectedProportionRatio = expectedProportionValue > 1 ? expectedProportionValue / 100 : expectedProportionValue;
     const p = Number.isFinite(expectedProportionRatio) && expectedProportionRatio > 0 && expectedProportionRatio < 1
         ? expectedProportionRatio
