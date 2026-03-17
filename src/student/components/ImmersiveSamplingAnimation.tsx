@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { X, CheckCircle2, Users, Target, Layers, Shuffle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-type SamplingMethod = "simple" | "systematic" | "pps" | "stratified";
+import type { MethodKey as SamplingMethod } from "../api-client";
 
 interface StratifiedLayer {
     name: string;

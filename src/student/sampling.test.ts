@@ -158,10 +158,9 @@ test("PPS sampling changes with different seeds", async () => {
     expect(first).not.toEqual(second);
 });
 
-test("PPS sampling returns items from the population", async () => {
+test("PPS sampling returns exactly the requested sample count", async () => {
     const result = await performPPSSampling(ppsPop, "size", 8, createSeededRandom("pps-check"));
-    expect(result.length).toBeGreaterThan(0);
-    expect(result.length).toBeLessThanOrEqual(8);
+    expect(result.length).toBe(8);
     for (const item of result) {
         expect(ppsPop).toContainEqual(item);
     }
@@ -187,4 +186,15 @@ test("PPS sampling falls back when size field is missing", async () => {
     const noSizePop = Array.from({ length: 20 }, (_, i) => ({ id: i + 1 }));
     const result = await performPPSSampling(noSizePop, "missing_field", 5, createSeededRandom("pps-no-field"));
     expect(result.length).toBe(5);
+});
+
+test("PPS sampling returns exact count even with highly skewed sizes", async () => {
+    // One dominant unit with size 10000, rest have size 1 — systematic PPS may
+    // land on the dominant unit multiple times; we must still return n items.
+    const skewedPop = [
+        { id: 1, size: 10000 },
+        ...Array.from({ length: 49 }, (_, i) => ({ id: i + 2, size: 1 })),
+    ];
+    const result = await performPPSSampling(skewedPop, "size", 10, createSeededRandom("pps-skewed"));
+    expect(result.length).toBe(10);
 });

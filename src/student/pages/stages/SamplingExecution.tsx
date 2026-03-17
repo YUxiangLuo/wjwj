@@ -40,7 +40,7 @@ interface SamplingExecutionProps {
     onPrev: () => void;
 }
 
-type SamplingMethod = "simple" | "systematic" | "pps" | "stratified";
+import type { MethodKey as SamplingMethod } from "../../api-client";
 
 interface SamplingSuccessStateProps {
     summary: string;
@@ -208,15 +208,18 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     }, [buildSamplingResultsPayload, saveExperiment]);
 
 
+    const taskId = experiment?.taskId;
+
     // Execute sampling with real API
     const executeSimple = async () => {
+        if (!taskId) return;
         setExecuting("simple");
         setAnimatingMethod(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(simpleSeed);
             if (seedError) { toast.error(seedError); setExecuting(null); return; }
-            const res = await experimentApi.executeSampling(experiment?.taskId!, "simple", {
+            const res = await experimentApi.executeSampling(taskId, "simple", {
                 sampleSize: n,
                 seed,
             });
@@ -236,14 +239,14 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     const executeSystematic = async () => {
-        if (kValue < 1) return;
+        if (!taskId || kValue < 1) return;
         setExecuting("systematic");
         setAnimatingMethod(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(systematicSeed);
             if (seedError) { toast.error(seedError); setExecuting(null); return; }
-            const res = await experimentApi.executeSampling(experiment?.taskId!, "systematic", {
+            const res = await experimentApi.executeSampling(taskId, "systematic", {
                 kValue,
                 sampleSize: Math.ceil(N / kValue),
                 seed,
@@ -264,6 +267,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     const executeStratified = async () => {
+        if (!taskId) return;
         setExecuting("stratified");
         setAnimatingMethod(null);
         const startTime = performance.now();
@@ -278,7 +282,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         try {
             const { seed, error: seedError } = parseSeed(stratifiedSeed);
             if (seedError) { toast.error(seedError); setExecuting(null); return; }
-            const res = await experimentApi.executeSampling(experiment?.taskId!, "stratified", {
+            const res = await experimentApi.executeSampling(taskId, "stratified", {
                 stratifyBy,
                 layers: layersPayload,
                 seed,
@@ -299,13 +303,14 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     };
 
     const executePPS = async () => {
+        if (!taskId) return;
         setExecuting("pps");
         setAnimatingMethod(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(ppsSeed);
             if (seedError) { toast.error(seedError); setExecuting(null); return; }
-            const res = await experimentApi.executeSampling(experiment?.taskId!, "pps", {
+            const res = await experimentApi.executeSampling(taskId, "pps", {
                 sizeField: ppsSizeField,
                 sampleSize: n,
                 seed,

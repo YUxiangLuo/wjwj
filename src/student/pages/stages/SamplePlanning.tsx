@@ -19,37 +19,11 @@ import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2 } from "luci
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
 import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
+import { calculateFinitePopulationSampleSize } from "../../experiment/sample-plan";
 
 interface SamplePlanningProps {
     onNext: () => void;
     onPrev: () => void;
-}
-
-function computeRecommendedSampleSize(confidenceLevel: string, marginOfError: number, populationSize: number, designEffect: number, nonResponseRate: number) {
-    const zValues: Record<string, number> = {
-        "90": 1.645,
-        "95": 1.96,
-        "99": 2.576,
-    };
-
-    const z = zValues[confidenceLevel] ?? 1.96;
-    const e = marginOfError / 100;
-    const p = 0.5;
-
-    const n0 = (z * z * p * (1 - p)) / (e * e);
-    let n = n0 / (1 + (n0 - 1) / populationSize);
-
-    // Apply design effect (deff)
-    if (designEffect > 0) {
-        n = n * designEffect;
-    }
-
-    // Apply non-response rate adjustment
-    if (nonResponseRate > 0 && nonResponseRate < 1) {
-        n = n / (1 - nonResponseRate);
-    }
-
-    return Math.ceil(n);
 }
 
 export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
@@ -78,7 +52,13 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     // Calculate recommended sample size
     const calculateSampleSize = useCallback(() => {
-        return computeRecommendedSampleSize(confidenceLevel, marginOfError[0] ?? 5, N, designEffect, nonResponseRate);
+        return calculateFinitePopulationSampleSize({
+            confidenceLevel,
+            marginOfError: marginOfError[0] ?? 5,
+            populationSize: N,
+            designEffect,
+            nonResponseRate,
+        }) ?? 384;
     }, [confidenceLevel, marginOfError, N, designEffect, nonResponseRate]);
 
     const recommendedSize = calculateSampleSize();
@@ -98,13 +78,13 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     useEffect(() => {
         if (initialData) {
-            const initialRecommended = initialData.recommendedSize ?? computeRecommendedSampleSize(
-                initialData.confidenceLevel ?? "95",
-                initialData.marginOfError ?? 5,
-                N,
-                initialData.designEffect ?? 1,
-                initialData.nonResponseRate ?? 0,
-            );
+            const initialRecommended = initialData.recommendedSize ?? calculateFinitePopulationSampleSize({
+                confidenceLevel: initialData.confidenceLevel ?? "95",
+                marginOfError: initialData.marginOfError ?? 5,
+                populationSize: N,
+                designEffect: initialData.designEffect ?? 1,
+                nonResponseRate: initialData.nonResponseRate ?? 0,
+            }) ?? 384;
             serverSnapshotRef.current = JSON.stringify({
                 confidenceLevel: initialData.confidenceLevel ?? "95",
                 marginOfError: initialData.marginOfError ?? 5,

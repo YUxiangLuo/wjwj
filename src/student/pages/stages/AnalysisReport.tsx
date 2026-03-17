@@ -382,7 +382,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         }
     };
 
-    const handleExport = async (type: "simple" | "systematic" | "pps" | "stratified" | "all") => {
+    const handleExport = async (type: MethodKey | "all") => {
         if (!experiment?.taskId) return;
         try {
             const res = await fetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {

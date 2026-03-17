@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { X, BarChart3, TrendingUp, Layers, Activity, AlertTriangle } from "lucide-react";
-
-/* ── types ── */
-type MethodKey = "simple" | "systematic" | "pps" | "stratified";
-type SampleRow = Record<string, unknown>;
+import type { MethodKey, SampleRow } from "../pages/stages/analysis-utils";
 
 interface MethodMeta {
     label: string;

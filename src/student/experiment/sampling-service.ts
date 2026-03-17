@@ -12,8 +12,8 @@ import {
     getSystematicSampleCountRange,
     isSystematicRangeWithinAcceptedRange,
 } from "./systematic-sampling";
-
-export type SamplingMethod = "simple" | "systematic" | "pps" | "stratified";
+import type { MethodKey as SamplingMethod } from "../api-client";
+export type { SamplingMethod };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === "object" && !Array.isArray(value);

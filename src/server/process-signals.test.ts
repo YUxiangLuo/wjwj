@@ -125,7 +125,7 @@ test("registerLongRunningProcessSignals logs error and still exits on rejected s
 
         expect(exitCount).toBe(1);
         expect(errorSpy).toHaveBeenCalledTimes(1);
-        expect(errorSpy.mock.calls[0][0]).toBe("Error during shutdown:");
+        expect(errorSpy.mock.calls[0]?.[0]).toBe("Error during shutdown:");
     } finally {
         errorSpy.mockRestore();
     }

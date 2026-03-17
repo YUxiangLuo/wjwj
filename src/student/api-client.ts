@@ -9,6 +9,8 @@ import { shouldDispatchSessionExpired, createSessionExpiredInterceptor } from "@
 // Types
 // ============================================================
 
+export type MethodKey = "simple" | "systematic" | "pps" | "stratified";
+
 export interface ApiResponse<T> {
     success: boolean;
     data?: T;
@@ -349,7 +351,7 @@ export const experimentApi = {
 
     executeSampling: (
         taskId: number,
-        method: "simple" | "systematic" | "pps" | "stratified",
+        method: MethodKey,
         params: any
     ) =>
         request<{ success: boolean; result: any }>(

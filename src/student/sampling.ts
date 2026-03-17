@@ -114,7 +114,6 @@ export function performPPSSampling(
     }
 
     const selected: any[] = [];
-    const selectedIndices = new Set<number>();
     let pointer = start;
     let dataIdx = 0;
 
@@ -123,10 +122,7 @@ export function performPPSSampling(
         while (dataIdx < cumulative.length - 1 && (cumulative[dataIdx] ?? 0) < pointer) {
             dataIdx++;
         }
-        if (!selectedIndices.has(dataIdx)) {
-            selectedIndices.add(dataIdx);
-            selected.push(data[dataIdx]);
-        }
+        selected.push(data[dataIdx]);
         pointer += interval;
 
         // Wrap around if pointer exceeds totalSize (shouldn't happen with correct n)

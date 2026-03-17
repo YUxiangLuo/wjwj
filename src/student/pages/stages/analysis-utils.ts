@@ -1,4 +1,5 @@
-export type MethodKey = "simple" | "systematic" | "pps" | "stratified";
+import type { MethodKey } from "../../api-client";
+export type { MethodKey };
 export type SampleRow = Record<string, unknown>;
 
 export interface ChartSeries {
