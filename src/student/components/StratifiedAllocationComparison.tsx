@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Calculator, Scale, Users, AlertCircle } from "lucide-react";
+import { BarChart3, Calculator, Scale, Users, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { useState, useMemo } from "react";
 
 interface LayerInfo {
     name: string;
@@ -18,36 +19,52 @@ interface AllocationComparison {
         populationSize: number;   // Nh
         sampleSize: number;      // nh
         proportion: number;      // nh / 总样本量
+        isOverAllocated?: boolean; // 是否超额分配
+        isFullyEnumerated?: boolean; // 是否全数调查
     }>;
     totalVariance: number;       // 估计方差（相对值）
     efficiency: number;          // 相对于简单随机抽样的效率
     totalCost?: number;          // 总成本（最优分配时）
+    hasOverAllocation: boolean;  // 是否存在超额分配
+    overAllocatedLayers: string[]; // 超额分配的层名称
+    adjustedTotalSampleSize?: number; // 调整后的总样本量（处理超额分配后）
 }
 
 interface StratifiedAllocationComparisonProps {
     layers: LayerInfo[];
     totalSampleSize: number;
     onApplyAllocation?: (method: "proportional" | "neyman" | "equal" | "optimal") => void;
+    onApplyAllocationWithOverflow?: (method: "proportional" | "neyman" | "equal", allocation: { name: string; count: number; sampleCount: number }[]) => void;
 }
 
 export function StratifiedAllocationComparison({ 
     layers, 
     totalSampleSize,
     onApplyAllocation,
+    onApplyAllocationWithOverflow,
 }: StratifiedAllocationComparisonProps) {
+    const [activeMethod, setActiveMethod] = useState<string | null>(null);
+    const [showOverflowDetails, setShowOverflowDetails] = useState(false);
+
     if (!layers.length) return null;
 
     // 计算三种分配方法
-    const comparisons: AllocationComparison[] = [
+    const comparisons: AllocationComparison[] = useMemo(() => [
         calculateProportionalAllocation(layers, totalSampleSize),
         calculateEqualAllocation(layers, totalSampleSize),
         calculateNeymanAllocation(layers, totalSampleSize),
-    ];
+    ], [layers, totalSampleSize]);
 
     // 找出最佳（最小方差）
     const bestMethod = comparisons.reduce((best, current) => 
         current.totalVariance < best.totalVariance ? current : best
     );
+
+    // 检测是否存在超额分配
+    const hasAnyOverAllocation = comparisons.some(c => c.hasOverAllocation);
+    const allOverAllocatedLayers = Array.from(new Set(
+        comparisons.flatMap(c => c.overAllocatedLayers)
+    ));
 
     return (
         <Card className="rounded-2xl border-violet-200 bg-violet-50/80 shadow-sm dark:border-violet-500/20 dark:bg-violet-500/10">
@@ -170,28 +187,187 @@ export function StratifiedAllocationComparison({
                     </div>
                 </div>
 
-                {/* 超额分配警告 */}
-                {(() => {
-                    const hasOverflow = comparisons.some(c => 
-                        c.allocation.some(a => a.sampleSize > a.populationSize)
-                    );
-                    if (!hasOverflow) return null;
-                    
-                    return (
-                        <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3 dark:border-rose-500/20 dark:bg-rose-500/10">
-                            <div className="flex gap-2">
-                                <Scale className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                                <div className="text-xs text-rose-800 dark:text-rose-200">
-                                    <span className="font-medium">超额分配警告：</span>
-                                    某些分配方法中某层的样本量超过了该层总体大小。实际应用中应对这些层进行全数调查。
+                {/* 超额分配检测与处理 */}
+                {hasAnyOverAllocation && (
+                    <div className="space-y-3">
+                        {/* 超额分配警告 - 详细版 */}
+                        <div className="rounded-xl border-2 border-rose-300 bg-rose-50 p-4 dark:border-rose-500/40 dark:bg-rose-900/30">
+                            <div className="flex items-start gap-3">
+                                <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <p className="font-medium text-rose-900 dark:text-rose-100 mb-2">
+                                        检测到超额分配
+                                    </p>
+                                    <p className="text-xs text-rose-700 dark:text-rose-300 mb-3">
+                                        以下层在某些分配方法中分配到的样本量超过了该层总体大小：
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        {allOverAllocatedLayers.map(layerName => (
+                                            <Badge 
+                                                key={layerName} 
+                                                variant="outline" 
+                                                className="bg-rose-100 border-rose-300 text-rose-700 dark:bg-rose-900/30 dark:border-rose-600"
+                                            >
+                                                {layerName}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-rose-600/80 dark:text-rose-400/80">
+                                        超额分配意味着需要对该层进行全数调查（抽取全部单元），这可能导致实际总样本量小于计划值。
+                                    </p>
                                 </div>
                             </div>
                         </div>
-                    );
-                })()}
+
+                        {/* 处理方法建议 */}
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 dark:border-emerald-500/30 dark:bg-emerald-900/20">
+                            <div className="flex items-start gap-2">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <div className="text-xs text-emerald-800 dark:text-emerald-200">
+                                    <p className="font-medium mb-1">处理方法建议</p>
+                                    <ul className="space-y-1 text-emerald-700/80 dark:text-emerald-300/80 list-disc list-inside">
+                                        <li>对超额分配的层进行全数调查（n_h = N_h）</li>
+                                        <li>将剩余样本量分配给其他层</li>
+                                        <li>考虑使用按比例分配（通常较少出现超额分配）</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 查看详情按钮 */}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowOverflowDetails(!showOverflowDetails)}
+                            className="w-full border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-400 dark:hover:bg-rose-900/30"
+                        >
+                            {showOverflowDetails ? "隐藏超额分配详情" : "查看超额分配详情及处理"}
+                        </Button>
+
+                        {/* 详细处理选项 */}
+                        {showOverflowDetails && (
+                            <div className="space-y-3">
+                                {comparisons.map(comparison => {
+                                    if (!comparison.hasOverAllocation) return null;
+                                    
+                                    return (
+                                        <div 
+                                            key={comparison.method}
+                                            className="rounded-xl border border-rose-200 bg-white/80 p-3 dark:border-rose-700/50 dark:bg-rose-950/20"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="font-medium text-rose-900 dark:text-rose-100">
+                                                    {comparison.name}
+                                                </span>
+                                                <Badge variant="outline" className="text-xs border-rose-300 text-rose-600">
+                                                    {comparison.overAllocatedLayers.length} 层超额
+                                                </Badge>
+                                            </div>
+                                            
+                                            {/* 超额层列表 */}
+                                            <div className="space-y-2 mb-3">
+                                                {comparison.allocation
+                                                    .filter(a => a.isOverAllocated)
+                                                    .map(layer => (
+                                                        <div 
+                                                            key={layer.layerName}
+                                                            className="flex items-center justify-between text-xs bg-rose-50 p-2 rounded dark:bg-rose-900/30"
+                                                        >
+                                                            <span className="text-rose-700 dark:text-rose-300">
+                                                                {layer.layerName}
+                                                            </span>
+                                                            <span className="text-rose-600 dark:text-rose-400">
+                                                                分配 {layer.sampleSize} &gt; 总体 {layer.populationSize}
+                                                            </span>
+                                                        </div>
+                                                    ))
+                                                }
+                                            </div>
+
+                                            {/* 处理建议 */}
+                                            <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">
+                                                建议处理：对超额层全数调查后，调整后总样本量为 
+                                                <span className="font-mono font-bold text-rose-600">
+                                                    {comparison.adjustedTotalSampleSize?.toLocaleString()}
+                                                </span>
+                                            </div>
+
+                                            {/* 应用按钮（带超额处理） */}
+                                                {onApplyAllocationWithOverflow && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        // 构建处理超额分配后的分配方案
+                                                        const adjustedAllocation = comparison.allocation.map(a => ({
+                                                            name: a.layerName,
+                                                            count: a.populationSize,
+                                                            sampleCount: a.isOverAllocated ? a.populationSize : a.sampleSize,
+                                                        }));
+                                                        // 安全地调用回调，method 已经限制了类型
+                                                        onApplyAllocationWithOverflow(
+                                                            comparison.method as "proportional" | "neyman" | "equal", 
+                                                            adjustedAllocation
+                                                        );
+                                                    }}
+                                                    className="w-full text-xs border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-400"
+                                                >
+                                                    应用此分配（自动处理超额层）
+                                                    <ArrowRight className="w-3 h-3 ml-1" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
+}
+
+// 检测并标记超额分配
+function detectOverAllocation(
+    allocation: Array<{ layerName: string; populationSize: number; sampleSize: number; proportion: number }>,
+    layers: LayerInfo[]
+): {
+    markedAllocation: Array<{ layerName: string; populationSize: number; sampleSize: number; proportion: number; isOverAllocated?: boolean; isFullyEnumerated?: boolean }>;
+    hasOverAllocation: boolean;
+    overAllocatedLayers: string[];
+    adjustedTotalSampleSize: number;
+} {
+    let hasOverAllocation = false;
+    const overAllocatedLayers: string[] = [];
+    let adjustedTotalSampleSize = 0;
+
+    const markedAllocation = allocation.map((a, i) => {
+        const isOverAllocated = a.sampleSize > a.populationSize;
+        const isFullyEnumerated = isOverAllocated;
+        
+        if (isOverAllocated) {
+            hasOverAllocation = true;
+            overAllocatedLayers.push(a.layerName);
+            // 超额层全数调查，使用总体大小作为样本量
+            adjustedTotalSampleSize += a.populationSize;
+        } else {
+            adjustedTotalSampleSize += a.sampleSize;
+        }
+
+        return {
+            ...a,
+            isOverAllocated,
+            isFullyEnumerated,
+        };
+    });
+
+    return {
+        markedAllocation,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
+    };
 }
 
 // 计算按比例分配
@@ -212,16 +388,27 @@ function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: n
     // 调整总和为 totalSampleSize
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
 
+    // 检测超额分配
+    const { 
+        markedAllocation, 
+        hasOverAllocation, 
+        overAllocatedLayers, 
+        adjustedTotalSampleSize 
+    } = detectOverAllocation(allocation, layers);
+
     // 计算方差（简化的相对方差估计）
-    const totalVariance = calculateVariance(allocation, layers);
+    const totalVariance = calculateVariance(markedAllocation, layers);
 
     return {
         method: "proportional",
         name: "按比例分配",
         description: "样本量与层总体大小成比例，是最常用且稳健的方法",
-        allocation,
+        allocation: markedAllocation,
         totalVariance,
         efficiency: 1 / totalVariance,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
     };
 }
 
@@ -238,15 +425,27 @@ function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number):
     }));
 
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
-    const totalVariance = calculateVariance(allocation, layers);
+    
+    // 检测超额分配
+    const { 
+        markedAllocation, 
+        hasOverAllocation, 
+        overAllocatedLayers, 
+        adjustedTotalSampleSize 
+    } = detectOverAllocation(allocation, layers);
+    
+    const totalVariance = calculateVariance(markedAllocation, layers);
 
     return {
         method: "equal",
         name: "等额分配",
         description: "每层分配相同样本量，适合各层方差相近的情况",
-        allocation,
+        allocation: markedAllocation,
         totalVariance,
         efficiency: 1 / totalVariance,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
     };
 }
 
@@ -270,15 +469,27 @@ function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number)
     });
 
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
-    const totalVariance = calculateVariance(allocation, layers);
+    
+    // 检测超额分配
+    const { 
+        markedAllocation, 
+        hasOverAllocation, 
+        overAllocatedLayers, 
+        adjustedTotalSampleSize 
+    } = detectOverAllocation(allocation, layers);
+    
+    const totalVariance = calculateVariance(markedAllocation, layers);
 
     return {
         method: "neyman",
         name: "奈曼分配",
         description: "使估计值方差最小化的最优分配，适合方差差异大的层间",
-        allocation,
+        allocation: markedAllocation,
         totalVariance,
         efficiency: 1 / totalVariance,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
     };
 }
 

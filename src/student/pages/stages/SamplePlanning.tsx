@@ -32,6 +32,7 @@ import { SensitivityAnalysisCard } from "../../components/SensitivityAnalysisCar
 import { DomainEstimationManager, type Domain } from "../../components/DomainEstimationManager";
 import { PrecisionCostTradeoff } from "../../components/PrecisionCostTradeoff";
 import { DesignEffectEstimator } from "../../components/DesignEffectEstimator";
+import { MultiVariableSamplePlan, type SurveyVariable } from "../../components/MultiVariableSamplePlan";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -69,6 +70,11 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const [showDomainManager, setShowDomainManager] = useState(false);
     const [showCostTradeoff, setShowCostTradeoff] = useState(false);
     const [showDeffEstimator, setShowDeffEstimator] = useState(false);
+
+    // 阶段3新增：多变量样本量规划
+    const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
+    const [showMultiVariable, setShowMultiVariable] = useState(false);
+    const [multiVariableRecommendedSize, setMultiVariableRecommendedSize] = useState(0);
 
     const N = populationSize;
 
@@ -524,6 +530,18 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 >
                                     设计效应参考
                                 </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowMultiVariable(!showMultiVariable)}
+                                    className={`w-full text-xs h-auto py-2 ${
+                                        showMultiVariable 
+                                            ? "bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/30 dark:border-violet-600" 
+                                            : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                    }`}
+                                >
+                                    多变量规划
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -591,6 +609,23 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         <DesignEffectEstimator
                             currentDeff={designEffect}
                             onDeffChange={(newDeff) => setDesignEffect(newDeff)}
+                        />
+                    )}
+
+                    {showMultiVariable && (
+                        <MultiVariableSamplePlan
+                            populationSize={N}
+                            onVariablesChange={(newVariables) => {
+                                setSurveyVariables(newVariables);
+                            }}
+                            onRecommendedSampleSizeChange={(size) => {
+                                setMultiVariableRecommendedSize(size);
+                                // 如果多变量建议的样本量大于当前建议值，可以提示用户
+                                if (size > recommendedSize) {
+                                    // 可以在这里添加提示逻辑
+                                }
+                            }}
+                            initialVariables={surveyVariables}
                         />
                     )}
 
