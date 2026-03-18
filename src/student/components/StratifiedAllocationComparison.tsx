@@ -1,8 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BarChart3, Calculator, Scale, Users, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { BarChart3, Calculator, Scale, Users, AlertCircle, CheckCircle2, ArrowRight, DollarSign, Info } from "lucide-react";
 import { useState, useMemo } from "react";
+import { calculateSquareRootAllocation, calculateOptimalAllocationWithCost, type LayerWithCost } from "../experiment/sample-plan";
 
 interface LayerInfo {
     name: string;
@@ -45,15 +48,39 @@ export function StratifiedAllocationComparison({
 }: StratifiedAllocationComparisonProps) {
     const [activeMethod, setActiveMethod] = useState<string | null>(null);
     const [showOverflowDetails, setShowOverflowDetails] = useState(false);
+    const [showCostOptimization, setShowCostOptimization] = useState(false);
+    
+    // 费用优化参数
+    const [totalBudget, setTotalBudget] = useState(50000);
+    const [fixedCost, setFixedCost] = useState(5000);
+    const [layerCosts, setLayerCosts] = useState<number[]>(layers.map(() => 20));
 
     if (!layers.length) return null;
 
-    // 计算三种分配方法
-    const comparisons: AllocationComparison[] = useMemo(() => [
-        calculateProportionalAllocation(layers, totalSampleSize),
-        calculateEqualAllocation(layers, totalSampleSize),
-        calculateNeymanAllocation(layers, totalSampleSize),
-    ], [layers, totalSampleSize]);
+    // 计算四种基本分配方法
+    const comparisons: AllocationComparison[] = useMemo(() => {
+        const baseComparisons = [
+            calculateProportionalAllocation(layers, totalSampleSize),
+            calculateEqualAllocation(layers, totalSampleSize),
+            calculateNeymanAllocation(layers, totalSampleSize),
+            calculateSquareRootNAllocation(layers, totalSampleSize),
+        ];
+        return baseComparisons;
+    }, [layers, totalSampleSize]);
+
+    // 计算费用最优分配
+    const costOptimizedComparison = useMemo(() => {
+        if (!showCostOptimization) return null;
+        
+        const layersWithCost: LayerWithCost[] = layers.map((layer, index) => ({
+            name: layer.name,
+            populationSize: layer.count,
+            stdDev: Math.sqrt(layer.count),  // 简化的标准差估计
+            unitCost: layerCosts[index] ?? 20,
+        }));
+        
+        return calculateOptimalAllocationWithCost(layersWithCost, totalBudget, fixedCost);
+    }, [layers, layerCosts, totalBudget, fixedCost, showCostOptimization]);
 
     // 找出最佳（最小方差）
     const bestMethod = comparisons.reduce((best, current) => 
@@ -578,4 +605,45 @@ function calculateVariance(
     });
 
     return totalVariance;
+}
+
+// 与N的平方根成比例分配
+function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: number): AllocationComparison {
+    const weights = layers.map(layer => Math.sqrt(layer.count));
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    
+    let allocation = layers.map((layer, index) => {
+        const weight = weights[index] ?? 0;
+        const proportion = totalWeight > 0 ? weight / totalWeight : 0;
+        return {
+            layerName: layer.name,
+            populationSize: layer.count,
+            sampleSize: Math.round(totalSampleSize * proportion),
+            proportion,
+        };
+    });
+
+    allocation = normalizeAllocation(allocation, totalSampleSize, layers);
+    
+    // 检测超额分配
+    const { 
+        markedAllocation, 
+        hasOverAllocation, 
+        overAllocatedLayers, 
+        adjustedTotalSampleSize 
+    } = detectOverAllocation(allocation, layers);
+    
+    const totalVariance = calculateVariance(markedAllocation, layers);
+
+    return {
+        method: "optimal" as const,
+        name: "平方根分配",
+        description: "与层规模的平方根成比例，在按比例和等额分配之间取得平衡",
+        allocation: markedAllocation,
+        totalVariance,
+        efficiency: 1 / totalVariance,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
+    };
 }

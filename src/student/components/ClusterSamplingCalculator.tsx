@@ -1,0 +1,262 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
+import { 
+    Users, 
+    Calculator, 
+    Layers, 
+    Info,
+    ArrowRight,
+    AlertTriangle
+} from "lucide-react";
+import { calculateClusterSamplingSize, type ClusterSamplingResult } from "../experiment/sample-plan";
+
+interface ClusterSamplingCalculatorProps {
+    populationSize: number;
+    confidenceLevel: string;
+    marginOfError: number;
+    onApplyResult?: (clusters: number, sampleSize: number) => void;
+}
+
+export function ClusterSamplingCalculator({
+    populationSize,
+    confidenceLevel,
+    marginOfError,
+    onApplyResult
+}: ClusterSamplingCalculatorProps) {
+    const [clusterSize, setClusterSize] = useState(50);  // 群规模（每群平均人数）
+    const [deff, setDeff] = useState(2.0);  // 设计效应
+    const [nonResponseRate, setNonResponseRate] = useState(0);
+    const [result, setResult] = useState<ClusterSamplingResult | null>(null);
+
+    // 计算整群抽样
+    useEffect(() => {
+        const newResult = calculateClusterSamplingSize({
+            populationSize,
+            confidenceLevel,
+            marginOfError,
+            clusterSize,
+            deff,
+            nonResponseRate: nonResponseRate / 100,
+        });
+        setResult(newResult);
+    }, [populationSize, confidenceLevel, marginOfError, clusterSize, deff, nonResponseRate]);
+
+    return (
+        <Card className="rounded-2xl border-orange-200 bg-orange-50/80 shadow-sm dark:border-orange-500/20 dark:bg-orange-500/10">
+            <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Layers className="w-5 h-5 text-orange-500" />
+                        <CardTitle className="text-base text-orange-900 dark:text-orange-200">
+                            整群抽样样本量计算
+                        </CardTitle>
+                    </div>
+                    <Badge 
+                        variant="outline" 
+                        className="text-xs bg-orange-100/50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-500/30 dark:text-orange-300"
+                    >
+                        设计效应应用
+                    </Badge>
+                </div>
+                <CardDescription className="text-orange-700 dark:text-orange-300">
+                    计算整群抽样中所需群数和总样本量
+                </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+                {/* 说明 */}
+                <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+                    <div className="flex gap-2">
+                        <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                            <p className="font-medium">什么是整群抽样？</p>
+                            <p className="text-amber-700/80 dark:text-amber-300/80">
+                                整群抽样以"群"为单位抽样（如整栋居民楼、整个班级），群内所有单元都调查。
+                                由于群内单元通常同质性高，需要更大的样本量来补偿（设计效应 deff &gt; 1）。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 参数设置 */}
+                <div className="space-y-4">
+                    {/* 群规模 */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs text-orange-700 dark:text-orange-300">
+                                平均群规模（每群人数）
+                            </Label>
+                            <span className="text-sm font-bold text-orange-900 dark:text-orange-100">
+                                {clusterSize} 人
+                            </span>
+                        </div>
+                        <Slider
+                            value={[clusterSize]}
+                            onValueChange={(v) => setClusterSize(v[0] ?? 50)}
+                            min={10}
+                            max={500}
+                            step={10}
+                            className="py-2"
+                        />
+                        <p className="text-xs text-orange-600/60">
+                            例如：每栋楼平均50户、每班平均30名学生
+                        </p>
+                    </div>
+
+                    {/* 设计效应 */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs text-orange-700 dark:text-orange-300">
+                                设计效应 (deff)
+                            </Label>
+                            <span className="text-sm font-bold text-orange-900 dark:text-orange-100">
+                                {deff.toFixed(1)}
+                            </span>
+                        </div>
+                        <Slider
+                            value={[deff]}
+                            onValueChange={(v) => setDeff(v[0] ?? 2)}
+                            min={1}
+                            max={5}
+                            step={0.1}
+                            className="py-2"
+                        />
+                        <div className="flex justify-between text-xs text-orange-600/70">
+                            <span>1.0 (简单随机)</span>
+                            <span>2.0 (中等)</span>
+                            <span>5.0 (高度聚集)</span>
+                        </div>
+                    </div>
+
+                    {/* 其他参数 */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                            <Label className="text-xs text-orange-700 dark:text-orange-300">置信水平</Label>
+                            <div className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                                {confidenceLevel}%
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs text-orange-700 dark:text-orange-300">允许误差</Label>
+                            <div className="text-sm font-medium text-orange-900 dark:text-orange-100">
+                                ±{marginOfError}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <Label className="text-xs text-orange-700 dark:text-orange-300">无回答率 (%)</Label>
+                        <Input
+                            type="number"
+                            value={nonResponseRate}
+                            onChange={(e) => setNonResponseRate(parseFloat(e.target.value) || 0)}
+                            className="bg-white/50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-700"
+                            min={0}
+                            max={50}
+                            step={1}
+                        />
+                    </div>
+                </div>
+
+                {/* 计算结果 */}
+                {result && (
+                    <div className="rounded-xl border-2 border-orange-300 bg-orange-50 p-4 dark:border-orange-500/40 dark:bg-orange-900/30">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Calculator className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                            <span className="font-bold text-orange-900 dark:text-orange-100">计算结果</span>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* 主要结果 */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="text-center p-3 rounded-lg bg-white/50 dark:bg-orange-950/30">
+                                    <div className="text-xs text-orange-600 dark:text-orange-400 mb-1">所需群数</div>
+                                    <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                                        {result.requiredClusters}
+                                    </div>
+                                    <div className="text-xs text-orange-500">个群</div>
+                                </div>
+                                <div className="text-center p-3 rounded-lg bg-white/50 dark:bg-orange-950/30">
+                                    <div className="text-xs text-orange-600 dark:text-orange-400 mb-1">总样本量</div>
+                                    <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
+                                        {result.requiredSampleSize.toLocaleString()}
+                                    </div>
+                                    <div className="text-xs text-orange-500">人</div>
+                                </div>
+                            </div>
+
+                            {/* 设计效应说明 */}
+                            <div className="rounded-lg border border-orange-200 bg-white/50 p-3 dark:border-orange-700/50 dark:bg-orange-950/20">
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-orange-700 dark:text-orange-300">设计效应 (deff)</span>
+                                        <span className="font-mono font-bold text-orange-900 dark:text-orange-100">
+                                            {result.deff.toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-orange-700 dark:text-orange-300">估计群内相关系数 (ρ)</span>
+                                        <span className="font-mono font-bold text-orange-900 dark:text-orange-100">
+                                            {result.intraClassCorrelation.toFixed(3)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 公式解释 */}
+                            <div className="rounded-lg border border-amber-200 bg-amber-50/60 p-2 dark:border-amber-700/30 dark:bg-amber-900/20">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                                    <p className="text-xs text-amber-800 dark:text-amber-200">
+                                        {result.explanation} 群内相关系数 ρ = (deff-1)/(M-1)，
+                                        其中 M={clusterSize} 为群规模。ρ 越大说明群内同质性越高，
+                                        需要的补偿样本量越大。
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* 应用按钮 */}
+                            {onApplyResult && (
+                                <Button
+                                    onClick={() => onApplyResult(result.requiredClusters, result.requiredSampleSize)}
+                                    className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                                >
+                                    应用整群抽样方案
+                                    <ArrowRight className="w-4 h-4 ml-2" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* 参考值 */}
+                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">设计效应参考</p>
+                    <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">简单随机抽样 (SRS)</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-bold">1.0</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">分层抽样（层内同质）</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">0.7-0.9</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">整群抽样（中等聚集）</span>
+                            <span className="text-amber-600 dark:text-amber-400 font-bold">1.5-2.5</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">整群抽样（高度聚集）</span>
+                            <span className="text-rose-600 dark:text-rose-400 font-bold">3.0-5.0</span>
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}

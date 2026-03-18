@@ -15,6 +15,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2, TrendingUp, BarChart3, PieChart } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
@@ -33,6 +34,9 @@ import { DomainEstimationManager, type Domain } from "../../components/DomainEst
 import { PrecisionCostTradeoff } from "../../components/PrecisionCostTradeoff";
 import { DesignEffectEstimator } from "../../components/DesignEffectEstimator";
 import { MultiVariableSamplePlan, type SurveyVariable } from "../../components/MultiVariableSamplePlan";
+import { CVBasedSampleSizeCalculator } from "../../components/CVBasedSampleSizeCalculator";
+import { ClusterSamplingCalculator } from "../../components/ClusterSamplingCalculator";
+import { AdvancedStratifiedAllocation } from "../../components/AdvancedStratifiedAllocation";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -75,6 +79,11 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
     const [showMultiVariable, setShowMultiVariable] = useState(false);
     const [multiVariableRecommendedSize, setMultiVariableRecommendedSize] = useState(0);
+
+    // 阶段3补充：基于CV的样本量计算和整群抽样
+    const [showCVCalculator, setShowCVCalculator] = useState(false);
+    const [showClusterCalculator, setShowClusterCalculator] = useState(false);
+    const [showAdvancedStratified, setShowAdvancedStratified] = useState(false);
 
     const N = populationSize;
 
@@ -542,6 +551,32 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 >
                                     多变量规划
                                 </Button>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowCVCalculator(!showCVCalculator)}
+                                        className={`text-xs h-auto py-2 ${
+                                            showCVCalculator 
+                                                ? "bg-cyan-100 border-cyan-300 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-600" 
+                                                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                        }`}
+                                    >
+                                        CV-based计算
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowClusterCalculator(!showClusterCalculator)}
+                                        className={`text-xs h-auto py-2 ${
+                                            showClusterCalculator 
+                                                ? "bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-900/30 dark:border-orange-600" 
+                                                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                        }`}
+                                    >
+                                        整群抽样
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -626,6 +661,29 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 }
                             }}
                             initialVariables={surveyVariables}
+                        />
+                    )}
+
+                    {showCVCalculator && (
+                        <CVBasedSampleSizeCalculator
+                            populationSize={N}
+                            confidenceLevel={confidenceLevel}
+                            onApplySampleSize={(size) => {
+                                setFinalSampleSize(size);
+                                toast.success(`已应用基于CV计算的样本量: ${size}`);
+                            }}
+                        />
+                    )}
+
+                    {showClusterCalculator && (
+                        <ClusterSamplingCalculator
+                            populationSize={N}
+                            confidenceLevel={confidenceLevel}
+                            marginOfError={marginOfError[0] ?? 5}
+                            onApplyResult={(clusters, sampleSize) => {
+                                setFinalSampleSize(sampleSize);
+                                toast.success(`整群抽样方案: ${clusters}个群, 共${sampleSize}个样本`);
+                            }}
                         />
                     )}
 
