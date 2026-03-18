@@ -110,8 +110,9 @@ export function calculateSampleSizeMetrics(params: {
     const effectiveN = Math.ceil(n1);
     
     // 标准误差 SE = sqrt(p*(1-p)/n * (1 - n/N))，含有限总体校正
-    const fpc = 1 - effectiveN / N;
-    const standardError = Math.sqrt(p * (1 - p) / effectiveN * (fpc > 0 ? fpc : 0));
+    // 当 n ≥ N（全数调查）时 FPC=0，SE=0，此为正确行为
+    const fpc = Math.max(0, 1 - effectiveN / N);
+    const standardError = Math.sqrt(p * (1 - p) / effectiveN * fpc);
     
     // 相对标准误差 RSE (CV) = SE / p
     const relativeStandardError = p > 0 ? standardError / p : 0;
@@ -275,6 +276,8 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     const requiredSampleSize = Math.min(Math.ceil(n), params.populationSize);
     
     // 反推实际能达到的CV（含有限总体校正）
+    // 当 n=N（全数调查）时 FPC=0，方差趋近于零，故 CV=0
+    // 当 n<N 时，FPC = (1 - n/N) 按抽样比降低方差估计
     const fpc = 1 - requiredSampleSize / params.populationSize;
     const achievedCV = fpc > 0
         ? Math.sqrt(

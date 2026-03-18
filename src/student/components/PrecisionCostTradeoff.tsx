@@ -95,7 +95,9 @@ export function PrecisionCostTradeoff({
         const p = 0.5;
         
         // 去除deff和nrr调整，得到有限总体校正后的有效样本量
-        const effectiveN = maxFeasibleSampleSize * (1 - nonResponseRate) / designEffect;
+        // designEffect > 0 由UI slider下限保证（最小0.5）
+        const safeDeff = designEffect > 0 ? designEffect : 1;
+        const effectiveN = maxFeasibleSampleSize * (1 - nonResponseRate) / safeDeff;
         // 含有限总体校正 (FPC) 的反推误差限: E = z * sqrt(p(1-p)/n * (1-n/N))
         const fpc = Math.max(0, 1 - effectiveN / populationSize);
         const marginOfError = z * Math.sqrt(p * (1 - p) / effectiveN * fpc) * 100;
@@ -115,10 +117,12 @@ export function PrecisionCostTradeoff({
         const z = confidenceLevel === "90" ? 1.645 : confidenceLevel === "95" ? 1.96 : 2.576;
         const p = 0.5;
 
+        const safeDeff = designEffect > 0 ? designEffect : 1;
+
         sampleSizes.forEach(n => {
             if (n <= populationSize) {
                 // 去除deff和nrr调整，得到有效样本量
-                const effectiveN = n * (1 - nonResponseRate) / designEffect;
+                const effectiveN = n * (1 - nonResponseRate) / safeDeff;
                 // 含FPC反推误差限
                 const fpc = Math.max(0, 1 - effectiveN / populationSize);
                 const marginOfError = z * Math.sqrt(p * (1 - p) / effectiveN * fpc) * 100;

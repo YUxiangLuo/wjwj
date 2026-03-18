@@ -278,7 +278,7 @@ test("square root allocation sums to total", () => {
         100,
     );
     const total = allocation.reduce((s, a) => s + a.sampleSize, 0);
-    // Allow small rounding difference
+    // Due to integer rounding in Math.round, total may differ by at most 1
     expect(Math.abs(total - 100)).toBeLessThanOrEqual(1);
     // Larger layers get more but not proportional
     expect(allocation[0]!.sampleSize).toBeGreaterThan(allocation[2]!.sampleSize);
