@@ -101,12 +101,13 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         }
     }, [page, totalQuestions]);
 
-    // Keyboard: Enter advances, Escape closes
+    // Keyboard: Space advances, Escape closes
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape" && page.type !== "complete") {
                 onClose();
-            } else if (e.key === "Enter" && page.type === "question" && isCurrentAnswered) {
+            } else if (e.key === " " && page.type === "question" && isCurrentAnswered) {
+                e.preventDefault();
                 goNext();
             }
         };
@@ -316,7 +317,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
             </div>
 
             {/* Content */}
-            <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-4 sm:px-6 pt-14 pb-28">
+            <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-4 sm:px-6 pt-14 pb-20">
                 <div key={pageKey} className={`w-full max-w-lg ${animationClass}`}>
                     {/* Welcome Page */}
                     {page.type === "welcome" && (
@@ -366,7 +367,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                             {renderQuestionBody(currentQuestion)}
                             {isCurrentAnswered && (
                                 <p className="text-xs text-gray-400 text-center animate-in fade-in duration-300">
-                                    按 Enter 继续 →
+                                    按空格键继续 →
                                 </p>
                             )}
                         </div>
@@ -432,20 +433,29 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 </div>
             </div>
 
-            {/* Navigation footer for question pages */}
+            {/* Side navigation buttons for question pages */}
             {page.type === "question" && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-t border-gray-100 px-4 sm:px-6 py-4 z-10">
-                    <div className="max-w-lg mx-auto flex items-center justify-between">
-                        <Button
-                            variant="ghost"
-                            onClick={goPrev}
-                            className="text-gray-500 hover:text-gray-700"
-                        >
-                            <ChevronLeft className="w-4 h-4 mr-1" />
-                            上一题
-                        </Button>
+                <>
+                    <button
+                        onClick={goPrev}
+                        className="fixed top-1/2 -translate-y-1/2 left-[max(0.75rem,calc(50%-21rem))] z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full border border-gray-200 bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                        aria-label="上一题"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={goNext}
+                        disabled={!isCurrentAnswered}
+                        data-testid="immersive-preview-next"
+                        className="fixed top-1/2 -translate-y-1/2 right-[max(0.75rem,calc(50%-21rem))] z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-indigo-600 shadow-lg shadow-indigo-500/20 flex items-center justify-center text-white hover:bg-indigo-700 disabled:opacity-30 disabled:shadow-none transition-colors"
+                        aria-label={page.index + 1 === totalQuestions ? "完成" : "下一题"}
+                    >
+                        <ChevronRight className="w-5 h-5" />
+                    </button>
+                    {/* Bottom progress indicator */}
+                    <div className="fixed bottom-4 left-0 right-0 flex justify-center z-10">
                         {totalQuestions <= 15 ? (
-                            <div className="flex gap-1">
+                            <div className="flex gap-1 bg-white/80 backdrop-blur-sm rounded-full px-3 py-2 shadow-sm border border-gray-100">
                                 {questions.map((q, i) => (
                                     <div
                                         key={q.id}
@@ -460,37 +470,23 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                 ))}
                             </div>
                         ) : (
-                            <span className="text-sm text-gray-400 font-mono tabular-nums">
+                            <span className="text-sm text-gray-400 font-mono tabular-nums bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 shadow-sm border border-gray-100">
                                 {page.index + 1} / {totalQuestions}
                             </span>
                         )}
-                        <Button
-                            onClick={goNext}
-                            disabled={!isCurrentAnswered}
-                            data-testid="immersive-preview-next"
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40"
-                        >
-                            {page.index + 1 === totalQuestions ? "完成" : "下一题"}
-                            <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
                     </div>
-                </div>
+                </>
             )}
 
-            {/* Navigation footer for ending page */}
+            {/* Side navigation button for ending page */}
             {page.type === "ending" && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-t border-gray-100 px-4 sm:px-6 py-4 z-10">
-                    <div className="max-w-lg mx-auto flex items-center justify-start">
-                        <Button
-                            variant="ghost"
-                            onClick={goPrev}
-                            className="text-gray-500 hover:text-gray-700"
-                        >
-                            <ChevronLeft className="w-4 h-4 mr-1" />
-                            返回上一题
-                        </Button>
-                    </div>
-                </div>
+                <button
+                    onClick={goPrev}
+                    className="fixed top-1/2 -translate-y-1/2 left-[max(0.75rem,calc(50%-21rem))] z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full border border-gray-200 bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-gray-500 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                    aria-label="返回上一题"
+                >
+                    <ChevronLeft className="w-5 h-5" />
+                </button>
             )}
         </div>
     );

@@ -844,24 +844,26 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
             case 4:
                 return (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                         {/* Immersive preview CTA */}
                         <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm overflow-hidden">
                             {isPreviewValid ? (
-                                <CardContent className="py-8">
-                                    <div className="flex flex-col items-center gap-4">
-                                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
-                                            <CheckCircle className="w-7 h-7 text-emerald-500" />
-                                        </div>
-                                        <div className="text-center">
-                                            <h3 className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">模拟填写已完成</h3>
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">您已体验了受访者视角的问卷填写过程</p>
+                                <CardContent className="py-5">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                                                <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-base font-semibold text-emerald-600 dark:text-emerald-400">模拟填写已完成</h3>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400">您已体验了受访者视角的问卷填写过程</p>
+                                            </div>
                                         </div>
                                         <Button
                                             variant="outline"
                                             onClick={() => setPreviewOpen(true)}
                                             data-testid="student-questionnaire-redo-preview"
-                                            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
+                                            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 shrink-0"
                                         >
                                             <RotateCcw className="w-4 h-4 mr-2" />
                                             重新模拟填写
@@ -907,91 +909,91 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         </Card>
 
                         {/* Validation checklist and score */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
-                            <CardHeader>
-                                <CardTitle className="text-slate-900 dark:text-slate-100">校验清单</CardTitle>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm text-slate-900 dark:text-slate-100">校验清单</CardTitle>
                                 <CardDescription className="text-slate-600 dark:text-slate-400">确认问卷信息完善后再进入下一阶段</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.title ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                            <CardContent className="space-y-1.5">
+                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.title ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.title ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                                     ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.title ? "text-emerald-600" : "text-rose-600"}`}>
                                         问卷标题：{title ? "已填写" : "未填写"}
                                     </span>
                                 </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.welcomeText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.welcomeText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.welcomeText ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                                     ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.welcomeText ? "text-emerald-600" : "text-rose-600"}`}>
                                         欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
                                     </span>
                                 </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.questionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.questionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.questionCount ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                                     ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.questionCount ? "text-emerald-600" : "text-rose-600"}`}>
                                         题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}
                                     </span>
                                 </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.questionTypes ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
+                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.questionTypes ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
                                     {validation.questionTypes ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                                     ) : (
-                                        <AlertCircle className="w-5 h-5 text-amber-500" />
+                                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.questionTypes ? "text-emerald-600" : "text-amber-600"}`}>
                                         题型多样性：{new Set(questions.map((q) => q.type)).size} 种题型
                                         {validation.questionTypes ? "" : " (建议至少2种)"}
                                     </span>
                                 </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.optionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.optionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.optionCount ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                                     ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.optionCount ? "text-emerald-600" : "text-rose-600"}`}>
                                         选项数量：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
                                     </span>
                                 </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.endingText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.endingText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.endingText ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                                     ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.endingText ? "text-emerald-600" : "text-rose-600"}`}>
                                         结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
                                     </span>
                                 </div>
-                                <div className={`flex items-center gap-3 p-3 rounded-xl border ${validation.previewCompleted ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.previewCompleted ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
                                     {validation.previewCompleted ? (
-                                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                                     ) : (
-                                        <AlertCircle className="w-5 h-5 text-rose-500" />
+                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.previewCompleted ? "text-emerald-600" : "text-rose-600"}`}>
                                         模拟填写：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次）"}
                                     </span>
                                 </div>
                                 {requiredMissingCount === 0 ? (
-                                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+                                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
                                         问卷结构完整，可进入下一阶段。
                                         {warningCount > 0 ? ` 另有 ${warningCount} 项建议优化。` : ""}
                                     </div>
                                 ) : (
-                                    <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-500">
+                                    <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
                                         仍有 {requiredMissingCount} 项必填检测未通过，需修复后才能继续。
                                     </div>
                                 )}
@@ -999,15 +1001,15 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         </Card>
 
                         <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
-                            <CardHeader>
-                                <CardTitle className="text-slate-900 dark:text-slate-100">初步评分（机器评分）</CardTitle>
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm text-slate-900 dark:text-slate-100">初步评分（机器评分）</CardTitle>
                                 <CardDescription className="text-slate-600 dark:text-slate-400">供参考，满分100分</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-4 flex items-center justify-between">
-                                    <div>
-                                        <div className="text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300">当前得分</div>
-                                        <div className="text-3xl font-bold text-indigo-800 dark:text-indigo-200">{preliminaryScore}</div>
+                            <CardContent className="space-y-3">
+                                <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 flex items-center justify-between">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300">当前得分</span>
+                                        <span className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">{preliminaryScore}</span>
                                     </div>
                                     <div className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
                                         {preliminaryScore >= 90
@@ -1019,23 +1021,23 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                                                     : "建议先完善基础项"}
                                     </div>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     {scoreItems.map((item) => (
-                                        <div key={item.label} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40 p-3">
-                                            <div className="flex items-center justify-between">
+                                        <div key={item.label} className="flex items-baseline justify-between rounded-lg border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40 px-3 py-2">
+                                            <div className="min-w-0">
                                                 <span className="text-sm text-slate-800 dark:text-slate-200">{item.label}</span>
-                                                <span className="text-xs font-mono text-slate-600 dark:text-slate-400">{item.points} 分</span>
+                                                <span
+                                                    className={`text-xs ml-2 ${item.status === "pass"
+                                                        ? "text-emerald-600"
+                                                        : item.status === "warning"
+                                                            ? "text-amber-600"
+                                                            : "text-rose-600"
+                                                        }`}
+                                                >
+                                                    {item.message}
+                                                </span>
                                             </div>
-                                            <div
-                                                className={`text-xs mt-1 ${item.status === "pass"
-                                                    ? "text-emerald-600"
-                                                    : item.status === "warning"
-                                                        ? "text-amber-600"
-                                                        : "text-rose-600"
-                                                    }`}
-                                            >
-                                                {item.message}
-                                            </div>
+                                            <span className="text-xs font-mono text-slate-600 dark:text-slate-400 shrink-0 ml-2">{item.points} 分</span>
                                         </div>
                                     ))}
                                 </div>
