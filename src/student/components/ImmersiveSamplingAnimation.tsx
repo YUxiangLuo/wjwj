@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
-import { X, CheckCircle2, Users, Target, Layers, Shuffle, ArrowRight } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, memo } from "react";
+import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "../api-client";
 
@@ -24,6 +24,10 @@ interface Props {
     /** Called when animation finishes so parent can start the real API call */
     onAnimationComplete: () => void;
     onClose: () => void;
+    /** Sampled data rows returned from API — when set, displayed as a table in complete phase */
+    sampledData?: Array<Record<string, unknown>>;
+    /** Total count of sampled rows (may exceed displayed rows) */
+    sampledTotal?: number;
 }
 
 // ─── Constants ─────────────────────────────────────────────
@@ -156,7 +160,7 @@ type Phase =
     | { type: "sampling" }       // highlight selected dots one by one
     | { type: "complete" };      // show summary, allow proceed
 
-const STRATIFY_FIELD_LABELS: Record<string, string> = {
+const FIELD_LABELS: Record<string, string> = {
     gender: "性别",
     education: "学历",
     age: "年龄段",
@@ -164,6 +168,8 @@ const STRATIFY_FIELD_LABELS: Record<string, string> = {
     income: "收入水平",
     city: "城市",
     city_tier: "城市等级",
+    monthly_expense: "月支出",
+    spending: "消费支出",
 };
 
 export function ImmersiveSamplingAnimation({
@@ -176,6 +182,8 @@ export function ImmersiveSamplingAnimation({
     layers,
     onAnimationComplete,
     onClose,
+    sampledData,
+    sampledTotal,
 }: Props) {
     const [phase, setPhase] = useState<Phase>({ type: "intro" });
     const [visiblePopCount, setVisiblePopCount] = useState(0);
@@ -184,7 +192,7 @@ export function ImmersiveSamplingAnimation({
     const hasCalledComplete = useRef(false);
     const meta = METHOD_META[method];
     const progressCopy = METHOD_PROGRESS_COPY[method];
-    const fieldLabel = STRATIFY_FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy;
+    const fieldLabel = FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy;
     const introDelay = method === "stratified" ? 1700 : 1200;
 
     // Prevent body scroll
@@ -331,22 +339,16 @@ export function ImmersiveSamplingAnimation({
 
     // ─── Intro explanation text ───────────────────────────
     const introText = useMemo(() => {
-        const fieldLabel: Record<string, string> = {
-            gender: "性别", education: "学历",
-            age: "年龄段", age_group: "年龄段",
-            income: "收入水平", city: "城市", city_tier: "城市等级",
-            monthly_expense: "月支出", spending: "消费支出",
-        };
         if (method === "simple") {
             return `即将从 ${populationSize.toLocaleString()} 个总体中随机选取 ${sampleSize} 个样本，每个个体被选中的概率完全相等。`;
         } else if (method === "systematic") {
             return `将按固定间隔 K=${kValue} 从总体中等距抽取样本，以确保样本均匀覆盖整个总体。`;
         } else if (method === "pps") {
-            const label = fieldLabel[sizeField ?? ""] ?? sizeField ?? "规模";
+            const label = FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模";
             return `按"${label}"大小赋予不同选中概率，从 ${populationSize.toLocaleString()} 个总体中抽取 ${sampleSize} 个样本。`;
         } else {
             const layerNames = (layers ?? []).map((l) => l.name).join("、");
-            return `先按"${fieldLabel[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
+            return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
         }
     }, [method, populationSize, sampleSize, kValue, sizeField, stratifyBy, layers]);
 
@@ -402,7 +404,17 @@ export function ImmersiveSamplingAnimation({
                         </p>
                     </div>
                 </div>
-                {phase.type !== "complete" && (
+                {phase.type === "complete" ? (
+                    <Button
+                        onClick={onClose}
+                        variant="outline"
+                        data-testid="immersive-sampling-return"
+                        className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+                    >
+                        关闭
+                        <X className="w-4 h-4 ml-1" />
+                    </Button>
+                ) : (
                     <button
                         onClick={onClose}
                         className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
@@ -414,7 +426,7 @@ export function ImmersiveSamplingAnimation({
             </div>
 
             {/* Main content */}
-            <div className="flex-1 flex items-center justify-center px-6 pb-6 overflow-hidden">
+            <div className={`flex-1 flex px-6 pb-6 overflow-hidden min-h-0 ${phase.type === "complete" ? "flex-col" : "items-center justify-center"}`}>
                 {/* Intro phase */}
                 {phase.type === "intro" && (
                     <div className="text-center space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-lg">
@@ -445,7 +457,7 @@ export function ImmersiveSamplingAnimation({
 
                 {/* Populating + Sampling + Complete: Show the grid */}
                 {phase.type !== "intro" && (
-                    <div className="w-full max-w-4xl space-y-4 animate-in fade-in duration-300">
+                    <div className={`w-full max-w-5xl mx-auto animate-in fade-in duration-300 ${phase.type === "complete" ? "flex flex-col min-h-0 h-full" : "space-y-4"}`}>
                         {/* Legend for stratified */}
                         {method === "stratified" && layers && (
                             <div className="flex flex-wrap items-center justify-center gap-4 mb-2">
@@ -528,70 +540,97 @@ export function ImmersiveSamplingAnimation({
 
                         {/* Complete phase */}
                         {phase.type === "complete" && (
-                            <div className="text-center space-y-6 animate-in fade-in zoom-in-95 duration-500 py-8">
-                                <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center animate-in zoom-in duration-500">
-                                    <CheckCircle2 className="w-10 h-10 text-emerald-500" />
-                                </div>
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">抽样执行完成</h2>
-                                    <p className="text-slate-600 dark:text-slate-400">
-                                        {meta.label}动画演示已完成，正在展示抽样结果。
-                                    </p>
-                                </div>
-
-                                {/* Method-specific summary */}
-                                <div className="max-w-sm mx-auto bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">抽样方法</span>
-                                        <span className="text-slate-800 dark:text-slate-200 font-medium">{meta.label}</span>
+                            <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full">
+                                {!sampledData ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
+                                        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                                        <p className="text-sm text-slate-500">正在获取抽样数据...</p>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">总体规模</span>
-                                        <span className="text-slate-800 dark:text-slate-200 font-mono">{populationSize.toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-500">目标样本量</span>
-                                        <span className="text-slate-800 dark:text-slate-200 font-mono">{sampleSize}</span>
-                                    </div>
-                                    {method === "systematic" && kValue && (
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-slate-500">间隔 K</span>
-                                            <span className="text-slate-800 dark:text-slate-200 font-mono">{kValue}</span>
-                                        </div>
-                                    )}
-                                    {method === "stratified" && layers && (
-                                        <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2">
-                                            <div className="text-xs text-slate-500 text-left">各层分配：</div>
-                                            {layers.map((layer, i) => (
-                                                <div key={layer.name} className="flex justify-between text-sm">
-                                                    <span className={`flex items-center gap-2 ${lc(i).text}`}>
-                                                        <div className={`w-2 h-2 rounded-full ${lc(i).bg}`} />
-                                                        {layer.name}
-                                                    </span>
-                                                    <span className="text-slate-700 dark:text-slate-300 font-mono">{layer.sampleCount}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <Button
-                                    onClick={onClose}
-                                    size="lg"
-                                    data-testid="immersive-sampling-return"
-                                    className={`px-10 py-6 rounded-xl text-base text-white shadow-lg ${
-                                        method === "simple" ? "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
-                                            : method === "systematic" ? "bg-teal-600 hover:bg-teal-700 shadow-teal-500/20"
-                                                : "bg-amber-600 hover:bg-amber-700 shadow-amber-500/20"
-                                    }`}
-                                >
-                                    查看抽样结果
-                                    <ArrowRight className="w-5 h-5 ml-2" />
-                                </Button>
+                                ) : (
+                                    <SampledDataTable data={sampledData} total={sampledTotal ?? sampledData.length} />
+                                )}
                             </div>
                         )}
                     </div>
                 )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Inline data table for complete phase ────────────────
+const PAGE_SIZE = 20;
+
+function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>>; total: number }) {
+    const [page, setPage] = useState(1);
+
+    // Reset to page 1 when data changes (e.g. re-execution)
+    useEffect(() => { setPage(1); }, [data]);
+
+    if (data.length === 0) {
+        return <div className="flex-1 flex items-center justify-center text-sm text-slate-500 italic">暂无抽样数据</div>;
+    }
+
+    const keys = Object.keys(data[0] ?? {});
+    const totalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+    const currentPage = Math.min(page, totalPages);
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = Math.min(start + PAGE_SIZE, data.length);
+    const rows = data.slice(start, end);
+
+    return (
+        <div className="flex flex-col min-h-0 h-full gap-2">
+            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-left min-w-max">
+                    <thead className="sticky top-0 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-sm z-10">
+                        <tr>
+                            <th className="px-3 py-2 text-xs font-medium text-slate-500 whitespace-nowrap border-b border-slate-200 dark:border-slate-800">#</th>
+                            {keys.map((key) => (
+                                <th key={key} className="px-3 py-2 text-xs font-medium text-slate-500 whitespace-nowrap border-b border-slate-200 dark:border-slate-800">
+                                    {FIELD_LABELS[key] || key}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row, rowIndex) => (
+                            <tr key={start + rowIndex} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                <td className="px-3 py-1.5 text-xs text-slate-400 font-mono whitespace-nowrap">{start + rowIndex + 1}</td>
+                                {keys.map((key) => (
+                                    <td key={key} className="px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                        {String(row[key] ?? "")}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <div className="flex items-center justify-between shrink-0 px-1">
+                <p className="text-xs text-slate-500">
+                    显示第 {start + 1}-{end} 条{total > data.length ? `（已加载 ${data.length} 条，共 ${total} 条）` : `，共 ${data.length} 条`}
+                </p>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage <= 1}
+                    >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                    </Button>
+                    <span className="text-xs text-slate-500 font-mono tabular-nums">{currentPage}/{totalPages}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage >= totalPages}
+                    >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                    </Button>
+                </div>
             </div>
         </div>
     );
