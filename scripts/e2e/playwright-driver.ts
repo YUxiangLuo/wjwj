@@ -78,10 +78,10 @@ async function createSnapshot(state: SessionState) {
 
         function selectorFor(element: Element) {
             const testId = element.getAttribute("data-testid");
-            if (testId) return `[data-testid="${testId.replace(/"/g, '\\"')}"]`;
+            if (testId) return `[data-testid=${JSON.stringify(testId)}]`;
 
             const id = element.getAttribute("id");
-            if (id) return `#${id.replace(/([ !"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, "\\$1")}`;
+            if (id) return `#${CSS.escape(id)}`;
 
             return null;
         }
@@ -176,6 +176,7 @@ async function saveDownload(download: Download, destination: string) {
 }
 
 async function executeEval(page: Page, source: string) {
+    // Only repository-owned e2e scripts call this helper with hard-coded snippets.
     return page.evaluate(async (code) => {
         return await (0, eval)(code);
     }, source);
@@ -287,6 +288,10 @@ export async function runPlaywrightCommand(args: string[], sessionName: string):
             }
 
             case "snapshot": {
+                const mode = args[1];
+                if (mode !== undefined && mode !== "-i") {
+                    return commandError(`Unsupported snapshot option: ${mode}`);
+                }
                 return ok(await createSnapshot(state));
             }
 
