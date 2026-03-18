@@ -82,7 +82,7 @@ console.log(`🚀 Server running at ${server.url}`);
 // Recover pending submission PDFs even when the dedicated worker is not running.
 kickSubmissionPdfProcessing();
 
-const stopBackgroundJobs = process.env.RUN_IN_PROCESS_SCHEDULERS === "1" ? startBackgroundJobs() : null;
+const stopBackgroundJobs = startBackgroundJobs();
 
 registerLongRunningProcessSignals({
     onShutdown: async () => {

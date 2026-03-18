@@ -8,12 +8,8 @@
     "bun": ">=1.3.0"
   },
   "scripts": {
-    "dev": "DISABLE_AUTO_BACKUP=1 DISABLE_NOTIFICATION_CLEANUP=1 DISABLE_DEADLINE_REMINDER=1 bun --hot src/index.ts",
-    "dev:full": "RUN_IN_PROCESS_SCHEDULERS=1 bun --hot src/index.ts",
-    "dev:worker": "bun --hot src/worker.ts",
+    "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
-    "start:legacy": "RUN_IN_PROCESS_SCHEDULERS=1 NODE_ENV=production bun src/index.ts",
-    "worker": "NODE_ENV=production bun src/worker.ts",
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
     "db:push": "bunx drizzle-kit push",
