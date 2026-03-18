@@ -225,7 +225,7 @@ export function TopicDetails() {
     const previewUrl = previewFile ? `/api/student/attachments/${previewFile.id}/download?mode=preview` : "";
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-12" data-testid="student-task-detail">
+        <div className="space-y-6 pb-12" data-testid="student-task-detail">
             <Link to="/">
                 <Button variant="ghost" className="gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 -ml-4">
                     <ArrowLeft className="w-4 h-4" />

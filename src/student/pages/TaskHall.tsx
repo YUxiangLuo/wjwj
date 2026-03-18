@@ -382,9 +382,9 @@ export function TaskHall() {
     }
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8">
             {latestUnread && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 flex items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-500">
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="p-2 rounded-full bg-amber-500/20 text-amber-500 shrink-0">
                             <AlertCircle className="w-5 h-5" />

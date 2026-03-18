@@ -306,7 +306,7 @@ export function ExperimentLayout() {
 
     return (
         <ExperimentContext.Provider value={contextValue}>
-            <div className="pb-12 animate-in fade-in duration-500" data-testid="student-experiment-layout">
+            <div className="pb-12" data-testid="student-experiment-layout">
                 {/* Sticky header: top bar + compact stage navigation */}
                 <div className="sticky top-[4rem] z-40 bg-white/90 dark:bg-slate-950/90 backdrop-blur -mt-2 border-b border-slate-200/50 dark:border-slate-800/50">
                     {/* Row 1: Title + actions */}
