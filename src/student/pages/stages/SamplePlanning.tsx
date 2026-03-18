@@ -15,11 +15,20 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2 } from "lucide-react";
+import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2, TrendingUp, BarChart3, PieChart } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
 import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
-import { calculateFinitePopulationSampleSize } from "../../experiment/sample-plan";
+import { 
+    calculateFinitePopulationSampleSize, 
+    calculateSampleSizeMetrics,
+    calculateSampleSizeForDifferentP,
+    calculateSampleSizeSensitivity,
+    type SampleSizeMetrics,
+} from "../../experiment/sample-plan";
+import { EnhancedMetricsCard } from "../../components/EnhancedMetricsCard";
+import { PValueComparisonCard } from "../../components/PValueComparisonCard";
+import { SensitivityAnalysisCard } from "../../components/SensitivityAnalysisCard";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -40,6 +49,17 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const serverSnapshotRef = useRef("");
     const saveInFlightRef = useRef(false);
+    
+    // 增强指标
+    const [metrics, setMetrics] = useState<SampleSizeMetrics | null>(null);
+    const [pComparison, setPComparison] = useState<Array<{ p: number; pLabel: string; sampleSize: number; description: string }>>([]);
+    const [sensitivityMatrix, setSensitivityMatrix] = useState<Array<{
+        confidenceLabel: string;
+        confidenceLevel: string;
+        marginOfError: number;
+        sampleSize: number;
+    }> | null>(null);
+    const [showAdvancedMetrics, setShowAdvancedMetrics] = useState(false);
 
     const N = populationSize;
 
@@ -62,6 +82,34 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     }, [confidenceLevel, marginOfError, N, designEffect, nonResponseRate]);
 
     const recommendedSize = calculateSampleSize();
+
+    // Calculate enhanced metrics when parameters change
+    useEffect(() => {
+        const newMetrics = calculateSampleSizeMetrics({
+            confidenceLevel,
+            marginOfError: marginOfError[0] ?? 5,
+            populationSize: N,
+            designEffect,
+            nonResponseRate,
+        });
+        setMetrics(newMetrics);
+
+        const pComparisonData = calculateSampleSizeForDifferentP({
+            confidenceLevel,
+            marginOfError: marginOfError[0] ?? 5,
+            populationSize: N,
+            designEffect,
+            nonResponseRate,
+        });
+        setPComparison(pComparisonData);
+
+        const sensitivityData = calculateSampleSizeSensitivity({
+            populationSize: N,
+            designEffect,
+            nonResponseRate,
+        });
+        setSensitivityMatrix(sensitivityData);
+    }, [confidenceLevel, marginOfError, N, designEffect, nonResponseRate]);
     const minSize = 30;
     const maxSize = Math.floor(N * 0.5);
 
@@ -427,6 +475,33 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* 增强指标卡片 */}
+                    {showAdvancedMetrics && metrics && (
+                        <>
+                            <EnhancedMetricsCard metrics={metrics} />
+                            <PValueComparisonCard 
+                                comparison={pComparison} 
+                                currentSampleSize={recommendedSize}
+                            />
+                            {sensitivityMatrix && (
+                                <SensitivityAnalysisCard 
+                                    matrix={sensitivityMatrix}
+                                    currentConfidenceLevel={confidenceLevel}
+                                    currentMarginOfError={marginOfError[0] ?? 5}
+                                />
+                            )}
+                        </>
+                    )}
+
+                    {/* 显示/隐藏高级指标按钮 */}
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowAdvancedMetrics(!showAdvancedMetrics)}
+                        className="w-full border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
+                    >
+                        {showAdvancedMetrics ? "隐藏高级分析" : "显示高级分析（SE/CV/敏感性）"}
+                    </Button>
 
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm sticky top-24">
                         <CardHeader className="pb-2">

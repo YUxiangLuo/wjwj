@@ -28,6 +28,7 @@ import { CheckCircle2, Play, RefreshCw, Loader2, Users, Target, Layers, ArrowRig
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
 import { ImmersiveSamplingAnimation } from "../../components/ImmersiveSamplingAnimation";
+import { StratifiedAllocationComparison } from "../../components/StratifiedAllocationComparison";
 import {
     formatSystematicRange,
     getSystematicAcceptedRange,
@@ -971,7 +972,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                             </Card>
                         </div>
                         <div className="space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-full">
+                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-base text-slate-800 dark:text-slate-200">抽样预览</CardTitle>
@@ -979,7 +980,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     </div>
                                     <CardDescription className="text-slate-600 dark:text-slate-400">展示部分抽样结果数据</CardDescription>
                                 </CardHeader>
-                                <CardContent className="h-[300px] overflow-hidden">
+                                <CardContent className="h-[200px] overflow-hidden">
                                     {!stratifiedResult?.completed ? (
                                         <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">
                                             完成抽样后展示
@@ -989,6 +990,17 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     )}
                                 </CardContent>
                             </Card>
+                            
+                            {/* 分配方法对比组件 */}
+                            <StratifiedAllocationComparison
+                                layers={layers}
+                                totalSampleSize={n}
+                                onApplyAllocation={(method) => {
+                                    if (method === "proportional") applyProportionalAllocation();
+                                    else if (method === "neyman") applyNeymanAllocation();
+                                    else if (method === "equal") applyEqualAllocation();
+                                }}
+                            />
                         </div>
                     </div>
                 </TabsContent>
