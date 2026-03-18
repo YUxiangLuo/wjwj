@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
-import { X, CheckCircle2, Users, Target, Layers, Shuffle, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef, useMemo, memo } from "react";
+import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "../api-client";
 
