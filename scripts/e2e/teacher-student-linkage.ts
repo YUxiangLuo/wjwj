@@ -1,4 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
+import { ensureBrowser, runPlaywrightCommand } from "./playwright-driver";
 
 type CommandResult = {
     stdout: string;
@@ -338,7 +339,12 @@ async function runCommand(cmd: string[], options: RunCommandOptions = {}): Promi
 }
 
 async function runBrowser(args: string[], options: RunCommandOptions = {}, session = teacherSession) {
-    return runCommand(["agent-browser", "--session", session, ...args], options);
+    const result = await runPlaywrightCommand(args, session);
+    if (result.exitCode !== 0 && !options.allowFailure) {
+        const details = [result.stdout, result.stderr].filter(Boolean).join("\n");
+        throw new Error(`Command failed (${result.exitCode}): browser ${formatCommand(args)}${details ? `\n${details}` : ""}`);
+    }
+    return result;
 }
 
 function parseBrowserValue<T>(raw: string): T {
@@ -610,7 +616,7 @@ async function hasCommand(command: string) {
 }
 
 async function ensureTooling() {
-    assert(await hasCommand("agent-browser"), "Missing required tool: agent-browser");
+    await ensureBrowser();
 }
 
 async function resetDatabase() {
