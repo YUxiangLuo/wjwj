@@ -14,7 +14,7 @@ interface LayerInfo {
 }
 
 interface AllocationComparison {
-    method: "proportional" | "neyman" | "equal" | "optimal";
+    method: "proportional" | "neyman" | "equal" | "optimal" | "sqrt";
     name: string;
     description: string;
     allocation: Array<{
@@ -36,8 +36,8 @@ interface AllocationComparison {
 interface StratifiedAllocationComparisonProps {
     layers: LayerInfo[];
     totalSampleSize: number;
-    onApplyAllocation?: (method: "proportional" | "neyman" | "equal" | "optimal") => void;
-    onApplyAllocationWithOverflow?: (method: "proportional" | "neyman" | "equal", allocation: { name: string; count: number; sampleCount: number }[]) => void;
+    onApplyAllocation?: (method: "proportional" | "neyman" | "equal" | "optimal" | "sqrt") => void;
+    onApplyAllocationWithOverflow?: (method: "proportional" | "neyman" | "equal" | "sqrt", allocation: { name: string; count: number; sampleCount: number }[]) => void;
 }
 
 export function StratifiedAllocationComparison({ 
@@ -333,7 +333,7 @@ export function StratifiedAllocationComparison({
                                                         }));
                                                         // 安全地调用回调，method 已经限制了类型
                                                         onApplyAllocationWithOverflow(
-                                                            comparison.method as "proportional" | "neyman" | "equal", 
+                                                            comparison.method as "proportional" | "neyman" | "equal" | "sqrt", 
                                                             adjustedAllocation
                                                         );
                                                     }}
@@ -538,6 +538,7 @@ function normalizeAllocation(
     // 如果需要调整
     let attempts = 0;
     while (currentTotal !== totalSampleSize && attempts < 100) {
+        const prevTotal = currentTotal;
         const diff = totalSampleSize - currentTotal;
         
         if (diff > 0) {
@@ -565,7 +566,7 @@ function normalizeAllocation(
         attempts++;
         
         // 防止死循环：如果一轮循环后没有变化就退出
-        if (attempts > 0 && currentTotal === adjusted.reduce((sum, a) => sum + a.sampleSize, 0)) {
+        if (currentTotal === prevTotal) {
             break;
         }
     }
@@ -636,7 +637,7 @@ function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: nu
     const totalVariance = calculateVariance(markedAllocation, layers);
 
     return {
-        method: "optimal" as const,
+        method: "sqrt" as const,
         name: "平方根分配",
         description: "与层规模的平方根成比例，在按比例和等额分配之间取得平衡",
         allocation: markedAllocation,

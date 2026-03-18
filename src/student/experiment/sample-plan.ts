@@ -32,7 +32,7 @@ export function calculateFinitePopulationSampleSize(params: {
     const confidenceValue = Number(params.confidenceLevel);
     const confidenceRatio = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
     const errorValue = Number(params.marginOfError);
-    const errorRatio = errorValue > 1 ? errorValue / 100 : errorValue;
+    const errorRatio = errorValue >= 1 ? errorValue / 100 : errorValue;
 
     const z = Z_SCORES.get(confidenceRatio);
     if (z === undefined) return null;
@@ -76,7 +76,7 @@ export function calculateSampleSizeMetrics(params: {
     const confidenceValue = Number(params.confidenceLevel);
     const confidenceRatio = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
     const errorValue = Number(params.marginOfError);
-    const errorRatio = errorValue > 1 ? errorValue / 100 : errorValue;
+    const errorRatio = errorValue >= 1 ? errorValue / 100 : errorValue;
 
     const z = Z_SCORES.get(confidenceRatio);
     if (z === undefined) return null;
@@ -109,8 +109,9 @@ export function calculateSampleSizeMetrics(params: {
     // 计算精度指标（基于调整后的有效样本量，即n1）
     const effectiveN = Math.ceil(n1);
     
-    // 标准误差 SE = sqrt(p*(1-p)/n)
-    const standardError = Math.sqrt(p * (1 - p) / effectiveN);
+    // 标准误差 SE = sqrt(p*(1-p)/n * (1 - n/N))，含有限总体校正
+    const fpc = 1 - effectiveN / N;
+    const standardError = Math.sqrt(p * (1 - p) / effectiveN * (fpc > 0 ? fpc : 0));
     
     // 相对标准误差 RSE (CV) = SE / p
     const relativeStandardError = p > 0 ? standardError / p : 0;
@@ -271,13 +272,16 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     // 设计效应和无回答率调整
     n = n * deff / (1 - nrr);
     
-    const requiredSampleSize = Math.ceil(n);
+    const requiredSampleSize = Math.min(Math.ceil(n), params.populationSize);
     
-    // 反推实际能达到的CV
-    const achievedCV = Math.sqrt(
-        (Math.pow(z, 2) * Math.pow(estimatedCV, 2) * deff) / 
-        (requiredSampleSize * (1 - nrr) * (1 - requiredSampleSize / params.populationSize))
-    );
+    // 反推实际能达到的CV（含有限总体校正）
+    const fpc = 1 - requiredSampleSize / params.populationSize;
+    const achievedCV = fpc > 0
+        ? Math.sqrt(
+            (Math.pow(z, 2) * Math.pow(estimatedCV, 2) * deff) / 
+            (requiredSampleSize * (1 - nrr) * fpc)
+          )
+        : 0;  // 全数调查时CV为0
 
     return {
         requiredSampleSize,
@@ -322,10 +326,11 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
     const e = params.marginOfError > 1 ? params.marginOfError / 100 : params.marginOfError;
     const p = params.p ?? 0.5;
     
-    // 基础样本量（简单随机抽样）
-    const n_srs = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
+    // 基础样本量（简单随机抽样，含有限总体校正）
+    const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
+    const n_srs = n0 / (1 + (n0 - 1) / params.populationSize);
     
-    // 整群抽样样本量 = 简单随机样本量 × deff
+    // 整群抽样样本量 = 有限总体校正后样本量 × deff / (1 - nrr)
     const n_cluster = Math.ceil(n_srs * params.deff / (1 - (params.nonResponseRate ?? 0)));
     
     // 计算所需群数
