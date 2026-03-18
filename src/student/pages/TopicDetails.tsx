@@ -225,44 +225,46 @@ export function TopicDetails() {
     const previewUrl = previewFile ? `/api/student/attachments/${previewFile.id}/download?mode=preview` : "";
 
     return (
-        <div className="space-y-6 pb-12" data-testid="student-task-detail">
-            <Link to="/">
-                <Button variant="ghost" className="gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 -ml-4">
-                    <ArrowLeft className="w-4 h-4" />
-                    返回任务列表
-                </Button>
-            </Link>
+        <div className="space-y-4 pb-12" data-testid="student-task-detail">
+            <div>
+                <Link to="/">
+                    <Button variant="ghost" className="gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 -ml-4 h-8 text-sm">
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        返回任务列表
+                    </Button>
+                </Link>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{task.name}</h1>
-                    <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-slate-600 dark:text-slate-400">
-                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}</span>
-                        {task.deadline && <span>截止于 {formatDateTime(task.deadline)}</span>}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-1">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{task.name}</h1>
+                        <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-slate-600 dark:text-slate-400">
+                            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}</span>
+                            {task.deadline && <span>截止于 {formatDateTime(task.deadline)}</span>}
+                        </div>
                     </div>
+                    <Badge variant="outline" className={`${effectiveStatus.color} px-3 py-1 text-sm h-7`}>{effectiveStatus.label}</Badge>
                 </div>
-                <Badge variant="outline" className={`${effectiveStatus.color} px-3 py-1 text-sm h-8`}>{effectiveStatus.label}</Badge>
             </div>
 
-            <Card className="rounded-3xl border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 shadow-sm">
-                <CardContent className="px-6 py-5">
-                    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-2 max-w-2xl">
-                            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-500 border border-indigo-500/20">
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 shadow-sm">
+                <CardContent className="px-5 py-4">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="space-y-1 max-w-2xl">
+                            <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-500 border border-indigo-500/20">
                                 <BookOpen className="w-3 h-3" />
                                 实验目标
                             </div>
-                            <p className="text-lg font-medium text-slate-800 dark:text-slate-200 leading-relaxed">完成抽样统计实验，形成完整报告。</p>
+                            <p className="text-base font-medium text-slate-800 dark:text-slate-200 leading-relaxed">完成抽样统计实验，形成完整报告。</p>
                             <p className="text-sm text-slate-600 dark:text-slate-400">按步骤推进，及时提交，体验完整的数据分析流程。</p>
                         </div>
-                        <div className="rounded-2xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 px-6 py-4 shadow-sm backdrop-blur-sm min-w-[200px]">
-                            <div className="text-xs text-slate-500 mb-1 font-medium uppercase tracking-wider">
+                        <div className="rounded-xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 px-5 py-3 shadow-sm backdrop-blur-sm min-w-[180px]">
+                            <div className="text-xs text-slate-500 font-medium uppercase tracking-wider">
                                 {notOpenYet ? "开放状态" : "截止状态"}
                             </div>
-                            <div className="text-2xl font-bold text-slate-800 dark:text-slate-200">
+                            <div className="text-xl font-bold text-slate-800 dark:text-slate-200 mt-0.5">
                                 {notOpenYet ? getOpeningLabel(task.publishedAt) : getDeadlineLabel(task.deadline)}
                             </div>
-                            <div className="text-xs text-slate-500 mt-1 font-mono">
+                            <div className="text-xs text-slate-500 mt-0.5 font-mono">
                                 {notOpenYet
                                     ? `开放于 ${formatDateTime(task.publishedAt)}`
                                     : task.deadline ? formatDateTime(task.deadline) : "未设置截止时间"}
@@ -272,16 +274,16 @@ export function TopicDetails() {
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 space-y-4">
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <CardTitle className="text-base text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
                                 <FileText className="w-4 h-4 text-indigo-500" />
                                 课题介绍
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-6">
+                        <CardContent className="pt-4 pb-4">
                             <RichTextContent
                                 html={task.description ?? ""}
                                 className="prose prose-sm prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed"
@@ -292,18 +294,18 @@ export function TopicDetails() {
 
                     {task.attachments.length > 0 && (
                         <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                            <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                                <CardTitle className="text-base text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
+                                <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
                                     <Download className="w-4 h-4 text-indigo-500" />
                                     相关资料 ({task.attachments.length})
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="pt-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <CardContent className="pt-3 pb-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {task.attachments.map((file) => (
-                                        <div key={file.id} className="flex items-center justify-between rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 p-3 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors group gap-2">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shrink-0">
+                                        <div key={file.id} className="flex items-center justify-between rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 px-3 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors group gap-2">
+                                            <div className="flex items-center gap-2.5 overflow-hidden">
+                                                <div className="p-1.5 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shrink-0">
                                                     {getFileIcon(file.type)}
                                                 </div>
                                                 <div className="min-w-0">
@@ -311,26 +313,26 @@ export function TopicDetails() {
                                                     <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-1 shrink-0">
+                                            <div className="flex items-center gap-0.5 shrink-0">
                                                 {getAttachmentPreviewType(file) && (
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
+                                                        className="h-7 w-7 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
                                                         onClick={() => setPreviewFile(file)}
                                                         title="预览"
                                                     >
-                                                        <Eye className="w-4 h-4" />
+                                                        <Eye className="w-3.5 h-3.5" />
                                                     </Button>
                                                 )}
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
+                                                    className="h-7 w-7 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
                                                     onClick={() => handleDownload(file)}
                                                     title="下载"
                                                 >
-                                                    <Download className="w-4 h-4" />
+                                                    <Download className="w-3.5 h-3.5" />
                                                 </Button>
                                             </div>
                                         </div>
@@ -342,48 +344,32 @@ export function TopicDetails() {
 
                     {task.status === "rejected" && task.rejectReason && (
                         <Card className="rounded-2xl border-rose-500/20 bg-rose-500/10">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-base text-rose-600 flex items-center gap-2">
-                                    <AlertTriangle className="w-4 h-4" />
-                                    驳回理由
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-rose-500 text-sm leading-relaxed opacity-90">{task.rejectReason}</p>
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {task.status === "graded" && task.score !== undefined && (
-                        <Card className="rounded-2xl border-emerald-500/20 bg-emerald-500/10">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-base text-emerald-600 flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4" />
-                                    实验成绩
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-baseline gap-2">
-                                    <span className="text-5xl font-bold text-emerald-600 tracking-tight">{task.score}</span>
-                                    <span className="text-emerald-500 font-medium">分</span>
+                            <CardContent className="py-4">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                                    <div>
+                                        <div className="text-sm font-semibold text-rose-600 mb-1">驳回理由</div>
+                                        <p className="text-rose-500 text-sm leading-relaxed opacity-90">{task.rejectReason}</p>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
                     )}
+
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <CardTitle className="text-base text-slate-800 dark:text-slate-200">任务状态</CardTitle>
+                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
+                            <CardTitle className="text-sm text-slate-800 dark:text-slate-200">任务状态</CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-6 space-y-4">
-                            <div className="space-y-1">
+                        <CardContent className="pt-4 pb-4 space-y-3">
+                            <div className="space-y-0.5">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider font-medium">当前阶段</div>
                                 <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{task.currentStage > 0 && task.currentStage <= 4 ? stageNames[task.currentStage - 1] : "尚未开始"}</div>
                             </div>
                             <div className="w-full h-px bg-slate-200 dark:bg-slate-800" />
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider font-medium">任务状态</div>
                                 <div className="flex items-center gap-2">
                                     <span className={`w-2 h-2 rounded-full ${effectiveStatusDotClass}`}></span>
@@ -391,7 +377,7 @@ export function TopicDetails() {
                                 </div>
                             </div>
                             <div className="w-full h-px bg-slate-200 dark:bg-slate-800" />
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                                 <div className="text-xs text-slate-500 uppercase tracking-wider font-medium">操作提示</div>
                                 <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">开始实验后，请按步骤完成并保存进度。系统将自动记录您的每一次操作。</div>
                             </div>
@@ -399,10 +385,17 @@ export function TopicDetails() {
                     </Card>
 
                     <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
-                        <CardContent className="pt-6 space-y-4">
+                        <CardContent className="pt-4 pb-4 space-y-3">
                             <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
                                 {task.status === "submitted" || task.status === "graded" ? "已提交实验内容" : "准备好开始了吗？"}
                             </div>
+                            {task.status === "graded" && task.score !== undefined && (
+                                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+                                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span className="text-sm font-medium text-emerald-600">实验成绩</span>
+                                    <span className="text-xl font-bold text-emerald-600 tracking-tight ml-auto">{task.score}</span>
+                                </div>
+                            )}
                             {task.status === "rejected" ? (
                                 <Button
                                     size="lg"
@@ -416,7 +409,7 @@ export function TopicDetails() {
                                 <Link to={action.link} className="w-full block">
                                     <Button
                                         size="lg"
-                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 h-12 text-base font-medium"
+                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 h-11 text-base font-medium"
                                         disabled={action.disabled}
                                     >
                                         {action.text} <ChevronRight className="w-4 h-4 ml-1" />
@@ -436,11 +429,11 @@ export function TopicDetails() {
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm mt-8">
-                <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                    <CardTitle className="text-base text-slate-800 dark:text-slate-200">实验进度概览</CardTitle>
+            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
+                    <CardTitle className="text-sm text-slate-800 dark:text-slate-200">实验进度概览</CardTitle>
                 </CardHeader>
-                <CardContent className="pt-8 pb-8">
+                <CardContent className="pt-6 pb-5">
                     <div className="flex items-center justify-between relative px-4">
                         {/* Connecting Line - Background */}
                         <div className="absolute left-4 right-4 top-5 h-1 bg-slate-200 dark:bg-slate-800 rounded-full -z-0"></div>
@@ -462,7 +455,7 @@ export function TopicDetails() {
                                     `}>
                                         {isCompleted ? <CheckCircle className="w-5 h-5" /> : stageNum}
                                     </div>
-                                    <span className={`text-xs mt-3 font-medium transition-colors duration-300 ${isCurrent ? "text-indigo-500" : isCompleted ? "text-emerald-500" : "text-slate-500"}`}>
+                                    <span className={`text-xs mt-2 font-medium transition-colors duration-300 ${isCurrent ? "text-indigo-500" : isCompleted ? "text-emerald-500" : "text-slate-500"}`}>
                                         {stage}
                                     </span>
                                 </div>
