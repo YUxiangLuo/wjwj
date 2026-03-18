@@ -1000,6 +1000,12 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     else if (method === "neyman") applyNeymanAllocation();
                                     else if (method === "equal") applyEqualAllocation();
                                 }}
+                                onApplyAllocationWithOverflow={(method, allocation) => {
+                                    // 应用处理超额分配后的分配方案
+                                    const newCounts = allocation.map(a => a.sampleCount);
+                                    setLayerSampleCounts(newCounts);
+                                    toast.success(`已应用${method === "proportional" ? "按比例" : method === "neyman" ? "奈曼" : "等额"}分配（自动处理超额层）`);
+                                }}
                             />
                         </div>
                     </div>
