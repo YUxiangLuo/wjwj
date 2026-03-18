@@ -183,6 +183,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
+    const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
 
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
@@ -214,7 +215,6 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeSimple = async () => {
         if (!taskId) return;
         setExecuting("simple");
-        setAnimatingMethod(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(simpleSeed);
@@ -227,12 +227,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 const nextSimple = res.data.result;
                 setSimpleResult(nextSimple);
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
+                const dataArr = (nextSimple.data ?? []) as Array<Record<string, unknown>>;
+                setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length });
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ simple: nextSimple }) });
             } else {
                 toast.error(res.error?.message || "简单随机抽样执行失败");
+                setAnimatingMethod(null);
             }
         } catch (e) {
             toast.error("简单随机抽样执行失败，请检查网络后重试");
+            setAnimatingMethod(null);
         } finally {
             setExecuting(null);
         }
@@ -241,7 +245,6 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeSystematic = async () => {
         if (!taskId || kValue < 1) return;
         setExecuting("systematic");
-        setAnimatingMethod(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(systematicSeed);
@@ -255,12 +258,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 const nextSystematic = res.data.result;
                 setSystematicResult(nextSystematic);
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
+                const dataArr = (nextSystematic.data ?? []) as Array<Record<string, unknown>>;
+                setAnimationSampledData({ data: dataArr, total: nextSystematic.sampleCount ?? dataArr.length });
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ systematic: nextSystematic }) });
             } else {
                 toast.error(res.error?.message || "系统抽样执行失败");
+                setAnimatingMethod(null);
             }
         } catch (e) {
             toast.error("系统抽样执行失败，请检查网络后重试");
+            setAnimatingMethod(null);
         } finally {
             setExecuting(null);
         }
@@ -269,9 +276,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeStratified = async () => {
         if (!taskId) return;
         setExecuting("stratified");
-        setAnimatingMethod(null);
         const startTime = performance.now();
-        // Construct layers payload mapping current counts to layer names
         const layersPayload = layers.map((layer, i) => ({
             name: layer.name,
             count: layer.count,
@@ -291,12 +296,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 const nextStratified = res.data.result;
                 setStratifiedResult(nextStratified);
                 setExecutionTimes(prev => ({ ...prev, stratified: Math.round(performance.now() - startTime) }));
+                const dataArr = (nextStratified.data ?? []) as Array<Record<string, unknown>>;
+                setAnimationSampledData({ data: dataArr, total: nextStratified.sampleCount ?? dataArr.length });
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: nextStratified }) });
             } else {
                 toast.error(res.error?.message || "分层抽样执行失败");
+                setAnimatingMethod(null);
             }
         } catch (e) {
             toast.error("分层抽样执行失败，请检查网络后重试");
+            setAnimatingMethod(null);
         } finally {
             setExecuting(null);
         }
@@ -305,7 +314,6 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executePPS = async () => {
         if (!taskId) return;
         setExecuting("pps");
-        setAnimatingMethod(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(ppsSeed);
@@ -319,12 +327,16 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 const nextPps = res.data.result;
                 setPpsResult(nextPps);
                 setExecutionTimes(prev => ({ ...prev, pps: Math.round(performance.now() - startTime) }));
+                const dataArr = (nextPps.data ?? []) as Array<Record<string, unknown>>;
+                setAnimationSampledData({ data: dataArr, total: nextPps.sampleCount ?? dataArr.length });
                 await saveExperiment({ samplingResults: buildSamplingResultsPayload({ pps: nextPps }) });
             } else {
                 toast.error(res.error?.message || "PPS抽样执行失败");
+                setAnimatingMethod(null);
             }
         } catch (e) {
             toast.error("PPS抽样执行失败，请检查网络后重试");
+            setAnimatingMethod(null);
         } finally {
             setExecuting(null);
         }
@@ -1014,7 +1026,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                         else if (animatingMethod === "pps") executePPS();
                         else if (animatingMethod === "stratified") executeStratified();
                     }}
-                    onClose={() => setAnimatingMethod(null)}
+                    onClose={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
+                    sampledData={animationSampledData?.data}
+                    sampledTotal={animationSampledData?.total}
                 />
             )}
         </div>
