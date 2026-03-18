@@ -11,7 +11,6 @@
     "dev": "DISABLE_AUTO_BACKUP=1 DISABLE_NOTIFICATION_CLEANUP=1 DISABLE_DEADLINE_REMINDER=1 bun --hot src/index.ts",
     "dev:full": "RUN_IN_PROCESS_SCHEDULERS=1 bun --hot src/index.ts",
     "dev:worker": "bun --hot src/worker.ts",
-    "start:e2e": "DISABLE_AUTO_BACKUP=1 DISABLE_NOTIFICATION_CLEANUP=1 DISABLE_DEADLINE_REMINDER=1 NODE_ENV=production bun src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "start:legacy": "RUN_IN_PROCESS_SCHEDULERS=1 NODE_ENV=production bun src/index.ts",
     "worker": "NODE_ENV=production bun src/worker.ts",
@@ -24,15 +23,7 @@
     "db:clean": "bun run src/db/clean.ts --force",
     "db:seed": "bun run src/db/seeds/default.ts",
     "db:reset": "bun run db:clean && bun run db:push && bun run db:seed",
-    "theme:check": "bun run scripts/migrate-theme.ts --check",
-    "e2e:admin": "bun run scripts/e2e/admin-smoke.ts",
-    "e2e:admin:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/admin-smoke.ts",
-    "e2e:teacher": "bun run scripts/e2e/teacher-smoke.ts",
-    "e2e:teacher:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/teacher-smoke.ts",
-    "e2e:teacher-student": "bun run scripts/e2e/teacher-student-linkage.ts",
-    "e2e:teacher-student:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/teacher-student-linkage.ts",
-    "e2e:student": "bun run scripts/e2e/student-smoke.ts",
-    "e2e:student:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/student-smoke.ts"
+    "theme:check": "bun run scripts/migrate-theme.ts --check"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
