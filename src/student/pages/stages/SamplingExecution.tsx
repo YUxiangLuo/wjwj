@@ -215,6 +215,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeSimple = async () => {
         if (!taskId) return;
         setExecuting("simple");
+        setAnimationSampledData(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(simpleSeed);
@@ -229,7 +230,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSimple.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length });
-                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ simple: nextSimple }) });
+                try {
+                    await saveExperiment({ samplingResults: buildSamplingResultsPayload({ simple: nextSimple }) });
+                } catch {
+                    toast.error("抽样结果保存失败");
+                }
             } else {
                 toast.error(res.error?.message || "简单随机抽样执行失败");
                 setAnimatingMethod(null);
@@ -245,6 +250,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeSystematic = async () => {
         if (!taskId || kValue < 1) return;
         setExecuting("systematic");
+        setAnimationSampledData(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(systematicSeed);
@@ -260,7 +266,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSystematic.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextSystematic.sampleCount ?? dataArr.length });
-                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ systematic: nextSystematic }) });
+                try {
+                    await saveExperiment({ samplingResults: buildSamplingResultsPayload({ systematic: nextSystematic }) });
+                } catch {
+                    toast.error("抽样结果保存失败");
+                }
             } else {
                 toast.error(res.error?.message || "系统抽样执行失败");
                 setAnimatingMethod(null);
@@ -276,6 +286,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executeStratified = async () => {
         if (!taskId) return;
         setExecuting("stratified");
+        setAnimationSampledData(null);
         const startTime = performance.now();
         const layersPayload = layers.map((layer, i) => ({
             name: layer.name,
@@ -298,7 +309,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, stratified: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextStratified.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextStratified.sampleCount ?? dataArr.length });
-                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: nextStratified }) });
+                try {
+                    await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: nextStratified }) });
+                } catch {
+                    toast.error("抽样结果保存失败");
+                }
             } else {
                 toast.error(res.error?.message || "分层抽样执行失败");
                 setAnimatingMethod(null);
@@ -314,6 +329,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const executePPS = async () => {
         if (!taskId) return;
         setExecuting("pps");
+        setAnimationSampledData(null);
         const startTime = performance.now();
         try {
             const { seed, error: seedError } = parseSeed(ppsSeed);
@@ -329,7 +345,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, pps: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextPps.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextPps.sampleCount ?? dataArr.length });
-                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ pps: nextPps }) });
+                try {
+                    await saveExperiment({ samplingResults: buildSamplingResultsPayload({ pps: nextPps }) });
+                } catch {
+                    toast.error("抽样结果保存失败");
+                }
             } else {
                 toast.error(res.error?.message || "PPS抽样执行失败");
                 setAnimatingMethod(null);

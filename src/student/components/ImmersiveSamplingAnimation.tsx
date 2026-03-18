@@ -161,10 +161,15 @@ type Phase =
     | { type: "complete" };      // show summary, allow proceed
 
 const FIELD_LABELS: Record<string, string> = {
-    gender: "性别", education: "学历",
-    age: "年龄段", age_group: "年龄段",
-    income: "收入水平", city: "城市", city_tier: "城市等级",
-    monthly_expense: "月支出", spending: "消费支出",
+    gender: "性别",
+    education: "学历",
+    age: "年龄段",
+    age_group: "年龄段",
+    income: "收入水平",
+    city: "城市",
+    city_tier: "城市等级",
+    monthly_expense: "月支出",
+    spending: "消费支出",
 };
 
 export function ImmersiveSamplingAnimation({
@@ -603,7 +608,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
             </div>
             <div className="flex items-center justify-between shrink-0 px-1">
                 <p className="text-xs text-slate-500">
-                    显示第 {start + 1}-{end} 条，共 {Math.max(total, data.length)} 条
+                    显示第 {start + 1}-{end} 条{total > data.length ? `（已加载 ${data.length} 条，共 ${total} 条）` : `，共 ${data.length} 条`}
                 </p>
                 <div className="flex items-center gap-2">
                     <Button
