@@ -22,8 +22,7 @@
     "db:check": "bunx drizzle-kit check",
     "db:clean": "bun run src/db/clean.ts --force",
     "db:seed": "bun run src/db/seeds/default.ts",
-    "db:reset": "bun run db:clean && bun run db:push && bun run db:seed",
-    "theme:check": "bun run scripts/migrate-theme.ts --check"
+    "db:reset": "bun run db:clean && bun run db:push && bun run db:seed"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
