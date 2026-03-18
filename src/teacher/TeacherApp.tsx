@@ -533,9 +533,21 @@ export function TeacherApp() {
 
             {/* Notifications Modal */}
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent className="sm:max-w-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent showCloseButton={false} className="sm:max-w-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">通知</DialogTitle>
+                        <DialogTitle className="flex items-center justify-between text-slate-900 dark:text-slate-100">
+                            通知
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                data-testid="teacher-notification-read-all"
+                                onClick={() => { void markAllAsRead(); }}
+                                disabled={unreadCount === 0}
+                                className="text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
+                            >
+                                全部已读
+                            </Button>
+                        </DialogTitle>
                         <DialogDescription className="text-slate-600 dark:text-slate-400">最近通知</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
@@ -568,19 +580,6 @@ export function TeacherApp() {
                             ))
                         )}
                     </div>
-                    <DialogFooter>
-                        <Button
-                            variant="ghost"
-                            data-testid="teacher-notification-read-all"
-                            onClick={async () => {
-                                await markAllAsRead();
-                            }}
-                            className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800"
-                        >
-                            全部已读
-                        </Button>
-                        <Button onClick={() => setShowNotifications(false)} className="bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200">关闭</Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 

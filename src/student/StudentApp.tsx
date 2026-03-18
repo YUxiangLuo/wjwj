@@ -415,7 +415,7 @@ function StudentAppContent() {
             />
 
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent className="max-w-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent showCloseButton={false} className="max-w-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <DialogHeader>
                         <DialogTitle className="flex items-center justify-between text-slate-900 dark:text-slate-100">
                             通知

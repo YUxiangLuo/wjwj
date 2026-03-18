@@ -496,26 +496,25 @@ export function AdminApp() {
             </Dialog>
 
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-lg">
+                <DialogContent showCloseButton={false} className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">通知</DialogTitle>
+                        <DialogTitle className="flex items-center justify-between text-slate-900 dark:text-slate-100">
+                            通知
+                            <Button
+                                data-testid="admin-notifications-mark-all-read"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { void handleMarkAllRead(); }}
+                                disabled={unreadCount === 0}
+                                className="text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
+                            >
+                                全部已读
+                            </Button>
+                        </DialogTitle>
                         <DialogDescription className="text-slate-600 dark:text-slate-400">
-                            查看系统通知与操作提醒
+                            查看系统通知与操作提醒（未读 {unreadCount} 条）
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex justify-between items-center my-2">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">未读 {unreadCount} 条</span>
-                        <Button
-                            data-testid="admin-notifications-mark-all-read"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => { void handleMarkAllRead(); }}
-                            disabled={unreadCount === 0}
-                            className="text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
-                        >
-                            全部已读
-                        </Button>
-                    </div>
                     <div className="max-h-[60vh] overflow-y-auto space-y-2 -mx-2 px-2 custom-scrollbar">
                         {notificationsLoading ? (
                             <div className="flex items-center justify-center py-8">
