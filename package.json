@@ -25,14 +25,15 @@
     "db:seed": "bun run src/db/seeds/default.ts",
     "db:reset": "bun run db:clean && bun run db:push && bun run db:seed",
     "theme:check": "bun run scripts/migrate-theme.ts --check",
-    "e2e:admin": "bun run scripts/e2e/admin-smoke.ts",
-    "e2e:admin:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/admin-smoke.ts",
-    "e2e:teacher": "bun run scripts/e2e/teacher-smoke.ts",
-    "e2e:teacher:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/teacher-smoke.ts",
-    "e2e:teacher-student": "bun run scripts/e2e/teacher-student-linkage.ts",
-    "e2e:teacher-student:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/teacher-student-linkage.ts",
-    "e2e:student": "bun run scripts/e2e/student-smoke.ts",
-    "e2e:student:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 bun run scripts/e2e/student-smoke.ts"
+    "e2e": "npx playwright test",
+    "e2e:admin": "npx playwright test --project=admin",
+    "e2e:admin:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 npx playwright test --project=admin",
+    "e2e:teacher": "npx playwright test --project=teacher",
+    "e2e:teacher:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 npx playwright test --project=teacher",
+    "e2e:teacher-student": "npx playwright test --project=teacher-student",
+    "e2e:teacher-student:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 npx playwright test --project=teacher-student",
+    "e2e:student": "npx playwright test --project=student",
+    "e2e:student:live": "E2E_USE_EXISTING_SERVER=1 E2E_SKIP_DB_RESET=1 E2E_SKIP_DB_RESEED=1 npx playwright test --project=student"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -62,6 +63,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@testing-library/react": "^16.3.2",
     "@types/bun": "latest",
     "@types/pdfkit": "^0.17.4",
