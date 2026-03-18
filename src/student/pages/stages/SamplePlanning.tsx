@@ -29,6 +29,9 @@ import {
 import { EnhancedMetricsCard } from "../../components/EnhancedMetricsCard";
 import { PValueComparisonCard } from "../../components/PValueComparisonCard";
 import { SensitivityAnalysisCard } from "../../components/SensitivityAnalysisCard";
+import { DomainEstimationManager, type Domain } from "../../components/DomainEstimationManager";
+import { PrecisionCostTradeoff } from "../../components/PrecisionCostTradeoff";
+import { DesignEffectEstimator } from "../../components/DesignEffectEstimator";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -60,6 +63,12 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         sampleSize: number;
     }> | null>(null);
     const [showAdvancedMetrics, setShowAdvancedMetrics] = useState(false);
+
+    // 阶段2新增：子总体估计和成本权衡
+    const [domains, setDomains] = useState<Domain[]>([]);
+    const [showDomainManager, setShowDomainManager] = useState(false);
+    const [showCostTradeoff, setShowCostTradeoff] = useState(false);
+    const [showDeffEstimator, setShowDeffEstimator] = useState(false);
 
     const N = populationSize;
 
@@ -473,6 +482,49 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                     <div className="bg-white dark:bg-slate-950 rounded p-1">99%<br /><span className="text-slate-500">2.576</span></div>
                                 </div>
                             </div>
+
+                            {/* 阶段2功能入口 */}
+                            <div className="space-y-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+                                <p className="text-xs text-slate-500 font-medium">高级功能</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowDomainManager(!showDomainManager)}
+                                        className={`text-xs h-auto py-2 ${
+                                            showDomainManager 
+                                                ? "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-600" 
+                                                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                        }`}
+                                    >
+                                        子总体估计
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowCostTradeoff(!showCostTradeoff)}
+                                        className={`text-xs h-auto py-2 ${
+                                            showCostTradeoff 
+                                                ? "bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-600" 
+                                                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                        }`}
+                                    >
+                                        成本权衡
+                                    </Button>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowDeffEstimator(!showDeffEstimator)}
+                                    className={`w-full text-xs h-auto py-2 ${
+                                        showDeffEstimator 
+                                            ? "bg-sky-100 border-sky-300 text-sky-700 dark:bg-sky-900/30 dark:border-sky-600" 
+                                            : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                    }`}
+                                >
+                                    设计效应参考
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -502,6 +554,45 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     >
                         {showAdvancedMetrics ? "隐藏高级分析" : "显示高级分析（SE/CV/敏感性）"}
                     </Button>
+
+                    {/* 阶段2组件 */}
+                    {showDomainManager && (
+                        <DomainEstimationManager
+                            totalPopulationSize={N}
+                            stratifiedFields={[]}  // 可以从实验数据获取
+                            onDomainsChange={(newDomains) => {
+                                setDomains(newDomains);
+                                // 如果有子总体，更新建议样本量
+                                if (newDomains.length > 0) {
+                                    const maxRequired = Math.max(...newDomains.map(d => d.requiredSampleSize));
+                                    if (maxRequired > recommendedSize) {
+                                        // 可以提示用户样本量需要增加
+                                    }
+                                }
+                            }}
+                            initialDomains={domains}
+                        />
+                    )}
+
+                    {showCostTradeoff && (
+                        <PrecisionCostTradeoff
+                            populationSize={N}
+                            confidenceLevel={confidenceLevel}
+                            designEffect={designEffect}
+                            nonResponseRate={nonResponseRate}
+                            onApplyBudget={(budget, sampleSize) => {
+                                setFinalSampleSize(sampleSize);
+                                // 可以显示提示
+                            }}
+                        />
+                    )}
+
+                    {showDeffEstimator && (
+                        <DesignEffectEstimator
+                            currentDeff={designEffect}
+                            onDeffChange={(newDeff) => setDesignEffect(newDeff)}
+                        />
+                    )}
 
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm sticky top-24">
                         <CardHeader className="pb-2">
