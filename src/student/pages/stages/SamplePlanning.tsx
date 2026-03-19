@@ -61,8 +61,6 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const [nonResponseRate, setNonResponseRate] = useState(initialData?.nonResponseRate ?? 0);
     const [finalSampleSize, setFinalSampleSize] = useState(initialData?.finalSampleSize ?? 384);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
-    const serverSnapshotRef = useRef("");
-    const saveInFlightRef = useRef(false);
     
     // 增强指标
     const [metrics, setMetrics] = useState<SampleSizeMetrics | null>(null);
@@ -157,44 +155,45 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         finalSampleSize,
     }), [confidenceLevel, marginOfError, designEffect, nonResponseRate, recommendedSize, finalSampleSize]);
 
-    useEffect(() => {
-        if (initialData) {
-            const initialRecommended = initialData.recommendedSize ?? calculateFinitePopulationSampleSize({
-                confidenceLevel: initialData.confidenceLevel ?? "95",
-                marginOfError: initialData.marginOfError ?? 5,
-                populationSize: N,
-                designEffect: initialData.designEffect ?? 1,
-                nonResponseRate: initialData.nonResponseRate ?? 0,
-            }) ?? 384;
-            serverSnapshotRef.current = JSON.stringify({
-                confidenceLevel: initialData.confidenceLevel ?? "95",
-                marginOfError: initialData.marginOfError ?? 5,
-                designEffect: initialData.designEffect ?? 1,
-                nonResponseRate: initialData.nonResponseRate ?? 0,
-                recommendedSize: initialRecommended,
-                finalSampleSize: initialData.finalSampleSize ?? initialRecommended,
-            });
+    // 服务端值的引用，用于比较
+    const serverSamplePlanRef = useRef(initialData);
+
+    // 简化自动保存逻辑：防抖 + 定期保存
+    const autoSave = useCallback(async () => {
+        const payload = buildSamplePlanData();
+        
+        // 只保存有实际变化的数据
+        const serverPlan = serverSamplePlanRef.current;
+        if (serverPlan && 
+            payload.confidenceLevel === serverPlan.confidenceLevel &&
+            payload.marginOfError === serverPlan.marginOfError &&
+            payload.designEffect === serverPlan.designEffect &&
+            payload.nonResponseRate === serverPlan.nonResponseRate &&
+            payload.finalSampleSize === serverPlan.finalSampleSize) {
             return;
         }
 
-        serverSnapshotRef.current = "";
-    }, [initialData, N]);
-
-    const autoSaveSamplePlan = useCallback(async () => {
-        const payload = buildSamplePlanData();
-        const snapshot = JSON.stringify(payload);
-        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
-
-        saveInFlightRef.current = true;
-        try {
-            const success = await saveExperiment({ samplePlan: payload });
-            if (success) {
-                serverSnapshotRef.current = snapshot;
-            }
-        } finally {
-            saveInFlightRef.current = false;
+        const success = await saveExperiment({ samplePlan: payload });
+        if (success) {
+            serverSamplePlanRef.current = payload;
         }
     }, [buildSamplePlanData, saveExperiment]);
+
+    // 防抖保存：用户停止编辑3秒后自动保存
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            void autoSave();
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [autoSave, confidenceLevel, marginOfError, designEffect, nonResponseRate, finalSampleSize]);
+
+    // 定期保存：每30秒自动保存一次
+    useEffect(() => {
+        const interval = setInterval(() => {
+            void autoSave();
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [autoSave]);
 
     // Auto-update final sample size when recommended changes (only if user hasn't modified it - simplified logic for now: update if no initial data)
     useEffect(() => {
@@ -202,46 +201,6 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
             setFinalSampleSize(recommendedSize);
         }
     }, [recommendedSize, initialData]);
-
-    // Keep a ref to the latest autoSaveSamplePlan so the 30-second interval doesn't reset on every change
-    const autoSaveRef = useRef(autoSaveSamplePlan);
-    useEffect(() => { autoSaveRef.current = autoSaveSamplePlan; }, [autoSaveSamplePlan]);
-
-    // Debounce: save 3 seconds after user stops editing
-    useEffect(() => {
-        const debounceTimer = window.setTimeout(() => {
-            void autoSaveSamplePlan();
-        }, 3000);
-
-        return () => {
-            window.clearTimeout(debounceTimer);
-        };
-    }, [autoSaveSamplePlan]);
-
-    // Fixed 30-second interval: uses ref so the interval is never reset by content changes
-    useEffect(() => {
-        const intervalTimer = window.setInterval(() => {
-            void autoSaveRef.current();
-        }, 30 * 1000);
-
-        return () => {
-            window.clearInterval(intervalTimer);
-        };
-    }, []);
-
-    useEffect(() => {
-        const onBeforeUnload = (event: BeforeUnloadEvent) => {
-            const snapshot = JSON.stringify(buildSamplePlanData());
-            if (snapshot === serverSnapshotRef.current) return;
-            event.preventDefault();
-            event.returnValue = "";
-        };
-
-        window.addEventListener("beforeunload", onBeforeUnload);
-        return () => {
-            window.removeEventListener("beforeunload", onBeforeUnload);
-        };
-    }, [buildSamplePlanData]);
 
     const handleConfirmNext = async () => {
         const samplePlanData = buildSamplePlanData();

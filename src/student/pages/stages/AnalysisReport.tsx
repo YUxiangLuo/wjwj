@@ -21,11 +21,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, AlertCircle, Maximize2, CheckCircle, MonitorPlay } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle, MonitorPlay } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
-import { useDraftSync } from "../../draft-sync";
+import { useSimpleDraft, hasUnsavedChanges } from "../../draft-sync";
 import { experimentApi } from "../../api-client";
 import { ImmersiveAnalysisDashboard } from "../../components/ImmersiveAnalysisDashboard";
 import {
@@ -203,13 +203,52 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [statsLoading, setStatsLoading] = useState(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
+    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
 
     const draftKey = experiment?.taskId ? `student_report_draft_${experiment.taskId}` : null;
+    const serverReportContent = experiment?.reportContent ?? "";
 
     const minLength = 100;
     const maxLength = 5000;
     const reportTextLength = useMemo(() => getRichTextPlainLength(reportContent), [reportContent]);
     const isValidLength = reportTextLength >= minLength && reportTextLength <= maxLength;
+
+    // ---- Draft sync - 简化版，仅用于报告草稿 ----
+    const {
+        hasDraft,
+        restoreDraft,
+        discardDraft,
+        saveDraft,
+        clearDraft,
+    } = useSimpleDraft({
+        draftKey,
+        serverValue: serverReportContent,
+        onRestore: setReportContent,
+    });
+
+    // 如果有草稿，显示恢复对话框
+    useEffect(() => {
+        if (hasDraft) {
+            setRestoreDraftOpen(true);
+        }
+    }, [hasDraft]);
+
+    // 上游变化（stage回退等）导致 reportContent 失效时，清理本地草稿
+    useEffect(() => {
+        if (experiment?.reportContent === null && draftKey) {
+            discardDraft();
+        }
+    }, [experiment?.reportContent, draftKey, discardDraft]);
+
+    // 保存草稿到本地（在组件卸载前）
+    useEffect(() => {
+        return () => {
+            // 如果有未保存的变更，保存到本地草稿
+            if (hasUnsavedChanges(reportContent, serverReportContent)) {
+                saveDraft(reportContent);
+            }
+        };
+    }, [reportContent, serverReportContent, saveDraft]);
 
     // ---- Data derivation ----
 
@@ -328,59 +367,30 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const activeZoom = zoomChart ? zoomConfig[zoomChart] : null;
 
-    // ---- Draft sync ----
-
-    const saveReportContent = useCallback(async (nextContent: string) => {
-        return saveExperiment({ reportContent: nextContent });
-    }, [saveExperiment]);
-    const parseReportDraft = useCallback((raw: string) => raw, []);
-    const isMeaningfulReportDraft = useCallback((draft: string) => getRichTextPlainLength(draft) > 0, []);
-    const serializeReport = useCallback((value: string) => value, []);
-
-    const loadLatestReport = useCallback(async () => {
-        if (!experiment?.taskId) return null;
-        const res = await experimentApi.get(experiment.taskId);
-        if (!res.success || !res.data) return null;
-        return typeof res.data.reportContent === "string" ? res.data.reportContent : "";
-    }, [experiment?.taskId]);
-
-    const {
-        clearLocalDraft,
-        discardPendingDraft,
-        isOnline,
-        keepLocalDraft,
-        keepServerDraft,
-        networkNotice,
-        restoreDraftOpen,
-        restorePendingDraft,
-        saveNow,
-        setRestoreDraftOpen,
-        setSyncConflictOpen,
-        syncConflictOpen,
-    } = useDraftSync<string>({
-        applyValue: setReportContent,
-        currentValue: reportContent,
-        draftKey,
-        initialServerValue: experiment?.reportContent ?? "",
-        isMeaningfulDraft: isMeaningfulReportDraft,
-        loadServerLatest: loadLatestReport,
-        parseDraft: parseReportDraft,
-        saveToServer: saveReportContent,
-        serialize: serializeReport,
-    });
-
     // ---- Handlers ----
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            await saveNow();
-            clearLocalDraft();
+            // 保存到服务端
+            await saveExperiment({ reportContent });
+            // 提交成功后清理本地草稿
+            clearDraft();
             onSubmit();
         } finally {
             setIsSubmitting(false);
         }
     };
+
+    // 防抖自动保存到服务端
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (hasUnsavedChanges(reportContent, serverReportContent)) {
+                void saveExperiment({ reportContent });
+            }
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [reportContent, serverReportContent, saveExperiment]);
 
     const handleExport = async (type: MethodKey | "all") => {
         if (!experiment?.taskId) return;
@@ -449,40 +459,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
-            {networkNotice && (
-                <Card
-                    data-testid="student-analysis-network-notice"
-                    className={`rounded-2xl border shadow-sm ${syncConflictOpen
-                        ? "border-amber-500/30 bg-amber-500/10"
-                        : isOnline
-                            ? "border-emerald-500/30 bg-emerald-500/10"
-                            : "border-rose-500/30 bg-rose-500/10"
-                        }`}
-                >
-                    <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm">
-                            {syncConflictOpen ? (
-                                <AlertCircle className="h-4 w-4 text-amber-600" />
-                            ) : isOnline ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                                <AlertCircle className="h-4 w-4 text-rose-600" />
-                            )}
-                            <span
-                                className={syncConflictOpen
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : isOnline
-                                        ? "text-emerald-700 dark:text-emerald-300"
-                                        : "text-rose-500"
-                                }
-                            >
-                                {networkNotice}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
@@ -712,59 +688,35 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* Restore draft dialog */}
+            {/* Restore draft dialog - 简化版，只有恢复/放弃两个选项 */}
             <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-restore-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">检测到本地草稿，是否恢复？</AlertDialogDescription>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                            检测到本地有未提交的报告草稿，是否恢复？
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-analysis-restore-discard"
-                            onClick={discardPendingDraft}
+                            onClick={() => {
+                                discardDraft();
+                                setRestoreDraftOpen(false);
+                            }}
                         >
                             放弃草稿
                         </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-analysis-restore-apply"
-                            onClick={restorePendingDraft}
-                        >
-                            恢复草稿
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Sync conflict dialog */}
-            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-conflict-dialog">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                            本地草稿和服务器草稿都发生了变化。请选择要保留的版本。
-                            <br />
-                            <span className="text-slate-500">保留本地版本将覆盖服务器当前草稿。</span>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                            data-testid="student-analysis-conflict-server"
-                            onClick={keepServerDraft}
-                        >
-                            保留服务器版本
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            data-testid="student-analysis-conflict-local"
                             onClick={() => {
-                                void keepLocalDraft();
+                                restoreDraft();
+                                setRestoreDraftOpen(false);
                             }}
                         >
-                            保留本地版本
+                            恢复草稿
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

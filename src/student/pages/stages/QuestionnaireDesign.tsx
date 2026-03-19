@@ -21,8 +21,7 @@ import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
-import { useDraftSync } from "../../draft-sync";
-import { experimentApi, tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
+import { tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
 
 interface QuestionnaireDesignProps {
     onNext: () => void;
@@ -112,8 +111,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewCompleted, setPreviewCompleted] = useState(false);
     const [previewContentHash, setPreviewContentHash] = useState("");
-    const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
 
+    // Load recommend questions on mount
     useEffect(() => {
         async function loadRecommendQuestions() {
             if (!experiment?.taskId) return;
@@ -128,6 +127,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         }
         loadRecommendQuestions();
     }, [experiment?.taskId]);
+
     const questionnaireData = useMemo<QuestionnaireData>(() => ({
         title,
         welcomeText,
@@ -152,77 +152,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         setPreviewContentHash(contentFingerprint);
         setPreviewOpen(false);
     }, [contentFingerprint]);
-
-    const normalizeQuestionnaireData = useCallback((raw: unknown): QuestionnaireData => {
-        const data = raw && typeof raw === "object" ? (raw as Partial<QuestionnaireData>) : {};
-        return {
-            title: data.title ?? "",
-            welcomeText: data.welcomeText ?? "",
-            endingText: data.endingText ?? "",
-            questions: Array.isArray(data.questions) ? data.questions : [],
-        };
-    }, []);
-
-    const applyQuestionnaireData = useCallback((data: QuestionnaireData) => {
-        setTitle(data.title ?? "");
-        setWelcomeText(data.welcomeText ?? "");
-        setEndingText(data.endingText ?? "");
-        setQuestions(Array.isArray(data.questions) ? data.questions : []);
-    }, []);
-
-    const serverQuestionnaire = useMemo(
-        () => normalizeQuestionnaireData(initialData),
-        [initialData, normalizeQuestionnaireData]
-    );
-
-    const parseQuestionnaireDraft = useCallback((raw: string) => {
-        try {
-            return normalizeQuestionnaireData(JSON.parse(raw) as QuestionnaireData);
-        } catch {
-            return null;
-        }
-    }, [normalizeQuestionnaireData]);
-    const isMeaningfulQuestionnaireDraft = useCallback(
-        (draft: QuestionnaireData) => Boolean(draft.title || draft.questions.length > 0),
-        []
-    );
-    const serializeQuestionnaire = useCallback((value: QuestionnaireData) => JSON.stringify(value), []);
-
-    const saveQuestionnaire = useCallback(async (nextData: QuestionnaireData) => {
-        return saveExperiment({ questionnaire: nextData });
-    }, [saveExperiment]);
-
-    const loadLatestQuestionnaire = useCallback(async () => {
-        if (!experiment?.taskId) return null;
-        const res = await experimentApi.get(experiment.taskId);
-        if (!res.success || !res.data) return null;
-        return normalizeQuestionnaireData(res.data.questionnaire);
-    }, [experiment?.taskId, normalizeQuestionnaireData]);
-
-    const {
-        clearLocalDraft,
-        discardPendingDraft,
-        isOnline,
-        keepLocalDraft,
-        keepServerDraft,
-        networkNotice,
-        restoreDraftOpen,
-        restorePendingDraft,
-        saveNow,
-        setRestoreDraftOpen,
-        setSyncConflictOpen,
-        syncConflictOpen,
-    } = useDraftSync<QuestionnaireData>({
-        applyValue: applyQuestionnaireData,
-        currentValue: questionnaireData,
-        draftKey,
-        initialServerValue: serverQuestionnaire,
-        isMeaningfulDraft: isMeaningfulQuestionnaireDraft,
-        loadServerLatest: loadLatestQuestionnaire,
-        parseDraft: parseQuestionnaireDraft,
-        saveToServer: saveQuestionnaire,
-        serialize: serializeQuestionnaire,
-    });
 
     const steps = [
         { num: 1, title: "欢迎语设置" },
@@ -292,7 +221,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         setDragOverId(null);
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", id);
-        // Create drag ghost image if needed, or let browser handle it
     };
 
     const handleDragOver = (id: string) => (event: React.DragEvent<HTMLDivElement>) => {
@@ -559,13 +487,32 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const requiredMissingCount = 6 - requiredFailCount;
     const warningCount = validation.questionTypes ? 0 : 1;
 
+    // 简化的自动保存逻辑 - 仅在数据变化时自动保存到服务端
+    const saveToServer = useCallback(async () => {
+        await saveExperiment({ questionnaire: questionnaireData });
+    }, [questionnaireData, saveExperiment]);
+
+    // 防抖保存：用户停止编辑3秒后自动保存
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            void saveToServer();
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [saveToServer, title, welcomeText, endingText, questions]);
+
+    // 定期保存：每30秒自动保存一次
+    useEffect(() => {
+        const interval = setInterval(() => {
+            void saveToServer();
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [saveToServer]);
+
     const handleConfirmComplete = async () => {
         // Save final data
-        await saveNow();
+        await saveToServer();
         // Move to next stage
         await saveExperiment({ currentStage: 2 });
-        // Clear localStorage draft after successful stage completion
-        clearLocalDraft();
         onNext();
     };
 
@@ -910,139 +857,139 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
                         {/* Validation checklist and score */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm text-slate-900 dark:text-slate-100">校验清单</CardTitle>
-                                <CardDescription className="text-slate-600 dark:text-slate-400">确认问卷信息完善后再进入下一阶段</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-1.5">
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.title ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.title ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                                    )}
-                                    <span className={`text-sm ${validation.title ? "text-emerald-600" : "text-rose-600"}`}>
-                                        问卷标题：{title ? "已填写" : "未填写"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.welcomeText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.welcomeText ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                                    )}
-                                    <span className={`text-sm ${validation.welcomeText ? "text-emerald-600" : "text-rose-600"}`}>
-                                        欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.questionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.questionCount ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                                    )}
-                                    <span className={`text-sm ${validation.questionCount ? "text-emerald-600" : "text-rose-600"}`}>
-                                        题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.questionTypes ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
-                                    {validation.questionTypes ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                                    )}
-                                    <span className={`text-sm ${validation.questionTypes ? "text-emerald-600" : "text-amber-600"}`}>
-                                        题型多样性：{new Set(questions.map((q) => q.type)).size} 种题型
-                                        {validation.questionTypes ? "" : " (建议至少2种)"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.optionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.optionCount ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                                    )}
-                                    <span className={`text-sm ${validation.optionCount ? "text-emerald-600" : "text-rose-600"}`}>
-                                        选项数量：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.endingText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.endingText ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                                    )}
-                                    <span className={`text-sm ${validation.endingText ? "text-emerald-600" : "text-rose-600"}`}>
-                                        结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
-                                    </span>
-                                </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.previewCompleted ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
-                                    {validation.previewCompleted ? (
-                                        <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                                    )}
-                                    <span className={`text-sm ${validation.previewCompleted ? "text-emerald-600" : "text-rose-600"}`}>
-                                        模拟填写：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次）"}
-                                    </span>
-                                </div>
-                                {requiredMissingCount === 0 ? (
-                                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-                                        问卷结构完整，可进入下一阶段。
-                                        {warningCount > 0 ? ` 另有 ${warningCount} 项建议优化。` : ""}
+                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm text-slate-900 dark:text-slate-100">校验清单</CardTitle>
+                                    <CardDescription className="text-slate-600 dark:text-slate-400">确认问卷信息完善后再进入下一阶段</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-1.5">
+                                    <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.title ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                        {validation.title ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                                        )}
+                                        <span className={`text-sm ${validation.title ? "text-emerald-600" : "text-rose-600"}`}>
+                                            问卷标题：{title ? "已填写" : "未填写"}
+                                        </span>
                                     </div>
-                                ) : (
-                                    <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
-                                        仍有 {requiredMissingCount} 项必填检测未通过，需修复后才能继续。
+                                    <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.welcomeText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                        {validation.welcomeText ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                                        )}
+                                        <span className={`text-sm ${validation.welcomeText ? "text-emerald-600" : "text-rose-600"}`}>
+                                            欢迎语：{welcomeTextLength} 字 {validation.welcomeText ? "" : "(20-1000字)"}
+                                        </span>
                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm text-slate-900 dark:text-slate-100">初步评分（机器评分）</CardTitle>
-                                <CardDescription className="text-slate-600 dark:text-slate-400">供参考，满分100分</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 flex items-center justify-between">
-                                    <div className="flex items-baseline gap-2">
-                                        <span className="text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300">当前得分</span>
-                                        <span className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">{preliminaryScore}</span>
+                                    <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.questionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                        {validation.questionCount ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                                        )}
+                                        <span className={`text-sm ${validation.questionCount ? "text-emerald-600" : "text-rose-600"}`}>
+                                            题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}
+                                        </span>
                                     </div>
-                                    <div className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
-                                        {preliminaryScore >= 90
-                                            ? "问卷结构优秀"
-                                            : preliminaryScore >= 75
-                                                ? "问卷结构良好"
-                                                : preliminaryScore >= 60
-                                                    ? "可继续优化"
-                                                    : "建议先完善基础项"}
+                                    <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.questionTypes ? "bg-emerald-500/10 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/20"}`}>
+                                        {validation.questionTypes ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                                        )}
+                                        <span className={`text-sm ${validation.questionTypes ? "text-emerald-600" : "text-amber-600"}`}>
+                                            题型多样性：{new Set(questions.map((q) => q.type)).size} 种题型
+                                            {validation.questionTypes ? "" : " (建议至少2种)"}
+                                        </span>
                                     </div>
-                                </div>
-                                <div className="space-y-1.5">
-                                    {scoreItems.map((item) => (
-                                        <div key={item.label} className="flex items-baseline justify-between rounded-lg border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40 px-3 py-2">
-                                            <div className="min-w-0">
-                                                <span className="text-sm text-slate-800 dark:text-slate-200">{item.label}</span>
-                                                <span
-                                                    className={`text-xs ml-2 ${item.status === "pass"
-                                                        ? "text-emerald-600"
-                                                        : item.status === "warning"
-                                                            ? "text-amber-600"
-                                                            : "text-rose-600"
-                                                        }`}
-                                                >
-                                                    {item.message}
-                                                </span>
-                                            </div>
-                                            <span className="text-xs font-mono text-slate-600 dark:text-slate-400 shrink-0 ml-2">{item.points} 分</span>
+                                    <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.optionCount ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                        {validation.optionCount ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                                        )}
+                                        <span className={`text-sm ${validation.optionCount ? "text-emerald-600" : "text-rose-600"}`}>
+                                            选项数量：{validation.optionCount ? "配置有效" : `Q${invalidOptionQuestions.slice(0, 5).join("、")} 需检查`}
+                                        </span>
+                                    </div>
+                                    <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.endingText ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                        {validation.endingText ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                                        )}
+                                        <span className={`text-sm ${validation.endingText ? "text-emerald-600" : "text-rose-600"}`}>
+                                            结束语：{endingTextLength} 字 {validation.endingText ? "" : "(20-1000字)"}
+                                        </span>
+                                    </div>
+                                    <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.previewCompleted ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"}`}>
+                                        {validation.previewCompleted ? (
+                                            <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                        ) : (
+                                            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                                        )}
+                                        <span className={`text-sm ${validation.previewCompleted ? "text-emerald-600" : "text-rose-600"}`}>
+                                            模拟填写：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次）"}
+                                        </span>
+                                    </div>
+                                    {requiredMissingCount === 0 ? (
+                                        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                                            问卷结构完整，可进入下一阶段。
+                                            {warningCount > 0 ? ` 另有 ${warningCount} 项建议优化。` : ""}
                                         </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                    ) : (
+                                        <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-500">
+                                            仍有 {requiredMissingCount} 项必填检测未通过，需修复后才能继续。
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm text-slate-900 dark:text-slate-100">初步评分（机器评分）</CardTitle>
+                                    <CardDescription className="text-slate-600 dark:text-slate-400">供参考，满分100分</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 flex items-center justify-between">
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300">当前得分</span>
+                                            <span className="text-2xl font-bold text-indigo-800 dark:text-indigo-200">{preliminaryScore}</span>
+                                        </div>
+                                        <div className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
+                                            {preliminaryScore >= 90
+                                                ? "问卷结构优秀"
+                                                : preliminaryScore >= 75
+                                                    ? "问卷结构良好"
+                                                    : preliminaryScore >= 60
+                                                        ? "可继续优化"
+                                                        : "建议先完善基础项"}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        {scoreItems.map((item) => (
+                                            <div key={item.label} className="flex items-baseline justify-between rounded-lg border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40 px-3 py-2">
+                                                <div className="min-w-0">
+                                                    <span className="text-sm text-slate-800 dark:text-slate-200">{item.label}</span>
+                                                    <span
+                                                        className={`text-xs ml-2 ${item.status === "pass"
+                                                            ? "text-emerald-600"
+                                                            : item.status === "warning"
+                                                                ? "text-amber-600"
+                                                                : "text-rose-600"
+                                                            }`}
+                                                    >
+                                                        {item.message}
+                                                    </span>
+                                                </div>
+                                                <span className="text-xs font-mono text-slate-600 dark:text-slate-400 shrink-0 ml-2">{item.points} 分</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
                 );
@@ -1051,40 +998,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
     return (
         <div className="space-y-8 pb-12" data-testid="student-stage-questionnaire">
-            {networkNotice && (
-                <Card
-                    data-testid="student-questionnaire-network-notice"
-                    className={`rounded-2xl border shadow-sm ${syncConflictOpen
-                        ? "border-amber-500/30 bg-amber-500/10"
-                        : isOnline
-                            ? "border-emerald-500/30 bg-emerald-500/10"
-                            : "border-rose-500/30 bg-rose-500/10"
-                        }`}
-                >
-                    <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm">
-                            {syncConflictOpen ? (
-                                <AlertCircle className="h-4 w-4 text-amber-600" />
-                            ) : isOnline ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                                <AlertCircle className="h-4 w-4 text-rose-600" />
-                            )}
-                            <span
-                                className={syncConflictOpen
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : isOnline
-                                        ? "text-emerald-700 dark:text-emerald-300"
-                                        : "text-rose-500"
-                                }
-                            >
-                                {networkNotice}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
             {/* Compact sub-step indicator */}
             <div className="flex items-center gap-2 px-1" data-testid="student-questionnaire-steps">
                 {steps.map((s, idx) => {
@@ -1203,64 +1116,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmComplete} data-testid="student-questionnaire-complete-confirm" className="bg-emerald-600 hover:bg-emerald-700 text-white">确认完成</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-restore-dialog">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
-                            检测到本地草稿，是否恢复？
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                            data-testid="student-questionnaire-restore-discard"
-                            onClick={discardPendingDraft}
-                        >
-                            放弃草稿
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            data-testid="student-questionnaire-restore-apply"
-                            onClick={restorePendingDraft}
-                        >
-                            恢复草稿
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-conflict-dialog">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                            本地草稿和服务器草稿都发生了变化。请选择要保留的版本。
-                            <br />
-                            <span className="text-slate-500">保留本地版本将覆盖服务器当前草稿。</span>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                            data-testid="student-questionnaire-conflict-server"
-                            onClick={keepServerDraft}
-                        >
-                            保留服务器版本
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            data-testid="student-questionnaire-conflict-local"
-                            onClick={() => {
-                                void keepLocalDraft();
-                            }}
-                        >
-                            保留本地版本
-                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
