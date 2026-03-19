@@ -11,10 +11,12 @@ export function useNetworkStatus({
     autoDismissMs = 5000,
     pauseAutoDismiss = false,
 }: UseNetworkStatusOptions) {
-    const [isOnline, setIsOnline] = useState(
-        typeof navigator === "undefined" ? true : navigator.onLine,
-    );
-    const [networkNotice, setNetworkNotice] = useState<string | null>(null);
+    const [isOnline, setIsOnline] = useState(() => (
+        typeof navigator === "undefined" ? true : navigator.onLine
+    ));
+    const [networkNotice, setNetworkNotice] = useState<string | null>(() => (
+        typeof navigator === "undefined" || navigator.onLine ? null : offlineMessage
+    ));
 
     useEffect(() => {
         const handleOnline = () => setIsOnline(true);

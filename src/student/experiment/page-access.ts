@@ -1,4 +1,5 @@
 import type { TaskStatus } from "../api-client";
+import { getTaskDeadlineTimestamp } from "./task-timing";
 
 interface ExperimentRouteGuardInput {
     taskId: number;
@@ -17,7 +18,7 @@ export function isTaskNotOpenYet(publishedAt: string) {
 
 export function isTaskDeadlinePassed(deadline: string | null) {
     if (!deadline) return false;
-    const deadlineAt = new Date(deadline).getTime();
+    const deadlineAt = getTaskDeadlineTimestamp(deadline);
     return Number.isFinite(deadlineAt) && Date.now() > deadlineAt;
 }
 
