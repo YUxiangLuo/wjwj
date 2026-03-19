@@ -33,7 +33,8 @@ function normalizeSeed(value: unknown) {
 function normalizeInteger(value: unknown, fallback: number, min = 0) {
     const parsed = Number.parseInt(String(value ?? ""), 10);
     if (!Number.isSafeInteger(parsed)) return fallback;
-    return Math.max(min, parsed);
+    if (parsed < min) return fallback;
+    return parsed;
 }
 
 export function serializeSamplingExecutionDraft(value: SamplingExecutionDraft) {
@@ -69,7 +70,7 @@ export function buildSamplingExecutionDraftFromResults(params: {
         kValue: results?.systematic?.kValue ?? Math.round(populationSize / sampleSize),
         ppsSizeField: results?.pps?.sizeField ?? "",
         ppsSampleSize: results?.pps?.sampleCount ?? sampleSize,
-        stratifyBy: results?.stratified?.stratifyBy ?? "gender",
+        stratifyBy: results?.stratified?.stratifyBy ?? "",
         layerSampleCounts: results?.stratified?.layers?.map((layer) => layer.sampleCount) ?? [],
     };
 }
@@ -78,14 +79,15 @@ export function decideSamplingDraftRestore(params: {
     rawDraft: string | null;
     serverValue: SamplingExecutionDraft;
     hasCompletedResults: boolean;
+    defaults?: SamplingDraftDefaults;
 }): SamplingDraftRestoreDecision {
-    const { rawDraft, serverValue, hasCompletedResults } = params;
+    const { rawDraft, serverValue, hasCompletedResults, defaults } = params;
 
     if (!rawDraft) {
         return { type: "none", draft: null };
     }
 
-    const draft = parseSamplingExecutionDraft(rawDraft);
+    const draft = parseSamplingExecutionDraft(rawDraft, defaults);
     if (!draft) {
         return { type: "none", draft: null };
     }
@@ -101,7 +103,15 @@ export function decideSamplingDraftRestore(params: {
     return { type: "auto_restore", draft };
 }
 
-export function parseSamplingExecutionDraft(raw: string): SamplingExecutionDraft | null {
+export interface SamplingDraftDefaults {
+    ppsSampleSize?: number;
+    kValue?: number;
+}
+
+export function parseSamplingExecutionDraft(
+    raw: string,
+    defaults?: SamplingDraftDefaults,
+): SamplingExecutionDraft | null {
     try {
         const data = JSON.parse(raw) as Partial<SamplingExecutionDraft>;
         if (!data || typeof data !== "object") return null;
@@ -111,10 +121,10 @@ export function parseSamplingExecutionDraft(raw: string): SamplingExecutionDraft
             systematicSeed: normalizeSeed(data.systematicSeed),
             ppsSeed: normalizeSeed(data.ppsSeed),
             stratifiedSeed: normalizeSeed(data.stratifiedSeed),
-            kValue: normalizeInteger(data.kValue, 1, 1),
+            kValue: normalizeInteger(data.kValue, defaults?.kValue ?? 1, 1),
             ppsSizeField: typeof data.ppsSizeField === "string" ? data.ppsSizeField.trim() : "",
-            ppsSampleSize: normalizeInteger(data.ppsSampleSize, 1, 1),
-            stratifyBy: typeof data.stratifyBy === "string" && data.stratifyBy.trim() ? data.stratifyBy.trim() : "gender",
+            ppsSampleSize: normalizeInteger(data.ppsSampleSize, defaults?.ppsSampleSize ?? 1, 1),
+            stratifyBy: typeof data.stratifyBy === "string" ? data.stratifyBy.trim() : "",
             layerSampleCounts: Array.isArray(data.layerSampleCounts)
                 ? data.layerSampleCounts.map((value) => normalizeInteger(value, 0, 0))
                 : [],

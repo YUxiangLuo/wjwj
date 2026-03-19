@@ -8,6 +8,13 @@ test("ensureTaskSubmissionWindow allows submissions during grace period", () => 
     expect(result).toBeNull();
 });
 
+test("ensureTaskSubmissionWindow allows submissions at exact grace boundary", () => {
+    const deadline = "2026-03-20T12:00:00.000Z";
+    const result = ensureTaskSubmissionWindow(deadline, 30_000, Date.parse(deadline) + 30_000);
+
+    expect(result).toBeNull();
+});
+
 test("ensureTaskSubmissionWindow blocks submissions after grace period", () => {
     const deadline = "2026-03-20T12:00:00.000Z";
     const result = ensureTaskSubmissionWindow(deadline, 30_000, Date.parse(deadline) + 30_001);

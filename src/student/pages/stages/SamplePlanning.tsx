@@ -44,6 +44,7 @@ import { MultiVariableSamplePlan, type SurveyVariable } from "../../components/M
 import { CVBasedSampleSizeCalculator } from "../../components/CVBasedSampleSizeCalculator";
 import { ClusterSamplingCalculator } from "../../components/ClusterSamplingCalculator";
 import { useDraftSync } from "../../draft-sync";
+import { NetworkStatusBanner } from "../../components/NetworkStatusBanner";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -64,15 +65,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         marginOfError: number;
         designEffect: number;
         nonResponseRate: number;
-    }) => {
-        return calculateFinitePopulationSampleSize({
-            confidenceLevel: params.confidenceLevel,
-            marginOfError: params.marginOfError,
-            populationSize: N,
-            designEffect: params.designEffect,
-            nonResponseRate: params.nonResponseRate,
-        }) ?? 384;
-    }, [N]);
+    }) => calculateFinitePopulationSampleSize({ ...params, populationSize: N }) ?? 384, [N]);
 
     const defaultSamplePlan = useMemo<SamplePlanData>(() => {
         const recommendedSize = calculateRecommendedSize({
@@ -311,37 +304,11 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
             {networkNotice && (
-                <Card
-                    data-testid="student-sample-plan-network-notice"
-                    className={`rounded-2xl border shadow-sm ${syncConflictOpen
-                        ? "border-amber-500/30 bg-amber-500/10"
-                        : isOnline
-                            ? "border-emerald-500/30 bg-emerald-500/10"
-                            : "border-rose-500/30 bg-rose-500/10"
-                        }`}
-                >
-                    <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm">
-                            {syncConflictOpen ? (
-                                <Info className="h-4 w-4 text-amber-600" />
-                            ) : isOnline ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                                <Info className="h-4 w-4 text-rose-600" />
-                            )}
-                            <span
-                                className={syncConflictOpen
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : isOnline
-                                        ? "text-emerald-700 dark:text-emerald-300"
-                                        : "text-rose-600"
-                                }
-                            >
-                                {networkNotice}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <NetworkStatusBanner
+                    notice={networkNotice}
+                    variant={syncConflictOpen ? "warning" : isOnline ? "online" : "offline"}
+                    testId="student-sample-plan-network-notice"
+                />
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

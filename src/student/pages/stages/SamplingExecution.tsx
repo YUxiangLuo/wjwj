@@ -51,6 +51,8 @@ import {
     serializeSamplingExecutionDraft,
     type SamplingExecutionDraft,
 } from "./sampling-params";
+import { useNetworkStatus } from "../../use-network-status";
+import { NetworkStatusBanner } from "../../components/NetworkStatusBanner";
 
 interface SamplingExecutionProps {
     onNext: () => void;
@@ -129,8 +131,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [ppsSeed, setPpsSeed] = useState(initialResults?.pps?.seed ? String(initialResults.pps.seed) : "");
     const [stratifiedSeed, setStratifiedSeed] = useState(initialResults?.stratified?.seed ? String(initialResults.stratified.seed) : "");
     const [executionTimes, setExecutionTimes] = useState<Record<SamplingMethod, number | null>>({ simple: null, systematic: null, pps: null, stratified: null });
-    const [isOnline, setIsOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
-    const [networkNotice, setNetworkNotice] = useState<string | null>(null);
+    const { isOnline, networkNotice, setNetworkNotice } = useNetworkStatus({
+        offlineMessage: "网络已断开，已在本地保留抽样参数，恢复网络后可继续执行",
+    });
     const [draftResolved, setDraftResolved] = useState(false);
     const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
     const [pendingDraft, setPendingDraft] = useState<SamplingExecutionDraft | null>(null);
@@ -197,12 +200,12 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         setLayers(newLayers);
 
         const restoredDraft = restoredDraftRef.current;
+        restoredDraftRef.current = null;
         if (restoredDraft?.stratifyBy === stratifyBy && restoredDraft.layerSampleCounts.length > 0) {
             setLayerSampleCounts(newLayers.map((layer, index) => {
                 const restoredCount = restoredDraft.layerSampleCounts[index] ?? 0;
                 return Math.max(0, Math.min(restoredCount, layer.count));
             }));
-            restoredDraftRef.current = null;
         } else if (initialResults?.stratified?.stratifyBy === stratifyBy && initialResults.stratified.layers) {
             const savedMap = new Map(initialResults.stratified.layers.map((l) => [l.name, l.sampleCount]));
             setLayerSampleCounts(newLayers.map((l) => savedMap.get(l.name) ?? 0));
@@ -217,6 +220,9 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [showAllocationComparison, setShowAllocationComparison] = useState(false);
     const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
 
+    // Sampling parameters are persisted to localStorage only (not auto-saved to the server).
+    // Server state updates when the user explicitly executes a sampling method, which saves
+    // the results. Parameters without results are not meaningful on the server.
     const samplingDraftKey = taskId ? `student_sampling_params_${taskId}` : null;
     const serverSamplingDraft = useMemo(() => buildSamplingExecutionDraftFromResults({
         results: initialResults,
@@ -255,11 +261,15 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         setKValue(draft.kValue);
         setPpsSizeField(draft.ppsSizeField);
         setPpsSampleSize(draft.ppsSampleSize);
-        setStratifyBy(draft.stratifyBy);
+        // Only override stratifyBy if the draft has a non-empty value;
+        // empty means the parser couldn't determine a dataset-appropriate default.
+        if (draft.stratifyBy) {
+            setStratifyBy(draft.stratifyBy);
+        }
         if (notice) {
             setNetworkNotice(notice);
         }
-    }, []);
+    }, [setNetworkNotice]);
 
     const clearSamplingParamsDraft = useCallback(() => {
         if (!samplingDraftKey) return;
@@ -278,7 +288,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         if (hasCompletedResults) {
             setNetworkNotice("已保留服务器抽样参数");
         }
-    }, [clearSamplingParamsDraft, hasCompletedResults]);
+    }, [clearSamplingParamsDraft, hasCompletedResults, setNetworkNotice]);
 
     const restorePendingDraft = useCallback(() => {
         if (pendingDraft) {
@@ -307,10 +317,12 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
         try {
             const rawDraft = localStorage.getItem(samplingDraftKey);
+            const draftDefaults = { ppsSampleSize: n, kValue: Math.round(N / n) };
             const decision = decideSamplingDraftRestore({
                 rawDraft,
                 serverValue: serverSamplingDraft,
                 hasCompletedResults,
+                defaults: draftDefaults,
             });
             if (decision.type === "none") {
                 if (rawDraft && parseSamplingExecutionDraft(rawDraft) === null) {
@@ -348,37 +360,14 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         }
     }, [draftResolved, samplingDraft, samplingDraftKey]);
 
+    const prevOnlineRef = useRef(isOnline);
     useEffect(() => {
-        const handleOnline = () => {
-            setIsOnline(true);
+        const wasOffline = !prevOnlineRef.current;
+        prevOnlineRef.current = isOnline;
+        if (isOnline && wasOffline) {
             setNetworkNotice("网络已恢复，可继续执行抽样");
-        };
-        const handleOffline = () => {
-            setIsOnline(false);
-            setNetworkNotice("网络已断开，已在本地保留抽样参数，恢复网络后可继续执行");
-        };
-
-        window.addEventListener("online", handleOnline);
-        window.addEventListener("offline", handleOffline);
-        return () => {
-            window.removeEventListener("online", handleOnline);
-            window.removeEventListener("offline", handleOffline);
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!isOnline) {
-            setNetworkNotice("网络已断开，已在本地保留抽样参数，恢复网络后可继续执行");
         }
-    }, [isOnline]);
-
-    useEffect(() => {
-        if (!networkNotice || !isOnline) return;
-        const timer = window.setTimeout(() => {
-            setNetworkNotice(null);
-        }, 5000);
-        return () => window.clearTimeout(timer);
-    }, [isOnline, networkNotice]);
+    }, [isOnline, setNetworkNotice]);
 
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
@@ -649,26 +638,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sampling">
             {networkNotice && (
-                <Card
-                    data-testid="student-sampling-network-notice"
-                    className={`rounded-2xl border shadow-sm ${isOnline
-                        ? "border-emerald-500/30 bg-emerald-500/10"
-                        : "border-rose-500/30 bg-rose-500/10"
-                        }`}
-                >
-                    <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm">
-                            {isOnline ? (
-                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                                <Database className="h-4 w-4 text-rose-600" />
-                            )}
-                            <span className={isOnline ? "text-emerald-700 dark:text-emerald-300" : "text-rose-600"}>
-                                {networkNotice}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <NetworkStatusBanner
+                    notice={networkNotice}
+                    variant={isOnline ? "online" : "offline"}
+                    testId="student-sampling-network-notice"
+                />
             )}
 
             <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">

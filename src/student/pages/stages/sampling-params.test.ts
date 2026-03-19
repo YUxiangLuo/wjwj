@@ -30,9 +30,19 @@ test("parseSamplingExecutionDraft normalizes invalid values", () => {
         kValue: 1,
         ppsSizeField: "income",
         ppsSampleSize: 1,
-        stratifyBy: "gender",
+        stratifyBy: "",
         layerSampleCounts: [12, 0, 5, 0],
     });
+});
+
+test("parseSamplingExecutionDraft uses caller-provided defaults for context-dependent fields", () => {
+    const draft = parseSamplingExecutionDraft(JSON.stringify({
+        ppsSampleSize: "-3",
+        kValue: 0,
+    }), { ppsSampleSize: 50, kValue: 8 });
+
+    expect(draft?.ppsSampleSize).toBe(50);
+    expect(draft?.kValue).toBe(8);
 });
 
 test("serializeSamplingExecutionDraft preserves roundtrip-safe drafts", () => {
@@ -112,6 +122,16 @@ test("buildSamplingExecutionDraftFromResults derives the server-backed parameter
         stratifyBy: "education",
         layerSampleCounts: [20, 30],
     });
+});
+
+test("buildSamplingExecutionDraftFromResults defaults stratifyBy to empty when no server data", () => {
+    const draft = buildSamplingExecutionDraftFromResults({
+        results: null,
+        populationSize: 400,
+        sampleSize: 50,
+    });
+
+    expect(draft.stratifyBy).toBe("");
 });
 
 test("decideSamplingDraftRestore auto-restores when no completed server results exist", () => {
