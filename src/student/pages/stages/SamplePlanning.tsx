@@ -93,7 +93,6 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     // 多变量样本量规划数据
     const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
-    const [multiVariableRecommendedSize, setMultiVariableRecommendedSize] = useState(0);
 
     const N = populationSize;
 
@@ -574,7 +573,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         return (
                             <DialogHeader>
                                 <DialogTitle className="text-slate-900 dark:text-slate-100">{config?.title}</DialogTitle>
-                                <DialogDescription className="text-slate-500">{config?.description}</DialogDescription>
+                                <DialogDescription className="text-slate-600 dark:text-slate-400">{config?.description}</DialogDescription>
                             </DialogHeader>
                         );
                     })()}
@@ -612,12 +611,8 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     {activeAdvancedTab === 'multivar' && (
                         <MultiVariableSamplePlan
                             populationSize={N}
-                            onVariablesChange={(newVariables) => {
-                                setSurveyVariables(newVariables);
-                            }}
-                            onRecommendedSampleSizeChange={(size) => {
-                                setMultiVariableRecommendedSize(size);
-                            }}
+                            onVariablesChange={setSurveyVariables}
+                            onRecommendedSampleSizeChange={() => {}}
                             initialVariables={surveyVariables}
                         />
                     )}
