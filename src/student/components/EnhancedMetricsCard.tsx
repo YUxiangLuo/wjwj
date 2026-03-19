@@ -5,9 +5,11 @@ import type { SampleSizeMetrics } from "../experiment/sample-plan";
 
 interface EnhancedMetricsCardProps {
     metrics: SampleSizeMetrics | null;
+    confidenceLevel?: string;  // "90" | "95" | "99"
+    p?: number;                // 估计比例，默认0.5
 }
 
-export function EnhancedMetricsCard({ metrics }: EnhancedMetricsCardProps) {
+export function EnhancedMetricsCard({ metrics, confidenceLevel = "95", p = 0.5 }: EnhancedMetricsCardProps) {
     if (!metrics) return null;
 
     // 格式化百分比
@@ -27,7 +29,7 @@ export function EnhancedMetricsCard({ metrics }: EnhancedMetricsCardProps) {
                         </CardTitle>
                     </div>
                     <Badge variant="outline" className="text-xs bg-indigo-100/50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30 dark:text-indigo-300">
-                        基于 p=0.5
+                        基于 p={p}
                     </Badge>
                 </div>
                 <CardDescription className="text-indigo-700 dark:text-indigo-300">
@@ -67,7 +69,7 @@ export function EnhancedMetricsCard({ metrics }: EnhancedMetricsCardProps) {
                 {/* 置信区间 */}
                 <div className="rounded-xl border border-indigo-200 bg-white/80 p-4 dark:border-indigo-500/20 dark:bg-indigo-950/40">
                     <div className="flex items-center gap-2 mb-3">
-                        <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">95% 置信区间</span>
+                        <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">{confidenceLevel}% 置信区间</span>
                         <Badge variant="outline" className="text-xs text-indigo-600 border-indigo-200 dark:border-indigo-500/30">
                             比例估计
                         </Badge>
@@ -85,7 +87,7 @@ export function EnhancedMetricsCard({ metrics }: EnhancedMetricsCardProps) {
                         </div>
                         <div className="text-center flex-1">
                             <div className="text-xs text-indigo-500 mb-1">真值 p</div>
-                            <div className="font-bold text-indigo-700 dark:text-indigo-300">50.0%</div>
+                            <div className="font-bold text-indigo-700 dark:text-indigo-300">{formatCI(p)}</div>
                         </div>
                         <div className="flex-1 flex items-center justify-center">
                             <div className="h-px w-12 bg-indigo-300 dark:bg-indigo-600"></div>
@@ -99,7 +101,7 @@ export function EnhancedMetricsCard({ metrics }: EnhancedMetricsCardProps) {
                         </div>
                     </div>
                     <p className="text-xs text-indigo-600/70 mt-3 leading-relaxed">
-                        如果重复调查100次，约95次的估计值会落入此区间
+                        如果重复调查100次，约{confidenceLevel}次的估计值会落入此区间
                     </p>
                 </div>
 
