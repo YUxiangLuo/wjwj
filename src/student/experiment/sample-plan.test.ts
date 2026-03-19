@@ -217,8 +217,8 @@ test("CV-based achievedCV follows correct formula", () => {
     expect(result).not.toBeNull();
     const n = result!.requiredSampleSize;
     const fpc = 1 - n / 5000;
-    // achievedCV = z × CV_pop × √(deff × fpc / (n × (1 - nrr)))
-    const expectedCV = 1.96 * 0.4 * Math.sqrt(1.5 * fpc / (n * 0.9));
+    // achievedCV = CV_pop × √(deff × fpc / (n × (1 - nrr)))  (no z factor)
+    const expectedCV = 0.4 * Math.sqrt(1.5 * fpc / (n * 0.9));
     expect(Math.abs(result!.achievedCV - expectedCV)).toBeLessThan(1e-10);
 });
 
@@ -233,6 +233,20 @@ test("CV-based returns null for invalid params", () => {
         targetCV: 0.05,
         populationSize: 0,
     })).toBeNull();
+});
+
+test("CV-based base formula is n₀ = CV_pop² / targetCV² (no z factor)", () => {
+    // With very large population (negligible FPC), deff=1, nrr=0,
+    // the result should approximate CV_pop² / targetCV²
+    const result = calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 1_000_000,
+        estimatedCV: 0.3,
+    });
+    expect(result).not.toBeNull();
+    // n₀ = 0.3² / 0.05² = 0.09 / 0.0025 = 36
+    expect(result!.requiredSampleSize).toBe(36);
 });
 
 // ========== calculateClusterSamplingSize tests ==========
@@ -278,6 +292,22 @@ test("cluster sampling returns null for invalid params", () => {
         clusterSize: 50,
         deff: 2.0,
     })).toBeNull();
+});
+
+test("cluster sampling treats marginOfError=1 as 1% (not 100%)", () => {
+    // Regression: marginOfError=1 was passed through as 1.0 (100%) due to `> 1` check
+    const result = calculateClusterSamplingSize({
+        populationSize: 10000,
+        confidenceLevel: "95",
+        marginOfError: 1,
+        clusterSize: 30,
+        deff: 2.0,
+    });
+    expect(result).not.toBeNull();
+    // With 1% margin of error, we need a VERY large sample
+    // (much larger than with 5% margin). If the bug were still present,
+    // e=1.0 would give n≈1 (trivial sample).
+    expect(result!.requiredSampleSize).toBeGreaterThan(1000);
 });
 
 // ========== calculateOptimalAllocationWithCost tests ==========
