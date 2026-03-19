@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyRound, Sun, Moon } from "lucide-react";
+import { Bell, ArrowLeft, Loader2, LogOut, User, Trash2, KeyRound, Sun, Moon } from "lucide-react";
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -60,14 +60,16 @@ function StudentAppContent() {
 
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [showAuthDialog, setShowAuthDialog] = useState(false);
+    const [showAccountMenu, setShowAccountMenu] = useState(false);
     const [authDialogCode, setAuthDialogCode] = useState<string | null>(null);
+    const [showAuthStatusDialog, setShowAuthStatusDialog] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     function redirectToLoginWithReason(message: string) {
         setShowSessionWarning(false);
         setShowNotifications(false);
-        setShowAuthDialog(false);
+        setShowAccountMenu(false);
+        setShowAuthStatusDialog(false);
         setShowLogoutConfirm(false);
         clearLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
         setLoginRedirectReason(STUDENT_LOGIN_REDIRECT_REASON_KEY, message);
@@ -99,37 +101,37 @@ function StudentAppContent() {
 
     useEffect(() => {
         if (!authErrorCode) {
-            setShowAuthDialog(false);
+            setShowAuthStatusDialog(false);
             setAuthDialogCode(null);
             return;
         }
         const hasLoginFlag = sessionStorage.getItem(STUDENT_LOGIN_SUCCESS_KEY) === "1";
         if (hasLoginFlag && (authErrorCode === "AUTH_004" || authErrorCode === "AUTH_005")) {
             setAuthDialogCode(authErrorCode);
-            setShowAuthDialog(true);
+            setShowAuthStatusDialog(true);
             clearLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
         } else {
-            setShowAuthDialog(false);
+            setShowAuthStatusDialog(false);
             setAuthDialogCode(null);
         }
     }, [authErrorCode]);
 
     useEffect(() => {
-        if (!showAuthDialog) return;
+        if (!showAccountMenu) return;
 
         const handlePointerDown = (event: PointerEvent) => {
             const target = event.target;
             if (!(target instanceof Node)) return;
             if (authMenuRef.current?.contains(target)) return;
-            setShowAuthDialog(false);
+            setShowAccountMenu(false);
         };
 
         document.addEventListener("pointerdown", handlePointerDown);
         return () => document.removeEventListener("pointerdown", handlePointerDown);
-    }, [showAuthDialog]);
+    }, [showAccountMenu]);
 
     const handleReLogin = useCallback(() => {
-        setShowAuthDialog(false);
+        setShowAuthStatusDialog(false);
         setAuthDialogCode(null);
         navigate("/login", { replace: true });
     }, [navigate]);
@@ -149,8 +151,8 @@ function StudentAppContent() {
         },
     });
 
-    const authStatusDialog = authDialogCode && showAuthDialog ? (
-        <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+    const authStatusDialog = authDialogCode && showAuthStatusDialog ? (
+        <Dialog open={showAuthStatusDialog} onOpenChange={setShowAuthStatusDialog}>
             <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                 <DialogHeader>
                     <DialogTitle className="text-slate-900 dark:text-slate-100">登录状态已变更</DialogTitle>
@@ -189,7 +191,7 @@ function StudentAppContent() {
     }
 
     if (!currentUser) {
-        if (authDialogCode && showAuthDialog) {
+        if (authDialogCode && showAuthStatusDialog) {
             return (
                 <>
                     <Login />
@@ -318,7 +320,7 @@ function StudentAppContent() {
                             <Button
                                 variant="ghost"
                                 className="relative h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 focus:ring-0 px-0"
-                                onClick={() => setShowAuthDialog(prev => !prev)}
+                                onClick={() => setShowAccountMenu((prev) => !prev)}
                             >
                                 <Avatar className="h-9 w-9 border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800">
                                     <AvatarFallback className="bg-indigo-600 text-white font-medium text-sm" data-testid="student-avatar">
@@ -328,7 +330,7 @@ function StudentAppContent() {
                             </Button>
 
                             {/* Custom Dropdown Menu */}
-                            {showAuthDialog && (
+                            {showAccountMenu && (
                                 <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-200">
                                         <div className="px-3 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                                             <p className="text-sm font-medium leading-none text-slate-900 dark:text-slate-100">{displayName}</p>
@@ -338,7 +340,7 @@ function StudentAppContent() {
                                             className="w-full flex items-center px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer text-left"
                                             data-testid="student-nav-profile"
                                             onClick={() => {
-                                                setShowAuthDialog(false);
+                                                setShowAccountMenu(false);
                                                 navigate("/profile");
                                             }}
                                         >
@@ -349,7 +351,7 @@ function StudentAppContent() {
                                             className="w-full flex items-center px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer text-left"
                                             data-testid="student-open-password-modal"
                                             onClick={() => {
-                                                setShowAuthDialog(false);
+                                                setShowAccountMenu(false);
                                                 passwordChange.clearError();
                                                 setShowPasswordModal(true);
                                             }}
@@ -361,7 +363,7 @@ function StudentAppContent() {
                                             className="w-full flex items-center px-3 py-2.5 text-sm text-rose-600 hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer text-left"
                                             data-testid="student-logout-trigger"
                                             onClick={() => {
-                                                setShowAuthDialog(false);
+                                                setShowAccountMenu(false);
                                                 setShowLogoutConfirm(true);
                                             }}
                                         >

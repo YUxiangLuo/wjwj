@@ -42,3 +42,29 @@ test("experiment route guard allows active in-progress tasks", () => {
         status: "in_progress",
     })).toBeNull();
 });
+
+test("experiment route guard treats date-only deadlines as end of day", () => {
+    const realNow = Date.now;
+
+    try {
+        Date.now = () => new Date("2026-03-20T23:58:30").getTime();
+        expect(isTaskDeadlinePassed("2026-03-20")).toBe(false);
+        expect(getExperimentRouteRedirect({
+            taskId: 5,
+            publishedAt: "2026-03-19T08:00:00.000Z",
+            deadline: "2026-03-20",
+            status: "in_progress",
+        })).toBeNull();
+
+        Date.now = () => new Date("2026-03-21T00:00:01").getTime();
+        expect(isTaskDeadlinePassed("2026-03-20")).toBe(true);
+        expect(getExperimentRouteRedirect({
+            taskId: 5,
+            publishedAt: "2026-03-19T08:00:00.000Z",
+            deadline: "2026-03-20",
+            status: "in_progress",
+        })).toBe("/task/5");
+    } finally {
+        Date.now = realNow;
+    }
+});

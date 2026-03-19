@@ -22,6 +22,7 @@ import {
     formatSystematicRange,
     getSystematicAcceptedRange,
 } from "../experiment/systematic-sampling";
+import { ensureTaskSubmissionWindow } from "../experiment/task-timing";
 import { getPreviewSubmitBlocker } from "../experiment/preview-submit";
 import { ImmersiveReportPreview } from "../components/ImmersiveReportPreview";
 
@@ -117,13 +118,10 @@ export function SubmissionPreview() {
         setConfirmOpen(false);
         setError(null);
 
-        // Pre-submission deadline check
-        if (task?.deadline) {
-            const deadlineDate = new Date(task.deadline.includes("T") ? task.deadline : `${task.deadline}T23:59:00`);
-            if (new Date() > deadlineDate) {
-                setError("任务已截止，无法提交");
-                return;
-            }
+        const submissionWindowError = ensureTaskSubmissionWindow(task?.deadline);
+        if (submissionWindowError) {
+            setError(submissionWindowError.message);
+            return;
         }
 
         if (!navigator.onLine) {

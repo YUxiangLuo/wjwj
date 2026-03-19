@@ -29,6 +29,7 @@ import { SamplePlanning } from "./stages/SamplePlanning";
 import { SamplingExecution } from "./stages/SamplingExecution";
 import { AnalysisReport } from "./stages/AnalysisReport";
 import { TopicDeletedState } from "../components/TopicDeletedState";
+import { getTaskDeadlineTimestamp } from "../experiment/task-timing";
 
 const stages = [
     { name: "问卷设计", description: "第一步：围绕调研目标，设计包含判断题、单选题、多选题和量表题的调查问卷，设置标题、欢迎语和结束语", icon: FileText },
@@ -242,7 +243,8 @@ export function ExperimentLayout() {
 
     const deadlineInfo = useMemo(() => {
         if (!deadline) return null;
-        const deadlineMs = new Date(deadline).getTime();
+        const deadlineMs = getTaskDeadlineTimestamp(deadline);
+        if (!Number.isFinite(deadlineMs)) return null;
         const diff = deadlineMs - now;
         if (diff <= 0) return { passed: true, text: "已截止", level: "expired" as const };
         const hours = diff / (1000 * 60 * 60);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNetworkStatus } from "./use-network-status";
 
 export type ReconnectSyncDecision = "synced" | "conflict" | "push_local" | "pull_server";
 
@@ -114,15 +115,16 @@ export function useDraftSync<T>({
     saveToServer,
     serialize,
 }: UseDraftSyncOptions<T>): UseDraftSyncResult<T> {
-    const [isOnline, setIsOnline] = useState(
-        typeof navigator === "undefined" ? true : navigator.onLine
-    );
-    const [networkNotice, setNetworkNotice] = useState<string | null>(null);
     const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
     const [pendingDraft, setPendingDraft] = useState<T | null>(null);
     const [syncConflictOpen, setSyncConflictOpen] = useState(false);
     const [serverConflictDraft, setServerConflictDraft] = useState<T | null>(null);
     const [localConflictDraft, setLocalConflictDraft] = useState<T | null>(null);
+
+    const { isOnline, networkNotice, setNetworkNotice } = useNetworkStatus({
+        offlineMessage: "网络已断开，数据将保存在本地",
+        pauseAutoDismiss: syncConflictOpen,
+    });
 
     const serverSnapshotRef = useRef("");
     const saveInFlightRef = useRef(false);
@@ -190,7 +192,7 @@ export function useDraftSync<T>({
         } finally {
             saveInFlightRef.current = false;
         }
-    }, [currentSnapshot, currentValue, saveToServer]);
+    }, [currentSnapshot, currentValue, saveToServer, setNetworkNotice]);
 
     const saveNowRef = useRef(saveNow);
     useEffect(() => {
@@ -287,41 +289,17 @@ export function useDraftSync<T>({
         } finally {
             reconnectSyncingRef.current = false;
         }
-    }, [applyValue, currentSnapshot, currentValue, draftKey, loadServerLatest, saveToServer, serialize]);
+    }, [applyValue, currentSnapshot, currentValue, draftKey, loadServerLatest, saveToServer, serialize, setNetworkNotice]);
 
+    // Trigger reconnect sync when transitioning from offline to online
+    const prevOnlineRef = useRef(isOnline);
     useEffect(() => {
-        const handleOnline = () => {
-            setIsOnline(true);
+        const wasOffline = !prevOnlineRef.current;
+        prevOnlineRef.current = isOnline;
+        if (isOnline && wasOffline) {
             void syncAfterReconnect();
-        };
-        const handleOffline = () => {
-            setIsOnline(false);
-            setNetworkNotice("网络已断开，数据将保存在本地");
-        };
-
-        window.addEventListener("online", handleOnline);
-        window.addEventListener("offline", handleOffline);
-        return () => {
-            window.removeEventListener("online", handleOnline);
-            window.removeEventListener("offline", handleOffline);
-        };
-    }, [syncAfterReconnect]);
-
-    useEffect(() => {
-        if (!isOnline) {
-            setNetworkNotice("网络已断开，数据将保存在本地");
         }
-    }, [isOnline]);
-
-    useEffect(() => {
-        if (!networkNotice || syncConflictOpen || !isOnline) return;
-        const timer = window.setTimeout(() => {
-            setNetworkNotice(null);
-        }, 5000);
-        return () => {
-            window.clearTimeout(timer);
-        };
-    }, [isOnline, networkNotice, syncConflictOpen]);
+    }, [isOnline, syncAfterReconnect]);
 
     const clearLocalDraft = useCallback(() => {
         if (!draftKey) return;
@@ -359,7 +337,7 @@ export function useDraftSync<T>({
         writeDraftSnapshot(draftKey, serverSnapshot);
         setSyncConflictOpen(false);
         setNetworkNotice("已保留服务器草稿版本");
-    }, [applyValue, draftKey, serverConflictDraft, serialize]);
+    }, [applyValue, draftKey, serverConflictDraft, serialize, setNetworkNotice]);
 
     const keepLocalDraft = useCallback(async () => {
         const localData = localConflictDraft ?? currentValue;
@@ -375,7 +353,7 @@ export function useDraftSync<T>({
         }
 
         setSyncConflictOpen(false);
-    }, [currentValue, draftKey, localConflictDraft, saveToServer, serialize]);
+    }, [currentValue, draftKey, localConflictDraft, saveToServer, serialize, setNetworkNotice]);
 
     return {
         clearLocalDraft,

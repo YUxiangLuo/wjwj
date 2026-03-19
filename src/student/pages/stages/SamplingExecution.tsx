@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -42,6 +42,17 @@ import {
     getSystematicSampleCountRange,
     isSystematicRangeWithinAcceptedRange,
 } from "../../experiment/systematic-sampling";
+import {
+    buildSamplingExecutionDraftFromResults,
+    decideSamplingDraftRestore,
+    hasCompletedSamplingResults,
+    parseSamplingExecutionDraft,
+    resolvePpsSizeField,
+    serializeSamplingExecutionDraft,
+    type SamplingExecutionDraft,
+} from "./sampling-params";
+import { useNetworkStatus } from "../../use-network-status";
+import { NetworkStatusBanner } from "../../components/NetworkStatusBanner";
 
 interface SamplingExecutionProps {
     onNext: () => void;
@@ -120,30 +131,37 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [ppsSeed, setPpsSeed] = useState(initialResults?.pps?.seed ? String(initialResults.pps.seed) : "");
     const [stratifiedSeed, setStratifiedSeed] = useState(initialResults?.stratified?.seed ? String(initialResults.stratified.seed) : "");
     const [executionTimes, setExecutionTimes] = useState<Record<SamplingMethod, number | null>>({ simple: null, systematic: null, pps: null, stratified: null });
+    const { isOnline, networkNotice, setNetworkNotice } = useNetworkStatus({
+        offlineMessage: "网络已断开，已在本地保留抽样参数，恢复网络后可继续执行",
+    });
+    const [draftResolved, setDraftResolved] = useState(false);
+    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
+    const [pendingDraft, setPendingDraft] = useState<SamplingExecutionDraft | null>(null);
     // Stats state
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [numericFields, setNumericFields] = useState<string[]>([]);
     const [layers, setLayers] = useState<Array<{ name: string; count: number; ratio: number }>>([]);
     const [layerSampleCounts, setLayerSampleCounts] = useState<number[]>([]);
+    const restoredDraftRef = useRef<SamplingExecutionDraft | null>(null);
+    const taskId = experiment?.taskId;
 
     // Fetch stats on mount
     useEffect(() => {
-        if (experiment?.taskId) {
-            experimentApi.getStats(experiment.taskId).then(res => {
+        if (taskId) {
+            experimentApi.getStats(taskId).then(res => {
                 if (res.success && res.data?.stats) {
                     setPopulationStats(res.data.stats);
                 }
                 if (res.success && res.data?.numericFields) {
-                    setNumericFields(res.data.numericFields);
-                    if (!ppsSizeField && res.data.numericFields.length > 0) {
-                        setPpsSizeField(res.data.numericFields[0] ?? "");
-                    }
+                    const nextNumericFields = res.data.numericFields;
+                    setNumericFields(nextNumericFields);
+                    setPpsSizeField((prev) => resolvePpsSizeField(prev, nextNumericFields));
                 }
             }).catch((e) => {
                 console.error("Failed to load population stats:", e);
             });
         }
-    }, [experiment?.taskId]);
+    }, [taskId]);
 
     // Update layers when stratifyBy changes or stats load
     useEffect(() => {
@@ -181,7 +199,14 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
         setLayers(newLayers);
 
-        if (initialResults?.stratified?.stratifyBy === stratifyBy && initialResults.stratified.layers) {
+        const restoredDraft = restoredDraftRef.current;
+        restoredDraftRef.current = null;
+        if (restoredDraft?.stratifyBy === stratifyBy && restoredDraft.layerSampleCounts.length > 0) {
+            setLayerSampleCounts(newLayers.map((layer, index) => {
+                const restoredCount = restoredDraft.layerSampleCounts[index] ?? 0;
+                return Math.max(0, Math.min(restoredCount, layer.count));
+            }));
+        } else if (initialResults?.stratified?.stratifyBy === stratifyBy && initialResults.stratified.layers) {
             const savedMap = new Map(initialResults.stratified.layers.map((l) => [l.name, l.sampleCount]));
             setLayerSampleCounts(newLayers.map((l) => savedMap.get(l.name) ?? 0));
         } else {
@@ -194,6 +219,155 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
     const [showAllocationComparison, setShowAllocationComparison] = useState(false);
     const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
+
+    // Sampling parameters are persisted to localStorage only (not auto-saved to the server).
+    // Server state updates when the user explicitly executes a sampling method, which saves
+    // the results. Parameters without results are not meaningful on the server.
+    const samplingDraftKey = taskId ? `student_sampling_params_${taskId}` : null;
+    const serverSamplingDraft = useMemo(() => buildSamplingExecutionDraftFromResults({
+        results: initialResults,
+        populationSize: N,
+        sampleSize: n,
+    }), [N, initialResults, n]);
+    const hasCompletedResults = useMemo(() => hasCompletedSamplingResults(initialResults), [initialResults]);
+    const samplingDraft = useMemo<SamplingExecutionDraft>(() => ({
+        simpleSeed,
+        systematicSeed,
+        ppsSeed,
+        stratifiedSeed,
+        kValue,
+        ppsSizeField,
+        ppsSampleSize,
+        stratifyBy,
+        layerSampleCounts,
+    }), [
+        simpleSeed,
+        systematicSeed,
+        ppsSeed,
+        stratifiedSeed,
+        kValue,
+        ppsSizeField,
+        ppsSampleSize,
+        stratifyBy,
+        layerSampleCounts,
+    ]);
+
+    const applySamplingDraft = useCallback((draft: SamplingExecutionDraft, notice: string | null) => {
+        restoredDraftRef.current = draft;
+        setSimpleSeed(draft.simpleSeed);
+        setSystematicSeed(draft.systematicSeed);
+        setPpsSeed(draft.ppsSeed);
+        setStratifiedSeed(draft.stratifiedSeed);
+        setKValue(draft.kValue);
+        setPpsSizeField(draft.ppsSizeField);
+        setPpsSampleSize(draft.ppsSampleSize);
+        // Only override stratifyBy if the draft has a non-empty value;
+        // empty means the parser couldn't determine a dataset-appropriate default.
+        if (draft.stratifyBy) {
+            setStratifyBy(draft.stratifyBy);
+        }
+        if (notice) {
+            setNetworkNotice(notice);
+        }
+    }, [setNetworkNotice]);
+
+    const clearSamplingParamsDraft = useCallback(() => {
+        if (!samplingDraftKey) return;
+        try {
+            localStorage.removeItem(samplingDraftKey);
+        } catch {
+            // ignore clear errors
+        }
+    }, [samplingDraftKey]);
+
+    const discardPendingDraft = useCallback(() => {
+        clearSamplingParamsDraft();
+        setPendingDraft(null);
+        setRestoreDraftOpen(false);
+        setDraftResolved(true);
+        if (hasCompletedResults) {
+            setNetworkNotice("已保留服务器抽样参数");
+        }
+    }, [clearSamplingParamsDraft, hasCompletedResults, setNetworkNotice]);
+
+    const restorePendingDraft = useCallback(() => {
+        if (pendingDraft) {
+            applySamplingDraft(
+                pendingDraft,
+                hasCompletedResults
+                    ? "已恢复本地抽样参数，请重新执行抽样以更新结果"
+                    : "已恢复本地保存的抽样参数",
+            );
+        }
+        setPendingDraft(null);
+        setRestoreDraftOpen(false);
+        setDraftResolved(true);
+    }, [applySamplingDraft, hasCompletedResults, pendingDraft]);
+
+    useEffect(() => {
+        restoredDraftRef.current = null;
+        setDraftResolved(false);
+        setPendingDraft(null);
+        setRestoreDraftOpen(false);
+
+        if (!samplingDraftKey) {
+            setDraftResolved(true);
+            return;
+        }
+
+        try {
+            const rawDraft = localStorage.getItem(samplingDraftKey);
+            const draftDefaults = { ppsSampleSize: n, kValue: Math.round(N / n) };
+            const decision = decideSamplingDraftRestore({
+                rawDraft,
+                serverValue: serverSamplingDraft,
+                hasCompletedResults,
+                defaults: draftDefaults,
+            });
+            if (decision.type === "none") {
+                if (rawDraft && parseSamplingExecutionDraft(rawDraft) === null) {
+                    localStorage.removeItem(samplingDraftKey);
+                }
+                setDraftResolved(true);
+                return;
+            }
+
+            if (decision.type === "prompt_restore") {
+                setPendingDraft(decision.draft);
+                setRestoreDraftOpen(true);
+                return;
+            }
+
+            applySamplingDraft(decision.draft, "已恢复本地保存的抽样参数");
+            setDraftResolved(true);
+        } catch {
+            try {
+                localStorage.removeItem(samplingDraftKey);
+            } catch {
+                // ignore cleanup errors
+            }
+            setDraftResolved(true);
+        }
+    }, [applySamplingDraft, hasCompletedResults, samplingDraftKey, serverSamplingDraft]);
+
+    useEffect(() => {
+        if (!samplingDraftKey || !draftResolved) return;
+
+        try {
+            localStorage.setItem(samplingDraftKey, serializeSamplingExecutionDraft(samplingDraft));
+        } catch {
+            // ignore persistence errors
+        }
+    }, [draftResolved, samplingDraft, samplingDraftKey]);
+
+    const prevOnlineRef = useRef(isOnline);
+    useEffect(() => {
+        const wasOffline = !prevOnlineRef.current;
+        prevOnlineRef.current = isOnline;
+        if (isOnline && wasOffline) {
+            setNetworkNotice("网络已恢复，可继续执行抽样");
+        }
+    }, [isOnline, setNetworkNotice]);
 
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
@@ -218,8 +392,6 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         await saveExperiment({ samplingResults: buildSamplingResultsPayload() });
     }, [buildSamplingResultsPayload, saveExperiment]);
 
-
-    const taskId = experiment?.taskId;
 
     // Execute sampling with real API
     const executeSimple = async () => {
@@ -391,8 +563,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     const handleConfirmNext = async () => {
         await saveResults();
-        await saveExperiment({ currentStage: 4 });
-        onNext();
+        const success = await saveExperiment({ currentStage: 4 });
+        if (success) {
+            clearSamplingParamsDraft();
+            onNext();
+        }
     };
 
     // Allocation helpers
@@ -462,6 +637,14 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sampling">
+            {networkNotice && (
+                <NetworkStatusBanner
+                    notice={networkNotice}
+                    variant={isOnline ? "online" : "offline"}
+                    testId="student-sampling-network-notice"
+                />
+            )}
+
             <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                 <CardContent className="py-6 px-6">
                     <div className="flex flex-wrap items-center justify-between gap-6">
@@ -563,7 +746,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                     {!simpleResult?.completed ? (
                                         <div className="bg-white/50 dark:bg-slate-950/50 rounded-xl p-8 text-center border border-slate-200 dark:border-slate-800 border-dashed">
                                             <div className="mb-4 text-slate-600 dark:text-slate-400">尚未执行抽样</div>
-                                            <Button onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                                            <Button onClick={() => setAnimatingMethod("simple")} disabled={executing !== null || !isOnline} data-testid="student-sampling-simple-run" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                                                 {executing === "simple" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -576,7 +759,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <SamplingSuccessState
                                             summary={`共成功抽取 ${simpleResult.sampleCount} 个样本${executionTimes.simple !== null ? `，耗时 ${executionTimes.simple} ms` : ""}${simpleResult.seed ? `，Seed ${simpleResult.seed}` : ""}`}
                                             onRerun={() => setAnimatingMethod("simple")}
-                                            disabled={executing !== null}
+                                            disabled={executing !== null || !isOnline}
                                             rerunTestId="student-sampling-simple-rerun"
                                         />
                                     )}
@@ -674,7 +857,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                                     {!systematicResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("systematic")} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("systematic")} disabled={executing !== null || !isKValid || !isOnline} data-testid="student-sampling-systematic-run" className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 w-auto px-8">
                                                 {executing === "systematic" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -687,7 +870,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <SamplingSuccessState
                                             summary={`K=${systematicResult.kValue}，共抽取 ${systematicResult.sampleCount} 个样本${executionTimes.systematic !== null ? `，耗时 ${executionTimes.systematic} ms` : ""}`}
                                             onRerun={() => setAnimatingMethod("systematic")}
-                                            disabled={executing !== null || !isKValid}
+                                            disabled={executing !== null || !isKValid || !isOnline}
                                             rerunTestId="student-sampling-systematic-rerun"
                                         />
                                     )}
@@ -798,7 +981,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !ppsSizeField || !isPpsSizeValid || !isOnline} data-testid="student-sampling-pps-run" className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20 w-auto px-8">
                                                 {executing === "pps" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -811,7 +994,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <SamplingSuccessState
                                             summary={`按 ${FIELD_LABELS[ppsResult.sizeField] || ppsResult.sizeField} 进行PPS抽样，共抽取 ${ppsResult.sampleCount} 个样本${executionTimes.pps !== null ? `，耗时 ${executionTimes.pps} ms` : ""}`}
                                             onRerun={() => setAnimatingMethod("pps")}
-                                            disabled={executing !== null || !ppsSizeField || !isPpsSizeValid}
+                                            disabled={executing !== null || !ppsSizeField || !isPpsSizeValid || !isOnline}
                                             rerunTestId="student-sampling-pps-rerun"
                                         />
                                     )}
@@ -959,7 +1142,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                                     {!stratifiedResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("stratified")} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-run" className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("stratified")} disabled={executing !== null || !isStratifiedValid || layers.length === 0 || !isOnline} data-testid="student-sampling-stratified-run" className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/20 w-auto px-8">
                                                 {executing === "stratified" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -972,7 +1155,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <SamplingSuccessState
                                             summary={`按 ${FIELD_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 ${stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本${executionTimes.stratified !== null ? `，耗时 ${executionTimes.stratified} ms` : ""}`}
                                             onRerun={() => setAnimatingMethod("stratified")}
-                                            disabled={executing !== null || !isStratifiedValid || layers.length === 0}
+                                            disabled={executing !== null || !isStratifiedValid || layers.length === 0 || !isOnline}
                                             rerunTestId="student-sampling-stratified-rerun"
                                         />
                                     )}
@@ -1045,7 +1228,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-200 dark:bg-slate-800 text-slate-500"}>
+                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted || !isOnline} data-testid="student-sampling-next" className={allCompleted && isOnline ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-200 dark:bg-slate-800 text-slate-500"}>
                     {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${[simpleResult?.completed, systematicResult?.completed, ppsResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/4)`}
                     <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -1071,7 +1254,36 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sampling-confirm" className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmNext} disabled={!isOnline} data-testid="student-sampling-confirm" className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-sampling-restore-dialog">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复本地抽样参数</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                            检测到本地抽样参数草稿。当前页面已有已保存的抽样结果，恢复后只会覆盖当前参数，不会改动已保存结果。
+                            <br />
+                            <span className="text-slate-500">如需让结果与恢复后的参数一致，请重新执行相应抽样方法。</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
+                            data-testid="student-sampling-restore-discard"
+                            onClick={discardPendingDraft}
+                        >
+                            保留当前参数
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            data-testid="student-sampling-restore-apply"
+                            onClick={restorePendingDraft}
+                        >
+                            恢复本地参数
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
