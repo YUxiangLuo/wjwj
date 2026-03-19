@@ -761,7 +761,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                                 id="ppsSampleSize"
                                                 type="number"
                                                 value={ppsSampleSize}
-                                                onChange={(e) => setPpsSampleSize(Math.max(1, parseInt(e.target.value) || 0))}
+                                                onChange={(e) => setPpsSampleSize(Math.max(1, Number.parseInt(e.target.value, 10) || 0))}
                                                 min={ppsMinSize}
                                                 max={ppsMaxSize}
                                                 data-testid="student-sampling-pps-sample-size"

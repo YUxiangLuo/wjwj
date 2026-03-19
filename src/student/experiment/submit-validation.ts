@@ -180,11 +180,16 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
         }
 
         const stratifiedLayers = Array.isArray(stratified.layers) ? stratified.layers : [];
-        const stratifiedTotal = stratifiedLayers.reduce((sum, layer) => {
-            if (!layer || typeof layer !== "object") return sum;
+        let stratifiedTotal = 0;
+        for (let i = 0; i < stratifiedLayers.length; i += 1) {
+            const layer = stratifiedLayers[i];
+            if (!layer || typeof layer !== "object") continue;
             const sampleCount = toInteger((layer as Record<string, unknown>).sampleCount);
-            return sum + (sampleCount === null ? 0 : sampleCount);
-        }, 0);
+            if (sampleCount === null || sampleCount < 1) {
+                return `分层抽样第${i + 1}层样本数需为正整数`;
+            }
+            stratifiedTotal += sampleCount;
+        }
 
         if (stratifiedLayers.length === 0 || stratifiedTotal !== targetSampleSize) {
             return `分层抽样样本量总和需等于目标样本量（${targetSampleSize}）`;
