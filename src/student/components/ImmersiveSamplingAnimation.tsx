@@ -35,6 +35,13 @@ const GRID_COLS = 40;
 const GRID_ROWS = 25;
 const TOTAL_DOTS = GRID_COLS * GRID_ROWS; // 1000 visual dots
 
+// PPS weight simulation: each dot gets a random "size" in [MIN, MIN + RANGE]
+const PPS_WEIGHT_MIN = 0.1;
+const PPS_WEIGHT_RANGE = 3;
+// Unselected PPS dots use opacity to convey relative size (larger = brighter)
+const PPS_OPACITY_MIN = 0.15;
+const PPS_OPACITY_RANGE = 0.55; // max opacity = MIN + RANGE = 0.70
+
 const METHOD_META: Record<SamplingMethod, {
     label: string; color: string; accent: string; icon: typeof Shuffle;
     accentBg: string; accentBgLight: string; accentText: string;
@@ -145,7 +152,7 @@ const DotGrid = memo(function DotGrid({
                     } else if (method === "pps" && dotWeights) {
                         // PPS: vary opacity by size weight so larger units appear more prominent
                         const w = dotWeights[i] ?? 0.5;
-                        const opacity = 0.15 + w * 0.55; // range 0.15–0.70
+                        const opacity = PPS_OPACITY_MIN + w * PPS_OPACITY_RANGE;
                         bgClass = "bg-purple-400 dark:bg-purple-500";
                         inlineStyle = { opacity };
                     } else {
@@ -234,7 +241,7 @@ export function ImmersiveSamplingAnimation({
             // through the cumulative distribution, mirroring the real algorithm.
             weights = new Float32Array(TOTAL_DOTS);
             for (let i = 0; i < TOTAL_DOTS; i++) {
-                weights[i] = rng() * 3 + 0.1; // random size weights
+                weights[i] = rng() * PPS_WEIGHT_RANGE + PPS_WEIGHT_MIN;
             }
             // Normalize to 0-1 for visual opacity
             let maxW = 0;
