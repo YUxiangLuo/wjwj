@@ -4,6 +4,14 @@ const Z_SCORES = new Map<number, number>([
     [0.99, 2.576],
 ]);
 
+/**
+ * 将百分比或小数形式的误差限统一为小数比例。
+ * 约定：值 >= 1 视为百分比（如 5 → 0.05），< 1 视为已是比例（如 0.05 不变）。
+ */
+function normalizeMarginOfError(value: number): number {
+    return value >= 1 ? value / 100 : value;
+}
+
 export interface SampleSizeMetrics {
     n0: number;              // 初始样本量（无限总体）
     n1: number;              // 有限总体校正后
@@ -31,13 +39,11 @@ export function calculateFinitePopulationSampleSize(params: {
 
     const confidenceValue = Number(params.confidenceLevel);
     const confidenceRatio = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
-    const errorValue = Number(params.marginOfError);
-    const errorRatio = errorValue >= 1 ? errorValue / 100 : errorValue;
+    const e = normalizeMarginOfError(Number(params.marginOfError));
 
     const z = Z_SCORES.get(confidenceRatio);
     if (z === undefined) return null;
 
-    const e = errorRatio;
     const N = params.populationSize;
     const p = params.p ?? 0.5;
 
@@ -75,13 +81,11 @@ export function calculateSampleSizeMetrics(params: {
 
     const confidenceValue = Number(params.confidenceLevel);
     const confidenceRatio = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
-    const errorValue = Number(params.marginOfError);
-    const errorRatio = errorValue >= 1 ? errorValue / 100 : errorValue;
+    const e = normalizeMarginOfError(Number(params.marginOfError));
 
     const z = Z_SCORES.get(confidenceRatio);
     if (z === undefined) return null;
 
-    const e = errorRatio;
     const N = params.populationSize;
     const p = params.p ?? 0.5;
 
@@ -249,7 +253,12 @@ export interface CVBasedSampleSizeResult {
 
 /**
  * 基于变异系数(CV)计算所需样本量
- * 公式: n = (Z² × CV²) / (目标CV²) × deff / (1-NRR)
+ *
+ * CV(ȳ) = SE(ȳ) / ȳ = CV_pop / √n（无限总体近似）
+ * 要使 CV(ȳ) ≤ targetCV，需要 n₀ = CV_pop² / targetCV²
+ *
+ * 注意：CV 不含 Z 值。若要从 CV 得到置信区间相对半宽，
+ * 需另行乘以 Z：相对误差限 = Z × CV(ȳ)。
  */
 export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBasedSampleSizeResult | null {
     if (params.populationSize <= 0 || params.targetCV <= 0) {
@@ -264,8 +273,8 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     const deff = params.designEffect ?? 1;
     const nrr = params.nonResponseRate ?? 0;
 
-    // 基础样本量: n₀ = (Z² × CV²) / (目标CV²)
-    const n0 = (Math.pow(z, 2) * Math.pow(estimatedCV, 2)) / Math.pow(targetCV, 2);
+    // 基础样本量: n₀ = CV_pop² / targetCV²
+    const n0 = Math.pow(estimatedCV, 2) / Math.pow(targetCV, 2);
     
     // 有限总体校正
     let n = n0 / (1 + (n0 - 1) / params.populationSize);
@@ -276,19 +285,18 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     const requiredSampleSize = Math.min(Math.ceil(n), params.populationSize);
     
     // 反推实际能达到的CV（含有限总体校正）
-    // 正向公式: n₀ = Z² × CV_pop² / targetCV²，其中 targetCV = Z × CV(ȳ)
-    // 反推: achievedCV = Z × CV_pop × √(deff × FPC / (n × (1-NRR)))
+    // CV(ȳ) = CV_pop × √(deff × FPC / n_eff)，其中 n_eff = n × (1 - NRR)
     // 当 n=N（全数调查）时 FPC=0，CV=0（完美估计）
     const fpc = 1 - requiredSampleSize / params.populationSize;
     const achievedCV = fpc > 0
-        ? z * estimatedCV * Math.sqrt(deff * fpc / (requiredSampleSize * (1 - nrr)))
+        ? estimatedCV * Math.sqrt(deff * fpc / (requiredSampleSize * (1 - nrr)))
         : 0;
 
     return {
         requiredSampleSize,
         achievedCV,
         z,
-        formula: `n = (Z² × CV²) / (CV目标²) × deff / (1-NRR)`,
+        formula: `n = CV_pop² / CV_target² × deff / (1-NRR)`,
     };
 }
 
@@ -324,7 +332,7 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
     const z = params.confidenceLevel === "90" ? 1.645 : 
               params.confidenceLevel === "95" ? 1.96 : 2.576;
     
-    const e = params.marginOfError > 1 ? params.marginOfError / 100 : params.marginOfError;
+    const e = normalizeMarginOfError(params.marginOfError);
     const p = params.p ?? 0.5;
     
     // 基础样本量（简单随机抽样，含有限总体校正）
