@@ -16,7 +16,14 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2, TrendingUp, BarChart3, PieChart } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2 } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
 import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
@@ -36,7 +43,6 @@ import { DesignEffectEstimator } from "../../components/DesignEffectEstimator";
 import { MultiVariableSamplePlan, type SurveyVariable } from "../../components/MultiVariableSamplePlan";
 import { CVBasedSampleSizeCalculator } from "../../components/CVBasedSampleSizeCalculator";
 import { ClusterSamplingCalculator } from "../../components/ClusterSamplingCalculator";
-import { AdvancedStratifiedAllocation } from "../../components/AdvancedStratifiedAllocation";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -67,23 +73,26 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         marginOfError: number;
         sampleSize: number;
     }> | null>(null);
-    const [showAdvancedMetrics, setShowAdvancedMetrics] = useState(false);
 
-    // 阶段2新增：子总体估计和成本权衡
+    // 高级功能面板 — 一次只显示一个（Modal 形式）
+    type AdvancedTab = 'domain' | 'cost' | 'deff' | 'multivar' | 'cv' | 'cluster' | 'metrics';
+    const [activeAdvancedTab, setActiveAdvancedTab] = useState<AdvancedTab | null>(null);
+
+    const advancedTabConfig: Array<{ key: AdvancedTab; label: string; title: string; description: string; activeClass: string }> = [
+        { key: 'domain', label: '子总体估计', title: '子总体（域）估计支持', description: '设置各子总体的精度要求', activeClass: 'bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-600' },
+        { key: 'cost', label: '成本权衡', title: '精度与成本权衡', description: '在预算约束下评估可达到的精度水平', activeClass: 'bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-600' },
+        { key: 'deff', label: '设计效应参考', title: '设计效应估计器', description: '根据抽样方法估算设计效应', activeClass: 'bg-sky-100 border-sky-300 text-sky-700 dark:bg-sky-900/30 dark:border-sky-600' },
+        { key: 'multivar', label: '多变量规划', title: '多变量样本量规划', description: '为多个调查变量同时规划样本量', activeClass: 'bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/30 dark:border-violet-600' },
+        { key: 'cv', label: 'CV-based计算', title: '基于CV的样本量计算', description: '通过变异系数计算所需样本量', activeClass: 'bg-cyan-100 border-cyan-300 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-600' },
+        { key: 'cluster', label: '整群抽样', title: '整群抽样计算器', description: '计算整群抽样方案与设计效应', activeClass: 'bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-900/30 dark:border-orange-600' },
+        { key: 'metrics', label: 'SE/CV/敏感性', title: '高级分析（SE/CV/敏感性）', description: '查看精度指标、比例比较与敏感性矩阵', activeClass: 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-600' },
+    ];
+
+    // 子总体估计数据
     const [domains, setDomains] = useState<Domain[]>([]);
-    const [showDomainManager, setShowDomainManager] = useState(false);
-    const [showCostTradeoff, setShowCostTradeoff] = useState(false);
-    const [showDeffEstimator, setShowDeffEstimator] = useState(false);
 
-    // 阶段3新增：多变量样本量规划
+    // 多变量样本量规划数据
     const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
-    const [showMultiVariable, setShowMultiVariable] = useState(false);
-    const [multiVariableRecommendedSize, setMultiVariableRecommendedSize] = useState(0);
-
-    // 阶段3补充：基于CV的样本量计算和整群抽样
-    const [showCVCalculator, setShowCVCalculator] = useState(false);
-    const [showClusterCalculator, setShowClusterCalculator] = useState(false);
-    const [showAdvancedStratified, setShowAdvancedStratified] = useState(false);
 
     const N = populationSize;
 
@@ -498,194 +507,29 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 </div>
                             </div>
 
-                            {/* 阶段2功能入口 */}
+                            {/* 高级功能入口 */}
                             <div className="space-y-2 pt-4 border-t border-slate-200 dark:border-slate-800">
                                 <p className="text-xs text-slate-500 font-medium">高级功能</p>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowDomainManager(!showDomainManager)}
-                                        className={`text-xs h-auto py-2 ${
-                                            showDomainManager 
-                                                ? "bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-600" 
-                                                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
-                                        }`}
-                                    >
-                                        子总体估计
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowCostTradeoff(!showCostTradeoff)}
-                                        className={`text-xs h-auto py-2 ${
-                                            showCostTradeoff 
-                                                ? "bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-600" 
-                                                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
-                                        }`}
-                                    >
-                                        成本权衡
-                                    </Button>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowDeffEstimator(!showDeffEstimator)}
-                                    className={`w-full text-xs h-auto py-2 ${
-                                        showDeffEstimator 
-                                            ? "bg-sky-100 border-sky-300 text-sky-700 dark:bg-sky-900/30 dark:border-sky-600" 
-                                            : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
-                                    }`}
-                                >
-                                    设计效应参考
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowMultiVariable(!showMultiVariable)}
-                                    className={`w-full text-xs h-auto py-2 ${
-                                        showMultiVariable 
-                                            ? "bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/30 dark:border-violet-600" 
-                                            : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
-                                    }`}
-                                >
-                                    多变量规划
-                                </Button>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowCVCalculator(!showCVCalculator)}
-                                        className={`text-xs h-auto py-2 ${
-                                            showCVCalculator 
-                                                ? "bg-cyan-100 border-cyan-300 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-600" 
-                                                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
-                                        }`}
-                                    >
-                                        CV-based计算
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowClusterCalculator(!showClusterCalculator)}
-                                        className={`text-xs h-auto py-2 ${
-                                            showClusterCalculator 
-                                                ? "bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-900/30 dark:border-orange-600" 
-                                                : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
-                                        }`}
-                                    >
-                                        整群抽样
-                                    </Button>
+                                    {advancedTabConfig.map(({ key, label, activeClass }) => (
+                                        <Button
+                                            key={key}
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setActiveAdvancedTab(key)}
+                                            className={`text-xs h-auto py-2 ${
+                                                activeAdvancedTab === key
+                                                    ? activeClass
+                                                    : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                            }`}
+                                        >
+                                            {label}
+                                        </Button>
+                                    ))}
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
-
-                    {/* 增强指标卡片 */}
-                    {showAdvancedMetrics && metrics && (
-                        <>
-                            <EnhancedMetricsCard metrics={metrics} confidenceLevel={confidenceLevel} finalSampleSize={finalSampleSize} />
-                            <PValueComparisonCard 
-                                comparison={pComparison} 
-                                currentSampleSize={recommendedSize}
-                            />
-                            {sensitivityMatrix && (
-                                <SensitivityAnalysisCard 
-                                    matrix={sensitivityMatrix}
-                                    currentConfidenceLevel={confidenceLevel}
-                                    currentMarginOfError={marginOfError[0] ?? 5}
-                                />
-                            )}
-                        </>
-                    )}
-
-                    {/* 显示/隐藏高级指标按钮 */}
-                    <Button
-                        variant="outline"
-                        onClick={() => setShowAdvancedMetrics(!showAdvancedMetrics)}
-                        className="w-full border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
-                    >
-                        {showAdvancedMetrics ? "隐藏高级分析" : "显示高级分析（SE/CV/敏感性）"}
-                    </Button>
-
-                    {/* 阶段2组件 */}
-                    {showDomainManager && (
-                        <DomainEstimationManager
-                            totalPopulationSize={N}
-                            stratifiedFields={[]}  // 可以从实验数据获取
-                            onDomainsChange={(newDomains) => {
-                                setDomains(newDomains);
-                                // 如果有子总体，更新建议样本量
-                                if (newDomains.length > 0) {
-                                    const maxRequired = Math.max(...newDomains.map(d => d.requiredSampleSize));
-                                    if (maxRequired > recommendedSize) {
-                                        // 可以提示用户样本量需要增加
-                                    }
-                                }
-                            }}
-                            initialDomains={domains}
-                        />
-                    )}
-
-                    {showCostTradeoff && (
-                        <PrecisionCostTradeoff
-                            populationSize={N}
-                            confidenceLevel={confidenceLevel}
-                            designEffect={designEffect}
-                            nonResponseRate={nonResponseRate}
-                            onApplyBudget={(budget, sampleSize) => {
-                                setFinalSampleSize(sampleSize);
-                                // 可以显示提示
-                            }}
-                        />
-                    )}
-
-                    {showDeffEstimator && (
-                        <DesignEffectEstimator
-                            currentDeff={designEffect}
-                            onDeffChange={(newDeff) => setDesignEffect(newDeff)}
-                        />
-                    )}
-
-                    {showMultiVariable && (
-                        <MultiVariableSamplePlan
-                            populationSize={N}
-                            onVariablesChange={(newVariables) => {
-                                setSurveyVariables(newVariables);
-                            }}
-                            onRecommendedSampleSizeChange={(size) => {
-                                setMultiVariableRecommendedSize(size);
-                                // 如果多变量建议的样本量大于当前建议值，可以提示用户
-                                if (size > recommendedSize) {
-                                    // 可以在这里添加提示逻辑
-                                }
-                            }}
-                            initialVariables={surveyVariables}
-                        />
-                    )}
-
-                    {showCVCalculator && (
-                        <CVBasedSampleSizeCalculator
-                            populationSize={N}
-                            confidenceLevel={confidenceLevel}
-                            onApplySampleSize={(size) => {
-                                setFinalSampleSize(size);
-                                toast.success(`已应用基于CV计算的样本量: ${size}`);
-                            }}
-                        />
-                    )}
-
-                    {showClusterCalculator && (
-                        <ClusterSamplingCalculator
-                            populationSize={N}
-                            confidenceLevel={confidenceLevel}
-                            marginOfError={marginOfError[0] ?? 5}
-                            onApplyResult={(clusters, sampleSize) => {
-                                setFinalSampleSize(sampleSize);
-                                toast.success(`整群抽样方案: ${clusters}个群, 共${sampleSize}个样本`);
-                            }}
-                        />
-                    )}
 
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm sticky top-24">
                         <CardHeader className="pb-2">
@@ -720,6 +564,100 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     </Card>
                 </div>
             </div>
+
+            {/* 高级功能 Modal */}
+            <Dialog open={activeAdvancedTab !== null} onOpenChange={(open) => { if (!open) setActiveAdvancedTab(null); }}>
+                <DialogContent className={`bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 ${activeAdvancedTab === 'metrics' ? 'sm:max-w-5xl' : 'sm:max-w-3xl'} max-h-[85vh] overflow-y-auto`}>
+                    {activeAdvancedTab && (() => {
+                        const config = advancedTabConfig.find(c => c.key === activeAdvancedTab);
+                        return (
+                            <DialogHeader>
+                                <DialogTitle className="text-slate-900 dark:text-slate-100">{config?.title}</DialogTitle>
+                                <DialogDescription className="text-slate-600 dark:text-slate-400">{config?.description}</DialogDescription>
+                            </DialogHeader>
+                        );
+                    })()}
+
+                    {activeAdvancedTab === 'domain' && (
+                        <DomainEstimationManager
+                            totalPopulationSize={N}
+                            stratifiedFields={[]}
+                            onDomainsChange={(newDomains) => {
+                                setDomains(newDomains);
+                            }}
+                            initialDomains={domains}
+                        />
+                    )}
+
+                    {activeAdvancedTab === 'cost' && (
+                        <PrecisionCostTradeoff
+                            populationSize={N}
+                            confidenceLevel={confidenceLevel}
+                            designEffect={designEffect}
+                            nonResponseRate={nonResponseRate}
+                            onApplyBudget={(_budget, sampleSize) => {
+                                setFinalSampleSize(sampleSize);
+                            }}
+                        />
+                    )}
+
+                    {activeAdvancedTab === 'deff' && (
+                        <DesignEffectEstimator
+                            currentDeff={designEffect}
+                            onDeffChange={(newDeff) => setDesignEffect(newDeff)}
+                        />
+                    )}
+
+                    {activeAdvancedTab === 'multivar' && (
+                        <MultiVariableSamplePlan
+                            populationSize={N}
+                            onVariablesChange={setSurveyVariables}
+                            onRecommendedSampleSizeChange={() => {}}
+                            initialVariables={surveyVariables}
+                        />
+                    )}
+
+                    {activeAdvancedTab === 'cv' && (
+                        <CVBasedSampleSizeCalculator
+                            populationSize={N}
+                            confidenceLevel={confidenceLevel}
+                            onApplySampleSize={(size) => {
+                                setFinalSampleSize(size);
+                                toast.success(`已应用基于CV计算的样本量: ${size}`);
+                            }}
+                        />
+                    )}
+
+                    {activeAdvancedTab === 'cluster' && (
+                        <ClusterSamplingCalculator
+                            populationSize={N}
+                            confidenceLevel={confidenceLevel}
+                            marginOfError={marginOfError[0] ?? 5}
+                            onApplyResult={(clusters, sampleSize) => {
+                                setFinalSampleSize(sampleSize);
+                                toast.success(`整群抽样方案: ${clusters}个群, 共${sampleSize}个样本`);
+                            }}
+                        />
+                    )}
+
+                    {activeAdvancedTab === 'metrics' && metrics && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <EnhancedMetricsCard metrics={metrics} confidenceLevel={confidenceLevel} finalSampleSize={finalSampleSize} />
+                            <PValueComparisonCard
+                                comparison={pComparison}
+                                currentSampleSize={recommendedSize}
+                            />
+                            {sensitivityMatrix && (
+                                <SensitivityAnalysisCard
+                                    matrix={sensitivityMatrix}
+                                    currentConfidenceLevel={confidenceLevel}
+                                    currentMarginOfError={marginOfError[0] ?? 5}
+                                />
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
 
             <div className="flex justify-between pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
                 <Button variant="outline" onClick={onPrev} data-testid="student-sample-plan-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
