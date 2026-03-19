@@ -55,35 +55,35 @@ export function StratifiedAllocationComparison({
     const [fixedCost, setFixedCost] = useState(5000);
     const [layerCosts, setLayerCosts] = useState<number[]>(layers.map(() => 20));
 
-    if (!layers.length) return null;
-
     // 计算四种基本分配方法
     const comparisons: AllocationComparison[] = useMemo(() => {
-        const baseComparisons = [
+        if (!layers.length) return [];
+        return [
             calculateProportionalAllocation(layers, totalSampleSize),
             calculateEqualAllocation(layers, totalSampleSize),
             calculateNeymanAllocation(layers, totalSampleSize),
             calculateSquareRootNAllocation(layers, totalSampleSize),
         ];
-        return baseComparisons;
     }, [layers, totalSampleSize]);
 
     // 计算费用最优分配
     const costOptimizedComparison = useMemo(() => {
-        if (!showCostOptimization) return null;
-        
+        if (!showCostOptimization || !layers.length) return null;
+
         const layersWithCost: LayerWithCost[] = layers.map((layer, index) => ({
             name: layer.name,
             populationSize: layer.count,
             stdDev: Math.sqrt(layer.count),  // 简化的标准差估计
             unitCost: layerCosts[index] ?? 20,
         }));
-        
+
         return calculateOptimalAllocationWithCost(layersWithCost, totalBudget, fixedCost);
     }, [layers, layerCosts, totalBudget, fixedCost, showCostOptimization]);
 
+    if (!layers.length) return null;
+
     // 找出最佳（最小方差）
-    const bestMethod = comparisons.reduce((best, current) => 
+    const bestMethod = comparisons.reduce((best, current) =>
         current.totalVariance < best.totalVariance ? current : best
     );
 
