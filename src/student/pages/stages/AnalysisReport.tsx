@@ -193,7 +193,7 @@ function FieldSelect({
 // ---------------------------------------------------------------------------
 
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
-    const { experiment, saveExperiment } = useExperiment();
+    const { experiment, saveExperiment, setStageUnsavedChanges } = useExperiment();
 
     const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -347,6 +347,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const {
         clearLocalDraft,
         discardPendingDraft,
+        handleRestoreDraftOpenChange,
+        handleSyncConflictOpenChange,
+        hasUnsavedLocalChanges,
         isOnline,
         keepLocalDraft,
         keepServerDraft,
@@ -354,8 +357,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         restoreDraftOpen,
         restorePendingDraft,
         saveNow,
-        setRestoreDraftOpen,
-        setSyncConflictOpen,
         syncConflictOpen,
     } = useDraftSync<string>({
         applyValue: setReportContent,
@@ -368,6 +369,20 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         saveToServer: saveReportContent,
         serialize: serializeReport,
     });
+
+    useEffect(() => {
+        if (hasUnsavedLocalChanges) {
+            return;
+        }
+        setReportContent(experiment?.reportContent ?? "");
+    }, [experiment?.reportContent, experiment?.taskId, hasUnsavedLocalChanges]);
+
+    useEffect(() => {
+        setStageUnsavedChanges(4, hasUnsavedLocalChanges);
+        return () => {
+            setStageUnsavedChanges(4, false);
+        };
+    }, [hasUnsavedLocalChanges, setStageUnsavedChanges]);
 
     // ---- Handlers ----
 
@@ -713,20 +728,20 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </Dialog>
 
             {/* Restore draft dialog */}
-            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
+            <AlertDialog open={restoreDraftOpen} onOpenChange={handleRestoreDraftOpenChange}>
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-restore-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-600 dark:text-slate-400">检测到本地草稿，是否恢复？</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel
+                        <AlertDialogAction
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-analysis-restore-discard"
                             onClick={discardPendingDraft}
                         >
                             放弃草稿
-                        </AlertDialogCancel>
+                        </AlertDialogAction>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-analysis-restore-apply"
@@ -739,7 +754,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </AlertDialog>
 
             {/* Sync conflict dialog */}
-            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
+            <AlertDialog open={syncConflictOpen} onOpenChange={handleSyncConflictOpenChange}>
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-conflict-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
@@ -750,13 +765,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel
+                        <AlertDialogAction
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-analysis-conflict-server"
                             onClick={keepServerDraft}
                         >
                             保留服务器版本
-                        </AlertDialogCancel>
+                        </AlertDialogAction>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-analysis-conflict-local"

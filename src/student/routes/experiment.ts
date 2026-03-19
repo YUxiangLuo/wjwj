@@ -31,6 +31,23 @@ function getTaskId(req: Request): number {
     return Number.parseInt(getRouteParam(req, "id") ?? "", 10);
 }
 
+function buildExperimentResponsePayload(record: typeof experiment.$inferSelect, populationSize: number | null | undefined) {
+    const normalizedExperiment = deserializeExperimentFields(record);
+
+    return {
+        id: normalizedExperiment.id,
+        taskId: normalizedExperiment.taskId,
+        currentStage: normalizedExperiment.currentStage,
+        status: normalizedExperiment.status,
+        questionnaire: normalizedExperiment.questionnaire,
+        samplePlan: normalizedExperiment.samplePlan,
+        samplingResults: normalizedExperiment.samplingResults,
+        reportContent: normalizedExperiment.reportContent,
+        lastSavedAt: normalizedExperiment.lastSavedAt?.toISOString() ?? null,
+        populationSize: populationSize ?? 10000,
+    };
+}
+
 const experimentRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -72,20 +89,7 @@ const experimentRoutes: RouteDefinition = {
 
         const [topicInfo] = await db.select({ excelRowCount: topic.excelRowCount }).from(topic).where(eq(topic.id, taskInfo.topicId));
 
-        const normalizedExperiment = deserializeExperimentFields(exp);
-
-        return json({
-            id: normalizedExperiment.id,
-            taskId: normalizedExperiment.taskId,
-            currentStage: normalizedExperiment.currentStage,
-            status: normalizedExperiment.status,
-            questionnaire: normalizedExperiment.questionnaire,
-            samplePlan: normalizedExperiment.samplePlan,
-            samplingResults: normalizedExperiment.samplingResults,
-            reportContent: normalizedExperiment.reportContent,
-            lastSavedAt: normalizedExperiment.lastSavedAt?.toISOString() ?? null,
-            populationSize: topicInfo?.excelRowCount ?? 10000,
-        });
+        return json(buildExperimentResponsePayload(exp, topicInfo?.excelRowCount));
     },
 
     async PUT(req) {
@@ -149,7 +153,14 @@ const experimentRoutes: RouteDefinition = {
             return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 
-        return json({ success: true, lastSavedAt: saveResult.lastSavedAt.toISOString() });
+        const nextExperiment = {
+            ...exp,
+            ...saveResult.updates,
+        } as typeof experiment.$inferSelect;
+
+        const responsePopulationSize = populationSize ?? await findStudentTaskPopulationSize(taskId, currentStudent.classId);
+
+        return json(buildExperimentResponsePayload(nextExperiment, responsePopulationSize));
     },
 };
 
@@ -343,7 +354,14 @@ const resetRoutes: RouteDefinition = {
             return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 
-        return json({ success: true, lastSavedAt: resetResult.lastSavedAt.toISOString() });
+        const nextExperiment = {
+            ...exp,
+            ...resetResult.updates,
+        } as typeof experiment.$inferSelect;
+
+        const populationSize = await findStudentTaskPopulationSize(taskId, currentStudent.classId);
+
+        return json(buildExperimentResponsePayload(nextExperiment, populationSize));
     },
 };
 

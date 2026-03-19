@@ -43,7 +43,7 @@ import { DesignEffectEstimator } from "../../components/DesignEffectEstimator";
 import { MultiVariableSamplePlan, type SurveyVariable } from "../../components/MultiVariableSamplePlan";
 import { CVBasedSampleSizeCalculator } from "../../components/CVBasedSampleSizeCalculator";
 import { ClusterSamplingCalculator } from "../../components/ClusterSamplingCalculator";
-import { useDraftSync } from "../../draft-sync";
+import { clearExperimentDrafts, useDraftSync } from "../../draft-sync";
 import { NetworkStatusBanner } from "../../components/NetworkStatusBanner";
 
 interface SamplePlanningProps {
@@ -57,7 +57,7 @@ const DEFAULT_DESIGN_EFFECT = 1;
 const DEFAULT_NON_RESPONSE_RATE = 0;
 
 export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
-    const { populationSize, experiment, saveExperiment } = useExperiment();
+    const { populationSize, experiment, saveExperiment, setStageUnsavedChanges } = useExperiment();
     const N = populationSize;
 
     const calculateRecommendedSize = useCallback((params: {
@@ -263,15 +263,17 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     const {
         clearLocalDraft,
+        draftResolved,
         discardPendingDraft,
+        handleRestoreDraftOpenChange,
+        handleSyncConflictOpenChange,
+        hasUnsavedLocalChanges,
         isOnline,
         keepLocalDraft,
         keepServerDraft,
         networkNotice,
         restoreDraftOpen,
         restorePendingDraft,
-        setRestoreDraftOpen,
-        setSyncConflictOpen,
         syncConflictOpen,
     } = useDraftSync<SamplePlanData>({
         applyValue: applySamplePlanData,
@@ -284,6 +286,50 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         saveToServer: saveSamplePlan,
         serialize: serializeSamplePlan,
     });
+
+    useEffect(() => {
+        if (!draftResolved || restoreDraftOpen || !experiment?.taskId) return;
+        const serverSnapshot = serializeSamplePlan(initialSamplePlan ?? defaultSamplePlan);
+        const currentSnapshot = serializeSamplePlan(samplePlanData);
+        if (currentSnapshot === serverSnapshot) {
+            try {
+                localStorage.removeItem(`student_sample_plan_draft_${experiment.taskId}`);
+            } catch {
+                // ignore storage errors
+            }
+        }
+    }, [
+        defaultSamplePlan,
+        draftResolved,
+        experiment?.taskId,
+        initialSamplePlan,
+        restoreDraftOpen,
+        samplePlanData,
+        serializeSamplePlan,
+    ]);
+
+    useEffect(() => {
+        if (hasUnsavedLocalChanges) {
+            return;
+        }
+
+        const nextSamplePlan = initialSamplePlan ?? defaultSamplePlan;
+        setConfidenceLevel(nextSamplePlan.confidenceLevel);
+        setMarginOfError([nextSamplePlan.marginOfError]);
+        setDesignEffect(nextSamplePlan.designEffect ?? DEFAULT_DESIGN_EFFECT);
+        setNonResponseRate(nextSamplePlan.nonResponseRate ?? DEFAULT_NON_RESPONSE_RATE);
+        setFinalSampleSize(nextSamplePlan.finalSampleSize);
+        setIsFinalSampleSizeCustomized(nextSamplePlan.finalSampleSize !== nextSamplePlan.recommendedSize);
+        setConfirmNextOpen(false);
+        setShowLaunch(false);
+    }, [defaultSamplePlan, hasUnsavedLocalChanges, initialSamplePlan]);
+
+    useEffect(() => {
+        setStageUnsavedChanges(2, hasUnsavedLocalChanges);
+        return () => {
+            setStageUnsavedChanges(2, false);
+        };
+    }, [hasUnsavedLocalChanges, setStageUnsavedChanges]);
 
     useEffect(() => {
         if (!isFinalSampleSizeCustomized) {
@@ -300,6 +346,21 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     };
 
     const [showLaunch, setShowLaunch] = useState(false);
+
+    const clearDownstreamDrafts = useCallback(() => {
+        if (!experiment?.taskId) return;
+        clearExperimentDrafts(experiment.taskId, { fromStage: 3 });
+    }, [experiment?.taskId]);
+
+    const handleDiscardPendingDraft = useCallback(() => {
+        discardPendingDraft();
+        clearDownstreamDrafts();
+    }, [clearDownstreamDrafts, discardPendingDraft]);
+
+    const handleKeepServerDraft = useCallback(() => {
+        keepServerDraft();
+        clearDownstreamDrafts();
+    }, [clearDownstreamDrafts, keepServerDraft]);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
@@ -755,20 +816,20 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
+            <AlertDialog open={restoreDraftOpen} onOpenChange={handleRestoreDraftOpenChange}>
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-sample-plan-restore-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-600 dark:text-slate-400">检测到本地样本量规划草稿，是否恢复？</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel
+                        <AlertDialogAction
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-sample-plan-restore-discard"
-                            onClick={discardPendingDraft}
+                            onClick={handleDiscardPendingDraft}
                         >
                             放弃草稿
-                        </AlertDialogCancel>
+                        </AlertDialogAction>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-sample-plan-restore-apply"
@@ -780,7 +841,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
+            <AlertDialog open={syncConflictOpen} onOpenChange={handleSyncConflictOpenChange}>
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-sample-plan-conflict-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
@@ -791,13 +852,13 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel
+                        <AlertDialogAction
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-sample-plan-conflict-server"
-                            onClick={keepServerDraft}
+                            onClick={handleKeepServerDraft}
                         >
                             保留服务器版本
-                        </AlertDialogCancel>
+                        </AlertDialogAction>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-sample-plan-conflict-local"

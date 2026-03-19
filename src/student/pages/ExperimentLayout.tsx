@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext, useMemo } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, useMemo, useRef } from "react";
 import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2, ChevronRight, Home, Clock, AlertCircle } from "lucide-react";
 import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,20 @@ import { AnalysisReport } from "./stages/AnalysisReport";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskDeadlineTimestamp } from "../experiment/task-timing";
 
+const EXPERIMENT_SYNC_KEY_PREFIX = "student:experiment-sync:";
+
+function getExperimentSyncKey(taskId: number) {
+    return `${EXPERIMENT_SYNC_KEY_PREFIX}${taskId}`;
+}
+
+function broadcastExperimentSync(taskId: number) {
+    try {
+        localStorage.setItem(getExperimentSyncKey(taskId), String(Date.now()));
+    } catch {
+        // ignore storage errors
+    }
+}
+
 const stages = [
     { name: "问卷设计", description: "第一步：围绕调研目标，设计包含判断题、单选题、多选题和量表题的调查问卷，设置标题、欢迎语和结束语", icon: FileText },
     { name: "样本量规划", description: "第二步：根据置信水平、允许误差、设计效应和预期无回答率等参数，利用公式计算并确定最终调查样本量", icon: Ruler },
@@ -45,6 +59,7 @@ interface ExperimentContextValue {
     populationSize: number;
     isSaving: boolean;
     lastSavedAt: string | null;
+    setStageUnsavedChanges: (stage: number, dirty: boolean) => void;
     saveExperiment: (data: Partial<{
         currentStage: number;
         questionnaire: QuestionnaireData;
@@ -80,6 +95,73 @@ export function ExperimentLayout() {
     const [confirmRollbackOpen, setConfirmRollbackOpen] = useState(false);
     const [targetStage, setTargetStage] = useState<number | null>(null);
     const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
+    const numericTaskId = useMemo(() => Number.parseInt(taskId ?? "", 10), [taskId]);
+    const experimentRef = useRef<ExperimentData | null>(null);
+    const unsavedStageRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        experimentRef.current = experiment;
+    }, [experiment]);
+
+    const setStageUnsavedChanges = useCallback((stage: number, dirty: boolean) => {
+        if (dirty) {
+            unsavedStageRef.current = stage;
+            return;
+        }
+
+        if (unsavedStageRef.current === stage) {
+            unsavedStageRef.current = null;
+        }
+    }, []);
+
+    const applyExperimentSnapshot = useCallback((nextExperiment: ExperimentData, options?: {
+        clearDownstreamFromStage?: number;
+        previousExperiment?: ExperimentData | null;
+        broadcast?: boolean;
+        reconcileDraftsToSnapshot?: boolean;
+    }) => {
+        const normalizedStage = Math.min(4, Math.max(nextExperiment.currentStage || 1, 1));
+        const previousExperiment = options?.previousExperiment ?? experimentRef.current;
+
+        if (taskId) {
+            const currentTaskId = Number(taskId);
+            const clearFromStage = options?.clearDownstreamFromStage;
+
+            if (clearFromStage != null) {
+                clearExperimentDrafts(currentTaskId, { fromStage: clearFromStage });
+            }
+
+            if (options?.reconcileDraftsToSnapshot && normalizedStage < 4) {
+                clearExperimentDrafts(currentTaskId, { fromStage: normalizedStage + 1 });
+            }
+
+            if (previousExperiment) {
+                if (previousExperiment.currentStage > normalizedStage) {
+                    if (normalizedStage <= 2) {
+                        clearExperimentDrafts(currentTaskId, { fromStage: 3 });
+                    } else if (normalizedStage <= 3) {
+                        clearExperimentDrafts(currentTaskId, { fromStage: 4 });
+                    }
+                }
+
+                if (previousExperiment.samplingResults && !nextExperiment.samplingResults) {
+                    clearExperimentDrafts(currentTaskId, { fromStage: 3 });
+                }
+
+                if (previousExperiment.reportContent && !nextExperiment.reportContent) {
+                    clearExperimentDrafts(currentTaskId, { fromStage: 4 });
+                }
+            }
+
+            if (options?.broadcast) {
+                broadcastExperimentSync(currentTaskId);
+            }
+        }
+
+        setExperiment(nextExperiment);
+        setCurrentStage(normalizedStage);
+        setLastSavedAt(nextExperiment.lastSavedAt);
+    }, [taskId]);
 
     // Load experiment data
     useEffect(() => {
@@ -94,7 +176,6 @@ export function ExperimentLayout() {
             setTopicDeleted(false);
             setRedirectTarget(null);
             try {
-                const numericTaskId = parseInt(taskId);
                 const [experimentRes, taskRes] = await Promise.all([
                     experimentApi.get(numericTaskId),
                     tasksApi.get(numericTaskId),
@@ -123,10 +204,9 @@ export function ExperimentLayout() {
                 }
 
                 if (experimentRes.success && experimentRes.data) {
-                    const normalizedStage = Math.min(4, Math.max(experimentRes.data.currentStage || 1, 1));
-                    setExperiment(experimentRes.data);
-                    setCurrentStage(normalizedStage);
-                    setLastSavedAt(experimentRes.data.lastSavedAt);
+                    applyExperimentSnapshot(experimentRes.data, {
+                        reconcileDraftsToSnapshot: true,
+                    });
                 } else if (experimentRes.error?.code === "TOPIC_DELETED") {
                     setExperiment(null);
                     setTopicDeleted(true);
@@ -143,7 +223,54 @@ export function ExperimentLayout() {
             }
         }
         loadExperiment();
-    }, [taskId]);
+    }, [applyExperimentSnapshot, numericTaskId, taskId]);
+
+    const syncExperimentSnapshot = useCallback(async () => {
+        if (!taskId || !numericTaskId) return;
+
+        try {
+            const res = await experimentApi.get(numericTaskId);
+            if (res.success && res.data) {
+                const normalizedStage = Math.min(4, Math.max(res.data.currentStage || 1, 1));
+                if (unsavedStageRef.current === currentStage && normalizedStage === currentStage) {
+                    return;
+                }
+                applyExperimentSnapshot(res.data, {
+                    reconcileDraftsToSnapshot: true,
+                });
+            }
+        } catch (error) {
+            console.error("Failed to sync experiment snapshot:", error);
+        }
+    }, [applyExperimentSnapshot, currentStage, numericTaskId, taskId]);
+
+    useEffect(() => {
+        if (!taskId || !numericTaskId) return;
+
+        const syncKey = getExperimentSyncKey(numericTaskId);
+        const handleFocus = () => {
+            void syncExperimentSnapshot();
+        };
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                void syncExperimentSnapshot();
+            }
+        };
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key === syncKey) {
+                void syncExperimentSnapshot();
+            }
+        };
+
+        window.addEventListener("focus", handleFocus);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("storage", handleStorage);
+        return () => {
+            window.removeEventListener("focus", handleFocus);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("storage", handleStorage);
+        };
+    }, [numericTaskId, syncExperimentSnapshot, taskId]);
 
     // Save experiment data
     const saveExperiment = useCallback(async (data: Partial<{
@@ -160,22 +287,17 @@ export function ExperimentLayout() {
         try {
             const res = await experimentApi.save(parseInt(taskId), data);
             if (res.success && res.data) {
-                setLastSavedAt(res.data.lastSavedAt);
+                const clearDownstreamFromStage = data.samplePlan !== undefined
+                    ? 3
+                    : data.samplingResults !== undefined
+                        ? 4
+                        : undefined;
 
-                // Update local experiment state
-                setExperiment((prev) => {
-                    if (!prev) return prev;
-                    return {
-                        ...prev,
-                        ...data,
-                        lastSavedAt: res.data!.lastSavedAt,
-                    };
+                applyExperimentSnapshot(res.data, {
+                    broadcast: true,
+                    clearDownstreamFromStage,
+                    previousExperiment: experimentRef.current,
                 });
-
-                // Sync stage state so renderStage() reflects the change immediately
-                if (data.currentStage != null) {
-                    setCurrentStage(data.currentStage);
-                }
 
                 return true;
             }
@@ -188,7 +310,7 @@ export function ExperimentLayout() {
         } finally {
             setIsSaving(false);
         }
-    }, [taskId]);
+    }, [applyExperimentSnapshot, taskId]);
 
     // Manual save button handler
     const handleSave = useCallback(async () => {
@@ -211,30 +333,15 @@ export function ExperimentLayout() {
     const applyRollback = useCallback(async () => {
         if (!taskId || targetStage === null) return;
         const res = await experimentApi.reset(Number(taskId), { resetToStage: targetStage });
-        if (res.success) {
-            // Clear local drafts for all stages downstream of the target
-            clearExperimentDrafts(Number(taskId), { fromStage: targetStage + 1 });
-            setExperiment((prev) => {
-                if (!prev) return prev;
-                const next = { ...prev, currentStage: targetStage };
-                if (targetStage <= 1) {
-                    next.samplePlan = null;
-                    next.samplingResults = null;
-                    next.reportContent = null;
-                }
-                if (targetStage <= 2) {
-                    next.samplingResults = null;
-                    next.reportContent = null;
-                }
-                if (targetStage <= 3) {
-                    next.reportContent = null;
-                }
-                return next;
+        if (res.success && res.data) {
+            applyExperimentSnapshot(res.data, {
+                broadcast: true,
+                clearDownstreamFromStage: targetStage + 1,
+                previousExperiment: experimentRef.current,
             });
-            setCurrentStage(targetStage);
         }
         setConfirmRollbackOpen(false);
-    }, [taskId, targetStage]);
+    }, [applyExperimentSnapshot, taskId, targetStage]);
 
     // Deadline countdown timer - updates every minute
     const [now, setNow] = useState(() => Date.now());
@@ -305,6 +412,7 @@ export function ExperimentLayout() {
         populationSize: experiment.populationSize,
         isSaving,
         lastSavedAt,
+        setStageUnsavedChanges,
         saveExperiment,
     };
 

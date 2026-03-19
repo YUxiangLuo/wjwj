@@ -86,7 +86,7 @@ function generateId(): string {
 }
 
 export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
-    const { experiment, saveExperiment } = useExperiment();
+    const { experiment, saveExperiment, setStageUnsavedChanges } = useExperiment();
 
     // Initialize from experiment data
     const initialData = experiment?.questionnaire as QuestionnaireData | null;
@@ -202,6 +202,9 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const {
         clearLocalDraft,
         discardPendingDraft,
+        handleRestoreDraftOpenChange,
+        handleSyncConflictOpenChange,
+        hasUnsavedLocalChanges,
         isOnline,
         keepLocalDraft,
         keepServerDraft,
@@ -209,8 +212,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         restoreDraftOpen,
         restorePendingDraft,
         saveNow,
-        setRestoreDraftOpen,
-        setSyncConflictOpen,
         syncConflictOpen,
     } = useDraftSync<QuestionnaireData>({
         applyValue: applyQuestionnaireData,
@@ -223,6 +224,13 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         saveToServer: saveQuestionnaire,
         serialize: serializeQuestionnaire,
     });
+
+    useEffect(() => {
+        setStageUnsavedChanges(1, hasUnsavedLocalChanges);
+        return () => {
+            setStageUnsavedChanges(1, false);
+        };
+    }, [hasUnsavedLocalChanges, setStageUnsavedChanges]);
 
     const steps = [
         { num: 1, title: "欢迎语设置" },
@@ -560,13 +568,13 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const warningCount = validation.questionTypes ? 0 : 1;
 
     const handleConfirmComplete = async () => {
-        // Save final data
-        await saveNow();
-        // Move to next stage
-        await saveExperiment({ currentStage: 2 });
-        // Clear localStorage draft after successful stage completion
-        clearLocalDraft();
-        onNext();
+        const success = await saveExperiment({
+            questionnaire: questionnaireData,
+            currentStage: 2,
+        });
+        if (success) {
+            clearLocalDraft();
+        }
     };
 
     const renderStep = () => {
@@ -1207,7 +1215,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
+            <AlertDialog open={restoreDraftOpen} onOpenChange={handleRestoreDraftOpenChange}>
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-restore-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
@@ -1216,13 +1224,13 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel
+                        <AlertDialogAction
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-questionnaire-restore-discard"
                             onClick={discardPendingDraft}
                         >
                             放弃草稿
-                        </AlertDialogCancel>
+                        </AlertDialogAction>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-questionnaire-restore-apply"
@@ -1234,7 +1242,7 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
+            <AlertDialog open={syncConflictOpen} onOpenChange={handleSyncConflictOpenChange}>
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-conflict-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
@@ -1245,13 +1253,13 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel
+                        <AlertDialogAction
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-questionnaire-conflict-server"
                             onClick={keepServerDraft}
                         >
                             保留服务器版本
-                        </AlertDialogCancel>
+                        </AlertDialogAction>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-questionnaire-conflict-local"

@@ -161,8 +161,16 @@ export interface ExperimentData {
 }
 
 export interface ExperimentResetResponse {
-    success: boolean;
-    lastSavedAt: string;
+    id: number;
+    taskId: number;
+    currentStage: number;
+    status: number;
+    questionnaire: QuestionnaireData | null;
+    samplePlan: SamplePlanData | null;
+    samplingResults: SamplingResultsData | null;
+    reportContent: string | null;
+    lastSavedAt: string | null;
+    populationSize: number;
 }
 
 export interface Notification {
@@ -330,7 +338,7 @@ export const experimentApi = {
             reportContent?: string;
         }
     ) =>
-        request<{ success: boolean; lastSavedAt: string }>(
+        request<ExperimentData>(
             `/api/student/tasks/${taskId}/experiment`,
             {
                 method: "PUT",

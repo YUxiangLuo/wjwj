@@ -107,7 +107,7 @@ function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }: Sampl
 }
 
 export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
-    const { populationSize, experiment, saveExperiment } = useExperiment();
+    const { populationSize, experiment, saveExperiment, setStageUnsavedChanges } = useExperiment();
 
     // Get sample size from sample plan
     const samplePlan = experiment?.samplePlan as SamplePlanData | null;
@@ -218,6 +218,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
     const [showAllocationComparison, setShowAllocationComparison] = useState(false);
+
     const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
 
     // Sampling parameters are persisted to localStorage only (not auto-saved to the server).
@@ -359,6 +360,40 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
             // ignore persistence errors
         }
     }, [draftResolved, samplingDraft, samplingDraftKey]);
+
+    const hasUnsavedLocalChanges = useMemo(
+        () => draftResolved && serializeSamplingExecutionDraft(samplingDraft) !== serializeSamplingExecutionDraft(serverSamplingDraft),
+        [draftResolved, samplingDraft, serverSamplingDraft],
+    );
+
+    useEffect(() => {
+        if (hasUnsavedLocalChanges) {
+            return;
+        }
+
+        setSimpleResult(initialResults?.simple ?? null);
+        setSystematicResult(initialResults?.systematic ?? null);
+        setPpsResult(initialResults?.pps ?? null);
+        setStratifiedResult(initialResults?.stratified ?? null);
+        setExecutionTimes({ simple: null, systematic: null, pps: null, stratified: null });
+
+        setSimpleSeed(serverSamplingDraft.simpleSeed);
+        setSystematicSeed(serverSamplingDraft.systematicSeed);
+        setPpsSeed(serverSamplingDraft.ppsSeed);
+        setStratifiedSeed(serverSamplingDraft.stratifiedSeed);
+        setKValue(serverSamplingDraft.kValue);
+        setPpsSizeField(serverSamplingDraft.ppsSizeField);
+        setPpsSampleSize(serverSamplingDraft.ppsSampleSize);
+        setStratifyBy(serverSamplingDraft.stratifyBy || "gender");
+        setConfirmNextOpen(false);
+    }, [hasUnsavedLocalChanges, initialResults, serverSamplingDraft]);
+
+    useEffect(() => {
+        setStageUnsavedChanges(3, hasUnsavedLocalChanges);
+        return () => {
+            setStageUnsavedChanges(3, false);
+        };
+    }, [hasUnsavedLocalChanges, setStageUnsavedChanges]);
 
     const prevOnlineRef = useRef(isOnline);
     useEffect(() => {
@@ -570,7 +605,6 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         const success = await saveExperiment({ currentStage: 4 });
         if (success) {
             clearSamplingParamsDraft();
-            onNext();
         }
     };
 
@@ -1274,13 +1308,13 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel
+                        <AlertDialogAction
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-sampling-restore-discard"
                             onClick={discardPendingDraft}
                         >
                             保留当前参数
-                        </AlertDialogCancel>
+                        </AlertDialogAction>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-sampling-restore-apply"
