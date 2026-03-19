@@ -35,11 +35,15 @@ const GRID_COLS = 40;
 const GRID_ROWS = 25;
 const TOTAL_DOTS = GRID_COLS * GRID_ROWS; // 1000 visual dots
 
-const METHOD_META: Record<SamplingMethod, { label: string; color: string; accent: string; icon: typeof Shuffle }> = {
-    simple: { label: "简单随机抽样", color: "from-indigo-600/20 to-violet-600/20", accent: "indigo", icon: Shuffle },
-    systematic: { label: "系统抽样", color: "from-teal-600/20 to-cyan-600/20", accent: "teal", icon: Target },
-    pps: { label: "PPS抽样", color: "from-purple-600/20 to-fuchsia-600/20", accent: "purple", icon: Target },
-    stratified: { label: "分层抽样", color: "from-amber-600/20 to-orange-600/20", accent: "amber", icon: Layers },
+const METHOD_META: Record<SamplingMethod, {
+    label: string; color: string; accent: string; icon: typeof Shuffle;
+    accentBg: string; accentBgLight: string; accentText: string;
+    accentRing: string; accentBorder: string;
+}> = {
+    simple: { label: "简单随机抽样", color: "from-indigo-600/20 to-violet-600/20", accent: "indigo", icon: Shuffle, accentBg: "bg-indigo-500", accentBgLight: "bg-indigo-500/20", accentText: "text-indigo-600 dark:text-indigo-400", accentRing: "ring-indigo-400", accentBorder: "border-indigo-500/30" },
+    systematic: { label: "系统抽样", color: "from-teal-600/20 to-cyan-600/20", accent: "teal", icon: Target, accentBg: "bg-teal-500", accentBgLight: "bg-teal-500/20", accentText: "text-teal-600 dark:text-teal-400", accentRing: "ring-teal-400", accentBorder: "border-teal-500/30" },
+    pps: { label: "PPS抽样", color: "from-purple-600/20 to-fuchsia-600/20", accent: "purple", icon: Target, accentBg: "bg-purple-500", accentBgLight: "bg-purple-500/20", accentText: "text-purple-600 dark:text-purple-400", accentRing: "ring-purple-400", accentBorder: "border-purple-500/30" },
+    stratified: { label: "分层抽样", color: "from-amber-600/20 to-orange-600/20", accent: "amber", icon: Layers, accentBg: "bg-amber-500", accentBgLight: "bg-amber-500/20", accentText: "text-amber-600 dark:text-amber-400", accentRing: "ring-amber-400", accentBorder: "border-amber-500/30" },
 };
 
 const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; sampling: string; complete: string }> = {
@@ -105,14 +109,18 @@ const DotGrid = memo(function DotGrid({
     currentSelectIndex,
     dotSelectedAt,
     layerAssignment,
+    dotWeights,
     method,
 }: {
     visiblePopCount: number;
     currentSelectIndex: number;
     dotSelectedAt: Int32Array;
     layerAssignment: number[] | undefined;
+    /** Normalized 0-1 weights per dot, used by PPS to show size variation */
+    dotWeights: Float32Array | undefined;
     method: SamplingMethod;
 }) {
+    const methodMeta = METHOD_META[method];
     return (
         <div
             className="grid gap-[2px]"
@@ -124,17 +132,22 @@ const DotGrid = memo(function DotGrid({
                 const layerIdx = layerAssignment?.[i] ?? 0;
 
                 let bgClass: string;
+                let inlineStyle: React.CSSProperties | undefined;
                 if (selected) {
                     if (method === "stratified") {
                         bgClass = `${lc(layerIdx).bg} ring-1 ${lc(layerIdx).ring} scale-125`;
-                    } else if (method === "simple") {
-                        bgClass = "bg-indigo-500 ring-1 ring-indigo-400 scale-125";
                     } else {
-                        bgClass = "bg-teal-500 ring-1 ring-teal-400 scale-125";
+                        bgClass = `${methodMeta.accentBg} ring-1 ${methodMeta.accentRing} scale-125`;
                     }
                 } else if (visible) {
                     if (method === "stratified" && layerAssignment) {
                         bgClass = `${lc(layerIdx).bg} opacity-20`;
+                    } else if (method === "pps" && dotWeights) {
+                        // PPS: vary opacity by size weight so larger units appear more prominent
+                        const w = dotWeights[i] ?? 0.5;
+                        const opacity = 0.15 + w * 0.55; // range 0.15–0.70
+                        bgClass = "bg-purple-400 dark:bg-purple-500";
+                        inlineStyle = { opacity };
                     } else {
                         bgClass = "bg-slate-300 dark:bg-slate-700";
                     }
@@ -146,6 +159,7 @@ const DotGrid = memo(function DotGrid({
                     <div
                         key={i}
                         className={`aspect-square rounded-[2px] transition-all duration-150 ${bgClass}`}
+                        style={inlineStyle}
                     />
                 );
             })}
@@ -202,20 +216,64 @@ export function ImmersiveSamplingAnimation({
     }, []);
 
     // ─── Precompute which dots get selected ───────────────
-    const { selectionOrder, layerAssignment, dotSelectedAt } = useMemo(() => {
+    const { selectionOrder, layerAssignment, dotSelectedAt, dotWeights } = useMemo(() => {
         const rng = mulberry32(42);
 
         let selection: number[] = [];
         let layerMap: number[] | undefined;
+        let weights: Float32Array | undefined;
 
         // Scale sample size to visual grid
         const visualSampleSize = Math.min(Math.round((sampleSize / populationSize) * TOTAL_DOTS), TOTAL_DOTS);
 
-        if (method === "simple" || method === "pps") {
-            // PPS visual animation is similar to simple random but we highlight
-            // it as "weighted" — the actual statistical weighting happens on the server.
+        if (method === "simple") {
             const shuffled = shuffleIndices(TOTAL_DOTS, rng);
             selection = shuffled.slice(0, visualSampleSize);
+        } else if (method === "pps") {
+            // PPS systematic selection: simulate varying sizes and walk
+            // through the cumulative distribution, mirroring the real algorithm.
+            weights = new Float32Array(TOTAL_DOTS);
+            for (let i = 0; i < TOTAL_DOTS; i++) {
+                weights[i] = rng() * 3 + 0.1; // random size weights
+            }
+            // Normalize to 0-1 for visual opacity
+            let maxW = 0;
+            for (let i = 0; i < TOTAL_DOTS; i++) {
+                if (weights[i]! > maxW) maxW = weights[i]!;
+            }
+            const normalizedWeights = new Float32Array(TOTAL_DOTS);
+            for (let i = 0; i < TOTAL_DOTS; i++) {
+                normalizedWeights[i] = weights[i]! / maxW;
+            }
+
+            // Cumulative distribution for systematic PPS selection
+            const cumulative: number[] = [];
+            let cumSum = 0;
+            for (let i = 0; i < TOTAL_DOTS; i++) {
+                cumSum += weights[i]!;
+                cumulative.push(cumSum);
+            }
+            const totalSize = cumSum;
+            const interval = totalSize / visualSampleSize;
+            const start = rng() * interval;
+            let pointer = start;
+            let dataIdx = 0;
+            const selected = new Set<number>();
+            for (let i = 0; i < visualSampleSize; i++) {
+                while (dataIdx < TOTAL_DOTS - 1 && cumulative[dataIdx]! < pointer) {
+                    dataIdx++;
+                }
+                if (!selected.has(dataIdx)) {
+                    selected.add(dataIdx);
+                    selection.push(dataIdx);
+                }
+                pointer += interval;
+                if (pointer >= totalSize && i < visualSampleSize - 1) {
+                    pointer -= totalSize;
+                    dataIdx = 0;
+                }
+            }
+            weights = normalizedWeights;
         } else if (method === "systematic") {
             const k = kValue ?? Math.round(populationSize / sampleSize);
             const visualK = Math.max(2, Math.round((k / populationSize) * TOTAL_DOTS));
@@ -267,7 +325,7 @@ export function ImmersiveSamplingAnimation({
             selectedAtMap[selection[step]!] = step;
         }
 
-        return { selectionOrder: selection, layerAssignment: layerMap, dotSelectedAt: selectedAtMap };
+        return { selectionOrder: selection, layerAssignment: layerMap, dotSelectedAt: selectedAtMap, dotWeights: weights };
     }, [method, populationSize, sampleSize, kValue, layers]);
 
     // ─── Phase transitions ────────────────────────────────
@@ -309,10 +367,12 @@ export function ImmersiveSamplingAnimation({
         let index = 0;
         const batchSize = method === "systematic"
             ? 1
-            : method === "stratified"
-                ? Math.max(1, Math.ceil(total / 75))
-                : Math.max(1, Math.ceil(total / 60));
-        const tick = method === "systematic" ? 55 : method === "stratified" ? 45 : 35;
+            : method === "pps"
+                ? 1  // PPS walks through cumulative distribution one-by-one like systematic
+                : method === "stratified"
+                    ? Math.max(1, Math.ceil(total / 75))
+                    : Math.max(1, Math.ceil(total / 60));
+        const tick = method === "systematic" ? 55 : method === "pps" ? 50 : method === "stratified" ? 45 : 35;
         const interval = setInterval(() => {
             index = Math.min(index + batchSize, total);
             setCurrentSelectIndex(index);
@@ -377,9 +437,7 @@ export function ImmersiveSamplingAnimation({
             {/* Progress bar */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-slate-200 dark:bg-slate-800 z-10">
                 <div
-                    className={`h-full transition-all duration-300 ease-out ${
-                        method === "simple" ? "bg-indigo-500" : method === "systematic" ? "bg-teal-500" : "bg-amber-500"
-                    }`}
+                    className={`h-full transition-all duration-300 ease-out ${meta.accentBg}`}
                     style={{ width: `${progress}%` }}
                 />
             </div>
@@ -387,12 +445,8 @@ export function ImmersiveSamplingAnimation({
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-3 z-10">
                 <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        method === "simple" ? "bg-indigo-500/20" : method === "systematic" ? "bg-teal-500/20" : "bg-amber-500/20"
-                    }`}>
-                        <Icon className={`w-5 h-5 ${
-                            method === "simple" ? "text-indigo-600 dark:text-indigo-400" : method === "systematic" ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400"
-                        }`} />
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${meta.accentBgLight}`}>
+                        <Icon className={`w-5 h-5 ${meta.accentText}`} />
                     </div>
                     <div>
                         <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{meta.label}</h2>
@@ -430,12 +484,8 @@ export function ImmersiveSamplingAnimation({
                 {/* Intro phase */}
                 {phase.type === "intro" && (
                     <div className="text-center space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-lg">
-                        <div className={`w-20 h-20 mx-auto rounded-2xl flex items-center justify-center ${
-                            method === "simple" ? "bg-indigo-500/20" : method === "systematic" ? "bg-teal-500/20" : "bg-amber-500/20"
-                        }`}>
-                            <Icon className={`w-10 h-10 ${
-                                method === "simple" ? "text-indigo-600 dark:text-indigo-400" : method === "systematic" ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400"
-                            }`} />
+                        <div className={`w-20 h-20 mx-auto rounded-2xl flex items-center justify-center ${meta.accentBgLight}`}>
+                            <Icon className={`w-10 h-10 ${meta.accentText}`} />
                         </div>
                         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{meta.label}</h1>
                         <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{introText}</p>
@@ -444,9 +494,7 @@ export function ImmersiveSamplingAnimation({
                                 <Users className="w-4 h-4" />
                                 <span>总体 {populationSize.toLocaleString()}</span>
                             </div>
-                            <div className={`w-1 h-1 rounded-full ${
-                                method === "simple" ? "bg-indigo-500" : method === "systematic" ? "bg-teal-500" : "bg-amber-500"
-                            }`} />
+                            <div className={`w-1 h-1 rounded-full ${meta.accentBg}`} />
                             <div className="flex items-center gap-2 text-slate-500">
                                 <Target className="w-4 h-4" />
                                 <span>抽取 {sampleSize}</span>
@@ -479,11 +527,18 @@ export function ImmersiveSamplingAnimation({
                                         <span>先按 {fieldLabel} 分层，再在各层内抽样</span>
                                     </div>
                                 )}
+                                {method === "pps" && phase.type === "populating" && (
+                                    <div className="mb-3 flex items-center justify-center gap-2 text-xs text-purple-700 dark:text-purple-300">
+                                        <Target className="w-3.5 h-3.5" />
+                                        <span>按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 赋予不同权重，亮度反映规模大小</span>
+                                    </div>
+                                )}
                                 <DotGrid
                                     visiblePopCount={visiblePopCount}
                                     currentSelectIndex={currentSelectIndex}
                                     dotSelectedAt={dotSelectedAt}
                                     layerAssignment={layerAssignment}
+                                    dotWeights={dotWeights}
                                     method={method}
                                 />
 
@@ -515,6 +570,15 @@ export function ImmersiveSamplingAnimation({
                                     </div>
                                 )}
 
+                                {method === "pps" && phase.type === "sampling" && (
+                                    <div className="absolute bottom-3 left-0 right-0 text-center">
+                                        <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-slate-50/90 px-3 py-1.5 text-xs text-purple-600 dark:bg-slate-900/90 dark:text-purple-400">
+                                            <Target className="w-3.5 h-3.5" />
+                                            按{FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"}权重系统选取，亮度越高规模越大
+                                        </span>
+                                    </div>
+                                )}
+
                                 {method === "stratified" && phase.type === "sampling" && stratifiedActiveLayer !== null && layers?.[stratifiedActiveLayer] && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
                                         <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-slate-50/90 px-3 py-1.5 text-xs text-amber-700 dark:bg-slate-900/90 dark:text-amber-300">
@@ -529,10 +593,8 @@ export function ImmersiveSamplingAnimation({
                         {/* Sampling stats bar */}
                         {phase.type === "sampling" && (
                             <div className="flex items-center justify-between px-2 text-xs text-slate-500 animate-in fade-in duration-200">
-                                <span>总体 {TOTAL_DOTS} 个数据点</span>
-                                <span className={
-                                    method === "simple" ? "text-indigo-600 dark:text-indigo-400" : method === "systematic" ? "text-teal-600 dark:text-teal-400" : "text-amber-600 dark:text-amber-400"
-                                }>
+                                <span>总体 {populationSize.toLocaleString()} 个数据点</span>
+                                <span className={meta.accentText}>
                                     已选中 {currentSelectIndex} / {selectionOrder.length}
                                 </span>
                             </div>

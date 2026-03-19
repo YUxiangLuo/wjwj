@@ -1081,7 +1081,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 <ImmersiveSamplingAnimation
                     method={animatingMethod}
                     populationSize={N}
-                    sampleSize={animatingMethod === "systematic" ? Math.ceil(N / kValue) : n}
+                    sampleSize={animatingMethod === "systematic" ? Math.ceil(N / kValue) : animatingMethod === "pps" ? ppsSampleSize : n}
                     kValue={animatingMethod === "systematic" ? kValue : undefined}
                     sizeField={animatingMethod === "pps" ? ppsSizeField : undefined}
                     stratifyBy={animatingMethod === "stratified" ? stratifyBy : undefined}
