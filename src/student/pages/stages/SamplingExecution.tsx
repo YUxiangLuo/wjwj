@@ -24,6 +24,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 import { CheckCircle2, Play, RefreshCw, Loader2, Users, Target, Layers, ArrowRight, BarChart3, Database } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
@@ -185,6 +192,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
+    const [showAllocationComparison, setShowAllocationComparison] = useState(false);
     const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
 
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
@@ -1012,26 +1020,46 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                 </CardContent>
                             </Card>
                             
-                            {/* 分配方法对比组件 */}
-                            <StratifiedAllocationComparison
-                                layers={layers}
-                                totalSampleSize={n}
-                                onApplyAllocation={(method) => {
-                                    if (method === "proportional") applyProportionalAllocation();
-                                    else if (method === "neyman") applyNeymanAllocation();
-                                    else if (method === "equal") applyEqualAllocation();
-                                }}
-                                onApplyAllocationWithOverflow={(method, allocation) => {
-                                    // 应用处理超额分配后的分配方案
-                                    const newCounts = allocation.map(a => a.sampleCount);
-                                    setLayerSampleCounts(newCounts);
-                                    toast.success(`已应用${method === "proportional" ? "按比例" : method === "neyman" ? "奈曼" : "等额"}分配（自动处理超额层）`);
-                                }}
-                            />
+                            {/* 分配方法对比入口 */}
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowAllocationComparison(true)}
+                                disabled={layers.length === 0}
+                                className="w-full border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 dark:hover:bg-violet-900/30"
+                            >
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                分配方法对比分析
+                            </Button>
                         </div>
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* 分配方法对比 Modal */}
+            <Dialog open={showAllocationComparison} onOpenChange={setShowAllocationComparison}>
+                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-slate-900 dark:text-slate-100">分配方法对比分析</DialogTitle>
+                        <DialogDescription className="text-slate-600 dark:text-slate-400">不同分配方法的样本分布与效率比较</DialogDescription>
+                    </DialogHeader>
+                    <StratifiedAllocationComparison
+                        layers={layers}
+                        totalSampleSize={n}
+                        onApplyAllocation={(method) => {
+                            if (method === "proportional") applyProportionalAllocation();
+                            else if (method === "neyman") applyNeymanAllocation();
+                            else if (method === "equal") applyEqualAllocation();
+                            setShowAllocationComparison(false);
+                        }}
+                        onApplyAllocationWithOverflow={(method, allocation) => {
+                            const newCounts = allocation.map(a => a.sampleCount);
+                            setLayerSampleCounts(newCounts);
+                            toast.success(`已应用${method === "proportional" ? "按比例" : method === "neyman" ? "奈曼" : "等额"}分配（自动处理超额层）`);
+                            setShowAllocationComparison(false);
+                        }}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Navigation */}
             <div className="flex justify-between pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
