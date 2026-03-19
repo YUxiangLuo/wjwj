@@ -7,9 +7,18 @@ const Z_SCORES = new Map<number, number>([
 /**
  * 将百分比或小数形式的误差限统一为小数比例。
  * 约定：值 >= 1 视为百分比（如 5 → 0.05），< 1 视为已是比例（如 0.05 不变）。
+ * 注意：此约定无法区分 < 1 的百分比值（如 0.5% 需传入 0.005 而非 0.5）。
  */
 function normalizeMarginOfError(value: number): number {
     return value >= 1 ? value / 100 : value;
+}
+
+/**
+ * 将百分比或小数形式的置信水平统一为小数比例。
+ * 约定：值 > 1 视为百分比（如 95 → 0.95），<= 1 视为已是比例（如 0.95 不变）。
+ */
+function normalizeConfidenceLevel(value: number): number {
+    return value > 1 ? value / 100 : value;
 }
 
 export interface SampleSizeMetrics {
@@ -37,8 +46,7 @@ export function calculateFinitePopulationSampleSize(params: {
         return null;
     }
 
-    const confidenceValue = Number(params.confidenceLevel);
-    const confidenceRatio = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
+    const confidenceRatio = normalizeConfidenceLevel(Number(params.confidenceLevel));
     const e = normalizeMarginOfError(Number(params.marginOfError));
 
     const z = Z_SCORES.get(confidenceRatio);
@@ -79,8 +87,7 @@ export function calculateSampleSizeMetrics(params: {
         return null;
     }
 
-    const confidenceValue = Number(params.confidenceLevel);
-    const confidenceRatio = confidenceValue > 1 ? confidenceValue / 100 : confidenceValue;
+    const confidenceRatio = normalizeConfidenceLevel(Number(params.confidenceLevel));
     const e = normalizeMarginOfError(Number(params.marginOfError));
 
     const z = Z_SCORES.get(confidenceRatio);
@@ -265,9 +272,10 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
         return null;
     }
 
-    const z = params.confidenceLevel === "90" ? 1.645 : 
+    // z 不参与样本量计算，仅用于 UI 展示（供用户换算置信区间相对半宽 = Z × CV(ȳ)）
+    const z = params.confidenceLevel === "90" ? 1.645 :
               params.confidenceLevel === "95" ? 1.96 : 2.576;
-    
+
     const estimatedCV = params.estimatedCV ?? 0.5;  // 默认估计变异系数50%
     const targetCV = params.targetCV;
     const deff = params.designEffect ?? 1;

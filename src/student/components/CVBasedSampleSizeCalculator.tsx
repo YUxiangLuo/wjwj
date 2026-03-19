@@ -199,7 +199,7 @@ export function CVBasedSampleSizeCalculator({
                                     目标CV={targetCV}%, 估计CV={estimatedCV}%
                                 </p>
                                 <p className="text-xs text-cyan-600/50 mt-0.5">
-                                    若需置信区间相对半宽，可用 Z×CV(ȳ)（Z={result.z} at {confidenceLevel}%）
+                                    若需置信区间相对半宽，可用 Z×CV(ȳ)（{confidenceLevel}% 置信水平下 Z={result.z}）
                                 </p>
                             </div>
 
