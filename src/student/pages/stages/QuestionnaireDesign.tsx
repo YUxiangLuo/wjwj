@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,8 +21,7 @@ import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
-import { useDraftSync } from "../../draft-sync";
-import { experimentApi, tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
+import { tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
 
 interface QuestionnaireDesignProps {
     onNext: () => void;
@@ -112,8 +111,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewCompleted, setPreviewCompleted] = useState(false);
     const [previewContentHash, setPreviewContentHash] = useState("");
-    const draftKey = experiment?.taskId ? `student_questionnaire_draft_${experiment.taskId}` : null;
-
     useEffect(() => {
         async function loadRecommendQuestions() {
             if (!experiment?.taskId) return;
@@ -153,76 +150,54 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
         setPreviewOpen(false);
     }, [contentFingerprint]);
 
-    const normalizeQuestionnaireData = useCallback((raw: unknown): QuestionnaireData => {
-        const data = raw && typeof raw === "object" ? (raw as Partial<QuestionnaireData>) : {};
-        return {
-            title: data.title ?? "",
-            welcomeText: data.welcomeText ?? "",
-            endingText: data.endingText ?? "",
-            questions: Array.isArray(data.questions) ? data.questions : [],
-        };
-    }, []);
+    // Simple debounced auto-save to server (no localStorage, no conflict handling)
+    const serverSnapshotRef = useRef(JSON.stringify(initialData ?? {}));
+    const saveInFlightRef = useRef(false);
 
-    const applyQuestionnaireData = useCallback((data: QuestionnaireData) => {
-        setTitle(data.title ?? "");
-        setWelcomeText(data.welcomeText ?? "");
-        setEndingText(data.endingText ?? "");
-        setQuestions(Array.isArray(data.questions) ? data.questions : []);
-    }, []);
+    useEffect(() => {
+        serverSnapshotRef.current = JSON.stringify(initialData ?? {});
+    }, [initialData]);
 
-    const serverQuestionnaire = useMemo(
-        () => normalizeQuestionnaireData(initialData),
-        [initialData, normalizeQuestionnaireData]
-    );
+    const autoSaveQuestionnaire = useCallback(async () => {
+        const snapshot = JSON.stringify(questionnaireData);
+        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
 
-    const parseQuestionnaireDraft = useCallback((raw: string) => {
+        saveInFlightRef.current = true;
         try {
-            return normalizeQuestionnaireData(JSON.parse(raw) as QuestionnaireData);
-        } catch {
-            return null;
+            const success = await saveExperiment({ questionnaire: questionnaireData });
+            if (success) {
+                serverSnapshotRef.current = snapshot;
+            }
+        } finally {
+            saveInFlightRef.current = false;
         }
-    }, [normalizeQuestionnaireData]);
-    const isMeaningfulQuestionnaireDraft = useCallback(
-        (draft: QuestionnaireData) => Boolean(draft.title || draft.questions.length > 0),
-        []
-    );
-    const serializeQuestionnaire = useCallback((value: QuestionnaireData) => JSON.stringify(value), []);
+    }, [questionnaireData, saveExperiment]);
 
-    const saveQuestionnaire = useCallback(async (nextData: QuestionnaireData) => {
-        return saveExperiment({ questionnaire: nextData });
-    }, [saveExperiment]);
+    const autoSaveRef = useRef(autoSaveQuestionnaire);
+    useEffect(() => { autoSaveRef.current = autoSaveQuestionnaire; }, [autoSaveQuestionnaire]);
 
-    const loadLatestQuestionnaire = useCallback(async () => {
-        if (!experiment?.taskId) return null;
-        const res = await experimentApi.get(experiment.taskId);
-        if (!res.success || !res.data) return null;
-        return normalizeQuestionnaireData(res.data.questionnaire);
-    }, [experiment?.taskId, normalizeQuestionnaireData]);
+    // Debounce: save 3 seconds after user stops editing
+    useEffect(() => {
+        const timer = window.setTimeout(() => { void autoSaveQuestionnaire(); }, 3000);
+        return () => { window.clearTimeout(timer); };
+    }, [autoSaveQuestionnaire]);
 
-    const {
-        clearLocalDraft,
-        discardPendingDraft,
-        isOnline,
-        keepLocalDraft,
-        keepServerDraft,
-        networkNotice,
-        restoreDraftOpen,
-        restorePendingDraft,
-        saveNow,
-        setRestoreDraftOpen,
-        setSyncConflictOpen,
-        syncConflictOpen,
-    } = useDraftSync<QuestionnaireData>({
-        applyValue: applyQuestionnaireData,
-        currentValue: questionnaireData,
-        draftKey,
-        initialServerValue: serverQuestionnaire,
-        isMeaningfulDraft: isMeaningfulQuestionnaireDraft,
-        loadServerLatest: loadLatestQuestionnaire,
-        parseDraft: parseQuestionnaireDraft,
-        saveToServer: saveQuestionnaire,
-        serialize: serializeQuestionnaire,
-    });
+    // Fixed 30-second interval auto-save
+    useEffect(() => {
+        const timer = window.setInterval(() => { void autoSaveRef.current(); }, 30_000);
+        return () => { window.clearInterval(timer); };
+    }, []);
+
+    // Warn before leaving with unsaved changes
+    useEffect(() => {
+        const onBeforeUnload = (event: BeforeUnloadEvent) => {
+            if (JSON.stringify(questionnaireData) === serverSnapshotRef.current) return;
+            event.preventDefault();
+            event.returnValue = "";
+        };
+        window.addEventListener("beforeunload", onBeforeUnload);
+        return () => { window.removeEventListener("beforeunload", onBeforeUnload); };
+    }, [questionnaireData]);
 
     const steps = [
         { num: 1, title: "欢迎语设置" },
@@ -560,12 +535,8 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
     const warningCount = validation.questionTypes ? 0 : 1;
 
     const handleConfirmComplete = async () => {
-        // Save final data
-        await saveNow();
-        // Move to next stage
-        await saveExperiment({ currentStage: 2 });
-        // Clear localStorage draft after successful stage completion
-        clearLocalDraft();
+        // Save questionnaire data and advance to next stage in one call
+        await saveExperiment({ questionnaire: questionnaireData, currentStage: 2 });
         onNext();
     };
 
@@ -1051,39 +1022,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
 
     return (
         <div className="space-y-8 pb-12" data-testid="student-stage-questionnaire">
-            {networkNotice && (
-                <Card
-                    data-testid="student-questionnaire-network-notice"
-                    className={`rounded-2xl border shadow-sm ${syncConflictOpen
-                        ? "border-amber-500/30 bg-amber-500/10"
-                        : isOnline
-                            ? "border-emerald-500/30 bg-emerald-500/10"
-                            : "border-rose-500/30 bg-rose-500/10"
-                        }`}
-                >
-                    <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm">
-                            {syncConflictOpen ? (
-                                <AlertCircle className="h-4 w-4 text-amber-600" />
-                            ) : isOnline ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                                <AlertCircle className="h-4 w-4 text-rose-600" />
-                            )}
-                            <span
-                                className={syncConflictOpen
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : isOnline
-                                        ? "text-emerald-700 dark:text-emerald-300"
-                                        : "text-rose-500"
-                                }
-                            >
-                                {networkNotice}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
 
             {/* Compact sub-step indicator */}
             <div className="flex items-center gap-2 px-1" data-testid="student-questionnaire-steps">
@@ -1207,63 +1145,6 @@ export function QuestionnaireDesign({ onNext }: QuestionnaireDesignProps) {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-restore-dialog">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
-                            检测到本地草稿，是否恢复？
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                            data-testid="student-questionnaire-restore-discard"
-                            onClick={discardPendingDraft}
-                        >
-                            放弃草稿
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            data-testid="student-questionnaire-restore-apply"
-                            onClick={restorePendingDraft}
-                        >
-                            恢复草稿
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-questionnaire-conflict-dialog">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                            本地草稿和服务器草稿都发生了变化。请选择要保留的版本。
-                            <br />
-                            <span className="text-slate-500">保留本地版本将覆盖服务器当前草稿。</span>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                            data-testid="student-questionnaire-conflict-server"
-                            onClick={keepServerDraft}
-                        >
-                            保留服务器版本
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            data-testid="student-questionnaire-conflict-local"
-                            onClick={() => {
-                                void keepLocalDraft();
-                            }}
-                        >
-                            保留本地版本
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
             {/* Immersive Questionnaire Preview Overlay */}
             {previewOpen && (

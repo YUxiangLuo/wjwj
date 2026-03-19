@@ -1,396 +1,91 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-export type ReconnectSyncDecision = "synced" | "conflict" | "push_local" | "pull_server";
+/**
+ * Minimal report draft — stage 4 only.
+ *
+ * Writes to localStorage on every content change (debounced).
+ * On mount, silently restores from localStorage if the stored value
+ * differs from the server snapshot.
+ * Clears on explicit `clearDraft()` (after submit or upstream invalidation).
+ *
+ * No conflict dialogs, no reconnect sync, no cross-tab sync.
+ */
 
-export interface DraftRestoreDecision<T> {
-    draft: T | null;
-    type: "none" | "restore";
+const REPORT_DRAFT_KEY_PREFIX = "student_report_draft_";
+
+export function getReportDraftKey(taskId: number | undefined | null): string | null {
+    return taskId ? `${REPORT_DRAFT_KEY_PREFIX}${taskId}` : null;
 }
 
-interface DraftRestoreOptions<T> {
-    rawDraft: string | null;
-    parseDraft: (raw: string) => T | null;
-    isMeaningfulDraft: (draft: T) => boolean;
-    serverSnapshot: string;
-}
-
-interface ReconnectSyncOptions {
-    lastSyncedSnapshot: string;
-    localSnapshot: string;
-    serverSnapshot: string;
-}
-
-interface UseDraftSyncOptions<T> {
-    applyValue: (value: T) => void;
-    currentValue: T;
-    draftKey: string | null;
-    initialServerValue: T;
-    intervalMs?: number;
-    debounceMs?: number;
-    isMeaningfulDraft: (draft: T) => boolean;
-    loadServerLatest: () => Promise<T | null>;
-    parseDraft: (raw: string) => T | null;
-    saveToServer: (value: T) => Promise<boolean>;
-    serialize: (value: T) => string;
-}
-
-interface UseDraftSyncResult<T> {
-    clearLocalDraft: () => void;
-    discardPendingDraft: () => void;
-    isOnline: boolean;
-    keepLocalDraft: () => Promise<void>;
-    keepServerDraft: () => void;
-    networkNotice: string | null;
-    pendingDraft: T | null;
-    restoreDraftOpen: boolean;
-    restorePendingDraft: () => void;
-    saveNow: () => Promise<boolean>;
-    serverConflictDraft: T | null;
-    setRestoreDraftOpen: (open: boolean) => void;
-    setSyncConflictOpen: (open: boolean) => void;
-    syncConflictOpen: boolean;
-}
-
-function writeDraftSnapshot(draftKey: string | null, snapshot: string) {
-    if (!draftKey) return;
+export function readReportDraft(taskId: number | undefined | null): string | null {
+    const key = getReportDraftKey(taskId);
+    if (!key) return null;
     try {
-        localStorage.setItem(draftKey, snapshot);
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+export function writeReportDraft(taskId: number | undefined | null, content: string): void {
+    const key = getReportDraftKey(taskId);
+    if (!key) return;
+    try {
+        localStorage.setItem(key, content);
     } catch {
         // ignore write errors
     }
 }
 
-export function hasUnsavedChanges(currentSnapshot: string, lastSyncedSnapshot: string) {
-    return currentSnapshot !== lastSyncedSnapshot;
+export function clearReportDraft(taskId: number | undefined | null): void {
+    const key = getReportDraftKey(taskId);
+    if (!key) return;
+    try {
+        localStorage.removeItem(key);
+    } catch {
+        // ignore
+    }
 }
 
-export function decideDraftRestore<T>({
-    rawDraft,
-    parseDraft,
-    isMeaningfulDraft,
-    serverSnapshot,
-}: DraftRestoreOptions<T>): DraftRestoreDecision<T> {
-    if (!rawDraft) {
-        return { type: "none", draft: null };
-    }
-
-    const draft = parseDraft(rawDraft);
-    if (draft === null || !isMeaningfulDraft(draft)) {
-        return { type: "none", draft: null };
-    }
-
-    if (rawDraft === serverSnapshot) {
-        return { type: "none", draft: null };
-    }
-
-    return { type: "restore", draft };
-}
-
-export function decideReconnectSync({
-    lastSyncedSnapshot,
-    localSnapshot,
-    serverSnapshot,
-}: ReconnectSyncOptions): ReconnectSyncDecision {
-    if (localSnapshot === serverSnapshot) return "synced";
-
-    const localChanged = localSnapshot !== lastSyncedSnapshot;
-    const serverChanged = serverSnapshot !== lastSyncedSnapshot;
-
-    if (localChanged && serverChanged) return "conflict";
-    if (localChanged) return "push_local";
-    return "pull_server";
-}
-
-export function useDraftSync<T>({
-    applyValue,
-    currentValue,
-    debounceMs = 3000,
-    draftKey,
-    initialServerValue,
-    intervalMs = 30 * 1000,
-    isMeaningfulDraft,
-    loadServerLatest,
-    parseDraft,
-    saveToServer,
-    serialize,
-}: UseDraftSyncOptions<T>): UseDraftSyncResult<T> {
-    const [isOnline, setIsOnline] = useState(
-        typeof navigator === "undefined" ? true : navigator.onLine
-    );
-    const [networkNotice, setNetworkNotice] = useState<string | null>(null);
-    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
-    const [pendingDraft, setPendingDraft] = useState<T | null>(null);
-    const [syncConflictOpen, setSyncConflictOpen] = useState(false);
-    const [serverConflictDraft, setServerConflictDraft] = useState<T | null>(null);
-    const [localConflictDraft, setLocalConflictDraft] = useState<T | null>(null);
-
-    const serverSnapshotRef = useRef("");
-    const saveInFlightRef = useRef(false);
-    const reconnectSyncingRef = useRef(false);
-    const draftResolvedRef = useRef(false);
-
-    const currentSnapshot = useMemo(() => serialize(currentValue), [currentValue, serialize]);
-    const initialServerSnapshot = useMemo(() => serialize(initialServerValue), [initialServerValue, serialize]);
-
-    useEffect(() => {
-        serverSnapshotRef.current = initialServerSnapshot;
-    }, [initialServerSnapshot]);
-
-    useEffect(() => {
-        draftResolvedRef.current = false;
-        setPendingDraft(null);
-        setRestoreDraftOpen(false);
-    }, [draftKey]);
-
-    useEffect(() => {
-        if (!draftKey) {
-            draftResolvedRef.current = true;
-            return;
+/**
+ * React hook for stage 4 report draft.
+ *
+ * Returns the initial content (restored from localStorage if available)
+ * and a `clearDraft` callback.
+ */
+export function useReportDraft(taskId: number | undefined | null, serverContent: string): {
+    initialContent: string;
+    clearDraft: () => void;
+    persistDraft: (content: string) => void;
+} {
+    // Compute initial content once: prefer localStorage draft over server if different
+    const [initialContent] = useState<string>(() => {
+        const draft = readReportDraft(taskId);
+        if (draft !== null && draft !== serverContent && draft.length > 0) {
+            return draft;
         }
+        return serverContent;
+    });
 
-        const decision = decideDraftRestore({
-            rawDraft: localStorage.getItem(draftKey),
-            parseDraft,
-            isMeaningfulDraft,
-            serverSnapshot: initialServerSnapshot,
-        });
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-        if (decision.type === "restore") {
-            setPendingDraft(decision.draft);
-            setRestoreDraftOpen(true);
-            return;
-        }
+    const persistDraft = useCallback((content: string) => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            writeReportDraft(taskId, content);
+        }, 1000);
+    }, [taskId]);
 
-        draftResolvedRef.current = true;
-    }, [draftKey, initialServerSnapshot, isMeaningfulDraft, parseDraft]);
-
+    // Clear debounce on unmount
     useEffect(() => {
-        if (!draftKey || !draftResolvedRef.current) return;
-        writeDraftSnapshot(draftKey, currentSnapshot);
-    }, [currentSnapshot, draftKey]);
-
-    const saveNow = useCallback(async () => {
-        if (!hasUnsavedChanges(currentSnapshot, serverSnapshotRef.current) || saveInFlightRef.current) {
-            return false;
-        }
-        if (typeof navigator !== "undefined" && !navigator.onLine) return false;
-
-        saveInFlightRef.current = true;
-        try {
-            const success = await saveToServer(currentValue);
-            if (success) {
-                serverSnapshotRef.current = currentSnapshot;
-                setNetworkNotice((prev) => (
-                    prev === "网络已恢复，正在同步本地数据..."
-                        ? "网络已恢复，本地草稿已同步到服务器"
-                        : prev
-                ));
-            }
-            return success;
-        } finally {
-            saveInFlightRef.current = false;
-        }
-    }, [currentSnapshot, currentValue, saveToServer]);
-
-    const saveNowRef = useRef(saveNow);
-    useEffect(() => {
-        saveNowRef.current = saveNow;
-    }, [saveNow]);
-
-    useEffect(() => {
-        const debounceTimer = window.setTimeout(() => {
-            void saveNow();
-        }, debounceMs);
-
         return () => {
-            window.clearTimeout(debounceTimer);
+            if (debounceRef.current) clearTimeout(debounceRef.current);
         };
-    }, [debounceMs, saveNow]);
+    }, []);
 
-    useEffect(() => {
-        const intervalTimer = window.setInterval(() => {
-            void saveNowRef.current();
-        }, intervalMs);
+    const clearDraft = useCallback(() => {
+        clearReportDraft(taskId);
+    }, [taskId]);
 
-        return () => {
-            window.clearInterval(intervalTimer);
-        };
-    }, [intervalMs]);
-
-    useEffect(() => {
-        const onBeforeUnload = (event: BeforeUnloadEvent) => {
-            if (!hasUnsavedChanges(currentSnapshot, serverSnapshotRef.current)) return;
-            event.preventDefault();
-            event.returnValue = "";
-        };
-
-        window.addEventListener("beforeunload", onBeforeUnload);
-        return () => {
-            window.removeEventListener("beforeunload", onBeforeUnload);
-        };
-    }, [currentSnapshot]);
-
-    const syncAfterReconnect = useCallback(async () => {
-        if (!draftKey || reconnectSyncingRef.current) return;
-
-        reconnectSyncingRef.current = true;
-        setNetworkNotice("网络已恢复，正在同步本地数据...");
-
-        try {
-            const lastSyncedSnapshot = serverSnapshotRef.current;
-            const serverData = await loadServerLatest();
-
-            if (serverData === null) {
-                setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-                return;
-            }
-
-            const serverSnapshot = serialize(serverData);
-            const decision = decideReconnectSync({
-                localSnapshot: currentSnapshot,
-                serverSnapshot,
-                lastSyncedSnapshot,
-            });
-
-            if (decision === "synced") {
-                serverSnapshotRef.current = serverSnapshot;
-                setNetworkNotice("网络已恢复，数据已同步");
-                return;
-            }
-
-            if (decision === "conflict") {
-                setLocalConflictDraft(currentValue);
-                setServerConflictDraft(serverData);
-                setSyncConflictOpen(true);
-                setNetworkNotice("检测到本地与服务器草稿冲突，请选择保留版本");
-                return;
-            }
-
-            if (decision === "push_local") {
-                const success = await saveToServer(currentValue);
-                if (success) {
-                    serverSnapshotRef.current = currentSnapshot;
-                    writeDraftSnapshot(draftKey, currentSnapshot);
-                    setNetworkNotice("网络已恢复，本地草稿已同步到服务器");
-                } else {
-                    setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-                }
-                return;
-            }
-
-            applyValue(serverData);
-            serverSnapshotRef.current = serverSnapshot;
-            writeDraftSnapshot(draftKey, serverSnapshot);
-            setNetworkNotice("检测到服务器有更新，已同步最新草稿");
-        } catch {
-            setNetworkNotice("网络已恢复，但自动同步失败，请稍后重试");
-        } finally {
-            reconnectSyncingRef.current = false;
-        }
-    }, [applyValue, currentSnapshot, currentValue, draftKey, loadServerLatest, saveToServer, serialize]);
-
-    useEffect(() => {
-        const handleOnline = () => {
-            setIsOnline(true);
-            void syncAfterReconnect();
-        };
-        const handleOffline = () => {
-            setIsOnline(false);
-            setNetworkNotice("网络已断开，数据将保存在本地");
-        };
-
-        window.addEventListener("online", handleOnline);
-        window.addEventListener("offline", handleOffline);
-        return () => {
-            window.removeEventListener("online", handleOnline);
-            window.removeEventListener("offline", handleOffline);
-        };
-    }, [syncAfterReconnect]);
-
-    useEffect(() => {
-        if (!isOnline) {
-            setNetworkNotice("网络已断开，数据将保存在本地");
-        }
-    }, [isOnline]);
-
-    useEffect(() => {
-        if (!networkNotice || syncConflictOpen || !isOnline) return;
-        const timer = window.setTimeout(() => {
-            setNetworkNotice(null);
-        }, 5000);
-        return () => {
-            window.clearTimeout(timer);
-        };
-    }, [isOnline, networkNotice, syncConflictOpen]);
-
-    const clearLocalDraft = useCallback(() => {
-        if (!draftKey) return;
-        try {
-            localStorage.removeItem(draftKey);
-        } catch {
-            // ignore write errors
-        }
-    }, [draftKey]);
-
-    const discardPendingDraft = useCallback(() => {
-        clearLocalDraft();
-        draftResolvedRef.current = true;
-        setPendingDraft(null);
-        setRestoreDraftOpen(false);
-    }, [clearLocalDraft]);
-
-    const restorePendingDraft = useCallback(() => {
-        if (pendingDraft !== null) {
-            applyValue(pendingDraft);
-        }
-        draftResolvedRef.current = true;
-        setRestoreDraftOpen(false);
-    }, [applyValue, pendingDraft]);
-
-    const keepServerDraft = useCallback(() => {
-        if (serverConflictDraft === null) {
-            setSyncConflictOpen(false);
-            return;
-        }
-
-        const serverSnapshot = serialize(serverConflictDraft);
-        applyValue(serverConflictDraft);
-        serverSnapshotRef.current = serverSnapshot;
-        writeDraftSnapshot(draftKey, serverSnapshot);
-        setSyncConflictOpen(false);
-        setNetworkNotice("已保留服务器草稿版本");
-    }, [applyValue, draftKey, serverConflictDraft, serialize]);
-
-    const keepLocalDraft = useCallback(async () => {
-        const localData = localConflictDraft ?? currentValue;
-        const localSnapshot = serialize(localData);
-        const success = await saveToServer(localData);
-
-        if (success) {
-            serverSnapshotRef.current = localSnapshot;
-            writeDraftSnapshot(draftKey, localSnapshot);
-            setNetworkNotice("已保留本地草稿并同步到服务器");
-        } else {
-            setNetworkNotice("保留本地草稿失败，请稍后重试");
-        }
-
-        setSyncConflictOpen(false);
-    }, [currentValue, draftKey, localConflictDraft, saveToServer, serialize]);
-
-    return {
-        clearLocalDraft,
-        discardPendingDraft,
-        isOnline,
-        keepLocalDraft,
-        keepServerDraft,
-        networkNotice,
-        pendingDraft,
-        restoreDraftOpen,
-        restorePendingDraft,
-        saveNow,
-        serverConflictDraft,
-        setRestoreDraftOpen,
-        setSyncConflictOpen,
-        syncConflictOpen,
-    };
+    return { initialContent, clearDraft, persistDraft };
 }
