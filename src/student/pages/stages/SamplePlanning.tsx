@@ -16,6 +16,13 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
 import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2 } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
@@ -67,9 +74,19 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         sampleSize: number;
     }> | null>(null);
 
-    // 高级功能面板 — 一次只显示一个
-    const [activeAdvancedTab, setActiveAdvancedTab] = useState<'domain' | 'cost' | 'deff' | 'multivar' | 'cv' | 'cluster' | 'metrics' | null>(null);
-    const toggleTab = (tab: NonNullable<typeof activeAdvancedTab>) => setActiveAdvancedTab(prev => prev === tab ? null : tab);
+    // 高级功能面板 — 一次只显示一个（Modal 形式）
+    type AdvancedTab = 'domain' | 'cost' | 'deff' | 'multivar' | 'cv' | 'cluster' | 'metrics';
+    const [activeAdvancedTab, setActiveAdvancedTab] = useState<AdvancedTab | null>(null);
+
+    const advancedTabConfig: Array<{ key: AdvancedTab; label: string; title: string; description: string; activeClass: string }> = [
+        { key: 'domain', label: '子总体估计', title: '子总体（域）估计支持', description: '设置各子总体的精度要求', activeClass: 'bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-600' },
+        { key: 'cost', label: '成本权衡', title: '精度与成本权衡', description: '在预算约束下评估可达到的精度水平', activeClass: 'bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-600' },
+        { key: 'deff', label: '设计效应参考', title: '设计效应估计器', description: '根据抽样方法估算设计效应', activeClass: 'bg-sky-100 border-sky-300 text-sky-700 dark:bg-sky-900/30 dark:border-sky-600' },
+        { key: 'multivar', label: '多变量规划', title: '多变量样本量规划', description: '为多个调查变量同时规划样本量', activeClass: 'bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/30 dark:border-violet-600' },
+        { key: 'cv', label: 'CV-based计算', title: '基于CV的样本量计算', description: '通过变异系数计算所需样本量', activeClass: 'bg-cyan-100 border-cyan-300 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-600' },
+        { key: 'cluster', label: '整群抽样', title: '整群抽样计算器', description: '计算整群抽样方案与设计效应', activeClass: 'bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-900/30 dark:border-orange-600' },
+        { key: 'metrics', label: 'SE/CV/敏感性', title: '高级分析（SE/CV/敏感性）', description: '查看精度指标、比例比较与敏感性矩阵', activeClass: 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-600' },
+    ];
 
     // 子总体估计数据
     const [domains, setDomains] = useState<Domain[]>([]);
@@ -495,23 +512,15 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             <div className="space-y-2 pt-4 border-t border-slate-200 dark:border-slate-800">
                                 <p className="text-xs text-slate-500 font-medium">高级功能</p>
                                 <div className="grid grid-cols-2 gap-2">
-                                    {([
-                                        { key: 'domain' as const, label: '子总体估计', active: 'bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-600' },
-                                        { key: 'cost' as const, label: '成本权衡', active: 'bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-600' },
-                                        { key: 'deff' as const, label: '设计效应参考', active: 'bg-sky-100 border-sky-300 text-sky-700 dark:bg-sky-900/30 dark:border-sky-600' },
-                                        { key: 'multivar' as const, label: '多变量规划', active: 'bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/30 dark:border-violet-600' },
-                                        { key: 'cv' as const, label: 'CV-based计算', active: 'bg-cyan-100 border-cyan-300 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-600' },
-                                        { key: 'cluster' as const, label: '整群抽样', active: 'bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-900/30 dark:border-orange-600' },
-                                        { key: 'metrics' as const, label: 'SE/CV/敏感性', active: 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-600' },
-                                    ]).map(({ key, label, active }) => (
+                                    {advancedTabConfig.map(({ key, label, activeClass }) => (
                                         <Button
                                             key={key}
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => toggleTab(key)}
+                                            onClick={() => setActiveAdvancedTab(key)}
                                             className={`text-xs h-auto py-2 ${
                                                 activeAdvancedTab === key
-                                                    ? active
+                                                    ? activeClass
                                                     : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
                                             }`}
                                         >
@@ -557,21 +566,25 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                 </div>
             </div>
 
-            {/* 高级功能面板 — 全宽显示，一次只展示一个 */}
-            {activeAdvancedTab && (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+            {/* 高级功能 Modal */}
+            <Dialog open={activeAdvancedTab !== null} onOpenChange={(open) => { if (!open) setActiveAdvancedTab(null); }}>
+                <DialogContent className={`bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 ${activeAdvancedTab === 'metrics' ? 'sm:max-w-5xl' : 'sm:max-w-3xl'} max-h-[85vh] overflow-y-auto`}>
+                    {activeAdvancedTab && (() => {
+                        const config = advancedTabConfig.find(c => c.key === activeAdvancedTab);
+                        return (
+                            <DialogHeader>
+                                <DialogTitle className="text-slate-900 dark:text-slate-100">{config?.title}</DialogTitle>
+                                <DialogDescription className="text-slate-500">{config?.description}</DialogDescription>
+                            </DialogHeader>
+                        );
+                    })()}
+
                     {activeAdvancedTab === 'domain' && (
                         <DomainEstimationManager
                             totalPopulationSize={N}
                             stratifiedFields={[]}
                             onDomainsChange={(newDomains) => {
                                 setDomains(newDomains);
-                                if (newDomains.length > 0) {
-                                    const maxRequired = Math.max(...newDomains.map(d => d.requiredSampleSize));
-                                    if (maxRequired > recommendedSize) {
-                                        // 可以提示用户样本量需要增加
-                                    }
-                                }
                             }}
                             initialDomains={domains}
                         />
@@ -633,7 +646,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     )}
 
                     {activeAdvancedTab === 'metrics' && metrics && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             <EnhancedMetricsCard metrics={metrics} confidenceLevel={confidenceLevel} finalSampleSize={finalSampleSize} />
                             <PValueComparisonCard
                                 comparison={pComparison}
@@ -648,8 +661,8 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             )}
                         </div>
                     )}
-                </div>
-            )}
+                </DialogContent>
+            </Dialog>
 
             <div className="flex justify-between pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
                 <Button variant="outline" onClick={onPrev} data-testid="student-sample-plan-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
