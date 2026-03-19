@@ -172,17 +172,23 @@ export function useDraftSync<T>({
         pauseAutoDismiss: syncConflictOpen,
     });
 
+    const currentSnapshot = useMemo(() => serialize(currentValue), [currentValue, serialize]);
+    const initialServerSnapshot = useMemo(() => serialize(initialServerValue), [initialServerValue, serialize]);
+
     const serverSnapshotRef = useRef("");
+    const [serverSnapshot, setServerSnapshot] = useState(initialServerSnapshot);
     const saveInFlightRef = useRef(false);
     const reconnectSyncingRef = useRef(false);
     const draftResolvedRef = useRef(false);
 
-    const currentSnapshot = useMemo(() => serialize(currentValue), [currentValue, serialize]);
-    const initialServerSnapshot = useMemo(() => serialize(initialServerValue), [initialServerValue, serialize]);
+    const updateServerSnapshot = useCallback((nextSnapshot: string) => {
+        serverSnapshotRef.current = nextSnapshot;
+        setServerSnapshot(nextSnapshot);
+    }, []);
 
     useEffect(() => {
-        serverSnapshotRef.current = initialServerSnapshot;
-    }, [initialServerSnapshot]);
+        updateServerSnapshot(initialServerSnapshot);
+    }, [initialServerSnapshot, updateServerSnapshot]);
 
     useEffect(() => {
         draftResolvedRef.current = false;
@@ -227,8 +233,8 @@ export function useDraftSync<T>({
     }, [currentSnapshot, draftKey, draftResolved]);
 
     const hasUnsavedLocalChanges = useMemo(
-        () => draftResolved && hasUnsavedChanges(currentSnapshot, initialServerSnapshot),
-        [currentSnapshot, draftResolved, initialServerSnapshot],
+        () => draftResolved && hasUnsavedChanges(currentSnapshot, serverSnapshot),
+        [currentSnapshot, draftResolved, serverSnapshot],
     );
 
     const saveNow = useCallback(async () => {
@@ -241,7 +247,7 @@ export function useDraftSync<T>({
         try {
             const success = await saveToServer(currentValue);
             if (success) {
-                serverSnapshotRef.current = currentSnapshot;
+                updateServerSnapshot(currentSnapshot);
                 clearDraftSnapshot(draftKey);
                 setNetworkNotice((prev) => (
                     prev === "网络已恢复，正在同步本地数据..."
@@ -253,7 +259,7 @@ export function useDraftSync<T>({
         } finally {
             saveInFlightRef.current = false;
         }
-    }, [currentSnapshot, currentValue, draftKey, saveToServer, setNetworkNotice]);
+    }, [currentSnapshot, currentValue, draftKey, saveToServer, setNetworkNotice, updateServerSnapshot]);
 
     const saveNowRef = useRef(saveNow);
     useEffect(() => {
@@ -316,7 +322,7 @@ export function useDraftSync<T>({
             });
 
             if (decision === "synced") {
-                serverSnapshotRef.current = serverSnapshot;
+                updateServerSnapshot(serverSnapshot);
                 clearDraftSnapshot(draftKey);
                 setNetworkNotice("网络已恢复，数据已同步");
                 return;
@@ -333,7 +339,7 @@ export function useDraftSync<T>({
             if (decision === "push_local") {
                 const success = await saveToServer(currentValue);
                 if (success) {
-                    serverSnapshotRef.current = currentSnapshot;
+                    updateServerSnapshot(currentSnapshot);
                     clearDraftSnapshot(draftKey);
                     setNetworkNotice("网络已恢复，本地草稿已同步到服务器");
                 } else {
@@ -343,7 +349,7 @@ export function useDraftSync<T>({
             }
 
             applyValue(serverData);
-            serverSnapshotRef.current = serverSnapshot;
+            updateServerSnapshot(serverSnapshot);
             clearDraftSnapshot(draftKey);
             setNetworkNotice("检测到服务器有更新，已同步最新草稿");
         } catch {
@@ -351,7 +357,7 @@ export function useDraftSync<T>({
         } finally {
             reconnectSyncingRef.current = false;
         }
-    }, [applyValue, currentSnapshot, currentValue, draftKey, loadServerLatest, saveToServer, serialize, setNetworkNotice]);
+    }, [applyValue, currentSnapshot, currentValue, draftKey, loadServerLatest, saveToServer, serialize, setNetworkNotice, updateServerSnapshot]);
 
     // Trigger reconnect sync when transitioning from offline to online
     const prevOnlineRef = useRef(isOnline);
@@ -369,13 +375,13 @@ export function useDraftSync<T>({
 
     const discardPendingDraft = useCallback(() => {
         restoreResolutionRef.current = "discard";
-        serverSnapshotRef.current = currentSnapshot;
+        updateServerSnapshot(currentSnapshot);
         clearLocalDraft();
         draftResolvedRef.current = true;
         setDraftResolved(true);
         setPendingDraft(null);
         setRestoreDraftOpen(false);
-    }, [clearLocalDraft, currentSnapshot]);
+    }, [clearLocalDraft, currentSnapshot, updateServerSnapshot]);
 
     const restorePendingDraft = useCallback(() => {
         restoreResolutionRef.current = "apply";
@@ -396,12 +402,12 @@ export function useDraftSync<T>({
 
         const serverSnapshot = serialize(serverConflictDraft);
         applyValue(serverConflictDraft);
-        serverSnapshotRef.current = serverSnapshot;
+        updateServerSnapshot(serverSnapshot);
         clearDraftSnapshot(draftKey);
         setDraftResolved(true);
         setSyncConflictOpen(false);
         setNetworkNotice("已保留服务器草稿版本");
-    }, [applyValue, draftKey, serverConflictDraft, serialize, setNetworkNotice]);
+    }, [applyValue, draftKey, serverConflictDraft, serialize, setNetworkNotice, updateServerSnapshot]);
 
     const keepLocalDraft = useCallback(async () => {
         syncConflictResolutionRef.current = "local";
@@ -410,7 +416,7 @@ export function useDraftSync<T>({
         const success = await saveToServer(localData);
 
         if (success) {
-            serverSnapshotRef.current = localSnapshot;
+            updateServerSnapshot(localSnapshot);
             clearDraftSnapshot(draftKey);
             setNetworkNotice("已保留本地草稿并同步到服务器");
         } else {
@@ -419,13 +425,13 @@ export function useDraftSync<T>({
 
         setDraftResolved(true);
         setSyncConflictOpen(false);
-    }, [currentValue, draftKey, localConflictDraft, saveToServer, serialize, setNetworkNotice]);
+    }, [currentValue, draftKey, localConflictDraft, saveToServer, serialize, setNetworkNotice, updateServerSnapshot]);
 
     const handleRestoreDraftOpenChange = useCallback((open: boolean) => {
         setRestoreDraftOpen(open);
         if (!open) {
             if (pendingDraft !== null && restoreResolutionRef.current === null) {
-                serverSnapshotRef.current = currentSnapshot;
+                updateServerSnapshot(currentSnapshot);
                 clearLocalDraft();
                 draftResolvedRef.current = true;
                 setDraftResolved(true);
@@ -433,7 +439,7 @@ export function useDraftSync<T>({
             }
             restoreResolutionRef.current = null;
         }
-    }, [clearLocalDraft, currentSnapshot, pendingDraft]);
+    }, [clearLocalDraft, currentSnapshot, pendingDraft, updateServerSnapshot]);
 
     const handleSyncConflictOpenChange = useCallback((open: boolean) => {
         setSyncConflictOpen(open);
@@ -441,14 +447,14 @@ export function useDraftSync<T>({
             if (syncConflictResolutionRef.current === null && serverConflictDraft !== null) {
                 const serverSnapshot = serialize(serverConflictDraft);
                 applyValue(serverConflictDraft);
-                serverSnapshotRef.current = serverSnapshot;
+                updateServerSnapshot(serverSnapshot);
                 clearDraftSnapshot(draftKey);
                 setDraftResolved(true);
                 setNetworkNotice("已保留服务器草稿版本");
             }
             syncConflictResolutionRef.current = null;
         }
-    }, [applyValue, draftKey, serialize, serverConflictDraft, setNetworkNotice]);
+    }, [applyValue, draftKey, serialize, serverConflictDraft, setNetworkNotice, updateServerSnapshot]);
 
     return {
         clearLocalDraft,

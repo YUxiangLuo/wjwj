@@ -735,13 +735,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <AlertDialogDescription className="text-slate-600 dark:text-slate-400">检测到本地草稿，是否恢复？</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogAction
+                        <AlertDialogCancel
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-analysis-restore-discard"
                             onClick={discardPendingDraft}
                         >
                             放弃草稿
-                        </AlertDialogAction>
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-analysis-restore-apply"
@@ -765,13 +765,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogAction
+                        <AlertDialogCancel
                             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                             data-testid="student-analysis-conflict-server"
                             onClick={keepServerDraft}
                         >
                             保留服务器版本
-                        </AlertDialogAction>
+                        </AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             data-testid="student-analysis-conflict-local"
