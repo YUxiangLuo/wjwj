@@ -181,6 +181,47 @@ test("CV-based sample size capped at population size", () => {
     expect(result!.achievedCV).toBe(0);
 });
 
+test("CV-based achievedCV approximates targetCV by construction", () => {
+    const result = calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 10000,
+        estimatedCV: 0.3,
+    });
+    expect(result).not.toBeNull();
+    // The sample size is designed to achieve targetCV, so achievedCV ≈ targetCV
+    expect(Math.abs(result!.achievedCV - 0.05)).toBeLessThan(0.005);
+});
+
+test("CV-based achievedCV approximates targetCV for small population", () => {
+    const result = calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 200,
+        estimatedCV: 0.3,
+    });
+    expect(result).not.toBeNull();
+    // Even with strong FPC, achievedCV should still approximate targetCV
+    expect(Math.abs(result!.achievedCV - 0.05)).toBeLessThan(0.005);
+});
+
+test("CV-based achievedCV follows correct formula", () => {
+    const result = calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 5000,
+        estimatedCV: 0.4,
+        designEffect: 1.5,
+        nonResponseRate: 0.1,
+    });
+    expect(result).not.toBeNull();
+    const n = result!.requiredSampleSize;
+    const fpc = 1 - n / 5000;
+    // achievedCV = z × CV_pop × √(deff × fpc / (n × (1 - nrr)))
+    const expectedCV = 1.96 * 0.4 * Math.sqrt(1.5 * fpc / (n * 0.9));
+    expect(Math.abs(result!.achievedCV - expectedCV)).toBeLessThan(1e-10);
+});
+
 test("CV-based returns null for invalid params", () => {
     expect(calculateSampleSizeByCV({
         confidenceLevel: "95",
@@ -268,7 +309,7 @@ test("optimal allocation returns null for insufficient budget", () => {
 
 // ========== calculateSquareRootAllocation tests ==========
 
-test("square root allocation sums to total", () => {
+test("square root allocation sums to total exactly", () => {
     const allocation = calculateSquareRootAllocation(
         [
             { name: "A", populationSize: 1000 },
@@ -278,8 +319,8 @@ test("square root allocation sums to total", () => {
         100,
     );
     const total = allocation.reduce((s, a) => s + a.sampleSize, 0);
-    // Due to integer rounding in Math.round, total may differ by at most 1
-    expect(Math.abs(total - 100)).toBeLessThanOrEqual(1);
+    // Largest remainder method guarantees exact sum
+    expect(total).toBe(100);
     // Larger layers get more but not proportional
     expect(allocation[0]!.sampleSize).toBeGreaterThan(allocation[2]!.sampleSize);
 });

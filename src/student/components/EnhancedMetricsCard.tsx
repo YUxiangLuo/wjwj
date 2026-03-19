@@ -7,16 +7,19 @@ interface EnhancedMetricsCardProps {
     metrics: SampleSizeMetrics | null;
     confidenceLevel?: string;  // "90" | "95" | "99"
     p?: number;                // 估计比例，默认0.5
+    finalSampleSize?: number;  // 学生实际选择的样本量（用于对比提示）
 }
 
-export function EnhancedMetricsCard({ metrics, confidenceLevel = "95", p = 0.5 }: EnhancedMetricsCardProps) {
+export function EnhancedMetricsCard({ metrics, confidenceLevel = "95", p = 0.5, finalSampleSize }: EnhancedMetricsCardProps) {
     if (!metrics) return null;
 
     // 格式化百分比
     const formatPercent = (value: number) => (value * 100).toFixed(2) + "%";
-    
+
     // 格式化置信区间
     const formatCI = (value: number) => (value * 100).toFixed(1) + "%";
+
+    const sizeDeviation = finalSampleSize !== undefined && finalSampleSize !== metrics.n;
 
     return (
         <Card className="rounded-2xl border-indigo-200 bg-indigo-50/80 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-500/10">
@@ -33,8 +36,13 @@ export function EnhancedMetricsCard({ metrics, confidenceLevel = "95", p = 0.5 }
                     </Badge>
                 </div>
                 <CardDescription className="text-indigo-700 dark:text-indigo-300">
-                    样本量与估计精度的量化指标
+                    基于简单随机抽样等效样本量 (n={metrics.n}) 的精度估计
                 </CardDescription>
+                {sizeDeviation && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        您选择的最终样本量 ({finalSampleSize}) 与公式推荐值 ({metrics.n}) 不同，实际精度可能有偏差
+                    </p>
+                )}
             </CardHeader>
             <CardContent className="space-y-4">
                 {/* 核心指标 */}

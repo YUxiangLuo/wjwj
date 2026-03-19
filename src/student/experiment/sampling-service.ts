@@ -132,10 +132,11 @@ export async function executeSamplingAction(params: {
                     errorMessage: `样本量需为 1-${params.population.length} 之间的整数`,
                 };
             }
-            if (params.targetSampleSize !== null && sampleSize !== params.targetSampleSize) {
+            const ppsAcceptedRange = getSystematicAcceptedRange(params.targetSampleSize);
+            if (ppsAcceptedRange && (sampleSize < ppsAcceptedRange.min || sampleSize > ppsAcceptedRange.max)) {
                 return {
                     ok: false as const,
-                    errorMessage: `PPS抽样样本量需等于目标样本量（${params.targetSampleSize}）`,
+                    errorMessage: `PPS抽样样本量需在目标样本量的80%-120%之间（${ppsAcceptedRange.min}-${ppsAcceptedRange.max}）`,
                 };
             }
 
@@ -182,8 +183,8 @@ export async function executeSamplingAction(params: {
                 if (!name) {
                     return { ok: false as const, errorMessage: `第 ${index + 1} 层名称无效` };
                 }
-                if (!Number.isInteger(sampleCount) || sampleCount < 0) {
-                    return { ok: false as const, errorMessage: `第 ${index + 1} 层样本数需为非负整数` };
+                if (!Number.isInteger(sampleCount) || sampleCount < 1) {
+                    return { ok: false as const, errorMessage: `第 ${index + 1} 层样本数需为正整数` };
                 }
 
                 const groupCount = layerPopulationCount.get(name) ?? 0;

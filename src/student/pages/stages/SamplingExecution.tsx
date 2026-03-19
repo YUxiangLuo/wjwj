@@ -106,6 +106,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     const [kValue, setKValue] = useState(initialResults?.systematic?.kValue ?? Math.round(N / n));
     const [ppsSizeField, setPpsSizeField] = useState(initialResults?.pps?.sizeField ?? "");
+    const [ppsSampleSize, setPpsSampleSize] = useState(initialResults?.pps?.sampleCount ?? n);
     const [stratifyBy, setStratifyBy] = useState(initialResults?.stratified?.stratifyBy ?? "gender");
     const [simpleSeed, setSimpleSeed] = useState(initialResults?.simple?.seed ? String(initialResults.simple.seed) : "");
     const [systematicSeed, setSystematicSeed] = useState(initialResults?.systematic?.seed ? String(initialResults.systematic.seed) : "");
@@ -337,7 +338,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
             if (seedError) { toast.error(seedError); setExecuting(null); return; }
             const res = await experimentApi.executeSampling(taskId, "pps", {
                 sizeField: ppsSizeField,
-                sampleSize: n,
+                sampleSize: ppsSampleSize,
                 seed,
             });
             if (res.success && res.data?.result) {
@@ -368,6 +369,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const systematicSampleCountRange = getSystematicSampleCountRange(N, kValue);
     const isKValid = kValue >= 1 && kValue <= N &&
         isSystematicRangeWithinAcceptedRange(systematicSampleCountRange, systematicAcceptedRange);
+
+    const ppsMinSize = systematicAcceptedRange?.min ?? 1;
+    const ppsMaxSize = systematicAcceptedRange?.max ?? N;
+    const isPpsSizeValid = ppsSampleSize >= ppsMinSize && ppsSampleSize <= ppsMaxSize && ppsSampleSize >= 1 && ppsSampleSize <= N;
 
     const stratifiedTotal = layerSampleCounts.reduce((a, b) => a + b, 0);
     const layerOverflows = layers.map((l, i) => (layerSampleCounts[i] ?? 0) > l.count);
@@ -715,15 +720,15 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         PPS抽样（概率与规模成比例抽样）
                                     </CardTitle>
                                     <CardDescription className="text-slate-600 dark:text-slate-400 pt-1">
-                                        每个单位被抽中的概率与其"规模"指标成正比。选择一个数值型变量作为规模度量，系统将使用系统PPS方法抽取 {n} 个样本。
+                                        每个单位被抽中的概率与其"规模"指标成正比。选择一个数值型变量作为规模度量，并指定抽样数量（允许在目标样本量的 80%-120% 范围内调整）。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-white/30 dark:bg-slate-950/30 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-white/30 dark:bg-slate-950/30 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                                         <div className="space-y-3">
                                             <Label className="text-slate-700 dark:text-slate-300">选择规模变量</Label>
                                             <Select value={ppsSizeField} onValueChange={setPpsSizeField}>
-                                                <SelectTrigger data-testid="student-sampling-pps-size-field" className="w-48 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                                                <SelectTrigger data-testid="student-sampling-pps-size-field" className="w-full bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
                                                     <SelectValue placeholder="选择数值变量" />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
@@ -751,6 +756,22 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                             </p>
                                         </div>
                                         <div className="space-y-3">
+                                            <Label htmlFor="ppsSampleSize" className="text-slate-700 dark:text-slate-300">抽样数量</Label>
+                                            <Input
+                                                id="ppsSampleSize"
+                                                type="number"
+                                                value={ppsSampleSize}
+                                                onChange={(e) => setPpsSampleSize(Math.max(1, parseInt(e.target.value) || 0))}
+                                                min={ppsMinSize}
+                                                max={ppsMaxSize}
+                                                data-testid="student-sampling-pps-sample-size"
+                                                className={`bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:border-purple-500 ${!isPpsSizeValid ? "border-rose-400 dark:border-rose-500" : ""}`}
+                                            />
+                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                                                允许范围: {ppsMinSize}-{ppsMaxSize}（目标值 {n} 的 80%-120%）
+                                            </p>
+                                        </div>
+                                        <div className="space-y-3">
                                             <Label htmlFor="ppsSeed" className="text-slate-700 dark:text-slate-300">随机种子（可选）</Label>
                                             <Input
                                                 id="ppsSeed"
@@ -769,7 +790,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !ppsSizeField} data-testid="student-sampling-pps-run" className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20 w-auto px-8">
                                                 {executing === "pps" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -782,7 +803,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                                         <SamplingSuccessState
                                             summary={`按 ${FIELD_LABELS[ppsResult.sizeField] || ppsResult.sizeField} 进行PPS抽样，共抽取 ${ppsResult.sampleCount} 个样本${executionTimes.pps !== null ? `，耗时 ${executionTimes.pps} ms` : ""}`}
                                             onRerun={() => setAnimatingMethod("pps")}
-                                            disabled={executing !== null || !ppsSizeField}
+                                            disabled={executing !== null || !ppsSizeField || !isPpsSizeValid}
                                             rerunTestId="student-sampling-pps-rerun"
                                         />
                                     )}
