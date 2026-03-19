@@ -351,20 +351,24 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
         }
     }, [applySamplingDraft, hasCompletedResults, samplingDraftKey, serverSamplingDraft]);
 
-    useEffect(() => {
-        if (!samplingDraftKey || !draftResolved) return;
-
-        try {
-            localStorage.setItem(samplingDraftKey, serializeSamplingExecutionDraft(samplingDraft));
-        } catch {
-            // ignore persistence errors
-        }
-    }, [draftResolved, samplingDraft, samplingDraftKey]);
-
     const hasUnsavedLocalChanges = useMemo(
         () => draftResolved && serializeSamplingExecutionDraft(samplingDraft) !== serializeSamplingExecutionDraft(serverSamplingDraft),
         [draftResolved, samplingDraft, serverSamplingDraft],
     );
+
+    useEffect(() => {
+        if (!samplingDraftKey || !draftResolved) return;
+
+        try {
+            if (hasUnsavedLocalChanges) {
+                localStorage.setItem(samplingDraftKey, serializeSamplingExecutionDraft(samplingDraft));
+                return;
+            }
+            localStorage.removeItem(samplingDraftKey);
+        } catch {
+            // ignore persistence errors
+        }
+    }, [draftResolved, hasUnsavedLocalChanges, samplingDraft, samplingDraftKey]);
 
     useEffect(() => {
         if (hasUnsavedLocalChanges) {
