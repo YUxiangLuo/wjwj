@@ -1,4 +1,5 @@
 import { getRichTextPlainLength, getRichTextPlainText } from "../../utils/rich-text";
+import { getSystematicAcceptedRange } from "./systematic-sampling";
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -164,24 +165,31 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
             return `简单随机抽样样本量需等于目标样本量（${targetSampleSize}）`;
         }
 
+        const acceptedRange = getSystematicAcceptedRange(targetSampleSize);
         const systematicCount = toInteger(systematic.sampleCount);
-        const minExpected = Math.floor(targetSampleSize * 0.8);
-        const maxExpected = Math.ceil(targetSampleSize * 1.2);
-        if (systematicCount === null || systematicCount < minExpected || systematicCount > maxExpected) {
-            return `系统抽样样本量需在 ${minExpected}-${maxExpected} 之间`;
+        if (acceptedRange && (systematicCount === null || systematicCount < acceptedRange.min || systematicCount > acceptedRange.max)) {
+            return `系统抽样样本量需在 ${acceptedRange.min}-${acceptedRange.max} 之间`;
         }
 
         const ppsCount = toInteger(pps.sampleCount);
         if (ppsCount === null || ppsCount < 1) {
             return "PPS抽样样本量需大于0";
         }
+        if (acceptedRange && (ppsCount < acceptedRange.min || ppsCount > acceptedRange.max)) {
+            return `PPS抽样样本量需在目标样本量的80%-120%之间（${acceptedRange.min}-${acceptedRange.max}）`;
+        }
 
         const stratifiedLayers = Array.isArray(stratified.layers) ? stratified.layers : [];
-        const stratifiedTotal = stratifiedLayers.reduce((sum, layer) => {
-            if (!layer || typeof layer !== "object") return sum;
+        let stratifiedTotal = 0;
+        for (let i = 0; i < stratifiedLayers.length; i += 1) {
+            const layer = stratifiedLayers[i];
+            if (!layer || typeof layer !== "object") continue;
             const sampleCount = toInteger((layer as Record<string, unknown>).sampleCount);
-            return sum + (sampleCount === null ? 0 : sampleCount);
-        }, 0);
+            if (sampleCount === null || sampleCount < 1) {
+                return `分层抽样第${i + 1}层样本数需为正整数`;
+            }
+            stratifiedTotal += sampleCount;
+        }
 
         if (stratifiedLayers.length === 0 || stratifiedTotal !== targetSampleSize) {
             return `分层抽样样本量总和需等于目标样本量（${targetSampleSize}）`;

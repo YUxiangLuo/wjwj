@@ -223,7 +223,7 @@ export function attachCalculatedSampleSize(samplePlan: Record<string, any>, popu
     });
 
     if (calculatedSampleSize) {
-        samplePlan.calculatedSampleSize = calculatedSampleSize;
+        return { ...samplePlan, calculatedSampleSize };
     }
 
     return samplePlan;
@@ -276,15 +276,13 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     const requiredSampleSize = Math.min(Math.ceil(n), params.populationSize);
     
     // 反推实际能达到的CV（含有限总体校正）
-    // 当 n=N（全数调查）时 FPC=0，方差趋近于零，故 CV=0
-    // 当 n<N 时，FPC = (1 - n/N) 按抽样比降低方差估计
+    // 正向公式: n₀ = Z² × CV_pop² / targetCV²，其中 targetCV = Z × CV(ȳ)
+    // 反推: achievedCV = Z × CV_pop × √(deff × FPC / (n × (1-NRR)))
+    // 当 n=N（全数调查）时 FPC=0，CV=0（完美估计）
     const fpc = 1 - requiredSampleSize / params.populationSize;
     const achievedCV = fpc > 0
-        ? Math.sqrt(
-            (Math.pow(z, 2) * Math.pow(estimatedCV, 2) * deff) / 
-            (requiredSampleSize * (1 - nrr) * fpc)
-          )
-        : 0;  // 全数调查时CV为0
+        ? z * estimatedCV * Math.sqrt(deff * fpc / (requiredSampleSize * (1 - nrr)))
+        : 0;
 
     return {
         requiredSampleSize,
@@ -501,16 +499,24 @@ export function calculateSquareRootAllocation(
     const weights = layers.map(l => Math.sqrt(l.populationSize));
     const totalWeight = weights.reduce((a, b) => a + b, 0);
 
-    return layers.map((layer, index) => {
-        const weight = weights[index] ?? 0;
-        const proportion = totalWeight > 0 ? weight / totalWeight : 0;
-        const sampleSize = Math.round(totalSampleSize * proportion);
-        return {
-            name: layer.name,
-            sampleSize,
-            proportion,
-        };
-    });
+    // Largest remainder method: guarantees sum exactly equals totalSampleSize
+    const exactShares = weights.map(w => totalWeight > 0 ? totalSampleSize * w / totalWeight : 0);
+    const floored = exactShares.map(s => Math.floor(s));
+    let remainder = totalSampleSize - floored.reduce((a, b) => a + b, 0);
+
+    const indices = floored.map((_, i) => i);
+    indices.sort((a, b) => (exactShares[b]! - floored[b]!) - (exactShares[a]! - floored[a]!));
+    for (const idx of indices) {
+        if (remainder <= 0) break;
+        floored[idx] = (floored[idx] ?? 0) + 1;
+        remainder--;
+    }
+
+    return layers.map((layer, index) => ({
+        name: layer.name,
+        sampleSize: floored[index] ?? 0,
+        proportion: totalWeight > 0 ? (weights[index] ?? 0) / totalWeight : 0,
+    }));
 }
 
 // 辅助函数：计算最优分配的方差

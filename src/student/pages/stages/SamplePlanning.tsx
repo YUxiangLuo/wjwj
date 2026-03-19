@@ -584,7 +584,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     {/* 增强指标卡片 */}
                     {showAdvancedMetrics && metrics && (
                         <>
-                            <EnhancedMetricsCard metrics={metrics} confidenceLevel={confidenceLevel} />
+                            <EnhancedMetricsCard metrics={metrics} confidenceLevel={confidenceLevel} finalSampleSize={finalSampleSize} />
                             <PValueComparisonCard 
                                 comparison={pComparison} 
                                 currentSampleSize={recommendedSize}
