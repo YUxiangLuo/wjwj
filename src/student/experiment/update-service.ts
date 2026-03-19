@@ -132,6 +132,40 @@ export function buildExperimentSaveUpdates(params: {
     if (params.body.samplingResults !== undefined) updates.samplingResults = params.body.samplingResults;
     if (params.body.reportContent !== undefined) updates.reportContent = params.body.reportContent;
 
+    // ── Downstream invalidation ──────────────────────────────────────────
+    // When upstream data is being saved and downstream data wasn't
+    // included in the same request, clear the stale downstream to prevent
+    // inconsistencies (e.g. old sampling results paired with a new sample
+    // plan).
+    if (params.body.samplePlan !== undefined) {
+        if (params.body.samplingResults === undefined && exp.samplingResults != null) {
+            updates.samplingResults = null;
+            updates.stage3CompletedAt = null;
+        }
+        if (params.body.reportContent === undefined && exp.reportContent != null) {
+            updates.reportContent = null;
+            updates.stage4CompletedAt = null;
+        }
+    }
+    if (params.body.samplingResults !== undefined) {
+        if (params.body.reportContent === undefined && exp.reportContent != null) {
+            updates.reportContent = null;
+            updates.stage4CompletedAt = null;
+        }
+    }
+
+    // Cap currentStage so it does not exceed the stage whose prerequisite
+    // data is still available after invalidation.
+    const effectiveStage = updates.currentStage !== undefined
+        ? Number(updates.currentStage)
+        : exp.currentStage;
+    if (updates.samplingResults === null && effectiveStage > 2) {
+        updates.currentStage = 2;
+    } else if (updates.reportContent === null && updates.samplingResults !== null && effectiveStage > 3) {
+        updates.currentStage = 3;
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     if (exp.status === ExperimentStatus.REJECTED) {
         updates.status = ExperimentStatus.IN_PROGRESS;
     }
