@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Calculator, Users, Info, CheckCircle, RotateCcw, Settings2 } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
-import type { SamplePlanData } from "../../api-client";
+import { experimentApi, type SamplePlanData } from "../../api-client";
 import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
 import { 
     calculateFinitePopulationSampleSize, 
@@ -43,27 +43,105 @@ import { DesignEffectEstimator } from "../../components/DesignEffectEstimator";
 import { MultiVariableSamplePlan, type SurveyVariable } from "../../components/MultiVariableSamplePlan";
 import { CVBasedSampleSizeCalculator } from "../../components/CVBasedSampleSizeCalculator";
 import { ClusterSamplingCalculator } from "../../components/ClusterSamplingCalculator";
+import { useDraftSync } from "../../draft-sync";
 
 interface SamplePlanningProps {
     onNext: () => void;
     onPrev: () => void;
 }
 
+const DEFAULT_CONFIDENCE_LEVEL = "95";
+const DEFAULT_MARGIN_OF_ERROR = 5;
+const DEFAULT_DESIGN_EFFECT = 1;
+const DEFAULT_NON_RESPONSE_RATE = 0;
+
 export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const { populationSize, experiment, saveExperiment } = useExperiment();
+    const N = populationSize;
+
+    const calculateRecommendedSize = useCallback((params: {
+        confidenceLevel: string;
+        marginOfError: number;
+        designEffect: number;
+        nonResponseRate: number;
+    }) => {
+        return calculateFinitePopulationSampleSize({
+            confidenceLevel: params.confidenceLevel,
+            marginOfError: params.marginOfError,
+            populationSize: N,
+            designEffect: params.designEffect,
+            nonResponseRate: params.nonResponseRate,
+        }) ?? 384;
+    }, [N]);
+
+    const defaultSamplePlan = useMemo<SamplePlanData>(() => {
+        const recommendedSize = calculateRecommendedSize({
+            confidenceLevel: DEFAULT_CONFIDENCE_LEVEL,
+            marginOfError: DEFAULT_MARGIN_OF_ERROR,
+            designEffect: DEFAULT_DESIGN_EFFECT,
+            nonResponseRate: DEFAULT_NON_RESPONSE_RATE,
+        });
+
+        return {
+            confidenceLevel: DEFAULT_CONFIDENCE_LEVEL,
+            marginOfError: DEFAULT_MARGIN_OF_ERROR,
+            designEffect: DEFAULT_DESIGN_EFFECT,
+            nonResponseRate: DEFAULT_NON_RESPONSE_RATE,
+            recommendedSize,
+            finalSampleSize: recommendedSize,
+        };
+    }, [calculateRecommendedSize]);
+
+    const normalizeSamplePlanData = useCallback((raw: unknown): SamplePlanData => {
+        const data = raw && typeof raw === "object" ? (raw as Partial<SamplePlanData>) : {};
+        const confidenceCandidate = typeof data.confidenceLevel === "string" ? data.confidenceLevel : DEFAULT_CONFIDENCE_LEVEL;
+        const confidenceLevel = ["90", "95", "99"].includes(confidenceCandidate) ? confidenceCandidate : DEFAULT_CONFIDENCE_LEVEL;
+        const marginOfError = Number.isFinite(Number(data.marginOfError))
+            ? Math.max(1, Math.min(10, Number(data.marginOfError)))
+            : DEFAULT_MARGIN_OF_ERROR;
+        const designEffect = Number.isFinite(Number(data.designEffect))
+            ? Math.max(1, Math.min(5, Math.round(Number(data.designEffect) * 10) / 10))
+            : DEFAULT_DESIGN_EFFECT;
+        const nonResponseRate = Number.isFinite(Number(data.nonResponseRate))
+            ? Math.max(0, Math.min(0.5, Number(data.nonResponseRate)))
+            : DEFAULT_NON_RESPONSE_RATE;
+        const recommendedSize = calculateRecommendedSize({
+            confidenceLevel,
+            marginOfError,
+            designEffect,
+            nonResponseRate,
+        });
+        const finalSampleSize = Number.isFinite(Number(data.finalSampleSize))
+            ? Math.max(0, Math.round(Number(data.finalSampleSize)))
+            : recommendedSize;
+
+        return {
+            confidenceLevel,
+            marginOfError,
+            designEffect,
+            nonResponseRate,
+            recommendedSize,
+            finalSampleSize,
+        };
+    }, [calculateRecommendedSize]);
 
     // Initialize from saved data
     const initialData = experiment?.samplePlan as SamplePlanData | null;
+    const initialSamplePlan = useMemo(
+        () => (initialData ? normalizeSamplePlanData(initialData) : null),
+        [initialData, normalizeSamplePlanData],
+    );
 
-    const [confidenceLevel, setConfidenceLevel] = useState(initialData?.confidenceLevel ?? "95");
-    const [marginOfError, setMarginOfError] = useState([initialData?.marginOfError ?? 5]);
-    const [designEffect, setDesignEffect] = useState(initialData?.designEffect ?? 1);
-    const [nonResponseRate, setNonResponseRate] = useState(initialData?.nonResponseRate ?? 0);
-    const [finalSampleSize, setFinalSampleSize] = useState(initialData?.finalSampleSize ?? 384);
+    const [confidenceLevel, setConfidenceLevel] = useState(initialSamplePlan?.confidenceLevel ?? defaultSamplePlan.confidenceLevel);
+    const [marginOfError, setMarginOfError] = useState([initialSamplePlan?.marginOfError ?? defaultSamplePlan.marginOfError]);
+    const [designEffect, setDesignEffect] = useState(initialSamplePlan?.designEffect ?? defaultSamplePlan.designEffect);
+    const [nonResponseRate, setNonResponseRate] = useState(initialSamplePlan?.nonResponseRate ?? defaultSamplePlan.nonResponseRate);
+    const [finalSampleSize, setFinalSampleSize] = useState(initialSamplePlan?.finalSampleSize ?? defaultSamplePlan.finalSampleSize);
+    const [isFinalSampleSizeCustomized, setIsFinalSampleSizeCustomized] = useState(
+        () => (initialSamplePlan ? initialSamplePlan.finalSampleSize !== initialSamplePlan.recommendedSize : false),
+    );
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
-    const serverSnapshotRef = useRef("");
-    const saveInFlightRef = useRef(false);
-    
+
     // 增强指标
     const [metrics, setMetrics] = useState<SampleSizeMetrics | null>(null);
     const [pComparison, setPComparison] = useState<Array<{ p: number; pLabel: string; sampleSize: number; description: string }>>([]);
@@ -94,8 +172,6 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     // 多变量样本量规划数据
     const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
 
-    const N = populationSize;
-
     // Z values for confidence levels
     const zValues: Record<string, number> = {
         "90": 1.645,
@@ -104,17 +180,12 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     };
 
     // Calculate recommended sample size
-    const calculateSampleSize = useCallback(() => {
-        return calculateFinitePopulationSampleSize({
-            confidenceLevel,
-            marginOfError: marginOfError[0] ?? 5,
-            populationSize: N,
-            designEffect,
-            nonResponseRate,
-        }) ?? 384;
-    }, [confidenceLevel, marginOfError, N, designEffect, nonResponseRate]);
-
-    const recommendedSize = calculateSampleSize();
+    const recommendedSize = useMemo(() => calculateRecommendedSize({
+        confidenceLevel,
+        marginOfError: marginOfError[0] ?? DEFAULT_MARGIN_OF_ERROR,
+        designEffect,
+        nonResponseRate,
+    }), [calculateRecommendedSize, confidenceLevel, marginOfError, designEffect, nonResponseRate]);
 
     // Calculate enhanced metrics when parameters change
     useEffect(() => {
@@ -150,109 +221,129 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
 
     const buildSamplePlanData = useCallback((): SamplePlanData => ({
         confidenceLevel,
-        marginOfError: marginOfError[0] ?? 5,
+        marginOfError: marginOfError[0] ?? DEFAULT_MARGIN_OF_ERROR,
         designEffect,
         nonResponseRate,
         recommendedSize,
         finalSampleSize,
     }), [confidenceLevel, marginOfError, designEffect, nonResponseRate, recommendedSize, finalSampleSize]);
 
-    useEffect(() => {
-        if (initialData) {
-            const initialRecommended = initialData.recommendedSize ?? calculateFinitePopulationSampleSize({
-                confidenceLevel: initialData.confidenceLevel ?? "95",
-                marginOfError: initialData.marginOfError ?? 5,
-                populationSize: N,
-                designEffect: initialData.designEffect ?? 1,
-                nonResponseRate: initialData.nonResponseRate ?? 0,
-            }) ?? 384;
-            serverSnapshotRef.current = JSON.stringify({
-                confidenceLevel: initialData.confidenceLevel ?? "95",
-                marginOfError: initialData.marginOfError ?? 5,
-                designEffect: initialData.designEffect ?? 1,
-                nonResponseRate: initialData.nonResponseRate ?? 0,
-                recommendedSize: initialRecommended,
-                finalSampleSize: initialData.finalSampleSize ?? initialRecommended,
-            });
-            return;
-        }
+    const samplePlanData = useMemo(() => buildSamplePlanData(), [buildSamplePlanData]);
+    const defaultSamplePlanSnapshot = useMemo(() => JSON.stringify(defaultSamplePlan), [defaultSamplePlan]);
 
-        serverSnapshotRef.current = "";
-    }, [initialData, N]);
+    const applySamplePlanData = useCallback((data: SamplePlanData) => {
+        const normalized = normalizeSamplePlanData(data);
+        setConfidenceLevel(normalized.confidenceLevel);
+        setMarginOfError([normalized.marginOfError]);
+        setDesignEffect(normalized.designEffect);
+        setNonResponseRate(normalized.nonResponseRate);
+        setFinalSampleSize(normalized.finalSampleSize);
+        setIsFinalSampleSizeCustomized(normalized.finalSampleSize !== normalized.recommendedSize);
+    }, [normalizeSamplePlanData]);
 
-    const autoSaveSamplePlan = useCallback(async () => {
-        const payload = buildSamplePlanData();
-        const snapshot = JSON.stringify(payload);
-        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
-
-        saveInFlightRef.current = true;
+    const parseSamplePlanDraft = useCallback((raw: string) => {
         try {
-            const success = await saveExperiment({ samplePlan: payload });
-            if (success) {
-                serverSnapshotRef.current = snapshot;
-            }
-        } finally {
-            saveInFlightRef.current = false;
+            return normalizeSamplePlanData(JSON.parse(raw) as SamplePlanData);
+        } catch {
+            return null;
         }
-    }, [buildSamplePlanData, saveExperiment]);
+    }, [normalizeSamplePlanData]);
 
-    // Auto-update final sample size when recommended changes (only if user hasn't modified it - simplified logic for now: update if no initial data)
+    const isMeaningfulSamplePlanDraft = useCallback((draft: SamplePlanData) => {
+        return JSON.stringify(normalizeSamplePlanData(draft)) !== defaultSamplePlanSnapshot;
+    }, [defaultSamplePlanSnapshot, normalizeSamplePlanData]);
+
+    const serializeSamplePlan = useCallback((value: SamplePlanData) => {
+        return JSON.stringify(normalizeSamplePlanData(value));
+    }, [normalizeSamplePlanData]);
+
+    const saveSamplePlan = useCallback(async (nextData: SamplePlanData) => {
+        return saveExperiment({ samplePlan: normalizeSamplePlanData(nextData) });
+    }, [normalizeSamplePlanData, saveExperiment]);
+
+    const loadLatestSamplePlan = useCallback(async () => {
+        if (!experiment?.taskId) return null;
+        const res = await experimentApi.get(experiment.taskId);
+        if (!res.success) return null;
+        return res.data?.samplePlan ? normalizeSamplePlanData(res.data.samplePlan) : defaultSamplePlan;
+    }, [defaultSamplePlan, experiment?.taskId, normalizeSamplePlanData]);
+
+    const {
+        clearLocalDraft,
+        discardPendingDraft,
+        isOnline,
+        keepLocalDraft,
+        keepServerDraft,
+        networkNotice,
+        restoreDraftOpen,
+        restorePendingDraft,
+        setRestoreDraftOpen,
+        setSyncConflictOpen,
+        syncConflictOpen,
+    } = useDraftSync<SamplePlanData>({
+        applyValue: applySamplePlanData,
+        currentValue: samplePlanData,
+        draftKey: experiment?.taskId ? `student_sample_plan_draft_${experiment.taskId}` : null,
+        initialServerValue: initialSamplePlan ?? defaultSamplePlan,
+        isMeaningfulDraft: isMeaningfulSamplePlanDraft,
+        loadServerLatest: loadLatestSamplePlan,
+        parseDraft: parseSamplePlanDraft,
+        saveToServer: saveSamplePlan,
+        serialize: serializeSamplePlan,
+    });
+
     useEffect(() => {
-        if (!initialData) {
+        if (!isFinalSampleSizeCustomized) {
             setFinalSampleSize(recommendedSize);
         }
-    }, [recommendedSize, initialData]);
-
-    // Keep a ref to the latest autoSaveSamplePlan so the 30-second interval doesn't reset on every change
-    const autoSaveRef = useRef(autoSaveSamplePlan);
-    useEffect(() => { autoSaveRef.current = autoSaveSamplePlan; }, [autoSaveSamplePlan]);
-
-    // Debounce: save 3 seconds after user stops editing
-    useEffect(() => {
-        const debounceTimer = window.setTimeout(() => {
-            void autoSaveSamplePlan();
-        }, 3000);
-
-        return () => {
-            window.clearTimeout(debounceTimer);
-        };
-    }, [autoSaveSamplePlan]);
-
-    // Fixed 30-second interval: uses ref so the interval is never reset by content changes
-    useEffect(() => {
-        const intervalTimer = window.setInterval(() => {
-            void autoSaveRef.current();
-        }, 30 * 1000);
-
-        return () => {
-            window.clearInterval(intervalTimer);
-        };
-    }, []);
-
-    useEffect(() => {
-        const onBeforeUnload = (event: BeforeUnloadEvent) => {
-            const snapshot = JSON.stringify(buildSamplePlanData());
-            if (snapshot === serverSnapshotRef.current) return;
-            event.preventDefault();
-            event.returnValue = "";
-        };
-
-        window.addEventListener("beforeunload", onBeforeUnload);
-        return () => {
-            window.removeEventListener("beforeunload", onBeforeUnload);
-        };
-    }, [buildSamplePlanData]);
+    }, [isFinalSampleSizeCustomized, recommendedSize]);
 
     const handleConfirmNext = async () => {
-        const samplePlanData = buildSamplePlanData();
         const success = await saveExperiment({ samplePlan: samplePlanData, currentStage: 3 });
-        if (success) setShowLaunch(true);
+        if (success) {
+            clearLocalDraft();
+            setShowLaunch(true);
+        }
     };
 
     const [showLaunch, setShowLaunch] = useState(false);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
+            {networkNotice && (
+                <Card
+                    data-testid="student-sample-plan-network-notice"
+                    className={`rounded-2xl border shadow-sm ${syncConflictOpen
+                        ? "border-amber-500/30 bg-amber-500/10"
+                        : isOnline
+                            ? "border-emerald-500/30 bg-emerald-500/10"
+                            : "border-rose-500/30 bg-rose-500/10"
+                        }`}
+                >
+                    <CardContent className="px-4 py-3">
+                        <div className="flex items-center gap-2 text-sm">
+                            {syncConflictOpen ? (
+                                <Info className="h-4 w-4 text-amber-600" />
+                            ) : isOnline ? (
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                            ) : (
+                                <Info className="h-4 w-4 text-rose-600" />
+                            )}
+                            <span
+                                className={syncConflictOpen
+                                    ? "text-amber-700 dark:text-amber-300"
+                                    : isOnline
+                                        ? "text-emerald-700 dark:text-emerald-300"
+                                        : "text-rose-600"
+                                }
+                            >
+                                {networkNotice}
+                            </span>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
@@ -443,7 +534,10 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                             id="finalSize"
                                             type="number"
                                             value={finalSampleSize}
-                                            onChange={(e) => setFinalSampleSize(parseInt(e.target.value) || 0)}
+                                            onChange={(e) => {
+                                                setIsFinalSampleSizeCustomized(true);
+                                                setFinalSampleSize(parseInt(e.target.value) || 0);
+                                            }}
                                             min={minSize}
                                             max={maxSize}
                                             data-testid="student-sample-plan-final-size"
@@ -454,7 +548,10 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                                 </div>
                                 <Button
                                     variant="outline"
-                                    onClick={() => setFinalSampleSize(recommendedSize)}
+                                    onClick={() => {
+                                        setIsFinalSampleSizeCustomized(false);
+                                        setFinalSampleSize(recommendedSize);
+                                    }}
                                     data-testid="student-sample-plan-reset"
                                     className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100"
                                 >
@@ -596,6 +693,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             designEffect={designEffect}
                             nonResponseRate={nonResponseRate}
                             onApplyBudget={(_budget, sampleSize) => {
+                                setIsFinalSampleSizeCustomized(true);
                                 setFinalSampleSize(sampleSize);
                             }}
                         />
@@ -622,6 +720,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             populationSize={N}
                             confidenceLevel={confidenceLevel}
                             onApplySampleSize={(size) => {
+                                setIsFinalSampleSizeCustomized(true);
                                 setFinalSampleSize(size);
                                 toast.success(`已应用基于CV计算的样本量: ${size}`);
                             }}
@@ -634,6 +733,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                             confidenceLevel={confidenceLevel}
                             marginOfError={marginOfError[0] ?? 5}
                             onApplyResult={(clusters, sampleSize) => {
+                                setIsFinalSampleSizeCustomized(true);
                                 setFinalSampleSize(sampleSize);
                                 toast.success(`整群抽样方案: ${clusters}个群, 共${sampleSize}个样本`);
                             }}
@@ -664,7 +764,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     上一阶段
                 </Button>
                 <div className="flex gap-3">
-                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize} data-testid="student-sample-plan-next" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                    <Button onClick={() => setConfirmNextOpen(true)} disabled={!isValidSize || !isOnline} data-testid="student-sample-plan-next" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
                         确认并进入下一阶段
                     </Button>
                 </div>
@@ -683,7 +783,61 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sample-plan-confirm" className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmNext} disabled={!isOnline} data-testid="student-sample-plan-confirm" className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-sample-plan-restore-dialog">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">检测到本地样本量规划草稿，是否恢复？</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
+                            data-testid="student-sample-plan-restore-discard"
+                            onClick={discardPendingDraft}
+                        >
+                            放弃草稿
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            data-testid="student-sample-plan-restore-apply"
+                            onClick={restorePendingDraft}
+                        >
+                            恢复草稿
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-sample-plan-conflict-dialog">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                            本地草稿和服务器草稿都发生了变化。请选择要保留的版本。
+                            <br />
+                            <span className="text-slate-500">保留本地版本将覆盖服务器当前草稿。</span>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel
+                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
+                            data-testid="student-sample-plan-conflict-server"
+                            onClick={keepServerDraft}
+                        >
+                            保留服务器版本
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            data-testid="student-sample-plan-conflict-local"
+                            onClick={() => void keepLocalDraft()}
+                        >
+                            保留本地版本
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -694,7 +848,10 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
                     sampleSize={finalSampleSize}
                     confidenceLevel={confidenceLevel}
                     marginOfError={marginOfError[0] ?? 5}
-                    onComplete={() => setShowLaunch(false)}
+                    onComplete={() => {
+                        setShowLaunch(false);
+                        onNext();
+                    }}
                     onClose={() => setShowLaunch(false)}
                 />
             )}

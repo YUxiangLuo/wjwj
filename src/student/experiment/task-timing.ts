@@ -21,11 +21,15 @@ export function hasTaskDeadlinePassed(deadline: Date | string | null | undefined
     return Date.now() > new Date(deadline).getTime();
 }
 
-export function ensureTaskSubmissionWindow(deadline: Date | string | null | undefined, graceMs = 30_000) {
+export function ensureTaskSubmissionWindow(
+    deadline: Date | string | null | undefined,
+    graceMs = 30_000,
+    now = Date.now(),
+) {
     if (!deadline) return null;
 
     const deadlineAt = new Date(deadline).getTime();
-    if (Date.now() > deadlineAt + graceMs) {
+    if (now > deadlineAt + graceMs) {
         return fail("任务已截止，无法提交", "TASK_DEADLINE");
     }
 
