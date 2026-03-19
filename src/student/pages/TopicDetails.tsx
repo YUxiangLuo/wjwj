@@ -17,6 +17,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { experimentApi, tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
+import { clearExperimentDrafts } from "../draft-sync";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 
@@ -489,6 +490,7 @@ export function TopicDetails() {
                                     clearQuestionnaire: true,
                                 });
                                 if (res.success) {
+                                    clearExperimentDrafts(Number(taskId));
                                     navigate(`/task/${taskId}/experiment`);
                                 }
                             }}

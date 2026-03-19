@@ -1,6 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNetworkStatus } from "./use-network-status";
 
+/**
+ * Draft key patterns per stage:
+ *   Stage 1 (questionnaire):  student_questionnaire_draft_{taskId}
+ *   Stage 2 (sample plan):    student_sample_plan_draft_{taskId}
+ *   Stage 3 (sampling params): student_sampling_params_{taskId}
+ *   Stage 4 (report):         student_report_draft_{taskId}
+ */
+const DRAFT_KEY_TEMPLATES: Array<{ stage: number; key: (taskId: number) => string }> = [
+    { stage: 1, key: (id) => `student_questionnaire_draft_${id}` },
+    { stage: 2, key: (id) => `student_sample_plan_draft_${id}` },
+    { stage: 3, key: (id) => `student_sampling_params_${id}` },
+    { stage: 4, key: (id) => `student_report_draft_${id}` },
+];
+
+/**
+ * Clear localStorage drafts for an experiment.
+ * @param taskId   – the task / experiment identifier
+ * @param options  – optional `fromStage` (1-4, inclusive); defaults to 1 (clear all)
+ */
+export function clearExperimentDrafts(taskId: number, options?: { fromStage?: number }) {
+    const fromStage = options?.fromStage ?? 1;
+    for (const t of DRAFT_KEY_TEMPLATES) {
+        if (t.stage >= fromStage) {
+            try {
+                localStorage.removeItem(t.key(taskId));
+            } catch {
+                // ignore storage errors
+            }
+        }
+    }
+}
+
 export type ReconnectSyncDecision = "synced" | "conflict" | "push_local" | "pull_server";
 
 export interface DraftRestoreDecision<T> {

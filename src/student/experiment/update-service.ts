@@ -132,6 +132,48 @@ export function buildExperimentSaveUpdates(params: {
     if (params.body.samplingResults !== undefined) updates.samplingResults = params.body.samplingResults;
     if (params.body.reportContent !== undefined) updates.reportContent = params.body.reportContent;
 
+    // ── Downstream invalidation ──────────────────────────────────────────
+    // When upstream data is being saved and downstream data wasn't
+    // included in the same request, clear the stale downstream to prevent
+    // inconsistencies (e.g. old sampling results paired with a new sample
+    // plan).
+    let invalidatedResults = false;
+    let invalidatedReport = false;
+
+    if (params.body.samplePlan !== undefined) {
+        if (params.body.samplingResults === undefined && exp.samplingResults != null) {
+            updates.samplingResults = null;
+            updates.stage3CompletedAt = null;
+            invalidatedResults = true;
+        }
+        if (params.body.reportContent === undefined && exp.reportContent != null) {
+            updates.reportContent = null;
+            updates.stage4CompletedAt = null;
+            invalidatedReport = true;
+        }
+    }
+    if (params.body.samplingResults !== undefined && !invalidatedReport) {
+        if (params.body.reportContent === undefined && exp.reportContent != null) {
+            updates.reportContent = null;
+            updates.stage4CompletedAt = null;
+            invalidatedReport = true;
+        }
+    }
+
+    // Cap currentStage so it does not exceed the stage whose prerequisite
+    // data is still available after invalidation.
+    if (invalidatedResults || invalidatedReport) {
+        const effectiveStage = updates.currentStage !== undefined
+            ? Number(updates.currentStage)
+            : exp.currentStage;
+        if (invalidatedResults && effectiveStage > 2) {
+            updates.currentStage = 2;
+        } else if (invalidatedReport && effectiveStage > 3) {
+            updates.currentStage = 3;
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     if (exp.status === ExperimentStatus.REJECTED) {
         updates.status = ExperimentStatus.IN_PROGRESS;
     }

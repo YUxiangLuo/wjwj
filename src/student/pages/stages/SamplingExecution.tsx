@@ -389,7 +389,7 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     // Save results when they change
     const saveResults = useCallback(async () => {
-        await saveExperiment({ samplingResults: buildSamplingResultsPayload() });
+        return saveExperiment({ samplingResults: buildSamplingResultsPayload() });
     }, [buildSamplingResultsPayload, saveExperiment]);
 
 
@@ -562,7 +562,11 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const allCompleted = simpleResult?.completed && systematicResult?.completed && ppsResult?.completed && stratifiedResult?.completed;
 
     const handleConfirmNext = async () => {
-        await saveResults();
+        const resultsSaved = await saveResults();
+        if (!resultsSaved) {
+            toast.error("抽样结果保存失败，请重试");
+            return;
+        }
         const success = await saveExperiment({ currentStage: 4 });
         if (success) {
             clearSamplingParamsDraft();

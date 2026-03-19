@@ -21,6 +21,7 @@ import {
     type SamplePlanData,
     type SamplingResultsData,
 } from "../api-client";
+import { clearExperimentDrafts } from "../draft-sync";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
 
 // Stage components
@@ -211,6 +212,8 @@ export function ExperimentLayout() {
         if (!taskId || targetStage === null) return;
         const res = await experimentApi.reset(Number(taskId), { resetToStage: targetStage });
         if (res.success) {
+            // Clear local drafts for all stages downstream of the target
+            clearExperimentDrafts(Number(taskId), { fromStage: targetStage + 1 });
             setExperiment((prev) => {
                 if (!prev) return prev;
                 const next = { ...prev, currentStage: targetStage };
