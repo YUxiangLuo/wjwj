@@ -315,6 +315,6 @@ describe("normalizeExperimentResetRequest", () => {
     });
 
     test("defaults to stage 1 for non-numeric input", () => {
-        expect(normalizeExperimentResetRequest({} as any)).toEqual({ resetToStage: 1, clearQuestionnaire: false });
+        expect(normalizeExperimentResetRequest({} as { resetToStage?: number })).toEqual({ resetToStage: 1, clearQuestionnaire: false });
     });
 });
