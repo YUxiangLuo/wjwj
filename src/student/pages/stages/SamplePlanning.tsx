@@ -45,6 +45,7 @@ import { CVBasedSampleSizeCalculator } from "../../components/CVBasedSampleSizeC
 import { ClusterSamplingCalculator } from "../../components/ClusterSamplingCalculator";
 import { useDraftSync } from "../../draft-sync";
 import { NetworkStatusBanner } from "../../components/NetworkStatusBanner";
+import { getSamplePlanDraftKey } from "../../experiment-drafts";
 
 interface SamplePlanningProps {
     onNext: () => void;
@@ -276,7 +277,7 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     } = useDraftSync<SamplePlanData>({
         applyValue: applySamplePlanData,
         currentValue: samplePlanData,
-        draftKey: experiment?.taskId ? `student_sample_plan_draft_${experiment.taskId}` : null,
+        draftKey: experiment?.taskId ? getSamplePlanDraftKey(experiment.taskId) : null,
         initialServerValue: initialSamplePlan ?? defaultSamplePlan,
         isMeaningfulDraft: isMeaningfulSamplePlanDraft,
         loadServerLatest: loadLatestSamplePlan,

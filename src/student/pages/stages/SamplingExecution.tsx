@@ -53,6 +53,7 @@ import {
 } from "./sampling-params";
 import { useNetworkStatus } from "../../use-network-status";
 import { NetworkStatusBanner } from "../../components/NetworkStatusBanner";
+import { getSamplingDraftKey } from "../../experiment-drafts";
 
 interface SamplingExecutionProps {
     onNext: () => void;
@@ -223,7 +224,8 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     // Sampling parameters are persisted to localStorage only (not auto-saved to the server).
     // Server state updates when the user explicitly executes a sampling method, which saves
     // the results. Parameters without results are not meaningful on the server.
-    const samplingDraftKey = taskId ? `student_sampling_params_${taskId}` : null;
+    const samplingDraftKey = taskId ? getSamplingDraftKey(taskId) : null;
+    const samplePlanSnapshot = useMemo(() => JSON.stringify(experiment?.samplePlan ?? null), [experiment?.samplePlan]);
     const serverSamplingDraft = useMemo(() => buildSamplingExecutionDraftFromResults({
         results: initialResults,
         populationSize: N,
@@ -323,9 +325,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
                 serverValue: serverSamplingDraft,
                 hasCompletedResults,
                 defaults: draftDefaults,
+                dependencySnapshot: samplePlanSnapshot,
             });
             if (decision.type === "none") {
-                if (rawDraft && parseSamplingExecutionDraft(rawDraft) === null) {
+                if (rawDraft && parseSamplingExecutionDraft(rawDraft, draftDefaults, samplePlanSnapshot) === null) {
                     localStorage.removeItem(samplingDraftKey);
                 }
                 setDraftResolved(true);
@@ -348,17 +351,17 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
             }
             setDraftResolved(true);
         }
-    }, [applySamplingDraft, hasCompletedResults, samplingDraftKey, serverSamplingDraft]);
+    }, [N, applySamplingDraft, hasCompletedResults, n, samplePlanSnapshot, samplingDraftKey, serverSamplingDraft]);
 
     useEffect(() => {
         if (!samplingDraftKey || !draftResolved) return;
 
         try {
-            localStorage.setItem(samplingDraftKey, serializeSamplingExecutionDraft(samplingDraft));
+            localStorage.setItem(samplingDraftKey, serializeSamplingExecutionDraft(samplingDraft, samplePlanSnapshot));
         } catch {
             // ignore persistence errors
         }
-    }, [draftResolved, samplingDraft, samplingDraftKey]);
+    }, [draftResolved, samplePlanSnapshot, samplingDraft, samplingDraftKey]);
 
     const prevOnlineRef = useRef(isOnline);
     useEffect(() => {

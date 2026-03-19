@@ -234,6 +234,7 @@ test("experiment save updates stage and recalculates sample size", async () => {
             }],
             [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
             [{ topicId: 12, excelRowCount: 200 }],
+            [{ excelRowCount: 200 }],
         ],
         update: [[{ affectedRows: 1 }]],
     });
@@ -270,6 +271,221 @@ test("experiment save updates stage and recalculates sample size", async () => {
             calculatedSampleSize: 132,
         },
     });
+    expect(payload.data).toMatchObject({
+        currentStage: 2,
+        samplePlan: {
+            finalSampleSize: 50,
+            calculatedSampleSize: 132,
+        },
+        populationSize: 200,
+    });
+});
+
+test("experiment save invalidates downstream sampling and report data when sample plan changes", async () => {
+    const { module, operations } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
+                currentStage: 4,
+                status: 0,
+                version: 6,
+                questionnaire: JSON.stringify(buildValidQuestionnaire()),
+                samplePlan: JSON.stringify(buildValidSamplePlan()),
+                samplingResults: JSON.stringify(buildValidSamplingResults()),
+                reportContent: "旧报告",
+                stage1CompletedAt: new Date("2026-03-01T00:00:00.000Z"),
+                stage2CompletedAt: new Date("2026-03-02T00:00:00.000Z"),
+                stage3CompletedAt: new Date("2026-03-03T00:00:00.000Z"),
+                stage4CompletedAt: new Date("2026-03-04T00:00:00.000Z"),
+            }],
+            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ topicId: 12, excelRowCount: 200 }],
+            [{ excelRowCount: 200 }],
+        ],
+        update: [[{ affectedRows: 1 }]],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "PUT",
+        {
+            samplePlan: {
+                confidenceLevel: "99",
+                marginOfError: 4,
+                finalSampleSize: 60,
+            },
+        }
+    ), "40");
+
+    const response = await module.experimentRoutes.PUT!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+
+    const updateOperation = operations.find((operation) => operation.kind === "update");
+    expect(updateOperation?.set).toMatchObject({
+        currentStage: 2,
+        samplePlan: {
+            confidenceLevel: "99",
+            marginOfError: 4,
+            finalSampleSize: 60,
+        },
+        samplingResults: null,
+        reportContent: null,
+        stage3CompletedAt: null,
+        stage4CompletedAt: null,
+    });
+    expect(payload.data).toMatchObject({
+        currentStage: 2,
+        samplingResults: null,
+        reportContent: null,
+    });
+});
+
+test("experiment save invalidates report data when sampling results change", async () => {
+    const nextSamplingResults = buildValidSamplingResults();
+    nextSamplingResults.simple = {
+        completed: true,
+        sampleCount: 50,
+        seed: 10,
+        data: [{ id: 10 }],
+    };
+
+    const { module, operations } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
+                currentStage: 4,
+                status: 0,
+                version: 6,
+                questionnaire: JSON.stringify(buildValidQuestionnaire()),
+                samplePlan: JSON.stringify(buildValidSamplePlan()),
+                samplingResults: JSON.stringify(buildValidSamplingResults()),
+                reportContent: "旧报告",
+                stage1CompletedAt: new Date("2026-03-01T00:00:00.000Z"),
+                stage2CompletedAt: new Date("2026-03-02T00:00:00.000Z"),
+                stage3CompletedAt: new Date("2026-03-03T00:00:00.000Z"),
+                stage4CompletedAt: new Date("2026-03-04T00:00:00.000Z"),
+            }],
+            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ excelRowCount: 200 }],
+        ],
+        update: [[{ affectedRows: 1 }]],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "PUT",
+        {
+            samplingResults: nextSamplingResults,
+        }
+    ), "40");
+
+    const response = await module.experimentRoutes.PUT!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+
+    const updateOperation = operations.find((operation) => operation.kind === "update");
+    expect(updateOperation?.set).toMatchObject({
+        currentStage: 3,
+        samplingResults: nextSamplingResults,
+        reportContent: null,
+        stage4CompletedAt: null,
+    });
+    expect(payload.data).toMatchObject({
+        currentStage: 3,
+        samplingResults: nextSamplingResults,
+        reportContent: null,
+    });
+});
+
+test("experiment save blocks stale sampling-result writes after sample-plan rollback", async () => {
+    const { module, operations } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
+                currentStage: 2,
+                status: 0,
+                version: 6,
+                questionnaire: JSON.stringify(buildValidQuestionnaire()),
+                samplePlan: JSON.stringify(buildValidSamplePlan()),
+                samplingResults: null,
+                reportContent: null,
+            }],
+            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+        ],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "PUT",
+        { samplingResults: buildValidSamplingResults() }
+    ), "40");
+
+    const response = await module.experimentRoutes.PUT!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "STALE_STAGE",
+            message: "样本量规划已变更，请重新进入抽样执行阶段",
+        },
+    });
+    expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
+});
+
+test("experiment save blocks stale report writes after sampling rollback", async () => {
+    const { module, operations } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
+                currentStage: 3,
+                status: 0,
+                version: 6,
+                questionnaire: JSON.stringify(buildValidQuestionnaire()),
+                samplePlan: JSON.stringify(buildValidSamplePlan()),
+                samplingResults: JSON.stringify(buildValidSamplingResults()),
+                reportContent: null,
+            }],
+            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+        ],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "PUT",
+        { reportContent: "<p>旧报告</p>" }
+    ), "40");
+
+    const response = await module.experimentRoutes.PUT!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "STALE_STAGE",
+            message: "抽样结果已变更，请重新进入分析与报告阶段",
+        },
+    });
+    expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
 });
 
 test("experiment save blocks invalid sample plan when advancing to stage 3", async () => {
@@ -455,6 +671,7 @@ test("experiment reset clears downstream progress and reopens rejected experimen
                 stage4CompletedAt: new Date("2026-03-04T00:00:00.000Z"),
             }],
             [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ excelRowCount: 200 }],
         ],
         update: [[{ affectedRows: 1 }]],
     });

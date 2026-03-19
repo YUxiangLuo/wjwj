@@ -26,6 +26,10 @@ function isValidStage(stage: number) {
     return Number.isInteger(stage) && stage >= 0 && stage <= 4;
 }
 
+function snapshotsEqual(left: unknown, right: unknown) {
+    return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+}
+
 function validateStageAdvance(params: {
     nextStage: number;
     currentStage: number;
@@ -85,19 +89,37 @@ export function buildExperimentSaveUpdates(params: {
     }
 
     const lastSavedAt = new Date();
+    const currentQuestionnaire = parseStoredJson(exp.questionnaire);
+    const currentSamplePlan = parseStoredJson(exp.samplePlan);
+    const currentSamplingResults = parseStoredJson(exp.samplingResults);
     const nextQuestionnaire = params.body.questionnaire !== undefined
         ? params.body.questionnaire
-        : parseStoredJson(exp.questionnaire);
+        : currentQuestionnaire;
     const nextSamplePlan = params.body.samplePlan !== undefined
         ? attachCalculatedSampleSize(params.body.samplePlan as Record<string, any>, params.populationSize)
-        : parseStoredJson(exp.samplePlan);
-    const nextSamplingResults = params.body.samplingResults !== undefined
+        : currentSamplePlan;
+    const requestedSamplingResults = params.body.samplingResults !== undefined
         ? params.body.samplingResults
-        : parseStoredJson(exp.samplingResults);
+        : currentSamplingResults;
+    const samplePlanChanged = params.body.samplePlan !== undefined
+        && !snapshotsEqual(nextSamplePlan, currentSamplePlan);
+    const samplingResultsChanged = params.body.samplingResults !== undefined
+        && !snapshotsEqual(params.body.samplingResults, currentSamplingResults);
+    const nextSamplingResults = samplePlanChanged && params.body.samplingResults === undefined
+        ? null
+        : requestedSamplingResults;
     const updates: Record<string, unknown> = {
         lastSavedAt,
         version: exp.version + 1,
     };
+
+    if (params.body.samplingResults !== undefined && params.body.currentStage === undefined && exp.currentStage < 3) {
+        return fail("样本量规划已变更，请重新进入抽样执行阶段", "STALE_STAGE");
+    }
+
+    if (params.body.reportContent !== undefined && params.body.currentStage === undefined && exp.currentStage < 4) {
+        return fail("抽样结果已变更，请重新进入分析与报告阶段", "STALE_STAGE");
+    }
 
     if (params.body.currentStage !== undefined) {
         const nextStage = Number(params.body.currentStage);
@@ -131,6 +153,30 @@ export function buildExperimentSaveUpdates(params: {
     if (params.body.samplePlan !== undefined) updates.samplePlan = nextSamplePlan;
     if (params.body.samplingResults !== undefined) updates.samplingResults = params.body.samplingResults;
     if (params.body.reportContent !== undefined) updates.reportContent = params.body.reportContent;
+
+    if (samplePlanChanged) {
+        if (params.body.samplingResults === undefined) {
+            updates.samplingResults = null;
+        }
+        if (params.body.reportContent === undefined) {
+            updates.reportContent = null;
+        }
+        updates.stage3CompletedAt = null;
+        updates.stage4CompletedAt = null;
+
+        if (params.body.currentStage === undefined && exp.currentStage > 2) {
+            updates.currentStage = 2;
+        }
+    } else if (samplingResultsChanged) {
+        if (params.body.reportContent === undefined) {
+            updates.reportContent = null;
+        }
+        updates.stage4CompletedAt = null;
+
+        if (params.body.currentStage === undefined && exp.currentStage > 3) {
+            updates.currentStage = 3;
+        }
+    }
 
     if (exp.status === ExperimentStatus.REJECTED) {
         updates.status = ExperimentStatus.IN_PROGRESS;

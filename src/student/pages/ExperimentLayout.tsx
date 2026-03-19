@@ -30,6 +30,7 @@ import { SamplingExecution } from "./stages/SamplingExecution";
 import { AnalysisReport } from "./stages/AnalysisReport";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskDeadlineTimestamp } from "../experiment/task-timing";
+import { clearExperimentDrafts } from "../experiment-drafts";
 
 const stages = [
     { name: "问卷设计", description: "第一步：围绕调研目标，设计包含判断题、单选题、多选题和量表题的调查问卷，设置标题、欢迎语和结束语", icon: FileText },
@@ -80,69 +81,101 @@ export function ExperimentLayout() {
     const [targetStage, setTargetStage] = useState<number | null>(null);
     const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
 
-    // Load experiment data
-    useEffect(() => {
-        async function loadExperiment() {
-            if (!taskId) {
+    const syncExperimentFromServer = useCallback((nextExperiment: ExperimentData, cleanupMode: "none" | "stage" | "strict" = "none") => {
+        const normalizedStage = Math.min(4, Math.max(nextExperiment.currentStage || 1, 1));
+        setExperiment(nextExperiment);
+        setCurrentStage(normalizedStage);
+        setLastSavedAt(nextExperiment.lastSavedAt);
+
+        if (cleanupMode !== "none" && nextExperiment.taskId) {
+            clearExperimentDrafts(nextExperiment.taskId, {
+                samplePlan: normalizedStage <= 1 || (cleanupMode === "strict" && !nextExperiment.samplePlan),
+                sampling: normalizedStage <= 2 || (cleanupMode === "strict" && !nextExperiment.samplingResults),
+                report: normalizedStage <= 3 || (cleanupMode === "strict" && !nextExperiment.reportContent),
+            });
+        }
+    }, []);
+
+    const loadExperiment = useCallback(async (showSpinner = true) => {
+        if (!taskId) {
+            setNotFound(true);
+            return;
+        }
+
+        if (showSpinner) {
+            setLoading(true);
+        }
+        setNotFound(false);
+        setTopicDeleted(false);
+        setRedirectTarget(null);
+        try {
+            const numericTaskId = parseInt(taskId);
+            const [experimentRes, taskRes] = await Promise.all([
+                experimentApi.get(numericTaskId),
+                tasksApi.get(numericTaskId),
+            ]);
+
+            if (taskRes.success && taskRes.data) {
+                setTaskName(taskRes.data.name);
+                setDeadline(taskRes.data.deadline ?? null);
+                const nextRedirect = getExperimentRouteRedirect({
+                    taskId: numericTaskId,
+                    publishedAt: taskRes.data.publishedAt,
+                    deadline: taskRes.data.deadline,
+                    status: taskRes.data.status,
+                });
+                if (nextRedirect) {
+                    setRedirectTarget(nextRedirect);
+                }
+            } else if (taskRes.error?.code === "TOPIC_DELETED") {
+                setExperiment(null);
+                setTopicDeleted(true);
+                return;
+            } else {
+                setExperiment(null);
                 setNotFound(true);
                 return;
             }
 
-            setLoading(true);
-            setNotFound(false);
-            setTopicDeleted(false);
-            setRedirectTarget(null);
-            try {
-                const numericTaskId = parseInt(taskId);
-                const [experimentRes, taskRes] = await Promise.all([
-                    experimentApi.get(numericTaskId),
-                    tasksApi.get(numericTaskId),
-                ]);
-
-                if (taskRes.success && taskRes.data) {
-                    setTaskName(taskRes.data.name);
-                    setDeadline(taskRes.data.deadline ?? null);
-                    const nextRedirect = getExperimentRouteRedirect({
-                        taskId: numericTaskId,
-                        publishedAt: taskRes.data.publishedAt,
-                        deadline: taskRes.data.deadline,
-                        status: taskRes.data.status,
-                    });
-                    if (nextRedirect) {
-                        setRedirectTarget(nextRedirect);
-                    }
-                } else if (taskRes.error?.code === "TOPIC_DELETED") {
-                    setExperiment(null);
-                    setTopicDeleted(true);
-                    return;
-                } else {
-                    setExperiment(null);
-                    setNotFound(true);
-                    return;
-                }
-
-                if (experimentRes.success && experimentRes.data) {
-                    const normalizedStage = Math.min(4, Math.max(experimentRes.data.currentStage || 1, 1));
-                    setExperiment(experimentRes.data);
-                    setCurrentStage(normalizedStage);
-                    setLastSavedAt(experimentRes.data.lastSavedAt);
-                } else if (experimentRes.error?.code === "TOPIC_DELETED") {
-                    setExperiment(null);
-                    setTopicDeleted(true);
-                } else {
-                    setExperiment(null);
-                    setNotFound(true);
-                }
-            } catch (error) {
-                console.error("Failed to load experiment:", error);
+            if (experimentRes.success && experimentRes.data) {
+                syncExperimentFromServer(experimentRes.data, "stage");
+            } else if (experimentRes.error?.code === "TOPIC_DELETED") {
+                setExperiment(null);
+                setTopicDeleted(true);
+            } else {
                 setExperiment(null);
                 setNotFound(true);
-            } finally {
+            }
+        } catch (error) {
+            console.error("Failed to load experiment:", error);
+            setExperiment(null);
+            setNotFound(true);
+        } finally {
+            if (showSpinner) {
                 setLoading(false);
             }
         }
-        loadExperiment();
-    }, [taskId]);
+    }, [syncExperimentFromServer, taskId]);
+
+    // Load experiment data
+    useEffect(() => {
+        void loadExperiment();
+    }, [loadExperiment]);
+
+    useEffect(() => {
+        const refreshVisibleExperiment = () => {
+            if (document.visibilityState === "visible") {
+                void loadExperiment(false);
+            }
+        };
+
+        window.addEventListener("focus", refreshVisibleExperiment);
+        document.addEventListener("visibilitychange", refreshVisibleExperiment);
+        return () => {
+            window.removeEventListener("focus", refreshVisibleExperiment);
+            document.removeEventListener("visibilitychange", refreshVisibleExperiment);
+        };
+    }, [loadExperiment]);
 
     // Save experiment data
     const saveExperiment = useCallback(async (data: Partial<{
@@ -159,23 +192,7 @@ export function ExperimentLayout() {
         try {
             const res = await experimentApi.save(parseInt(taskId), data);
             if (res.success && res.data) {
-                setLastSavedAt(res.data.lastSavedAt);
-
-                // Update local experiment state
-                setExperiment((prev) => {
-                    if (!prev) return prev;
-                    return {
-                        ...prev,
-                        ...data,
-                        lastSavedAt: res.data!.lastSavedAt,
-                    };
-                });
-
-                // Sync stage state so renderStage() reflects the change immediately
-                if (data.currentStage != null) {
-                    setCurrentStage(data.currentStage);
-                }
-
+                syncExperimentFromServer(res.data, "strict");
                 return true;
             }
             setSaveError(res.error?.message ?? "保存失败，请稍后重试");
@@ -187,7 +204,7 @@ export function ExperimentLayout() {
         } finally {
             setIsSaving(false);
         }
-    }, [taskId]);
+    }, [syncExperimentFromServer, taskId]);
 
     // Manual save button handler
     const handleSave = useCallback(async () => {
@@ -210,28 +227,11 @@ export function ExperimentLayout() {
     const applyRollback = useCallback(async () => {
         if (!taskId || targetStage === null) return;
         const res = await experimentApi.reset(Number(taskId), { resetToStage: targetStage });
-        if (res.success) {
-            setExperiment((prev) => {
-                if (!prev) return prev;
-                const next = { ...prev, currentStage: targetStage };
-                if (targetStage <= 1) {
-                    next.samplePlan = null;
-                    next.samplingResults = null;
-                    next.reportContent = null;
-                }
-                if (targetStage <= 2) {
-                    next.samplingResults = null;
-                    next.reportContent = null;
-                }
-                if (targetStage <= 3) {
-                    next.reportContent = null;
-                }
-                return next;
-            });
-            setCurrentStage(targetStage);
+        if (res.success && res.data) {
+            syncExperimentFromServer(res.data, "strict");
         }
         setConfirmRollbackOpen(false);
-    }, [taskId, targetStage]);
+    }, [syncExperimentFromServer, taskId, targetStage]);
 
     // Deadline countdown timer - updates every minute
     const [now, setNow] = useState(() => Date.now());

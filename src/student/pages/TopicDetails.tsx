@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { experimentApi, tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
+import { clearExperimentDrafts } from "../experiment-drafts";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
@@ -489,6 +490,7 @@ export function TopicDetails() {
                                     clearQuestionnaire: true,
                                 });
                                 if (res.success) {
+                                    clearExperimentDrafts(Number(taskId));
                                     navigate(`/task/${taskId}/experiment`);
                                 }
                             }}

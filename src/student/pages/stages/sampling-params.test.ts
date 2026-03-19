@@ -61,6 +61,25 @@ test("serializeSamplingExecutionDraft preserves roundtrip-safe drafts", () => {
     expect(parseSamplingExecutionDraft(serializeSamplingExecutionDraft(draft))).toEqual(draft);
 });
 
+test("parseSamplingExecutionDraft rejects drafts from an outdated sample-plan snapshot", () => {
+    const draft: SamplingExecutionDraft = {
+        simpleSeed: "101",
+        systematicSeed: "",
+        ppsSeed: "202",
+        stratifiedSeed: "303",
+        kValue: 7,
+        ppsSizeField: "income",
+        ppsSampleSize: 120,
+        stratifyBy: "education",
+        layerSampleCounts: [40, 80],
+    };
+
+    const raw = serializeSamplingExecutionDraft(draft, "{\"finalSampleSize\":120}");
+
+    expect(parseSamplingExecutionDraft(raw, undefined, "{\"finalSampleSize\":80}")).toBeNull();
+    expect(parseSamplingExecutionDraft(raw, undefined, "{\"finalSampleSize\":120}")).toEqual(draft);
+});
+
 test("parseSamplingExecutionDraft returns null for malformed json", () => {
     expect(parseSamplingExecutionDraft("{bad json")).toBeNull();
 });
@@ -194,4 +213,35 @@ test("decideSamplingDraftRestore prompts instead of silently overriding saved se
 
     expect(decision.type).toBe("prompt_restore");
     expect(decision.draft?.kValue).toBe(6);
+});
+
+test("decideSamplingDraftRestore ignores drafts tied to an outdated sample plan", () => {
+    const decision = decideSamplingDraftRestore({
+        rawDraft: serializeSamplingExecutionDraft({
+            simpleSeed: "",
+            systematicSeed: "",
+            ppsSeed: "",
+            stratifiedSeed: "",
+            kValue: 6,
+            ppsSizeField: "income",
+            ppsSampleSize: 40,
+            stratifyBy: "gender",
+            layerSampleCounts: [20, 20],
+        }, "{\"finalSampleSize\":40}"),
+        serverValue: {
+            simpleSeed: "",
+            systematicSeed: "",
+            ppsSeed: "",
+            stratifiedSeed: "",
+            kValue: 5,
+            ppsSizeField: "",
+            ppsSampleSize: 50,
+            stratifyBy: "gender",
+            layerSampleCounts: [],
+        },
+        hasCompletedResults: false,
+        dependencySnapshot: "{\"finalSampleSize\":50}",
+    });
+
+    expect(decision).toEqual({ type: "none", draft: null });
 });

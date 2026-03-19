@@ -43,6 +43,7 @@ import {
     buildRepresentativenessRows,
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
+import { getReportDraftKey } from "../../experiment-drafts";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -204,7 +205,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
 
-    const draftKey = experiment?.taskId ? `student_report_draft_${experiment.taskId}` : null;
+    const draftKey = experiment?.taskId ? getReportDraftKey(experiment.taskId) : null;
+    const samplingResultsSnapshot = useMemo(() => JSON.stringify(experiment?.samplingResults ?? null), [experiment?.samplingResults]);
 
     const minLength = 100;
     const maxLength = 5000;
@@ -333,9 +335,25 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const saveReportContent = useCallback(async (nextContent: string) => {
         return saveExperiment({ reportContent: nextContent });
     }, [saveExperiment]);
-    const parseReportDraft = useCallback((raw: string) => raw, []);
+    const parseReportDraft = useCallback((raw: string) => {
+        try {
+            const parsed = JSON.parse(raw) as { reportContent?: unknown; samplingResultsSnapshot?: unknown };
+            if (!parsed || typeof parsed !== "object" || !("reportContent" in parsed)) {
+                return null;
+            }
+            if (parsed.samplingResultsSnapshot !== samplingResultsSnapshot) {
+                return null;
+            }
+            return typeof parsed.reportContent === "string" ? parsed.reportContent : "";
+        } catch {
+            return null;
+        }
+    }, [samplingResultsSnapshot]);
     const isMeaningfulReportDraft = useCallback((draft: string) => getRichTextPlainLength(draft) > 0, []);
-    const serializeReport = useCallback((value: string) => value, []);
+    const serializeReport = useCallback((value: string) => JSON.stringify({
+        reportContent: value,
+        samplingResultsSnapshot,
+    }), [samplingResultsSnapshot]);
 
     const loadLatestReport = useCallback(async () => {
         if (!experiment?.taskId) return null;

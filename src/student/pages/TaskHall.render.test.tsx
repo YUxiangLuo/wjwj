@@ -64,6 +64,7 @@ afterEach(async () => {
     cleanup();
     await new Promise((resolve) => setTimeout(resolve, 0));
     globalThis.fetch = originalFetch;
+    globalThis.localStorage?.clear();
 });
 
 afterAll(async () => {
@@ -237,6 +238,10 @@ test("TaskHall rejected task card confirms restart and resets experiment", async
         throw new Error(`Unhandled fetch: ${url} ${init?.method ?? "GET"}`);
     }) as unknown as typeof fetch;
 
+    localStorage.setItem("student_sample_plan_draft_7", "{\"draft\":1}");
+    localStorage.setItem("student_sampling_params_7", "{\"draft\":2}");
+    localStorage.setItem("student_report_draft_7", "{\"draft\":3}");
+
     const view = render(
         <MemoryRouter>
             <LocationProbe />
@@ -260,5 +265,8 @@ test("TaskHall rejected task card confirms restart and resets experiment", async
         const fetchMock = globalThis.fetch as unknown as ReturnType<typeof mock>;
         expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/student/tasks/7/reset"))).toBe(true);
         expect(view.getByTestId("location-probe").textContent).toBe("/task/7/experiment");
+        expect(localStorage.getItem("student_sample_plan_draft_7")).toBeNull();
+        expect(localStorage.getItem("student_sampling_params_7")).toBeNull();
+        expect(localStorage.getItem("student_report_draft_7")).toBeNull();
     });
 });

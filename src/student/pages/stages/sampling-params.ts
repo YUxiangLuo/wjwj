@@ -12,6 +12,11 @@ export interface SamplingExecutionDraft {
     layerSampleCounts: number[];
 }
 
+interface StoredSamplingExecutionDraft {
+    value?: SamplingExecutionDraft;
+    dependencySnapshot?: string;
+}
+
 export type SamplingDraftRestoreDecision =
     | { type: "none"; draft: null }
     | { type: "auto_restore"; draft: SamplingExecutionDraft }
@@ -37,8 +42,14 @@ function normalizeInteger(value: unknown, fallback: number, min = 0) {
     return parsed;
 }
 
-export function serializeSamplingExecutionDraft(value: SamplingExecutionDraft) {
-    return JSON.stringify(value);
+export function serializeSamplingExecutionDraft(value: SamplingExecutionDraft, dependencySnapshot?: string) {
+    if (dependencySnapshot === undefined) {
+        return JSON.stringify(value);
+    }
+    return JSON.stringify({
+        value,
+        dependencySnapshot,
+    } satisfies StoredSamplingExecutionDraft);
 }
 
 export function resolvePpsSizeField(currentValue: string, numericFields: string[]) {
@@ -80,14 +91,15 @@ export function decideSamplingDraftRestore(params: {
     serverValue: SamplingExecutionDraft;
     hasCompletedResults: boolean;
     defaults?: SamplingDraftDefaults;
+    dependencySnapshot?: string;
 }): SamplingDraftRestoreDecision {
-    const { rawDraft, serverValue, hasCompletedResults, defaults } = params;
+    const { rawDraft, serverValue, hasCompletedResults, defaults, dependencySnapshot } = params;
 
     if (!rawDraft) {
         return { type: "none", draft: null };
     }
 
-    const draft = parseSamplingExecutionDraft(rawDraft, defaults);
+    const draft = parseSamplingExecutionDraft(rawDraft, defaults, dependencySnapshot);
     if (!draft) {
         return { type: "none", draft: null };
     }
@@ -111,9 +123,21 @@ export interface SamplingDraftDefaults {
 export function parseSamplingExecutionDraft(
     raw: string,
     defaults?: SamplingDraftDefaults,
+    dependencySnapshot?: string,
 ): SamplingExecutionDraft | null {
     try {
-        const data = JSON.parse(raw) as Partial<SamplingExecutionDraft>;
+        const parsed = JSON.parse(raw) as Partial<SamplingExecutionDraft> | StoredSamplingExecutionDraft;
+        if (!parsed || typeof parsed !== "object") return null;
+        const stored = "value" in parsed
+            ? parsed as StoredSamplingExecutionDraft
+            : null;
+        if (!stored && dependencySnapshot !== undefined) {
+            return null;
+        }
+        if (stored && dependencySnapshot !== undefined && stored.dependencySnapshot !== dependencySnapshot) {
+            return null;
+        }
+        const data = (stored?.value ?? parsed) as Partial<SamplingExecutionDraft>;
         if (!data || typeof data !== "object") return null;
 
         return {
@@ -126,7 +150,7 @@ export function parseSamplingExecutionDraft(
             ppsSampleSize: normalizeInteger(data.ppsSampleSize, defaults?.ppsSampleSize ?? 1, 1),
             stratifyBy: typeof data.stratifyBy === "string" ? data.stratifyBy.trim() : "",
             layerSampleCounts: Array.isArray(data.layerSampleCounts)
-                ? data.layerSampleCounts.map((value) => normalizeInteger(value, 0, 0))
+                ? data.layerSampleCounts.map((value: unknown) => normalizeInteger(value, 0, 0))
                 : [],
         };
     } catch {

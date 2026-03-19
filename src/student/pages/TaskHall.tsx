@@ -22,6 +22,7 @@ import {
 import { RichTextContent } from "@/components/RichTextContent";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { announcementsApi, experimentApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
+import { clearExperimentDrafts } from "../experiment-drafts";
 
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
@@ -289,6 +290,7 @@ function TaskCard({ task }: TaskCardProps) {
                                     clearQuestionnaire: true,
                                 });
                                 if (res.success) {
+                                    clearExperimentDrafts(task.id);
                                     navigate(`/task/${task.id}/experiment`);
                                 }
                             }}

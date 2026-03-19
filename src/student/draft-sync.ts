@@ -133,6 +133,14 @@ export function useDraftSync<T>({
 
     const currentSnapshot = useMemo(() => serialize(currentValue), [currentValue, serialize]);
     const initialServerSnapshot = useMemo(() => serialize(initialServerValue), [initialServerValue, serialize]);
+    const clearLocalDraft = useCallback(() => {
+        if (!draftKey) return;
+        try {
+            localStorage.removeItem(draftKey);
+        } catch {
+            // ignore write errors
+        }
+    }, [draftKey]);
 
     useEffect(() => {
         serverSnapshotRef.current = initialServerSnapshot;
@@ -150,8 +158,9 @@ export function useDraftSync<T>({
             return;
         }
 
+        const rawDraft = localStorage.getItem(draftKey);
         const decision = decideDraftRestore({
-            rawDraft: localStorage.getItem(draftKey),
+            rawDraft,
             parseDraft,
             isMeaningfulDraft,
             serverSnapshot: initialServerSnapshot,
@@ -163,8 +172,11 @@ export function useDraftSync<T>({
             return;
         }
 
+        if (rawDraft && parseDraft(rawDraft) === null) {
+            clearLocalDraft();
+        }
         draftResolvedRef.current = true;
-    }, [draftKey, initialServerSnapshot, isMeaningfulDraft, parseDraft]);
+    }, [clearLocalDraft, draftKey, initialServerSnapshot, isMeaningfulDraft, parseDraft]);
 
     useEffect(() => {
         if (!draftKey || !draftResolvedRef.current) return;
@@ -300,15 +312,6 @@ export function useDraftSync<T>({
             void syncAfterReconnect();
         }
     }, [isOnline, syncAfterReconnect]);
-
-    const clearLocalDraft = useCallback(() => {
-        if (!draftKey) return;
-        try {
-            localStorage.removeItem(draftKey);
-        } catch {
-            // ignore write errors
-        }
-    }, [draftKey]);
 
     const discardPendingDraft = useCallback(() => {
         clearLocalDraft();
