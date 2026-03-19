@@ -344,7 +344,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             if (parsed.samplingResultsSnapshot !== samplingResultsSnapshot) {
                 return null;
             }
-            return typeof parsed.reportContent === "string" ? parsed.reportContent : "";
+            return typeof parsed.reportContent === "string" ? parsed.reportContent : null;
         } catch {
             return null;
         }
