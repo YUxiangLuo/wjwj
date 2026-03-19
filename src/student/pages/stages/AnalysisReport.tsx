@@ -21,11 +21,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, AlertCircle, Maximize2, CheckCircle, MonitorPlay } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, MonitorPlay } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
-import { useDraftSync } from "../../draft-sync";
+import { clearReportDraft, getReportDraftKey, readReportDraft, writeReportDraft } from "../../draft-sync";
 import { experimentApi } from "../../api-client";
 import { ImmersiveAnalysisDashboard } from "../../components/ImmersiveAnalysisDashboard";
 import {
@@ -193,9 +193,10 @@ function FieldSelect({
 // ---------------------------------------------------------------------------
 
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
-    const { experiment, saveExperiment } = useExperiment();
+    const { experiment, registerStageSave, saveExperiment } = useExperiment();
 
-    const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
+    const serverReportContent = experiment?.reportContent ?? "";
+    const [reportContent, setReportContent] = useState(serverReportContent);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
     const [showDashboard, setShowDashboard] = useState(false);
@@ -203,8 +204,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [statsLoading, setStatsLoading] = useState(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
+    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
+    const [pendingDraft, setPendingDraft] = useState<string | null>(null);
+    const [draftChecked, setDraftChecked] = useState(false);
 
-    const draftKey = experiment?.taskId ? `student_report_draft_${experiment.taskId}` : null;
+    const draftKey = experiment?.taskId ? getReportDraftKey(experiment.taskId) : null;
 
     const minLength = 100;
     const maxLength = 5000;
@@ -328,55 +332,117 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const activeZoom = zoomChart ? zoomConfig[zoomChart] : null;
 
-    // ---- Draft sync ----
+    // ---- Minimal report draft ----
 
-    const saveReportContent = useCallback(async (nextContent: string) => {
-        return saveExperiment({ reportContent: nextContent });
-    }, [saveExperiment]);
-    const parseReportDraft = useCallback((raw: string) => raw, []);
-    const isMeaningfulReportDraft = useCallback((draft: string) => getRichTextPlainLength(draft) > 0, []);
-    const serializeReport = useCallback((value: string) => value, []);
+    const hasMeaningfulReportDraft = useCallback((draft: string) => {
+        return getRichTextPlainLength(draft) > 0;
+    }, []);
 
-    const loadLatestReport = useCallback(async () => {
-        if (!experiment?.taskId) return null;
-        const res = await experimentApi.get(experiment.taskId);
-        if (!res.success || !res.data) return null;
-        return typeof res.data.reportContent === "string" ? res.data.reportContent : "";
-    }, [experiment?.taskId]);
+    useEffect(() => {
+        setDraftChecked(false);
+        setReportContent(serverReportContent);
+        setPendingDraft(null);
+        setRestoreDraftOpen(false);
 
-    const {
-        clearLocalDraft,
-        discardPendingDraft,
-        isOnline,
-        keepLocalDraft,
-        keepServerDraft,
-        networkNotice,
-        restoreDraftOpen,
-        restorePendingDraft,
-        saveNow,
-        setRestoreDraftOpen,
-        setSyncConflictOpen,
-        syncConflictOpen,
-    } = useDraftSync<string>({
-        applyValue: setReportContent,
-        currentValue: reportContent,
+        if (!experiment?.taskId) {
+            setDraftChecked(true);
+            return;
+        }
+
+        const localDraft = readReportDraft(experiment.taskId);
+        if (!localDraft || !hasMeaningfulReportDraft(localDraft) || localDraft === serverReportContent) {
+            setDraftChecked(true);
+            return;
+        }
+
+        setPendingDraft(localDraft);
+        setRestoreDraftOpen(true);
+        setDraftChecked(true);
+    }, [experiment?.taskId, hasMeaningfulReportDraft, serverReportContent]);
+
+    useEffect(() => {
+        if (!draftChecked || !experiment?.taskId || draftKey === null) {
+            return;
+        }
+
+        if (restoreDraftOpen && pendingDraft !== null) {
+            return;
+        }
+
+        if (!experiment.reportContent && experiment.currentStage <= 3) {
+            clearReportDraft(experiment.taskId);
+            return;
+        }
+
+        if (reportContent === serverReportContent) {
+            clearReportDraft(experiment.taskId);
+            return;
+        }
+
+        if (hasMeaningfulReportDraft(reportContent)) {
+            writeReportDraft(experiment.taskId, reportContent);
+            return;
+        }
+
+        clearReportDraft(experiment.taskId);
+    }, [
         draftKey,
-        initialServerValue: experiment?.reportContent ?? "",
-        isMeaningfulDraft: isMeaningfulReportDraft,
-        loadServerLatest: loadLatestReport,
-        parseDraft: parseReportDraft,
-        saveToServer: saveReportContent,
-        serialize: serializeReport,
-    });
+        draftChecked,
+        experiment?.currentStage,
+        experiment?.reportContent,
+        experiment?.taskId,
+        hasMeaningfulReportDraft,
+        pendingDraft,
+        reportContent,
+        restoreDraftOpen,
+        serverReportContent,
+    ]);
+
+    const saveReportContent = useCallback(async () => {
+        if (!experiment?.taskId) {
+            return false;
+        }
+
+        const success = await saveExperiment({ reportContent });
+        if (success) {
+            clearReportDraft(experiment.taskId);
+        }
+        return success;
+    }, [experiment?.taskId, reportContent, saveExperiment]);
+
+    useEffect(() => {
+        registerStageSave(saveReportContent);
+        return () => {
+            registerStageSave(null);
+        };
+    }, [registerStageSave, saveReportContent]);
+
+    const discardPendingDraft = useCallback(() => {
+        if (experiment?.taskId) {
+            clearReportDraft(experiment.taskId);
+        }
+        setPendingDraft(null);
+        setRestoreDraftOpen(false);
+        setReportContent(serverReportContent);
+    }, [experiment?.taskId, serverReportContent]);
+
+    const restorePendingDraft = useCallback(() => {
+        if (pendingDraft !== null) {
+            setReportContent(pendingDraft);
+        }
+        setPendingDraft(null);
+        setRestoreDraftOpen(false);
+    }, [pendingDraft]);
 
     // ---- Handlers ----
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            await saveNow();
-            clearLocalDraft();
-            onSubmit();
+            const success = await saveReportContent();
+            if (success) {
+                onSubmit();
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -449,40 +515,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
-            {networkNotice && (
-                <Card
-                    data-testid="student-analysis-network-notice"
-                    className={`rounded-2xl border shadow-sm ${syncConflictOpen
-                        ? "border-amber-500/30 bg-amber-500/10"
-                        : isOnline
-                            ? "border-emerald-500/30 bg-emerald-500/10"
-                            : "border-rose-500/30 bg-rose-500/10"
-                        }`}
-                >
-                    <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm">
-                            {syncConflictOpen ? (
-                                <AlertCircle className="h-4 w-4 text-amber-600" />
-                            ) : isOnline ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-600" />
-                            ) : (
-                                <AlertCircle className="h-4 w-4 text-rose-600" />
-                            )}
-                            <span
-                                className={syncConflictOpen
-                                    ? "text-amber-700 dark:text-amber-300"
-                                    : isOnline
-                                        ? "text-emerald-700 dark:text-emerald-300"
-                                        : "text-rose-500"
-                                }
-                            >
-                                {networkNotice}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
@@ -716,8 +748,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-restore-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">检测到本地草稿，是否恢复？</AlertDialogDescription>
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复未提交报告</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                            检测到上次未提交的本地报告内容。您可以恢复继续编辑，或直接使用服务器中的当前内容。
+                        </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel
@@ -733,38 +767,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             onClick={restorePendingDraft}
                         >
                             恢复草稿
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Sync conflict dialog */}
-            <AlertDialog open={syncConflictOpen} onOpenChange={setSyncConflictOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-conflict-dialog">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">检测到草稿冲突</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                            本地草稿和服务器草稿都发生了变化。请选择要保留的版本。
-                            <br />
-                            <span className="text-slate-500">保留本地版本将覆盖服务器当前草稿。</span>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                            data-testid="student-analysis-conflict-server"
-                            onClick={keepServerDraft}
-                        >
-                            保留服务器版本
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            data-testid="student-analysis-conflict-local"
-                            onClick={() => {
-                                void keepLocalDraft();
-                            }}
-                        >
-                            保留本地版本
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

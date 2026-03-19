@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext, useMemo } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, useMemo, useRef } from "react";
 import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2, ChevronRight, Home, Clock, AlertCircle } from "lucide-react";
 import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
     type SamplingResultsData,
 } from "../api-client";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
+import { clearExperimentDrafts, clearLegacyExperimentDrafts } from "../draft-sync";
 
 // Stage components
 import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
@@ -43,6 +44,7 @@ interface ExperimentContextValue {
     populationSize: number;
     isSaving: boolean;
     lastSavedAt: string | null;
+    registerStageSave: (handler: (() => Promise<boolean>) | null) => void;
     saveExperiment: (data: Partial<{
         currentStage: number;
         questionnaire: QuestionnaireData;
@@ -78,6 +80,30 @@ export function ExperimentLayout() {
     const [confirmRollbackOpen, setConfirmRollbackOpen] = useState(false);
     const [targetStage, setTargetStage] = useState<number | null>(null);
     const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
+    const stageSaveRef = useRef<(() => Promise<boolean>) | null>(null);
+
+    const registerStageSave = useCallback<ExperimentContextValue["registerStageSave"]>((handler) => {
+        stageSaveRef.current = handler;
+    }, []);
+
+    const applyExperimentSnapshot = useCallback((nextExperiment: ExperimentData) => {
+        setExperiment(nextExperiment);
+        setCurrentStage(Math.min(4, Math.max(nextExperiment.currentStage || 1, 1)));
+        setLastSavedAt(nextExperiment.lastSavedAt);
+
+        clearLegacyExperimentDrafts(nextExperiment.taskId);
+        if (!nextExperiment.samplePlan || nextExperiment.currentStage <= 1) {
+            clearExperimentDrafts(nextExperiment.taskId, { fromStage: 2 });
+            return;
+        }
+        if (!nextExperiment.samplingResults || nextExperiment.currentStage <= 2) {
+            clearExperimentDrafts(nextExperiment.taskId, { fromStage: 3 });
+            return;
+        }
+        if (!nextExperiment.reportContent || nextExperiment.currentStage <= 3) {
+            clearExperimentDrafts(nextExperiment.taskId, { fromStage: 4 });
+        }
+    }, []);
 
     // Load experiment data
     useEffect(() => {
@@ -121,10 +147,7 @@ export function ExperimentLayout() {
                 }
 
                 if (experimentRes.success && experimentRes.data) {
-                    const normalizedStage = Math.min(4, Math.max(experimentRes.data.currentStage || 1, 1));
-                    setExperiment(experimentRes.data);
-                    setCurrentStage(normalizedStage);
-                    setLastSavedAt(experimentRes.data.lastSavedAt);
+                    applyExperimentSnapshot(experimentRes.data);
                 } else if (experimentRes.error?.code === "TOPIC_DELETED") {
                     setExperiment(null);
                     setTopicDeleted(true);
@@ -141,7 +164,7 @@ export function ExperimentLayout() {
             }
         }
         loadExperiment();
-    }, [taskId]);
+    }, [applyExperimentSnapshot, taskId]);
 
     // Save experiment data
     const saveExperiment = useCallback(async (data: Partial<{
@@ -157,24 +180,8 @@ export function ExperimentLayout() {
         setSaveError(null);
         try {
             const res = await experimentApi.save(parseInt(taskId), data);
-            if (res.success && res.data) {
-                setLastSavedAt(res.data.lastSavedAt);
-
-                // Update local experiment state
-                setExperiment((prev) => {
-                    if (!prev) return prev;
-                    return {
-                        ...prev,
-                        ...data,
-                        lastSavedAt: res.data!.lastSavedAt,
-                    };
-                });
-
-                // Sync stage state so renderStage() reflects the change immediately
-                if (data.currentStage != null) {
-                    setCurrentStage(data.currentStage);
-                }
-
+            if (res.success && res.data?.experiment) {
+                applyExperimentSnapshot(res.data.experiment);
                 return true;
             }
             setSaveError(res.error?.message ?? "保存失败，请稍后重试");
@@ -186,17 +193,16 @@ export function ExperimentLayout() {
         } finally {
             setIsSaving(false);
         }
-    }, [taskId]);
+    }, [applyExperimentSnapshot, taskId]);
 
     // Manual save button handler
     const handleSave = useCallback(async () => {
-        await saveExperiment({ currentStage });
-    }, [saveExperiment, currentStage]);
-
-    const handleNextStage = useCallback(async () => {
-        if (currentStage < 4) {
-            await saveExperiment({ currentStage: currentStage + 1 });
+        const stageSaveHandler = stageSaveRef.current;
+        if (stageSaveHandler) {
+            await stageSaveHandler();
+            return;
         }
+        await saveExperiment({ currentStage });
     }, [currentStage, saveExperiment]);
 
     const handlePrevStage = useCallback(() => {
@@ -209,28 +215,11 @@ export function ExperimentLayout() {
     const applyRollback = useCallback(async () => {
         if (!taskId || targetStage === null) return;
         const res = await experimentApi.reset(Number(taskId), { resetToStage: targetStage });
-        if (res.success) {
-            setExperiment((prev) => {
-                if (!prev) return prev;
-                const next = { ...prev, currentStage: targetStage };
-                if (targetStage <= 1) {
-                    next.samplePlan = null;
-                    next.samplingResults = null;
-                    next.reportContent = null;
-                }
-                if (targetStage <= 2) {
-                    next.samplingResults = null;
-                    next.reportContent = null;
-                }
-                if (targetStage <= 3) {
-                    next.reportContent = null;
-                }
-                return next;
-            });
-            setCurrentStage(targetStage);
+        if (res.success && res.data?.experiment) {
+            applyExperimentSnapshot(res.data.experiment);
         }
         setConfirmRollbackOpen(false);
-    }, [taskId, targetStage]);
+    }, [applyExperimentSnapshot, taskId, targetStage]);
 
     // Deadline countdown timer - updates every minute
     const [now, setNow] = useState(() => Date.now());
@@ -279,11 +268,11 @@ export function ExperimentLayout() {
 
         switch (stageToRender) {
             case 1:
-                return <QuestionnaireDesign onNext={handleNextStage} />;
+                return <QuestionnaireDesign onNext={() => undefined} />;
             case 2:
-                return <SamplePlanning onNext={handleNextStage} onPrev={handlePrevStage} />;
+                return <SamplePlanning onNext={() => undefined} onPrev={handlePrevStage} />;
             case 3:
-                return <SamplingExecution onNext={handleNextStage} onPrev={handlePrevStage} />;
+                return <SamplingExecution onNext={() => undefined} onPrev={handlePrevStage} />;
             case 4:
                 return <AnalysisReport onPrev={handlePrevStage} onSubmit={() => {
                     if (taskId) {
@@ -300,6 +289,7 @@ export function ExperimentLayout() {
         populationSize: experiment.populationSize,
         isSaving,
         lastSavedAt,
+        registerStageSave,
         saveExperiment,
     };
 
@@ -345,7 +335,7 @@ export function ExperimentLayout() {
                             )}
                             {lastSavedAt && (
                                 <span className="text-xs text-slate-500 font-mono hidden sm:inline-block">
-                                    已自动保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN")}
+                                    最近保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN")}
                                 </span>
                             )}
                             <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} data-testid="student-experiment-save" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">

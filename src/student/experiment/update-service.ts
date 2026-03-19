@@ -88,10 +88,14 @@ export function buildExperimentSaveUpdates(params: {
     const nextQuestionnaire = params.body.questionnaire !== undefined
         ? params.body.questionnaire
         : parseStoredJson(exp.questionnaire);
-    const nextSamplePlan = params.body.samplePlan !== undefined
+    const samplePlanChanged = params.body.samplePlan !== undefined;
+    const samplingResultsChanged = params.body.samplingResults !== undefined;
+    const reportContentChanged = params.body.reportContent !== undefined;
+
+    const nextSamplePlan = samplePlanChanged
         ? attachCalculatedSampleSize(params.body.samplePlan as Record<string, any>, params.populationSize)
         : parseStoredJson(exp.samplePlan);
-    const nextSamplingResults = params.body.samplingResults !== undefined
+    let nextSamplingResults = samplingResultsChanged
         ? params.body.samplingResults
         : parseStoredJson(exp.samplingResults);
     const updates: Record<string, unknown> = {
@@ -99,17 +103,42 @@ export function buildExperimentSaveUpdates(params: {
         version: exp.version + 1,
     };
 
+    let resolvedStage = params.body.currentStage !== undefined
+        ? Number(params.body.currentStage)
+        : exp.currentStage;
+
     if (params.body.currentStage !== undefined) {
-        const nextStage = Number(params.body.currentStage);
-        if (!isValidStage(nextStage)) {
+        if (!isValidStage(resolvedStage)) {
             return fail("当前阶段必须是0-4的整数", "VALIDATION_ERROR");
         }
-        if (params.deadlinePassed && nextStage > exp.currentStage) {
-            return fail("任务已截止，无法进入下一阶段", "TASK_DEADLINE");
-        }
+    }
 
+    if (samplePlanChanged && !samplingResultsChanged) {
+        nextSamplingResults = null;
+        updates.samplingResults = null;
+        updates.reportContent = null;
+        updates.stage3CompletedAt = null;
+        updates.stage4CompletedAt = null;
+        const hasSavedDownstreamState = exp.currentStage > 2 || exp.samplingResults != null || exp.reportContent != null;
+        if (hasSavedDownstreamState) {
+            resolvedStage = Math.min(resolvedStage, 2);
+        }
+    } else if ((samplePlanChanged || samplingResultsChanged) && !reportContentChanged) {
+        updates.reportContent = null;
+        updates.stage4CompletedAt = null;
+        const hasSavedReportState = exp.currentStage > 3 || exp.reportContent != null;
+        if (hasSavedReportState) {
+            resolvedStage = Math.min(resolvedStage, 3);
+        }
+    }
+
+    if (params.deadlinePassed && resolvedStage > exp.currentStage) {
+        return fail("任务已截止，无法进入下一阶段", "TASK_DEADLINE");
+    }
+
+    if (resolvedStage > exp.currentStage) {
         const stageAdvanceError = validateStageAdvance({
-            nextStage,
+            nextStage: resolvedStage,
             currentStage: exp.currentStage,
             questionnaire: nextQuestionnaire,
             samplePlan: nextSamplePlan,
@@ -119,18 +148,26 @@ export function buildExperimentSaveUpdates(params: {
         if (stageAdvanceError) {
             return stageAdvanceError;
         }
+    }
 
-        updates.currentStage = nextStage;
-        if (nextStage >= 1 && !exp.stage1CompletedAt) updates.stage1CompletedAt = new Date();
-        if (nextStage >= 2 && !exp.stage2CompletedAt) updates.stage2CompletedAt = new Date();
-        if (nextStage >= 3 && !exp.stage3CompletedAt) updates.stage3CompletedAt = new Date();
-        if (nextStage >= 4 && !exp.stage4CompletedAt) updates.stage4CompletedAt = new Date();
+    if (resolvedStage !== exp.currentStage || params.body.currentStage !== undefined) {
+        updates.currentStage = resolvedStage;
+        if (resolvedStage >= 1 && !exp.stage1CompletedAt) updates.stage1CompletedAt = new Date();
+        if (resolvedStage >= 2 && !exp.stage2CompletedAt) updates.stage2CompletedAt = new Date();
+        if (resolvedStage >= 3 && !exp.stage3CompletedAt && updates.stage3CompletedAt === undefined) {
+            updates.stage3CompletedAt = new Date();
+        }
+        if (resolvedStage >= 4 && !exp.stage4CompletedAt && updates.stage4CompletedAt === undefined) {
+            updates.stage4CompletedAt = new Date();
+        }
     }
 
     if (params.body.questionnaire !== undefined) updates.questionnaire = params.body.questionnaire;
-    if (params.body.samplePlan !== undefined) updates.samplePlan = nextSamplePlan;
-    if (params.body.samplingResults !== undefined) updates.samplingResults = params.body.samplingResults;
-    if (params.body.reportContent !== undefined) updates.reportContent = params.body.reportContent;
+    if (samplePlanChanged) updates.samplePlan = nextSamplePlan;
+    if (samplingResultsChanged) updates.samplingResults = params.body.samplingResults;
+    if (reportContentChanged && updates.reportContent === undefined) {
+        updates.reportContent = params.body.reportContent;
+    }
 
     if (exp.status === ExperimentStatus.REJECTED) {
         updates.status = ExperimentStatus.IN_PROGRESS;

@@ -257,6 +257,16 @@ test("experiment save updates stage and recalculates sample size", async () => {
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
     expect(payload.data.lastSavedAt).toBeString();
+    expect(payload.data.experiment).toMatchObject({
+        taskId: 40,
+        currentStage: 2,
+        samplePlan: {
+            confidenceLevel: "95",
+            marginOfError: 5,
+            finalSampleSize: 50,
+            calculatedSampleSize: 132,
+        },
+    });
 
     const updateOperation = operations.find((operation) => operation.kind === "update");
     expect(updateOperation?.set).toMatchObject({
@@ -455,6 +465,7 @@ test("experiment reset clears downstream progress and reopens rejected experimen
                 stage4CompletedAt: new Date("2026-03-04T00:00:00.000Z"),
             }],
             [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ excelRowCount: 200 }],
         ],
         update: [[{ affectedRows: 1 }]],
     });
@@ -470,6 +481,13 @@ test("experiment reset clears downstream progress and reopens rejected experimen
 
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
+    expect(payload.data.experiment).toMatchObject({
+        currentStage: 1,
+        samplePlan: null,
+        samplingResults: null,
+        reportContent: null,
+        populationSize: 200,
+    });
 
     const updateOperation = operations.find((operation) => operation.kind === "update");
     expect(updateOperation?.set).toMatchObject({
@@ -499,6 +517,7 @@ test("experiment reset blocks submitted experiments before writing", async () =>
                 version: 6,
             }],
             [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ excelRowCount: 200 }],
         ],
     });
 

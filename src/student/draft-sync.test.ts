@@ -1,88 +1,89 @@
-import { describe, expect, test } from "bun:test";
-import { decideDraftRestore, decideReconnectSync, hasUnsavedChanges } from "./draft-sync";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import {
+    clearExperimentDrafts,
+    clearLegacyExperimentDrafts,
+    clearReportDraft,
+    getReportDraftKey,
+    readReportDraft,
+    writeReportDraft,
+} from "./draft-sync";
 
-describe("decideDraftRestore", () => {
-    const parseDraft = (raw: string) => {
-        try {
-            return JSON.parse(raw) as { title?: string };
-        } catch {
-            return null;
-        }
-    };
+const taskId = 40;
 
-    test("ignores empty or invalid drafts", () => {
-        expect(decideDraftRestore({
-            rawDraft: null,
-            parseDraft,
-            isMeaningfulDraft: (draft) => Boolean(draft.title),
-            serverSnapshot: "{\"title\":\"server\"}",
-        })).toEqual({ type: "none", draft: null });
+function createStorage() {
+    const store = new Map<string, string>();
+    return {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+            store.set(key, value);
+        },
+        removeItem: (key: string) => {
+            store.delete(key);
+        },
+        clear: () => {
+            store.clear();
+        },
+        key: (index: number) => Array.from(store.keys())[index] ?? null,
+        get length() {
+            return store.size;
+        },
+    } as Storage;
+}
 
-        expect(decideDraftRestore({
-            rawDraft: "{invalid}",
-            parseDraft,
-            isMeaningfulDraft: (draft) => Boolean(draft.title),
-            serverSnapshot: "{\"title\":\"server\"}",
-        })).toEqual({ type: "none", draft: null });
-    });
+const originalLocalStorage = globalThis.localStorage;
 
-    test("does not prompt when local and server snapshots match", () => {
-        expect(decideDraftRestore({
-            rawDraft: "{\"title\":\"same\"}",
-            parseDraft,
-            isMeaningfulDraft: (draft) => Boolean(draft.title),
-            serverSnapshot: "{\"title\":\"same\"}",
-        })).toEqual({ type: "none", draft: null });
-    });
-
-    test("prompts when a meaningful local draft differs from server", () => {
-        expect(decideDraftRestore({
-            rawDraft: "{\"title\":\"local\"}",
-            parseDraft,
-            isMeaningfulDraft: (draft) => Boolean(draft.title),
-            serverSnapshot: "{\"title\":\"server\"}",
-        })).toEqual({
-            type: "restore",
-            draft: { title: "local" },
-        });
+beforeEach(() => {
+    Object.defineProperty(globalThis, "localStorage", {
+        configurable: true,
+        value: createStorage(),
     });
 });
 
-describe("decideReconnectSync", () => {
-    test("prefers no-op when local and server are already aligned", () => {
-        expect(decideReconnectSync({
-            localSnapshot: "same",
-            serverSnapshot: "same",
-            lastSyncedSnapshot: "old",
-        })).toBe("synced");
-    });
-
-    test("detects divergent local and server changes", () => {
-        expect(decideReconnectSync({
-            localSnapshot: "local",
-            serverSnapshot: "server",
-            lastSyncedSnapshot: "old",
-        })).toBe("conflict");
-    });
-
-    test("pushes local changes when only local changed", () => {
-        expect(decideReconnectSync({
-            localSnapshot: "local",
-            serverSnapshot: "old",
-            lastSyncedSnapshot: "old",
-        })).toBe("push_local");
-    });
-
-    test("pulls server changes when local stayed at last synced snapshot", () => {
-        expect(decideReconnectSync({
-            localSnapshot: "old",
-            serverSnapshot: "server",
-            lastSyncedSnapshot: "old",
-        })).toBe("pull_server");
+afterEach(() => {
+    Object.defineProperty(globalThis, "localStorage", {
+        configurable: true,
+        value: originalLocalStorage,
     });
 });
 
-test("hasUnsavedChanges compares current and last synced snapshots", () => {
-    expect(hasUnsavedChanges("current", "server")).toBe(true);
-    expect(hasUnsavedChanges("same", "same")).toBe(false);
+describe("report draft helpers", () => {
+    test("read/write/clear report draft use the stage 4 key", () => {
+        expect(getReportDraftKey(taskId)).toBe("student_report_draft_40");
+
+        writeReportDraft(taskId, "draft-content");
+        expect(readReportDraft(taskId)).toBe("draft-content");
+
+        clearReportDraft(taskId);
+        expect(readReportDraft(taskId)).toBeNull();
+    });
+});
+
+describe("clearExperimentDrafts", () => {
+    test("clears downstream drafts from the requested stage", () => {
+        localStorage.setItem(`student_questionnaire_draft_${taskId}`, "q");
+        localStorage.setItem(`student_sample_plan_draft_${taskId}`, "p");
+        localStorage.setItem(`student_sampling_params_${taskId}`, "s");
+        localStorage.setItem(`student_report_draft_${taskId}`, "r");
+
+        clearExperimentDrafts(taskId, { fromStage: 3 });
+
+        expect(localStorage.getItem(`student_questionnaire_draft_${taskId}`)).toBe("q");
+        expect(localStorage.getItem(`student_sample_plan_draft_${taskId}`)).toBe("p");
+        expect(localStorage.getItem(`student_sampling_params_${taskId}`)).toBeNull();
+        expect(localStorage.getItem(`student_report_draft_${taskId}`)).toBeNull();
+    });
+
+    test("legacy cleanup keeps stage 4 draft intact", () => {
+        localStorage.setItem(`student_questionnaire_draft_${taskId}`, "q");
+        localStorage.setItem(`student_sample_plan_draft_${taskId}`, "p");
+        localStorage.setItem(`student_sampling_params_${taskId}`, "s");
+        localStorage.setItem(`student_report_draft_${taskId}`, "r");
+
+        clearLegacyExperimentDrafts(taskId);
+
+        expect(localStorage.getItem(`student_questionnaire_draft_${taskId}`)).toBeNull();
+        expect(localStorage.getItem(`student_sample_plan_draft_${taskId}`)).toBeNull();
+        expect(localStorage.getItem(`student_sampling_params_${taskId}`)).toBeNull();
+        expect(localStorage.getItem(`student_report_draft_${taskId}`)).toBe("r");
+    });
 });

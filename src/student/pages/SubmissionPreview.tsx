@@ -24,6 +24,7 @@ import {
 } from "../experiment/systematic-sampling";
 import { getPreviewSubmitBlocker } from "../experiment/preview-submit";
 import { ImmersiveReportPreview } from "../components/ImmersiveReportPreview";
+import { clearReportDraft } from "../draft-sync";
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
@@ -146,6 +147,7 @@ export function SubmissionPreview() {
 
             const first = await experimentApi.submit(Number(taskId));
             if (first.success || first.error?.code === "ALREADY_SUBMITTED") {
+                clearReportDraft(Number(taskId));
                 navigate("/", { replace: true });
                 return;
             }
@@ -159,6 +161,7 @@ export function SubmissionPreview() {
 
             const second = await experimentApi.submit(Number(taskId));
             if (second.success || second.error?.code === "ALREADY_SUBMITTED") {
+                clearReportDraft(Number(taskId));
                 navigate("/", { replace: true });
                 return;
             }

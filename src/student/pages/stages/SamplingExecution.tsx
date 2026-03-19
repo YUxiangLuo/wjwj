@@ -96,7 +96,7 @@ function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }: Sampl
 }
 
 export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
-    const { populationSize, experiment, saveExperiment } = useExperiment();
+    const { populationSize, experiment, registerStageSave, saveExperiment } = useExperiment();
 
     // Get sample size from sample plan
     const samplePlan = experiment?.samplePlan as SamplePlanData | null;
@@ -215,8 +215,15 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     // Save results when they change
     const saveResults = useCallback(async () => {
-        await saveExperiment({ samplingResults: buildSamplingResultsPayload() });
+        return saveExperiment({ samplingResults: buildSamplingResultsPayload() });
     }, [buildSamplingResultsPayload, saveExperiment]);
+
+    useEffect(() => {
+        registerStageSave(saveResults);
+        return () => {
+            registerStageSave(null);
+        };
+    }, [registerStageSave, saveResults]);
 
 
     const taskId = experiment?.taskId;
@@ -390,9 +397,13 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const allCompleted = simpleResult?.completed && systematicResult?.completed && ppsResult?.completed && stratifiedResult?.completed;
 
     const handleConfirmNext = async () => {
-        await saveResults();
-        await saveExperiment({ currentStage: 4 });
-        onNext();
+        const success = await saveExperiment({
+            samplingResults: buildSamplingResultsPayload(),
+            currentStage: 4,
+        });
+        if (success) {
+            onNext();
+        }
     };
 
     // Allocation helpers

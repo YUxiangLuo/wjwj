@@ -149,7 +149,30 @@ const experimentRoutes: RouteDefinition = {
             return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 
-        return json({ success: true, lastSavedAt: saveResult.lastSavedAt.toISOString() });
+        const nextExperiment = deserializeExperimentFields({
+            ...exp,
+            ...saveResult.updates,
+        });
+        const responsePopulationSize = populationSize
+            ?? await findStudentTaskPopulationSize(taskId, currentStudent.classId)
+            ?? 10000;
+
+        return json({
+            success: true,
+            lastSavedAt: saveResult.lastSavedAt.toISOString(),
+            experiment: {
+                id: nextExperiment.id,
+                taskId: nextExperiment.taskId,
+                currentStage: nextExperiment.currentStage,
+                status: nextExperiment.status,
+                questionnaire: nextExperiment.questionnaire,
+                samplePlan: nextExperiment.samplePlan,
+                samplingResults: nextExperiment.samplingResults,
+                reportContent: nextExperiment.reportContent,
+                lastSavedAt: nextExperiment.lastSavedAt?.toISOString() ?? null,
+                populationSize: responsePopulationSize,
+            },
+        });
     },
 };
 
@@ -343,7 +366,28 @@ const resetRoutes: RouteDefinition = {
             return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 
-        return json({ success: true, lastSavedAt: resetResult.lastSavedAt.toISOString() });
+        const nextExperiment = deserializeExperimentFields({
+            ...exp,
+            ...resetResult.updates,
+        });
+        const responsePopulationSize = await findStudentTaskPopulationSize(taskId, currentStudent.classId) ?? 10000;
+
+        return json({
+            success: true,
+            lastSavedAt: resetResult.lastSavedAt.toISOString(),
+            experiment: {
+                id: nextExperiment.id,
+                taskId: nextExperiment.taskId,
+                currentStage: nextExperiment.currentStage,
+                status: nextExperiment.status,
+                questionnaire: nextExperiment.questionnaire,
+                samplePlan: nextExperiment.samplePlan,
+                samplingResults: nextExperiment.samplingResults,
+                reportContent: nextExperiment.reportContent,
+                lastSavedAt: nextExperiment.lastSavedAt?.toISOString() ?? null,
+                populationSize: responsePopulationSize,
+            },
+        });
     },
 };
 
