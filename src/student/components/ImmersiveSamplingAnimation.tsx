@@ -153,7 +153,7 @@ const DotGrid = memo(function DotGrid({
                         // PPS: vary opacity by size weight so larger units appear more prominent
                         const w = dotWeights[i] ?? 0.5;
                         const opacity = PPS_OPACITY_MIN + w * PPS_OPACITY_RANGE;
-                        bgClass = "bg-purple-400 dark:bg-purple-500";
+                        bgClass = methodMeta.accentBg;
                         inlineStyle = { opacity };
                     } else {
                         bgClass = "bg-slate-300 dark:bg-slate-700";
@@ -239,25 +239,25 @@ export function ImmersiveSamplingAnimation({
         } else if (method === "pps") {
             // PPS systematic selection: simulate varying sizes and walk
             // through the cumulative distribution, mirroring the real algorithm.
-            weights = new Float32Array(TOTAL_DOTS);
+            const rawWeights = new Float32Array(TOTAL_DOTS);
             for (let i = 0; i < TOTAL_DOTS; i++) {
-                weights[i] = rng() * PPS_WEIGHT_RANGE + PPS_WEIGHT_MIN;
+                rawWeights[i] = rng() * PPS_WEIGHT_RANGE + PPS_WEIGHT_MIN;
             }
             // Normalize to 0-1 for visual opacity
             let maxW = 0;
             for (let i = 0; i < TOTAL_DOTS; i++) {
-                if (weights[i]! > maxW) maxW = weights[i]!;
+                if (rawWeights[i]! > maxW) maxW = rawWeights[i]!;
             }
             const normalizedWeights = new Float32Array(TOTAL_DOTS);
             for (let i = 0; i < TOTAL_DOTS; i++) {
-                normalizedWeights[i] = weights[i]! / maxW;
+                normalizedWeights[i] = rawWeights[i]! / maxW;
             }
 
             // Cumulative distribution for systematic PPS selection
             const cumulative: number[] = [];
             let cumSum = 0;
             for (let i = 0; i < TOTAL_DOTS; i++) {
-                cumSum += weights[i]!;
+                cumSum += rawWeights[i]!;
                 cumulative.push(cumSum);
             }
             const totalSize = cumSum;
@@ -273,6 +273,16 @@ export function ImmersiveSamplingAnimation({
                 if (!selected.has(dataIdx)) {
                     selected.add(dataIdx);
                     selection.push(dataIdx);
+                } else {
+                    // Duplicate hit — advance to find next unselected dot
+                    let next = (dataIdx + 1) % TOTAL_DOTS;
+                    while (selected.has(next) && next !== dataIdx) {
+                        next = (next + 1) % TOTAL_DOTS;
+                    }
+                    if (!selected.has(next)) {
+                        selected.add(next);
+                        selection.push(next);
+                    }
                 }
                 pointer += interval;
                 if (pointer >= totalSize && i < visualSampleSize - 1) {
@@ -535,7 +545,7 @@ export function ImmersiveSamplingAnimation({
                                     </div>
                                 )}
                                 {method === "pps" && phase.type === "populating" && (
-                                    <div className="mb-3 flex items-center justify-center gap-2 text-xs text-purple-700 dark:text-purple-300">
+                                    <div className={`mb-3 flex items-center justify-center gap-2 text-xs ${meta.accentText}`}>
                                         <Target className="w-3.5 h-3.5" />
                                         <span>按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 赋予不同权重，亮度反映规模大小</span>
                                     </div>
@@ -561,7 +571,7 @@ export function ImmersiveSamplingAnimation({
                                             </div>
                                         )}
                                         <div className="absolute bottom-3 left-0 right-0 text-center">
-                                            <span className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-slate-50/90 px-3 py-1.5 text-xs font-mono text-teal-600 dark:bg-slate-900/90 dark:text-teal-400">
+                                            <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-slate-50/90 px-3 py-1.5 text-xs font-mono ${meta.accentText} dark:bg-slate-900/90`}>
                                                 间隔 K = {kValue}，沿固定步长依次前进
                                             </span>
                                         </div>
@@ -570,7 +580,7 @@ export function ImmersiveSamplingAnimation({
 
                                 {method === "simple" && phase.type === "sampling" && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className="inline-flex items-center gap-2 bg-slate-50/90 dark:bg-slate-900/90 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 text-xs px-3 py-1.5 rounded-full">
+                                        <span className={`inline-flex items-center gap-2 bg-slate-50/90 dark:bg-slate-900/90 border ${meta.accentBorder} ${meta.accentText} text-xs px-3 py-1.5 rounded-full`}>
                                             <Shuffle className="w-3.5 h-3.5" />
                                             每个样本点被抽中的机会相同
                                         </span>
@@ -579,16 +589,16 @@ export function ImmersiveSamplingAnimation({
 
                                 {method === "pps" && phase.type === "sampling" && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-slate-50/90 px-3 py-1.5 text-xs text-purple-600 dark:bg-slate-900/90 dark:text-purple-400">
+                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-slate-50/90 px-3 py-1.5 text-xs ${meta.accentText} dark:bg-slate-900/90`}>
                                             <Target className="w-3.5 h-3.5" />
-                                            按{FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"}权重系统选取，亮度越高规模越大
+                                            按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 权重系统选取，亮度越高规模越大
                                         </span>
                                     </div>
                                 )}
 
                                 {method === "stratified" && phase.type === "sampling" && stratifiedActiveLayer !== null && layers?.[stratifiedActiveLayer] && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-slate-50/90 px-3 py-1.5 text-xs text-amber-700 dark:bg-slate-900/90 dark:text-amber-300">
+                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-slate-50/90 px-3 py-1.5 text-xs ${meta.accentText} dark:bg-slate-900/90`}>
                                             <div className={`h-2.5 w-2.5 rounded-full ${lc(stratifiedActiveLayer).bg}`} />
                                             当前正在抽取 {layers[stratifiedActiveLayer].name} 层样本
                                         </span>
