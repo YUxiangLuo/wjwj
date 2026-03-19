@@ -340,6 +340,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const serverSnapshotRef = useRef(experiment?.reportContent ?? "");
     const saveInFlightRef = useRef(false);
 
+    // Keep serverSnapshot in sync when experiment data changes from server
+    useEffect(() => {
+        serverSnapshotRef.current = experiment?.reportContent ?? "";
+    }, [experiment?.reportContent]);
+
     const autoSaveReport = useCallback(async () => {
         if (reportContent === serverSnapshotRef.current || saveInFlightRef.current) return;
         saveInFlightRef.current = true;

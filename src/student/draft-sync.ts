@@ -67,14 +67,17 @@ export function useReportDraft(taskId: number | undefined | null, serverContent:
         return serverContent;
     });
 
+    const taskIdRef = useRef(taskId);
+    useEffect(() => { taskIdRef.current = taskId; }, [taskId]);
+
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const persistDraft = useCallback((content: string) => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
-            writeReportDraft(taskId, content);
+            writeReportDraft(taskIdRef.current, content);
         }, 1000);
-    }, [taskId]);
+    }, []);
 
     // Clear debounce on unmount
     useEffect(() => {
