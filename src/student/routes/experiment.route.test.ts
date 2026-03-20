@@ -256,7 +256,23 @@ test("experiment save updates stage and recalculates sample size", async () => {
 
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
-    expect(payload.data.lastSavedAt).toBeString();
+    expect(payload.data).toMatchObject({
+        id: 88,
+        taskId: 40,
+        currentStage: 2,
+        status: 0,
+        questionnaire: buildValidQuestionnaire(),
+        samplePlan: {
+            confidenceLevel: "95",
+            marginOfError: 5,
+            finalSampleSize: 50,
+            calculatedSampleSize: 132,
+        },
+        samplingResults: null,
+        reportContent: null,
+        populationSize: 200,
+        lastSavedAt: expect.any(String),
+    });
 
     const updateOperation = operations.find((operation) => operation.kind === "update");
     expect(updateOperation?.set).toMatchObject({
@@ -435,6 +451,7 @@ test("experiment submit marks experiment submitted, inserts submission, and noti
 });
 
 test("experiment reset clears downstream progress and reopens rejected experiments", async () => {
+    const questionnaire = buildValidQuestionnaire();
     const { module, operations } = await loadExperimentRoutes({
         select: [
             [{ id: 40 }],
@@ -445,7 +462,7 @@ test("experiment reset clears downstream progress and reopens rejected experimen
                 currentStage: 4,
                 status: 3,
                 version: 6,
-                questionnaire: buildValidQuestionnaire(),
+                questionnaire,
                 samplePlan: buildValidSamplePlan(),
                 samplingResults: buildValidSamplingResults(),
                 reportContent: "report",
@@ -455,6 +472,7 @@ test("experiment reset clears downstream progress and reopens rejected experimen
                 stage4CompletedAt: new Date("2026-03-04T00:00:00.000Z"),
             }],
             [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ excelRowCount: 200 }],
         ],
         update: [[{ affectedRows: 1 }]],
     });
@@ -470,6 +488,18 @@ test("experiment reset clears downstream progress and reopens rejected experimen
 
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
+    expect(payload.data).toMatchObject({
+        id: 88,
+        taskId: 40,
+        currentStage: 1,
+        status: 0,
+        questionnaire,
+        samplePlan: null,
+        samplingResults: null,
+        reportContent: null,
+        populationSize: 200,
+        lastSavedAt: expect.any(String),
+    });
 
     const updateOperation = operations.find((operation) => operation.kind === "update");
     expect(updateOperation?.set).toMatchObject({

@@ -44,7 +44,6 @@ import {
 } from "../../experiment/systematic-sampling";
 
 interface SamplingExecutionProps {
-    onNext: () => void;
     onPrev: () => void;
 }
 
@@ -95,8 +94,8 @@ function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }: Sampl
     );
 }
 
-export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
-    const { populationSize, experiment, saveExperiment } = useExperiment();
+export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
+    const { populationSize, experiment, registerStageSave, saveExperiment } = useExperiment();
 
     // Get sample size from sample plan
     const samplePlan = experiment?.samplePlan as SamplePlanData | null;
@@ -215,8 +214,19 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
 
     // Save results when they change
     const saveResults = useCallback(async () => {
-        await saveExperiment({ samplingResults: buildSamplingResultsPayload() });
+        const payload = buildSamplingResultsPayload();
+        if (Object.keys(payload).length === 0) {
+            return true;
+        }
+        return saveExperiment({ samplingResults: payload });
     }, [buildSamplingResultsPayload, saveExperiment]);
+
+    useEffect(() => {
+        registerStageSave(saveResults);
+        return () => {
+            registerStageSave(null);
+        };
+    }, [registerStageSave, saveResults]);
 
 
     const taskId = experiment?.taskId;
@@ -390,9 +400,10 @@ export function SamplingExecution({ onNext, onPrev }: SamplingExecutionProps) {
     const allCompleted = simpleResult?.completed && systematicResult?.completed && ppsResult?.completed && stratifiedResult?.completed;
 
     const handleConfirmNext = async () => {
-        await saveResults();
+        const saved = await saveResults();
+        if (!saved) return;
+
         await saveExperiment({ currentStage: 4 });
-        onNext();
     };
 
     // Allocation helpers

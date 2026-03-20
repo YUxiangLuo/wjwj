@@ -1,88 +1,110 @@
 import { describe, expect, test } from "bun:test";
-import { decideDraftRestore, decideReconnectSync, hasUnsavedChanges } from "./draft-sync";
+import {
+    createReportDraftBasis,
+    getReportDraftKey,
+    getLegacyTaskReportDraftKey,
+    parseReportDraft,
+    resolveReportDraft,
+} from "./draft-sync";
 
-describe("decideDraftRestore", () => {
-    const parseDraft = (raw: string) => {
-        try {
-            return JSON.parse(raw) as { title?: string };
-        } catch {
-            return null;
-        }
-    };
-
-    test("ignores empty or invalid drafts", () => {
-        expect(decideDraftRestore({
-            rawDraft: null,
-            parseDraft,
-            isMeaningfulDraft: (draft) => Boolean(draft.title),
-            serverSnapshot: "{\"title\":\"server\"}",
-        })).toEqual({ type: "none", draft: null });
-
-        expect(decideDraftRestore({
-            rawDraft: "{invalid}",
-            parseDraft,
-            isMeaningfulDraft: (draft) => Boolean(draft.title),
-            serverSnapshot: "{\"title\":\"server\"}",
-        })).toEqual({ type: "none", draft: null });
+describe("parseReportDraft", () => {
+    test("returns null for empty or invalid payloads", () => {
+        expect(parseReportDraft(null)).toBeNull();
+        expect(parseReportDraft("{invalid}")).toBeNull();
+        expect(parseReportDraft(JSON.stringify({ basis: 1, content: "x" }))).toBeNull();
     });
 
-    test("does not prompt when local and server snapshots match", () => {
-        expect(decideDraftRestore({
-            rawDraft: "{\"title\":\"same\"}",
-            parseDraft,
-            isMeaningfulDraft: (draft) => Boolean(draft.title),
-            serverSnapshot: "{\"title\":\"same\"}",
-        })).toEqual({ type: "none", draft: null });
-    });
-
-    test("prompts when a meaningful local draft differs from server", () => {
-        expect(decideDraftRestore({
-            rawDraft: "{\"title\":\"local\"}",
-            parseDraft,
-            isMeaningfulDraft: (draft) => Boolean(draft.title),
-            serverSnapshot: "{\"title\":\"server\"}",
-        })).toEqual({
-            type: "restore",
-            draft: { title: "local" },
+    test("parses a valid report draft payload", () => {
+        expect(parseReportDraft(JSON.stringify({
+            basis: "snapshot",
+            content: "<p>报告内容</p>",
+        }))).toEqual({
+            basis: "snapshot",
+            content: "<p>报告内容</p>",
         });
     });
 });
 
-describe("decideReconnectSync", () => {
-    test("prefers no-op when local and server are already aligned", () => {
-        expect(decideReconnectSync({
-            localSnapshot: "same",
-            serverSnapshot: "same",
-            lastSyncedSnapshot: "old",
-        })).toBe("synced");
+describe("resolveReportDraft", () => {
+    test("restores a meaningful draft when basis still matches", () => {
+        expect(resolveReportDraft({
+            basis: "snapshot-a",
+            rawDraft: JSON.stringify({
+                basis: "snapshot-a",
+                content: "<p>本地未提交报告</p>",
+            }),
+            serverContent: "",
+        })).toEqual({
+            type: "restore",
+            content: "<p>本地未提交报告</p>",
+        });
     });
 
-    test("detects divergent local and server changes", () => {
-        expect(decideReconnectSync({
-            localSnapshot: "local",
-            serverSnapshot: "server",
-            lastSyncedSnapshot: "old",
-        })).toBe("conflict");
+    test("clears drafts when basis no longer matches upstream snapshot", () => {
+        expect(resolveReportDraft({
+            basis: "snapshot-b",
+            rawDraft: JSON.stringify({
+                basis: "snapshot-a",
+                content: "<p>旧报告</p>",
+            }),
+            serverContent: "",
+        })).toEqual({
+            type: "clear",
+            content: null,
+        });
     });
 
-    test("pushes local changes when only local changed", () => {
-        expect(decideReconnectSync({
-            localSnapshot: "local",
-            serverSnapshot: "old",
-            lastSyncedSnapshot: "old",
-        })).toBe("push_local");
+    test("clears drafts when local content already matches server content", () => {
+        expect(resolveReportDraft({
+            basis: "snapshot-a",
+            rawDraft: JSON.stringify({
+                basis: "snapshot-a",
+                content: "<p>服务器已有内容</p>",
+            }),
+            serverContent: "<p>服务器已有内容</p>",
+        })).toEqual({
+            type: "clear",
+            content: null,
+        });
     });
 
-    test("pulls server changes when local stayed at last synced snapshot", () => {
-        expect(decideReconnectSync({
-            localSnapshot: "old",
-            serverSnapshot: "server",
-            lastSyncedSnapshot: "old",
-        })).toBe("pull_server");
+    test("clears empty rich text drafts", () => {
+        expect(resolveReportDraft({
+            basis: "snapshot-a",
+            rawDraft: JSON.stringify({
+                basis: "snapshot-a",
+                content: "<p></p>",
+            }),
+            serverContent: "",
+        })).toEqual({
+            type: "clear",
+            content: null,
+        });
+    });
+
+    test("clears malformed storage payloads", () => {
+        expect(resolveReportDraft({
+            basis: "snapshot-a",
+            rawDraft: "{invalid}",
+            serverContent: "",
+        })).toEqual({
+            type: "clear",
+            content: null,
+        });
     });
 });
 
-test("hasUnsavedChanges compares current and last synced snapshots", () => {
-    expect(hasUnsavedChanges("current", "server")).toBe(true);
-    expect(hasUnsavedChanges("same", "same")).toBe(false);
+test("createReportDraftBasis captures the stage 2 and 3 server snapshot", () => {
+    expect(createReportDraftBasis({
+        samplePlan: { finalSampleSize: 120 },
+        samplingResults: { simple: { completed: true, sampleCount: 120 } },
+    })).toBe(JSON.stringify({
+        samplePlan: { finalSampleSize: 120 },
+        samplingResults: { simple: { completed: true, sampleCount: 120 } },
+    }));
+});
+
+test("getReportDraftKey scopes drafts by task", () => {
+    expect(getReportDraftKey(42)).toBe("student_report_draft_exp_42");
+    expect(getLegacyTaskReportDraftKey(42)).toBe("student_report_draft_42");
 });

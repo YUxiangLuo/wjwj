@@ -160,11 +160,6 @@ export interface ExperimentData {
     populationSize: number;
 }
 
-export interface ExperimentResetResponse {
-    success: boolean;
-    lastSavedAt: string;
-}
-
 export interface Notification {
     id: number;
     type: string;
@@ -330,7 +325,7 @@ export const experimentApi = {
             reportContent?: string;
         }
     ) =>
-        request<{ success: boolean; lastSavedAt: string }>(
+        request<ExperimentData>(
             `/api/student/tasks/${taskId}/experiment`,
             {
                 method: "PUT",
@@ -344,7 +339,7 @@ export const experimentApi = {
         }),
 
     reset: (taskId: number, data: { resetToStage: number; clearQuestionnaire?: boolean }) =>
-        request<ExperimentResetResponse>(`/api/student/tasks/${taskId}/reset`, {
+        request<ExperimentData>(`/api/student/tasks/${taskId}/reset`, {
             method: "POST",
             body: JSON.stringify(data),
         }),
