@@ -95,16 +95,52 @@ describe("resolveReportDraft", () => {
 });
 
 test("createReportDraftBasis captures the stage 2 and 3 server snapshot", () => {
-    expect(createReportDraftBasis({
+    const basis = createReportDraftBasis({
         samplePlan: { finalSampleSize: 120 },
         samplingResults: { simple: { completed: true, sampleCount: 120 } },
-    })).toBe(JSON.stringify({
-        samplePlan: { finalSampleSize: 120 },
-        samplingResults: { simple: { completed: true, sampleCount: 120 } },
-    }));
+    });
+
+    expect(basis).toMatch(/samplePlanHash/);
+    expect(basis).toMatch(/samplingResultsHash/);
+    expect(basis).not.toContain("finalSampleSize");
+    expect(basis).not.toContain("sampleCount");
 });
 
-test("getReportDraftKey scopes drafts by task", () => {
+test("createReportDraftBasis stays compact while still tracking sampling data changes", () => {
+    const basisWithRows = createReportDraftBasis({
+        samplePlan: { finalSampleSize: 120 },
+        samplingResults: {
+            simple: {
+                completed: true,
+                sampleCount: 120,
+                data: [
+                    { id: 1, name: "Alice" },
+                    { id: 2, name: "Bob" },
+                ],
+            },
+        },
+    });
+
+    const basisWithDifferentRows = createReportDraftBasis({
+        samplePlan: { finalSampleSize: 120 },
+        samplingResults: {
+            simple: {
+                completed: true,
+                sampleCount: 120,
+                data: [
+                    { id: 1, name: "Carol" },
+                    { id: 2, name: "Bob" },
+                ],
+            },
+        },
+    });
+
+    expect(basisWithRows).not.toContain("Alice");
+    expect(basisWithRows).not.toContain("Bob");
+    expect(basisWithRows).not.toBe(basisWithDifferentRows);
+});
+
+test("getReportDraftKey scopes drafts by experiment id and legacy task key", () => {
     expect(getReportDraftKey(42)).toBe("student_report_draft_exp_42");
     expect(getLegacyTaskReportDraftKey(42)).toBe("student_report_draft_42");
 });

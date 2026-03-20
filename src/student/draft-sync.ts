@@ -24,13 +24,27 @@ export function getLegacyTaskReportDraftKey(taskId: number) {
     return `student_report_draft_${taskId}`;
 }
 
+function hashSerializedValue(value: unknown) {
+    const serialized = JSON.stringify(value ?? null);
+    let hash = 0x811c9dc5;
+
+    for (let index = 0; index < serialized.length; index += 1) {
+        hash ^= serialized.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193);
+    }
+
+    return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
 export function createReportDraftBasis(input: {
     samplePlan: unknown;
     samplingResults: unknown;
 }) {
+    // Keep the basis compact in localStorage while still invalidating drafts
+    // when any upstream sample-plan or sampling-results payload changes.
     return JSON.stringify({
-        samplePlan: input.samplePlan ?? null,
-        samplingResults: input.samplingResults ?? null,
+        samplePlanHash: hashSerializedValue(input.samplePlan),
+        samplingResultsHash: hashSerializedValue(input.samplingResults),
     });
 }
 
