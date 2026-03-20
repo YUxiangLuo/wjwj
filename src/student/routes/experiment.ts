@@ -31,6 +31,38 @@ function getTaskId(req: Request): number {
     return Number.parseInt(getRouteParam(req, "id") ?? "", 10);
 }
 
+function buildExperimentSnapshotResponse(
+    rawExperiment: {
+        id: number;
+        taskId: number;
+        currentStage: number;
+        status: number;
+        questionnaire?: unknown;
+        samplePlan?: unknown;
+        samplingResults?: unknown;
+        reportContent?: string | null;
+        lastSavedAt?: Date | string | null;
+    },
+    populationSize: number | null | undefined,
+) {
+    const normalizedExperiment = deserializeExperimentFields(rawExperiment);
+
+    return {
+        id: normalizedExperiment.id,
+        taskId: normalizedExperiment.taskId,
+        currentStage: normalizedExperiment.currentStage,
+        status: normalizedExperiment.status,
+        questionnaire: normalizedExperiment.questionnaire,
+        samplePlan: normalizedExperiment.samplePlan,
+        samplingResults: normalizedExperiment.samplingResults,
+        reportContent: normalizedExperiment.reportContent ?? null,
+        lastSavedAt: normalizedExperiment.lastSavedAt
+            ? new Date(normalizedExperiment.lastSavedAt).toISOString()
+            : null,
+        populationSize: populationSize ?? 10000,
+    };
+}
+
 const experimentRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -72,20 +104,7 @@ const experimentRoutes: RouteDefinition = {
 
         const [topicInfo] = await db.select({ excelRowCount: topic.excelRowCount }).from(topic).where(eq(topic.id, taskInfo.topicId));
 
-        const normalizedExperiment = deserializeExperimentFields(exp);
-
-        return json({
-            id: normalizedExperiment.id,
-            taskId: normalizedExperiment.taskId,
-            currentStage: normalizedExperiment.currentStage,
-            status: normalizedExperiment.status,
-            questionnaire: normalizedExperiment.questionnaire,
-            samplePlan: normalizedExperiment.samplePlan,
-            samplingResults: normalizedExperiment.samplingResults,
-            reportContent: normalizedExperiment.reportContent,
-            lastSavedAt: normalizedExperiment.lastSavedAt?.toISOString() ?? null,
-            populationSize: topicInfo?.excelRowCount ?? 10000,
-        });
+        return json(buildExperimentSnapshotResponse(exp, topicInfo?.excelRowCount));
     },
 
     async PUT(req) {
@@ -125,10 +144,7 @@ const experimentRoutes: RouteDefinition = {
 
         const deadlinePassed = hasTaskDeadlinePassed(taskInfo?.deadline);
 
-        let populationSize: number | null | undefined;
-        if (body.samplePlan !== undefined) {
-            populationSize = await findStudentTaskPopulationSize(taskId, currentStudent.classId);
-        }
+        const populationSize = await findStudentTaskPopulationSize(taskId, currentStudent.classId);
 
         const saveResult = buildExperimentSaveUpdates({
             experimentRecord: exp,
@@ -149,7 +165,15 @@ const experimentRoutes: RouteDefinition = {
             return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 
-        return json({ success: true, lastSavedAt: saveResult.lastSavedAt.toISOString() });
+        const savedSnapshot = buildExperimentSnapshotResponse(
+            {
+                ...exp,
+                ...saveResult.updates,
+            },
+            populationSize,
+        );
+
+        return json(savedSnapshot);
     },
 };
 
@@ -343,7 +367,16 @@ const resetRoutes: RouteDefinition = {
             return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 
-        return json({ success: true, lastSavedAt: resetResult.lastSavedAt.toISOString() });
+        const populationSize = await findStudentTaskPopulationSize(taskId, currentStudent.classId);
+        const resetSnapshot = buildExperimentSnapshotResponse(
+            {
+                ...exp,
+                ...resetResult.updates,
+            },
+            populationSize,
+        );
+
+        return json(resetSnapshot);
     },
 };
 

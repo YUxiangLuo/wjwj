@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -45,12 +45,11 @@ import { CVBasedSampleSizeCalculator } from "../../components/CVBasedSampleSizeC
 import { ClusterSamplingCalculator } from "../../components/ClusterSamplingCalculator";
 
 interface SamplePlanningProps {
-    onNext: () => void;
     onPrev: () => void;
 }
 
-export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
-    const { populationSize, experiment, saveExperiment } = useExperiment();
+export function SamplePlanning({ onPrev }: SamplePlanningProps) {
+    const { populationSize, experiment, registerStageSave, saveExperiment } = useExperiment();
 
     // Initialize from saved data
     const initialData = experiment?.samplePlan as SamplePlanData | null;
@@ -61,8 +60,6 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
     const [nonResponseRate, setNonResponseRate] = useState(initialData?.nonResponseRate ?? 0);
     const [finalSampleSize, setFinalSampleSize] = useState(initialData?.finalSampleSize ?? 384);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
-    const serverSnapshotRef = useRef("");
-    const saveInFlightRef = useRef(false);
     
     // 增强指标
     const [metrics, setMetrics] = useState<SampleSizeMetrics | null>(null);
@@ -157,44 +154,16 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
         finalSampleSize,
     }), [confidenceLevel, marginOfError, designEffect, nonResponseRate, recommendedSize, finalSampleSize]);
 
-    useEffect(() => {
-        if (initialData) {
-            const initialRecommended = initialData.recommendedSize ?? calculateFinitePopulationSampleSize({
-                confidenceLevel: initialData.confidenceLevel ?? "95",
-                marginOfError: initialData.marginOfError ?? 5,
-                populationSize: N,
-                designEffect: initialData.designEffect ?? 1,
-                nonResponseRate: initialData.nonResponseRate ?? 0,
-            }) ?? 384;
-            serverSnapshotRef.current = JSON.stringify({
-                confidenceLevel: initialData.confidenceLevel ?? "95",
-                marginOfError: initialData.marginOfError ?? 5,
-                designEffect: initialData.designEffect ?? 1,
-                nonResponseRate: initialData.nonResponseRate ?? 0,
-                recommendedSize: initialRecommended,
-                finalSampleSize: initialData.finalSampleSize ?? initialRecommended,
-            });
-            return;
-        }
-
-        serverSnapshotRef.current = "";
-    }, [initialData, N]);
-
-    const autoSaveSamplePlan = useCallback(async () => {
-        const payload = buildSamplePlanData();
-        const snapshot = JSON.stringify(payload);
-        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
-
-        saveInFlightRef.current = true;
-        try {
-            const success = await saveExperiment({ samplePlan: payload });
-            if (success) {
-                serverSnapshotRef.current = snapshot;
-            }
-        } finally {
-            saveInFlightRef.current = false;
-        }
+    const saveSamplePlan = useCallback(async () => {
+        return saveExperiment({ samplePlan: buildSamplePlanData() });
     }, [buildSamplePlanData, saveExperiment]);
+
+    useEffect(() => {
+        registerStageSave(saveSamplePlan);
+        return () => {
+            registerStageSave(null);
+        };
+    }, [registerStageSave, saveSamplePlan]);
 
     // Auto-update final sample size when recommended changes (only if user hasn't modified it - simplified logic for now: update if no initial data)
     useEffect(() => {
@@ -202,46 +171,6 @@ export function SamplePlanning({ onNext, onPrev }: SamplePlanningProps) {
             setFinalSampleSize(recommendedSize);
         }
     }, [recommendedSize, initialData]);
-
-    // Keep a ref to the latest autoSaveSamplePlan so the 30-second interval doesn't reset on every change
-    const autoSaveRef = useRef(autoSaveSamplePlan);
-    useEffect(() => { autoSaveRef.current = autoSaveSamplePlan; }, [autoSaveSamplePlan]);
-
-    // Debounce: save 3 seconds after user stops editing
-    useEffect(() => {
-        const debounceTimer = window.setTimeout(() => {
-            void autoSaveSamplePlan();
-        }, 3000);
-
-        return () => {
-            window.clearTimeout(debounceTimer);
-        };
-    }, [autoSaveSamplePlan]);
-
-    // Fixed 30-second interval: uses ref so the interval is never reset by content changes
-    useEffect(() => {
-        const intervalTimer = window.setInterval(() => {
-            void autoSaveRef.current();
-        }, 30 * 1000);
-
-        return () => {
-            window.clearInterval(intervalTimer);
-        };
-    }, []);
-
-    useEffect(() => {
-        const onBeforeUnload = (event: BeforeUnloadEvent) => {
-            const snapshot = JSON.stringify(buildSamplePlanData());
-            if (snapshot === serverSnapshotRef.current) return;
-            event.preventDefault();
-            event.returnValue = "";
-        };
-
-        window.addEventListener("beforeunload", onBeforeUnload);
-        return () => {
-            window.removeEventListener("beforeunload", onBeforeUnload);
-        };
-    }, [buildSamplePlanData]);
 
     const handleConfirmNext = async () => {
         const samplePlanData = buildSamplePlanData();
