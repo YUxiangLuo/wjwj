@@ -443,15 +443,17 @@ export function ExperimentLayout() {
                 <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-experiment-rollback-dialog">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认返回阶段</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
-                            返回到“<span className="text-indigo-500 font-medium">{targetStage ? stages[targetStage - 1]!.name : ""}</span>”将导致以下后续阶段的数据被<strong className="text-rose-600">永久清空</strong>：
-                            <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                                {targetStage !== null && targetStage <= 1 && <li>样本量规划数据</li>}
-                                {targetStage !== null && targetStage <= 2 && <li>抽样执行结果</li>}
-                                {targetStage !== null && targetStage <= 3 && <li>分析报告内容</li>}
-                            </ul>
-                            <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-300 text-xs">
-                                ⚠️ 警告：此操作不可撤销。
+                        <AlertDialogDescription asChild>
+                            <div className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
+                                返回到“<span className="text-indigo-500 font-medium">{targetStage ? stages[targetStage - 1]!.name : ""}</span>”将导致以下后续阶段的数据被<strong className="text-rose-600">永久清空</strong>：
+                                <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                                    {targetStage !== null && targetStage <= 1 && <li>样本量规划数据</li>}
+                                    {targetStage !== null && targetStage <= 2 && <li>抽样执行结果</li>}
+                                    {targetStage !== null && targetStage <= 3 && <li>分析报告内容</li>}
+                                </ul>
+                                <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-300 text-xs">
+                                    ⚠️ 警告：此操作不可撤销。
+                                </div>
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
