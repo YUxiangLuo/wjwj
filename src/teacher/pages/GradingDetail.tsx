@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,32 @@ const COMMENT_TEMPLATES = [
     "建议加强方法对比",
 ];
 
+function samplingRowsToCsv(rows: unknown[]): string {
+    if (rows.length === 0) return "";
+    const keys = Object.keys(rows[0] as object);
+    const escapeCell = (v: unknown) => {
+        const s = String(v ?? "");
+        if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+    };
+    const header = keys.join(",");
+    const lines = rows.map((row) => {
+        const r = row as Record<string, unknown>;
+        return keys.map((k) => escapeCell(r[k])).join(",");
+    });
+    return [header, ...lines].join("\n");
+}
+
+function triggerCsvDownload(filename: string, csvBody: string) {
+    const blob = new Blob(["\uFEFF" + csvBody], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 export function GradingDetail() {
     const { submissionId } = useParams();
     const navigate = useNavigate();
@@ -47,6 +73,8 @@ export function GradingDetail() {
     const [showTemplates, setShowTemplates] = useState(false);
     const [loadingNext, setLoadingNext] = useState(false);
     const [refreshingPdfState, setRefreshingPdfState] = useState(false);
+    /** 样本数据各方法表格是否展开（默认折叠） */
+    const [samplingSectionOpen, setSamplingSectionOpen] = useState<Record<string, boolean>>({});
 
     const serverSnapshotRef = useRef("");
     const submissionStatusRef = useRef<number | null>(null);
@@ -157,6 +185,7 @@ export function GradingDetail() {
     async function handleSubmit(status: number) { // 2=Graded, 3=Rejected
         if (!submissionId) return;
         if (data?.readonly) return;
+        if (data?.status === 3) return;
         setSaving(true);
 
         const payload = {
@@ -173,9 +202,14 @@ export function GradingDetail() {
 
         setSaving(false);
         if (res.success) {
-            updatePendingQueueStatus(status);
-            toast.success("提交成功");
-            navigate("/grading");
+            if (data?.status === 2 && status === 2) {
+                toast.success("成绩已更新，学生将收到通知");
+                await loadDetail(Number(submissionId));
+            } else {
+                updatePendingQueueStatus(status);
+                toast.success("提交成功");
+                navigate("/grading");
+            }
         } else {
             toast.error("提交失败: " + res.error?.message);
         }
@@ -206,6 +240,8 @@ export function GradingDetail() {
     if (!data) return <div className="p-12 text-center text-slate-500">未找到提交记录</div>;
 
     const isReadOnly = !!data.readonly;
+    /** 他人锁定只读，或已驳回不可改分 */
+    const gradingLocked = isReadOnly || data.status === 3;
     const questionnaire = data.questionnaire as any;
     const samplingResults = data.samplingResults as any;
 
@@ -242,7 +278,21 @@ export function GradingDetail() {
         );
     };
 
-    const renderSamplingPreview = (label: string, dataList: any[] | undefined) => {
+    const toggleSamplingSection = (key: string) => {
+        setSamplingSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const downloadSamplingCsv = (sectionKey: string, rows: unknown[]) => {
+        try {
+            const csv = samplingRowsToCsv(rows);
+            const sid = submissionId ?? "export";
+            triggerCsvDownload(`抽样结果_${sectionKey}_${sid}.csv`, csv);
+        } catch {
+            toast.error("导出失败");
+        }
+    };
+
+    const renderSamplingPreview = (sectionKey: string, label: string, dataList: any[] | undefined) => {
         if (!dataList || dataList.length === 0) {
             return (
                 <div className="space-y-2">
@@ -252,41 +302,75 @@ export function GradingDetail() {
             );
         }
         const columns = Object.keys(dataList[0] ?? {}).slice(0, 6);
+        const isOpen = !!samplingSectionOpen[sectionKey];
         return (
-            <div className="space-y-3">
-                <div className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                    {label}
+            <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/30 overflow-hidden">
+                <div className="flex items-stretch gap-1 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60">
+                    <button
+                        type="button"
+                        className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left min-w-0 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors"
+                        aria-expanded={isOpen}
+                        onClick={() => toggleSamplingSection(sectionKey)}
+                    >
+                        <ChevronRight
+                            className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                            aria-hidden
+                        />
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                        <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{label}</span>
+                        <span className="text-xs text-slate-500 ml-auto shrink-0">共 {dataList.length} 条</span>
+                    </button>
+                    <div className="flex items-center pr-2 py-1">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-1 text-xs border-slate-300 dark:border-slate-600"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                downloadSamplingCsv(sectionKey, dataList);
+                            }}
+                        >
+                            <Download className="w-3.5 h-3.5" />
+                            下载 CSV
+                        </Button>
+                    </div>
                 </div>
-                <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-md">
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-200 dark:bg-slate-800">
-                            <tr>
-                                {columns.map((c) => (
-                                    <th key={c} className="px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-400 border-b border-slate-300 dark:border-slate-700">{c}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-slate-50 dark:bg-slate-900">
-                            {dataList.slice(0, 10).map((row, i) => (
-                                <tr key={i} className="border-b border-slate-200 dark:border-slate-800 last:border-0 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
-                                    {columns.map((c) => (
-                                        <td key={c} className="px-3 py-2 text-slate-700 dark:text-slate-300">
-                                            {String(row[c] ?? "")}
-                                        </td>
+                {isOpen && (
+                    <div className="p-3 space-y-2">
+                        <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-md">
+                            <table className="w-full text-sm">
+                                <thead className="bg-slate-200 dark:bg-slate-800">
+                                    <tr>
+                                        {columns.map((c) => (
+                                            <th key={c} className="px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-400 border-b border-slate-300 dark:border-slate-700">{c}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-slate-50 dark:bg-slate-900">
+                                    {dataList.slice(0, 10).map((row, i) => (
+                                        <tr key={i} className="border-b border-slate-200 dark:border-slate-800 last:border-0 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
+                                            {columns.map((c) => (
+                                                <td key={c} className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                                                    {String(row[c] ?? "")}
+                                                </td>
+                                            ))}
+                                        </tr>
                                     ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                {dataList.length > 10 && <div className="text-xs text-slate-500 text-right">仅显示前 10 条，共 {dataList.length} 条</div>}
+                                </tbody>
+                            </table>
+                        </div>
+                        {dataList.length > 10 && (
+                            <div className="text-xs text-slate-500 text-right">预览仅显示前 10 条，下载 CSV 包含全部 {dataList.length} 条</div>
+                        )}
+                    </div>
+                )}
             </div>
         );
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-slate-950 animate-in fade-in duration-500">
+        <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-slate-950">
             {/* Header */}
             <div className="flex items-center gap-4 px-6 h-16 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
                 <Button variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => navigate("/grading")}>
@@ -318,6 +402,11 @@ export function GradingDetail() {
                 <div data-testid="teacher-grading-readonly-banner" className="px-6 py-2 text-sm text-rose-500 bg-rose-900/20 border-b border-rose-900/30 flex items-center justify-center">
                     <XCircle className="w-4 h-4 mr-2" />
                     该作业正在被他人批改中，当前为只读模式。
+                </div>
+            )}
+            {data.status === 3 && !isReadOnly && (
+                <div data-testid="teacher-grading-rejected-no-edit-banner" className="px-6 py-2 text-sm text-amber-800 dark:text-amber-200 bg-amber-500/10 border-b border-amber-500/20 text-center">
+                    已驳回的作业不可修改评分；学生重新提交后可在新记录上批改。
                 </div>
             )}
             {(data.status === 2 || data.status === 3) && data.gradedByName && (
@@ -480,23 +569,24 @@ export function GradingDetail() {
                                     样本数据概览
                                 </h3>
                                 <div className="space-y-8">
-                                    {renderSamplingPreview("简单随机抽样", samplingResults?.simple?.data)}
-                                    {renderSamplingPreview("系统抽样", samplingResults?.systematic?.data)}
-                                    {renderSamplingPreview("分层抽样", samplingResults?.stratified?.data)}
+                                    {renderSamplingPreview("simple", "简单随机抽样", samplingResults?.simple?.data)}
+                                    {renderSamplingPreview("systematic", "系统抽样", samplingResults?.systematic?.data)}
+                                    {renderSamplingPreview("pps", "PPS 抽样", samplingResults?.pps?.data)}
+                                    {renderSamplingPreview("stratified", "分层抽样", samplingResults?.stratified?.data)}
                                 </div>
                             </TabsContent>
                         </div>
                     </Tabs>
                 </div>
 
-                {/* Right: Grading Form */}
-                <div className="w-96 bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shrink-0 flex flex-col shadow-xl z-10">
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
+                {/* Right: Grading Form（表单与按钮同一滚动容器，避免按钮被 flex 顶到视口底部） */}
+                <div className="w-96 bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shrink-0 flex flex-col min-h-0 shadow-xl z-10">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between shrink-0">
                         <span>{data.isAssistant ? '助教评分' : '评分'}</span>
                         <div className="text-xs text-slate-500">权重总和: {weights.questionnaire + weights.process + weights.report}%</div>
                     </div>
-                    <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
-                        <div className="space-y-8">
+                    <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+                        <div className="p-6 space-y-8 pb-4">
                             <div className="space-y-3">
                                 <Label className="text-slate-700 dark:text-slate-300 flex justify-between">
                                     <span>问卷设计</span>
@@ -509,8 +599,8 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.questionnaire}
                                         onChange={(e) => setScores({ ...scores, questionnaire: e.target.value })}
-                                        className="text-right bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
-                                        disabled={saving || isReadOnly}
+                                        className="text-left bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
+                                        disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-slate-500 whitespace-nowrap">分</span>
                                 </div>
@@ -528,8 +618,8 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.process}
                                         onChange={(e) => setScores({ ...scores, process: e.target.value })}
-                                        className="text-right bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
-                                        disabled={saving || isReadOnly}
+                                        className="text-left bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
+                                        disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-slate-500 whitespace-nowrap">分</span>
                                 </div>
@@ -547,8 +637,8 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.report}
                                         onChange={(e) => setScores({ ...scores, report: e.target.value })}
-                                        className="text-right bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
-                                        disabled={saving || isReadOnly}
+                                        className="text-left bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
+                                        disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-slate-500 whitespace-nowrap">分</span>
                                 </div>
@@ -569,7 +659,7 @@ export function GradingDetail() {
                                         size="sm"
                                         className="h-6 text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10 px-2"
                                         onClick={() => setShowTemplates(!showTemplates)}
-                                        disabled={saving || isReadOnly}
+                                        disabled={saving || gradingLocked}
                                     >
                                         <MessageSquarePlus className="w-3 h-3 mr-1" />
                                         常用评语
@@ -582,15 +672,18 @@ export function GradingDetail() {
                                             <button
                                                 key={idx}
                                                 className="text-xs px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
-                                                disabled={saving || isReadOnly}
-                                                onClick={() => setComment(prev => {
-                                                    const next = prev ? `${prev}，${tpl}` : tpl;
-                                                    if (next.length > 2000) {
-                                                        toast.warning("评语已达字数上限（2000字）");
-                                                        return prev;
-                                                    }
-                                                    return next;
-                                                })}
+                                                disabled={saving || gradingLocked}
+                                                onClick={() =>
+                                                    setComment((prev) => {
+                                                        const next = prev ? `${prev}，${tpl}` : tpl;
+                                                        if (next.length > 2000) {
+                                                            toast.warning("评语已达字数上限（2000字）");
+                                                            return prev;
+                                                        }
+                                                        setShowTemplates(false);
+                                                        return next;
+                                                    })
+                                                }
                                             >
                                                 {tpl}
                                             </button>
@@ -605,30 +698,41 @@ export function GradingDetail() {
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
                                     className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 resize-none focus:border-indigo-500"
-                                    disabled={saving || isReadOnly}
+                                    disabled={saving || gradingLocked}
                                 />
                                 <div className="text-xs text-slate-500 text-right">{comment.length}/2000</div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="p-6 border-t border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
-                        {(data.status === 0 || data.status === 1) && !isReadOnly && (
-                            <>
-                                <Button data-testid="teacher-grading-next" variant="outline" className="w-full border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:text-indigo-500 hover:bg-indigo-500/10 h-11" onClick={() => { void handleNextStudent(); }} disabled={saving || loadingNext}>
-                                    <SkipForward className="w-4 h-4 mr-2" />
-                                    {loadingNext ? "处理中..." : "下一位"}
-                                </Button>
-                                <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => handleSubmit(2)} disabled={saving}>
+                        <div className="px-6 pb-6 pt-4 border-t border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
+                            {!gradingLocked && data.status === 2 && (
+                                <Button
+                                    data-testid="teacher-grading-update"
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11"
+                                    onClick={() => { void handleSubmit(2); }}
+                                    disabled={saving}
+                                >
                                     <CheckCircle className="w-4 h-4 mr-2" />
-                                    {saving ? "提交中..." : "确认评分"}
+                                    {saving ? "提交中..." : "更新评分"}
                                 </Button>
-                                <Button data-testid="teacher-grading-reject-open" variant="outline" className="w-full border-slate-300 dark:border-slate-700 bg-transparent text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 h-11" onClick={() => setShowRejectModal(true)} disabled={saving}>
-                                    <XCircle className="w-4 h-4 mr-2" />
-                                    {saving ? "提交中..." : "驳回重做"}
-                                </Button>
-                            </>
-                        )}
+                            )}
+                            {(data.status === 0 || data.status === 1) && !isReadOnly && (
+                                <>
+                                    <Button data-testid="teacher-grading-next" variant="outline" className="w-full border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:text-indigo-500 hover:bg-indigo-500/10 h-11" onClick={() => { void handleNextStudent(); }} disabled={saving || loadingNext}>
+                                        <SkipForward className="w-4 h-4 mr-2" />
+                                        {loadingNext ? "处理中..." : "下一位"}
+                                    </Button>
+                                    <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => { void handleSubmit(2); }} disabled={saving}>
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        {saving ? "提交中..." : "确认评分"}
+                                    </Button>
+                                    <Button data-testid="teacher-grading-reject-open" variant="outline" className="w-full border-slate-300 dark:border-slate-700 bg-transparent text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 h-11" onClick={() => setShowRejectModal(true)} disabled={saving}>
+                                        <XCircle className="w-4 h-4 mr-2" />
+                                        {saving ? "提交中..." : "驳回重做"}
+                                    </Button>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

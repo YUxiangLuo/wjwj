@@ -222,6 +222,7 @@ const gradingDetailRoutes: RouteDefinition = {
 
         return json({
             ...row,
+            topic: row.topicName,
             questionnaire: parseStoredJson(row.questionnaire),
             samplePlan: parseStoredJson(row.samplePlan),
             samplingResults: parseStoredJson(row.samplingResults),
@@ -278,13 +279,6 @@ const gradingDetailRoutes: RouteDefinition = {
             return error("教师评语不能超过2000字", "VALIDATION_ERROR", 400);
         }
 
-        if (body.status === 3) {
-            const reason = (body.rejectReason ?? "").trim();
-            if (reason.length < 10 || reason.length > 1000) {
-                return error("驳回理由长度需在10-1000字之间", "VALIDATION_ERROR", 400);
-            }
-        }
-
         const [detail] = await db
             .select({
                 id: submission.id,
@@ -307,15 +301,8 @@ const gradingDetailRoutes: RouteDefinition = {
 
         if (!detail) return error("提交记录不存在", "NOT_FOUND", 404);
 
-        // Prevent modification of already-finalized submissions
-        if (detail.status !== 0 && detail.status !== 1) {
-            return error("该提交已批改完成，无法修改", "ALREADY_GRADED", 409);
-        }
-
-        const myUserType = isAssistant ? ASSISTANT_USER_TYPE : TEACHER_USER_TYPE;
-        const lockExpired = isLockExpired(detail.lockedAt);
-        if (detail.lockedById && (detail.lockedByType !== myUserType || detail.lockedById !== userId) && !lockExpired) {
-            return error("该作业正在被他人批改", "LOCKED", 423);
+        if (detail.status === 3) {
+            return error("已驳回的作业不可修改评分", "REJECTED_NOT_EDITABLE", 403);
         }
 
         const [topicRow] = await db.select({ weightConfig: topic.weightConfig }).from(topic).where(eq(topic.id, detail.topicId));
@@ -339,6 +326,52 @@ const gradingDetailRoutes: RouteDefinition = {
         const totalScore =
             (body.scoreQuestionnaire * weights.questionnaire + body.scoreProcess * weights.process + body.scoreReport * weights.report) /
             100;
+
+        const myUserType = isAssistant ? ASSISTANT_USER_TYPE : TEACHER_USER_TYPE;
+
+        // 已批改：仅允许更新分数与评语（课题下任一教师/助教），不改实验状态、不覆盖驳回信息
+        if (detail.status === 2) {
+            if (body.status !== 2) {
+                return error("已批改作业仅支持更新分数与评语", "VALIDATION_ERROR", 400);
+            }
+
+            await db
+                .update(submission)
+                .set({
+                    scoreQuestionnaire: String(body.scoreQuestionnaire),
+                    scoreProcess: String(body.scoreProcess),
+                    scoreReport: String(body.scoreReport),
+                    totalScore: String(Number(totalScore.toFixed(2))),
+                    teacherComment: body.comment,
+                    gradedAt: new Date(),
+                    gradedById: userId,
+                    gradedByType: myUserType,
+                })
+                .where(eq(submission.id, submissionId));
+
+            await notifyStudentById(detail.studentId, {
+                type: "GRADE_UPDATED",
+                title: "成绩已更新",
+                content: `您的「${detail.topicName}」作业得分已更新为 ${Number(totalScore.toFixed(2))} 分，请查看最新教师评语。`,
+                relatedType: "task",
+                relatedId: detail.topicId,
+            });
+
+            return json({ success: true });
+        }
+
+        // 待批改（0/1）
+        if (body.status === 3) {
+            const reason = (body.rejectReason ?? "").trim();
+            if (reason.length < 10 || reason.length > 1000) {
+                return error("驳回理由长度需在10-1000字之间", "VALIDATION_ERROR", 400);
+            }
+        }
+
+        const lockExpired = isLockExpired(detail.lockedAt);
+        if (detail.lockedById && (detail.lockedByType !== myUserType || detail.lockedById !== userId) && !lockExpired) {
+            return error("该作业正在被他人批改", "LOCKED", 423);
+        }
 
         await db.update(submission).set({
             scoreQuestionnaire: String(body.scoreQuestionnaire),
