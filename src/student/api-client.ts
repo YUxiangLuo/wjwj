@@ -358,7 +358,11 @@ export const experimentApi = {
         ),
 
     getStats: (taskId: number) =>
-        request<{ stats: Record<string, Record<string, number>>; numericFields?: string[] }>(
+        request<{
+            stats: Record<string, Record<string, number>>;
+            numericFields?: string[];
+            stratumNumericStats?: Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>;
+        }>(
             `/api/student/tasks/${taskId}/stats`
         ),
 };

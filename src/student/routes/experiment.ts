@@ -4,7 +4,7 @@ import { experiment, topic } from "../../db/schema";
 import { getAffectedRows } from "../../db/utils";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { buildStratifiedStats, parseTopicFieldMapping, readPopulationData } from "../experiment/population-data";
+import { buildStratifiedStats, buildStratifiedNumericStats, parseTopicFieldMapping, readPopulationData } from "../experiment/population-data";
 import { deserializeExperimentFields, parseStoredJson } from "../experiment/serialization";
 import { executeSamplingAction } from "../experiment/sampling-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
@@ -197,10 +197,11 @@ const statsRoutes: RouteDefinition = {
 
         const population = await readPopulationData(taskInfo.excelFilePath);
         const stats = buildStratifiedStats(population, taskInfo.fieldMapping);
+        const stratumNumericStats = buildStratifiedNumericStats(population, taskInfo.fieldMapping);
         const mapping = parseTopicFieldMapping(taskInfo.fieldMapping);
         const numericFields = mapping?.numeric ?? [];
 
-        return json({ stats, numericFields });
+        return json({ stats, numericFields, stratumNumericStats });
     },
 };
 

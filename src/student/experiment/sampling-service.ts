@@ -216,7 +216,7 @@ export async function executeSamplingAction(params: {
             const data = await performStratifiedSampling(params.population, stratifyBy, layers, random);
             return {
                 ok: true as const,
-                result: { completed: true, stratifyBy, layers, stratifiedData: [], seed, data },
+                result: { completed: true, stratifyBy, layers, seed, data },
             };
         }
     }

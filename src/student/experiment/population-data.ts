@@ -92,3 +92,57 @@ export function buildStratifiedStats(population: Array<Record<string, unknown>>,
 
     return stats;
 }
+
+export interface StratumNumericStat {
+    mean: number;
+    stdDev: number;
+}
+
+/**
+ * Compute within-stratum standard deviations for each numeric field,
+ * grouped by each stratification field. This enables proper Neyman allocation.
+ */
+export function buildStratifiedNumericStats(
+    population: Array<Record<string, unknown>>,
+    fieldMapping: unknown,
+): Record<string, Record<string, Record<string, StratumNumericStat>>> {
+    const mapping = parseTopicFieldMapping(fieldMapping);
+    if (!mapping?.stratified?.length || !mapping?.numeric?.length) return {};
+
+    const result: Record<string, Record<string, Record<string, StratumNumericStat>>> = {};
+
+    for (const stratField of mapping.stratified) {
+        const fieldResult: Record<string, Record<string, StratumNumericStat>> = {};
+
+        // Group population rows by stratum value
+        const groups: Record<string, Record<string, unknown>[]> = {};
+        for (const row of population) {
+            const key = String(row[stratField]);
+            (groups[key] ??= []).push(row);
+        }
+
+        for (const [stratValue, rows] of Object.entries(groups)) {
+            const stratStats: Record<string, StratumNumericStat> = {};
+
+            for (const numField of mapping.numeric) {
+                const values = rows
+                    .map((r) => Number(r[numField]))
+                    .filter((v) => Number.isFinite(v));
+
+                if (values.length < 2) continue;
+
+                const mean = values.reduce((a, b) => a + b, 0) / values.length;
+                const variance =
+                    values.reduce((a, v) => a + (v - mean) ** 2, 0) / (values.length - 1);
+
+                stratStats[numField] = { mean, stdDev: Math.sqrt(variance) };
+            }
+
+            fieldResult[stratValue] = stratStats;
+        }
+
+        result[stratField] = fieldResult;
+    }
+
+    return result;
+}

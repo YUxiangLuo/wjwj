@@ -1,11 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { BarChart3, Calculator, Scale, Users, AlertCircle, CheckCircle2, ArrowRight, DollarSign, Info } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { BarChart3, Calculator, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
 import { useState, useMemo } from "react";
-import { calculateSquareRootAllocation, calculateOptimalAllocationWithCost, type LayerWithCost } from "../experiment/sample-plan";
 
 interface LayerInfo {
     name: string;
@@ -26,59 +30,71 @@ interface AllocationComparison {
         isFullyEnumerated?: boolean; // 是否全数调查
     }>;
     totalVariance: number;       // 估计方差（相对值）
-    efficiency: number;          // 相对于简单随机抽样的效率
+    efficiency: number;          // 相对于按比例分配的效率（Var_prop / Var_method）
     totalCost?: number;          // 总成本（最优分配时）
     hasOverAllocation: boolean;  // 是否存在超额分配
     overAllocatedLayers: string[]; // 超额分配的层名称
     adjustedTotalSampleSize?: number; // 调整后的总样本量（处理超额分配后）
 }
 
+const FIELD_LABELS: Record<string, string> = {
+    "age": "年龄",
+    "income": "收入水平",
+    "monthly_expense": "月支出",
+    "spending": "消费支出",
+    "salary": "薪资",
+    "price": "价格",
+    "quantity": "数量",
+    "gender": "性别",
+    "education": "学历",
+    "age_group": "年龄段",
+    "city": "城市",
+    "city_tier": "城市等级",
+};
+
 interface StratifiedAllocationComparisonProps {
     layers: LayerInfo[];
     totalSampleSize: number;
+    numericFields?: string[];
+    stratumStdDevs?: Record<string, Record<string, { mean: number; stdDev: number }>>;
     onApplyAllocation?: (method: "proportional" | "neyman" | "equal" | "optimal" | "sqrt") => void;
     onApplyAllocationWithOverflow?: (method: "proportional" | "neyman" | "equal" | "sqrt", allocation: { name: string; count: number; sampleCount: number }[]) => void;
 }
 
-export function StratifiedAllocationComparison({ 
-    layers, 
+export function StratifiedAllocationComparison({
+    layers,
     totalSampleSize,
+    numericFields,
+    stratumStdDevs,
     onApplyAllocation,
     onApplyAllocationWithOverflow,
 }: StratifiedAllocationComparisonProps) {
-    const [activeMethod, setActiveMethod] = useState<string | null>(null);
+    const [targetVariable, setTargetVariable] = useState<string | null>(null);
     const [showOverflowDetails, setShowOverflowDetails] = useState(false);
-    const [showCostOptimization, setShowCostOptimization] = useState(false);
-    
-    // 费用优化参数
-    const [totalBudget, setTotalBudget] = useState(50000);
-    const [fixedCost, setFixedCost] = useState(5000);
-    const [layerCosts, setLayerCosts] = useState<number[]>(layers.map(() => 20));
 
-    // 计算四种基本分配方法
+    // Extract per-layer std devs for the selected target variable
+    const layerStdDevs = useMemo(() => {
+        if (!targetVariable || !stratumStdDevs) return undefined;
+        const devs = layers.map(l => stratumStdDevs[l.name]?.[targetVariable]?.stdDev);
+        return devs.every((s): s is number => s !== undefined && s > 0) ? devs : undefined;
+    }, [layers, targetVariable, stratumStdDevs]);
+
+    // 计算四种基本分配方法，以按比例分配的方差为基准计算相对效率
     const comparisons: AllocationComparison[] = useMemo(() => {
         if (!layers.length) return [];
-        return [
-            calculateProportionalAllocation(layers, totalSampleSize),
-            calculateEqualAllocation(layers, totalSampleSize),
-            calculateNeymanAllocation(layers, totalSampleSize),
-            calculateSquareRootNAllocation(layers, totalSampleSize),
+        const raw = [
+            calculateProportionalAllocation(layers, totalSampleSize, layerStdDevs),
+            calculateEqualAllocation(layers, totalSampleSize, layerStdDevs),
+            calculateNeymanAllocation(layers, totalSampleSize, layerStdDevs),
+            calculateSquareRootNAllocation(layers, totalSampleSize, layerStdDevs),
         ];
-    }, [layers, totalSampleSize]);
-
-    // 计算费用最优分配
-    const costOptimizedComparison = useMemo(() => {
-        if (!showCostOptimization || !layers.length) return null;
-
-        const layersWithCost: LayerWithCost[] = layers.map((layer, index) => ({
-            name: layer.name,
-            populationSize: layer.count,
-            stdDev: Math.sqrt(layer.count),  // 简化的标准差估计
-            unitCost: layerCosts[index] ?? 20,
+        const propVariance = raw[0]?.totalVariance;
+        if (!propVariance || propVariance <= 0) return raw;
+        return raw.map(c => ({
+            ...c,
+            efficiency: c.totalVariance > 0 ? propVariance / c.totalVariance : 1,
         }));
-
-        return calculateOptimalAllocationWithCost(layersWithCost, totalBudget, fixedCost);
-    }, [layers, layerCosts, totalBudget, fixedCost, showCostOptimization]);
+    }, [layers, totalSampleSize, layerStdDevs]);
 
     if (!layers.length) return null;
 
@@ -109,6 +125,45 @@ export function StratifiedAllocationComparison({
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+                {/* 目标变量选择器 */}
+                {numericFields && numericFields.length > 0 && (
+                    <div className="rounded-xl border border-violet-200/50 bg-white/50 p-3 dark:border-violet-500/10 dark:bg-violet-950/20">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Calculator className="w-4 h-4 text-violet-500" />
+                            <span className="text-sm font-medium text-violet-900 dark:text-violet-100">目标估计变量</span>
+                        </div>
+                        <p className="text-xs text-violet-600/80 dark:text-violet-400/80 mb-2">
+                            选择目标变量后，将使用各层的实际标准差计算奈曼最优分配和方差估计
+                        </p>
+                        <Select
+                            value={targetVariable ?? "__none__"}
+                            onValueChange={(v) => setTargetVariable(v === "__none__" ? null : v)}
+                        >
+                            <SelectTrigger className="bg-white dark:bg-violet-950 border-violet-200 dark:border-violet-700 text-violet-900 dark:text-violet-100">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__none__">使用层规模近似（默认）</SelectItem>
+                                {numericFields.map(field => (
+                                    <SelectItem key={field} value={field}>
+                                        {FIELD_LABELS[field] ?? field}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {targetVariable && layerStdDevs && (
+                            <div className="mt-2 text-xs text-violet-600/70 dark:text-violet-400/70 space-y-0.5">
+                                {layers.map((l, i) => (
+                                    <div key={l.name} className="flex justify-between">
+                                        <span>{l.name}</span>
+                                        <span className="font-mono">S = {layerStdDevs[i]?.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* 方法卡片 */}
                 <div className="space-y-3">
                     {comparisons.map((comparison, index) => {
@@ -135,11 +190,25 @@ export function StratifiedAllocationComparison({
                                             </Badge>
                                         )}
                                     </div>
-                                    {onApplyAllocation && (
-                                        <Button 
-                                            variant="outline" 
+                                    {(onApplyAllocationWithOverflow || onApplyAllocation) && (
+                                        <Button
+                                            variant="outline"
                                             size="sm"
-                                            onClick={() => onApplyAllocation(comparison.method)}
+                                            onClick={() => {
+                                                if (onApplyAllocationWithOverflow) {
+                                                    const allocation = comparison.allocation.map(a => ({
+                                                        name: a.layerName,
+                                                        count: a.populationSize,
+                                                        sampleCount: a.sampleSize,
+                                                    }));
+                                                    onApplyAllocationWithOverflow(
+                                                        comparison.method as "proportional" | "neyman" | "equal" | "sqrt",
+                                                        allocation,
+                                                    );
+                                                } else {
+                                                    onApplyAllocation!(comparison.method);
+                                                }
+                                            }}
                                             className="text-xs h-7 border-violet-300 hover:bg-violet-100 dark:border-violet-700 dark:hover:bg-violet-900/30"
                                         >
                                             应用此分配
@@ -207,8 +276,8 @@ export function StratifiedAllocationComparison({
                         <div className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
                             <p className="font-medium">效率解读</p>
                             <p className="text-amber-700/80 dark:text-amber-300/80">
-                                相对效率 &gt; 1 表示该分配方法比简单随机抽样更精确。
-                                奈曼分配通常在方差差异大的层间效果最好，而按比例分配在层规模差异大时表现稳定。
+                                相对效率以按比例分配为基准（1.00×）。&gt; 1 表示比按比例分配更精确。
+                                奈曼分配通常在层间方差差异大时效果最好，而按比例分配在层规模差异大时表现稳定。
                             </p>
                         </div>
                     </div>
@@ -398,7 +467,7 @@ function detectOverAllocation(
 }
 
 // 计算按比例分配
-function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: number): AllocationComparison {
+function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: number, stdDevs?: number[]): AllocationComparison {
     const totalPopulation = layers.reduce((a, l) => a + l.count, 0);
     
     // 按比例分配
@@ -423,8 +492,8 @@ function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: n
         adjustedTotalSampleSize 
     } = detectOverAllocation(allocation, layers);
 
-    // 计算方差（简化的相对方差估计）
-    const totalVariance = calculateVariance(markedAllocation, layers);
+    // 计算方差
+    const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 
     return {
         method: "proportional",
@@ -432,7 +501,7 @@ function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: n
         description: "样本量与层总体大小成比例，是最常用且稳健的方法",
         allocation: markedAllocation,
         totalVariance,
-        efficiency: 1 / totalVariance,
+        efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize,
@@ -440,7 +509,7 @@ function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: n
 }
 
 // 计算等样本分配
-function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number): AllocationComparison {
+function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number, stdDevs?: number[]): AllocationComparison {
     const equalSize = Math.floor(totalSampleSize / layers.length);
     const remainder = totalSampleSize % layers.length;
     
@@ -460,8 +529,8 @@ function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number):
         overAllocatedLayers, 
         adjustedTotalSampleSize 
     } = detectOverAllocation(allocation, layers);
-    
-    const totalVariance = calculateVariance(markedAllocation, layers);
+
+    const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 
     return {
         method: "equal",
@@ -469,19 +538,23 @@ function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number):
         description: "每层分配相同样本量，适合各层方差相近的情况",
         allocation: markedAllocation,
         totalVariance,
-        efficiency: 1 / totalVariance,
+        efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize,
     };
 }
 
-// 计算奈曼分配（简化版）
-function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number): AllocationComparison {
+// 计算奈曼分配
+function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number, stdDevs?: number[]): AllocationComparison {
     const totalPopulation = layers.reduce((a, l) => a + l.count, 0);
-    
-    // 简化的奈曼分配：使用 N_h * sqrt(N_h) 作为权重（假设方差与规模相关）
-    const weights = layers.map(layer => layer.count * Math.sqrt(layer.count));
+
+    // Neyman allocation: n_h ∝ N_h × S_h
+    // When actual std devs are provided, use them; otherwise fall back to sqrt(N_h) heuristic
+    const weights = layers.map((layer, i) => {
+        const sh = stdDevs?.[i] ?? Math.sqrt(layer.count);
+        return layer.count * sh;
+    });
     const totalWeight = weights.reduce((a, b) => a + b, 0);
     
     let allocation = layers.map((layer, index) => {
@@ -504,103 +577,83 @@ function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number)
         overAllocatedLayers, 
         adjustedTotalSampleSize 
     } = detectOverAllocation(allocation, layers);
-    
-    const totalVariance = calculateVariance(markedAllocation, layers);
+
+    const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 
     return {
         method: "neyman",
         name: "奈曼分配",
-        description: "使估计值方差最小化的最优分配，适合方差差异大的层间",
+        description: stdDevs
+            ? "基于实际层内标准差进行最优分配，使估计方差最小化"
+            : "使用层规模近似标准差（选择目标变量可获得更准确的分配）",
         allocation: markedAllocation,
         totalVariance,
-        efficiency: 1 / totalVariance,
+        efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize,
     };
 }
 
-// 归一化分配（确保总和为totalSampleSize且不超过层总体大小）
+// 归一化分配（确保总和为totalSampleSize且不超过层总体大小，使用最大余数法）
 function normalizeAllocation(
-    allocation: Array<{ layerName: string; populationSize: number; sampleSize: number; proportion: number }>, 
+    allocation: Array<{ layerName: string; populationSize: number; sampleSize: number; proportion: number }>,
     totalSampleSize: number,
     layers: LayerInfo[]
 ): Array<{ layerName: string; populationSize: number; sampleSize: number; proportion: number }> {
-    // 先确保每个样本量不超过层总体大小
-    let adjusted = allocation.map((a, i) => ({
-        ...a,
-        sampleSize: Math.min(a.sampleSize, layers[i]?.count ?? a.sampleSize),
-    }));
+    // 用原始权重比例计算精确分配量
+    const exactShares = allocation.map(a => totalSampleSize * a.proportion);
 
-    // 计算当前总和
-    let currentTotal = adjusted.reduce((sum, a) => sum + a.sampleSize, 0);
-    
-    // 如果需要调整
-    let attempts = 0;
-    while (currentTotal !== totalSampleSize && attempts < 100) {
-        const prevTotal = currentTotal;
-        const diff = totalSampleSize - currentTotal;
-        
-        if (diff > 0) {
-            // 需要增加：按比例增加（但不超过层上限）
-            for (let i = 0; i < adjusted.length && currentTotal < totalSampleSize; i++) {
-                const layer = layers[i];
-                const item = adjusted[i];
-                if (!layer || !item) continue;
-                const maxAdd = layer.count - item.sampleSize;
-                if (maxAdd > 0) {
-                    item.sampleSize += 1;
-                    currentTotal += 1;
-                }
-            }
-        } else if (diff < 0) {
-            // 需要减少：按比例减少（但不低于0）
-            for (let i = 0; i < adjusted.length && currentTotal > totalSampleSize; i++) {
-                const item = adjusted[i];
-                if (item && item.sampleSize > 0) {
-                    item.sampleSize -= 1;
-                    currentTotal -= 1;
-                }
-            }
-        }
-        attempts++;
-        
-        // 防止死循环：如果一轮循环后没有变化就退出
-        if (currentTotal === prevTotal) {
-            break;
+    // Floor 并 cap 到层总体上限
+    const floored = exactShares.map((s, i) =>
+        Math.min(Math.floor(s), layers[i]?.count ?? Math.floor(s)),
+    );
+
+    let remainder = totalSampleSize - floored.reduce((a, b) => a + b, 0);
+
+    // 按小数部分降序排列（最大余数法），分配剩余名额
+    const indices = floored.map((_, i) => i);
+    indices.sort((a, b) => (exactShares[b]! - floored[b]!) - (exactShares[a]! - floored[a]!));
+
+    for (const idx of indices) {
+        if (remainder <= 0) break;
+        const maxAdd = (layers[idx]?.count ?? 0) - floored[idx]!;
+        if (maxAdd > 0) {
+            floored[idx]!++;
+            remainder--;
         }
     }
 
     // 重新计算比例
-    return adjusted.map(a => ({
+    return allocation.map((a, i) => ({
         ...a,
-        proportion: totalSampleSize > 0 ? a.sampleSize / totalSampleSize : 0,
+        sampleSize: floored[i] ?? 0,
+        proportion: totalSampleSize > 0 ? (floored[i] ?? 0) / totalSampleSize : 0,
     }));
 }
 
-// 简化的方差计算
+// 方差计算
+// Var(ȳ_st) = Σ (W_h² × S_h² / n_h) × (1 − n_h / N_h)
 function calculateVariance(
     allocation: Array<{ layerName: string; populationSize: number; sampleSize: number }>,
-    layers: LayerInfo[]
+    layers: LayerInfo[],
+    stdDevs?: number[],
 ): number {
-    // 使用简化的方差模型：假设每层内的方差与层大小成正比
-    // Var_total = sum((N_h/N)^2 * (S_h^2/n_h) * (1 - n_h/N_h))
-    // 简化：假设 S_h^2 ∝ N_h
-    
     const totalPopulation = layers.reduce((a, l) => a + l.count, 0);
-    
+
     let totalVariance = 0;
     allocation.forEach((a, i) => {
         const Nh = a.populationSize;
         const nh = a.sampleSize;
         const Wh = totalPopulation > 0 ? Nh / totalPopulation : 0;
-        
-        // 简化的层方差：S_h^2 = Nh / totalPopulation（归一化）
-        const Sh2 = totalPopulation > 0 ? Nh / totalPopulation : 0;
-        
-        // 层贡献的方差
+
+        // Use actual S_h² when available, otherwise fall back to heuristic S_h² ∝ N_h/N
+        const Sh2 = stdDevs
+            ? stdDevs[i]! ** 2
+            : (totalPopulation > 0 ? Nh / totalPopulation : 0);
+
         if (nh > 0) {
-            const layerVariance = Math.pow(Wh, 2) * (Sh2 / nh) * (1 - nh / Nh);
+            const layerVariance = Wh ** 2 * (Sh2 / nh) * (1 - nh / Nh);
             totalVariance += layerVariance;
         }
     });
@@ -609,7 +662,7 @@ function calculateVariance(
 }
 
 // 与N的平方根成比例分配
-function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: number): AllocationComparison {
+function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: number, stdDevs?: number[]): AllocationComparison {
     const weights = layers.map(layer => Math.sqrt(layer.count));
     const totalWeight = weights.reduce((a, b) => a + b, 0);
     
@@ -634,7 +687,7 @@ function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: nu
         adjustedTotalSampleSize 
     } = detectOverAllocation(allocation, layers);
     
-    const totalVariance = calculateVariance(markedAllocation, layers);
+    const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 
     return {
         method: "sqrt" as const,
@@ -642,7 +695,7 @@ function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: nu
         description: "与层规模的平方根成比例，在按比例和等额分配之间取得平衡",
         allocation: markedAllocation,
         totalVariance,
-        efficiency: 1 / totalVariance,
+        efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize,

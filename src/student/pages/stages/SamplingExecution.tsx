@@ -122,6 +122,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     // Stats state
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [numericFields, setNumericFields] = useState<string[]>([]);
+    const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
     const [layers, setLayers] = useState<Array<{ name: string; count: number; ratio: number }>>([]);
     const [layerSampleCounts, setLayerSampleCounts] = useState<number[]>([]);
 
@@ -131,6 +132,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             experimentApi.getStats(experiment.taskId).then(res => {
                 if (res.success && res.data?.stats) {
                     setPopulationStats(res.data.stats);
+                    if (res.data.stratumNumericStats) setStratumNumericStats(res.data.stratumNumericStats);
                 }
                 if (res.success && res.data?.numericFields) {
                     setNumericFields(res.data.numericFields);
@@ -1035,6 +1037,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     <StratifiedAllocationComparison
                         layers={layers}
                         totalSampleSize={n}
+                        numericFields={numericFields}
+                        stratumStdDevs={stratumNumericStats[stratifyBy]}
                         onApplyAllocation={(method) => {
                             if (method === "proportional") applyProportionalAllocation();
                             else if (method === "neyman") applyNeymanAllocation();
@@ -1044,7 +1048,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         onApplyAllocationWithOverflow={(method, allocation) => {
                             const newCounts = allocation.map(a => a.sampleCount);
                             setLayerSampleCounts(newCounts);
-                            toast.success(`已应用${method === "proportional" ? "按比例" : method === "neyman" ? "奈曼" : "等额"}分配（自动处理超额层）`);
+                            const hasOverflow = allocation.some(a => a.sampleCount >= a.count);
+                            const label = method === "proportional" ? "按比例" : method === "neyman" ? "奈曼" : method === "sqrt" ? "平方根" : "等额";
+                            toast.success(`已应用${label}分配${hasOverflow ? "（自动处理超额层）" : ""}`);
                             setShowAllocationComparison(false);
                         }}
                     />
