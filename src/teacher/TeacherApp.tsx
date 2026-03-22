@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock, Sun, Moon
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock, Sun, Moon, BarChart3,
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -359,12 +359,14 @@ export function TeacherApp() {
                 fixed inset-y-0 left-0 z-50 w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 flex flex-col
                 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
-                <div className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center shrink-0">
-                    <div className="flex items-center gap-2 font-semibold text-lg text-slate-900 dark:text-slate-100">
-                        <div className="bg-indigo-600 p-1.5 rounded-lg">
-                            <LayoutDashboard className="w-4 h-4 text-white" />
+                <div className="min-h-16 px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center shrink-0">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="bg-indigo-600 p-1.5 rounded-xl shadow-md shadow-indigo-500/20 shrink-0">
+                            <BarChart3 className="w-5 h-5 text-white" />
                         </div>
-                        抽样统计系统
+                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-900 dark:from-slate-100 to-slate-600 dark:to-slate-400 text-sm font-semibold tracking-tight leading-snug">
+                            统计学虚拟仿真实验平台
+                        </span>
                     </div>
                 </div>
 
