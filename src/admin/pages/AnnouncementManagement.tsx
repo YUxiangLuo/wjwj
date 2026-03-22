@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RichTextEditor } from "@/student/components/RichTextEditor";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { RichTextContent } from "@/components/RichTextContent";
 import { announcementApi, type Announcement } from "../api-client";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";

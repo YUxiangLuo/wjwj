@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { BookOpen, Search, Layers, FileText } from "lucide-react";
+import { getRichTextPlainText } from "@/utils/rich-text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ export function TopicManagement() {
     const [attachments, setAttachments] = useState<TopicDetail["attachments"]>([]);
     const [recommendQuestions, setRecommendQuestions] = useState<TopicRecommendQuestion[]>([]);
     const [weightConfig, setWeightConfig] = useState({ questionnaire: 30, process: 30, report: 40 });
+    const [loadingDetail, setLoadingDetail] = useState(false);
     const [uploadingExcel, setUploadingExcel] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
     const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
@@ -68,7 +70,9 @@ export function TopicManagement() {
     }
 
     async function loadTopicDetail(id: number) {
+        setLoadingDetail(true);
         const res = await teacherApi.getTopicDetail(id);
+        setLoadingDetail(false);
         if (res.success && res.data) {
             const mapping = res.data.topic?.fieldMapping ?? null;
             const parsed = typeof mapping === "string" ? (() => { try { return JSON.parse(mapping); } catch { return null; } })() : mapping;
@@ -124,11 +128,11 @@ export function TopicManagement() {
             if (!editingTopicId && res.data && typeof res.data === "object" && "id" in res.data) {
                 const newId = (res.data as { id: number }).id;
                 setEditingTopicId(newId);
-                await loadTopicDetail(newId);
                 setCurrentStep(2);
+                loadTopicDetail(newId);
             } else if (editingTopicId) {
-                await loadTopicDetail(editingTopicId);
                 setCurrentStep(Math.min(currentStep + 1, 6));
+                loadTopicDetail(editingTopicId);
             }
             loadTopics();
         } else {
@@ -399,7 +403,7 @@ export function TopicManagement() {
                                             )}
                                         </div>
                                         <div className="text-xs text-slate-500 mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString()}</div>
-                                        <div className="text-sm text-slate-600 dark:text-slate-400 mt-2 line-clamp-2 max-w-2xl">{topic.description || "暂无描述"}</div>
+                                        <div className="text-sm text-slate-600 dark:text-slate-400 mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
                                     </div>
                                 </div>
                             </div>
@@ -458,6 +462,7 @@ export function TopicManagement() {
                 setNewTopicName={setNewTopicName}
                 newTopicDesc={newTopicDesc}
                 setNewTopicDesc={setNewTopicDesc}
+                loadingDetail={loadingDetail}
                 excelInfo={excelInfo}
                 uploadingExcel={uploadingExcel}
                 onExcelUpload={handleExcelUpload}

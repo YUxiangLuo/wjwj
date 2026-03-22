@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type TopicDetail, type Topic } from "../api-client";
 
 const QUESTION_TYPE_LABELS: Record<number, string> = {
@@ -88,7 +89,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="sm:max-w-5xl max-h-[90vh] flex flex-col bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                className="sm:max-w-5xl h-[80vh] flex flex-col bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
@@ -132,7 +133,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 </div>
 
                 {/* Tab content */}
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-[350px]">
+                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
                     {loading ? (
                         <div className="flex items-center justify-center py-20 text-slate-500">加载中...</div>
                     ) : (
@@ -147,8 +148,11 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                     <Separator className="bg-slate-200 dark:bg-slate-800" />
                                     <div className="space-y-2">
                                         <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">背景描述</div>
-                                        <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-lg p-4 max-h-[300px] overflow-y-auto">
-                                            {detail?.topic?.description || topic.description || "暂无描述"}
+                                        <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-lg p-4 max-h-[300px] overflow-y-auto">
+                                            <RichTextContent
+                                                html={detail?.topic?.description || topic.description || ""}
+                                                emptyFallback="暂无描述"
+                                            />
                                         </div>
                                     </div>
                                 </div>

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import type { TopicDetail, TopicRecommendQuestion } from "../api-client";
 import { teacherApi } from "../api-client";
 import { RecommendQuestionEditor, parseOptions } from "./RecommendQuestionEditor";
@@ -27,6 +27,7 @@ interface TopicWizardDialogProps {
     setNewTopicName: (value: string) => void;
     newTopicDesc: string;
     setNewTopicDesc: (value: string) => void;
+    loadingDetail: boolean;
     excelInfo: { filePath: string; rowCount: number; colCount: number; columns: string[]; preview: any[] } | null;
     uploadingExcel: boolean;
     onExcelUpload: (file: File) => void;
@@ -58,6 +59,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         setNewTopicName,
         newTopicDesc,
         setNewTopicDesc,
+        loadingDetail,
         excelInfo,
         uploadingExcel,
         onExcelUpload,
@@ -275,7 +277,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="sm:max-w-5xl max-h-[90vh] flex flex-col bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                className="sm:max-w-5xl h-[80vh] flex flex-col bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                 onInteractOutside={(e) => e.preventDefault()}
                 onEscapeKeyDown={(e) => e.preventDefault()}
             >
@@ -310,7 +312,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         })}
                     </div>
 
-                    <div className="min-h-[350px]">
+                    <div className="flex-1">
+                        {loadingDetail && currentStep > 1 && (
+                            <div className="flex flex-col items-center justify-center py-20 text-slate-500 animate-in fade-in duration-200">
+                                <Loader2 className="w-6 h-6 animate-spin mb-3" />
+                                <span className="text-sm">加载中...</span>
+                            </div>
+                        )}
                         {currentStep === 1 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="space-y-2">
@@ -325,20 +333,19 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="topicDesc" className="text-slate-700 dark:text-slate-300">背景描述</Label>
-                                    <Textarea
-                                        id="topicDesc"
-                                        data-testid="teacher-topic-desc"
-                                        placeholder="请输入课题背景描述"
-                                        className="min-h-40 resize-none bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500"
+                                    <Label className="text-slate-700 dark:text-slate-300">背景描述</Label>
+                                    <RichTextEditor
+                                        dataTestId="teacher-topic-desc"
                                         value={newTopicDesc}
-                                        onChange={e => setNewTopicDesc(e.target.value)}
+                                        onChange={setNewTopicDesc}
+                                        placeholder="请输入课题背景描述"
+                                        className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
                                     />
                                 </div>
                             </div>
                         )}
 
-                        {currentStep === 2 && (
+                        {!loadingDetail && currentStep === 2 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex items-center justify-between">
                                     <Label className="text-slate-700 dark:text-slate-300">上传总体数据（Excel）</Label>
@@ -425,7 +432,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             </div>
                         )}
 
-                        {currentStep === 3 && (
+                        {!loadingDetail && currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/60 p-4">
                                     <div className="flex items-start justify-between gap-3">
@@ -579,7 +586,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             </div>
                         )}
 
-                        {currentStep === 4 && (
+                        {!loadingDetail && currentStep === 4 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <Label className="text-slate-700 dark:text-slate-300">附件上传</Label>
                                 <Input
@@ -614,7 +621,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             </div>
                         )}
 
-                        {currentStep === 5 && (
+                        {!loadingDetail && currentStep === 5 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-slate-700 dark:text-slate-300">推荐题目</Label>
@@ -722,7 +729,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             </div>
                         )}
 
-                        {currentStep === 6 && (
+                        {!loadingDetail && currentStep === 6 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-6 space-y-4">
@@ -792,19 +799,19 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             {currentStep === 1 && (
                                 <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-indigo-600 hover:bg-indigo-700 text-white">{editingTopicId ? "保存并继续" : "下一步"}</Button>
                             )}
-                            {currentStep === 2 && (
+                            {!loadingDetail && currentStep === 2 && (
                                 <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(3)} disabled={!excelInfo} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
                             )}
-                            {currentStep === 3 && (
+                            {!loadingDetail && currentStep === 3 && (
                                 <Button data-testid="teacher-topic-next" onClick={onSaveFieldMapping} disabled={!canProceedMapping} className="bg-indigo-600 hover:bg-indigo-700 text-white">保存并继续</Button>
                             )}
-                            {currentStep === 4 && (
+                            {!loadingDetail && currentStep === 4 && (
                                 <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
                             )}
-                            {currentStep === 5 && (
+                            {!loadingDetail && currentStep === 5 && (
                                 <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-indigo-600 hover:bg-indigo-700 text-white">保存并继续</Button>
                             )}
-                            {currentStep === 6 && (
+                            {!loadingDetail && currentStep === 6 && (
                                 <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-indigo-600 hover:bg-indigo-700 text-white">完成</Button>
                             )}
                         </div>

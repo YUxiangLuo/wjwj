@@ -139,3 +139,12 @@ body {
     color: var(--color-foreground);
     font-feature-settings: "rlig" 1, "calt" 1;
 }
+
+/* Tiptap placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #94a3b8;
+    pointer-events: none;
+    height: 0;
+}
