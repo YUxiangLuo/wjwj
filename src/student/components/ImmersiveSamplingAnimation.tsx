@@ -118,6 +118,7 @@ const DotGrid = memo(function DotGrid({
     layerAssignment,
     dotWeights,
     method,
+    systematicScanIndex,
 }: {
     visiblePopCount: number;
     currentSelectIndex: number;
@@ -126,6 +127,8 @@ const DotGrid = memo(function DotGrid({
     /** Normalized 0-1 weights per dot, used by PPS to show size variation */
     dotWeights: Float32Array | undefined;
     method: SamplingMethod;
+    /** For systematic: index of the latest scanned dot. Dots beyond this appear dimmer. */
+    systematicScanIndex?: number;
 }) {
     const methodMeta = METHOD_META[method];
     return (
@@ -155,6 +158,9 @@ const DotGrid = memo(function DotGrid({
                         const opacity = PPS_OPACITY_MIN + w * PPS_OPACITY_RANGE;
                         bgClass = methodMeta.accentBg;
                         inlineStyle = { opacity };
+                    } else if (method === "systematic" && systematicScanIndex !== undefined && i > systematicScanIndex) {
+                        // Not yet scanned — dimmer to show the scan sweeping through
+                        bgClass = "bg-slate-300/30 dark:bg-slate-700/30";
                     } else {
                         bgClass = "bg-slate-300 dark:bg-slate-700";
                     }
@@ -292,8 +298,9 @@ export function ImmersiveSamplingAnimation({
             }
             weights = normalizedWeights;
         } else if (method === "systematic") {
-            const k = kValue ?? Math.round(populationSize / sampleSize);
-            const visualK = Math.max(2, Math.round((k / populationSize) * TOTAL_DOTS));
+            // Spread samples evenly across the entire grid so the animation
+            // visibly scans from top-left to bottom-right.
+            const visualK = Math.max(2, Math.round(TOTAL_DOTS / Math.max(1, visualSampleSize)));
             const start = Math.floor(rng() * visualK);
             for (let i = start; i < TOTAL_DOTS && selection.length < visualSampleSize; i += visualK) {
                 selection.push(i);
@@ -435,7 +442,12 @@ export function ImmersiveSamplingAnimation({
         }
         const latestIndex = selectionOrder[Math.max(0, currentSelectIndex - 1)] ?? selectionOrder[0] ?? 0;
         const col = latestIndex % GRID_COLS;
-        return `${((col + 0.5) / GRID_COLS) * 100}%`;
+        const row = Math.floor(latestIndex / GRID_COLS);
+        return {
+            left: `${((col + 0.5) / GRID_COLS) * 100}%`,
+            top: `${((row + 0.5) / GRID_ROWS) * 100}%`,
+            scanIndex: latestIndex,
+        };
     }, [method, phase.type, selectionOrder, currentSelectIndex]);
 
     const stratifiedActiveLayer = useMemo(() => {
@@ -557,22 +569,29 @@ export function ImmersiveSamplingAnimation({
                                     layerAssignment={layerAssignment}
                                     dotWeights={dotWeights}
                                     method={method}
+                                    systematicScanIndex={systematicIndicator?.scanIndex}
                                 />
 
-                                {/* Systematic: show interval indicator */}
+                                {/* Systematic: scan line sweeping top→bottom + cursor */}
                                 {method === "systematic" && phase.type === "sampling" && (
                                     <>
                                         {systematicIndicator && (
-                                            <div
-                                                className="pointer-events-none absolute inset-y-4 w-px bg-teal-400/60"
-                                                style={{ left: systematicIndicator }}
-                                            >
-                                                <div className="absolute -top-2 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-teal-400 bg-white shadow-sm dark:bg-slate-950" />
+                                            <div className="pointer-events-none absolute inset-4">
+                                                {/* Horizontal scan line showing current row */}
+                                                <div
+                                                    className="absolute inset-x-0 h-px bg-teal-400/50 transition-all duration-[80ms]"
+                                                    style={{ top: systematicIndicator.top }}
+                                                />
+                                                {/* Scan cursor */}
+                                                <div
+                                                    className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-teal-400 bg-white shadow-md dark:bg-slate-950 transition-all duration-[80ms]"
+                                                    style={{ left: systematicIndicator.left, top: systematicIndicator.top }}
+                                                />
                                             </div>
                                         )}
                                         <div className="absolute bottom-3 left-0 right-0 text-center">
                                             <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-slate-50/90 px-3 py-1.5 text-xs font-mono ${meta.accentText} dark:bg-slate-900/90`}>
-                                                间隔 K = {kValue}，沿固定步长依次前进
+                                                间隔 K = {kValue}，从总体首端至末端等距抽取
                                             </span>
                                         </div>
                                     </>
