@@ -393,24 +393,45 @@ const gradingDetailRoutes: RouteDefinition = {
             return error("该作业正在被他人批改", "LOCKED", 423);
         }
 
-        await db.update(submission).set({
-            scoreQuestionnaire: String(body.scoreQuestionnaire),
-            scoreProcess: String(body.scoreProcess),
-            scoreReport: String(body.scoreReport),
-            totalScore: String(Number(totalScore.toFixed(2))),
-            teacherComment: body.comment,
-            rejectReason: body.status === 3 ? (body.rejectReason ?? "") : null,
-            status: body.status,
-            gradedAt: new Date(),
-            gradedById: userId,
-            gradedByType: myUserType,
-            lockedById: null,
-            lockedByType: null,
-            lockedAt: null,
-        }).where(eq(submission.id, submissionId));
+        // 乐观锁：仅当提交状态仍为待批改（0/1）时才写入，防止并发覆盖
+        try {
+            await db.transaction(async (tx) => {
+                const updated = await tx.update(submission).set({
+                    scoreQuestionnaire: String(body.scoreQuestionnaire),
+                    scoreProcess: String(body.scoreProcess),
+                    scoreReport: String(body.scoreReport),
+                    totalScore: String(Number(totalScore.toFixed(2))),
+                    teacherComment: body.comment,
+                    rejectReason: body.status === 3 ? (body.rejectReason ?? "") : null,
+                    status: body.status,
+                    gradedAt: new Date(),
+                    gradedById: userId,
+                    gradedByType: myUserType,
+                    lockedById: null,
+                    lockedByType: null,
+                    lockedAt: null,
+                }).where(and(eq(submission.id, submissionId), or(eq(submission.status, 0), eq(submission.status, 1))));
+
+                const header = Array.isArray(updated) ? updated[0] : updated;
+                if ((header as { affectedRows?: number })?.affectedRows === 0) {
+                    throw new Error("CONCURRENT_GRADE");
+                }
+
+                if (body.status === 2) {
+                    await tx.update(experiment).set({ status: 2 }).where(eq(experiment.id, detail.experimentId));
+                }
+                if (body.status === 3) {
+                    await tx.update(experiment).set({ status: 3 }).where(eq(experiment.id, detail.experimentId));
+                }
+            });
+        } catch (e) {
+            if (e instanceof Error && e.message === "CONCURRENT_GRADE") {
+                return error("该作业已被他人批改，请刷新后重试", "CONCURRENT_GRADE", 409);
+            }
+            throw e;
+        }
 
         if (body.status === 2) {
-            await db.update(experiment).set({ status: 2 }).where(eq(experiment.id, detail.experimentId));
             await notifyStudentById(detail.studentId, {
                 type: "GRADE_COMPLETED",
                 title: "作业已批改",
@@ -420,7 +441,6 @@ const gradingDetailRoutes: RouteDefinition = {
             });
         }
         if (body.status === 3) {
-            await db.update(experiment).set({ status: 3 }).where(eq(experiment.id, detail.experimentId));
             await notifyStudentById(detail.studentId, {
                 type: "GRADE_REJECTED",
                 title: "作业被驳回",

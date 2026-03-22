@@ -211,7 +211,7 @@ export function GradingManagement() {
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="flex items-center gap-4">
                                             <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
-                                                <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{sub.studentName[0]}</AvatarFallback>
+                                                <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{sub.studentName?.[0] ?? "?"}</AvatarFallback>
                                             </Avatar>
                                             <div>
                                                 <div className="flex items-center gap-2">

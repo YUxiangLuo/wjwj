@@ -28,11 +28,6 @@ export function GradeExport() {
         loadPreview();
     }, [semesterFilter, classFilter, topicFilter]);
 
-    // When semester changes, reset class filter and filter classes list
-    useEffect(() => {
-        setClassFilter("all");
-    }, [semesterFilter]);
-
     const semesters = useMemo(() => {
         const values = classes.map((c) => c.semester).filter(Boolean) as string[];
         return Array.from(new Set(values)).sort();
@@ -191,7 +186,7 @@ export function GradeExport() {
                         <p className="text-xs text-slate-500 mt-1">共 {preview.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto flex-wrap">
-                        <Select value={semesterFilter} onValueChange={setSemesterFilter}>
+                        <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setClassFilter("all"); }}>
                             <SelectTrigger data-testid="teacher-export-semester-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-40">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>

@@ -176,7 +176,7 @@ export function Dashboard() {
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
-                                            <AvatarFallback className="bg-indigo-950 text-indigo-500 text-sm font-semibold">{item.student[0]}</AvatarFallback>
+                                            <AvatarFallback className="bg-indigo-950 text-indigo-500 text-sm font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.student}</div>
@@ -212,7 +212,7 @@ export function Dashboard() {
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
-                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-rose-950 text-rose-600" : "bg-emerald-950 text-emerald-600"}`}>{item.student[0]}</AvatarFallback>
+                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-rose-950 text-rose-600" : "bg-emerald-950 text-emerald-600"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.student}</div>

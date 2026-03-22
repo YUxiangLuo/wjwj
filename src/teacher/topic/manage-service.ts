@@ -96,17 +96,28 @@ export async function updateTeacherTopicBasics(params: {
 export async function softDeleteTeacherTopic(params: { teacherId: number; topicId: number }) {
     const deletedAt = new Date();
 
-    await db.transaction(async (tx) => {
-        await tx
+    const deleted = await db.transaction(async (tx) => {
+        const result = await tx
             .update(topic)
             .set({ isDeleted: 1, deletedAt })
             .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)));
+
+        const header = Array.isArray(result) ? result[0] : result;
+        if ((header as { affectedRows?: number })?.affectedRows === 0) {
+            return false;
+        }
 
         await tx
             .update(task)
             .set({ deletedAt })
             .where(and(eq(task.topicId, params.topicId), isNull(task.deletedAt)));
+
+        return true;
     });
+
+    if (!deleted) {
+        return fail("课题不存在", "NOT_FOUND", 404);
+    }
 
     return { ok: true as const };
 }
