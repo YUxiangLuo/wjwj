@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/RichTextEditor";
-import type { TopicDetail, TopicRecommendQuestion } from "../api-client";
+import type { TopicDetail, Question } from "../api-client";
 import { teacherApi } from "../api-client";
-import { RecommendQuestionEditor, parseOptions } from "./RecommendQuestionEditor";
+import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
+import { questionTypeLabels, questionTypeBadgeColors } from "@/lib/questionnaire-labels";
+import type { QuestionType } from "@/lib/questionnaire-types";
 
 interface FieldMappingState {
     identifier?: string;
@@ -40,8 +42,8 @@ interface TopicWizardDialogProps {
     uploadingAttachment: boolean;
     onAttachmentUpload: (file: File) => void;
     onRefreshTopicDetail: (id: number) => Promise<void>;
-    recommendQuestions: TopicRecommendQuestion[];
-    setRecommendQuestions: (value: TopicRecommendQuestion[] | ((prev: TopicRecommendQuestion[]) => TopicRecommendQuestion[])) => void;
+    recommendQuestions: Question[];
+    setRecommendQuestions: (value: Question[] | ((prev: Question[]) => Question[])) => void;
     weightConfig: { questionnaire: number; process: number; report: number };
     setWeightConfig: (value: { questionnaire: number; process: number; report: number } | ((prev: { questionnaire: number; process: number; report: number }) => { questionnaire: number; process: number; report: number })) => void;
     onSubmitTopic: () => void;
@@ -85,29 +87,27 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
     // Recommend question editor state
     const [questionEditorOpen, setQuestionEditorOpen] = useState(false);
-    const [editingQuestion, setEditingQuestion] = useState<TopicRecommendQuestion | undefined>(undefined);
+    const [editingQuestion, setEditingQuestion] = useState<Question | undefined>(undefined);
 
     const handleAddQuestion = () => {
         setEditingQuestion(undefined);
         setQuestionEditorOpen(true);
     };
 
-    const handleEditQuestion = (q: TopicRecommendQuestion) => {
+    const handleEditQuestion = (q: Question) => {
         setEditingQuestion(q);
         setQuestionEditorOpen(true);
     };
 
-    const handleSaveQuestion = (saved: TopicRecommendQuestion) => {
+    const handleSaveQuestion = (saved: Question) => {
         setRecommendQuestions((prev) => {
             const idx = prev.findIndex((q) => q.id === saved.id);
             if (idx >= 0) {
-                // Update existing
                 const next = [...prev];
                 next[idx] = saved;
                 return next;
             }
-            // Add new
-            return [...prev, { ...saved, sortOrder: prev.length }];
+            return [...prev, saved];
         });
     };
 
@@ -123,8 +123,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
             const temp = next[idx]!;
             next[idx] = next[targetIdx]!;
             next[targetIdx] = temp;
-            // Recompute sortOrder based on new array positions
-            return next.map((q, i) => ({ ...q, sortOrder: i }));
+            return next;
         });
     };
 
@@ -654,18 +653,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </div>
                                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                                     {recommendQuestions.map((q, idx) => {
-                                        const typeLabel: Record<number, string> = { 1: "判断题", 2: "单选题", 3: "多选题", 4: "量表题" };
-                                        const typeBadgeColor: Record<number, string> = {
-                                            1: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-                                            2: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-                                            3: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-                                            4: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-                                        };
-                                        const optionsArr = parseOptions(q.options);
+                                        const qt = q.type as QuestionType;
+                                        const badge = questionTypeBadgeColors[qt] ?? "bg-slate-500/10 text-slate-500 border-slate-500/20";
+                                        const optionsArr = q.options ?? [];
                                         return (
                                             <div key={q.id} className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-lg p-4 relative group hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
                                                 <div className="flex items-start gap-3">
-                                                    {/* Reorder buttons */}
                                                     <div className="flex flex-col gap-0.5 pt-0.5">
                                                         <Button
                                                             variant="ghost"
@@ -687,18 +680,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         </Button>
                                                     </div>
 
-                                                    {/* Content area */}
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 mb-1.5">
                                                             <span className="text-slate-500 text-xs font-mono">{idx + 1}.</span>
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full border ${typeBadgeColor[q.questionType] ?? "bg-slate-500/10 text-slate-500 border-slate-500/20"}`}>
-                                                                {typeLabel[q.questionType] ?? "未知"}
+                                                            <span className={`text-xs px-2 py-0.5 rounded-full border ${badge}`}>
+                                                                {questionTypeLabels[qt] ?? "未知"}
                                                             </span>
                                                         </div>
                                                         <p data-testid={`teacher-topic-question-content-${idx}`} className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
                                                             {q.content || <span className="text-slate-500 italic">未填写题目内容</span>}
                                                         </p>
-                                                        {(q.questionType === 2 || q.questionType === 3) && optionsArr.length > 0 && (
+                                                        {(q.type === "single" || q.type === "multiple") && optionsArr.length > 0 && (
                                                             <div className="flex flex-wrap gap-1.5 mt-2">
                                                                 {optionsArr.map((opt, i) => (
                                                                     <span key={i} className="text-xs px-2 py-0.5 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded border border-slate-300/50 dark:border-slate-700/50">
@@ -707,15 +699,19 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                 ))}
                                                             </div>
                                                         )}
-                                                        {q.questionType === 1 && (
+                                                        {q.type === "boolean" && (
                                                             <p className="text-xs text-slate-500 mt-1">选项：是 / 否</p>
                                                         )}
-                                                        {q.questionType === 4 && (
-                                                            <p className="text-xs text-slate-500 mt-1">量表：1-10 分</p>
+                                                        {q.type === "scale" && (
+                                                            <p className="text-xs text-slate-500 mt-1">
+                                                                量表：{q.scaleMin ?? 1}–{q.scaleMax ?? 10} 分
+                                                                {q.scaleMinLabel || q.scaleMaxLabel
+                                                                    ? `（${q.scaleMinLabel ?? ""} — ${q.scaleMaxLabel ?? ""}）`
+                                                                    : ""}
+                                                            </p>
                                                         )}
                                                     </div>
 
-                                                    {/* Action buttons */}
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         <Button
                                                             variant="ghost"
@@ -742,11 +738,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </div>
 
                                 {/* Question Editor Dialog */}
-                                <RecommendQuestionEditor
+                                <QuestionEditor
                                     open={questionEditorOpen}
                                     onOpenChange={setQuestionEditorOpen}
                                     question={editingQuestion}
-                                    topicId={editingTopicId ?? 0}
                                     onSave={handleSaveQuestion}
                                 />
                             </div>

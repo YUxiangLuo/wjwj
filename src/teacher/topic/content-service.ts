@@ -1,10 +1,12 @@
 import { and, count, eq } from "drizzle-orm";
 import { basename } from "node:path";
 import { db } from "../../db";
-import { topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
+import { topic, topicAttachment } from "../../db/schema";
 import { copyStorageFile, createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
 import { getAttachmentType, sanitizeUploadFileName } from "./file-utils";
-import { validateRecommendQuestionItems, validateTopicAttachmentUpload } from "./validation";
+import { validateTopicAttachmentUpload } from "./validation";
+import type { Question } from "../../lib/questionnaire-types";
+import { parseRecommendQuestionsPayload } from "../../lib/validate-question";
 
 interface ServiceFailure {
     ok: false;
@@ -68,25 +70,15 @@ export async function uploadTopicAttachment(params: {
 
 export async function replaceTopicRecommendQuestions(params: {
     topicId: number;
-    items: Array<{ questionType: number; content: string; options?: any; sortOrder?: number }>;
+    items: unknown;
 }) {
-    const validationError = validateRecommendQuestionItems(params.items);
-    if (validationError) {
-        return fail(validationError);
+    const arr = Array.isArray(params.items) ? params.items : [];
+    const parsed = parseRecommendQuestionsPayload(arr);
+    if (!parsed.ok) {
+        return fail(parsed.error);
     }
 
-    await db.transaction(async (tx) => {
-        await tx.delete(topicRecommendQuestion).where(eq(topicRecommendQuestion.topicId, params.topicId));
-        for (const item of params.items) {
-            await tx.insert(topicRecommendQuestion).values({
-                topicId: params.topicId,
-                questionType: item.questionType,
-                content: item.content,
-                options: item.options ?? null,
-                sortOrder: item.sortOrder ?? 0,
-            });
-        }
-    });
+    await db.update(topic).set({ recommendQuestions: parsed.questions }).where(eq(topic.id, params.topicId));
 
     return { ok: true as const };
 }
@@ -132,7 +124,6 @@ export async function copyTopicWithResources(params: {
     }
 
     const attachments = await db.select().from(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
-    const questions = await db.select().from(topicRecommendQuestion).where(eq(topicRecommendQuestion.topicId, params.topicId));
     const copiedStoragePaths: string[] = [];
 
     try {
@@ -163,6 +154,11 @@ export async function copyTopicWithResources(params: {
             });
         }
 
+        const recommendQuestions =
+            (normalizeJsonColumnValue(sourceTopic.recommendQuestions as Question[] | string | null | undefined) ?? null) as
+                | Question[]
+                | null;
+
         const newTopicId = await db.transaction(async (tx) => {
             const [result] = await tx.insert(topic).values({
                 teacherId: params.teacherId,
@@ -172,6 +168,7 @@ export async function copyTopicWithResources(params: {
                 excelRowCount: sourceTopic.excelRowCount,
                 fieldMapping: normalizeJsonColumnValue(sourceTopic.fieldMapping),
                 weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
+                recommendQuestions: recommendQuestions ?? null,
                 status: 0,
             });
 
@@ -182,18 +179,6 @@ export async function copyTopicWithResources(params: {
                     copiedAttachments.map((attachment) => ({
                         topicId: insertedTopicId,
                         ...attachment,
-                    }))
-                );
-            }
-
-            if (questions.length) {
-                await tx.insert(topicRecommendQuestion).values(
-                    questions.map((question) => ({
-                        topicId: insertedTopicId,
-                        questionType: question.questionType,
-                        content: question.content,
-                        options: normalizeJsonColumnValue(question.options),
-                        sortOrder: question.sortOrder,
                     }))
                 );
             }

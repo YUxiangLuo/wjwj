@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import {
-    validateRecommendQuestionItems,
     validateParsedExcelUpload,
     validateTopicPublishReadiness,
     validateStratifiedValueCardinality,
@@ -9,6 +8,7 @@ import {
     validateTopicName,
     validateWeightConfig,
 } from "./validation";
+import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
 
 describe("topic validation helpers", () => {
     test("validateParsedExcelUpload rejects duplicate columns and blank rows", () => {
@@ -78,14 +78,14 @@ describe("topic validation helpers", () => {
         ).toBe("不支持的文件类型");
     });
 
-    test("validateRecommendQuestionItems validates option-based questions", () => {
-        expect(validateRecommendQuestionItems(Array.from({ length: 31 }, () => ({ questionType: 1, content: "x" })))).toBe(
-            "推荐题目数量不能超过30"
-        );
+    test("validateRecommendQuestionsPayload validates question list", () => {
+        expect(
+            validateRecommendQuestionsPayload(Array.from({ length: 31 }, () => ({ type: "boolean", id: "x", content: "x" })))
+        ).toBe("推荐题目数量不能超过30");
 
         expect(
-            validateRecommendQuestionItems([{ questionType: 2, content: "Question", options: "A" }])
-        ).toBe("选项数量需在2-10之间");
+            validateRecommendQuestionsPayload([{ type: "single", id: "a", content: "Question", options: ["A"] }])
+        ).toBe("第1题选项数量需在2-10个之间");
     });
 
     test("validateWeightConfig enforces ranges and total", () => {

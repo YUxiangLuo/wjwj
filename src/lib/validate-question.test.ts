@@ -1,0 +1,105 @@
+import { describe, expect, test } from "bun:test";
+import {
+    parseRecommendQuestionsPayload,
+    validateQuestionAtIndex,
+    validateRecommendQuestionsPayload,
+} from "./validate-question";
+
+describe("validateQuestionAtIndex", () => {
+    test("accepts valid boolean", () => {
+        expect(validateQuestionAtIndex({ type: "boolean", content: "是否满意？" }, 1)).toBeNull();
+    });
+
+    test("accepts valid single with options", () => {
+        expect(
+            validateQuestionAtIndex({ type: "single", content: "选一项", options: ["A", "B"] }, 1)
+        ).toBeNull();
+    });
+
+    test("accepts valid multiple with min/max", () => {
+        expect(
+            validateQuestionAtIndex({
+                type: "multiple",
+                content: "多选",
+                options: ["a", "b", "c"],
+                minSelect: 1,
+                maxSelect: 2,
+            }, 1)
+        ).toBeNull();
+    });
+
+    test("accepts valid scale", () => {
+        expect(
+            validateQuestionAtIndex({ type: "scale", content: "打分", scaleMin: 1, scaleMax: 5 }, 1)
+        ).toBeNull();
+    });
+
+    test("rejects empty content", () => {
+        expect(validateQuestionAtIndex({ type: "boolean", content: "   " }, 3)).toMatch(/第3题/);
+    });
+
+    test("rejects invalid type", () => {
+        expect(validateQuestionAtIndex({ type: "text", content: "x" }, 1)).toMatch(/题型无效/);
+    });
+
+    test("rejects single with one option", () => {
+        expect(validateQuestionAtIndex({ type: "single", content: "?", options: ["only"] }, 1)).toMatch(/选项数量/);
+    });
+
+    test("rejects scale with invalid range", () => {
+        expect(validateQuestionAtIndex({ type: "scale", content: "?", scaleMin: 2, scaleMax: 2 }, 1)).toMatch(/量表范围/);
+    });
+});
+
+describe("validateRecommendQuestionsPayload", () => {
+    test("rejects non-array", () => {
+        expect(validateRecommendQuestionsPayload({})).toBe("题目列表格式无效");
+    });
+
+    test("rejects more than 30 items", () => {
+        const items = Array.from({ length: 31 }, (_, i) => ({
+            type: "boolean" as const,
+            content: `q${i}`,
+        }));
+        expect(validateRecommendQuestionsPayload(items)).toBe("推荐题目数量不能超过30");
+    });
+
+    test("accepts empty list", () => {
+        expect(validateRecommendQuestionsPayload([])).toBeNull();
+    });
+});
+
+describe("parseRecommendQuestionsPayload", () => {
+    test("returns normalized Question[] with generated ids when missing", () => {
+        const r = parseRecommendQuestionsPayload([
+            { type: "boolean", content: "是否？" },
+            { type: "single", content: "选一", options: ["A", "B"] },
+        ]);
+        expect(r.ok).toBe(true);
+        if (!r.ok) return;
+        expect(r.questions).toHaveLength(2);
+        expect(r.questions[0]!.id).toMatch(/^q_/);
+        expect(r.questions[0]!.type).toBe("boolean");
+        expect(r.questions[1]!.options).toEqual(["A", "B"]);
+    });
+
+    test("preserves explicit id and multiple bounds", () => {
+        const r = parseRecommendQuestionsPayload([
+            {
+                id: "rq_1",
+                type: "multiple",
+                content: "多选",
+                options: ["a", "b", "c"],
+                minSelect: 1,
+                maxSelect: 2,
+            },
+        ]);
+        expect(r.ok).toBe(true);
+        if (!r.ok) return;
+        expect(r.questions[0]).toMatchObject({
+            id: "rq_1",
+            minSelect: 1,
+            maxSelect: 2,
+        });
+    });
+});

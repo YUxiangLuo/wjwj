@@ -1,0 +1,119 @@
+import type { Question, QuestionType } from "./questionnaire-types";
+
+function toTrimmedString(value: unknown) {
+    return typeof value === "string" ? value.trim() : "";
+}
+
+function generateQuestionId(): string {
+    return `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+const QUESTION_TYPES = new Set<string>(["boolean", "single", "multiple", "scale"]);
+
+/**
+ * Parse one payload object into {@link Question}, or return an error message (same rules as questionnaire submit).
+ * @param index 1-based label for error messages
+ */
+export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: number): Question | string {
+    if (!rawQuestion || typeof rawQuestion !== "object") {
+        return `第${index}题配置无效`;
+    }
+
+    const question = rawQuestion as Record<string, unknown>;
+    const typeRaw = toTrimmedString(question.type);
+    const content = toTrimmedString(question.content);
+    if (content.length < 1 || content.length > 500) {
+        return `第${index}题题目内容长度需在1-500字之间`;
+    }
+
+    if (!QUESTION_TYPES.has(typeRaw)) {
+        return `第${index}题题型无效`;
+    }
+
+    const type = typeRaw as QuestionType;
+    const id = typeof question.id === "string" && question.id.trim() ? question.id.trim() : generateQuestionId();
+    const base: Question = { id, type, content };
+
+    if (type === "boolean") {
+        return base;
+    }
+
+    if (type === "single" || type === "multiple") {
+        const options = Array.isArray(question.options)
+            ? question.options.map((option) => toTrimmedString(option)).filter((option) => option.length > 0)
+            : [];
+
+        if (options.length < 2 || options.length > 10) {
+            return `第${index}题选项数量需在2-10个之间`;
+        }
+
+        if (options.some((option) => option.length > 200)) {
+            return `第${index}题选项内容不能超过200字`;
+        }
+
+        const q: Question = { ...base, options };
+
+        if (type === "multiple") {
+            const minSelect = Number.isFinite(Number(question.minSelect)) ? Math.floor(Number(question.minSelect)) : 1;
+            const maxSelect = Number.isFinite(Number(question.maxSelect)) ? Math.floor(Number(question.maxSelect)) : options.length;
+            if (minSelect < 1 || maxSelect < minSelect || maxSelect > options.length) {
+                return `第${index}题多选数量限制无效`;
+            }
+            q.minSelect = minSelect;
+            q.maxSelect = maxSelect;
+        }
+
+        return q;
+    }
+
+    if (type === "scale") {
+        const scaleMin = Number.isFinite(Number(question.scaleMin)) ? Number(question.scaleMin) : 1;
+        const scaleMax = Number.isFinite(Number(question.scaleMax)) ? Number(question.scaleMax) : 10;
+        if (scaleMin < 1 || scaleMax > 10 || scaleMin >= scaleMax) {
+            return `第${index}题量表范围无效`;
+        }
+
+        const q: Question = { ...base, scaleMin, scaleMax };
+        const minLabel = typeof question.scaleMinLabel === "string" ? question.scaleMinLabel.trim() : "";
+        const maxLabel = typeof question.scaleMaxLabel === "string" ? question.scaleMaxLabel.trim() : "";
+        if (minLabel) q.scaleMinLabel = minLabel;
+        if (maxLabel) q.scaleMaxLabel = maxLabel;
+        return q;
+    }
+
+    return `第${index}题题型无效`;
+}
+
+/**
+ * Validates one question object (same rules as questionnaire submit per-question checks).
+ * @param index 1-based label for error messages
+ */
+export function validateQuestionAtIndex(rawQuestion: unknown, index: number): string | null {
+    const r = parseRecommendQuestionFromPayload(rawQuestion, index);
+    return typeof r === "string" ? r : null;
+}
+
+export function parseRecommendQuestionsPayload(
+    items: unknown
+): { ok: true; questions: Question[] } | { ok: false; error: string } {
+    if (!Array.isArray(items)) {
+        return { ok: false, error: "题目列表格式无效" };
+    }
+    if (items.length > 30) {
+        return { ok: false, error: "推荐题目数量不能超过30" };
+    }
+
+    const questions: Question[] = [];
+    for (let i = 0; i < items.length; i += 1) {
+        const r = parseRecommendQuestionFromPayload(items[i], i + 1);
+        if (typeof r === "string") return { ok: false, error: r };
+        questions.push(r);
+    }
+    return { ok: true, questions };
+}
+
+/** Teacher recommend-question list: max 30, each must pass {@link validateQuestionAtIndex}. */
+export function validateRecommendQuestionsPayload(items: unknown): string | null {
+    const r = parseRecommendQuestionsPayload(items);
+    return r.ok ? null : r.error;
+}

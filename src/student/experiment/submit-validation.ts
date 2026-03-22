@@ -1,4 +1,5 @@
 import { getRichTextPlainLength, getRichTextPlainText } from "../../utils/rich-text";
+import { validateQuestionAtIndex } from "../../lib/validate-question";
 import { getSystematicAcceptedRange } from "./systematic-sampling";
 
 function toTrimmedString(value: unknown) {
@@ -50,51 +51,8 @@ export function validateQuestionnaireForSubmit(questionnaire: unknown): string |
     }
 
     for (let index = 0; index < questions.length; index += 1) {
-        const rawQuestion = questions[index];
-        if (!rawQuestion || typeof rawQuestion !== "object") {
-            return `第${index + 1}题配置无效`;
-        }
-
-        const question = rawQuestion as Record<string, unknown>;
-        const type = toTrimmedString(question.type);
-        const content = toTrimmedString(question.content);
-        if (content.length < 1 || content.length > 500) {
-            return `第${index + 1}题题目内容长度需在1-500字之间`;
-        }
-
-        if (!["boolean", "single", "multiple", "scale"].includes(type)) {
-            return `第${index + 1}题题型无效`;
-        }
-
-        if (type === "single" || type === "multiple") {
-            const options = Array.isArray(question.options)
-                ? question.options.map((option) => toTrimmedString(option)).filter((option) => option.length > 0)
-                : [];
-
-            if (options.length < 2 || options.length > 10) {
-                return `第${index + 1}题选项数量需在2-10个之间`;
-            }
-
-            if (options.some((option) => option.length > 200)) {
-                return `第${index + 1}题选项内容不能超过200字`;
-            }
-
-            if (type === "multiple") {
-                const minSelect = Number.isFinite(Number(question.minSelect)) ? Math.floor(Number(question.minSelect)) : 1;
-                const maxSelect = Number.isFinite(Number(question.maxSelect)) ? Math.floor(Number(question.maxSelect)) : options.length;
-                if (minSelect < 1 || maxSelect < minSelect || maxSelect > options.length) {
-                    return `第${index + 1}题多选数量限制无效`;
-                }
-            }
-        }
-
-        if (type === "scale") {
-            const scaleMin = Number.isFinite(Number(question.scaleMin)) ? Number(question.scaleMin) : 1;
-            const scaleMax = Number.isFinite(Number(question.scaleMax)) ? Number(question.scaleMax) : 10;
-            if (scaleMin < 1 || scaleMax > 10 || scaleMin >= scaleMax) {
-                return `第${index + 1}题量表范围无效`;
-            }
-        }
+        const err = validateQuestionAtIndex(questions[index], index + 1);
+        if (err) return err;
     }
 
     return null;

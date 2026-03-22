@@ -1,6 +1,7 @@
 import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { experiment, submission, task, topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
+import { experiment, submission, task, topic, topicAttachment } from "../../db/schema";
+import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
 import { error, getRouteParam, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getConfigNumber } from "../../server/system-config";
@@ -171,6 +172,7 @@ const taskDetailRoutes: RouteDefinition = {
                 topicName: topic.name,
                 topicDescription: topic.description,
                 excelRowCount: topic.excelRowCount,
+                topicRecommendQuestions: topic.recommendQuestions,
             })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
@@ -193,17 +195,7 @@ const taskDetailRoutes: RouteDefinition = {
             .from(topicAttachment)
             .where(eq(topicAttachment.topicId, taskInfo.topicId));
 
-        const recommendQuestions = await db
-            .select({
-                id: topicRecommendQuestion.id,
-                questionType: topicRecommendQuestion.questionType,
-                content: topicRecommendQuestion.content,
-                options: topicRecommendQuestion.options,
-                sortOrder: topicRecommendQuestion.sortOrder,
-            })
-            .from(topicRecommendQuestion)
-            .where(eq(topicRecommendQuestion.topicId, taskInfo.topicId))
-            .orderBy(topicRecommendQuestion.sortOrder);
+        const recommendQuestions = normalizeRecommendQuestionsFromDb(taskInfo.topicRecommendQuestions);
 
         const [exp] = await db
             .select()

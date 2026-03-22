@@ -6,13 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Separator } from "@/components/ui/separator";
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type TopicDetail, type Topic } from "../api-client";
-
-const QUESTION_TYPE_LABELS: Record<number, string> = {
-    1: "判断题",
-    2: "单选题",
-    3: "多选题",
-    4: "量表题",
-};
+import { questionTypeLabels } from "@/lib/questionnaire-labels";
+import type { QuestionType } from "@/lib/questionnaire-types";
 
 type TabKey = "basic" | "data" | "mapping" | "attachments" | "questions" | "weights";
 
@@ -309,13 +304,19 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                 <div className="flex items-center gap-3">
                                                     <span className="text-xs text-slate-500 font-mono w-6 shrink-0">{idx + 1}.</span>
                                                     <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 text-xs">
-                                                        {QUESTION_TYPE_LABELS[q.questionType] ?? "未知"}
+                                                        {questionTypeLabels[q.type as QuestionType] ?? "未知"}
                                                     </Badge>
                                                 </div>
                                                 <div className="text-sm text-slate-800 dark:text-slate-200 pl-9">{q.content || "（无内容）"}</div>
-                                                {q.options && q.questionType !== 1 && q.questionType !== 4 && (
+                                                {(q.type === "single" || q.type === "multiple") && q.options && q.options.length > 0 && (
                                                     <div className="pl-9 text-xs text-slate-600 dark:text-slate-400">
-                                                        选项：{typeof q.options === "string" ? q.options : JSON.stringify(q.options)}
+                                                        选项：{q.options.join("；")}
+                                                    </div>
+                                                )}
+                                                {q.type === "scale" && (
+                                                    <div className="pl-9 text-xs text-slate-600 dark:text-slate-400">
+                                                        量表 {q.scaleMin ?? 1}–{q.scaleMax ?? 10}
+                                                        {(q.scaleMinLabel || q.scaleMaxLabel) && `（${q.scaleMinLabel ?? ""} — ${q.scaleMaxLabel ?? ""}）`}
                                                     </div>
                                                 )}
                                             </div>

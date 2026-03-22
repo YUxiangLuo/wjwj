@@ -85,8 +85,8 @@ test("task detail route hides stale reject reason after experiment restarts", as
             topicName: "消费者行为分析实验",
             topicDescription: "desc",
             excelRowCount: 10000,
+            topicRecommendQuestions: null,
         }],
-        [],
         [],
         [{
             id: 501,

@@ -40,6 +40,9 @@ test("topic copy duplicates the topic and related resources under the current te
     await Bun.write(sourceExcelAbsolutePath, "excel-content");
     await Bun.write(sourceAttachmentAbsolutePath, "attachment-content");
 
+    const recommendQuestions = [
+        { id: "q1", type: "single" as const, content: "你最关注哪项指标？", options: ["价格", "质量"] },
+    ];
     const { module, operations } = await loadTopicRoutes({
         select: [
             [{ id: 12, status: 0 }],
@@ -52,6 +55,7 @@ test("topic copy duplicates the topic and related resources under the current te
                 excelRowCount: 16,
                 fieldMapping: JSON.stringify({ identifier: "id" }),
                 weightConfig: JSON.stringify({ questionnaire: 30, process: 40, report: 30 }),
+                recommendQuestions,
                 status: 1,
             }],
             [{
@@ -61,14 +65,6 @@ test("topic copy duplicates the topic and related resources under the current te
                 filePath: sourceAttachmentPath,
                 fileType: "application/pdf",
                 fileSize: 1024,
-            }],
-            [{
-                id: 7,
-                topicId: 12,
-                questionType: 2,
-                content: "你最关注哪项指标？",
-                options: JSON.stringify(["价格", "质量"]),
-                sortOrder: 1,
             }],
         ],
         insert: [[{ insertId: 44 }]],
@@ -89,7 +85,7 @@ test("topic copy duplicates the topic and related resources under the current te
         expect(response.status).toBe(200);
         expect(payload).toEqual({ success: true, data: { id: 44 } });
 
-        expect(insertOperations).toHaveLength(3);
+        expect(insertOperations).toHaveLength(2);
         expect(insertOperations[0]?.values).toMatchObject({
             teacherId: 9,
             name: "抽样设计课题 (副本)",
@@ -97,6 +93,7 @@ test("topic copy duplicates the topic and related resources under the current te
             excelRowCount: 16,
             fieldMapping: { identifier: "id" },
             weightConfig: { questionnaire: 30, process: 40, report: 30 },
+            recommendQuestions,
             status: 0,
         });
         expect(copiedExcelPath).toContain("/storage/uploads/");
@@ -110,13 +107,6 @@ test("topic copy duplicates the topic and related resources under the current te
         }]);
         expect(copiedAttachmentPath).toContain("/storage/uploads/");
         expect(copiedAttachmentPath).not.toBe(sourceAttachmentPath);
-        expect(insertOperations[2]?.values).toEqual([{
-            topicId: 44,
-            questionType: 2,
-            content: "你最关注哪项指标？",
-            options: ["价格", "质量"],
-            sortOrder: 1,
-        }]);
 
         expect(await Bun.file(`${process.cwd()}${copiedExcelPath}`).text()).toBe("excel-content");
         expect(await Bun.file(`${process.cwd()}${copiedAttachmentPath}`).text()).toBe("attachment-content");

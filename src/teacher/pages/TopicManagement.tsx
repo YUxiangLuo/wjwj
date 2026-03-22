@@ -16,7 +16,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { teacherApi, type Topic, type TopicDetail, type TopicRecommendQuestion } from "../api-client";
+import { teacherApi, type Topic, type TopicDetail, type Question } from "../api-client";
 import { TopicWizardDialog } from "../components/TopicWizardDialog";
 import { TopicViewDialog } from "../components/TopicViewDialog";
 import { toast } from "sonner";
@@ -36,7 +36,7 @@ export function TopicManagement() {
         others: [],
     });
     const [attachments, setAttachments] = useState<TopicDetail["attachments"]>([]);
-    const [recommendQuestions, setRecommendQuestions] = useState<TopicRecommendQuestion[]>([]);
+    const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
     const [weightConfig, setWeightConfig] = useState({ questionnaire: 30, process: 30, report: 40 });
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [uploadingExcel, setUploadingExcel] = useState(false);
@@ -245,13 +245,7 @@ export function TopicManagement() {
 
     async function handleSaveRecommendQuestions() {
         if (!editingTopicId) return;
-        const items = recommendQuestions.map((q, idx) => ({
-            questionType: q.questionType,
-            content: q.content,
-            options: q.options,
-            sortOrder: idx,
-        }));
-        const res = await teacherApi.updateRecommendQuestions(editingTopicId, items);
+        const res = await teacherApi.updateRecommendQuestions(editingTopicId, recommendQuestions);
         if (res.success) {
             setCurrentStep(6);
         } else {

@@ -183,8 +183,8 @@ const topicRecommendQuestionRoutes: RouteDefinition = {
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
 
-        const body = await parseBody<{ items: Array<{ questionType: number; content: string; options?: any; sortOrder?: number }> }>(req);
-        const replaceResult = await replaceTopicRecommendQuestions({ topicId: id, items: body.items ?? [] });
+        const body = await parseBody<{ items?: unknown }>(req);
+        const replaceResult = await replaceTopicRecommendQuestions({ topicId: id, items: body.items });
         if (!replaceResult.ok) return error(replaceResult.message, replaceResult.code, replaceResult.status);
 
         return json({ success: true });

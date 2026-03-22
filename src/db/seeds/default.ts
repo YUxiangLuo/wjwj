@@ -23,7 +23,6 @@ import {
     studentTransfer,
     topic,
     topicAttachment,
-    topicRecommendQuestion,
     task,
     experiment,
     submission,
@@ -37,7 +36,39 @@ import {
     userSession,
 } from "../schema";
 import { eq, and, inArray } from "drizzle-orm";
+import type { Question, QuestionType } from "../../lib/questionnaire-types";
 import { SubmissionPdfStatus } from "../../student/experiment/pdf-status";
+
+function buildSeedRecommendQuestion(r: {
+    topicIdx: number;
+    questionType: number;
+    content: string;
+    options?: string[];
+    sortOrder: number;
+}): Question {
+    const id = `seed_rq_${r.topicIdx}_${r.sortOrder}`;
+    const type = (
+        { 1: "boolean", 2: "single", 3: "multiple", 4: "scale" } as Record<number, QuestionType>
+    )[r.questionType] ?? "single";
+    const base: Question = { id, type, content: r.content };
+    if (type === "boolean") return base;
+    if (type === "single" || type === "multiple") {
+        const opts = r.options ?? [];
+        const q: Question = { ...base, options: opts };
+        if (type === "multiple") {
+            q.minSelect = 1;
+            q.maxSelect = Math.min(3, Math.max(2, opts.length));
+        }
+        return q;
+    }
+    return {
+        ...base,
+        scaleMin: 1,
+        scaleMax: 10,
+        scaleMinLabel: "非常不满意",
+        scaleMaxLabel: "非常满意",
+    };
+}
 
 // ── helpers ──────────────────────────────────────────────────
 const seedBaseDate = new Date();
@@ -166,9 +197,6 @@ async function deleteTopicSubtree(topicIds: number[]) {
     await deleteTasksByIds(taskIdsToDelete);
 
     await db.delete(topicAttachment).where(inArray(topicAttachment.topicId, topicIds));
-    await db
-        .delete(topicRecommendQuestion)
-        .where(inArray(topicRecommendQuestion.topicId, topicIds));
     await db.delete(topic).where(inArray(topic.id, topicIds));
 }
 
@@ -633,9 +661,6 @@ async function seed() {
     await deleteTopicSubtree(extraTopicIds);
 
     await db.delete(topicAttachment).where(inArray(topicAttachment.topicId, topicIds));
-    await db
-        .delete(topicRecommendQuestion)
-        .where(inArray(topicRecommendQuestion.topicId, topicIds));
 
     // ── 附件（多种文件类型） ──
     const attachmentsDefs: { topicIdx: number; fileName: string; filePath: string; fileType: string; fileSize: number }[] = [
@@ -691,14 +716,17 @@ async function seed() {
         { topicIdx: 7, questionType: 2, content: "您所在的城市等级是？", options: ["一线城市", "新一线城市", "二线城市", "三线及以下"], sortOrder: 1 },
         { topicIdx: 7, questionType: 4, content: "您对 2023 年整体消费体验的评分", sortOrder: 2 },
     ];
+    const recByTopicIdx = new Map<number, Question[]>();
     for (const q of recQuestions) {
-        await db.insert(topicRecommendQuestion).values({
-            topicId: topicIds[q.topicIdx]!,
-            questionType: q.questionType,
-            content: q.content,
-            options: q.options ?? null,
-            sortOrder: q.sortOrder,
-        });
+        const list = recByTopicIdx.get(q.topicIdx) ?? [];
+        list.push(buildSeedRecommendQuestion(q));
+        recByTopicIdx.set(q.topicIdx, list);
+    }
+    for (const [topicIdx, questions] of recByTopicIdx) {
+        await db
+            .update(topic)
+            .set({ recommendQuestions: questions })
+            .where(eq(topic.id, topicIds[topicIdx]!));
     }
 
     // ========================================================

@@ -20,7 +20,7 @@ import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
-import { tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
+import { tasksApi, type Question, type QuestionType, type QuestionnaireData } from "../../api-client";
 
 const questionTypeLabels: Record<QuestionType, string> = {
     boolean: "判断题",
@@ -99,7 +99,7 @@ export function QuestionnaireDesign() {
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverId, setDragOverId] = useState<string | null>(null);
-    const [recommendQuestions, setRecommendQuestions] = useState<RecommendQuestion[]>([]);
+    const [recommendQuestions, setRecommendQuestions] = useState<Question[]>([]);
     const [recommendCollapsed, setRecommendCollapsed] = useState(false);
 
     // Immersive preview state
@@ -268,34 +268,8 @@ export function QuestionnaireDesign() {
         setDragOverId(null);
     };
 
-    const mapRecommendQuestion = (rq: RecommendQuestion): Question => {
-        const typeMap: Record<number, QuestionType> = {
-            1: "boolean",
-            2: "single",
-            3: "multiple",
-            4: "scale",
-        };
-        const mappedType = typeMap[rq.questionType] ?? "single";
-        const options = Array.isArray(rq.options)
-            ? (rq.options as string[])
-            : typeof rq.options === "string"
-                ? (() => { try { return JSON.parse(rq.options) as string[]; } catch { return []; } })()
-                : [];
-
-        return {
-            id: generateId(),
-            type: mappedType,
-            content: rq.content,
-            options: mappedType === "single" || mappedType === "multiple" ? options : undefined,
-            minSelect: mappedType === "multiple" ? 1 : undefined,
-            maxSelect: mappedType === "multiple" ? Math.min(3, Math.max(2, options.length)) : undefined,
-            scaleMin: mappedType === "scale" ? 1 : undefined,
-            scaleMax: mappedType === "scale" ? 10 : undefined,
-        };
-    };
-
-    const handleUseRecommend = (rq: RecommendQuestion) => {
-        setQuestions((prev) => [...prev, mapRecommendQuestion(rq)]);
+    const handleUseRecommend = (rq: Question) => {
+        setQuestions((prev) => [...prev, { ...rq, id: generateId() }]);
     };
 
     const invalidOptionQuestions = useMemo(() => {
@@ -707,7 +681,7 @@ export function QuestionnaireDesign() {
                                                 <div className="space-y-1">
                                                     <div className="text-sm font-medium text-slate-700 dark:text-slate-300 line-clamp-2">{rq.content}</div>
                                                     <div className="text-xs text-slate-500">
-                                                        类型：{questionTypeLabels[{ 1: "boolean", 2: "single", 3: "multiple", 4: "scale" }[rq.questionType] as QuestionType]}
+                                                        类型：{questionTypeLabels[rq.type]}
                                                     </div>
                                                 </div>
                                                 <Button size="sm" variant="outline" className="w-full mt-1 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleUseRecommend(rq)}>

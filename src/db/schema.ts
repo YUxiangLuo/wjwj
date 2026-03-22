@@ -222,6 +222,7 @@ export const topic = mysqlTable(
         excelRowCount: int("excel_row_count", { unsigned: true }).default(0),
         fieldMapping: json("field_mapping"),
         weightConfig: json("weight_config"),
+        recommendQuestions: json("recommend_questions"),
         status: tinyint("status").notNull().default(0), // 0-Draft, 1-Published
         isDeleted: tinyint("is_deleted").notNull().default(0), // Compatible V2
         lockedBy: bigint("locked_by", { mode: "number", unsigned: true }),
@@ -243,7 +244,6 @@ export const topicRelations = relations(topic, ({ one, many }) => ({
         references: [teacher.id],
     }),
     attachments: many(topicAttachment),
-    recommendQuestions: many(topicRecommendQuestion),
     tasks: many(task),
 }));
 
@@ -266,30 +266,6 @@ export const topicAttachment = mysqlTable(
 export const topicAttachmentRelations = relations(topicAttachment, ({ one }) => ({
     topic: one(topic, {
         fields: [topicAttachment.topicId],
-        references: [topic.id],
-    }),
-}));
-
-export const topicRecommendQuestion = mysqlTable(
-    "topic_recommend_question",
-    {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        topicId: bigint("topic_id", { mode: "number", unsigned: true }).notNull(),
-        questionType: tinyint("question_type").notNull(),
-        content: varchar("content", { length: 500 }).notNull(),
-        options: json("options"),
-        sortOrder: int("sort_order").notNull().default(0),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
-    },
-    (t) => ({
-        topicIdIdx: index("idx_topic_id").on(t.topicId),
-    })
-);
-
-export const topicRecommendQuestionRelations = relations(topicRecommendQuestion, ({ one }) => ({
-    topic: one(topic, {
-        fields: [topicRecommendQuestion.topicId],
         references: [topic.id],
     }),
 }));

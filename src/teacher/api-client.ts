@@ -4,6 +4,7 @@
  */
 
 import { shouldDispatchSessionExpired, createSessionExpiredInterceptor } from "@/lib/session-expired";
+import type { Question } from "@/lib/questionnaire-types";
 
 // ============================================================
 // Types
@@ -66,21 +67,14 @@ export interface TopicAttachment {
     createdAt: string;
 }
 
-export interface TopicRecommendQuestion {
-    id: number;
-    topicId: number;
-    questionType: number;
-    content: string;
-    options?: any;
-    sortOrder: number;
-}
-
 export interface TopicDetail {
     topic: any;
     attachments: TopicAttachment[];
-    recommendQuestions: TopicRecommendQuestion[];
+    recommendQuestions: Question[];
     excelInfo?: { columns: string[]; preview: any[] } | null;
 }
+
+export type { Question };
 
 export interface Task {
     id: number;
@@ -362,7 +356,7 @@ export const teacherApi = {
             request<{ success: boolean }>(`/api/teacher/topics/${topicId}/attachments/${attachmentId}`, {
                 method: "DELETE"
             }),
-        updateRecommendQuestions: (id: number, items: Array<{ questionType: number; content: string; options?: any; sortOrder?: number }>) =>
+        updateRecommendQuestions: (id: number, items: Question[]) =>
             request<{ success: boolean }>(`/api/teacher/topics/${id}/recommend-questions`, {
                 method: "PUT",
                 body: JSON.stringify({ items })

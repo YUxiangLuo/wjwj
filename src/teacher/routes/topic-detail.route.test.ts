@@ -58,6 +58,7 @@ test("topic detail returns attachments, recommended questions, and parsed excel 
                     description: "用于详情测试",
                     excelFilePath: relativePath,
                     excelRowCount: 2,
+                    recommendQuestions: [{ id: "q1", type: "boolean", content: "你最关注哪项指标？" }],
                 }],
                 [{
                     id: 5,
@@ -66,14 +67,6 @@ test("topic detail returns attachments, recommended questions, and parsed excel 
                     filePath: "/storage/uploads/guide.pdf",
                     fileType: "application/pdf",
                     fileSize: 1024,
-                }],
-                [{
-                    id: 7,
-                    topicId: 12,
-                    questionType: 1,
-                    content: "你最关注哪项指标？",
-                    options: null,
-                    sortOrder: 1,
                 }],
             ],
         });

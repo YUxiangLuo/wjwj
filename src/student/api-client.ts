@@ -4,6 +4,7 @@
  */
 
 import { shouldDispatchSessionExpired, createSessionExpiredInterceptor } from "@/lib/session-expired";
+import type { Question, QuestionnaireData, QuestionType } from "@/lib/questionnaire-types";
 
 // ============================================================
 // Types
@@ -57,14 +58,6 @@ export interface TopicAttachment {
     size: number;
 }
 
-export interface RecommendQuestion {
-    id: number;
-    questionType: number;
-    content: string;
-    options: unknown;
-    sortOrder: number;
-}
-
 export interface TaskDetail {
     id: number;
     topicId: number;
@@ -74,34 +67,14 @@ export interface TaskDetail {
     deadline: string | null;
     populationSize: number;
     attachments: TopicAttachment[];
-    recommendQuestions: RecommendQuestion[];
+    recommendQuestions: Question[];
     status: TaskStatus;
     currentStage: number;
     score?: number;
     rejectReason?: string;
 }
 
-export type QuestionType = 'boolean' | 'single' | 'multiple' | 'scale';
-
-export interface Question {
-    id: string;
-    type: QuestionType;
-    content: string;
-    options?: string[];           // 单选/多选的选项列表
-    minSelect?: number;           // 多选最少选择数
-    maxSelect?: number;           // 多选最多选择数
-    scaleMin?: number;            // 量表最小值 (默认1)
-    scaleMax?: number;            // 量表最大值 (默认10)
-    scaleMinLabel?: string;       // 量表左端标签
-    scaleMaxLabel?: string;       // 量表右端标签
-}
-
-export interface QuestionnaireData {
-    title: string;
-    welcomeText: string;
-    endingText: string;
-    questions: Question[];
-}
+export type { QuestionType, Question, QuestionnaireData };
 
 export interface SamplePlanData {
     confidenceLevel: string;

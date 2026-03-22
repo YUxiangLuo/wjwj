@@ -1,6 +1,7 @@
 import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { class_, experiment, student, submission, task, topic, topicAttachment, topicRecommendQuestion } from "../../db/schema";
+import { class_, experiment, student, submission, task, topic, topicAttachment } from "../../db/schema";
+import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
 import { parseExcelFile } from "./file-utils";
 import { buildTaskProgressSnapshot } from "./task-progress";
 
@@ -26,11 +27,9 @@ export async function getTeacherTopicDetail(topicId: number) {
         .from(topicAttachment)
         .where(eq(topicAttachment.topicId, topicId))
         .orderBy(desc(topicAttachment.createdAt));
-    const recommendQuestions = await db
-        .select()
-        .from(topicRecommendQuestion)
-        .where(eq(topicRecommendQuestion.topicId, topicId))
-        .orderBy(asc(topicRecommendQuestion.sortOrder));
+    const recommendQuestions = topicInfo?.recommendQuestions != null
+        ? normalizeRecommendQuestionsFromDb(topicInfo.recommendQuestions)
+        : [];
 
     let excelInfo = null as null | { columns: string[]; preview: any[] };
     if (topicInfo?.excelFilePath) {

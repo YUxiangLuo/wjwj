@@ -33,13 +33,6 @@ interface TopicAttachmentInput {
     fileSize: number;
 }
 
-interface TopicRecommendQuestionInput {
-    questionType: number;
-    content: string;
-    options?: any;
-    sortOrder?: number;
-}
-
 function parseObjectLike<T extends object>(value: unknown): T | null {
     if (!value) return null;
     if (typeof value === "string") {
@@ -131,29 +124,6 @@ export function validateTopicAttachmentUpload(input: TopicAttachmentInput, attac
 
     if (!sizeLimit) return "不支持的文件类型";
     if (input.fileSize > sizeLimit) return "文件大小超过限制";
-
-    return null;
-}
-
-export function validateRecommendQuestionItems(items: TopicRecommendQuestionInput[]) {
-    if (items.length > 30) return "推荐题目数量不能超过30";
-
-    for (const item of items) {
-        const content = (item.content ?? "").trim();
-        if (!content || content.length > 500) return "题目内容长度需在1-500字";
-
-        if (item.questionType === 2 || item.questionType === 3) {
-            let options: string[];
-            if (Array.isArray(item.options)) {
-                options = item.options.filter((o: unknown) => typeof o === "string" && o.trim()).map((o: string) => o.trim());
-            } else {
-                const rawOptions = typeof item.options === "string" ? item.options : "";
-                options = rawOptions.split(",").map((option) => option.trim()).filter(Boolean);
-            }
-            if (options.length < 2 || options.length > 10) return "选项数量需在2-10之间";
-            if (options.some((option) => option.length > 200)) return "选项内容长度不能超过200";
-        }
-    }
 
     return null;
 }
