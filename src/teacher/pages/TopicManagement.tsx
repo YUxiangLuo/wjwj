@@ -76,6 +76,10 @@ export function TopicManagement() {
         const res = await teacherApi.getTopicDetail(id);
         setLoadingDetail(false);
         if (res.success && res.data) {
+            const topicRow = res.data.topic;
+            if (topicRow && typeof topicRow.status === "number") {
+                setEditingTopicPublished(topicRow.status === 1);
+            }
             const mapping = res.data.topic?.fieldMapping ?? null;
             const parsed = typeof mapping === "string" ? (() => { try { return JSON.parse(mapping); } catch { return null; } })() : mapping;
             setFieldMapping({

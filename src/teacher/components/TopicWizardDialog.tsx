@@ -367,16 +367,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             <HelpCircle className="w-3 h-3" />
                                             数据规范
                                         </a>
-                                        {!isPublishedTopic && (
-                                            <a
-                                                href="/templates/数据模板.csv"
-                                                download
-                                                className="text-xs text-emerald-600 hover:text-emerald-500 flex items-center gap-1"
-                                            >
-                                                <Download className="w-3 h-3" />
-                                                下载模板
-                                            </a>
-                                        )}
+                                        <a
+                                            href="/templates/数据模板.csv"
+                                            download
+                                            className="text-xs text-emerald-600 hover:text-emerald-500 flex items-center gap-1"
+                                        >
+                                            <Download className="w-3 h-3" />
+                                            下载模板
+                                        </a>
                                     </div>
                                 </div>
                                 <div
@@ -412,9 +410,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 {excelInfo && (
                                     <div className="space-y-3">
                                         <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-sm text-slate-700 dark:text-slate-300">
-                                            <div className="flex items-center gap-2 text-emerald-600 mb-2">
+                                            <div className={`flex items-center gap-2 mb-2 ${isPublishedTopic ? "text-slate-600 dark:text-slate-400" : "text-emerald-600"}`}>
                                                 <CheckCircle2 className="w-4 h-4" />
-                                                上传成功
+                                                {isPublishedTopic ? "当前总体数据" : "上传成功"}
                                             </div>
                                             <div>已解析：{excelInfo.rowCount} 行 / {excelInfo.colCount} 列</div>
                                         </div>
