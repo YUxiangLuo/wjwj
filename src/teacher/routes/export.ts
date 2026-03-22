@@ -8,7 +8,7 @@ import { formatDateStampCN, formatDateTimeCN } from "../../utils/format";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
 function activeEntityFilters() {
-    return [isNull(task.deletedAt), eq(topic.isDeleted, 0)];
+    return [isNull(task.deletedAt), eq(topic.isDeleted, 0), isNull(topic.deletedAt)];
 }
 
 function parseIdList(value: string | null) {

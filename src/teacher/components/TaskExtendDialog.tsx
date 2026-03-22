@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { DatetimePicker24 } from "@/components/ui/datetime-picker";
 import { Label } from "@/components/ui/label";
 import type { Task } from "../api-client";
 
@@ -38,13 +38,13 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="extendDeadline" className="text-slate-700 dark:text-slate-300">新截止时间</Label>
-                        <Input
+                        <DatetimePicker24
                             id="extendDeadline"
                             data-testid="teacher-task-extend-deadline"
-                            type="datetime-local"
                             value={extendDeadline}
-                            onChange={(e) => onExtendDeadlineChange(e.target.value)}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                            onChange={onExtendDeadlineChange}
+                            placeholder="选择日期与时间（24 小时制）"
+                            allowClear={false}
                         />
                     </div>
                 </div>

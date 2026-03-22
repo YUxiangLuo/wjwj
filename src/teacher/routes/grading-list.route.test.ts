@@ -20,6 +20,7 @@ async function loadGradingRoutes(options: {
         desc: (value: unknown) => ({ kind: "desc", value }),
         eq: (left: unknown, right: unknown) => ({ kind: "eq", left, right }),
         or: (...conditions: unknown[]) => ({ kind: "or", conditions }),
+        isNull: (col: unknown) => ({ kind: "isNull", col }),
         sql,
     }));
     mock.module("../../db", () => ({ db }));
@@ -56,7 +57,10 @@ test("grading list keeps accessible class filter when status filter is applied",
     const where = (listQuery?.where ?? null) as { kind?: string; conditions?: unknown[] } | null;
 
     expect(where?.kind).toBe("and");
-    expect(where?.conditions).toHaveLength(2);
+    expect(where?.conditions).toHaveLength(5);
     expect(where?.conditions?.[0]).toMatchObject({ kind: "sql" });
-    expect(where?.conditions?.[1]).toMatchObject({ kind: "or" });
+    expect(where?.conditions?.[1]).toMatchObject({ kind: "isNull" });
+    expect(where?.conditions?.[2]).toMatchObject({ kind: "eq" });
+    expect(where?.conditions?.[3]).toMatchObject({ kind: "isNull" });
+    expect(where?.conditions?.[4]).toMatchObject({ kind: "or" });
 });

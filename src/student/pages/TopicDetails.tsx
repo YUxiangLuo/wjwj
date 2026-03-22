@@ -125,7 +125,7 @@ export function TopicDetails() {
     const [task, setTask] = useState<TaskDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
-    const [topicDeleted, setTopicDeleted] = useState(false);
+    const [accessDeniedVariant, setAccessDeniedVariant] = useState<"topic_deleted" | "task_revoked" | null>(null);
     const [showRestartConfirm, setShowRestartConfirm] = useState(false);
     const [previewFile, setPreviewFile] = useState<TopicAttachment | null>(null);
 
@@ -138,14 +138,14 @@ export function TopicDetails() {
 
             setLoading(true);
             setNotFound(false);
-            setTopicDeleted(false);
+            setAccessDeniedVariant(null);
             try {
                 const res = await tasksApi.get(parseInt(taskId));
                 if (res.success && res.data) {
                     setTask(res.data);
-                } else if (res.error?.code === "TOPIC_DELETED") {
+                } else if (res.error?.code === "TOPIC_DELETED" || res.error?.code === "TASK_REVOKED") {
                     setTask(null);
-                    setTopicDeleted(true);
+                    setAccessDeniedVariant(res.error?.code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
                 } else {
                     setTask(null);
                     setNotFound(true);
@@ -169,8 +169,8 @@ export function TopicDetails() {
         );
     }
 
-    if (topicDeleted) {
-        return <TopicDeletedState />;
+    if (accessDeniedVariant) {
+        return <TopicDeletedState variant={accessDeniedVariant} />;
     }
 
     if (notFound || !task) {

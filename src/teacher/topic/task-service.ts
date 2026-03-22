@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, notification, task, topic } from "../../db/schema";
 import { formatDateTimeCN } from "../../utils/format";
@@ -17,7 +17,7 @@ interface TaskPublishSuccess {
     skipped: number[];
 }
 
-interface TaskExtendSuccess {
+interface TaskServiceSuccess {
     ok: true;
 }
 
@@ -70,7 +70,8 @@ export async function publishTopicTasks(params: {
         return fail("存在无权限的班级", "FORBIDDEN", 403);
     }
 
-    const deadlineDate = params.deadline ? new Date(params.deadline) : null;
+    // 教师端传 ISO-8601 UTC（如 2026-03-23T06:30:00.000Z）；与绝对时刻比较、入库一致
+    const deadlineDate = params.deadline?.trim() ? new Date(params.deadline.trim()) : null;
     if (deadlineDate && Number.isNaN(deadlineDate.getTime())) {
         return fail("截止时间无效", "VALIDATION_ERROR");
     }
@@ -78,28 +79,50 @@ export async function publishTopicTasks(params: {
         return fail("截止时间必须晚于当前时间", "VALIDATION_ERROR");
     }
 
-    const existingRows = await db
-        .select({ classId: task.classId })
+    const rowsForTopic = await db
+        .select({ id: task.id, classId: task.classId, deletedAt: task.deletedAt })
         .from(task)
-        .where(and(eq(task.topicId, params.topicId), sql`${task.classId} IN (${sql.join(params.classIds, sql`, `)})`, isNull(task.deletedAt)));
+        .where(and(eq(task.topicId, params.topicId), sql`${task.classId} IN (${sql.join(params.classIds, sql`, `)})`));
 
-    const existingClassIds = new Set(existingRows.map((row) => row.classId));
-    const toInsert = params.classIds.filter((classId) => !existingClassIds.has(classId));
+    const classIdToRow = new Map(rowsForTopic.map((r) => [r.classId, r]));
+    const skipped: number[] = [];
+    const toInsert: number[] = [];
+    const toRevive: { taskId: number; classId: number }[] = [];
 
-    if (toInsert.length > 0) {
+    for (const classId of params.classIds) {
+        const r = classIdToRow.get(classId);
+        if (!r) {
+            toInsert.push(classId);
+        } else if (r.deletedAt == null) {
+            skipped.push(classId);
+        } else {
+            toRevive.push({ taskId: r.id, classId });
+        }
+    }
+
+    if (toInsert.length > 0 || toRevive.length > 0) {
         await db.transaction(async (tx) => {
             const now = new Date();
-            await tx.insert(task).values(
-                toInsert.map((classId) => ({
-                    topicId: params.topicId,
-                    classId,
-                    openTime: now,
-                    deadline: deadlineDate,
-                }))
-            );
+            if (toRevive.length > 0) {
+                await tx
+                    .update(task)
+                    .set({ deletedAt: null, openTime: now, deadline: deadlineDate })
+                    .where(inArray(task.id, toRevive.map((r) => r.taskId)));
+            }
+            if (toInsert.length > 0) {
+                await tx.insert(task).values(
+                    toInsert.map((classId) => ({
+                        topicId: params.topicId,
+                        classId,
+                        openTime: now,
+                        deadline: deadlineDate,
+                    }))
+                );
+            }
 
             const deadlineText = deadlineDate ? formatDateTimeCN(deadlineDate) : "无限制";
-            await notifyStudentsByClassIds(toInsert, {
+            const notifiedClasses = [...toRevive.map((r) => r.classId), ...toInsert];
+            await notifyStudentsByClassIds(notifiedClasses, {
                 type: "TASK_PUBLISHED",
                 title: "新任务已发布",
                 content: `教师发布了新任务「${topicRow.name ?? "未命名课题"}」，截止时间：${deadlineText}`,
@@ -109,19 +132,19 @@ export async function publishTopicTasks(params: {
         });
     }
 
-    return { ok: true, skipped: Array.from(existingClassIds) };
+    return { ok: true, skipped };
 }
 
 export async function extendTopicTaskDeadline(params: {
     teacherId: number;
     taskId: number;
     deadline: string;
-}): Promise<TaskExtendSuccess | TaskServiceFailure> {
+}): Promise<TaskServiceSuccess | TaskServiceFailure> {
     if (!params.deadline) {
         return fail("请输入截止时间", "VALIDATION_ERROR");
     }
 
-    const newDeadline = new Date(params.deadline);
+    const newDeadline = new Date(params.deadline.trim());
     if (Number.isNaN(newDeadline.getTime())) {
         return fail("截止时间无效", "VALIDATION_ERROR");
     }
@@ -130,7 +153,9 @@ export async function extendTopicTaskDeadline(params: {
         .select({ id: task.id, classId: task.classId, deadline: task.deadline })
         .from(task)
         .innerJoin(class_, eq(task.classId, class_.id))
-        .where(and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId)));
+        .where(
+            and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId), isNull(task.deletedAt))
+        );
 
     if (!row) {
         return fail("任务不存在", "NOT_FOUND", 404);
@@ -159,5 +184,26 @@ export async function extendTopicTaskDeadline(params: {
         }, tx);
     });
 
+    return { ok: true };
+}
+
+/** 将任务标记为已删除（学生端不再可见）；仅可删除本人班级下的任务 */
+export async function softDeleteTeacherTask(params: {
+    teacherId: number;
+    taskId: number;
+}): Promise<TaskServiceSuccess | TaskServiceFailure> {
+    const [row] = await db
+        .select({ id: task.id })
+        .from(task)
+        .innerJoin(class_, eq(task.classId, class_.id))
+        .where(
+            and(eq(task.id, params.taskId), eq(class_.teacherId, params.teacherId), isNull(task.deletedAt))
+        );
+
+    if (!row) {
+        return fail("任务不存在", "NOT_FOUND", 404);
+    }
+
+    await db.update(task).set({ deletedAt: new Date() }).where(eq(task.id, params.taskId));
     return { ok: true };
 }

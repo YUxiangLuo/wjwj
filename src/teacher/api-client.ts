@@ -78,6 +78,8 @@ export type { Question };
 
 export interface Task {
     id: number;
+    topicId: number;
+    classId: number;
     topic: string; // name
     className: string; // name
     publishedAt: string | null;
@@ -371,16 +373,20 @@ export const teacherApi = {
 
     // Tasks
     getTasks: () => request<Task[]>("/api/teacher/tasks"),
+    /** `deadline` 为 ISO-8601 UTC 字符串（由本地时间 `toISOString()` 得到），可选 */
     createTask: (data: { topicId: number; classIds: number[]; deadline?: string }) =>
         request<{ success: boolean }>("/api/teacher/tasks", {
             method: "POST",
             body: JSON.stringify(data)
         }),
+    /** `deadline` 为 ISO-8601 UTC 字符串 */
     extendTaskDeadline: (taskId: number, deadline: string) =>
         request<{ success: boolean }>(`/api/teacher/tasks/${taskId}/extend`, {
             method: "PUT",
             body: JSON.stringify({ deadline })
         }),
+    deleteTask: (taskId: number) =>
+        request<{ success: boolean }>(`/api/teacher/tasks/${taskId}`, { method: "DELETE" }),
     getTaskProgress: (taskId: number) =>
         request<TaskProgressData>(`/api/teacher/tasks/${taskId}/progress`),
 

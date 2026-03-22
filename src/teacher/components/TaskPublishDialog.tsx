@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { DatetimePicker24 } from "@/components/ui/datetime-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TeacherClass, Topic } from "../api-client";
@@ -10,6 +10,8 @@ interface TaskPublishDialogProps {
     onOpenChange: (open: boolean) => void;
     availableTopics: Topic[];
     availableClasses: TeacherClass[];
+    /** 当前课题下已发布过任务的班级 ID，对应复选框禁用 */
+    disabledClassIds: ReadonlySet<number>;
     selectedTopicId: string;
     onSelectedTopicIdChange: (value: string) => void;
     selectedClassIds: number[];
@@ -25,6 +27,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
         onOpenChange,
         availableTopics,
         availableClasses,
+        disabledClassIds,
         selectedTopicId,
         onSelectedTopicIdChange,
         selectedClassIds,
@@ -62,29 +65,45 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                     <div className="space-y-2">
                         <Label className="text-slate-700 dark:text-slate-300">选择班级</Label>
                         <div className="space-y-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-md p-3 max-h-40 overflow-y-auto">
-                            {availableClasses.length === 0 ? <div className="text-sm text-slate-500">无班级</div> : availableClasses.map((cls) => (
-                                <label key={cls.id} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 p-1.5 rounded">
-                                    <input
-                                        data-testid={`teacher-task-class-check-${cls.id}`}
-                                        type="checkbox"
-                                        className="rounded border-slate-400 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-indigo-500 focus:ring-indigo-500/20"
-                                        checked={selectedClassIds.includes(cls.id)}
-                                        onChange={() => onToggleClass(cls.id)}
-                                    />
-                                    {cls.name}
-                                </label>
-                            ))}
+                            {availableClasses.length === 0 ? <div className="text-sm text-slate-500">无班级</div> : availableClasses.map((cls) => {
+                                const disabled = disabledClassIds.has(cls.id);
+                                return (
+                                    <label
+                                        key={cls.id}
+                                        title={disabled ? "该课题已向此班级发布过任务" : undefined}
+                                        className={`flex items-center gap-2 text-sm p-1.5 rounded ${
+                                            disabled
+                                                ? "text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-80"
+                                                : "text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900"
+                                        }`}
+                                    >
+                                        <input
+                                            data-testid={`teacher-task-class-check-${cls.id}`}
+                                            type="checkbox"
+                                            disabled={disabled}
+                                            className="rounded border-slate-400 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-indigo-500 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            checked={!disabled && selectedClassIds.includes(cls.id)}
+                                            onChange={() => {
+                                                if (!disabled) onToggleClass(cls.id);
+                                            }}
+                                        />
+                                        <span className="flex-1">{cls.name}</span>
+                                        {disabled ? (
+                                            <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">已发布</span>
+                                        ) : null}
+                                    </label>
+                                );
+                            })}
                         </div>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="deadline" className="text-slate-700 dark:text-slate-300">截止时间（可选）</Label>
-                        <Input
+                        <DatetimePicker24
                             id="deadline"
                             data-testid="teacher-task-deadline"
-                            type="datetime-local"
                             value={deadline}
-                            onChange={(e) => onDeadlineChange(e.target.value)}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                            onChange={onDeadlineChange}
+                            placeholder="选择日期与时间（24 小时制）"
                         />
                     </div>
                 </div>

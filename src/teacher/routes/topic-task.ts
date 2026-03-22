@@ -21,7 +21,7 @@ import {
     listTeacherTasks,
     listTeacherTopics,
 } from "../topic/query-service";
-import { extendTopicTaskDeadline, publishTopicTasks } from "../topic/task-service";
+import { extendTopicTaskDeadline, publishTopicTasks, softDeleteTeacherTask } from "../topic/task-service";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 import { hasTopicOwnership } from "./topic-guards";
 
@@ -249,6 +249,21 @@ const taskRoutes: RouteDefinition = {
     }
 };
 
+const taskItemRoutes: RouteDefinition = {
+    async DELETE(req) {
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
+        const taskId = Number(getRouteParam(req, "id"));
+        if (isNaN(taskId)) return error("Invalid ID", "INVALID_ID");
+
+        const result = await softDeleteTeacherTask({ teacherId: currentTeacherId, taskId });
+        if (!result.ok) {
+            return error(result.message, result.code, result.status);
+        }
+
+        return json({ success: true });
+    },
+};
+
 const taskExtendRoutes: RouteDefinition = {
     async PUT(req) {
         const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
@@ -283,6 +298,7 @@ const taskProgressRoutes: RouteDefinition = {
 
 export {
     taskExtendRoutes,
+    taskItemRoutes,
     taskProgressRoutes,
     taskRoutes,
     topicAttachmentDeleteRoutes,

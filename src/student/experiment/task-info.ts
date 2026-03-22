@@ -7,7 +7,15 @@ export async function findStudentTaskTopicInfo(taskId: number, classId: number) 
         .select({ id: task.id, topicId: task.topicId })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(task.id, taskId), eq(task.classId, classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
+        .where(
+            and(
+                eq(task.id, taskId),
+                eq(task.classId, classId),
+                isNull(task.deletedAt),
+                eq(topic.isDeleted, 0),
+                isNull(topic.deletedAt)
+            )
+        );
 
     return row ?? null;
 }
@@ -17,7 +25,15 @@ export async function findStudentTaskSchedule(taskId: number, classId: number) {
         .select({ openTime: task.openTime, deadline: task.deadline })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(task.id, taskId), eq(task.classId, classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
+        .where(
+            and(
+                eq(task.id, taskId),
+                eq(task.classId, classId),
+                isNull(task.deletedAt),
+                eq(topic.isDeleted, 0),
+                isNull(topic.deletedAt)
+            )
+        );
 
     return row ?? null;
 }
@@ -27,7 +43,15 @@ export async function findStudentTaskPopulationSize(taskId: number, classId: num
         .select({ excelRowCount: topic.excelRowCount })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(task.id, taskId), eq(task.classId, classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
+        .where(
+            and(
+                eq(task.id, taskId),
+                eq(task.classId, classId),
+                isNull(task.deletedAt),
+                eq(topic.isDeleted, 0),
+                isNull(topic.deletedAt)
+            )
+        );
 
     return row?.excelRowCount ?? null;
 }
@@ -41,7 +65,15 @@ export async function findStudentTaskSamplingInfo(taskId: number, classId: numbe
         })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(task.id, taskId), eq(task.classId, classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
+        .where(
+            and(
+                eq(task.id, taskId),
+                eq(task.classId, classId),
+                isNull(task.deletedAt),
+                eq(topic.isDeleted, 0),
+                isNull(topic.deletedAt)
+            )
+        );
 
     return row ?? null;
 }
@@ -59,7 +91,15 @@ export async function findStudentTaskSubmitInfo(taskId: number, classId: number)
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
-        .where(and(eq(task.id, taskId), eq(task.classId, classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
+        .where(
+            and(
+                eq(task.id, taskId),
+                eq(task.classId, classId),
+                isNull(task.deletedAt),
+                eq(topic.isDeleted, 0),
+                isNull(topic.deletedAt)
+            )
+        );
 
     return row ?? null;
 }

@@ -19,6 +19,7 @@ const poolConnection = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    // 未设 timezone：datetime 与 JS Date 的转换随部署环境；应用层对截止时间统一用 UTC ISO 传输与解析
 });
 
 export const db = drizzle(poolConnection, { schema, mode: "default" });

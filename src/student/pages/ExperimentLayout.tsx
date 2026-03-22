@@ -70,7 +70,7 @@ export function ExperimentLayout() {
     const [experiment, setExperiment] = useState<ExperimentData | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
-    const [topicDeleted, setTopicDeleted] = useState(false);
+    const [accessDeniedVariant, setAccessDeniedVariant] = useState<"topic_deleted" | "task_revoked" | null>(null);
     const [taskName, setTaskName] = useState("");
     const [deadline, setDeadline] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -96,7 +96,7 @@ export function ExperimentLayout() {
 
             setLoading(true);
             setNotFound(false);
-            setTopicDeleted(false);
+            setAccessDeniedVariant(null);
             setRedirectTarget(null);
             try {
                 const numericTaskId = parseInt(taskId);
@@ -117,9 +117,9 @@ export function ExperimentLayout() {
                     if (nextRedirect) {
                         setRedirectTarget(nextRedirect);
                     }
-                } else if (taskRes.error?.code === "TOPIC_DELETED") {
+                } else if (taskRes.error?.code === "TOPIC_DELETED" || taskRes.error?.code === "TASK_REVOKED") {
                     setExperiment(null);
-                    setTopicDeleted(true);
+                    setAccessDeniedVariant(taskRes.error?.code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
                     return;
                 } else {
                     setExperiment(null);
@@ -137,9 +137,11 @@ export function ExperimentLayout() {
                         clearReportDraft(normalizedExperiment.id);
                     }
                     setExperiment(normalizedExperiment);
-                } else if (experimentRes.error?.code === "TOPIC_DELETED") {
+                } else if (experimentRes.error?.code === "TOPIC_DELETED" || experimentRes.error?.code === "TASK_REVOKED") {
                     setExperiment(null);
-                    setTopicDeleted(true);
+                    setAccessDeniedVariant(
+                        experimentRes.error?.code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted"
+                    );
                 } else {
                     setExperiment(null);
                     setNotFound(true);
@@ -251,8 +253,8 @@ export function ExperimentLayout() {
         );
     }
 
-    if (topicDeleted) {
-        return <TopicDeletedState />;
+    if (accessDeniedVariant) {
+        return <TopicDeletedState variant={accessDeniedVariant} />;
     }
 
     if (redirectTarget) {

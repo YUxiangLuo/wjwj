@@ -12,14 +12,39 @@ const dashboardRoutes: RouteDefinition = {
 
         const [[myClasses], [myTopics], [pendingGrading], [activeTasks]] = await Promise.all([
             db.select({ count: count() }).from(class_).where(eq(class_.teacherId, currentTeacherId)),
-            db.select({ count: count() }).from(topic).where(and(eq(topic.teacherId, currentTeacherId), eq(topic.isDeleted, 0))),
-            db.select({ count: count() })
+            db
+                .select({ count: count() })
+                .from(topic)
+                .where(and(eq(topic.teacherId, currentTeacherId), eq(topic.isDeleted, 0), isNull(topic.deletedAt))),
+            db
+                .select({ count: count() })
                 .from(submission)
                 .innerJoin(experiment, eq(submission.experimentId, experiment.id))
                 .innerJoin(task, eq(experiment.taskId, task.id))
+                .innerJoin(topic, eq(task.topicId, topic.id))
                 .innerJoin(class_, eq(task.classId, class_.id))
-                .where(and(inArray(submission.status, [0, 1]), eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt))),
-            db.select({ count: count() }).from(task).innerJoin(class_, eq(task.classId, class_.id)).where(and(eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt))),
+                .where(
+                    and(
+                        inArray(submission.status, [0, 1]),
+                        eq(class_.teacherId, currentTeacherId),
+                        isNull(task.deletedAt),
+                        eq(topic.isDeleted, 0),
+                        isNull(topic.deletedAt)
+                    )
+                ),
+            db
+                .select({ count: count() })
+                .from(task)
+                .innerJoin(topic, eq(task.topicId, topic.id))
+                .innerJoin(class_, eq(task.classId, class_.id))
+                .where(
+                    and(
+                        eq(class_.teacherId, currentTeacherId),
+                        isNull(task.deletedAt),
+                        eq(topic.isDeleted, 0),
+                        isNull(topic.deletedAt)
+                    )
+                ),
         ]);
 
         const recentSubs = await db
@@ -35,7 +60,14 @@ const dashboardRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt), eq(topic.isDeleted, 0)))
+            .where(
+                and(
+                    eq(class_.teacherId, currentTeacherId),
+                    isNull(task.deletedAt),
+                    eq(topic.isDeleted, 0),
+                    isNull(topic.deletedAt)
+                )
+            )
             .orderBy(desc(submission.submittedAt))
             .limit(5);
 
@@ -54,7 +86,15 @@ const dashboardRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(eq(class_.teacherId, currentTeacherId), isNull(task.deletedAt), eq(topic.isDeleted, 0), sql`${submission.status} IN (2, 3)`))
+            .where(
+                and(
+                    eq(class_.teacherId, currentTeacherId),
+                    isNull(task.deletedAt),
+                    eq(topic.isDeleted, 0),
+                    isNull(topic.deletedAt),
+                    sql`${submission.status} IN (2, 3)`
+                )
+            )
             .orderBy(desc(submission.gradedAt))
             .limit(5);
 

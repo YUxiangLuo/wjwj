@@ -78,7 +78,7 @@ export function SubmissionPreview() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [topicDeleted, setTopicDeleted] = useState(false);
+    const [accessDeniedVariant, setAccessDeniedVariant] = useState<"topic_deleted" | "task_revoked" | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [showFullPreview, setShowFullPreview] = useState(false);
 
@@ -86,17 +86,23 @@ export function SubmissionPreview() {
         async function loadData() {
             if (!taskId) return;
             setLoading(true);
-            setTopicDeleted(false);
+            setAccessDeniedVariant(null);
             try {
                 const [taskRes, expRes] = await Promise.all([
                     tasksApi.get(Number(taskId)),
                     experimentApi.get(Number(taskId)),
                 ]);
 
-                if (taskRes.error?.code === "TOPIC_DELETED" || expRes.error?.code === "TOPIC_DELETED") {
+                if (
+                    taskRes.error?.code === "TOPIC_DELETED" ||
+                    taskRes.error?.code === "TASK_REVOKED" ||
+                    expRes.error?.code === "TOPIC_DELETED" ||
+                    expRes.error?.code === "TASK_REVOKED"
+                ) {
                     setTask(null);
                     setExperiment(null);
-                    setTopicDeleted(true);
+                    const code = taskRes.error?.code ?? expRes.error?.code;
+                    setAccessDeniedVariant(code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
                     return;
                 }
 
@@ -182,8 +188,8 @@ export function SubmissionPreview() {
         );
     }
 
-    if (topicDeleted) {
-        return <TopicDeletedState />;
+    if (accessDeniedVariant) {
+        return <TopicDeletedState variant={accessDeniedVariant} />;
     }
 
     if (!task || !experiment) {

@@ -43,12 +43,12 @@ test("grade export preview keeps teacher ownership filter when class filter is a
     const where = (selectOperation?.where ?? null) as { kind?: string; conditions?: unknown[] } | null;
 
     expect(where?.kind).toBe("and");
-    expect(where?.conditions).toHaveLength(4);
+    expect(where?.conditions).toHaveLength(5);
     expect(where?.conditions?.[0]).toMatchObject({ kind: "eq", right: 1 });
-    // conditions[1] = isNull(task.deletedAt), conditions[2] = eq(topic.isDeleted, 0)
     expect(where?.conditions?.[1]).toMatchObject({ kind: "isNull" });
     expect(where?.conditions?.[2]).toMatchObject({ kind: "eq", right: 0 });
-    expect(where?.conditions?.[3]).toMatchObject({ kind: "eq", right: 2 });
+    expect(where?.conditions?.[3]).toMatchObject({ kind: "isNull" });
+    expect(where?.conditions?.[4]).toMatchObject({ kind: "eq", right: 2 });
 });
 
 test("grade export data keeps teacher ownership filter when class filter is applied", async () => {
@@ -66,12 +66,12 @@ test("grade export data keeps teacher ownership filter when class filter is appl
     const where = (selectOperation?.where ?? null) as { kind?: string; conditions?: unknown[] } | null;
 
     expect(where?.kind).toBe("and");
-    expect(where?.conditions).toHaveLength(4);
+    expect(where?.conditions).toHaveLength(5);
     expect(where?.conditions?.[0]).toMatchObject({ kind: "eq", right: 1 });
-    // conditions[1] = isNull(task.deletedAt), conditions[2] = eq(topic.isDeleted, 0)
     expect(where?.conditions?.[1]).toMatchObject({ kind: "isNull" });
     expect(where?.conditions?.[2]).toMatchObject({ kind: "eq", right: 0 });
-    expect(where?.conditions?.[3]).toMatchObject({ kind: "eq", right: 2 });
+    expect(where?.conditions?.[3]).toMatchObject({ kind: "isNull" });
+    expect(where?.conditions?.[4]).toMatchObject({ kind: "eq", right: 2 });
 });
 
 test("grade export preview rejects invalid numeric filters", async () => {

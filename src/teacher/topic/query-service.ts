@@ -16,7 +16,7 @@ export async function listTeacherTopics(teacherId: number) {
             createdAt: topic.createdAt,
         })
         .from(topic)
-        .where(and(eq(topic.teacherId, teacherId), eq(topic.isDeleted, 0)))
+        .where(and(eq(topic.teacherId, teacherId), eq(topic.isDeleted, 0), isNull(topic.deletedAt)))
         .orderBy(desc(topic.createdAt));
 }
 
@@ -49,6 +49,8 @@ export async function listTeacherTasks(teacherId: number) {
     return db
         .select({
             id: task.id,
+            topicId: task.topicId,
+            classId: task.classId,
             topic: topic.name,
             className: class_.name,
             publishedAt: task.openTime,
@@ -73,7 +75,14 @@ export async function listTeacherTasks(teacherId: number) {
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
         .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
-        .where(and(eq(class_.teacherId, teacherId), isNull(task.deletedAt)))
+        .where(
+            and(
+                eq(class_.teacherId, teacherId),
+                isNull(task.deletedAt),
+                eq(topic.isDeleted, 0),
+                isNull(topic.deletedAt)
+            )
+        )
         .groupBy(task.id)
         .orderBy(desc(task.createdAt));
 }
@@ -90,7 +99,15 @@ export async function getTeacherTaskProgress(taskId: number, teacherId: number) 
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
-        .where(and(eq(task.id, taskId), eq(class_.teacherId, teacherId)));
+        .where(
+            and(
+                eq(task.id, taskId),
+                eq(class_.teacherId, teacherId),
+                isNull(task.deletedAt),
+                eq(topic.isDeleted, 0),
+                isNull(topic.deletedAt)
+            )
+        );
 
     if (!taskRow) {
         return null;

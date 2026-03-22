@@ -27,6 +27,7 @@ import {
 } from "./routes/classroom";
 import {
     taskExtendRoutes,
+    taskItemRoutes,
     taskProgressRoutes,
     taskRoutes,
     topicAttachmentDeleteRoutes,
@@ -61,6 +62,7 @@ export const teacherApiRoutes = {
     "/api/teacher/topics/:id/weights": withPrimaryTeacherAuth(topicWeightRoutes),
     "/api/teacher/topics/:id/copy": withPrimaryTeacherAuth(topicCopyRoutes),
     "/api/teacher/tasks": withPrimaryTeacherAuth(taskRoutes),
+    "/api/teacher/tasks/:id": withPrimaryTeacherAuth(taskItemRoutes),
     "/api/teacher/tasks/:id/extend": withPrimaryTeacherAuth(taskExtendRoutes),
     "/api/teacher/tasks/:id/progress": withPrimaryTeacherAuth(taskProgressRoutes),
     "/api/teacher/grading": withTeacherAuth(gradingRoutes),

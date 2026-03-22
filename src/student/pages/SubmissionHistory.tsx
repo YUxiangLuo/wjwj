@@ -19,20 +19,20 @@ export function SubmissionHistory() {
     const { taskId } = useParams();
     const [submissions, setSubmissions] = useState<SubmissionSummary[]>([]);
     const [loading, setLoading] = useState(true);
-    const [topicDeleted, setTopicDeleted] = useState(false);
+    const [accessDeniedVariant, setAccessDeniedVariant] = useState<"topic_deleted" | "task_revoked" | null>(null);
 
     useEffect(() => {
         async function load() {
             if (!taskId) return;
             setLoading(true);
-            setTopicDeleted(false);
+            setAccessDeniedVariant(null);
             try {
                 const res = await submissionsApi.listByTask(Number(taskId));
                 if (res.success && res.data) {
                     setSubmissions(res.data);
-                } else if (res.error?.code === "TOPIC_DELETED") {
+                } else if (res.error?.code === "TOPIC_DELETED" || res.error?.code === "TASK_REVOKED") {
                     setSubmissions([]);
-                    setTopicDeleted(true);
+                    setAccessDeniedVariant(res.error?.code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
                 }
             } finally {
                 setLoading(false);
@@ -49,8 +49,8 @@ export function SubmissionHistory() {
         );
     }
 
-    if (topicDeleted) {
-        return <TopicDeletedState />;
+    if (accessDeniedVariant) {
+        return <TopicDeletedState variant={accessDeniedVariant} />;
     }
 
     return (

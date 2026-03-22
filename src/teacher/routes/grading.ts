@@ -1,4 +1,4 @@
-import { and, desc, eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 import { resolve, sep } from "node:path";
 import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, student, submission, task, teacher, topic } from "../../db/schema";
@@ -44,6 +44,11 @@ export function resolveSubmissionPdfPath(pdfPath: string) {
     return fullPath;
 }
 
+/** 与成绩导出一致：已删任务、已删课题（含 deleted_at）下的提交不在批改流程中展示 */
+function activeTaskTopicConditions() {
+    return [isNull(task.deletedAt), eq(topic.isDeleted, 0), isNull(topic.deletedAt)];
+}
+
 const gradingRoutes: RouteDefinition = {
     async GET(req) {
         const access = await getAccessibleClassIds(req);
@@ -56,7 +61,10 @@ const gradingRoutes: RouteDefinition = {
 
         const params = getSearchParams(req);
         const status = params.get("status");
-        const conditions = [sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`];
+        const conditions = [
+            sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`,
+            ...activeTaskTopicConditions(),
+        ];
 
         if (status === "pending") {
             conditions.push(or(eq(submission.status, 0), eq(submission.status, 1))!);
@@ -178,7 +186,13 @@ const gradingDetailRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(eq(submission.id, submissionId), sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`));
+            .where(
+                and(
+                    eq(submission.id, submissionId),
+                    sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`,
+                    ...activeTaskTopicConditions()
+                )
+            );
 
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
 
@@ -297,7 +311,13 @@ const gradingDetailRoutes: RouteDefinition = {
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
             .innerJoin(student, eq(experiment.studentId, student.id))
-            .where(and(eq(submission.id, submissionId), sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`));
+            .where(
+                and(
+                    eq(submission.id, submissionId),
+                    sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`,
+                    ...activeTaskTopicConditions()
+                )
+            );
 
         if (!detail) return error("提交记录不存在", "NOT_FOUND", 404);
 
@@ -434,8 +454,15 @@ const teacherPdfDownloadRoutes: RouteDefinition = {
             .from(submission)
             .innerJoin(experiment, eq(submission.experimentId, experiment.id))
             .innerJoin(task, eq(experiment.taskId, task.id))
+            .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(eq(submission.id, submissionId), sql`${class_.id} IN (${sql.join(access.classIds, sql`, `)})`));
+            .where(
+                and(
+                    eq(submission.id, submissionId),
+                    sql`${class_.id} IN (${sql.join(access.classIds, sql`, `)})`,
+                    ...activeTaskTopicConditions()
+                )
+            );
 
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
 

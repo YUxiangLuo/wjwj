@@ -6,12 +6,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus, BarChart3 } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus, BarChart3, Trash2 } from "lucide-react";
 import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
 import { TaskExtendDialog } from "../components/TaskExtendDialog";
 import { TaskPublishDialog } from "../components/TaskPublishDialog";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { localWallClockToUtcIso } from "@/lib/datetime";
 
 export function TaskManagement() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -20,6 +30,8 @@ export function TaskManagement() {
     const [showExtendModal, setShowExtendModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [extendDeadline, setExtendDeadline] = useState("");
+    const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
     // Data for modal
     const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
@@ -36,9 +48,12 @@ export function TaskManagement() {
         loadTasks();
     }, []);
 
-    // Load form data when modal opens
+    // Load form data when modal opens；静默拉取任务列表以更新「已发布班级」禁用状态
     useEffect(() => {
         if (showPublishModal) {
+            void teacherApi.getTasks().then((res) => {
+                if (res.success && res.data) setTasks(res.data);
+            });
             Promise.all([
                 teacherApi.getTopics(),
                 teacherApi.getClasses()
@@ -48,6 +63,18 @@ export function TaskManagement() {
             });
         }
     }, [showPublishModal]);
+
+    /** 当前所选课题下已有任务的班级（不可再次勾选） */
+    const publishedClassIdsForTopic = useMemo(() => {
+        if (!selectedTopicId) return new Set<number>();
+        const tid = Number(selectedTopicId);
+        if (Number.isNaN(tid)) return new Set<number>();
+        return new Set(tasks.filter((t) => t.topicId === tid).map((t) => t.classId));
+    }, [tasks, selectedTopicId]);
+
+    useEffect(() => {
+        setSelectedClassIds((prev) => prev.filter((id) => !publishedClassIdsForTopic.has(id)));
+    }, [publishedClassIdsForTopic]);
 
     async function loadTasks() {
         setLoading(true);
@@ -67,7 +94,7 @@ export function TaskManagement() {
         const res = await teacherApi.createTask({
             topicId: Number(selectedTopicId),
             classIds: selectedClassIds,
-            deadline: deadline || undefined
+            deadline: localWallClockToUtcIso(deadline) ?? undefined,
         });
 
         if (res.success) {
@@ -83,8 +110,13 @@ export function TaskManagement() {
     }
 
     async function handleExtendDeadline() {
-        if (!selectedTask || !extendDeadline) return;
-        const res = await teacherApi.extendTaskDeadline(selectedTask.id, extendDeadline);
+        if (!selectedTask || !extendDeadline.trim()) return;
+        const deadlineIso = localWallClockToUtcIso(extendDeadline);
+        if (!deadlineIso) {
+            toast.error("截止时间格式无效");
+            return;
+        }
+        const res = await teacherApi.extendTaskDeadline(selectedTask.id, deadlineIso);
         if (res.success) {
             setShowExtendModal(false);
             setSelectedTask(null);
@@ -92,6 +124,23 @@ export function TaskManagement() {
             loadTasks();
         } else {
             toast.error("延长失败: " + res.error?.message);
+        }
+    }
+
+    async function confirmDeleteTask() {
+        if (!taskToDelete) return;
+        setDeleteSubmitting(true);
+        try {
+            const res = await teacherApi.deleteTask(taskToDelete.id);
+            if (res.success) {
+                toast.success("任务已删除");
+                setTaskToDelete(null);
+                await loadTasks();
+            } else {
+                toast.error("删除失败: " + (res.error?.message ?? ""));
+            }
+        } finally {
+            setDeleteSubmitting(false);
         }
     }
 
@@ -266,6 +315,17 @@ export function TaskManagement() {
                                                 <Button variant="ghost" size="sm" asChild className="h-8 text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10">
                                                     <Link to="/grading">批改</Link>
                                                 </Button>
+                                                <Button
+                                                    data-testid={`teacher-task-delete-open-${task.id}`}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    type="button"
+                                                    onClick={() => setTaskToDelete(task)}
+                                                    className="h-8 text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
+                                                    title="删除任务"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -293,6 +353,7 @@ export function TaskManagement() {
                 onOpenChange={setShowPublishModal}
                 availableTopics={availableTopics}
                 availableClasses={availableClasses}
+                disabledClassIds={publishedClassIdsForTopic}
                 selectedTopicId={selectedTopicId}
                 onSelectedTopicIdChange={setSelectedTopicId}
                 selectedClassIds={selectedClassIds}
@@ -310,6 +371,33 @@ export function TaskManagement() {
                 onExtendDeadlineChange={setExtendDeadline}
                 onConfirm={handleExtendDeadline}
             />
+
+            <AlertDialog open={taskToDelete !== null} onOpenChange={(open) => { if (!open) setTaskToDelete(null); }}>
+                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">删除任务？</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                            {taskToDelete
+                                ? `将取消「${taskToDelete.topic}」在「${taskToDelete.className}」的任务发布：学生端与批改中均不再显示。需要再次布置同一课题时，可在「发布任务」中重新向该班级发布。`
+                                : null}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                            取消
+                        </AlertDialogCancel>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={deleteSubmitting}
+                            data-testid="teacher-task-delete-confirm"
+                            onClick={() => void confirmDeleteTask()}
+                        >
+                            {deleteSubmitting ? "删除中…" : "删除"}
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

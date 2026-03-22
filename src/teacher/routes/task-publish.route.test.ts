@@ -12,9 +12,11 @@ function createJsonRequest(url: string, method: string, body?: unknown) {
 async function loadTaskRoutes(options: {
     teacherId?: number;
     select?: unknown[];
+    update?: unknown[];
 } = {}) {
     const { db, operations } = createMockDb({
         select: options.select,
+        update: options.update,
     });
     const notifications: Array<{ classIds: number[]; payload: Record<string, unknown> }> = [];
 
@@ -208,4 +210,95 @@ test("task extend clears old deadline reminders before notifying students about 
             relatedId: 88,
         },
     });
+});
+
+test("task publish revives soft-deleted tasks instead of inserting duplicates", async () => {
+    const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { module, operations, notifications } = await loadTaskRoutes({
+        teacherId: 9,
+        select: [
+            [{
+                id: 12,
+                name: "抽样方法课题",
+                status: 1,
+                excelFilePath: "/storage/uploads/topic.xlsx",
+                fieldMapping: { identifier: "id", stratified: ["gender"], numeric: ["score"] },
+                weightConfig: { questionnaire: 30, process: 30, report: 40 },
+            }],
+            [{ id: 101 }, { id: 102 }],
+            // rowsForTopic: class 101 has active task, class 102 has soft-deleted task
+            [
+                { id: 50, classId: 101, deletedAt: null },
+                { id: 51, classId: 102, deletedAt: new Date("2026-03-20") },
+            ],
+        ],
+    });
+
+    const response = await module.taskRoutes.POST!(createJsonRequest(
+        "https://example.com/api/teacher/tasks",
+        "POST",
+        { topicId: 12, classIds: [101, 102], deadline }
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(201);
+    expect(payload.success).toBe(true);
+    // class 101 should be skipped (active), class 102 should be revived (not inserted)
+    expect(payload.data.skipped).toEqual([101]);
+
+    const inserts = operations.filter((o) => o.kind === "insert");
+    expect(inserts).toHaveLength(0);
+
+    const updates = operations.filter((o) => o.kind === "update");
+    expect(updates.length).toBeGreaterThanOrEqual(1);
+
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({
+        classIds: [102],
+        payload: {
+            type: "TASK_PUBLISHED",
+            title: "新任务已发布",
+            relatedType: "topic",
+            relatedId: 12,
+        },
+    });
+});
+
+test("task delete soft-deletes when teacher owns the class", async () => {
+    const { module, operations } = await loadTaskRoutes({
+        teacherId: 9,
+        select: [[{ id: 88 }]],
+        update: [{ affectedRows: 1 }],
+    });
+    const request = createJsonRequest(
+        "https://example.com/api/teacher/tasks/88",
+        "DELETE"
+    ) as Request & { params?: Record<string, string> };
+    request.params = { id: "88" };
+
+    const response = await module.taskItemRoutes.DELETE!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toEqual({ success: true });
+    expect(operations.some((o) => o.kind === "update")).toBe(true);
+});
+
+test("task delete returns 404 when task not found or not owned", async () => {
+    const { module, operations } = await loadTaskRoutes({
+        teacherId: 9,
+        select: [[]],
+    });
+    const request = createJsonRequest(
+        "https://example.com/api/teacher/tasks/999",
+        "DELETE"
+    ) as Request & { params?: Record<string, string> };
+    request.params = { id: "999" };
+
+    const response = await module.taskItemRoutes.DELETE!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(404);
+    expect(payload.success).toBe(false);
+    expect(operations.filter((o) => o.kind === "update")).toHaveLength(0);
 });

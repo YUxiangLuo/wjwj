@@ -1,10 +1,11 @@
-import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, submission, task, topic, topicAttachment } from "../../db/schema";
 import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
 import { error, getRouteParam, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getConfigNumber } from "../../server/system-config";
+import { getStudentTaskAccessError } from "../experiment/task-access";
 import { ExperimentStatus } from "../experiment/status";
 import { requireAuth } from "./auth";
 
@@ -16,21 +17,6 @@ function isLockActive(lockedAt: Date | null, lockTimeoutMinutes: number) {
 
 function getVisibleRejectReason(status: string, rejectReason: string | null | undefined) {
     return status === "rejected" ? (rejectReason ?? undefined) : undefined;
-}
-
-async function isTopicDeletedForTask(taskId: number, classId: number) {
-    const [deletedRow] = await db
-        .select({ id: task.id })
-        .from(task)
-        .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(
-            and(
-                eq(task.id, taskId),
-                eq(task.classId, classId),
-                or(isNotNull(task.deletedAt), eq(topic.isDeleted, 1), isNotNull(topic.deletedAt))
-            )
-        );
-    return Boolean(deletedRow);
 }
 
 const tasksRoutes: RouteDefinition = {
@@ -52,7 +38,15 @@ const tasksRoutes: RouteDefinition = {
             })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
-            .where(and(eq(task.classId, currentStudent.classId), isNull(task.deletedAt), eq(topic.status, 1), eq(topic.isDeleted, 0)))
+            .where(
+                and(
+                    eq(task.classId, currentStudent.classId),
+                    isNull(task.deletedAt),
+                    eq(topic.status, 1),
+                    eq(topic.isDeleted, 0),
+                    isNull(topic.deletedAt)
+                )
+            )
             .orderBy(desc(task.createdAt));
 
         const taskIds = tasks.map((t) => t.id);
@@ -176,13 +170,18 @@ const taskDetailRoutes: RouteDefinition = {
             })
             .from(task)
             .innerJoin(topic, eq(task.topicId, topic.id))
-            .where(and(eq(task.id, taskId), eq(task.classId, currentStudent.classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
+            .where(
+                and(
+                    eq(task.id, taskId),
+                    eq(task.classId, currentStudent.classId),
+                    isNull(task.deletedAt),
+                    eq(topic.isDeleted, 0),
+                    isNull(topic.deletedAt)
+                )
+            );
 
         if (!taskInfo) {
-            if (await isTopicDeletedForTask(taskId, currentStudent.classId)) {
-                return error("课题已删除", "TOPIC_DELETED", 410);
-            }
-            return error("任务不存在", "NOT_FOUND", 404);
+            return (await getStudentTaskAccessError(taskId, currentStudent.classId)) ?? error("任务不存在", "NOT_FOUND", 404);
         }
 
         const attachments = await db

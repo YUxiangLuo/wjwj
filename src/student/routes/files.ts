@@ -1,10 +1,11 @@
-import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as fs from "node:fs/promises";
 import { db } from "../../db";
-import { experiment, task, topic, topicAttachment } from "../../db/schema";
+import { experiment, topicAttachment } from "../../db/schema";
 import { error, getRouteParam, getSearchParams } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { resolveStoragePath } from "../../server/storage-files";
+import { getStudentTaskAccessError, getStudentTopicAttachmentAccessError } from "../experiment/task-access";
 import { parseStoredJson } from "../experiment/serialization";
 import { requireAuth } from "./auth";
 
@@ -66,34 +67,6 @@ function canInlinePreview(contentType: string) {
     );
 }
 
-async function getTaskAccessError(taskId: number, classId: number): Promise<Response | null> {
-    const [activeRow] = await db
-        .select({ id: task.id })
-        .from(task)
-        .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(and(eq(task.id, taskId), eq(task.classId, classId), isNull(task.deletedAt), eq(topic.isDeleted, 0)));
-
-    if (activeRow) return null;
-
-    const [deletedRow] = await db
-        .select({ id: task.id })
-        .from(task)
-        .innerJoin(topic, eq(task.topicId, topic.id))
-        .where(
-            and(
-                eq(task.id, taskId),
-                eq(task.classId, classId),
-                or(isNotNull(task.deletedAt), eq(topic.isDeleted, 1), isNotNull(topic.deletedAt))
-            )
-        );
-
-    if (deletedRow) {
-        return error("课题已删除", "TOPIC_DELETED", 410);
-    }
-
-    return error("无权限访问该附件", "FORBIDDEN", 403);
-}
-
 const attachmentDownloadRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -120,32 +93,8 @@ const attachmentDownloadRoutes: RouteDefinition = {
             return error("附件不存在", "NOT_FOUND", 404);
         }
 
-        const [accessibleTask] = await db
-            .select({ id: task.id })
-            .from(task)
-            .innerJoin(topic, eq(task.topicId, topic.id))
-            .where(and(eq(task.classId, currentStudent.classId), eq(task.topicId, att.topicId), isNull(task.deletedAt), eq(topic.isDeleted, 0)))
-            .limit(1);
-
-        if (!accessibleTask) {
-            const [deletedTask] = await db
-                .select({ id: task.id })
-                .from(task)
-                .innerJoin(topic, eq(task.topicId, topic.id))
-                .where(
-                    and(
-                        eq(task.classId, currentStudent.classId),
-                        eq(task.topicId, att.topicId),
-                        or(isNotNull(task.deletedAt), eq(topic.isDeleted, 1), isNotNull(topic.deletedAt))
-                    )
-                )
-                .limit(1);
-
-            if (deletedTask) {
-                return error("课题已删除", "TOPIC_DELETED", 410);
-            }
-            return error("无权限访问该附件", "FORBIDDEN", 403);
-        }
+        const attachmentAccessError = await getStudentTopicAttachmentAccessError(att.topicId, currentStudent.classId);
+        if (attachmentAccessError) return attachmentAccessError;
 
         let fullPath: string;
         try {
@@ -192,7 +141,7 @@ const exportRoutes: RouteDefinition = {
         const taskId = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
 
-        const taskAccessError = await getTaskAccessError(taskId, currentStudent.classId);
+        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
         if (taskAccessError) return taskAccessError;
 
         const type = getSearchParams(req).get("type") ?? "all";
