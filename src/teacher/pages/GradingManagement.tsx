@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, AlertTriangle, ClipboardList, Search, FileEdit, XCircle, Clock, UserCheck } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ClipboardList, Search, XCircle, Clock, UserCheck } from "lucide-react";
 import { teacherApi, type GradingItem } from "../api-client";
 
 export function GradingManagement() {
@@ -34,7 +34,7 @@ export function GradingManagement() {
 
     const getStatusBadge = (status: number, score?: number | null) => {
         switch (status) {
-            case 0: return <Badge variant="secondary" className="bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20 hover:bg-slate-500/20"><FileEdit className="w-3 h-3 mr-1" /> 批改草稿</Badge>;
+            case 0:
             case 1: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"><Clock className="w-3 h-3 mr-1" /> 待批改</Badge>;
             case 2: return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</Badge>;
             case 3: return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20"><XCircle className="w-3 h-3 mr-1" /> 已驳回</Badge>;
@@ -61,7 +61,7 @@ export function GradingManagement() {
 
     const summary = useMemo(() => {
         const total = submissions.length;
-        const pending = submissions.filter((sub) => sub.status === 1).length;
+        const pending = submissions.filter((sub) => sub.status === 0 || sub.status === 1).length;
         const graded = submissions.filter((sub) => sub.status === 2).length;
         const rejected = submissions.filter((sub) => sub.status === 3).length;
         return { total, pending, graded, rejected };
@@ -190,7 +190,6 @@ export function GradingManagement() {
                             <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                                 <SelectItem value="all-status">全部状态</SelectItem>
                                 <SelectItem value="pending">待批改</SelectItem>
-                                <SelectItem value="draft">批改草稿</SelectItem>
                                 <SelectItem value="graded">已批改</SelectItem>
                                 <SelectItem value="rejected">被驳回</SelectItem>
                             </SelectContent>

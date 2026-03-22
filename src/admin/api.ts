@@ -16,7 +16,7 @@ import {
     systemConfig,
     userSession,
 } from "../db/schema";
-import { eq, desc, sql, and, count } from "drizzle-orm";
+import { eq, desc, sql, and, count, inArray } from "drizzle-orm";
 import {
     error,
     getClientIp,
@@ -115,7 +115,7 @@ const statsRoutes = {
         const [pendingSubs] = await db
             .select({ count: count() })
             .from(submission)
-            .where(eq(submission.status, 1));
+            .where(inArray(submission.status, [0, 1]));
 
         const pendingItems = pendingSubs?.count ?? 0;
 

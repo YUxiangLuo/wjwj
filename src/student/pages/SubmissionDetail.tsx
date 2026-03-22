@@ -8,7 +8,7 @@ import { submissionsApi, type SubmissionDetail } from "../api-client";
 import { cn } from "@/lib/utils";
 
 const statusConfig: Record<number, { label: string; color: string }> = {
-    0: { label: "批改草稿", color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20" },
+    0: { label: "待批改", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
     1: { label: "待批改", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
     2: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
     3: { label: "被驳回", color: "bg-red-500/10 text-red-600 border-red-500/20" },

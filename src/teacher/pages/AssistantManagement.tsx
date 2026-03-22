@@ -28,8 +28,6 @@ export function AssistantManagement() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
-    const [showUnbindConfirm, setShowUnbindConfirm] = useState(false);
-    const [pendingAssign, setPendingAssign] = useState<{ assistantId: number; classIds: number[] } | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "active" | "disabled">("all");
 
@@ -81,9 +79,6 @@ export function AssistantManagement() {
         if (res.success) {
             setShowAssignModal(false);
             loadData();
-        } else if (res.error?.code === "HAS_DRAFTS") {
-            setPendingAssign({ assistantId: selectedAssistant.id, classIds: selectedClassIds });
-            setShowUnbindConfirm(true);
         } else {
             toast.error("分配失败: " + res.error?.message);
         }
@@ -329,38 +324,6 @@ export function AssistantManagement() {
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDelete} className="bg-rose-600 hover:bg-rose-700 text-white">确认移除</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            <AlertDialog open={showUnbindConfirm} onOpenChange={(open) => !open && setShowUnbindConfirm(false)}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">解绑确认</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
-                            该助教在被移除的班级存在批改草稿，解绑后草稿将保留但无法继续批改。确定解绑吗？
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setShowUnbindConfirm(false)} className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction
-                            data-testid="teacher-assistant-force-unbind-submit"
-                            onClick={async () => {
-                                if (!pendingAssign) return;
-                                const res = await teacherApi.assignClasses(pendingAssign.assistantId, pendingAssign.classIds, true);
-                                if (res.success) {
-                                    setShowUnbindConfirm(false);
-                                    setPendingAssign(null);
-                                    setShowAssignModal(false);
-                                    loadData();
-                                } else {
-                                    toast.error("操作失败: " + res.error?.message);
-                                }
-                            }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                        >
-                            确认解绑
-                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

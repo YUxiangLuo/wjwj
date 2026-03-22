@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { resolve, sep } from "node:path";
 import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, student, submission, task, teacher, topic } from "../../db/schema";
@@ -59,9 +59,7 @@ const gradingRoutes: RouteDefinition = {
         const conditions = [sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`];
 
         if (status === "pending") {
-            conditions.push(eq(submission.status, 1));
-        } else if (status === "draft") {
-            conditions.push(eq(submission.status, 0));
+            conditions.push(or(eq(submission.status, 0), eq(submission.status, 1))!);
         } else if (status === "graded") {
             conditions.push(eq(submission.status, 2));
         } else if (status === "rejected") {
@@ -264,13 +262,9 @@ const gradingDetailRoutes: RouteDefinition = {
             comment: string;
             status: number;
             rejectReason?: string;
-            action?: string; // "draft" = save without finalizing
         }>(req);
 
-        const isDraft = body.action === "draft";
-
-        // Validate status: only 2 (graded) or 3 (rejected) for final submissions
-        if (!isDraft && body.status !== 2 && body.status !== 3) {
+        if (body.status !== 2 && body.status !== 3) {
             return error("无效的批改状态", "VALIDATION_ERROR", 400);
         }
 
@@ -284,7 +278,7 @@ const gradingDetailRoutes: RouteDefinition = {
             return error("教师评语不能超过2000字", "VALIDATION_ERROR", 400);
         }
 
-        if (!isDraft && body.status === 3) {
+        if (body.status === 3) {
             const reason = (body.rejectReason ?? "").trim();
             if (reason.length < 10 || reason.length > 1000) {
                 return error("驳回理由长度需在10-1000字之间", "VALIDATION_ERROR", 400);
@@ -313,7 +307,7 @@ const gradingDetailRoutes: RouteDefinition = {
 
         if (!detail) return error("提交记录不存在", "NOT_FOUND", 404);
 
-        // Prevent any modification (draft or final) of already-finalized submissions
+        // Prevent modification of already-finalized submissions
         if (detail.status !== 0 && detail.status !== 1) {
             return error("该提交已批改完成，无法修改", "ALREADY_GRADED", 409);
         }
@@ -345,26 +339,6 @@ const gradingDetailRoutes: RouteDefinition = {
         const totalScore =
             (body.scoreQuestionnaire * weights.questionnaire + body.scoreProcess * weights.process + body.scoreReport * weights.report) /
             100;
-
-        if (isDraft) {
-            // Save draft: store scores/comment, mark as draft (status=0), keep lock
-            await db.update(submission).set({
-                status: 0,
-                scoreQuestionnaire: String(body.scoreQuestionnaire),
-                scoreProcess: String(body.scoreProcess),
-                scoreReport: String(body.scoreReport),
-                totalScore: String(Number(totalScore.toFixed(2))),
-                teacherComment: body.comment,
-                rejectReason: body.rejectReason ?? null,
-                gradedById: userId,
-                gradedByType: myUserType,
-                lockedById: userId,
-                lockedByType: myUserType,
-                lockedAt: new Date(), // refresh lock
-            }).where(eq(submission.id, submissionId));
-
-            return json({ success: true });
-        }
 
         await db.update(submission).set({
             scoreQuestionnaire: String(body.scoreQuestionnaire),

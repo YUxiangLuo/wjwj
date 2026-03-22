@@ -106,7 +106,7 @@ export interface GradingItem {
     topic: string;
     className: string;
     submittedAt: string;
-    status: number; // 0=draft, 1=pending, 2=graded, 3=rejected
+    status: number; // 0|1=待批改(0 为历史数据), 2=graded, 3=rejected
     score: number | null;
     gradedByType?: number | null; // 2=教师, 3=助教
     gradedById?: number | null;
@@ -405,7 +405,6 @@ export const teacherApi = {
         comment: string;
         status: number;
         rejectReason?: string;
-        action?: string;
     }) => request<{ success: boolean }>(`/api/teacher/grading/${id}`, {
         method: "POST",
         body: JSON.stringify(data)
@@ -475,10 +474,10 @@ export const teacherApi = {
             method: "DELETE"
         }),
 
-    assignClasses: (id: number, classIds: number[], force?: boolean) =>
+    assignClasses: (id: number, classIds: number[]) =>
         request<{ success: boolean }>(`/api/teacher/assistants/${id}/classes`, {
             method: "POST",
-            body: JSON.stringify({ classIds, force })
+            body: JSON.stringify({ classIds })
         }),
 
     // Notifications

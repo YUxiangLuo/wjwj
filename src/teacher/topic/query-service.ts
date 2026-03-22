@@ -60,14 +60,14 @@ export async function listTeacherTasks(teacherId: number) {
                 FROM submission s
                 INNER JOIN experiment e ON s.experiment_id = e.id
                 INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
-                WHERE e.task_id = ${task.id} AND s.status IN (1, 2, 3)
+                WHERE e.task_id = ${task.id} AND s.status IN (0, 1, 2, 3)
             )`,
             pending: sql<number>`(
                 SELECT COUNT(*)
                 FROM submission s
                 INNER JOIN experiment e ON s.experiment_id = e.id
                 INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
-                WHERE e.task_id = ${task.id} AND s.status = 1
+                WHERE e.task_id = ${task.id} AND s.status IN (0, 1)
             )`,
         })
         .from(task)

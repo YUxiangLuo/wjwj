@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, Save, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,16 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type SubmissionDetail } from "../api-client";
 import { didPendingGradingCountChange, dispatchTeacherGradingQueueUpdated } from "../grading-queue-events";
@@ -56,19 +45,11 @@ export function GradingDetail() {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
     const [showTemplates, setShowTemplates] = useState(false);
-    const [savingDraft, setSavingDraft] = useState(false);
+    const [loadingNext, setLoadingNext] = useState(false);
     const [refreshingPdfState, setRefreshingPdfState] = useState(false);
 
-    // Auto-save state & refs
-    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-    const [restoreDraftOpen, setRestoreDraftOpen] = useState(false);
-    const [pendingDraft, setPendingDraft] = useState<{ scores: typeof scores; comment: string } | null>(null);
     const serverSnapshotRef = useRef("");
-    const saveInFlightRef = useRef(false);
-    const draftResolvedRef = useRef(false);
     const submissionStatusRef = useRef<number | null>(null);
-
-    const draftKey = submissionId ? `teacher_grading_draft_${submissionId}` : null;
 
     useEffect(() => {
         if (!submissionId) return;
@@ -77,9 +58,7 @@ export function GradingDetail() {
 
     async function loadDetail(id: number) {
         setLoading(true);
-        setLastSavedAt(null);
-        draftResolvedRef.current = false;
-        // Reset stale state so auto-save cannot post old data to a new submissionId
+        // Reset stale state so effects cannot apply to a previous submissionId
         setData(null);
         setScores({ questionnaire: "0", process: "0", report: "0" });
         setComment("");
@@ -87,17 +66,6 @@ export function GradingDetail() {
         const res = await teacherApi.getSubmissionDetail(id);
         if (res.success && res.data) {
             setData(res.data);
-            setScores({
-                questionnaire: String(res.data.scoreQuestionnaire ?? 0),
-                process: String(res.data.scoreProcess ?? 0),
-                report: String(res.data.scoreReport ?? 0),
-            });
-            setComment(res.data.teacherComment ?? "");
-            setWeights(res.data.weights ?? { questionnaire: 30, process: 30, report: 40 });
-            setRejectReason(res.data.rejectReason ?? "");
-            submissionStatusRef.current = res.data.status;
-
-            // Initialize server snapshot for auto-save comparison
             const serverData = {
                 scores: {
                     questionnaire: String(res.data.scoreQuestionnaire ?? 0),
@@ -108,27 +76,13 @@ export function GradingDetail() {
             };
             serverSnapshotRef.current = JSON.stringify(serverData);
 
-            // Check for localStorage draft recovery
-            const key = `teacher_grading_draft_${id}`;
-            try {
-                const raw = localStorage.getItem(key);
-                if (raw) {
-                    const draft = JSON.parse(raw) as { scores: typeof scores; comment: string };
-                    if (JSON.stringify(draft) !== JSON.stringify(serverData)) {
-                        setPendingDraft(draft);
-                        setRestoreDraftOpen(true);
-                    } else {
-                        draftResolvedRef.current = true;
-                    }
-                } else {
-                    draftResolvedRef.current = true;
-                }
-            } catch {
-                draftResolvedRef.current = true;
-            }
+            setScores(serverData.scores);
+            setComment(serverData.comment);
+            setWeights(res.data.weights ?? { questionnaire: 30, process: 30, report: 40 });
+            setRejectReason(res.data.rejectReason ?? "");
+            submissionStatusRef.current = res.data.status;
         } else if (!res.success) {
             toast.error(`加载失败: ${res.error?.message ?? "未知错误"}`);
-            draftResolvedRef.current = true;
         }
         setLoading(false);
     }
@@ -182,80 +136,14 @@ export function GradingDetail() {
         submissionStatusRef.current = nextStatus;
     }, []);
 
-    // ─── Auto-save ───────────────────────────────────────────────
     const buildGradingSnapshot = useCallback(() => ({
         scores,
         comment,
     }), [scores, comment]);
 
-    const autoSave = useCallback(async () => {
-        if (!submissionId || !data || data.readonly) return;
-        if (data.status !== 0 && data.status !== 1) return;
-        if (!draftResolvedRef.current) return;
-
-        const gradingData = buildGradingSnapshot();
-        const snapshot = JSON.stringify(gradingData);
-
-        if (snapshot === serverSnapshotRef.current || saveInFlightRef.current) return;
-        if (typeof navigator !== "undefined" && !navigator.onLine) return;
-
-        saveInFlightRef.current = true;
-        try {
-            const sq = parseFloat(gradingData.scores.questionnaire) || 0;
-            const sp = parseFloat(gradingData.scores.process) || 0;
-            const sr = parseFloat(gradingData.scores.report) || 0;
-            const total = sq * (weights.questionnaire / 100) + sp * (weights.process / 100) + sr * (weights.report / 100);
-
-            const res = await teacherApi.submitGrade(Number(submissionId), {
-                scoreQuestionnaire: sq,
-                scoreProcess: sp,
-                scoreReport: sr,
-                totalScore: parseFloat(total.toFixed(2)),
-                comment: gradingData.comment,
-                status: 0,
-                action: "draft",
-            });
-
-            if (res.success) {
-                serverSnapshotRef.current = snapshot;
-                setLastSavedAt(new Date().toLocaleTimeString("zh-CN", {
-                    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-                }));
-                updatePendingQueueStatus(0);
-            }
-        } finally {
-            saveInFlightRef.current = false;
-        }
-    }, [submissionId, data, buildGradingSnapshot, updatePendingQueueStatus, weights]);
-
-    const autoSaveRef = useRef(autoSave);
-    useEffect(() => { autoSaveRef.current = autoSave; }, [autoSave]);
-
-    // Debounce: auto-save 3s after user stops typing
-    useEffect(() => {
-        if (!draftResolvedRef.current) return;
-        const timer = window.setTimeout(() => { void autoSave(); }, 3000);
-        return () => window.clearTimeout(timer);
-    }, [autoSave]);
-
-    // Interval: auto-save every 30s
-    useEffect(() => {
-        const timer = window.setInterval(() => { void autoSaveRef.current(); }, 30_000);
-        return () => window.clearInterval(timer);
-    }, []);
-
-    // localStorage draft save on every change
-    useEffect(() => {
-        if (!draftKey || !draftResolvedRef.current) return;
-        try {
-            localStorage.setItem(draftKey, JSON.stringify(buildGradingSnapshot()));
-        } catch { /* ignore write errors */ }
-    }, [draftKey, buildGradingSnapshot]);
-
-    // Warn before closing tab/window with unsaved changes
+    // Warn before closing tab when form differs from last loaded server snapshot (未提交)
     useEffect(() => {
         const handler = (e: BeforeUnloadEvent) => {
-            if (!draftResolvedRef.current) return;
             const snapshot = JSON.stringify(buildGradingSnapshot());
             if (snapshot !== serverSnapshotRef.current) {
                 e.preventDefault();
@@ -286,7 +174,6 @@ export function GradingDetail() {
         setSaving(false);
         if (res.success) {
             updatePendingQueueStatus(status);
-            if (draftKey) localStorage.removeItem(draftKey);
             toast.success("提交成功");
             navigate("/grading");
         } else {
@@ -294,75 +181,24 @@ export function GradingDetail() {
         }
     }
 
-    async function handleSaveDraft() {
-        if (!submissionId || data?.readonly) return;
-        setSavingDraft(true);
-
-        const gradingData = buildGradingSnapshot();
-        const payload = {
-            scoreQuestionnaire: parseFloat(gradingData.scores.questionnaire) || 0,
-            scoreProcess: parseFloat(gradingData.scores.process) || 0,
-            scoreReport: parseFloat(gradingData.scores.report) || 0,
-            totalScore: parseFloat(totalScore.toFixed(2)),
-            comment: gradingData.comment,
-            status: 0,
-            action: "draft",
-        };
-
-        const res = await teacherApi.submitGrade(Number(submissionId), payload);
-        setSavingDraft(false);
-
-        if (res.success) {
-            serverSnapshotRef.current = JSON.stringify(gradingData);
-            setLastSavedAt(new Date().toLocaleTimeString("zh-CN", {
-                hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-            }));
-            updatePendingQueueStatus(0);
-            toast.success("草稿已保存");
-        } else {
-            toast.error("保存失败: " + res.error?.message);
-        }
-        return res.success;
-    }
-
     async function handleNextStudent() {
         if (!submissionId) return;
-        setSavingDraft(true);
-
-        // Save current work first (skip if readonly)
-        if (!data?.readonly && data?.status !== 2 && data?.status !== 3) {
-            const payload = {
-                scoreQuestionnaire: parseFloat(scores.questionnaire) || 0,
-                scoreProcess: parseFloat(scores.process) || 0,
-                scoreReport: parseFloat(scores.report) || 0,
-                totalScore: parseFloat(totalScore.toFixed(2)),
-                comment: comment,
-                status: 0,
-                action: "draft",
-            };
-            const saveRes = await teacherApi.submitGrade(Number(submissionId), payload);
-            if (!saveRes.success) {
-                setSavingDraft(false);
-                toast.error("保存失败: " + (saveRes.error?.message ?? "未知错误"));
-                return;
-            }
-            updatePendingQueueStatus(0);
-        }
-
-        // Find next pending submission
-        const listRes = await teacherApi.getGradingList("pending");
-        setSavingDraft(false);
-
-        if (listRes.success && listRes.data) {
-            const next = listRes.data.find(item => item.id !== Number(submissionId));
-            if (next) {
-                navigate(`/grading/${next.id}`, { replace: true });
+        setLoadingNext(true);
+        try {
+            const listRes = await teacherApi.getGradingList("pending");
+            if (listRes.success && listRes.data) {
+                const next = listRes.data.find(item => item.id !== Number(submissionId));
+                if (next) {
+                    navigate(`/grading/${next.id}`, { replace: true });
+                } else {
+                    toast.info("没有更多待批改作业");
+                    navigate("/grading");
+                }
             } else {
-                toast.info("没有更多待批改作业");
-                navigate("/grading");
+                toast.error("获取列表失败");
             }
-        } else {
-            toast.error("获取列表失败");
+        } finally {
+            setLoadingNext(false);
         }
     }
 
@@ -473,7 +309,7 @@ export function GradingDetail() {
                             助教模式
                         </Badge>
                     )}
-                    {data.status === 1 && <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">待批改</Badge>}
+                    {(data.status === 0 || data.status === 1) && <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">待批改</Badge>}
                     {data.status === 2 && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">已批改</Badge>}
                     {data.status === 3 && <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20">已驳回</Badge>}
                 </div>
@@ -777,21 +613,12 @@ export function GradingDetail() {
                     </div>
 
                     <div className="p-6 border-t border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
-                        {lastSavedAt && (
-                            <div className="text-xs text-slate-500 text-center">已保存于 {lastSavedAt}</div>
-                        )}
                         {(data.status === 0 || data.status === 1) && !isReadOnly && (
                             <>
-                                <div className="flex gap-2">
-                                    <Button data-testid="teacher-grading-save-draft" variant="outline" className="flex-1 border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 h-11" onClick={handleSaveDraft} disabled={saving || savingDraft}>
-                                        <Save className="w-4 h-4 mr-2" />
-                                        {savingDraft ? "保存中..." : "保存草稿"}
-                                    </Button>
-                                    <Button data-testid="teacher-grading-next" variant="outline" className="flex-1 border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:text-indigo-500 hover:bg-indigo-500/10 h-11" onClick={handleNextStudent} disabled={saving || savingDraft}>
-                                        <SkipForward className="w-4 h-4 mr-2" />
-                                        {savingDraft ? "保存中..." : "下一位"}
-                                    </Button>
-                                </div>
+                                <Button data-testid="teacher-grading-next" variant="outline" className="w-full border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:text-indigo-500 hover:bg-indigo-500/10 h-11" onClick={() => { void handleNextStudent(); }} disabled={saving || loadingNext}>
+                                    <SkipForward className="w-4 h-4 mr-2" />
+                                    {loadingNext ? "处理中..." : "下一位"}
+                                </Button>
                                 <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => handleSubmit(2)} disabled={saving}>
                                     <CheckCircle className="w-4 h-4 mr-2" />
                                     {saving ? "提交中..." : "确认评分"}
@@ -844,43 +671,6 @@ export function GradingDetail() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            <AlertDialog open={restoreDraftOpen} onOpenChange={setRestoreDraftOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">恢复草稿</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
-                            检测到未完成的批改草稿，是否恢复？
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel
-                            className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                            onClick={() => {
-                                if (draftKey) localStorage.removeItem(draftKey);
-                                setPendingDraft(null);
-                                setRestoreDraftOpen(false);
-                                draftResolvedRef.current = true;
-                            }}
-                        >
-                            放弃草稿
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            onClick={() => {
-                                if (!pendingDraft) return;
-                                setScores(pendingDraft.scores);
-                                setComment(pendingDraft.comment);
-                                setPendingDraft(null);
-                                setRestoreDraftOpen(false);
-                                draftResolvedRef.current = true;
-                            }}
-                        >
-                            恢复草稿
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }

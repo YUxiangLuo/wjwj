@@ -94,7 +94,7 @@ async function getGradeExportRows(currentTeacherId: number, params: URLSearchPar
         scoreProcess: r.scoreProcess ?? "",
         scoreReport: r.scoreReport ?? "",
         totalScore: r.totalScore ?? "",
-        status: r.status === 2 ? "已批改" : r.status === 3 ? "已驳回" : r.status === 1 ? "待批改" : "草稿",
+        status: r.status === 2 ? "已批改" : r.status === 3 ? "已驳回" : "待批改",
         gradedAt: r.gradedAt ? formatDateTimeCN(new Date(r.gradedAt)) : "",
         gradedBy: r.gradedByName ?? "",
     }));

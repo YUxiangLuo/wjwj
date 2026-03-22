@@ -1,7 +1,7 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
-import { assistant, assistantClass, class_, experiment, loginLog, semester, student, submission, task } from "../../db/schema";
+import { assistant, assistantClass, class_, loginLog, semester, student } from "../../db/schema";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { ASSISTANT_USER_TYPE, getPrimaryTeacherIdOrThrow } from "./auth";
@@ -402,26 +402,7 @@ const assistantClassAssignRoutes: RouteDefinition = {
 
         if (!owned || isDeletedAssistantName(owned.name)) return error("无权限操作该助教", "FORBIDDEN", 403);
 
-        const body = await parseBody<{ classIds: number[]; force?: boolean }>(req);
-
-        const existing = await db.select({ classId: assistantClass.classId }).from(assistantClass).where(eq(assistantClass.assistantId, assistantId));
-
-        const existingIds = new Set(existing.map((c) => c.classId));
-        const nextIds = new Set(body.classIds ?? []);
-        const removed = [...existingIds].filter((id) => !nextIds.has(id));
-
-        if (removed.length > 0 && !body.force) {
-            const [drafts] = await db
-                .select({ count: count() })
-                .from(submission)
-                .innerJoin(experiment, eq(submission.experimentId, experiment.id))
-                .innerJoin(task, eq(experiment.taskId, task.id))
-                .where(and(eq(submission.status, 0), eq(submission.gradedByType, ASSISTANT_USER_TYPE), eq(submission.gradedById, assistantId), sql`${task.classId} IN (${sql.join(removed, sql`, `)})`));
-
-            if ((drafts?.count ?? 0) > 0) {
-                return error("该助教在移除班级存在批改草稿，继续将保留草稿但无法继续批改。", "HAS_DRAFTS", 409);
-            }
-        }
+        const body = await parseBody<{ classIds: number[] }>(req);
 
         await db.transaction(async (tx) => {
             await tx.delete(assistantClass).where(eq(assistantClass.assistantId, assistantId));
