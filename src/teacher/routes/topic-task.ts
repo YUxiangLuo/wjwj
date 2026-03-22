@@ -183,7 +183,20 @@ const topicRecommendQuestionRoutes: RouteDefinition = {
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
 
-        const body = await parseBody<{ items: Array<{ questionType: number; content: string; options?: any; sortOrder?: number }> }>(req);
+        const body = await parseBody<{
+            items: Array<{
+                questionType: number;
+                content: string;
+                sortOrder?: number;
+                choiceOptions?: string[] | null;
+                minSelect?: number | null;
+                maxSelect?: number | null;
+                scaleMin?: number | null;
+                scaleMax?: number | null;
+                scaleMinLabel?: string | null;
+                scaleMaxLabel?: string | null;
+            }>;
+        }>(req);
         const replaceResult = await replaceTopicRecommendQuestions({ topicId: id, items: body.items ?? [] });
         if (!replaceResult.ok) return error(replaceResult.message, replaceResult.code, replaceResult.status);
 

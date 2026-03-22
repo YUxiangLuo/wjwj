@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RichTextEditor } from "@/components/RichTextEditor";
 import type { TopicDetail, TopicRecommendQuestion } from "../api-client";
 import { teacherApi } from "../api-client";
-import { RecommendQuestionEditor, parseOptions } from "./RecommendQuestionEditor";
+import { formatRecommendOptionsSummary, getChoiceListForDisplay } from "@/lib/recommend-question-options";
+import { RecommendQuestionEditor } from "./RecommendQuestionEditor";
 
 interface FieldMappingState {
     identifier?: string;
@@ -661,7 +662,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             3: "bg-amber-500/10 text-amber-500 border-amber-500/20",
                                             4: "bg-purple-500/10 text-purple-500 border-purple-500/20",
                                         };
-                                        const optionsArr = parseOptions(q.options);
+                                        const optionsArr = getChoiceListForDisplay(q);
                                         return (
                                             <div key={q.id} className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-lg p-4 relative group hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
                                                 <div className="flex items-start gap-3">
@@ -707,11 +708,16 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                 ))}
                                                             </div>
                                                         )}
+                                                        {q.questionType === 3 && (
+                                                            <p className="text-xs text-slate-500 mt-1">
+                                                                选择范围：{q.minSelect ?? 1}–{q.maxSelect ?? optionsArr.length} 项
+                                                            </p>
+                                                        )}
                                                         {q.questionType === 1 && (
                                                             <p className="text-xs text-slate-500 mt-1">选项：是 / 否</p>
                                                         )}
                                                         {q.questionType === 4 && (
-                                                            <p className="text-xs text-slate-500 mt-1">量表：1-10 分</p>
+                                                            <p className="text-xs text-slate-500 mt-1">{formatRecommendOptionsSummary(q)}</p>
                                                         )}
                                                     </div>
 

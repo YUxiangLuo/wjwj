@@ -36,8 +36,14 @@ interface TopicAttachmentInput {
 interface TopicRecommendQuestionInput {
     questionType: number;
     content: string;
-    options?: any;
     sortOrder?: number;
+    choiceOptions?: string[] | null;
+    minSelect?: number | null;
+    maxSelect?: number | null;
+    scaleMin?: number | null;
+    scaleMax?: number | null;
+    scaleMinLabel?: string | null;
+    scaleMaxLabel?: string | null;
 }
 
 function parseObjectLike<T extends object>(value: unknown): T | null {
@@ -45,7 +51,7 @@ function parseObjectLike<T extends object>(value: unknown): T | null {
     if (typeof value === "string") {
         try {
             const parsed = JSON.parse(value);
-            return parsed && typeof parsed === "object" ? parsed as T : null;
+            return parsed && typeof parsed === "object" ? (parsed as T) : null;
         } catch {
             return null;
         }
@@ -142,16 +148,34 @@ export function validateRecommendQuestionItems(items: TopicRecommendQuestionInpu
         const content = (item.content ?? "").trim();
         if (!content || content.length > 500) return "题目内容长度需在1-500字";
 
-        if (item.questionType === 2 || item.questionType === 3) {
-            let options: string[];
-            if (Array.isArray(item.options)) {
-                options = item.options.filter((o: unknown) => typeof o === "string" && o.trim()).map((o: string) => o.trim());
-            } else {
-                const rawOptions = typeof item.options === "string" ? item.options : "";
-                options = rawOptions.split(",").map((option) => option.trim()).filter(Boolean);
+        const qt = item.questionType;
+
+        if (qt === 2) {
+            const opts = (item.choiceOptions ?? []).filter((o) => typeof o === "string" && o.trim()).map((o) => o.trim());
+            if (opts.length < 2 || opts.length > 10) return "选项数量需在2-10之间";
+            if (opts.some((o) => o.length > 200)) return "选项内容长度不能超过200";
+        }
+
+        if (qt === 3) {
+            const opts = (item.choiceOptions ?? []).filter((o) => typeof o === "string" && o.trim()).map((o) => o.trim());
+            if (opts.length < 2 || opts.length > 10) return "选项数量需在2-10之间";
+            if (opts.some((o) => o.length > 200)) return "选项内容长度不能超过200";
+            const minSelect = item.minSelect ?? NaN;
+            const maxSelect = item.maxSelect ?? NaN;
+            if (!Number.isFinite(minSelect) || !Number.isFinite(maxSelect)) return "多选题需填写最少/最多选择数";
+            if (minSelect < 1 || maxSelect < minSelect || maxSelect > opts.length) {
+                return "多选题最少/最多选择数不合法";
             }
-            if (options.length < 2 || options.length > 10) return "选项数量需在2-10之间";
-            if (options.some((option) => option.length > 200)) return "选项内容长度不能超过200";
+        }
+
+        if (qt === 4) {
+            const scaleMin = item.scaleMin ?? NaN;
+            const scaleMax = item.scaleMax ?? NaN;
+            const a = (item.scaleMinLabel ?? "").trim();
+            const b = (item.scaleMaxLabel ?? "").trim();
+            if (!Number.isFinite(scaleMin) || !Number.isFinite(scaleMax)) return "量表分值配置无效";
+            if (scaleMin < 1 || scaleMax > 10 || scaleMin >= scaleMax) return "量表分值需在1-10之间且最小值小于最大值";
+            if (!a || !b || a.length > 50 || b.length > 50) return "量表标签需在1-50字";
         }
     }
 

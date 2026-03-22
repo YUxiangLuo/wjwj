@@ -248,8 +248,14 @@ export function TopicManagement() {
         const items = recommendQuestions.map((q, idx) => ({
             questionType: q.questionType,
             content: q.content,
-            options: q.options,
             sortOrder: idx,
+            choiceOptions: q.choiceOptions ?? null,
+            minSelect: q.minSelect ?? null,
+            maxSelect: q.maxSelect ?? null,
+            scaleMin: q.scaleMin ?? null,
+            scaleMax: q.scaleMax ?? null,
+            scaleMinLabel: q.scaleMinLabel ?? null,
+            scaleMaxLabel: q.scaleMaxLabel ?? null,
         }));
         const res = await teacherApi.updateRecommendQuestions(editingTopicId, items);
         if (res.success) {

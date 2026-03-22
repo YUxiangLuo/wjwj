@@ -66,14 +66,35 @@ export interface TopicAttachment {
     createdAt: string;
 }
 
+/** 与表 topic_recommend_question 一致 */
 export interface TopicRecommendQuestion {
     id: number;
     topicId: number;
     questionType: number;
     content: string;
-    options?: any;
     sortOrder: number;
+    choiceOptions?: string[] | null;
+    minSelect?: number | null;
+    maxSelect?: number | null;
+    scaleMin?: number | null;
+    scaleMax?: number | null;
+    scaleMinLabel?: string | null;
+    scaleMaxLabel?: string | null;
 }
+
+/** 保存推荐题目列表时的单项（可省略 id） */
+export type RecommendQuestionPayload = Pick<
+    TopicRecommendQuestion,
+    | "questionType"
+    | "content"
+    | "choiceOptions"
+    | "minSelect"
+    | "maxSelect"
+    | "scaleMin"
+    | "scaleMax"
+    | "scaleMinLabel"
+    | "scaleMaxLabel"
+> & { sortOrder?: number };
 
 export interface TopicDetail {
     topic: any;
@@ -362,7 +383,7 @@ export const teacherApi = {
             request<{ success: boolean }>(`/api/teacher/topics/${topicId}/attachments/${attachmentId}`, {
                 method: "DELETE"
             }),
-        updateRecommendQuestions: (id: number, items: Array<{ questionType: number; content: string; options?: any; sortOrder?: number }>) =>
+        updateRecommendQuestions: (id: number, items: RecommendQuestionPayload[]) =>
             request<{ success: boolean }>(`/api/teacher/topics/${id}/recommend-questions`, {
                 method: "PUT",
                 body: JSON.stringify({ items })

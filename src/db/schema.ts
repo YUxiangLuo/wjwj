@@ -275,9 +275,21 @@ export const topicRecommendQuestion = mysqlTable(
     {
         id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
         topicId: bigint("topic_id", { mode: "number", unsigned: true }).notNull(),
+        /** 1=判断 2=单选 3=多选 4=量表 */
         questionType: tinyint("question_type").notNull(),
         content: varchar("content", { length: 500 }).notNull(),
-        options: json("options"),
+        /** 单选/多选：选项文案列表；判断题与量表题为 null */
+        choiceOptions: json("choice_options").$type<string[] | null>(),
+        /** 多选：最少选几项 */
+        minSelect: tinyint("min_select", { unsigned: true }),
+        /** 多选：最多选几项 */
+        maxSelect: tinyint("max_select", { unsigned: true }),
+        /** 量表：最小分值 */
+        scaleMin: tinyint("scale_min", { unsigned: true }),
+        /** 量表：最大分值 */
+        scaleMax: tinyint("scale_max", { unsigned: true }),
+        scaleMinLabel: varchar("scale_min_label", { length: 50 }),
+        scaleMaxLabel: varchar("scale_max_label", { length: 50 }),
         sortOrder: int("sort_order").notNull().default(0),
         createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
         updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),

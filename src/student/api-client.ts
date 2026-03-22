@@ -57,12 +57,19 @@ export interface TopicAttachment {
     size: number;
 }
 
+/** 与 topic_recommend_question 同步 */
 export interface RecommendQuestion {
     id: number;
     questionType: number;
     content: string;
-    options: unknown;
     sortOrder: number;
+    choiceOptions?: string[] | null;
+    minSelect?: number | null;
+    maxSelect?: number | null;
+    scaleMin?: number | null;
+    scaleMax?: number | null;
+    scaleMinLabel?: string | null;
+    scaleMaxLabel?: string | null;
 }
 
 export interface TaskDetail {

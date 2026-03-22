@@ -661,42 +661,87 @@ async function seed() {
     }
 
     // ── 推荐问题（覆盖 boolean/single/multiple/scale 4 种题型） ──
-    type RecQ = { topicIdx: number; questionType: number; content: string; options?: string[]; sortOrder: number };
+    type RecQ = {
+        topicIdx: number;
+        questionType: number;
+        content: string;
+        sortOrder: number;
+        choiceOptions?: string[] | null;
+        minSelect?: number | null;
+        maxSelect?: number | null;
+        scaleMin?: number | null;
+        scaleMax?: number | null;
+        scaleMinLabel?: string | null;
+        scaleMaxLabel?: string | null;
+    };
+    const scale5 = { scaleMin: 1, scaleMax: 5, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" } as const;
     const recQuestions: RecQ[] = [
-        // 课题 0: 消费者行为
         { topicIdx: 0, questionType: 1, content: "您是否在过去一个月内有过线上购物行为？", sortOrder: 1 },
-        { topicIdx: 0, questionType: 2, content: "您的年龄段是？", options: ["18-25岁", "26-35岁", "36-45岁", "46-55岁"], sortOrder: 2 },
-        { topicIdx: 0, questionType: 3, content: "您通常购买哪些品类？（可多选）", options: ["电子数码", "服饰鞋包", "家居生活", "美妆护肤", "食品饮料", "图书文具"], sortOrder: 3 },
-        { topicIdx: 0, questionType: 4, content: "请对您最近一次购物体验打分", sortOrder: 4 },
-        { topicIdx: 0, questionType: 2, content: "您月均消费金额大约是？", options: ["500元以下", "500-1000元", "1000-3000元", "3000-5000元", "5000元以上"], sortOrder: 5 },
-        // 课题 1: 网购趋势
+        { topicIdx: 0, questionType: 2, content: "您的年龄段是？", choiceOptions: ["18-25岁", "26-35岁", "36-45岁", "46-55岁"], sortOrder: 2 },
+        {
+            topicIdx: 0,
+            questionType: 3,
+            content: "您通常购买哪些品类？（可多选）",
+            choiceOptions: ["电子数码", "服饰鞋包", "家居生活", "美妆护肤", "食品饮料", "图书文具"],
+            minSelect: 1,
+            maxSelect: 3,
+            sortOrder: 3,
+        },
+        { topicIdx: 0, questionType: 4, content: "请对您最近一次购物体验打分", sortOrder: 4, ...scale5 },
+        { topicIdx: 0, questionType: 2, content: "您月均消费金额大约是？", choiceOptions: ["500元以下", "500-1000元", "1000-3000元", "3000-5000元", "5000元以上"], sortOrder: 5 },
         { topicIdx: 1, questionType: 1, content: "您是否使用过跨境电商平台？", sortOrder: 1 },
-        { topicIdx: 1, questionType: 2, content: "您最常使用的网购平台是？", options: ["淘宝/天猫", "京东", "拼多多", "抖音商城", "其他"], sortOrder: 2 },
-        { topicIdx: 1, questionType: 3, content: "影响您购物决策的因素有哪些？（可多选）", options: ["价格", "品牌", "评价", "物流速度", "售后服务", "直播推荐"], sortOrder: 3 },
-        { topicIdx: 1, questionType: 4, content: "请对网购整体满意度评分", sortOrder: 4 },
-        // 课题 2: 市场调研
+        { topicIdx: 1, questionType: 2, content: "您最常使用的网购平台是？", choiceOptions: ["淘宝/天猫", "京东", "拼多多", "抖音商城", "其他"], sortOrder: 2 },
+        {
+            topicIdx: 1,
+            questionType: 3,
+            content: "影响您购物决策的因素有哪些？（可多选）",
+            choiceOptions: ["价格", "品牌", "评价", "物流速度", "售后服务", "直播推荐"],
+            minSelect: 1,
+            maxSelect: 3,
+            sortOrder: 3,
+        },
+        { topicIdx: 1, questionType: 4, content: "请对网购整体满意度评分", sortOrder: 4, ...scale5 },
         { topicIdx: 2, questionType: 1, content: "您每周是否至少外出就餐一次？", sortOrder: 1 },
-        { topicIdx: 2, questionType: 2, content: "您倾向于选择哪种餐饮类型？", options: ["中式快餐", "西式快餐", "火锅/烧烤", "日韩料理", "轻食沙拉"], sortOrder: 2 },
-        { topicIdx: 2, questionType: 4, content: "请对社区周边餐饮配套满意度评分", sortOrder: 3 },
-        // 课题 3: 数据分析
-        { topicIdx: 3, questionType: 2, content: "您每天平均在线学习时长约为？", options: ["不足30分钟", "30-60分钟", "1-2小时", "2小时以上"], sortOrder: 1 },
-        { topicIdx: 3, questionType: 3, content: "您学习中遇到的困难有哪些？（可多选）", options: ["缺乏自律", "课程内容难", "缺少互动", "时间不够", "设备不足"], sortOrder: 2 },
-        { topicIdx: 3, questionType: 4, content: "您对在线教育平台的推荐意愿评分", sortOrder: 3 },
-        // 课题 5: 健康运动
+        { topicIdx: 2, questionType: 2, content: "您倾向于选择哪种餐饮类型？", choiceOptions: ["中式快餐", "西式快餐", "火锅/烧烤", "日韩料理", "轻食沙拉"], sortOrder: 2 },
+        { topicIdx: 2, questionType: 4, content: "请对社区周边餐饮配套满意度评分", sortOrder: 3, ...scale5 },
+        { topicIdx: 3, questionType: 2, content: "您每天平均在线学习时长约为？", choiceOptions: ["不足30分钟", "30-60分钟", "1-2小时", "2小时以上"], sortOrder: 1 },
+        {
+            topicIdx: 3,
+            questionType: 3,
+            content: "您学习中遇到的困难有哪些？（可多选）",
+            choiceOptions: ["缺乏自律", "课程内容难", "缺少互动", "时间不够", "设备不足"],
+            minSelect: 1,
+            maxSelect: 3,
+            sortOrder: 2,
+        },
+        { topicIdx: 3, questionType: 4, content: "您对在线教育平台的推荐意愿评分", sortOrder: 3, ...scale5 },
         { topicIdx: 5, questionType: 1, content: "您是否有定期体检的习惯？", sortOrder: 1 },
-        { topicIdx: 5, questionType: 2, content: "您每周运动次数约为？", options: ["0次", "1-2次", "3-4次", "5次及以上"], sortOrder: 2 },
-        { topicIdx: 5, questionType: 3, content: "您常参与的运动类型有哪些？（可多选）", options: ["跑步", "游泳", "健身房器械", "球类运动", "瑜伽/太极", "骑行"], sortOrder: 3 },
-        { topicIdx: 5, questionType: 4, content: "请对自己目前的健康状况评分", sortOrder: 4 },
-        // 课题 7: 往期
-        { topicIdx: 7, questionType: 2, content: "您所在的城市等级是？", options: ["一线城市", "新一线城市", "二线城市", "三线及以下"], sortOrder: 1 },
-        { topicIdx: 7, questionType: 4, content: "您对 2023 年整体消费体验的评分", sortOrder: 2 },
+        { topicIdx: 5, questionType: 2, content: "您每周运动次数约为？", choiceOptions: ["0次", "1-2次", "3-4次", "5次及以上"], sortOrder: 2 },
+        {
+            topicIdx: 5,
+            questionType: 3,
+            content: "您常参与的运动类型有哪些？（可多选）",
+            choiceOptions: ["跑步", "游泳", "健身房器械", "球类运动", "瑜伽/太极", "骑行"],
+            minSelect: 1,
+            maxSelect: 3,
+            sortOrder: 3,
+        },
+        { topicIdx: 5, questionType: 4, content: "请对自己目前的健康状况评分", sortOrder: 4, ...scale5 },
+        { topicIdx: 7, questionType: 2, content: "您所在的城市等级是？", choiceOptions: ["一线城市", "新一线城市", "二线城市", "三线及以下"], sortOrder: 1 },
+        { topicIdx: 7, questionType: 4, content: "您对 2023 年整体消费体验的评分", sortOrder: 2, ...scale5 },
     ];
     for (const q of recQuestions) {
         await db.insert(topicRecommendQuestion).values({
             topicId: topicIds[q.topicIdx]!,
             questionType: q.questionType,
             content: q.content,
-            options: q.options ?? null,
+            choiceOptions: q.choiceOptions ?? null,
+            minSelect: q.minSelect ?? null,
+            maxSelect: q.maxSelect ?? null,
+            scaleMin: q.scaleMin ?? null,
+            scaleMax: q.scaleMax ?? null,
+            scaleMinLabel: q.scaleMinLabel ?? null,
+            scaleMaxLabel: q.scaleMaxLabel ?? null,
             sortOrder: q.sortOrder,
         });
     }

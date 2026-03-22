@@ -198,8 +198,14 @@ const taskDetailRoutes: RouteDefinition = {
                 id: topicRecommendQuestion.id,
                 questionType: topicRecommendQuestion.questionType,
                 content: topicRecommendQuestion.content,
-                options: topicRecommendQuestion.options,
                 sortOrder: topicRecommendQuestion.sortOrder,
+                choiceOptions: topicRecommendQuestion.choiceOptions,
+                minSelect: topicRecommendQuestion.minSelect,
+                maxSelect: topicRecommendQuestion.maxSelect,
+                scaleMin: topicRecommendQuestion.scaleMin,
+                scaleMax: topicRecommendQuestion.scaleMax,
+                scaleMinLabel: topicRecommendQuestion.scaleMinLabel,
+                scaleMaxLabel: topicRecommendQuestion.scaleMaxLabel,
             })
             .from(topicRecommendQuestion)
             .where(eq(topicRecommendQuestion.topicId, taskInfo.topicId))

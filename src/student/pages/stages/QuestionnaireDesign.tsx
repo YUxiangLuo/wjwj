@@ -20,6 +20,7 @@ import { useExperiment } from "../ExperimentLayout";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { ImmersiveQuestionnairePreview } from "../../components/ImmersiveQuestionnairePreview";
+import { recommendQuestionToStudentQuestion } from "@/lib/recommend-question-options";
 import { tasksApi, type Question, type QuestionType, type QuestionnaireData, type RecommendQuestion } from "../../api-client";
 
 const questionTypeLabels: Record<QuestionType, string> = {
@@ -268,34 +269,9 @@ export function QuestionnaireDesign() {
         setDragOverId(null);
     };
 
-    const mapRecommendQuestion = (rq: RecommendQuestion): Question => {
-        const typeMap: Record<number, QuestionType> = {
-            1: "boolean",
-            2: "single",
-            3: "multiple",
-            4: "scale",
-        };
-        const mappedType = typeMap[rq.questionType] ?? "single";
-        const options = Array.isArray(rq.options)
-            ? (rq.options as string[])
-            : typeof rq.options === "string"
-                ? (() => { try { return JSON.parse(rq.options) as string[]; } catch { return []; } })()
-                : [];
-
-        return {
-            id: generateId(),
-            type: mappedType,
-            content: rq.content,
-            options: mappedType === "single" || mappedType === "multiple" ? options : undefined,
-            minSelect: mappedType === "multiple" ? 1 : undefined,
-            maxSelect: mappedType === "multiple" ? Math.min(3, Math.max(2, options.length)) : undefined,
-            scaleMin: mappedType === "scale" ? 1 : undefined,
-            scaleMax: mappedType === "scale" ? 10 : undefined,
-        };
-    };
-
     const handleUseRecommend = (rq: RecommendQuestion) => {
-        setQuestions((prev) => [...prev, mapRecommendQuestion(rq)]);
+        const mapped = recommendQuestionToStudentQuestion(rq);
+        setQuestions((prev) => [...prev, { ...mapped, id: generateId() }]);
     };
 
     const invalidOptionQuestions = useMemo(() => {

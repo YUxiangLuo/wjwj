@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { RichTextContent } from "@/components/RichTextContent";
+import { formatRecommendOptionsSummary } from "@/lib/recommend-question-options";
 import { teacherApi, type TopicDetail, type Topic } from "../api-client";
 
 const QUESTION_TYPE_LABELS: Record<number, string> = {
@@ -313,11 +314,12 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     </Badge>
                                                 </div>
                                                 <div className="text-sm text-slate-800 dark:text-slate-200 pl-9">{q.content || "（无内容）"}</div>
-                                                {q.options && q.questionType !== 1 && q.questionType !== 4 && (
-                                                    <div className="pl-9 text-xs text-slate-600 dark:text-slate-400">
-                                                        选项：{typeof q.options === "string" ? q.options : JSON.stringify(q.options)}
-                                                    </div>
-                                                )}
+                                                {(() => {
+                                                    const summary = formatRecommendOptionsSummary(q);
+                                                    return summary ? (
+                                                        <div className="pl-9 text-xs text-slate-600 dark:text-slate-400">{summary}</div>
+                                                    ) : null;
+                                                })()}
                                             </div>
                                         ))
                                     ) : (

@@ -84,8 +84,33 @@ describe("topic validation helpers", () => {
         );
 
         expect(
-            validateRecommendQuestionItems([{ questionType: 2, content: "Question", options: "A" }])
+            validateRecommendQuestionItems([{ questionType: 2, content: "Question", choiceOptions: ["A"] }])
         ).toBe("选项数量需在2-10之间");
+
+        expect(
+            validateRecommendQuestionItems([
+                {
+                    questionType: 3,
+                    content: "Q",
+                    choiceOptions: ["a", "b"],
+                    minSelect: 2,
+                    maxSelect: 1,
+                },
+            ])
+        ).toBe("多选题最少/最多选择数不合法");
+
+        expect(
+            validateRecommendQuestionItems([
+                {
+                    questionType: 4,
+                    content: "S",
+                    scaleMin: 1,
+                    scaleMax: 5,
+                    scaleMinLabel: "左",
+                    scaleMaxLabel: "右",
+                },
+            ])
+        ).toBeNull();
     });
 
     test("validateWeightConfig enforces ranges and total", () => {

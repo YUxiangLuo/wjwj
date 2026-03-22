@@ -68,7 +68,18 @@ export async function uploadTopicAttachment(params: {
 
 export async function replaceTopicRecommendQuestions(params: {
     topicId: number;
-    items: Array<{ questionType: number; content: string; options?: any; sortOrder?: number }>;
+    items: Array<{
+        questionType: number;
+        content: string;
+        sortOrder?: number;
+        choiceOptions?: string[] | null;
+        minSelect?: number | null;
+        maxSelect?: number | null;
+        scaleMin?: number | null;
+        scaleMax?: number | null;
+        scaleMinLabel?: string | null;
+        scaleMaxLabel?: string | null;
+    }>;
 }) {
     const validationError = validateRecommendQuestionItems(params.items);
     if (validationError) {
@@ -82,7 +93,13 @@ export async function replaceTopicRecommendQuestions(params: {
                 topicId: params.topicId,
                 questionType: item.questionType,
                 content: item.content,
-                options: item.options ?? null,
+                choiceOptions: item.choiceOptions ?? null,
+                minSelect: item.minSelect ?? null,
+                maxSelect: item.maxSelect ?? null,
+                scaleMin: item.scaleMin ?? null,
+                scaleMax: item.scaleMax ?? null,
+                scaleMinLabel: item.scaleMinLabel ?? null,
+                scaleMaxLabel: item.scaleMaxLabel ?? null,
                 sortOrder: item.sortOrder ?? 0,
             });
         }
@@ -188,13 +205,23 @@ export async function copyTopicWithResources(params: {
 
             if (questions.length) {
                 await tx.insert(topicRecommendQuestion).values(
-                    questions.map((question) => ({
-                        topicId: insertedTopicId,
-                        questionType: question.questionType,
-                        content: question.content,
-                        options: normalizeJsonColumnValue(question.options),
-                        sortOrder: question.sortOrder,
-                    }))
+                    questions.map((question) => {
+                        const co = normalizeJsonColumnValue(question.choiceOptions);
+                        const choiceOptions = Array.isArray(co) ? (co as string[]) : null;
+                        return {
+                            topicId: insertedTopicId,
+                            questionType: question.questionType,
+                            content: question.content,
+                            choiceOptions,
+                            minSelect: question.minSelect ?? null,
+                            maxSelect: question.maxSelect ?? null,
+                            scaleMin: question.scaleMin ?? null,
+                            scaleMax: question.scaleMax ?? null,
+                            scaleMinLabel: question.scaleMinLabel ?? null,
+                            scaleMaxLabel: question.scaleMaxLabel ?? null,
+                            sortOrder: question.sortOrder,
+                        };
+                    })
                 );
             }
 
