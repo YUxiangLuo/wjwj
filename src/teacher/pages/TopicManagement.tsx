@@ -46,6 +46,8 @@ export function TopicManagement() {
 
     // Form state
     const [editingTopicId, setEditingTopicId] = useState<number | null>(null);
+    /** 当前编辑的课题是否已发布（已发布则「上传数据」「字段映射」只读且下一步不发起相关保存请求） */
+    const [editingTopicPublished, setEditingTopicPublished] = useState(false);
     const [newTopicName, setNewTopicName] = useState("");
     const [newTopicDesc, setNewTopicDesc] = useState("");
 
@@ -142,6 +144,7 @@ export function TopicManagement() {
 
     function openCreateModal() {
         setEditingTopicId(null);
+        setEditingTopicPublished(false);
         setNewTopicName("");
         setNewTopicDesc("");
         setCurrentStep(1);
@@ -156,6 +159,7 @@ export function TopicManagement() {
 
     function openEditModal(topic: Topic) {
         setEditingTopicId(topic.id);
+        setEditingTopicPublished(topic.status === 1);
         setNewTopicName(topic.name);
         setNewTopicDesc(topic.description || "");
         setCurrentStep(1);
@@ -189,7 +193,7 @@ export function TopicManagement() {
     }
 
     async function handleExcelUpload(file: File) {
-        if (!editingTopicId) return;
+        if (!editingTopicId || editingTopicPublished) return;
         setUploadingExcel(true);
         const res = await teacherApi.uploadTopicExcel(editingTopicId, file);
         setUploadingExcel(false);
@@ -203,6 +207,10 @@ export function TopicManagement() {
 
     async function handleSaveFieldMapping() {
         if (!editingTopicId) return;
+        if (editingTopicPublished) {
+            setCurrentStep(4);
+            return;
+        }
         if (!fieldMapping.identifier) {
             toast.error("请选择标识符字段");
             return;
@@ -272,6 +280,7 @@ export function TopicManagement() {
             setShowCreateModal(false);
             setCurrentStep(1);
             setEditingTopicId(null);
+            setEditingTopicPublished(false);
             setNewTopicName("");
             setNewTopicDesc("");
             loadTopics();
@@ -454,8 +463,14 @@ export function TopicManagement() {
 
             <TopicWizardDialog
                 open={showCreateModal}
-                onOpenChange={setShowCreateModal}
+                onOpenChange={(open) => {
+                    setShowCreateModal(open);
+                    if (!open) {
+                        setEditingTopicPublished(false);
+                    }
+                }}
                 editingTopicId={editingTopicId}
+                isPublishedTopic={editingTopicPublished}
                 currentStep={currentStep}
                 setCurrentStep={setCurrentStep}
                 newTopicName={newTopicName}

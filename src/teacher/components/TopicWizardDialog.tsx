@@ -21,6 +21,8 @@ interface TopicWizardDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     editingTopicId: number | null;
+    /** 已发布课题：上传数据、字段映射步骤只读，下一步不触发保存接口 */
+    isPublishedTopic?: boolean;
     currentStep: number;
     setCurrentStep: (value: number | ((prev: number) => number)) => void;
     newTopicName: string;
@@ -53,6 +55,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         open,
         onOpenChange,
         editingTopicId,
+        isPublishedTopic = false,
         currentStep,
         setCurrentStep,
         newTopicName,
@@ -347,6 +350,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 2 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                {isPublishedTopic && (
+                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                                        该课题已发布，总体数据文件不可更换，仅可查看当前数据。
+                                    </div>
+                                )}
                                 <div className="flex items-center justify-between">
                                     <Label className="text-slate-700 dark:text-slate-300">上传总体数据（Excel）</Label>
                                     <div className="flex items-center gap-3">
@@ -359,36 +367,46 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             <HelpCircle className="w-3 h-3" />
                                             数据规范
                                         </a>
-                                        <a
-                                            href="/templates/数据模板.csv"
-                                            download
-                                            className="text-xs text-emerald-600 hover:text-emerald-500 flex items-center gap-1"
-                                        >
-                                            <Download className="w-3 h-3" />
-                                            下载模板
-                                        </a>
+                                        {!isPublishedTopic && (
+                                            <a
+                                                href="/templates/数据模板.csv"
+                                                download
+                                                className="text-xs text-emerald-600 hover:text-emerald-500 flex items-center gap-1"
+                                            >
+                                                <Download className="w-3 h-3" />
+                                                下载模板
+                                            </a>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 rounded-lg p-8 text-center hover:border-indigo-500/50 transition-colors">
+                                <div
+                                    className={`border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 rounded-lg p-8 text-center transition-colors ${isPublishedTopic ? "opacity-80 pointer-events-none" : "hover:border-indigo-500/50"}`}
+                                >
                                     <Upload className="w-10 h-10 mx-auto text-slate-500 mb-4" />
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">点击或拖拽上传 Excel 文件</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                                        {isPublishedTopic ? "已上传的数据文件（不可更换）" : "点击或拖拽上传 Excel 文件"}
+                                    </p>
                                     <p className="text-xs text-slate-500 mb-4">支持 .xlsx, .xls, .csv 格式，数据行数 1-100,000</p>
-                                    <Input
-                                        type="file"
-                                        data-testid="teacher-topic-excel-file"
-                                        accept=".xlsx,.xls,.csv"
-                                        className="hidden"
-                                        id="excel-upload"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) onExcelUpload(file);
-                                        }}
-                                    />
-                                    <div className="flex items-center justify-center gap-3">
-                                        <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100">
-                                            选择文件
-                                        </Button>
-                                    </div>
+                                    {!isPublishedTopic && (
+                                        <>
+                                            <Input
+                                                type="file"
+                                                data-testid="teacher-topic-excel-file"
+                                                accept=".xlsx,.xls,.csv"
+                                                className="hidden"
+                                                id="excel-upload"
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) onExcelUpload(file);
+                                                }}
+                                            />
+                                            <div className="flex items-center justify-center gap-3">
+                                                <Button variant="outline" onClick={() => document.getElementById("excel-upload")?.click()} className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100">
+                                                    选择文件
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 {uploadingExcel && <div className="flex items-center gap-2 text-sm text-indigo-500"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                 {excelInfo && (
@@ -434,7 +452,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/60 p-4">
+                                {isPublishedTopic && (
+                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                                        该课题已发布，字段映射不可修改，仅可查看当前配置。
+                                    </div>
+                                )}
+                                <div className={`rounded-lg border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/60 p-4 ${isPublishedTopic ? "opacity-70" : ""}`}>
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <div className="text-sm font-medium text-slate-800 dark:text-slate-200">不知道怎么配？可先用智能推荐</div>
@@ -445,6 +468,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <Button
                                             type="button"
                                             variant="outline"
+                                            disabled={isPublishedTopic}
                                             onClick={applyRecommendedMapping}
                                             className="shrink-0 border-indigo-500/40 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-800 dark:hover:text-indigo-200"
                                         >
@@ -465,8 +489,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 stratified: prev.stratified.filter((item) => item !== v),
                                                 numeric: prev.numeric.filter((item) => item !== v),
                                             }))}
+                                        disabled={isPublishedTopic}
                                     >
-                                        <SelectTrigger data-testid="teacher-topic-mapping-identifier" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                        <SelectTrigger data-testid="teacher-topic-mapping-identifier" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 disabled:opacity-60">
                                             <SelectValue placeholder="选择标识符字段" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
@@ -505,7 +530,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.stratified.includes(c);
                                                 const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
-                                                const disabled = fieldMapping.identifier === c || blockedAsIdentifier;
+                                                const disabled = isPublishedTopic || fieldMapping.identifier === c || blockedAsIdentifier;
                                                 const reason = fieldMapping.identifier === c
                                                     ? "该字段已作为标识符"
                                                     : blockedAsIdentifier
@@ -547,7 +572,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             {columns.map((c) => {
                                                 const checked = fieldMapping.numeric.includes(c);
                                                 const blockedAsIdentifier = isLikelyIdentifier(c) && !checked;
-                                                const disabled = fieldMapping.identifier === c || blockedAsIdentifier;
+                                                const disabled = isPublishedTopic || fieldMapping.identifier === c || blockedAsIdentifier;
                                                 const reason = fieldMapping.identifier === c
                                                     ? "该字段已作为标识符"
                                                     : blockedAsIdentifier
@@ -800,10 +825,24 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-indigo-600 hover:bg-indigo-700 text-white">{editingTopicId ? "保存并继续" : "下一步"}</Button>
                             )}
                             {!loadingDetail && currentStep === 2 && (
-                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(3)} disabled={!excelInfo} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
+                                <Button
+                                    data-testid="teacher-topic-next"
+                                    onClick={() => setCurrentStep(3)}
+                                    disabled={!isPublishedTopic && !excelInfo}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                >
+                                    下一步
+                                </Button>
                             )}
                             {!loadingDetail && currentStep === 3 && (
-                                <Button data-testid="teacher-topic-next" onClick={onSaveFieldMapping} disabled={!canProceedMapping} className="bg-indigo-600 hover:bg-indigo-700 text-white">保存并继续</Button>
+                                <Button
+                                    data-testid="teacher-topic-next"
+                                    onClick={onSaveFieldMapping}
+                                    disabled={!isPublishedTopic && !canProceedMapping}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                >
+                                    {isPublishedTopic ? "下一步" : "保存并继续"}
+                                </Button>
                             )}
                             {!loadingDetail && currentStep === 4 && (
                                 <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-indigo-600 hover:bg-indigo-700 text-white">下一步</Button>
