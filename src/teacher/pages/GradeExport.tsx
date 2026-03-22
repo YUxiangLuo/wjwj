@@ -19,6 +19,7 @@ export function GradeExport() {
     const [classFilter, setClassFilter] = useState<string>("all");
     const [topicFilter, setTopicFilter] = useState<string>("all");
     const [selectedTaskIds, setSelectedTaskIds] = useState<number[]>([]);
+    const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
         loadFilters();
@@ -83,7 +84,7 @@ export function GradeExport() {
 
     async function exportExcel(taskId?: number) {
         const ids = taskId ? [taskId] : selectedTaskIds;
-        if (ids.length === 0) return;
+        if (ids.length === 0 || exporting) return;
 
         const search = new URLSearchParams();
         if (semesterFilter !== "all") {
@@ -101,6 +102,7 @@ export function GradeExport() {
             search.set("taskIds", ids.join(","));
         }
 
+        setExporting(true);
         try {
             const res = await fetch(`/api/teacher/grade-export/excel?${search.toString()}`, {
                 credentials: "include",
@@ -113,15 +115,20 @@ export function GradeExport() {
 
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `grade-export-${formatLocalDateStamp()}.xlsx`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            URL.revokeObjectURL(url);
+            try {
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `grade-export-${formatLocalDateStamp()}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            } finally {
+                URL.revokeObjectURL(url);
+            }
         } catch {
             toast.error("导出失败");
+        } finally {
+            setExporting(false);
         }
     }
 
@@ -222,7 +229,7 @@ export function GradeExport() {
                         <Button
                             data-testid="teacher-export-batch"
                             variant="outline"
-                            disabled={selectedCount === 0}
+                            disabled={selectedCount === 0 || exporting}
                             onClick={() => exportExcel()}
                             className="border-indigo-600 bg-indigo-600/10 text-indigo-500 hover:bg-indigo-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -301,11 +308,12 @@ export function GradeExport() {
                                             data-testid={`teacher-export-single-${task.taskId}`}
                                             variant="ghost"
                                             size="sm"
+                                            disabled={exporting}
                                             className="h-8 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
                                             onClick={() => exportExcel(task.taskId)}
                                         >
                                             <Download className="w-3.5 h-3.5 mr-1" />
-                                            导出
+                                            {exporting ? "导出中…" : "导出"}
                                         </Button>
                                     </TableCell>
                                 </TableRow>

@@ -110,6 +110,22 @@ export interface GradingItem {
     gradedAt?: string | null;
 }
 
+export interface GradingListResponse {
+    items: GradingItem[];
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
+export interface GradingListParams {
+    status?: string;
+    className?: string;
+    topicName?: string;
+    keyword?: string;
+    page?: number;
+    pageSize?: number;
+}
+
 export interface SubmissionDetail extends GradingItem {
     topicDesc: string;
     reportContent: string;
@@ -391,8 +407,17 @@ export const teacherApi = {
         request<TaskProgressData>(`/api/teacher/tasks/${taskId}/progress`),
 
     // Grading
-    getGradingList: (status?: string) =>
-        request<GradingItem[]>(`/api/teacher/grading${status ? `?status=${status}` : ""}`),
+    getGradingList: (params: GradingListParams = {}) => {
+        const search = new URLSearchParams();
+        if (params.status) search.set("status", params.status);
+        if (params.className) search.set("className", params.className);
+        if (params.topicName) search.set("topicName", params.topicName);
+        if (params.keyword) search.set("keyword", params.keyword);
+        if (params.page) search.set("page", String(params.page));
+        if (params.pageSize) search.set("pageSize", String(params.pageSize));
+        const qs = search.toString();
+        return request<GradingListResponse>(`/api/teacher/grading${qs ? `?${qs}` : ""}`);
+    },
 
     getSubmissionDetail: (id: number) =>
         request<SubmissionDetail>(`/api/teacher/grading/${id}`),

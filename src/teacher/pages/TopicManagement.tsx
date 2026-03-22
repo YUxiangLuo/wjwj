@@ -41,6 +41,7 @@ export function TopicManagement() {
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [uploadingExcel, setUploadingExcel] = useState(false);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
+    const [copyingTopicId, setCopyingTopicId] = useState<number | null>(null);
     const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">("all");
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -437,13 +438,19 @@ export function TopicManagement() {
                                                 data-testid={`teacher-topic-copy-${topic.id}`}
                                                 variant="ghost"
                                                 size="sm"
+                                                disabled={copyingTopicId !== null}
                                                 className="text-slate-600 dark:text-slate-400 hover:text-cyan-600 hover:bg-cyan-500/10"
                                                 onClick={async () => {
-                                                    const res = await teacherApi.copyTopic(topic.id);
-                                                    if (res.success) {
-                                                        loadTopics();
-                                                    } else {
-                                                        toast.error("复制失败: " + res.error?.message);
+                                                    setCopyingTopicId(topic.id);
+                                                    try {
+                                                        const res = await teacherApi.copyTopic(topic.id);
+                                                        if (res.success) {
+                                                            loadTopics();
+                                                        } else {
+                                                            toast.error("复制失败: " + res.error?.message);
+                                                        }
+                                                    } finally {
+                                                        setCopyingTopicId(null);
                                                     }
                                                 }}
                                             >
@@ -464,7 +471,17 @@ export function TopicManagement() {
                 onOpenChange={(open) => {
                     setShowCreateModal(open);
                     if (!open) {
+                        setEditingTopicId(null);
                         setEditingTopicPublished(false);
+                        setNewTopicName("");
+                        setNewTopicDesc("");
+                        setCurrentStep(1);
+                        setExcelInfo(null);
+                        setColumns([]);
+                        setFieldMapping({ stratified: [], numeric: [], others: [] });
+                        setAttachments([]);
+                        setRecommendQuestions([]);
+                        setWeightConfig({ questionnaire: 30, process: 30, report: 40 });
                     }
                 }}
                 editingTopicId={editingTopicId}

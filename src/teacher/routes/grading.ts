@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { resolve, sep } from "node:path";
 import { db } from "../../db";
 import { assistant, assistantClass, class_, experiment, student, submission, task, teacher, topic } from "../../db/schema";
@@ -55,12 +55,18 @@ const gradingRoutes: RouteDefinition = {
         if (!access) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         const { classIds } = access;
 
-        if (classIds.length === 0) {
-            return json([]);
-        }
-
         const params = getSearchParams(req);
         const status = params.get("status");
+        const className = params.get("className");
+        const topicName = params.get("topicName");
+        const keyword = params.get("keyword")?.trim();
+        const page = Math.max(1, Number(params.get("page")) || 1);
+        const pageSize = Math.min(100, Math.max(1, Number(params.get("pageSize")) || 20));
+
+        if (classIds.length === 0) {
+            return json({ items: [], total: 0, page, pageSize });
+        }
+
         const conditions = [
             sql`${class_.id} IN (${sql.join(classIds, sql`, `)})`,
             ...activeTaskTopicConditions(),
@@ -73,29 +79,56 @@ const gradingRoutes: RouteDefinition = {
         } else if (status === "rejected") {
             conditions.push(eq(submission.status, 3));
         }
+        if (className) {
+            conditions.push(eq(class_.name, className));
+        }
+        if (topicName) {
+            conditions.push(eq(topic.name, topicName));
+        }
+        if (keyword) {
+            conditions.push(
+                or(
+                    like(student.name, `%${keyword}%`),
+                    like(student.studentId, `%${keyword}%`),
+                    like(topic.name, `%${keyword}%`)
+                )!
+            );
+        }
 
-        const rows = await db
-            .select({
-                id: submission.id,
-                studentName: student.name,
-                studentId: student.studentId,
-                topic: topic.name,
-                className: class_.name,
-                submittedAt: submission.submittedAt,
-                status: submission.status,
-                score: submission.totalScore,
-                gradedByType: submission.gradedByType,
-                gradedById: submission.gradedById,
-                gradedAt: submission.gradedAt,
-            })
-            .from(submission)
-            .innerJoin(experiment, eq(submission.experimentId, experiment.id))
-            .innerJoin(student, eq(experiment.studentId, student.id))
-            .innerJoin(task, eq(experiment.taskId, task.id))
-            .innerJoin(topic, eq(task.topicId, topic.id))
-            .innerJoin(class_, eq(task.classId, class_.id))
-            .where(conditions.length === 1 ? conditions[0]! : and(...conditions))
-            .orderBy(desc(submission.submittedAt));
+        const whereClause = conditions.length === 1 ? conditions[0]! : and(...conditions);
+
+        const joinChain = (selection: Record<string, unknown>) =>
+            db
+                .select(selection)
+                .from(submission)
+                .innerJoin(experiment, eq(submission.experimentId, experiment.id))
+                .innerJoin(student, eq(experiment.studentId, student.id))
+                .innerJoin(task, eq(experiment.taskId, task.id))
+                .innerJoin(topic, eq(task.topicId, topic.id))
+                .innerJoin(class_, eq(task.classId, class_.id));
+
+        const [[totalRow], rows] = await Promise.all([
+            joinChain({ count: count() }).where(whereClause),
+            joinChain({
+                    id: submission.id,
+                    studentName: student.name,
+                    studentId: student.studentId,
+                    topic: topic.name,
+                    className: class_.name,
+                    submittedAt: submission.submittedAt,
+                    status: submission.status,
+                    score: submission.totalScore,
+                    gradedByType: submission.gradedByType,
+                    gradedById: submission.gradedById,
+                    gradedAt: submission.gradedAt,
+                })
+                .where(whereClause)
+                .orderBy(desc(submission.submittedAt))
+                .limit(pageSize)
+                .offset((page - 1) * pageSize),
+        ]);
+
+        const total = totalRow?.count ?? 0;
 
         const graderIds = rows
             .filter((r) => r.gradedByType === 2 && r.gradedById)
@@ -120,7 +153,7 @@ const gradingRoutes: RouteDefinition = {
         const teacherMap = new Map(teachers.map((t) => [t.id, t.name]));
         const assistantMap = new Map(assistants.map((a) => [a.id, a.name]));
 
-        const result = rows.map((row) => ({
+        const items = rows.map((row) => ({
             ...row,
             gradedByName:
                 row.gradedByType === 2
@@ -130,7 +163,7 @@ const gradingRoutes: RouteDefinition = {
                         : null,
         }));
 
-        return json(result);
+        return json({ items, total, page, pageSize });
     }
 };
 

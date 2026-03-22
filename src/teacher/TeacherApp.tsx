@@ -114,8 +114,8 @@ export function TeacherApp() {
 
         try {
             if (teacherUser.type === "assistant") {
-                const res = await teacherApi.getGradingList("pending");
-                applyPendingCount(res.success && res.data ? res.data.length : 0);
+                const res = await teacherApi.getGradingList({ status: "pending", pageSize: 1 });
+                applyPendingCount(res.success && res.data ? res.data.total : 0);
                 return;
             }
 

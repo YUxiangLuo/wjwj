@@ -8,6 +8,9 @@ const sql = Object.assign(
     }
 );
 
+// Pre-load the real drizzle-orm so internal deps (mysql-core) resolve correctly
+const realDrizzle = await import("drizzle-orm");
+
 async function loadGradingRoutes(options: {
     select?: unknown[];
     authUser?: { id: number; type: "teacher" | "assistant" } | null;
@@ -16,9 +19,12 @@ async function loadGradingRoutes(options: {
     const { db, operations } = createMockDb({ select: options.select });
 
     mock.module("drizzle-orm", () => ({
+        ...realDrizzle,
         and: (...conditions: unknown[]) => ({ kind: "and", conditions }),
+        count: () => ({ kind: "count" }),
         desc: (value: unknown) => ({ kind: "desc", value }),
         eq: (left: unknown, right: unknown) => ({ kind: "eq", left, right }),
+        like: (col: unknown, pattern: unknown) => ({ kind: "like", col, pattern }),
         or: (...conditions: unknown[]) => ({ kind: "or", conditions }),
         isNull: (col: unknown) => ({ kind: "isNull", col }),
         sql,
@@ -39,8 +45,9 @@ async function loadGradingRoutes(options: {
 test("grading list keeps accessible class filter when status filter is applied", async () => {
     const { module, operations } = await loadGradingRoutes({
         select: [
-            [{ id: 1 }, { id: 4 }],
-            [],
+            [{ id: 1 }, { id: 4 }],   // getAccessibleClassIds
+            [{ count: 0 }],            // count query
+            [],                         // data query
         ],
     });
 
@@ -50,10 +57,11 @@ test("grading list keeps accessible class filter when status filter is applied",
     const payload = await response.json() as any;
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ success: true, data: [] });
+    expect(payload).toEqual({ success: true, data: { items: [], total: 0, page: 1, pageSize: 20 } });
 
     const selectOperations = operations.filter((operation) => operation.kind === "select");
-    const listQuery = selectOperations[1];
+    // selectOperations[0] = class IDs, [1] = count, [2] = data
+    const listQuery = selectOperations[2];
     const where = (listQuery?.where ?? null) as { kind?: string; conditions?: unknown[] } | null;
 
     expect(where?.kind).toBe("and");

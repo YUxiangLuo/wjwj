@@ -19,13 +19,13 @@ function fail(message: string, code = "VALIDATION_ERROR", status = 400): Service
     return { ok: false, code, message, status };
 }
 
-function normalizeJsonColumnValue<T>(value: T | string | null | undefined) {
-    if (typeof value !== "string") return value ?? null;
+function normalizeJsonColumnValue<T>(value: T | string | null | undefined): T | null {
+    if (typeof value !== "string") return (value as T) ?? null;
 
     try {
         return JSON.parse(value) as T;
     } catch {
-        return value;
+        return null;
     }
 }
 
@@ -118,7 +118,10 @@ export async function copyTopicWithResources(params: {
     teacherId: number;
     topicId: number;
 }) {
-    const [sourceTopic] = await db.select().from(topic).where(eq(topic.id, params.topicId));
+    const [sourceTopic] = await db
+        .select()
+        .from(topic)
+        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)));
     if (!sourceTopic) {
         return fail("课题不存在", "NOT_FOUND", 404);
     }

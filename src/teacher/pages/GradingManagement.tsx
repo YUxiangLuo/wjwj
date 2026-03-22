@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,31 +6,91 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, AlertTriangle, ClipboardList, Search, XCircle, Clock, UserCheck, FileEdit } from "lucide-react";
-import { teacherApi, type GradingItem } from "../api-client";
+import { CheckCircle2, AlertTriangle, ClipboardList, Search, XCircle, Clock, UserCheck, FileEdit, ChevronLeft, ChevronRight } from "lucide-react";
+import { teacherApi, type GradingItem, type GradingListParams } from "../api-client";
+
+const PAGE_SIZE = 20;
 
 export function GradingManagement() {
     const navigate = useNavigate();
-    const [submissions, setSubmissions] = useState<GradingItem[]>([]);
+    const [items, setItems] = useState<GradingItem[]>([]);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState("all-status");
     const [filterClass, setFilterClass] = useState("all-class");
     const [filterTopic, setFilterTopic] = useState("all-topic");
     const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedKeyword, setDebouncedKeyword] = useState("");
 
+    // 班级和课题选项从首次全量请求获取（无筛选）
+    const [classOptions, setClassOptions] = useState<string[]>([]);
+    const [topicOptions, setTopicOptions] = useState<string[]>([]);
+
+    // 搜索框防抖
     useEffect(() => {
-        loadGradingList();
-    }, [filterStatus]);
+        const timer = setTimeout(() => setDebouncedKeyword(searchTerm.trim()), 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
 
-    async function loadGradingList() {
+    // 初始化：加载筛选器选项
+    useEffect(() => {
+        // 用一个大 pageSize 请求获取所有班级/课题名称（只取名称去重）
+        teacherApi.getGradingList({ pageSize: 500 }).then((res) => {
+            if (res.success && res.data) {
+                const data = res.data.items;
+                setClassOptions(Array.from(new Set(data.map((d) => d.className).filter(Boolean))));
+                setTopicOptions(Array.from(new Set(data.map((d) => d.topic).filter(Boolean))));
+            }
+        });
+    }, []);
+
+    const loadPage = useCallback(async (params: GradingListParams & { page: number }) => {
         setLoading(true);
-        const effectiveStatus = filterStatus === "all-status" ? undefined : filterStatus;
-        const res = await teacherApi.getGradingList(effectiveStatus);
+        const res = await teacherApi.getGradingList({
+            status: params.status,
+            className: params.className,
+            topicName: params.topicName,
+            keyword: params.keyword,
+            page: params.page,
+            pageSize: PAGE_SIZE,
+        });
         if (res.success && res.data) {
-            setSubmissions(res.data);
+            setItems(res.data.items);
+            setTotal(res.data.total);
+            setPage(res.data.page);
         }
         setLoading(false);
+    }, []);
+
+    // 筛选条件变化 → 回第一页重新加载
+    useEffect(() => {
+        const effectiveStatus = filterStatus === "all-status" ? undefined : filterStatus;
+        const effectiveClass = filterClass === "all-class" ? undefined : filterClass;
+        const effectiveTopic = filterTopic === "all-topic" ? undefined : filterTopic;
+        loadPage({
+            status: effectiveStatus,
+            className: effectiveClass,
+            topicName: effectiveTopic,
+            keyword: debouncedKeyword || undefined,
+            page: 1,
+        });
+    }, [filterStatus, filterClass, filterTopic, debouncedKeyword, loadPage]);
+
+    function goToPage(p: number) {
+        const effectiveStatus = filterStatus === "all-status" ? undefined : filterStatus;
+        const effectiveClass = filterClass === "all-class" ? undefined : filterClass;
+        const effectiveTopic = filterTopic === "all-topic" ? undefined : filterTopic;
+        loadPage({
+            status: effectiveStatus,
+            className: effectiveClass,
+            topicName: effectiveTopic,
+            keyword: debouncedKeyword || undefined,
+            page: p,
+        });
     }
+
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
     const getStatusBadge = (status: number, score?: number | null) => {
         switch (status) {
@@ -42,15 +102,14 @@ export function GradingManagement() {
         }
     };
 
-    // 获取批改人显示
     const getGraderBadge = (item: GradingItem) => {
         if (item.status !== 2 && item.status !== 3) return null;
         if (!item.gradedByName) return null;
-        
+
         const isTeacher = item.gradedByType === 2;
         return (
-            <Badge 
-                variant="outline" 
+            <Badge
+                variant="outline"
                 className={`text-xs ${isTeacher ? 'text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-purple-600 border-purple-500/30 bg-purple-500/10'}`}
             >
                 <UserCheck className="w-3 h-3 mr-1" />
@@ -59,37 +118,6 @@ export function GradingManagement() {
         );
     };
 
-    const summary = useMemo(() => {
-        const total = submissions.length;
-        const pending = submissions.filter((sub) => sub.status === 0 || sub.status === 1).length;
-        const graded = submissions.filter((sub) => sub.status === 2).length;
-        const rejected = submissions.filter((sub) => sub.status === 3).length;
-        return { total, pending, graded, rejected };
-    }, [submissions]);
-
-    const classOptions = useMemo(() => {
-        const values = submissions.map((sub) => sub.className).filter(Boolean);
-        return Array.from(new Set(values));
-    }, [submissions]);
-
-    const topicOptions = useMemo(() => {
-        const values = submissions.map((sub) => sub.topic).filter(Boolean);
-        return Array.from(new Set(values));
-    }, [submissions]);
-
-    const filteredSubmissions = useMemo(() => {
-        const keyword = searchTerm.trim().toLowerCase();
-        return submissions.filter((sub) => {
-            const matchesClass = filterClass === "all-class" || sub.className === filterClass;
-            const matchesTopic = filterTopic === "all-topic" || sub.topic === filterTopic;
-            const matchesKeyword = !keyword ||
-                sub.studentName.toLowerCase().includes(keyword) ||
-                sub.studentId.toLowerCase().includes(keyword) ||
-                sub.topic.toLowerCase().includes(keyword);
-            return matchesClass && matchesTopic && matchesKeyword;
-        });
-    }, [submissions, filterClass, filterTopic, searchTerm]);
-
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
@@ -97,58 +125,11 @@ export function GradingManagement() {
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">查看待批改列表并快速进入评分。</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">提交总数</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
-                            <ClipboardList className="w-5 h-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">待批改</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.pending}</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
-                            <Clock className="w-5 h-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已批改</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.graded}</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
-                            <CheckCircle2 className="w-5 h-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已驳回</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.rejected}</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center border border-rose-500/20">
-                            <AlertTriangle className="w-5 h-5" />
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
             <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
                     <div>
                         <CardTitle className="text-base text-slate-900 dark:text-slate-100">批改列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredSubmissions.length} 条数据</p>
+                        <p className="text-xs text-slate-500 mt-1">共 {total} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-56">
@@ -198,7 +179,7 @@ export function GradingManagement() {
                 </CardHeader>
                 <CardContent className="space-y-3 pt-4">
                     {loading ? <div className="text-center py-12 text-slate-500">加载中...</div> : (
-                        filteredSubmissions.length === 0 ?
+                        items.length === 0 ?
                             <div className="flex flex-col items-center justify-center py-12 text-slate-500">
                                 <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-3">
                                     <ClipboardList className="w-6 h-6 text-slate-500" />
@@ -206,7 +187,7 @@ export function GradingManagement() {
                                 <p>暂无待批改作业</p>
                             </div>
                             :
-                            filteredSubmissions.map((sub) => (
+                            items.map((sub) => (
                                 <div data-testid={`teacher-grading-card-${sub.id}`} key={sub.id} className="border border-slate-200 dark:border-slate-800 rounded-lg p-5 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="flex items-center gap-4">
@@ -253,6 +234,61 @@ export function GradingManagement() {
                                     </div>
                                 </div>
                             ))
+                    )}
+
+                    {/* 分页 */}
+                    {!loading && total > PAGE_SIZE && (
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+                            <p className="text-xs text-slate-500">
+                                第 {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, total)} 条，共 {total} 条
+                            </p>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page <= 1}
+                                    onClick={() => goToPage(page - 1)}
+                                    className="h-8 w-8 p-0 border-slate-200 dark:border-slate-800"
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                                    .reduce<(number | "ellipsis")[]>((acc, p, idx, arr) => {
+                                        if (idx > 0 && p - (arr[idx - 1] ?? 0) > 1) acc.push("ellipsis");
+                                        acc.push(p);
+                                        return acc;
+                                    }, [])
+                                    .map((item, idx) =>
+                                        item === "ellipsis" ? (
+                                            <span key={`e-${idx}`} className="px-1 text-slate-400 text-sm">…</span>
+                                        ) : (
+                                            <Button
+                                                key={item}
+                                                variant={item === page ? "default" : "outline"}
+                                                size="sm"
+                                                onClick={() => goToPage(item)}
+                                                className={`h-8 w-8 p-0 text-xs ${
+                                                    item === page
+                                                        ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                                                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                                                }`}
+                                            >
+                                                {item}
+                                            </Button>
+                                        )
+                                    )}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page >= totalPages}
+                                    onClick={() => goToPage(page + 1)}
+                                    className="h-8 w-8 p-0 border-slate-200 dark:border-slate-800"
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </div>
                     )}
                 </CardContent>
             </Card>

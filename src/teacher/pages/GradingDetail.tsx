@@ -219,9 +219,9 @@ export function GradingDetail() {
         if (!submissionId) return;
         setLoadingNext(true);
         try {
-            const listRes = await teacherApi.getGradingList("pending");
+            const listRes = await teacherApi.getGradingList({ status: "pending", pageSize: 50 });
             if (listRes.success && listRes.data) {
-                const next = listRes.data.find(item => item.id !== Number(submissionId));
+                const next = listRes.data.items.find(item => item.id !== Number(submissionId));
                 if (next) {
                     navigate(`/grading/${next.id}`, { replace: true });
                 } else {

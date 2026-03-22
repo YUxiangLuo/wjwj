@@ -67,6 +67,9 @@ function createBuilder(kind: QueryKind, operation: MockDbOperation, queues: Requ
         limit() {
             return builder;
         },
+        offset() {
+            return builder;
+        },
         orderBy() {
             return builder;
         },
