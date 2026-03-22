@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, AlertTriangle, ClipboardList, Search, XCircle, Clock, UserCheck } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ClipboardList, Search, XCircle, Clock, UserCheck, FileEdit } from "lucide-react";
 import { teacherApi, type GradingItem } from "../api-client";
 
 export function GradingManagement() {

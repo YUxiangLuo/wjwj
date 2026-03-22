@@ -9,6 +9,17 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import "./teacher.css";
 import { authApi, teacherApi, type TeacherNotification, type TeacherUser } from "./api-client";
 import { TEACHER_LOGIN_REDIRECT_REASON_KEY, TEACHER_LOGIN_SUCCESS_KEY } from "./auth-keys";
@@ -481,16 +492,37 @@ export function TeacherApp() {
                             >
                                 修改密码
                             </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                data-testid="teacher-logout"
-                                onClick={handleLogout}
-                                className="text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
-                                title="退出登录"
-                            >
-                                <LogOut className="w-5 h-5" />
-                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        data-testid="teacher-logout"
+                                        className="text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
+                                        title="退出登录"
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认退出登录?</AlertDialogTitle>
+                                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                                            您确定要退出当前账号吗？未保存的内容可能会丢失。
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel className="bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            data-testid="teacher-logout-confirm"
+                                            onClick={() => { void handleLogout(); }}
+                                            className="bg-rose-600 hover:bg-rose-700 text-white border-none"
+                                        >
+                                            退出
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
                     </div>
                 </header>
