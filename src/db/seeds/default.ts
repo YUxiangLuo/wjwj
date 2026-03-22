@@ -6,6 +6,8 @@
  * (after `bun run db:reset`).
  *
  * Run with:  bun run db:seed
+ *
+ * 批改列表分页：`gradingPageTestPendingCount` 名额外学生（消费者行为 A 班任务）+ 待批改提交，便于 UI 分页联调。
  */
 
 import { db } from "../index";
@@ -402,7 +404,7 @@ async function seed() {
     await deleteRowsNotInIds(assistant, assistantIds);
 
     // ========================================================
-    // 6. 学生 (30 位，横跨多班级 + 特殊状态)
+    // 6. 学生（基础 30 位 + 批改分页测试若干，见 gradingPageTestPendingCount）
     // ========================================================
     console.log("👨‍🎓 学生…");
 
@@ -452,8 +454,17 @@ async function seed() {
         { studentId: "2023003", name: "往期钱三", classId: classIds[4]! },
     ];
 
+    /** 批改列表分页联调：默认每页 20 条，需明显多于 1 页 */
+    const gradingPageTestPendingCount = 35;
+    const gradingPageTestStudentDefs = Array.from({ length: gradingPageTestPendingCount }, (_, i) => ({
+        studentId: `seedpg${String(i + 1).padStart(4, "0")}`,
+        name: `分页测试${i + 1}`,
+        classId: classIds[0]!,
+    }));
+    const allStudentDefs = [...studentDefs, ...gradingPageTestStudentDefs];
+
     const studentIds: number[] = [];
-    for (const s of studentDefs) {
+    for (const s of allStudentDefs) {
         const studentSeed = {
             password: hashedPassword,
             studentId: s.studentId,
@@ -924,7 +935,7 @@ async function seed() {
         return ts as [Date | null, Date | null, Date | null, Date | null];
     };
 
-    const experiments: ExpDef[] = [
+    const experimentsBase: ExpDef[] = [
         // ── A 班 / Task 0 (消费者行为, 正常) ──
         { label: "演示学生-刚开始问卷", studentIdx: 0, taskIdx: 0, currentStage: 1, status: 0, questionnaire: questionnairePartial },
         { label: "钱二-完成全部并提交", studentIdx: 1, taskIdx: 0, currentStage: 4, status: 1, questionnaire: questionnaireComplete, samplePlan: samplePlanComplete, samplingResults: samplingResultsComplete, reportContent: reportComplete, stages: stageTs(4) },
@@ -960,6 +971,21 @@ async function seed() {
         { label: "往期赵二-已批改", studentIdx: 28, taskIdx: 8, currentStage: 4, status: 2, questionnaire: questionnaireComplete, samplePlan: samplePlanComplete, samplingResults: samplingResultsComplete, reportContent: reportComplete, stages: stageTs(4) },
         { label: "往期钱三-已批改", studentIdx: 29, taskIdx: 8, currentStage: 4, status: 2, questionnaire: questionnaireComplete, samplePlan: samplePlanComplete, samplingResults: samplingResultsComplete, reportContent: reportComplete, stages: stageTs(4) },
     ];
+
+    const gradingPageTestExperiments: ExpDef[] = Array.from({ length: gradingPageTestPendingCount }, (_, i) => ({
+        label: `分页测试-${i + 1}-提交待批`,
+        studentIdx: studentDefs.length + i,
+        taskIdx: 0,
+        currentStage: 4,
+        status: 1,
+        questionnaire: questionnaireComplete,
+        samplePlan: samplePlanComplete,
+        samplingResults: samplingResultsComplete,
+        reportContent: reportComplete,
+        stages: stageTs(4),
+    }));
+
+    const experiments = [...experimentsBase, ...gradingPageTestExperiments];
 
     const experimentIds: number[] = [];
     for (const e of experiments) {
@@ -1079,7 +1105,7 @@ async function seed() {
         ],
     );
 
-    const submissions: SubDef[] = [
+    const submissionsBase: SubDef[] = [
         // 钱二 - 待批改 (pending)
         {
             expIdx: 1,
@@ -1115,6 +1141,14 @@ async function seed() {
         // 往期钱三
         { expIdx: 22, status: 2, scoreQ: "72.00", scoreP: "70.00", scoreR: "75.00", total: "72.60", comment: "基本合格，建议加强报告写作。", gradedByType: USER.teacher, gradedById: teacherIds[0]!, submittedAgo: 64 },
     ];
+
+    const gradingPageTestSubmissions: SubDef[] = Array.from({ length: gradingPageTestPendingCount }, (_, i) => ({
+        expIdx: experimentsBase.length + i,
+        status: 1,
+        submittedAgo: 2 + (i % 14),
+    }));
+
+    const submissions = [...submissionsBase, ...gradingPageTestSubmissions];
 
     await db.delete(submission);
 

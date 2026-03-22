@@ -44,6 +44,11 @@ export function resolveSubmissionPdfPath(pdfPath: string) {
     return fullPath;
 }
 
+/** Escape SQL LIKE wildcard characters to prevent unintended pattern matching */
+function escapeLike(value: string): string {
+    return value.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
+
 /** 与成绩导出一致：已删任务、已删课题（含 deleted_at）下的提交不在批改流程中展示 */
 function activeTaskTopicConditions() {
     return [isNull(task.deletedAt), eq(topic.isDeleted, 0), isNull(topic.deletedAt)];
@@ -86,11 +91,12 @@ const gradingRoutes: RouteDefinition = {
             conditions.push(eq(topic.name, topicName));
         }
         if (keyword) {
+            const escaped = escapeLike(keyword);
             conditions.push(
                 or(
-                    like(student.name, `%${keyword}%`),
-                    like(student.studentId, `%${keyword}%`),
-                    like(topic.name, `%${keyword}%`)
+                    like(student.name, `%${escaped}%`),
+                    like(student.studentId, `%${escaped}%`),
+                    like(topic.name, `%${escaped}%`)
                 )!
             );
         }

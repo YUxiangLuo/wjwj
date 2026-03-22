@@ -385,8 +385,10 @@ const assistantDeleteRoutes = {
         const [a] = await db.select({ id: assistant.id }).from(assistant).where(eq(assistant.id, id));
         if (!a) return error("助教不存在", "NOT_FOUND", 404);
 
-        await db.delete(assistantClass).where(eq(assistantClass.assistantId, id));
-        await db.delete(assistant).where(eq(assistant.id, id));
+        await db.transaction(async (tx) => {
+            await tx.delete(assistantClass).where(eq(assistantClass.assistantId, id));
+            await tx.delete(assistant).where(eq(assistant.id, id));
+        });
         return json({ success: true });
     },
 };
@@ -488,7 +490,11 @@ const classUpdateRoutes = {
 
         const updates: Record<string, unknown> = {};
         if (body.name?.trim()) updates.name = body.name.trim();
-        if (body.teacherId) updates.teacherId = body.teacherId;
+        if (body.teacherId) {
+            const [t] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, body.teacherId));
+            if (!t) return error("教师不存在", "NOT_FOUND", 404);
+            updates.teacherId = body.teacherId;
+        }
 
         if (Object.keys(updates).length > 0) await db.update(class_).set(updates).where(eq(class_.id, id));
         return json({ success: true });
@@ -654,8 +660,10 @@ const studentTransferRoutes = {
         if (!targetClass) return error("目标班级不存在", "NOT_FOUND", 404);
         if (s.classId === body.targetClassId) return error("学生已在该班级", "SAME_CLASS");
 
-        await db.insert(studentTransfer).values({ studentId: id, fromClassId: s.classId, toClassId: body.targetClassId, reason: body.reason, operatedBy: adm.id });
-        await db.update(student).set({ classId: body.targetClassId }).where(eq(student.id, id));
+        await db.transaction(async (tx) => {
+            await tx.insert(studentTransfer).values({ studentId: id, fromClassId: s.classId, toClassId: body.targetClassId, reason: body.reason, operatedBy: adm.id });
+            await tx.update(student).set({ classId: body.targetClassId }).where(eq(student.id, id));
+        });
 
         await db.insert(operationLog).values({
             userType: ADMIN_USER_TYPE,
@@ -720,7 +728,10 @@ const announcementUpdateRoutes = {
         const [existing] = await db.select({ id: announcement.id }).from(announcement).where(eq(announcement.id, id));
         if (!existing) return error("公告不存在", "NOT_FOUND", 404);
 
-        await db.delete(announcement).where(eq(announcement.id, id));
+        await db.transaction(async (tx) => {
+            await tx.delete(announcementRead).where(eq(announcementRead.announcementId, id));
+            await tx.delete(announcement).where(eq(announcement.id, id));
+        });
         return json({ success: true });
     },
 };

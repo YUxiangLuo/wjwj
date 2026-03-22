@@ -16,7 +16,7 @@ import {
     systemConfig,
     userSession,
 } from "../db/schema";
-import { eq, desc, sql, and, count, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, count, inArray, isNull } from "drizzle-orm";
 import {
     error,
     getClientIp,
@@ -83,7 +83,7 @@ const statsRoutes = {
         const [semesterCount] = await db.select({ count: count() }).from(semester);
         const [teacherCount] = await db.select({ count: count() }).from(teacher);
         const [classCount] = await db.select({ count: count() }).from(class_);
-        const [studentCount] = await db.select({ count: count() }).from(student);
+        const [studentCount] = await db.select({ count: count() }).from(student).where(isNull(student.deletedAt));
         const [assistantCount] = await db.select({ count: count() }).from(assistant);
 
         // Current semester
@@ -218,8 +218,7 @@ const systemMetricsRoutes = {
         const activeConnections = sessionCount?.count ?? 0;
 
         // Today's logins count
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        const startOfDay = startOfDayCN();
 
         const [todayLoginsCount] = await db
             .select({ count: count() })
@@ -350,7 +349,7 @@ const systemSettingsRoutes = {
             userId: adm.id,
             action: 'UPDATE_SETTINGS',
             targetType: 'system',
-            detail: body,
+            detail: filteredBody,
             ipAddress: getClientIp(req),
         });
 
