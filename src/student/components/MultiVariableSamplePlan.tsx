@@ -84,11 +84,13 @@ export function MultiVariableSamplePlan({
                 }) ?? 0;
             } else if (variable.type === "mean" && variable.estimatedStdDev) {
                 // 均值估计的样本量计算（简化版）
-                const z = variable.confidenceLevel === "90" ? 1.645 : 
+                const z = variable.confidenceLevel === "90" ? 1.645 :
                          variable.confidenceLevel === "95" ? 1.96 : 2.576;
-                const e = variable.marginOfError / 100;
                 const sigma = variable.estimatedStdDev;
-                
+                // 相对误差限：用户输入的百分比 × 估计均值 = 绝对误差
+                // 例如：均值1000元、误差5% → E = 50元
+                const e = (variable.marginOfError / 100) * (variable.estimatedValue || 1);
+
                 // n₀ = (Z × σ / E)²
                 const n0 = Math.pow((z * sigma) / e, 2);
                 // 有限总体校正
@@ -435,7 +437,9 @@ export function MultiVariableSamplePlan({
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs text-indigo-700 dark:text-indigo-300">允许误差</Label>
+                                                <Label className="text-xs text-indigo-700 dark:text-indigo-300">
+                                                    {variable.type === "mean" ? "允许相对误差" : "允许误差"}
+                                                </Label>
                                                 <div className="flex items-center gap-1">
                                                     <Input
                                                         type="number"

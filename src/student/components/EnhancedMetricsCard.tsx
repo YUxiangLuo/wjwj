@@ -36,7 +36,7 @@ export function EnhancedMetricsCard({ metrics, confidenceLevel = "95", p = 0.5, 
                     </Badge>
                 </div>
                 <CardDescription className="text-indigo-700 dark:text-indigo-300">
-                    基于简单随机抽样等效样本量 (n={metrics.n}) 的精度估计
+                    基于简单随机抽样等效样本量 (n={Math.ceil(metrics.n1)}) 的精度估计
                 </CardDescription>
                 {sizeDeviation && (
                     <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
