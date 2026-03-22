@@ -75,14 +75,16 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     type AdvancedTab = 'domain' | 'cost' | 'deff' | 'multivar' | 'cv' | 'cluster' | 'metrics';
     const [activeAdvancedTab, setActiveAdvancedTab] = useState<AdvancedTab | null>(null);
 
+    const advancedTabActiveClass =
+        "bg-indigo-100 border-indigo-300 text-indigo-800 dark:bg-indigo-950/55 dark:border-indigo-600 dark:text-indigo-200";
     const advancedTabConfig: Array<{ key: AdvancedTab; label: string; title: string; description: string; activeClass: string }> = [
-        { key: 'domain', label: '子总体估计', title: '子总体（域）估计支持', description: '设置各子总体的精度要求', activeClass: 'bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-600' },
-        { key: 'cost', label: '成本权衡', title: '精度与成本权衡', description: '在预算约束下评估可达到的精度水平', activeClass: 'bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-900/30 dark:border-amber-600' },
-        { key: 'deff', label: '设计效应参考', title: '设计效应估计器', description: '根据抽样方法估算设计效应', activeClass: 'bg-sky-100 border-sky-300 text-sky-700 dark:bg-sky-900/30 dark:border-sky-600' },
-        { key: 'multivar', label: '多变量规划', title: '多变量样本量规划', description: '为多个调查变量同时规划样本量', activeClass: 'bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/30 dark:border-violet-600' },
-        { key: 'cv', label: 'CV-based计算', title: '基于CV的样本量计算', description: '通过变异系数计算所需样本量', activeClass: 'bg-cyan-100 border-cyan-300 text-cyan-700 dark:bg-cyan-900/30 dark:border-cyan-600' },
-        { key: 'cluster', label: '整群抽样', title: '整群抽样计算器', description: '计算整群抽样方案与设计效应', activeClass: 'bg-orange-100 border-orange-300 text-orange-700 dark:bg-orange-900/30 dark:border-orange-600' },
-        { key: 'metrics', label: 'SE/CV/敏感性', title: '高级分析（SE/CV/敏感性）', description: '查看精度指标、比例比较与敏感性矩阵', activeClass: 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-600' },
+        { key: "domain", label: "子总体估计", title: "子总体（域）估计支持", description: "设置各子总体的精度要求", activeClass: advancedTabActiveClass },
+        { key: "cost", label: "成本权衡", title: "精度与成本权衡", description: "在预算约束下评估可达到的精度水平", activeClass: advancedTabActiveClass },
+        { key: "deff", label: "设计效应参考", title: "设计效应估计器", description: "根据抽样方法估算设计效应", activeClass: advancedTabActiveClass },
+        { key: "multivar", label: "多变量规划", title: "多变量样本量规划", description: "为多个调查变量同时规划样本量", activeClass: advancedTabActiveClass },
+        { key: "cv", label: "CV-based计算", title: "基于CV的样本量计算", description: "通过变异系数计算所需样本量", activeClass: advancedTabActiveClass },
+        { key: "cluster", label: "整群抽样", title: "整群抽样计算器", description: "计算整群抽样方案与设计效应", activeClass: advancedTabActiveClass },
+        { key: "metrics", label: "SE/CV/敏感性", title: "高级分析（SE/CV/敏感性）", description: "查看精度指标、比例比较与敏感性矩阵", activeClass: advancedTabActiveClass },
     ];
 
     // 子总体估计数据
@@ -496,13 +498,23 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
             {/* 高级功能 Modal */}
             <Dialog open={activeAdvancedTab !== null} onOpenChange={(open) => { if (!open) setActiveAdvancedTab(null); }}>
-                <DialogContent className={`bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 ${activeAdvancedTab === 'metrics' ? 'sm:max-w-5xl' : 'sm:max-w-3xl'} max-h-[85vh] overflow-y-auto`}>
+                <DialogContent
+                    className={`bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 ${
+                        activeAdvancedTab === "metrics"
+                            ? "w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-[min(90rem,96vw)]"
+                            : "sm:max-w-3xl"
+                    } max-h-[85vh] overflow-y-auto`}
+                >
                     {activeAdvancedTab && (() => {
                         const config = advancedTabConfig.find(c => c.key === activeAdvancedTab);
                         return (
-                            <DialogHeader>
-                                <DialogTitle className="text-slate-900 dark:text-slate-100">{config?.title}</DialogTitle>
-                                <DialogDescription className="text-slate-600 dark:text-slate-400">{config?.description}</DialogDescription>
+                            <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-4 mb-1 space-y-2">
+                                <DialogTitle className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 pr-8">
+                                    {config?.title}
+                                </DialogTitle>
+                                <DialogDescription className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+                                    {config?.description}
+                                </DialogDescription>
                             </DialogHeader>
                         );
                     })()}
@@ -570,7 +582,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     )}
 
                     {activeAdvancedTab === 'metrics' && metrics && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6 xl:gap-8">
                             <EnhancedMetricsCard metrics={metrics} confidenceLevel={confidenceLevel} finalSampleSize={finalSampleSize} />
                             <PValueComparisonCard
                                 comparison={pComparison}

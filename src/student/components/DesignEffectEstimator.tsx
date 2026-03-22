@@ -104,23 +104,23 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
     };
 
     return (
-        <Card className="rounded-2xl border-sky-200 bg-sky-50/80 shadow-sm dark:border-sky-500/20 dark:bg-sky-500/10">
+        <Card className="rounded-2xl border-indigo-200/90 bg-indigo-50/90 shadow-sm dark:border-indigo-900/45 dark:bg-slate-950">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Calculator className="w-5 h-5 text-sky-500" />
-                        <CardTitle className="text-base text-sky-900 dark:text-sky-200">
+                        <Calculator className="w-5 h-5 text-indigo-500" />
+                        <CardTitle className="text-base text-indigo-900 dark:text-indigo-200">
                             设计效应与回答率参考
                         </CardTitle>
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-sky-100/50 border-sky-200 text-sky-700 dark:bg-sky-900/30 dark:border-sky-500/30 dark:text-sky-300"
+                        className="text-xs bg-indigo-100/50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30 dark:text-indigo-300"
                     >
                         deff = {currentDeff.toFixed(1)}
                     </Badge>
                 </div>
-                <CardDescription className="text-sky-700 dark:text-sky-300">
+                <CardDescription className="text-slate-700 dark:text-slate-300">
                     根据抽样方法和调查方式估算设计效应与回答率
                 </CardDescription>
             </CardHeader>
@@ -128,12 +128,12 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
             <CardContent className="space-y-4">
                 {/* 抽样方法选择 */}
                 <div className="space-y-2">
-                    <label className="text-xs text-sky-700 dark:text-sky-300 font-medium">抽样方法</label>
+                    <label className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">抽样方法</label>
                     <Select value={selectedMethod} onValueChange={handleMethodChange}>
-                        <SelectTrigger className="bg-white/50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-700 text-sky-900 dark:text-sky-100">
+                        <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-sky-950 border-sky-200 dark:border-sky-700">
+                        <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
                             {SAMPLING_METHODS.map(method => (
                                 <SelectItem key={method.key} value={method.key}>
                                     {method.name}
@@ -145,23 +145,23 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
 
                 {/* 抽样方法详情 */}
                 {method && (
-                    <div className="rounded-xl border border-sky-200 bg-white/50 p-3 dark:border-sky-700/50 dark:bg-sky-950/30 space-y-3">
+                    <div className="rounded-xl border border-indigo-200 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950 space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-sky-900 dark:text-sky-100">
+                            <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
                                 {method.name}
                             </span>
                             <Badge className={`${
                                 method.deff < 1 
                                     ? "bg-emerald-500" 
                                     : method.deff === 1 
-                                        ? "bg-sky-500" 
+                                        ? "bg-indigo-500" 
                                         : "bg-amber-500"
                             } text-white`}>
                                 deff = {method.deff.toFixed(1)}
                             </Badge>
                         </div>
 
-                        <p className="text-xs text-sky-700/80 dark:text-sky-300/80">
+                        <p className="text-xs text-indigo-900 dark:text-indigo-100">
                             {method.description}
                         </p>
 
@@ -170,7 +170,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                             {method.characteristics.map((char, idx) => (
                                 <span 
                                     key={idx}
-                                    className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300"
+                                    className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
                                 >
                                     {char}
                                 </span>
@@ -178,10 +178,10 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                         </div>
 
                         {/* deff 解释 */}
-                        <div className="rounded-lg bg-sky-50/50 p-2 dark:bg-sky-900/20">
+                        <div className="rounded-lg bg-indigo-50/90 p-2 border border-indigo-200/80 dark:border-indigo-800/40 dark:bg-slate-900/80">
                             <div className="flex items-center gap-2 text-xs">
-                                <Info className="w-3.5 h-3.5 text-sky-500" />
-                                <span className="text-sky-700 dark:text-sky-300">
+                                <Info className="w-3.5 h-3.5 text-indigo-500" />
+                                <span className="text-indigo-900 dark:text-indigo-100">
                                     {method.deff < 1 
                                         ? "deff < 1 表示比简单随机抽样更高效，所需样本量可减少"
                                         : method.deff > 1 
@@ -196,12 +196,12 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
 
                 {/* 调查方式选择 */}
                 <div className="space-y-2">
-                    <label className="text-xs text-sky-700 dark:text-sky-300 font-medium">调查方式</label>
+                    <label className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">调查方式</label>
                     <Select value={selectedMode} onValueChange={setSelectedMode}>
-                        <SelectTrigger className="bg-white/50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-700 text-sky-900 dark:text-sky-100">
+                        <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-sky-950 border-sky-200 dark:border-sky-700">
+                        <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
                             {SURVEY_MODES.map(mode => (
                                 <SelectItem key={mode.key} value={mode.key}>
                                     {mode.name}
@@ -213,17 +213,17 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
 
                 {/* 调查方式详情 */}
                 {mode && (
-                    <div className="rounded-xl border border-sky-200 bg-white/50 p-3 dark:border-sky-700/50 dark:bg-sky-950/30 space-y-2">
+                    <div className="rounded-xl border border-indigo-200 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950 space-y-2">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-sky-900 dark:text-sky-100">
+                            <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
                                 {mode.name}
                             </span>
-                            <Badge variant="outline" className="text-xs border-sky-300 text-sky-700 dark:border-sky-600 dark:text-sky-300">
+                            <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-700 dark:border-indigo-600 dark:text-indigo-300">
                                 回答率 {mode.responseRateRange}
                             </Badge>
                         </div>
 
-                        <p className="text-xs text-sky-700/80 dark:text-sky-300/80">
+                        <p className="text-xs text-indigo-900 dark:text-indigo-100">
                             {mode.description}
                         </p>
 
@@ -241,14 +241,14 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                 )}
 
                 {/* 综合建议 */}
-                <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-500/30 dark:bg-emerald-900/20">
+                <div className="rounded-xl border-2 border-teal-200/90 bg-teal-50/60 p-3 shadow-sm dark:border-teal-800/45 dark:bg-teal-950/25">
                     <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                        <CheckCircle2 className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
                         <div className="space-y-2">
-                            <p className="font-medium text-emerald-900 dark:text-emerald-100 text-sm">
+                            <p className="font-medium text-teal-950 dark:text-teal-50 text-sm">
                                 参数建议
                             </p>
-                            <div className="space-y-1 text-xs text-emerald-800 dark:text-emerald-200">
+                            <div className="space-y-1 text-xs text-teal-900 dark:text-teal-100">
                                 <div className="flex items-center gap-2">
                                     <ArrowRight className="w-3 h-3" />
                                     <span>

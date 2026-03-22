@@ -19,7 +19,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
     const maxSampleSize = Math.max(...comparison.map(c => c.sampleSize), currentSampleSize);
 
     return (
-        <Card className="rounded-2xl border-teal-200 bg-teal-50/80 shadow-sm dark:border-teal-500/20 dark:bg-teal-500/10">
+        <Card className="rounded-2xl border-teal-200/90 bg-teal-50/90 shadow-sm dark:border-teal-900/45 dark:bg-slate-950">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -45,8 +45,8 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                                 key={index}
                                 className={`rounded-xl border p-3 transition-all ${
                                     isSelected 
-                                        ? "border-teal-300 bg-teal-100/50 dark:border-teal-400/40 dark:bg-teal-900/30" 
-                                        : "border-teal-200/50 bg-white/50 dark:border-teal-500/10 dark:bg-teal-950/20"
+                                        ? "border-teal-400 bg-white shadow-sm dark:border-teal-600/50 dark:bg-slate-950 ring-1 ring-teal-300/60 dark:ring-teal-700/40" 
+                                        : "border-teal-200/80 bg-white dark:border-teal-800/40 dark:bg-slate-950"
                                 }`}
                             >
                                 <div className="flex items-center justify-between mb-2">
@@ -73,7 +73,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                                     />
                                 </div>
                                 
-                                <p className="text-xs text-teal-600/80 dark:text-teal-400/70">
+                                <p className="text-xs text-teal-800 dark:text-teal-100">
                                     {item.description}
                                 </p>
                             </div>
@@ -82,12 +82,12 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                 </div>
 
                 {/* 解释说明 */}
-                <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3 dark:border-amber-800/45 dark:bg-slate-950">
                     <div className="flex gap-2">
                         <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                         <div className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
                             <p className="font-medium">为什么使用 p=0.5？</p>
-                            <p className="text-amber-700/80 dark:text-amber-300/80">
+                            <p className="text-amber-900 dark:text-amber-100">
                                 当 p=0.5 时，p×(1-p) 达到最大值 0.25，此时方差最大，计算出的样本量最为保守。
                                 这是一种稳健的做法，确保无论真实比例是多少，样本量都足够。
                             </p>
@@ -96,8 +96,8 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                 </div>
 
                 {/* 方差对比 */}
-                <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-700 dark:bg-slate-900/40">
-                    <div className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">方差 p×(1-p) 对比</div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+                    <div className="text-xs font-medium text-slate-800 dark:text-slate-200 mb-2">方差 p×(1-p) 对比</div>
                     <div className="space-y-1.5 text-xs">
                         {comparison.map((item, index) => (
                             <div key={index} className="flex justify-between items-center">
