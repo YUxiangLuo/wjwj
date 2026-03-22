@@ -11,12 +11,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle, MonitorPlay } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { experimentApi } from "../../api-client";
-import { ImmersiveAnalysisDashboard } from "../../components/ImmersiveAnalysisDashboard";
 import {
     clearReportDraft,
     clearLegacyTaskReportDraft,
@@ -79,7 +78,7 @@ function ChartBars({
 
     return (
         <div className={`${heightClass} rounded-2xl bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 p-4 overflow-auto`}>
-            <div className="space-y-4 min-w-[620px]">
+            <div className="space-y-4">
                 {rows.map((row) => (
                     <div key={row.label} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 p-3">
                         <div className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-2">{row.label}</div>
@@ -193,8 +192,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [exportType, setExportType] = useState<MethodKey | "all">("all");
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
-    const [showDashboard, setShowDashboard] = useState(false);
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [statsLoading, setStatsLoading] = useState(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
@@ -292,7 +291,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         return buildRepresentativenessRows(numericFields, categoricalFields, methodRows, populationStats);
     }, [numericFields, categoricalFields, methodRows, populationStats]);
 
-    // ---- Series (memoized) ----
+    // ---- Series ----
+
+    const methodSeries = useMemo<ChartSeries[]>(() =>
+        (Object.keys(METHOD_META) as MethodKey[]).map((key) => ({
+            key, label: METHOD_META[key].label, color: METHOD_META[key].color,
+        })),
+    []);
 
     const meanSeries = useMemo<ChartSeries[]>(() => [
         { key: "value", label: selectedNumericField || "均值", color: "#60a5fa" },
@@ -302,37 +307,27 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         { key: "value", label: `${selectedNumericField || "字段"} 标准误`, color: "#f59e0b" },
     ], [selectedNumericField]);
 
-    const distributionSeries = useMemo<ChartSeries[]>(() => [
-        { key: "simple", label: METHOD_META.simple.label, color: METHOD_META.simple.color },
-        { key: "systematic", label: METHOD_META.systematic.label, color: METHOD_META.systematic.color },
-        { key: "pps", label: METHOD_META.pps.label, color: METHOD_META.pps.color },
-        { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
-        ...(distributionResult.withPopulation ? [POPULATION_SERIES] : []),
-    ], [distributionResult.withPopulation]);
+    const distributionSeries = useMemo<ChartSeries[]>(() =>
+        distributionResult.withPopulation ? [...methodSeries, POPULATION_SERIES] : methodSeries,
+    [methodSeries, distributionResult.withPopulation]);
 
-    const representativenessSeries = useMemo<ChartSeries[]>(() => [
-        { key: "simple", label: METHOD_META.simple.label, color: METHOD_META.simple.color },
-        { key: "systematic", label: METHOD_META.systematic.label, color: METHOD_META.systematic.color },
-        { key: "pps", label: METHOD_META.pps.label, color: METHOD_META.pps.color },
-        { key: "stratified", label: METHOD_META.stratified.label, color: METHOD_META.stratified.color },
-    ], []);
+    // ---- Chart config (shared by tabs, zoom dialog, and SVG download) ----
 
-    // ---- Zoom dialog config (lookup map) ----
-
-    const zoomConfig = useMemo<Record<Exclude<ZoomChartType, null>, {
+    const chartConfig = useMemo<Record<Exclude<ZoomChartType, null>, {
         title: string;
         rows: ChartRow[];
         series: ChartSeries[];
         unit?: string;
         emptyMessage: string;
+        downloadFileName: string;
     }>>(() => ({
-        mean: { title: "均值对比（放大）", rows: meanRows, series: meanSeries, emptyMessage: "暂无可用于均值分析的数值字段" },
-        dist: { title: "分布对比（放大）", rows: distributionRows, series: distributionSeries, unit: "%", emptyMessage: "暂无可用于分布分析的分类字段" },
-        error: { title: "误差分析（放大）", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于误差分析的数值字段" },
-        represent: { title: "样本代表性（放大）", rows: representativenessRows, series: representativenessSeries, unit: "%", emptyMessage: "暂无可用于代表性分析的数据" },
-    }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representativenessRows, representativenessSeries]);
+        mean: { title: "均值对比", rows: meanRows, series: meanSeries, emptyMessage: "暂无可用于均值分析的数值字段", downloadFileName: `mean_${sanitizeFileName(selectedNumericField)}.svg` },
+        dist: { title: "分布对比", rows: distributionRows, series: distributionSeries, unit: "%", emptyMessage: "暂无可用于分布分析的分类字段", downloadFileName: `distribution_${sanitizeFileName(selectedCategoricalField)}.svg` },
+        error: { title: "误差分析", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于误差分析的数值字段", downloadFileName: `error_${sanitizeFileName(selectedNumericField)}.svg` },
+        represent: { title: "样本代表性", rows: representativenessRows, series: methodSeries, unit: "%", emptyMessage: "暂无可用于代表性分析的数据", downloadFileName: "representativeness.svg" },
+    }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representativenessRows, methodSeries, selectedNumericField, selectedCategoricalField]);
 
-    const activeZoom = zoomChart ? zoomConfig[zoomChart] : null;
+    const activeZoom = zoomChart ? chartConfig[zoomChart] : null;
 
     useEffect(() => {
         if (!experimentId) {
@@ -436,45 +431,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         }
     };
 
-    const downloadMeanChart = () => {
-        if (!selectedNumericField || meanRows.length === 0) return;
+    const downloadChart = (type: Exclude<ZoomChartType, null>) => {
+        const cfg = chartConfig[type];
+        if (cfg.rows.length === 0) return;
         downloadChartAsSvg({
-            title: `均值对比 - ${selectedNumericField}`,
-            rows: meanRows,
-            series: meanSeries,
-            fileName: `mean_${sanitizeFileName(selectedNumericField)}.svg`,
-        });
-    };
-
-    const downloadDistributionChart = () => {
-        if (!selectedCategoricalField || distributionRows.length === 0) return;
-        downloadChartAsSvg({
-            title: `分布对比 - ${selectedCategoricalField}`,
-            rows: distributionRows,
-            series: distributionSeries,
-            fileName: `distribution_${sanitizeFileName(selectedCategoricalField)}.svg`,
-            unit: "%",
-        });
-    };
-
-    const downloadErrorChart = () => {
-        if (!selectedNumericField || errorRows.length === 0) return;
-        downloadChartAsSvg({
-            title: `抽样标准误对比 - ${selectedNumericField}`,
-            rows: errorRows,
-            series: errorSeries,
-            fileName: `error_${sanitizeFileName(selectedNumericField)}.svg`,
-        });
-    };
-
-    const downloadRepresentativenessChart = () => {
-        if (representativenessRows.length === 0) return;
-        downloadChartAsSvg({
-            title: "样本代表性 - 各方法与总体的偏差",
-            rows: representativenessRows,
-            series: representativenessSeries,
-            fileName: "representativeness.svg",
-            unit: "%",
+            title: cfg.title,
+            rows: cfg.rows,
+            series: cfg.series,
+            fileName: cfg.downloadFileName,
+            unit: cfg.unit,
         });
     };
 
@@ -500,16 +465,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                         <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                                    <BarChart3 className="w-5 h-5 text-indigo-500" />
-                                    图表分析
-                                </CardTitle>
-                                <Button variant="outline" size="sm" className="border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-800 dark:hover:text-indigo-200" onClick={() => setShowDashboard(true)}>
-                                    <MonitorPlay className="w-4 h-4 mr-1.5" />
-                                    全屏仪表盘
-                                </Button>
-                            </div>
+                            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                                <BarChart3 className="w-5 h-5 text-indigo-500" />
+                                图表分析
+                            </CardTitle>
                             <CardDescription className="text-slate-600 dark:text-slate-400">
                                 {statsLoading ? "正在加载总体统计数据…" : "基于阶段三真实抽样结果自动生成"}
                             </CardDescription>
@@ -530,7 +489,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                         series={meanSeries}
                                         emptyMessage="暂无可用于均值分析的数值字段"
                                         onZoom={() => setZoomChart("mean")}
-                                        onDownload={downloadMeanChart}
+                                        onDownload={() => downloadChart("mean")}
                                         fieldSelector={
                                             <FieldSelect value={selectedNumericField} onChange={setSelectedNumericField} fields={numericFields} placeholder="选择数值变量" />
                                         }
@@ -545,7 +504,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                         unit="%"
                                         emptyMessage="暂无可用于分布分析的分类字段"
                                         onZoom={() => setZoomChart("dist")}
-                                        onDownload={downloadDistributionChart}
+                                        onDownload={() => downloadChart("dist")}
                                         fieldSelector={
                                             <FieldSelect
                                                 value={selectedCategoricalField}
@@ -564,7 +523,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
                                         onZoom={() => setZoomChart("error")}
-                                        onDownload={downloadErrorChart}
+                                        onDownload={() => downloadChart("error")}
                                         fieldSelector={
                                             <FieldSelect value={selectedNumericField} onChange={setSelectedNumericField} fields={numericFields} placeholder="选择数值变量" />
                                         }
@@ -575,11 +534,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <ChartTabPanel
                                         description="比较各抽样方法样本与总体关键指标的偏差程度（%）。"
                                         rows={representativenessRows}
-                                        series={representativenessSeries}
+                                        series={methodSeries}
                                         unit="%"
                                         emptyMessage="暂无可用于代表性分析的数据"
                                         onZoom={() => setZoomChart("represent")}
-                                        onDownload={downloadRepresentativenessChart}
+                                        onDownload={() => downloadChart("represent")}
                                     />
                                 </TabsContent>
                             </Tabs>
@@ -595,27 +554,22 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 数据导出
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3 pt-6">
-                            <Button variant="outline" data-testid="student-analysis-export-simple" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("simple")}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                简单随机抽样结果
-                            </Button>
-                            <Button variant="outline" data-testid="student-analysis-export-systematic" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("systematic")}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                系统抽样结果
-                            </Button>
-                            <Button variant="outline" data-testid="student-analysis-export-pps" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("pps")}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                PPS抽样结果
-                            </Button>
-                            <Button variant="outline" data-testid="student-analysis-export-stratified" className="w-full justify-start border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleExport("stratified")}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                分层抽样结果
-                            </Button>
-                            <div className="h-px bg-slate-200 dark:bg-slate-800 my-2"></div>
-                            <Button variant="default" data-testid="student-analysis-export-all" className="w-full justify-start bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" onClick={() => handleExport("all")}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                导出全部数据
+                        <CardContent className="pt-4 space-y-3">
+                            <Select value={exportType} onValueChange={(v) => setExportType(v as MethodKey | "all")}>
+                                <SelectTrigger className="w-full bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                    <SelectItem value="all">全部抽样数据</SelectItem>
+                                    <SelectItem value="simple">{METHOD_META.simple.label}结果</SelectItem>
+                                    <SelectItem value="systematic">{METHOD_META.systematic.label}结果</SelectItem>
+                                    <SelectItem value="pps">{METHOD_META.pps.label}结果</SelectItem>
+                                    <SelectItem value="stratified">{METHOD_META.stratified.label}结果</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" onClick={() => handleExport(exportType)}>
+                                <Download className="w-4 h-4 mr-2" />
+                                导出 CSV
                             </Button>
                         </CardContent>
                     </Card>
@@ -707,10 +661,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             {/* Zoom dialog */}
             <Dialog open={zoomChart !== null} onOpenChange={(open) => { if (!open) setZoomChart(null); }}>
-                <DialogContent className="max-w-6xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-zoom-dialog">
+                <DialogContent className="sm:max-w-[50vw] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-zoom-dialog">
                     <DialogHeader>
                         <DialogTitle className="text-slate-900 dark:text-slate-100">
-                            {activeZoom?.title}
+                            {activeZoom?.title}（放大）
                         </DialogTitle>
                     </DialogHeader>
                     {activeZoom && (
@@ -724,16 +678,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     )}
                 </DialogContent>
             </Dialog>
-
-            {showDashboard && (
-                <ImmersiveAnalysisDashboard
-                    methodRows={methodRows}
-                    populationStats={populationStats}
-                    numericFields={numericFields}
-                    categoricalFields={categoricalFields}
-                    onClose={() => setShowDashboard(false)}
-                />
-            )}
         </div>
     );
 }

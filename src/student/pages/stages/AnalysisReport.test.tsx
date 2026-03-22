@@ -81,10 +81,6 @@ mock.module("../../components/RichTextEditor", () => ({
     ),
 }));
 
-mock.module("../../components/ImmersiveAnalysisDashboard", () => ({
-    ImmersiveAnalysisDashboard: () => null,
-}));
-
 const { AnalysisReport } = await import("./AnalysisReport");
 
 let restoreDom: (() => void) | null = null;
