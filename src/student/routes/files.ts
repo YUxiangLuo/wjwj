@@ -1,5 +1,4 @@
 import { and, eq } from "drizzle-orm";
-import * as fs from "node:fs/promises";
 import { db } from "../../db";
 import { experiment, topicAttachment } from "../../db/schema";
 import { error, getRouteParam, getSearchParams } from "../../server/http";
@@ -104,7 +103,11 @@ const attachmentDownloadRoutes: RouteDefinition = {
         }
 
         try {
-            const fileBuffer = await fs.readFile(fullPath);
+            const file = Bun.file(fullPath);
+            if (!(await file.exists())) {
+                return error("文件不存在", "NOT_FOUND", 404);
+            }
+            const fileBuffer = await file.arrayBuffer();
             const mode = getSearchParams(req).get("mode");
             const contentType = normalizeAttachmentMime(att.fileName, att.fileType ?? "");
             const isPreviewMode = mode === "preview" && canInlinePreview(contentType);
@@ -145,6 +148,10 @@ const exportRoutes: RouteDefinition = {
         if (taskAccessError) return taskAccessError;
 
         const type = getSearchParams(req).get("type") ?? "all";
+        const ALLOWED_EXPORT_TYPES = ["simple", "systematic", "pps", "stratified", "all"];
+        if (!ALLOWED_EXPORT_TYPES.includes(type)) {
+            return error("无效的导出类型", "VALIDATION_ERROR", 400);
+        }
 
         const [exp] = await db
             .select({ samplingResults: experiment.samplingResults })

@@ -1,5 +1,4 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import * as fs from "node:fs/promises";
 import { db } from "../../db";
 import { assistant, experiment, submission, task, teacher, topic } from "../../db/schema";
 import { error, getRouteParam, getSearchParams, json } from "../../server/http";
@@ -195,6 +194,9 @@ const submissionDownloadRoutes: RouteDefinition = {
         if (!submissionId) return error("无效的提交ID", "INVALID_ID");
 
         const type = getSearchParams(req).get("type") ?? "report";
+        if (type !== "questionnaire" && type !== "report") {
+            return error("无效的下载类型", "VALIDATION_ERROR", 400);
+        }
 
         const [row] = await db
             .select({
@@ -218,11 +220,16 @@ const submissionDownloadRoutes: RouteDefinition = {
         }
 
         try {
-            const fileBuffer = await fs.readFile(fullPath);
+            const file = Bun.file(fullPath);
+            if (!(await file.exists())) {
+                return error("文件不存在", "NOT_FOUND", 404);
+            }
+            const fileBuffer = await file.arrayBuffer();
+            const filename = type === "questionnaire" ? "questionnaire.pdf" : "report.pdf";
             return new Response(fileBuffer, {
                 headers: {
                     "Content-Type": "application/pdf",
-                    "Content-Disposition": `attachment; filename="${type === "questionnaire" ? "questionnaire.pdf" : "report.pdf"}"; filename*=UTF-8''${encodeURIComponent(type === "questionnaire" ? "questionnaire.pdf" : "report.pdf")}`,
+                    "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
                 },
             });
         } catch {

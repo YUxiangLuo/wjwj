@@ -10,14 +10,20 @@ export interface TopicFieldMapping {
 
 // LRU-TTL cache for parsed population data, keyed by filePath
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_MAX_SIZE = 50;
 const populationCache = new Map<string, { data: Record<string, any>[]; ts: number }>();
 
 export async function readPopulationData(filePath: string): Promise<Record<string, any>[]> {
     // Check cache first
     const cached = populationCache.get(filePath);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
+        // Move to end for LRU ordering
+        populationCache.delete(filePath);
+        populationCache.set(filePath, cached);
         return cached.data;
     }
+    // Remove stale entry if expired
+    if (cached) populationCache.delete(filePath);
 
     let fullPath: string;
     try {
@@ -36,6 +42,12 @@ export async function readPopulationData(filePath: string): Promise<Record<strin
         if (!sheet) return [];
         const data = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
 
+        // Evict oldest entries if at capacity
+        while (populationCache.size >= CACHE_MAX_SIZE) {
+            const oldest = populationCache.keys().next().value;
+            if (oldest !== undefined) populationCache.delete(oldest);
+            else break;
+        }
         // Store in cache
         populationCache.set(filePath, { data, ts: Date.now() });
 
@@ -84,7 +96,9 @@ export function buildStratifiedStats(population: Array<Record<string, unknown>>,
     for (const field of mapping.stratified) {
         const counts: Record<string, number> = {};
         for (const row of population) {
-            const value = String(row[field]);
+            const raw = row[field];
+            if (raw === undefined || raw === null) continue;
+            const value = String(raw);
             counts[value] = (counts[value] || 0) + 1;
         }
         stats[field] = counts;
@@ -117,7 +131,9 @@ export function buildStratifiedNumericStats(
         // Group population rows by stratum value
         const groups: Record<string, Record<string, unknown>[]> = {};
         for (const row of population) {
-            const key = String(row[stratField]);
+            const raw = row[stratField];
+            if (raw === undefined || raw === null) continue;
+            const key = String(raw);
             (groups[key] ??= []).push(row);
         }
 

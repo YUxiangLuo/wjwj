@@ -180,10 +180,10 @@ test("deleted student login returns account disabled after password verification
     ));
     const payload = await response.json() as any;
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
     expect(payload.error).toMatchObject({
-        code: "ACCOUNT_DISABLED",
-        message: "账号已被停用，请联系教师",
+        code: "INVALID_CREDENTIALS",
+        message: "账号或密码错误",
     });
     expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
 });

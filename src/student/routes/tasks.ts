@@ -19,6 +19,42 @@ function getVisibleRejectReason(status: string, rejectReason: string | null | un
     return status === "rejected" ? (rejectReason ?? undefined) : undefined;
 }
 
+interface DeriveStatusInput {
+    experimentStatus?: number | null;
+    currentStage?: number;
+    submissionStatus?: number | null;
+    gradingActive: boolean;
+}
+
+function deriveStudentTaskStatus(input: DeriveStatusInput): { status: string; progress: number } {
+    if (input.experimentStatus == null) {
+        return { status: "not_started", progress: 0 };
+    }
+    if (input.experimentStatus === ExperimentStatus.REJECTED) {
+        return { status: "rejected", progress: 100 };
+    }
+    if (input.experimentStatus === ExperimentStatus.GRADED) {
+        return { status: "graded", progress: 100 };
+    }
+    if (input.experimentStatus === ExperimentStatus.SUBMITTED) {
+        let status: string;
+        if (input.submissionStatus === 2) {
+            status = "graded";
+        } else if (input.submissionStatus === 3) {
+            status = "rejected";
+        } else if (input.gradingActive) {
+            status = "grading";
+        } else {
+            status = "submitted";
+        }
+        return { status, progress: 100 };
+    }
+    return {
+        status: "in_progress",
+        progress: Math.round((Math.min(input.currentStage ?? 0, 4) / 4) * 100),
+    };
+}
+
 const tasksRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -98,32 +134,12 @@ const tasksRoutes: RouteDefinition = {
             const sub = exp ? submissionMap.get(exp.id) : null;
             const gradingActive = !!sub?.lockedById && isLockActive(sub.lockedAt ?? null, lockTimeoutMinutes);
 
-            let status: string;
-            let progress = 0;
-
-            if (!exp) {
-                status = "not_started";
-            } else if (exp.status === ExperimentStatus.REJECTED) {
-                status = "rejected";
-                progress = 100;
-            } else if (exp.status === ExperimentStatus.GRADED) {
-                status = "graded";
-                progress = 100;
-            } else if (exp.status === ExperimentStatus.SUBMITTED) {
-                if (sub?.status === 2) {
-                    status = "graded";
-                } else if (sub?.status === 3) {
-                    status = "rejected";
-                } else if (gradingActive) {
-                    status = "grading";
-                } else {
-                    status = "submitted";
-                }
-                progress = 100;
-            } else {
-                status = "in_progress";
-                progress = Math.round((Math.min(exp.currentStage, 4) / 4) * 100);
-            }
+            const { status, progress } = deriveStudentTaskStatus({
+                experimentStatus: exp?.status ?? null,
+                currentStage: exp?.currentStage,
+                submissionStatus: sub?.status ?? null,
+                gradingActive,
+            });
 
             return {
                 id: t.id,
@@ -215,26 +231,12 @@ const taskDetailRoutes: RouteDefinition = {
         const lockTimeoutMinutes = await getConfigNumber("grading.lock_timeout_minutes", 30);
         const gradingActive = submissionInfo?.lockedById ? isLockActive(submissionInfo.lockedAt ?? null, lockTimeoutMinutes) : false;
 
-        let status: string;
-        if (!exp) {
-            status = "not_started";
-        } else if (exp.status === ExperimentStatus.REJECTED) {
-            status = "rejected";
-        } else if (exp.status === ExperimentStatus.GRADED) {
-            status = "graded";
-        } else if (exp.status === ExperimentStatus.SUBMITTED) {
-            if (submissionInfo?.status === 2) {
-                status = "graded";
-            } else if (submissionInfo?.status === 3) {
-                status = "rejected";
-            } else if (gradingActive) {
-                status = "grading";
-            } else {
-                status = "submitted";
-            }
-        } else {
-            status = "in_progress";
-        }
+        const { status } = deriveStudentTaskStatus({
+            experimentStatus: exp?.status ?? null,
+            currentStage: exp?.currentStage,
+            submissionStatus: submissionInfo?.status ?? null,
+            gradingActive,
+        });
 
         return json({
             id: taskInfo.id,

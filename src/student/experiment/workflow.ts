@@ -85,13 +85,13 @@ export async function notifySubmissionReviewers(params: {
         .where(eq(assistantClass.classId, params.classId));
 
     const assistantIds = Array.from(new Set(assistantRows.map((row) => row.assistantId)));
-    for (const assistantId of assistantIds) {
-        await notifyUser(3, assistantId, {
+    await Promise.all(assistantIds.map((assistantId) =>
+        notifyUser(3, assistantId, {
             type: "NEW_SUBMISSION",
             title: "有新作业提交",
             content: `学生「${studentName}」提交了「${params.topicName}」`,
             relatedType: "submission",
             relatedId: params.submissionId,
-        }, database);
-    }
+        }, database)
+    ));
 }

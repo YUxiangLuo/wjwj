@@ -98,6 +98,13 @@ const loginRoutes: RouteDefinition = {
             return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
         }
 
+        // Check disabled/deleted BEFORE password verification to avoid leaking password correctness
+        if (s.deletedAt || s.status !== 1) {
+            // Still run a dummy verify to prevent timing-based enumeration
+            await Bun.password.verify(password, s.password).catch(() => {});
+            return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
+        }
+
         const now = new Date();
         const maxAttempts = await getConfigNumber("login.max_fail_count", STUDENT_MAX_LOGIN_ATTEMPTS);
         const lockMinutes = await getConfigNumber("login.lock_duration_minutes", STUDENT_LOCK_MINUTES);
@@ -123,10 +130,6 @@ const loginRoutes: RouteDefinition = {
                 "INVALID_CREDENTIALS",
                 401
             );
-        }
-
-        if (s.deletedAt || s.status !== 1) {
-            return error("账号已被停用，请联系教师", "ACCOUNT_DISABLED", 403);
         }
 
         await db.update(student).set({ loginFailCount: 0, lockedUntil: null }).where(eq(student.id, s.id));
