@@ -454,14 +454,16 @@ async function seed() {
         { studentId: "2023003", name: "往期钱三", classId: classIds[4]! },
     ];
 
+    type SeedStudentDef = (typeof studentDefs)[number];
+
     /** 批改列表分页联调：默认每页 20 条，需明显多于 1 页 */
     const gradingPageTestPendingCount = 35;
-    const gradingPageTestStudentDefs = Array.from({ length: gradingPageTestPendingCount }, (_, i) => ({
+    const gradingPageTestStudentDefs: SeedStudentDef[] = Array.from({ length: gradingPageTestPendingCount }, (_, i) => ({
         studentId: `seedpg${String(i + 1).padStart(4, "0")}`,
         name: `分页测试${i + 1}`,
         classId: classIds[0]!,
     }));
-    const allStudentDefs = [...studentDefs, ...gradingPageTestStudentDefs];
+    const allStudentDefs: SeedStudentDef[] = [...studentDefs, ...gradingPageTestStudentDefs];
 
     const studentIds: number[] = [];
     for (const s of allStudentDefs) {

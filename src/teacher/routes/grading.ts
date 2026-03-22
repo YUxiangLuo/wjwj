@@ -103,19 +103,18 @@ const gradingRoutes: RouteDefinition = {
 
         const whereClause = conditions.length === 1 ? conditions[0]! : and(...conditions);
 
-        const joinChain = (selection: Record<string, unknown>) =>
+        const [[totalRow], rows] = await Promise.all([
             db
-                .select(selection)
+                .select({ count: count() })
                 .from(submission)
                 .innerJoin(experiment, eq(submission.experimentId, experiment.id))
                 .innerJoin(student, eq(experiment.studentId, student.id))
                 .innerJoin(task, eq(experiment.taskId, task.id))
                 .innerJoin(topic, eq(task.topicId, topic.id))
-                .innerJoin(class_, eq(task.classId, class_.id));
-
-        const [[totalRow], rows] = await Promise.all([
-            joinChain({ count: count() }).where(whereClause),
-            joinChain({
+                .innerJoin(class_, eq(task.classId, class_.id))
+                .where(whereClause),
+            db
+                .select({
                     id: submission.id,
                     studentName: student.name,
                     studentId: student.studentId,
@@ -128,13 +127,20 @@ const gradingRoutes: RouteDefinition = {
                     gradedById: submission.gradedById,
                     gradedAt: submission.gradedAt,
                 })
+                .from(submission)
+                .innerJoin(experiment, eq(submission.experimentId, experiment.id))
+                .innerJoin(student, eq(experiment.studentId, student.id))
+                .innerJoin(task, eq(experiment.taskId, task.id))
+                .innerJoin(topic, eq(task.topicId, topic.id))
+                .innerJoin(class_, eq(task.classId, class_.id))
                 .where(whereClause)
                 .orderBy(desc(submission.submittedAt))
                 .limit(pageSize)
                 .offset((page - 1) * pageSize),
         ]);
 
-        const total = totalRow?.count ?? 0;
+        const totalRaw = totalRow?.count ?? 0;
+        const total = typeof totalRaw === "bigint" ? Number(totalRaw) : Number(totalRaw);
 
         const graderIds = rows
             .filter((r) => r.gradedByType === 2 && r.gradedById)
