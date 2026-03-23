@@ -71,12 +71,31 @@ test("design effect and non-response rate combine multiplicatively", () => {
 });
 
 test("returns null for invalid population size", () => {
-    const result = calculateFinitePopulationSampleSize({
+    expect(calculateFinitePopulationSampleSize({
         confidenceLevel: "95",
         marginOfError: "5",
         populationSize: 0,
-    });
-    expect(result).toBeNull();
+    })).toBeNull();
+    expect(calculateFinitePopulationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: "5",
+        populationSize: -10,
+    })).toBeNull();
+    expect(calculateFinitePopulationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: "5",
+        populationSize: NaN,
+    })).toBeNull();
+    expect(calculateFinitePopulationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: "5",
+        populationSize: null,
+    })).toBeNull();
+    expect(calculateFinitePopulationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: "5",
+        populationSize: undefined,
+    })).toBeNull();
 });
 
 test("returns null for unsupported confidence level", () => {
@@ -232,6 +251,21 @@ test("CV-based returns null for invalid params", () => {
         confidenceLevel: "95",
         targetCV: 0.05,
         populationSize: 0,
+    })).toBeNull();
+});
+
+test("CV-based returns null when nonResponseRate >= 1 (division by zero guard)", () => {
+    expect(calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 1000,
+        nonResponseRate: 1,
+    })).toBeNull();
+    expect(calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 1000,
+        nonResponseRate: 1.5,
     })).toBeNull();
 });
 

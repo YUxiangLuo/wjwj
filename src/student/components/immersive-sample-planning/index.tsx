@@ -84,6 +84,9 @@ export function ImmersiveSamplePlanning({
     const [designEffect, setDesignEffect] = useState(initialDesignEffect);
     const [nonResponseRate, setNonResponseRate] = useState(initialNonResponseRate);
 
+    // With valid ConfidenceLevel and positive populationSize the null case should
+    // not occur; getFinalSampleSizeBounds(N).min (30) is a safer fallback than the
+    // old hardcoded 384 which silently assumed 95%/5%.
     const recommendedSize =
         calculateFinitePopulationSampleSize({
             confidenceLevel,
@@ -91,7 +94,7 @@ export function ImmersiveSamplePlanning({
             populationSize,
             designEffect,
             nonResponseRate,
-        }) ?? 384;
+        }) ?? Math.min(30, populationSize);
 
     const [finalSampleSize, setFinalSampleSize] = useState(initialFinalSampleSize ?? recommendedSize);
 
@@ -181,34 +184,41 @@ export function ImmersiveSamplePlanning({
 
     // --- Save & confirm ---
     const [saving, setSaving] = useState(false);
+    const savingRef = useRef(false);
 
-    const handleConfirm = async () => {
+    const handleConfirm = useCallback(async () => {
+        if (savingRef.current) return;
         if (!saveExperiment) {
             // Standalone / preview: no persistence — play launch animation then complete
             jumpTo("launching");
             return;
         }
+        savingRef.current = true;
         setSaving(true);
-        // 仅同步 SamplePlanData；子总体/多变量等高级工具状态不参与后端持久化（P0）
-        const success = await saveExperiment({
-            samplePlan: {
-                confidenceLevel,
-                marginOfError,
-                designEffect,
-                nonResponseRate,
-                recommendedSize,
-                finalSampleSize,
-            },
-        });
-        setSaving(false);
-        if (success) {
-            // Persist-only flow: return to classic page — do not show sampling-stage launch animation
-            onComplete(paramsRef.current);
-            onClose();
-        } else {
-            toast.error("保存失败，请重试");
+        try {
+            // 仅同步 SamplePlanData；子总体/多变量等高级工具状态不参与后端持久化（P0）
+            const success = await saveExperiment({
+                samplePlan: {
+                    confidenceLevel,
+                    marginOfError,
+                    designEffect,
+                    nonResponseRate,
+                    recommendedSize,
+                    finalSampleSize,
+                },
+            });
+            if (success) {
+                // Persist-only flow: return to classic page — do not show sampling-stage launch animation
+                onComplete(paramsRef.current);
+                onClose();
+            } else {
+                toast.error("保存失败，请重试");
+            }
+        } finally {
+            savingRef.current = false;
+            setSaving(false);
         }
-    };
+    }, [saveExperiment, jumpTo, confidenceLevel, marginOfError, designEffect, nonResponseRate, recommendedSize, finalSampleSize, onComplete, onClose]);
 
     const handleLaunchComplete = useCallback(() => {
         jumpTo("done");
