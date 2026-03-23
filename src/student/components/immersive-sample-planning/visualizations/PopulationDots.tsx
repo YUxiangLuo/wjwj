@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 
 interface Props {
     total: number;
@@ -14,7 +14,9 @@ interface Props {
 export function PopulationDots({ total, highlighted, className }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    useEffect(() => {
+    const drawRef = useRef<() => void>(null);
+
+    const draw = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext("2d");
@@ -23,6 +25,7 @@ export function PopulationDots({ total, highlighted, className }: Props) {
         const dpr = window.devicePixelRatio || 1;
         const displayW = canvas.clientWidth;
         const displayH = canvas.clientHeight;
+        if (displayW === 0 || displayH === 0) return;
         canvas.width = displayW * dpr;
         canvas.height = displayH * dpr;
         ctx.scale(dpr, dpr);
@@ -67,6 +70,20 @@ export function PopulationDots({ total, highlighted, className }: Props) {
             }
         }
     }, [total, highlighted]);
+
+    drawRef.current = draw;
+
+    // Redraw when data changes
+    useEffect(() => { draw(); }, [draw]);
+
+    // Redraw on resize (stable observer — not recreated on data changes)
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ro = new ResizeObserver(() => drawRef.current?.());
+        ro.observe(canvas);
+        return () => ro.disconnect();
+    }, []);
 
     return (
         <canvas

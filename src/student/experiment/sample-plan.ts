@@ -1,10 +1,4 @@
-import { zForConfidenceLevel } from "./confidence-level";
-
-const Z_SCORES = new Map<number, number>([
-    [0.90, 1.645],
-    [0.95, 1.96],
-    [0.99, 2.576],
-]);
+import { zForConfidenceLevel, isConfidenceLevel, Z_VALUES } from "./confidence-level";
 
 /**
  * 将百分比或小数形式的误差限统一为小数比例。
@@ -13,14 +7,6 @@ const Z_SCORES = new Map<number, number>([
  */
 function normalizeMarginOfError(value: number): number {
     return value >= 1 ? value / 100 : value;
-}
-
-/**
- * 将百分比或小数形式的置信水平统一为小数比例。
- * 约定：值 > 1 视为百分比（如 95 → 0.95），<= 1 视为已是比例（如 0.95 不变）。
- */
-function normalizeConfidenceLevel(value: number): number {
-    return value > 1 ? value / 100 : value;
 }
 
 export interface SampleSizeMetrics {
@@ -44,15 +30,14 @@ export function calculateFinitePopulationSampleSize(params: {
     nonResponseRate?: unknown;
     p?: number;  // 估计比例，默认为0.5（最保守估计）
 }) {
-    if (!params.populationSize || params.populationSize <= 0) {
+    if (params.populationSize == null || !(params.populationSize > 0)) {
         return null;
     }
 
-    const confidenceRatio = normalizeConfidenceLevel(Number(params.confidenceLevel));
+    const clStr = String(params.confidenceLevel);
+    if (!isConfidenceLevel(clStr)) return null;
+    const z = Z_VALUES[clStr];
     const e = normalizeMarginOfError(Number(params.marginOfError));
-
-    const z = Z_SCORES.get(confidenceRatio);
-    if (z === undefined) return null;
 
     const N = params.populationSize;
     const p = params.p ?? 0.5;
@@ -85,15 +70,14 @@ export function calculateSampleSizeMetrics(params: {
     nonResponseRate?: unknown;
     p?: number;
 }): SampleSizeMetrics | null {
-    if (!params.populationSize || params.populationSize <= 0) {
+    if (params.populationSize == null || !(params.populationSize > 0)) {
         return null;
     }
 
-    const confidenceRatio = normalizeConfidenceLevel(Number(params.confidenceLevel));
+    const clStr = String(params.confidenceLevel);
+    if (!isConfidenceLevel(clStr)) return null;
+    const z = Z_VALUES[clStr];
     const e = normalizeMarginOfError(Number(params.marginOfError));
-
-    const z = Z_SCORES.get(confidenceRatio);
-    if (z === undefined) return null;
 
     const N = params.populationSize;
     const p = params.p ?? 0.5;
@@ -119,9 +103,12 @@ export function calculateSampleSizeMetrics(params: {
 
     const finalN = Math.ceil(n);
 
-    // 计算精度指标（基于调整后的有效样本量，即n1）
+    // 精度指标基于有效样本量 n1（FPC 校正后、deff/NRR 调整前）。
+    // 原因：n_final = n1 × deff / (1-NRR)，其中 deff 和 NRR 是膨胀因子；
+    // 实际回收有效样本的等效精度仍为 n1（deff 抵消群内相关，NRR 补偿丢失），
+    // 故 SE/CV 应反映设计意图下的精度，而非原始发放样本量。
     const effectiveN = Math.ceil(n1);
-    
+
     // 标准误差 SE = sqrt(p*(1-p)/n * (1 - n/N))，含有限总体校正
     // 当 n ≥ N（全数调查）时 FPC=0，SE=0，此为正确行为
     const fpc = Math.max(0, 1 - effectiveN / N);
@@ -180,7 +167,7 @@ export function calculateSampleSizeSensitivity(params: {
     nonResponseRate?: unknown;
     p?: number;
 }) {
-    if (!params.populationSize || params.populationSize <= 0) {
+    if (params.populationSize == null || !(params.populationSize > 0)) {
         return null;
     }
 
@@ -270,9 +257,12 @@ export interface CVBasedSampleSizeResult {
  * 需另行乘以 Z：相对误差限 = Z × CV(ȳ)。
  */
 export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBasedSampleSizeResult | null {
-    if (params.populationSize <= 0 || params.targetCV <= 0) {
+    if (!(params.populationSize > 0) || !(params.targetCV > 0)) {
         return null;
     }
+
+    const nrr = params.nonResponseRate ?? 0;
+    if (nrr >= 1) return null;
 
     // z 不参与样本量计算，仅用于 UI 展示（供用户换算置信区间相对半宽 = Z × CV(ȳ)）
     const z = zForConfidenceLevel(String(params.confidenceLevel));
@@ -280,14 +270,13 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     const estimatedCV = params.estimatedCV ?? 0.5;  // 默认估计变异系数50%
     const targetCV = params.targetCV;
     const deff = params.designEffect ?? 1;
-    const nrr = params.nonResponseRate ?? 0;
 
     // 基础样本量: n₀ = CV_pop² / targetCV²
     const n0 = Math.pow(estimatedCV, 2) / Math.pow(targetCV, 2);
-    
+
     // 有限总体校正
     let n = n0 / (1 + (n0 - 1) / params.populationSize);
-    
+
     // 设计效应和无回答率调整
     n = n * deff / (1 - nrr);
     

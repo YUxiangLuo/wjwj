@@ -508,7 +508,7 @@ export function DecisionPhase({
                             initialVariables={multivarDraft}
                             onApplyToPlan={({ variables, recommendedSampleSize }) => {
                                 const locksPanel =
-                                    variables.length > 0 || recommendedSampleSize > 0;
+                                    variables.length > 0 && recommendedSampleSize > 0;
                                 if (locksPanel) {
                                     commitNonStandardLock("multivar", () => {
                                         onSurveyVariablesChange(variables);
