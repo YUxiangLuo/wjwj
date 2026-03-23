@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronRight } from "lucide-react";
 import { calculateFinitePopulationSampleSize } from "../../../experiment/sample-plan";
-import { type SampleParams } from "../types";
+import { zForConfidenceLevel, type SampleParams } from "../types";
 
 interface Props {
     params: SampleParams;
@@ -11,6 +11,7 @@ interface Props {
 }
 
 const DEMO_POPULATIONS = [500, 2_000, 10_000, 100_000];
+const MAX_CUSTOM_POPULATION = 10_000_000;
 
 function calcN0(z: number, e: number, p = 0.5): number {
     return Math.ceil((z * z * p * (1 - p)) / (e * e));
@@ -19,9 +20,19 @@ function calcN0(z: number, e: number, p = 0.5): number {
 export function FPCPhase({ params, onNext }: Props) {
     const [customN, setCustomN] = useState<string>("");
 
-    const z = ({ "90": 1.645, "95": 1.96, "99": 2.576 } as Record<string, number>)[params.confidenceLevel] ?? 1.96;
+    const z = zForConfidenceLevel(params.confidenceLevel);
     const E = params.marginOfError / 100;
     const n0 = calcN0(z, E);
+
+    /** 仅含 FPC，不含设计效应与无回答率，与「现实世界」步骤后的 recommendedSize 区分 */
+    const fpcOnlyUserN =
+        calculateFinitePopulationSampleSize({
+            confidenceLevel: params.confidenceLevel,
+            marginOfError: params.marginOfError,
+            populationSize: params.populationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? n0;
 
     // Build comparison rows
     const populations = [...DEMO_POPULATIONS];
@@ -29,9 +40,13 @@ export function FPCPhase({ params, onNext }: Props) {
         populations.push(params.populationSize);
         populations.sort((a, b) => a - b);
     }
-    const customNValue = parseInt(customN);
-    if (!Number.isNaN(customNValue) && customNValue > 0 && !populations.includes(customNValue)) {
-        populations.push(customNValue);
+    const customNValue = Number.parseInt(customN.trim(), 10);
+    const clampedCustomN =
+        !Number.isNaN(customNValue) && customNValue > 0
+            ? Math.min(customNValue, MAX_CUSTOM_POPULATION)
+            : null;
+    if (clampedCustomN != null && !populations.includes(clampedCustomN)) {
+        populations.push(clampedCustomN);
         populations.sort((a, b) => a - b);
     }
 
@@ -137,7 +152,9 @@ export function FPCPhase({ params, onNext }: Props) {
             <div className="text-center space-y-2">
                 <p className="text-sm text-gray-500 dark:text-slate-400">
                     总体越小，校正减少的样本量越多。<br />
-                    你的总体 {params.populationSize.toLocaleString()} 人 → 仅需 <strong className="text-indigo-500 tabular-nums">{params.recommendedSize}</strong>（而非 {n0}）
+                    你的总体 {params.populationSize.toLocaleString()} 人 → 在仅考虑 FPC（不含设计效应与无回答率）时约需{" "}
+                    <strong className="text-indigo-500 tabular-nums">{fpcOnlyUserN.toLocaleString()}</strong>
+                    （无限总体近似为 {n0.toLocaleString()}）
                 </p>
             </div>
 

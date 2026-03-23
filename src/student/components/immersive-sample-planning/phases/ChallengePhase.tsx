@@ -6,6 +6,10 @@ import { PopulationDots } from "../visualizations/PopulationDots";
 
 interface Props {
     populationSize: number;
+    /** 与当前推荐样本量计算一致的置信水平（百分比字符串，如 "95"） */
+    confidenceLevel: string;
+    /** 与当前推荐样本量计算一致的允许误差（%） */
+    marginOfError: number;
     recommendedSize: number;
     guess: number | null;
     revealed: boolean;
@@ -16,6 +20,8 @@ interface Props {
 
 export function ChallengePhase({
     populationSize,
+    confidenceLevel,
+    marginOfError,
     recommendedSize,
     guess,
     revealed,
@@ -117,7 +123,7 @@ export function ChallengePhase({
                             textColor="text-amber-600 dark:text-amber-400"
                         />
                         <ComparisonBar
-                            label="统计学建议 (95% 置信, ±5%)"
+                            label={`统计学建议 (${confidenceLevel}% 置信, ±${marginOfError}%)`}
                             value={recommendedSize}
                             max={populationSize}
                             color="bg-emerald-500"

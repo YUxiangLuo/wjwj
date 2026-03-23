@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { calculateFinitePopulationSampleSize } from "../../experiment/sample-plan";
+import type { ConfidenceLevel } from "../../experiment/confidence-level";
+import { normalizeConfidenceLevel } from "../../experiment/confidence-level";
 import type { SamplePlanData } from "../../api-client";
 import type { AdvancedNonStandardSampleLockSource } from "../sample-planning/advancedTabs";
 import type { Domain } from "../DomainEstimationManager";
@@ -75,7 +77,9 @@ export function ImmersiveSamplePlanning({
     onLaunchComplete,
 }: Props) {
     // --- Parameter state (shared across all phases) ---
-    const [confidenceLevel, setConfidenceLevel] = useState(initialConfidenceLevel);
+    const [confidenceLevel, setConfidenceLevel] = useState<ConfidenceLevel>(() =>
+        normalizeConfidenceLevel(initialConfidenceLevel ?? "95"),
+    );
     const [marginOfError, setMarginOfError] = useState(initialMarginOfError);
     const [designEffect, setDesignEffect] = useState(initialDesignEffect);
     const [nonResponseRate, setNonResponseRate] = useState(initialNonResponseRate);
@@ -116,10 +120,15 @@ export function ImmersiveSamplePlanning({
     const [domains, setDomains] = useState<Domain[]>([]);
     const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
 
+    const domainsRef = useRef(domains);
+    domainsRef.current = domains;
+    const surveyVariablesRef = useRef(surveyVariables);
+    surveyVariablesRef.current = surveyVariables;
+
     /** 仅当样本量来自成本/多变量/CV/整群等非标准公式路径时锁定；取消时恢复到首次锁定前的快照 */
     const [advancedPlanLock, setAdvancedPlanLock] = useState<AdvancedNonStandardSampleLockSource | null>(null);
     const preAdvancedBaselineRef = useRef<{
-        confidenceLevel: string;
+        confidenceLevel: ConfidenceLevel;
         marginOfError: number;
         designEffect: number;
         nonResponseRate: number;
@@ -135,10 +144,10 @@ export function ImmersiveSamplePlanning({
         designEffect,
         nonResponseRate,
         finalSampleSize,
-        domains: structuredClone(domains),
-        surveyVariables: structuredClone(surveyVariables),
+        domains: structuredClone(domainsRef.current),
+        surveyVariables: structuredClone(surveyVariablesRef.current),
         userTouchedFinal: userTouchedFinal.current,
-    }), [confidenceLevel, marginOfError, designEffect, nonResponseRate, finalSampleSize, domains, surveyVariables]);
+    }), [confidenceLevel, marginOfError, designEffect, nonResponseRate, finalSampleSize]);
 
     /** 仅在首次进入非标准样本量前打快照；已锁定时不再刷新，「取消应用」始终回到首次锁定前（若需逐步撤销需先取消再重试） */
     const handleBeforeAdvancedCommit = useCallback(() => {
@@ -205,15 +214,20 @@ export function ImmersiveSamplePlanning({
         jumpTo("done");
     }, [jumpTo]);
 
+    const onCompleteRef = useRef(onComplete);
+    onCompleteRef.current = onComplete;
+    const onLaunchCompleteRef = useRef(onLaunchComplete);
+    onLaunchCompleteRef.current = onLaunchComplete;
+
     // When phase reaches "done" (after launch animation in no-save mode), trigger completion
     const doneTriggered = useRef(false);
     useEffect(() => {
         if (phase.type === "done" && !doneTriggered.current) {
             doneTriggered.current = true;
-            onComplete(paramsRef.current);
-            onLaunchComplete?.();
+            onCompleteRef.current(paramsRef.current);
+            onLaunchCompleteRef.current?.();
         }
-    }, [phase.type, onComplete, onLaunchComplete]);
+    }, [phase.type]);
 
     // --- Exit confirmation ---
     const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
@@ -327,6 +341,8 @@ export function ImmersiveSamplePlanning({
                 return (
                     <ChallengePhase
                         populationSize={populationSize}
+                        confidenceLevel={confidenceLevel}
+                        marginOfError={marginOfError}
                         recommendedSize={recommendedSize}
                         guess={phase.guess}
                         revealed={phase.revealed}
@@ -341,7 +357,7 @@ export function ImmersiveSamplePlanning({
                     <FormulaPhase
                         step={phase.step}
                         params={params}
-                        onConfidenceLevelChange={setConfidenceLevel}
+                        onConfidenceLevelChange={(v) => setConfidenceLevel(normalizeConfidenceLevel(v))}
                         onMarginOfErrorChange={setMarginOfError}
                         onNext={goNext}
                     />
@@ -364,7 +380,7 @@ export function ImmersiveSamplePlanning({
                 return (
                     <DecisionPhase
                         params={params}
-                        onConfidenceLevelChange={setConfidenceLevel}
+                        onConfidenceLevelChange={(v) => setConfidenceLevel(normalizeConfidenceLevel(v))}
                         onMarginOfErrorChange={setMarginOfError}
                         onDesignEffectChange={setDesignEffect}
                         onNonResponseRateChange={setNonResponseRate}

@@ -15,6 +15,7 @@ import {
     Info,
     ChevronRight
 } from "lucide-react";
+import { zForConfidenceLevel } from "../experiment/confidence-level";
 import { calculateFinitePopulationSampleSize } from "../experiment/sample-plan";
 
 interface CostScenario {
@@ -122,7 +123,7 @@ export function PrecisionCostTradeoff({
         // 反向计算误差限：从样本量反推
         // 正向: n_final = (z²p(1-p)/E²) / (1+(n₀-1)/N) * deff / (1-nrr)
         // 反推: effectiveN = n_final * (1-nrr) / deff，然后含FPC反推E
-        const z = confidenceLevelLocal === "90" ? 1.645 : confidenceLevelLocal === "95" ? 1.96 : 2.576;
+        const z = zForConfidenceLevel(confidenceLevelLocal);
         const p = 0.5;
         
         // 去除deff和nrr调整，得到有限总体校正后的有效样本量
@@ -145,7 +146,7 @@ export function PrecisionCostTradeoff({
         const points: Array<{ sampleSize: number; marginOfError: number; totalCost: number }> = [];
         
         const sampleSizes = [30, 50, 100, 200, 300, 500, 800, 1000, 1500, 2000, 3000, 5000];
-        const z = confidenceLevelLocal === "90" ? 1.645 : confidenceLevelLocal === "95" ? 1.96 : 2.576;
+        const z = zForConfidenceLevel(confidenceLevelLocal);
         const p = 0.5;
 
         const safeDeff = designEffectLocal > 0 ? designEffectLocal : 1;

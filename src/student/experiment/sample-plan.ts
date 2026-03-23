@@ -1,3 +1,5 @@
+import { zForConfidenceLevel } from "./confidence-level";
+
 const Z_SCORES = new Map<number, number>([
     [0.90, 1.645],
     [0.95, 1.96],
@@ -273,8 +275,7 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     }
 
     // z 不参与样本量计算，仅用于 UI 展示（供用户换算置信区间相对半宽 = Z × CV(ȳ)）
-    const z = params.confidenceLevel === "90" ? 1.645 :
-              params.confidenceLevel === "95" ? 1.96 : 2.576;
+    const z = zForConfidenceLevel(String(params.confidenceLevel));
 
     const estimatedCV = params.estimatedCV ?? 0.5;  // 默认估计变异系数50%
     const targetCV = params.targetCV;
@@ -337,8 +338,7 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
         return null;
     }
 
-    const z = params.confidenceLevel === "90" ? 1.645 : 
-              params.confidenceLevel === "95" ? 1.96 : 2.576;
+    const z = zForConfidenceLevel(String(params.confidenceLevel));
     
     const e = normalizeMarginOfError(params.marginOfError);
     const p = params.p ?? 0.5;

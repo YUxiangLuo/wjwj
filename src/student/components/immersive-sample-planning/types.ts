@@ -28,22 +28,22 @@ export const PHASE_ORDER = [
 
 export type PhaseType = (typeof PHASE_ORDER)[number];
 
+import type { ConfidenceLevel } from "../../experiment/confidence-level";
+import { Z_VALUES, zForConfidenceLevel } from "../../experiment/confidence-level";
+
+export type { ConfidenceLevel };
+export { Z_VALUES, zForConfidenceLevel };
+
 /** Parameters shared across all phases. */
 export interface SampleParams {
     populationSize: number;
-    confidenceLevel: string;
+    confidenceLevel: ConfidenceLevel;
     marginOfError: number;
     designEffect: number;
     nonResponseRate: number;
     finalSampleSize: number;
     recommendedSize: number;
 }
-
-export const Z_VALUES: Record<string, number> = {
-    "90": 1.645,
-    "95": 1.96,
-    "99": 2.576,
-};
 
 export function initialPhase(): Phase {
     return { type: "challenge", guess: null, revealed: false };

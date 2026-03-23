@@ -18,6 +18,7 @@ import {
     Star,
     ArrowRight,
 } from "lucide-react";
+import { zForConfidenceLevel } from "../experiment/confidence-level";
 import { calculateFinitePopulationSampleSize } from "../experiment/sample-plan";
 
 export interface SurveyVariable {
@@ -80,6 +81,18 @@ export function MultiVariableSamplePlan({
     const onVariablesChangeRef = useRef(onVariablesChange);
     onVariablesChangeRef.current = onVariablesChange;
 
+    /** 仅当影响样本量计算的字段变化时变化，避免改名称/重要性等触发重算 */
+    const variablesSampleCalcKey = useMemo(
+        () =>
+            variables
+                .map(
+                    (v) =>
+                        `${v.type}-${v.estimatedValue}-${v.estimatedStdDev ?? ""}-${v.confidenceLevel}-${v.marginOfError}`,
+                )
+                .join(","),
+        [variables],
+    );
+
     // 计算每个变量所需的样本量
     useEffect(() => {
         const updatedVariables = variables.map(variable => {
@@ -98,8 +111,7 @@ export function MultiVariableSamplePlan({
                 }) ?? 0;
             } else if (variable.type === "mean" && variable.estimatedStdDev) {
                 // 均值估计的样本量计算（简化版）
-                const z = variable.confidenceLevel === "90" ? 1.645 :
-                         variable.confidenceLevel === "95" ? 1.96 : 2.576;
+                const z = zForConfidenceLevel(variable.confidenceLevel);
                 const sigma = variable.estimatedStdDev;
                 // 相对误差限：用户输入的百分比 × 估计均值 = 绝对误差
                 // 例如：均值1000元、误差5% → E = 50元
@@ -137,7 +149,7 @@ export function MultiVariableSamplePlan({
             onVariablesChangeRef.current(updatedVariables);
         }
         // 依赖不含 onVariablesChange：用 ref 始终调用最新回调，避免因父级内联函数导致 effect 每帧重跑
-    }, [variables, populationSize]);
+    }, [variablesSampleCalcKey, populationSize]);
 
     // 确定建议样本量（取主要变量中的最大值）
     const recommendedSampleSize = useMemo(() => {
@@ -161,11 +173,14 @@ export function MultiVariableSamplePlan({
         return Math.max(...variables.map(v => v.requiredSampleSize));
     }, [variables]);
 
+    const onRecommendedSampleSizeChangeRef = useRef(onRecommendedSampleSizeChange);
+    onRecommendedSampleSizeChangeRef.current = onRecommendedSampleSizeChange;
+
     // 当推荐样本量变化时可选通知父组件；传入 onApplyToPlan 时仅手动「应用」写回
     useEffect(() => {
         if (onApplyToPlan) return;
-        onRecommendedSampleSizeChange?.(recommendedSampleSize);
-    }, [recommendedSampleSize, onRecommendedSampleSizeChange, onApplyToPlan]);
+        onRecommendedSampleSizeChangeRef.current?.(recommendedSampleSize);
+    }, [recommendedSampleSize, onApplyToPlan]);
 
     // 添加新变量
     const addVariable = () => {

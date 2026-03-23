@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,12 @@ export function DomainEstimationManager({
     const onDomainsChangeRef = useRef(onDomainsChange);
     onDomainsChangeRef.current = onDomainsChange;
 
+    /** 仅当影响样本量公式的字段变化时变化，避免改名称等无关字段触发重算或二次 effect */
+    const domainsSampleCalcKey = useMemo(
+        () => domains.map((d) => `${d.confidenceLevel}-${d.marginOfError}-${d.populationSize}`).join(","),
+        [domains],
+    );
+
     // 计算每个域的所需样本量
     useEffect(() => {
         const updatedDomains = domains.map(domain => {
@@ -77,7 +83,7 @@ export function DomainEstimationManager({
             onDomainsChangeRef.current(updatedDomains);
         }
         // 依赖不含 onDomainsChange：用 ref 始终调用最新回调，避免父级内联函数导致 effect 每帧重跑
-    }, [domains, totalPopulationSize]);
+    }, [domainsSampleCalcKey, totalPopulationSize]);
 
     // 添加新域
     const addDomain = () => {
