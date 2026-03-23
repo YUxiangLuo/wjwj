@@ -257,7 +257,7 @@ export interface CVBasedSampleSizeResult {
  * 需另行乘以 Z：相对误差限 = Z × CV(ȳ)。
  */
 export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBasedSampleSizeResult | null {
-    if (params.populationSize <= 0 || params.targetCV <= 0) {
+    if (!(params.populationSize > 0) || !(params.targetCV > 0)) {
         return null;
     }
 

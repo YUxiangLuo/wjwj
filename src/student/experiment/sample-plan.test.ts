@@ -252,6 +252,16 @@ test("CV-based returns null for invalid params", () => {
         targetCV: 0.05,
         populationSize: 0,
     })).toBeNull();
+    expect(calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: NaN,
+    })).toBeNull();
+    expect(calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: NaN,
+        populationSize: 1000,
+    })).toBeNull();
 });
 
 test("CV-based returns null when nonResponseRate >= 1 (division by zero guard)", () => {

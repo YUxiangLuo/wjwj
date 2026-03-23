@@ -14,6 +14,8 @@ interface Props {
 export function PopulationDots({ total, highlighted, className }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
+    const drawRef = useRef<() => void>(null);
+
     const draw = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -69,17 +71,19 @@ export function PopulationDots({ total, highlighted, className }: Props) {
         }
     }, [total, highlighted]);
 
+    drawRef.current = draw;
+
     // Redraw when data changes
     useEffect(() => { draw(); }, [draw]);
 
-    // Redraw on resize
+    // Redraw on resize (stable observer — not recreated on data changes)
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const ro = new ResizeObserver(() => draw());
+        const ro = new ResizeObserver(() => drawRef.current?.());
         ro.observe(canvas);
         return () => ro.disconnect();
-    }, [draw]);
+    }, []);
 
     return (
         <canvas
