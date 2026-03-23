@@ -1,5 +1,6 @@
 import { getRichTextPlainLength, getRichTextPlainText } from "../../utils/rich-text";
 import { validateQuestionAtIndex } from "../../lib/validate-question";
+import { getFinalSampleSizeBounds } from "./final-sample-bounds";
 import { getSystematicAcceptedRange } from "./systematic-sampling";
 
 function toTrimmedString(value: unknown) {
@@ -58,6 +59,7 @@ export function validateQuestionnaireForSubmit(questionnaire: unknown): string |
     return null;
 }
 
+/** 校验持久化后的 samplePlan 形状；不包含子总体/多变量等仅前端的辅助字段（那些字段也不会写入存储）。 */
 export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize: number | null): string | null {
     if (!samplePlan || typeof samplePlan !== "object") {
         return "请先完成样本量规划";
@@ -72,18 +74,28 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
         return "请先设置置信水平";
     }
 
+    const allowedConfidence = new Set(["90", "95", "99"]);
+    if (!allowedConfidence.has(confidenceLevel)) {
+        return "置信水平需为 90%、95% 或 99%";
+    }
+
     if (!Number.isFinite(marginOfError) || marginOfError < 1 || marginOfError > 10) {
         return "允许误差需在1%-10%之间";
     }
 
-    if (!Number.isFinite(finalSampleSize) || finalSampleSize < 30) {
-        return "最终样本量不能小于30";
+    if (!Number.isFinite(finalSampleSize) || !Number.isInteger(finalSampleSize) || finalSampleSize < 1) {
+        return "最终样本量需为不小于 1 的整数";
     }
 
     if (populationSize !== null && Number.isFinite(populationSize) && populationSize > 0) {
-        const maxSampleSize = Math.floor(populationSize * 0.5);
-        if (maxSampleSize >= 30 && finalSampleSize > maxSampleSize) {
-            return `最终样本量不能超过总体规模的50%（${maxSampleSize}）`;
+        const { min, max } = getFinalSampleSizeBounds(populationSize);
+        if (finalSampleSize < min || finalSampleSize > max) {
+            return `最终样本量需在 ${min}～${max} 人之间`;
+        }
+    } else {
+        // 无总体规模时沿用不低于 30 的保守约定（与历史行为一致）
+        if (finalSampleSize < 30) {
+            return "最终样本量不能小于30";
         }
     }
 

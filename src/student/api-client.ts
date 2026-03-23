@@ -76,6 +76,11 @@ export interface TaskDetail {
 
 export type { QuestionType, Question, QuestionnaireData };
 
+/**
+ * 与实验一并持久化、经 `experimentApi.save` 同步到后端的样本量规划字段。
+ * 沉浸式规划里「高级工具」产生的辅助状态（子总体划分、多变量调查表、成本/CV/整群方案的中间数据等）
+ * 仅用于前端会话内推演与 UI，不进入本结构与后端同步逻辑（见 P0 约定）。
+ */
 export interface SamplePlanData {
     confidenceLevel: string;
     marginOfError: number;

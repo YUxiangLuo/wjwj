@@ -7,6 +7,12 @@ export type AdvancedTab =
     | "cluster"
     | "metrics";
 
+/** 会写入「非标准公式」路径样本量的高级工具 — 应用后主面板参数锁定 */
+export type AdvancedNonStandardSampleLockSource = Extract<
+    AdvancedTab,
+    "cost" | "multivar" | "cv" | "cluster"
+>;
+
 export const ADVANCED_TAB_ACTIVE_CLASS =
     "bg-indigo-100 border-indigo-300 text-indigo-800 dark:bg-indigo-950/55 dark:border-indigo-600 dark:text-indigo-200";
 

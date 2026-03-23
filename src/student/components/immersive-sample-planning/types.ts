@@ -1,0 +1,55 @@
+/** Phase state machine for the guided sample planning flow. */
+
+export type FormulaStep = "z" | "e" | "summary";
+export type RealWorldScenario = "deff" | "nrr" | "summary";
+
+export type Phase =
+    | { type: "challenge"; guess: number | null; revealed: boolean }
+    | { type: "formula"; step: FormulaStep }
+    | { type: "fpc" }
+    | { type: "realworld"; scenario: RealWorldScenario }
+    | { type: "decision" }
+    | { type: "quiz"; questionIndex: number }
+    | { type: "confirm" }
+    | { type: "launching" }
+    | { type: "done" };
+
+export const PHASE_ORDER = [
+    "challenge",
+    "formula",
+    "fpc",
+    "realworld",
+    "decision",
+    "quiz",
+    "confirm",
+    "launching",
+    "done",
+] as const;
+
+export type PhaseType = (typeof PHASE_ORDER)[number];
+
+import type { ConfidenceLevel } from "../../experiment/confidence-level";
+import { Z_VALUES, zForConfidenceLevel } from "../../experiment/confidence-level";
+
+export type { ConfidenceLevel };
+export { Z_VALUES, zForConfidenceLevel };
+
+/** Parameters shared across all phases. */
+export interface SampleParams {
+    populationSize: number;
+    confidenceLevel: ConfidenceLevel;
+    marginOfError: number;
+    designEffect: number;
+    nonResponseRate: number;
+    finalSampleSize: number;
+    recommendedSize: number;
+}
+
+export function initialPhase(): Phase {
+    return { type: "challenge", guess: null, revealed: false };
+}
+
+export {
+    getFinalSampleSizeBounds,
+    isSmallPopulationSampleBounds,
+} from "../../experiment/final-sample-bounds";

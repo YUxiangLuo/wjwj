@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,10 @@ import {
     CheckCircle2,
     ChevronDown,
     ChevronUp,
-    Star
+    Star,
+    ArrowRight,
 } from "lucide-react";
+import { zForConfidenceLevel } from "../experiment/confidence-level";
 import { calculateFinitePopulationSampleSize } from "../experiment/sample-plan";
 
 export interface SurveyVariable {
@@ -34,8 +36,15 @@ export interface SurveyVariable {
 interface MultiVariableSamplePlanProps {
     populationSize: number;
     onVariablesChange: (variables: SurveyVariable[]) => void;
-    onRecommendedSampleSizeChange: (size: number) => void;
+    /** 若不需要实时同步推荐样本量到父组件，可省略 */
+    onRecommendedSampleSizeChange?: (size: number) => void;
     initialVariables?: SurveyVariable[];
+    /** 点击「应用到样本量规划」时一次性提交变量列表与建议样本量（用于弹层内先编辑再应用） */
+    onApplyToPlan?: (payload: { variables: SurveyVariable[]; recommendedSampleSize: number }) => void;
+    /** 新增变量时的默认置信水平（与决策面板一致） */
+    defaultConfidenceLevel?: string;
+    /** 新增变量时的默认允许误差 %（与决策面板一致） */
+    defaultMarginOfError?: number;
 }
 
 const IMPORTANCE_LABELS: Record<string, { label: string; color: string; description: string }> = {
@@ -56,15 +65,33 @@ const IMPORTANCE_LABELS: Record<string, { label: string; color: string; descript
     },
 };
 
-export function MultiVariableSamplePlan({ 
+export function MultiVariableSamplePlan({
     populationSize,
     onVariablesChange,
     onRecommendedSampleSizeChange,
-    initialVariables = []
+    onApplyToPlan,
+    initialVariables = [],
+    defaultConfidenceLevel = "95",
+    defaultMarginOfError = 5,
 }: MultiVariableSamplePlanProps) {
     const [variables, setVariables] = useState<SurveyVariable[]>(initialVariables);
     const [expandedVariable, setExpandedVariable] = useState<string | null>(null);
     const [showExplanation, setShowExplanation] = useState(true);
+
+    const onVariablesChangeRef = useRef(onVariablesChange);
+    onVariablesChangeRef.current = onVariablesChange;
+
+    /** 仅当影响样本量计算的字段变化时变化，避免改名称/重要性等触发重算 */
+    const variablesSampleCalcKey = useMemo(
+        () =>
+            variables
+                .map(
+                    (v) =>
+                        `${v.type}-${v.estimatedValue}-${v.estimatedStdDev ?? ""}-${v.confidenceLevel}-${v.marginOfError}`,
+                )
+                .join(","),
+        [variables],
+    );
 
     // 计算每个变量所需的样本量
     useEffect(() => {
@@ -84,8 +111,7 @@ export function MultiVariableSamplePlan({
                 }) ?? 0;
             } else if (variable.type === "mean" && variable.estimatedStdDev) {
                 // 均值估计的样本量计算（简化版）
-                const z = variable.confidenceLevel === "90" ? 1.645 :
-                         variable.confidenceLevel === "95" ? 1.96 : 2.576;
+                const z = zForConfidenceLevel(variable.confidenceLevel);
                 const sigma = variable.estimatedStdDev;
                 // 相对误差限：用户输入的百分比 × 估计均值 = 绝对误差
                 // 例如：均值1000元、误差5% → E = 50元
@@ -120,9 +146,10 @@ export function MultiVariableSamplePlan({
 
         if (hasChanged || updatedVariables.length !== variables.length) {
             setVariables(updatedVariables);
-            onVariablesChange(updatedVariables);
+            onVariablesChangeRef.current(updatedVariables);
         }
-    }, [variables.map(v => `${v.type}-${v.estimatedValue}-${v.estimatedStdDev}-${v.confidenceLevel}-${v.marginOfError}`).join(','), populationSize]);
+        // 依赖不含 onVariablesChange：用 ref 始终调用最新回调，避免因父级内联函数导致 effect 每帧重跑
+    }, [variablesSampleCalcKey, populationSize]);
 
     // 确定建议样本量（取主要变量中的最大值）
     const recommendedSampleSize = useMemo(() => {
@@ -146,10 +173,14 @@ export function MultiVariableSamplePlan({
         return Math.max(...variables.map(v => v.requiredSampleSize));
     }, [variables]);
 
-    // 当推荐样本量变化时通知父组件
+    const onRecommendedSampleSizeChangeRef = useRef(onRecommendedSampleSizeChange);
+    onRecommendedSampleSizeChangeRef.current = onRecommendedSampleSizeChange;
+
+    // 当推荐样本量变化时可选通知父组件；传入 onApplyToPlan 时仅手动「应用」写回
     useEffect(() => {
-        onRecommendedSampleSizeChange(recommendedSampleSize);
-    }, [recommendedSampleSize]);
+        if (onApplyToPlan) return;
+        onRecommendedSampleSizeChangeRef.current?.(recommendedSampleSize);
+    }, [recommendedSampleSize, onApplyToPlan]);
 
     // 添加新变量
     const addVariable = () => {
@@ -159,8 +190,8 @@ export function MultiVariableSamplePlan({
             type: "proportion",
             estimatedValue: 0.5,
             importance: "primary",
-            confidenceLevel: "95",
-            marginOfError: 5,
+            confidenceLevel: defaultConfidenceLevel,
+            marginOfError: defaultMarginOfError,
             requiredSampleSize: 0,
         };
         const newVariables = [...variables, newVariable];
@@ -483,6 +514,8 @@ export function MultiVariableSamplePlan({
                     添加调查变量
                 </Button>
 
+                {/* 无变量时不展示「应用」：避免误触清空父级状态；有变量后在下方卡片内应用 */}
+
                 {/* 总样本量计算 */}
                 {variables.length > 0 && (
                     <div className="rounded-xl border-2 border-indigo-300 bg-white p-4 shadow-sm dark:border-indigo-700/50 dark:bg-slate-950">
@@ -530,6 +563,17 @@ export function MultiVariableSamplePlan({
                         <p className="text-xs text-indigo-900 dark:text-indigo-100 mt-3 leading-relaxed">
                             原则：取主要变量所需样本量的最大值。次要变量和参考变量可能在样本量上有所妥协。
                         </p>
+
+                        {onApplyToPlan && (
+                            <Button
+                                type="button"
+                                onClick={() => onApplyToPlan({ variables, recommendedSampleSize })}
+                                className="w-full mt-4 bg-indigo-600 text-white hover:bg-indigo-500"
+                            >
+                                应用到样本量规划
+                                <ArrowRight className="w-4 h-4 ml-2" />
+                            </Button>
+                        )}
                     </div>
                 )}
 

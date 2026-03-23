@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { 
     Users, 
@@ -14,11 +15,15 @@ import {
     AlertTriangle
 } from "lucide-react";
 import { calculateClusterSamplingSize, type ClusterSamplingResult } from "../experiment/sample-plan";
+import { nonResponseDecimalToFormPercent } from "./inherit-planning-params";
 
 interface ClusterSamplingCalculatorProps {
     populationSize: number;
+    /** 决策面板传入，作为本工具内可改的初值 */
     confidenceLevel: string;
     marginOfError: number;
+    /** 与决策面板一致，小数形式 0～1（如 0.1 表示 10%） */
+    initialNonResponseRate?: number;
     onApplyResult?: (clusters: number, sampleSize: number) => void;
 }
 
@@ -26,28 +31,45 @@ export function ClusterSamplingCalculator({
     populationSize,
     confidenceLevel,
     marginOfError,
+    initialNonResponseRate,
     onApplyResult
 }: ClusterSamplingCalculatorProps) {
     const sliderIndigo =
         "py-2 [&_[data-slot=slider-range]]:!bg-indigo-600 [&_[data-slot=slider-track]]:!bg-indigo-100 dark:[&_[data-slot=slider-track]]:!bg-indigo-950/80 [&_[data-slot=slider-thumb]]:!border-indigo-600 [&_[data-slot=slider-thumb]]:!bg-white dark:[&_[data-slot=slider-thumb]]:!bg-slate-950 [&_[data-slot=slider-thumb]]:!ring-indigo-500/25";
 
+    const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
+    const [marginOfErrorLocal, setMarginOfErrorLocal] = useState(() => marginOfError);
+
     const [clusterSize, setClusterSize] = useState(50);  // 群规模（每群平均人数）
     const [deff, setDeff] = useState(2.0);  // 设计效应
-    const [nonResponseRate, setNonResponseRate] = useState(0);
+    const [nonResponseRate, setNonResponseRate] = useState(() =>
+        nonResponseDecimalToFormPercent(initialNonResponseRate),
+    );
     const [result, setResult] = useState<ClusterSamplingResult | null>(null);
+
+    // 父级决策参数变化时同步本地
+    useEffect(() => {
+        setConfidenceLevelLocal(confidenceLevel);
+    }, [confidenceLevel]);
+    useEffect(() => {
+        setMarginOfErrorLocal(marginOfError);
+    }, [marginOfError]);
+    useEffect(() => {
+        setNonResponseRate(nonResponseDecimalToFormPercent(initialNonResponseRate));
+    }, [initialNonResponseRate]);
 
     // 计算整群抽样
     useEffect(() => {
         const newResult = calculateClusterSamplingSize({
             populationSize,
-            confidenceLevel,
-            marginOfError,
+            confidenceLevel: confidenceLevelLocal,
+            marginOfError: marginOfErrorLocal,
             clusterSize,
             deff,
             nonResponseRate: nonResponseRate / 100,
         });
         setResult(newResult);
-    }, [populationSize, confidenceLevel, marginOfError, clusterSize, deff, nonResponseRate]);
+    }, [populationSize, confidenceLevelLocal, marginOfErrorLocal, clusterSize, deff, nonResponseRate]);
 
     return (
         <Card className="rounded-2xl border-indigo-200/90 bg-indigo-50/90 shadow-sm dark:border-indigo-900/45 dark:bg-slate-950">
@@ -136,19 +158,36 @@ export function ClusterSamplingCalculator({
                         </div>
                     </div>
 
-                    {/* 其他参数 */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
+                    {/* 其他参数（继承决策面板，可在本工具内调整） */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
                             <Label className="text-xs text-indigo-700 dark:text-indigo-300">置信水平</Label>
-                            <div className="text-sm font-medium tabular-nums text-indigo-900 dark:text-indigo-100">
-                                {confidenceLevel}%
-                            </div>
+                            <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
+                                <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-800">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="90">90%</SelectItem>
+                                    <SelectItem value="95">95%</SelectItem>
+                                    <SelectItem value="99">99%</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">允许误差</Label>
-                            <div className="text-sm font-medium tabular-nums text-teal-700 dark:text-teal-300">
-                                ±{marginOfError}%
+                        <div className="space-y-1.5">
+                            <div className="flex justify-between">
+                                <Label className="text-xs text-indigo-700 dark:text-indigo-300">允许误差</Label>
+                                <span className="text-xs font-bold text-teal-600 dark:text-teal-400 tabular-nums">
+                                    ±{marginOfErrorLocal}%
+                                </span>
                             </div>
+                            <Slider
+                                value={[marginOfErrorLocal]}
+                                onValueChange={([v]) => v != null && setMarginOfErrorLocal(v)}
+                                min={1}
+                                max={10}
+                                step={1}
+                                className={sliderIndigo}
+                            />
                         </div>
                     </div>
 
@@ -225,13 +264,18 @@ export function ClusterSamplingCalculator({
 
                             {/* 应用按钮 */}
                             {onApplyResult && (
-                                <Button
-                                    onClick={() => onApplyResult(result.requiredClusters, result.requiredSampleSize)}
-                                    className="w-full bg-indigo-600 text-white hover:bg-indigo-500"
-                                >
-                                    应用整群抽样方案
-                                    <ArrowRight className="w-4 h-4 ml-2" />
-                                </Button>
+                                <>
+                                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                        「应用」仅将总样本量写入最终样本量。若本工具内参数与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回标准公式验算。
+                                    </p>
+                                    <Button
+                                        onClick={() => onApplyResult(result.requiredClusters, result.requiredSampleSize)}
+                                        className="w-full bg-indigo-600 text-white hover:bg-indigo-500"
+                                    >
+                                        应用整群抽样方案
+                                        <ArrowRight className="w-4 h-4 ml-2" />
+                                    </Button>
+                                </>
                             )}
                         </div>
                     </div>

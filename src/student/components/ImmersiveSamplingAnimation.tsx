@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, memo } from "react";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "../api-client";
+import { computeSampleProgressDisplay } from "./sample-progress-display";
 
 interface StratifiedLayer {
     name: string;
@@ -459,6 +460,11 @@ export function ImmersiveSamplingAnimation({
         return layerAssignment[currentDotIndex] ?? null;
     }, [method, layers, layerAssignment, phase.type, selectionOrder, currentSelectIndex]);
 
+    const sampleProgressDisplay = useMemo(
+        () => computeSampleProgressDisplay(selectionOrder.length, currentSelectIndex, sampleSize),
+        [selectionOrder.length, currentSelectIndex, sampleSize],
+    );
+
     const Icon = meta.icon;
 
     return (
@@ -482,7 +488,7 @@ export function ImmersiveSamplingAnimation({
                         <p className="text-xs text-slate-500">
                             {phase.type === "intro" && "准备中..."}
                             {phase.type === "populating" && progressCopy.populating}
-                            {phase.type === "sampling" && `${progressCopy.sampling} ${currentSelectIndex}/${selectionOrder.length}`}
+                            {phase.type === "sampling" && `${progressCopy.sampling} ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`}
                             {phase.type === "complete" && progressCopy.complete}
                         </p>
                     </div>
@@ -631,7 +637,7 @@ export function ImmersiveSamplingAnimation({
                             <div className="flex items-center justify-between px-2 text-xs text-slate-500 animate-in fade-in duration-200">
                                 <span>总体 {populationSize.toLocaleString()} 个数据点</span>
                                 <span className={meta.accentText}>
-                                    已选中 {currentSelectIndex} / {selectionOrder.length}
+                                    已选中 {sampleProgressDisplay.current} / {sampleProgressDisplay.total}
                                 </span>
                             </div>
                         )}
