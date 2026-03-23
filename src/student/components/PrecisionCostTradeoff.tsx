@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { 
     DollarSign, 
@@ -26,9 +27,12 @@ interface CostScenario {
 
 interface PrecisionCostTradeoffProps {
     populationSize: number;
+    /** 决策面板传入，作为本工具内可改的初值 */
     confidenceLevel: string;
     designEffect: number;
     nonResponseRate: number;
+    /** 与决策面板「允许误差」一致（%），用于「目标精度」滑块初值 */
+    initialMarginOfError?: number;
     onApplyBudget: (budget: number, maxSampleSize: number) => void;
 }
 
@@ -56,13 +60,19 @@ const PRESET_SCENARIOS: CostScenario[] = [
     },
 ];
 
-export function PrecisionCostTradeoff({ 
+export function PrecisionCostTradeoff({
     populationSize,
     confidenceLevel,
     designEffect,
     nonResponseRate,
-    onApplyBudget
+    initialMarginOfError = 5,
+    onApplyBudget,
 }: PrecisionCostTradeoffProps) {
+    /** 与左侧决策面板解耦：继承为初值，在工具内可任意调整 */
+    const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
+    const [designEffectLocal, setDesignEffectLocal] = useState(() => designEffect);
+    const [nonResponseRateLocal, setNonResponseRateLocal] = useState(() => nonResponseRate);
+
     const [selectedScenario, setSelectedScenario] = useState<CostScenario>(PRESET_SCENARIOS[0]!);
     const [customScenario, setCustomScenario] = useState<CostScenario>({
         id: "custom",
@@ -72,7 +82,28 @@ export function PrecisionCostTradeoff({
         totalBudget: 50000,
     });
     const [useCustom, setUseCustom] = useState(false);
-    const [targetMarginOfError, setTargetMarginOfError] = useState(5);
+    const [targetMarginOfError, setTargetMarginOfError] = useState(() => {
+        const m = initialMarginOfError;
+        if (m == null || !Number.isFinite(m)) return 5;
+        // 与下方「目标精度」滑块 min/max 一致
+        return Math.min(15, Math.max(1, Math.round(m)));
+    });
+
+    // 父级决策参数变化时同步本地（避免挂载后 props 更新而演算仍用旧初值）
+    useEffect(() => {
+        setConfidenceLevelLocal(confidenceLevel);
+    }, [confidenceLevel]);
+    useEffect(() => {
+        setDesignEffectLocal(designEffect);
+    }, [designEffect]);
+    useEffect(() => {
+        setNonResponseRateLocal(nonResponseRate);
+    }, [nonResponseRate]);
+    useEffect(() => {
+        const m = initialMarginOfError;
+        if (m == null || !Number.isFinite(m)) return;
+        setTargetMarginOfError(Math.min(15, Math.max(1, Math.round(m))));
+    }, [initialMarginOfError]);
 
     const currentScenario = useCustom ? customScenario : selectedScenario;
 
@@ -91,13 +122,13 @@ export function PrecisionCostTradeoff({
         // 反向计算误差限：从样本量反推
         // 正向: n_final = (z²p(1-p)/E²) / (1+(n₀-1)/N) * deff / (1-nrr)
         // 反推: effectiveN = n_final * (1-nrr) / deff，然后含FPC反推E
-        const z = confidenceLevel === "90" ? 1.645 : confidenceLevel === "95" ? 1.96 : 2.576;
+        const z = confidenceLevelLocal === "90" ? 1.645 : confidenceLevelLocal === "95" ? 1.96 : 2.576;
         const p = 0.5;
         
         // 去除deff和nrr调整，得到有限总体校正后的有效样本量
         // designEffect > 0 由UI slider下限保证（最小0.5）
-        const safeDeff = designEffect > 0 ? designEffect : 1;
-        const effectiveN = maxFeasibleSampleSize * (1 - nonResponseRate) / safeDeff;
+        const safeDeff = designEffectLocal > 0 ? designEffectLocal : 1;
+        const effectiveN = maxFeasibleSampleSize * (1 - nonResponseRateLocal) / safeDeff;
         // 含有限总体校正 (FPC) 的反推误差限: E = z * sqrt(p(1-p)/n * (1-n/N))
         const fpc = Math.max(0, 1 - effectiveN / populationSize);
         const marginOfError = z * Math.sqrt(p * (1 - p) / effectiveN * fpc) * 100;
@@ -107,22 +138,22 @@ export function PrecisionCostTradeoff({
             sampleSize: maxFeasibleSampleSize,
             totalCost: currentScenario.fixedCost + maxFeasibleSampleSize * currentScenario.variableCostPerUnit,
         };
-    }, [maxFeasibleSampleSize, confidenceLevel, populationSize, designEffect, nonResponseRate, currentScenario]);
+    }, [maxFeasibleSampleSize, confidenceLevelLocal, populationSize, designEffectLocal, nonResponseRateLocal, currentScenario]);
 
     // 生成精度-成本曲线数据
     const curveData = useMemo(() => {
         const points: Array<{ sampleSize: number; marginOfError: number; totalCost: number }> = [];
         
         const sampleSizes = [30, 50, 100, 200, 300, 500, 800, 1000, 1500, 2000, 3000, 5000];
-        const z = confidenceLevel === "90" ? 1.645 : confidenceLevel === "95" ? 1.96 : 2.576;
+        const z = confidenceLevelLocal === "90" ? 1.645 : confidenceLevelLocal === "95" ? 1.96 : 2.576;
         const p = 0.5;
 
-        const safeDeff = designEffect > 0 ? designEffect : 1;
+        const safeDeff = designEffectLocal > 0 ? designEffectLocal : 1;
 
         sampleSizes.forEach(n => {
             if (n <= populationSize) {
                 // 去除deff和nrr调整，得到有效样本量
-                const effectiveN = n * (1 - nonResponseRate) / safeDeff;
+                const effectiveN = n * (1 - nonResponseRateLocal) / safeDeff;
                 // 含FPC反推误差限
                 const fpc = Math.max(0, 1 - effectiveN / populationSize);
                 const marginOfError = z * Math.sqrt(p * (1 - p) / effectiveN * fpc) * 100;
@@ -139,16 +170,16 @@ export function PrecisionCostTradeoff({
         });
 
         return points;
-    }, [populationSize, confidenceLevel, designEffect, nonResponseRate, currentScenario]);
+    }, [populationSize, confidenceLevelLocal, designEffectLocal, nonResponseRateLocal, currentScenario]);
 
     // 计算目标精度所需的样本量和成本
     const targetAnalysis = useMemo(() => {
         const requiredSampleSize = calculateFinitePopulationSampleSize({
-            confidenceLevel,
+            confidenceLevel: confidenceLevelLocal,
             marginOfError: targetMarginOfError,
             populationSize,
-            designEffect,
-            nonResponseRate,
+            designEffect: designEffectLocal,
+            nonResponseRate: nonResponseRateLocal,
         }) ?? 0;
 
         const totalCost = currentScenario.fixedCost + requiredSampleSize * currentScenario.variableCostPerUnit;
@@ -160,7 +191,7 @@ export function PrecisionCostTradeoff({
             isFeasible,
             budgetGap: totalCost - currentScenario.totalBudget,
         };
-    }, [targetMarginOfError, confidenceLevel, populationSize, designEffect, nonResponseRate, currentScenario]);
+    }, [targetMarginOfError, confidenceLevelLocal, populationSize, designEffectLocal, nonResponseRateLocal, currentScenario]);
 
     /** 与「高级分析（SE/CV/敏感性）」一致：靛蓝主结构 + 青绿强调精度数值 + 白底内容区 */
     const sliderIndigo =
@@ -286,6 +317,56 @@ export function PrecisionCostTradeoff({
                     </div>
                 </div>
 
+                {/* 抽样假设：继承决策面板初值，仅影响本工具内演算 */}
+                <div className="rounded-xl border border-indigo-200/90 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950 space-y-4">
+                    <p className="text-xs font-medium text-slate-800 dark:text-slate-200">抽样假设（可在此调整）</p>
+                    <div className="space-y-1.5">
+                        <Label className="text-xs text-slate-600 dark:text-slate-400">置信水平</Label>
+                        <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
+                            <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-800">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="90">90%</SelectItem>
+                                <SelectItem value="95">95%</SelectItem>
+                                <SelectItem value="99">99%</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs">
+                            <span className="text-slate-600 dark:text-slate-400">设计效应</span>
+                            <span className="font-bold tabular-nums text-indigo-800 dark:text-indigo-200">
+                                {designEffectLocal.toFixed(1)}
+                            </span>
+                        </div>
+                        <Slider
+                            value={[Math.round(designEffectLocal * 10)]}
+                            onValueChange={([v]) => v != null && setDesignEffectLocal(Math.round(v) / 10)}
+                            min={10}
+                            max={50}
+                            step={1}
+                            className={sliderIndigo}
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <div className="flex justify-between text-xs">
+                            <span className="text-slate-600 dark:text-slate-400">无回答率</span>
+                            <span className="font-bold tabular-nums text-rose-700 dark:text-rose-300">
+                                {Math.round(nonResponseRateLocal * 100)}%
+                            </span>
+                        </div>
+                        <Slider
+                            value={[Math.round(nonResponseRateLocal * 100)]}
+                            onValueChange={([v]) => v != null && setNonResponseRateLocal((v ?? 0) / 100)}
+                            min={0}
+                            max={50}
+                            step={5}
+                            className={sliderIndigo}
+                        />
+                    </div>
+                </div>
+
                 {/* 预算约束分析 */}
                 <div className="rounded-xl border-2 border-indigo-300/90 bg-white p-4 shadow-sm dark:border-indigo-700/60 dark:bg-slate-950">
                     <div className="flex items-center gap-2 mb-3">
@@ -329,11 +410,19 @@ export function PrecisionCostTradeoff({
                     )}
                 </div>
 
-                {/* 目标精度分析 */}
+                {/* 目标精度分析（与决策面板「允许误差」1～10% 可保存值不同，此处为工具内试算 1～15%） */}
                 <div className="space-y-3">
-                    <Label className="text-xs font-medium text-slate-800 dark:text-slate-200">
-                        设定目标精度：±{targetMarginOfError}%
-                    </Label>
+                    <div>
+                        <Label className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                            目标精度（工具内试算，1～15%）
+                        </Label>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                            左侧决策面板的「允许误差」为可保存的 1～10%；此处滑块仅用于在本工具中估算所需样本量与成本，不会单独写入保存记录。
+                        </p>
+                    </div>
+                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 tabular-nums">
+                        当前设定：±{targetMarginOfError}%
+                    </p>
                     <Slider
                         value={[targetMarginOfError]}
                         onValueChange={(v) => setTargetMarginOfError(v[0] ?? 5)}
@@ -378,14 +467,19 @@ export function PrecisionCostTradeoff({
                         </div>
 
                         {targetAnalysis.isFeasible && (
-                            <Button
-                                onClick={() => onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize)}
-                                className="w-full mt-3 bg-indigo-600 text-white hover:bg-indigo-500"
-                                size="sm"
-                            >
-                                应用此样本量
-                                <ChevronRight className="w-4 h-4 ml-1" />
-                            </Button>
+                            <>
+                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-3">
+                                    「应用」仅将样本量写入最终样本量。若抽样假设与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回验算。
+                                </p>
+                                <Button
+                                    onClick={() => onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize)}
+                                    className="w-full mt-2 bg-indigo-600 text-white hover:bg-indigo-500"
+                                    size="sm"
+                                >
+                                    应用此样本量
+                                    <ChevronRight className="w-4 h-4 ml-1" />
+                                </Button>
+                            </>
                         )}
                     </div>
                 </div>

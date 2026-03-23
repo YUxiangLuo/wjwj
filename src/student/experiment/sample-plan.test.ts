@@ -249,6 +249,26 @@ test("CV-based base formula is n₀ = CV_pop² / targetCV² (no z factor)", () =
     expect(result!.requiredSampleSize).toBe(36);
 });
 
+test("CV-based: Z 随置信水平变化；requiredSampleSize 与 confidenceLevel 无关", () => {
+    const base = {
+        targetCV: 0.05,
+        populationSize: 10000,
+        estimatedCV: 0.3,
+        designEffect: 1,
+        nonResponseRate: 0,
+    };
+    const r90 = calculateSampleSizeByCV({ ...base, confidenceLevel: "90" });
+    const r99 = calculateSampleSizeByCV({ ...base, confidenceLevel: "99" });
+    expect(r90).not.toBeNull();
+    expect(r99).not.toBeNull();
+    expect(r90!.requiredSampleSize).toBe(r99!.requiredSampleSize);
+    expect(r90!.achievedCV).toBeCloseTo(r99!.achievedCV!, 10);
+    expect(r90!.z).toBe(1.645);
+    expect(r99!.z).toBe(2.576);
+    // UI「Z×CV」行会随置信水平变化
+    expect(r90!.z * r90!.achievedCV).not.toBeCloseTo(r99!.z * r99!.achievedCV!, 6);
+});
+
 // ========== calculateClusterSamplingSize tests ==========
 
 test("cluster sampling includes finite population correction", () => {
@@ -308,6 +328,21 @@ test("cluster sampling treats marginOfError=1 as 1% (not 100%)", () => {
     // (much larger than with 5% margin). If the bug were still present,
     // e=1.0 would give n≈1 (trivial sample).
     expect(result!.requiredSampleSize).toBeGreaterThan(1000);
+});
+
+test("cluster sampling: 置信水平影响所需样本量", () => {
+    const base = {
+        populationSize: 10000,
+        marginOfError: 5,
+        clusterSize: 50,
+        deff: 2.0,
+        nonResponseRate: 0,
+    };
+    const lo = calculateClusterSamplingSize({ ...base, confidenceLevel: "90" });
+    const hi = calculateClusterSamplingSize({ ...base, confidenceLevel: "99" });
+    expect(lo).not.toBeNull();
+    expect(hi).not.toBeNull();
+    expect(hi!.requiredSampleSize).toBeGreaterThan(lo!.requiredSampleSize);
 });
 
 // ========== calculateOptimalAllocationWithCost tests ==========
