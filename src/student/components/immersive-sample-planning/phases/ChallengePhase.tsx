@@ -1,0 +1,181 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ChevronRight, Users } from "lucide-react";
+import { PopulationDots } from "../visualizations/PopulationDots";
+
+interface Props {
+    populationSize: number;
+    recommendedSize: number;
+    guess: number | null;
+    revealed: boolean;
+    /** Single update: records guess and reveals — avoids batched setState races on parent. */
+    onCommitGuess: (guess: number) => void;
+    onNext: () => void;
+}
+
+export function ChallengePhase({
+    populationSize,
+    recommendedSize,
+    guess,
+    revealed,
+    onCommitGuess,
+    onNext,
+}: Props) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [inputValue, setInputValue] = useState(guess?.toString() ?? "");
+
+    const handleSubmitGuess = useCallback(() => {
+        const v = Number.parseInt(inputValue, 10);
+        if (Number.isNaN(v) || v <= 0) return;
+        onCommitGuess(Math.min(v, populationSize));
+    }, [inputValue, populationSize, onCommitGuess]);
+
+    const handleKeyDown = useCallback(
+        (e: React.KeyboardEvent) => {
+            if (e.key === "Enter" && !revealed) {
+                e.preventDefault();
+                handleSubmitGuess();
+            }
+        },
+        [revealed, handleSubmitGuess],
+    );
+
+    // Auto-focus input
+    useEffect(() => {
+        if (!revealed) inputRef.current?.focus();
+    }, [revealed]);
+
+    const guessDelta = guess != null ? guess - recommendedSize : 0;
+    const guessLabel =
+        guessDelta > recommendedSize * 0.3 ? "你猜高了！大多数人第一次都会高估。"
+            : guessDelta < -recommendedSize * 0.3 ? "你猜低了！统计学会告诉你为什么需要更多。"
+                : "很接近！你的直觉不错。";
+
+    const parsedInput = Number.parseInt(inputValue, 10);
+    const canSubmitGuess = inputValue.trim() !== "" && !Number.isNaN(parsedInput) && parsedInput > 0;
+
+    return (
+        <div className="text-center space-y-8">
+            {!revealed ? (
+                <>
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 text-sm font-medium">
+                        <Users className="w-4 h-4" />
+                        任务情境
+                    </div>
+
+                    <div className="space-y-3">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-slate-100 leading-tight">
+                            你的调查总体有 <span className="text-indigo-500 tabular-nums">{populationSize.toLocaleString()}</span> 人
+                        </h2>
+                        <p className="text-gray-500 dark:text-slate-400 text-lg">
+                            你觉得需要调查多少人才能代表整体？
+                        </p>
+                    </div>
+
+                    <PopulationDots total={populationSize} highlighted={0} />
+
+                    <div className="max-w-xs mx-auto space-y-3">
+                        <Input
+                            ref={inputRef}
+                            type="number"
+                            placeholder="输入你的猜测…"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            min={1}
+                            max={populationSize}
+                            data-testid="immersive-sp-guess-input"
+                            className="text-center text-xl font-bold h-14 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+                        />
+                        <Button
+                            type="button"
+                            onClick={handleSubmitGuess}
+                            disabled={!canSubmitGuess}
+                            data-testid="immersive-sp-guess-submit"
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-base py-6 rounded-xl shadow-lg shadow-indigo-500/20"
+                        >
+                            提交我的猜测
+                        </Button>
+                    </div>
+                </>
+            ) : (
+                <>
+                    <div className="space-y-4 animate-in fade-in duration-500">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                            对比结果
+                        </h2>
+                        <p className="text-gray-500 dark:text-slate-400">{guessLabel}</p>
+                    </div>
+
+                    <div className="max-w-md mx-auto space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: "200ms", animationFillMode: "both" }}>
+                        <ComparisonBar
+                            label="你的猜测"
+                            value={guess ?? 0}
+                            max={populationSize}
+                            color="bg-amber-500"
+                            textColor="text-amber-600 dark:text-amber-400"
+                        />
+                        <ComparisonBar
+                            label="统计学建议 (95% 置信, ±5%)"
+                            value={recommendedSize}
+                            max={populationSize}
+                            color="bg-emerald-500"
+                            textColor="text-emerald-600 dark:text-emerald-400"
+                        />
+                    </div>
+
+                    <PopulationDots total={populationSize} highlighted={recommendedSize} />
+
+                    <div className="space-y-3 animate-in fade-in duration-500" style={{ animationDelay: "600ms", animationFillMode: "both" }}>
+                        <p className="text-gray-600 dark:text-slate-300 text-lg">
+                            但这个 <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{recommendedSize}</span> 是怎么算出来的？
+                        </p>
+                        <p className="text-gray-500 dark:text-slate-400 text-sm">
+                            让我们一步步拆解样本量公式。
+                        </p>
+                        <Button
+                            type="button"
+                            onClick={onNext}
+                            data-testid="immersive-sp-challenge-next"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-base px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
+                        >
+                            开始学习
+                            <ChevronRight className="w-5 h-5 ml-2" />
+                        </Button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+function ComparisonBar({
+    label,
+    value,
+    max,
+    color,
+    textColor,
+}: {
+    label: string;
+    value: number;
+    max: number;
+    color: string;
+    textColor: string;
+}) {
+    const pct = Math.max(2, (value / max) * 100);
+    return (
+        <div className="text-left space-y-1">
+            <div className="flex justify-between items-baseline">
+                <span className="text-sm text-gray-500 dark:text-slate-400">{label}</span>
+                <span className={`text-lg font-bold tabular-nums ${textColor}`}>{value.toLocaleString()} 人</span>
+            </div>
+            <div className="h-3 rounded-full bg-gray-100 dark:bg-slate-800 overflow-hidden">
+                <div
+                    className={`h-full rounded-full ${color} transition-all duration-700 ease-out`}
+                    style={{ width: `${pct}%` }}
+                />
+            </div>
+        </div>
+    );
+}

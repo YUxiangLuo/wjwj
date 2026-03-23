@@ -35,6 +35,7 @@ import { CheckCircle2, Play, RefreshCw, Loader2, Users, Target, Layers, ArrowRig
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
 import { ImmersiveSamplingAnimation } from "../../components/ImmersiveSamplingAnimation";
+import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
 import { StratifiedAllocationComparison } from "../../components/StratifiedAllocationComparison";
 import {
     formatSystematicRange,
@@ -125,6 +126,25 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
     const [layers, setLayers] = useState<Array<{ name: string; count: number; ratio: number }>>([]);
     const [layerSampleCounts, setLayerSampleCounts] = useState<number[]>([]);
+
+    /** 从经典样本量规划「确认并进入下一阶段」进入时播放一次（sessionStorage 由 SamplePlanning 设置） */
+    const [showSamplingStageIntro, setShowSamplingStageIntro] = useState(false);
+    useEffect(() => {
+        if (!experiment?.id) return;
+        const key = `wj-sampling-intro-${experiment.id}`;
+        try {
+            if (sessionStorage.getItem(key) === "1") {
+                try {
+                    sessionStorage.removeItem(key);
+                } catch {
+                    /* remove 失败不阻断开场 */
+                }
+                setShowSamplingStageIntro(true);
+            }
+        } catch {
+            /* 隐私模式等可能导致 getItem 不可用，跳过开场动画 */
+        }
+    }, [experiment?.id]);
 
     // Fetch stats on mount
     useEffect(() => {
@@ -475,6 +495,16 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sampling">
+            {showSamplingStageIntro && samplePlan && (
+                <ImmersiveExperimentLaunch
+                    populationSize={N}
+                    sampleSize={n}
+                    confidenceLevel={String(samplePlan.confidenceLevel ?? "95")}
+                    marginOfError={samplePlan.marginOfError ?? 5}
+                    onComplete={() => setShowSamplingStageIntro(false)}
+                    onClose={() => setShowSamplingStageIntro(false)}
+                />
+            )}
             <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
                 <CardContent className="py-6 px-6">
                     <div className="flex flex-wrap items-center justify-between gap-6">
