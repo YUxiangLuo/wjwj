@@ -333,7 +333,7 @@ test("experiment save blocks invalid sample plan when advancing to stage 3", asy
         success: false,
         error: {
             code: "VALIDATION_ERROR",
-            message: "最终样本量不能小于30",
+            message: "最终样本量需在 30～100 人之间",
         },
     });
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
