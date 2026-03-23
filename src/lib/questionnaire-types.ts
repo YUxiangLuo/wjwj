@@ -8,6 +8,8 @@ export interface Question {
     id: string;
     type: QuestionType;
     content: string;
+    /** 来自教师推荐题目时的源 id，用于避免从推荐区重复添加同一题 */
+    recommendSourceId?: string;
     options?: string[];
     minSelect?: number;
     maxSelect?: number;

@@ -135,6 +135,9 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
             type,
             content: content.trim(),
         };
+        if (question?.recommendSourceId) {
+            savedQuestion.recommendSourceId = question.recommendSourceId;
+        }
 
         if (type === "single" || type === "multiple") {
             savedQuestion.options = options.filter((o) => o.trim());

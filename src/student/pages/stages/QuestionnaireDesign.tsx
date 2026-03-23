@@ -14,6 +14,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import { Plus, GripVertical, Trash2, Edit2, CheckCircle, AlertCircle, Copy, ArrowUp, ArrowDown, HelpCircle, MessageSquare, List, Play, RotateCcw } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
@@ -203,6 +204,7 @@ export function QuestionnaireDesign() {
             ...question,
             id: generateId(),
             content: question.content + " (复制)",
+            recommendSourceId: undefined,
         };
         const index = questions.findIndex((q) => q.id === question.id);
         const newQuestions = [...questions];
@@ -269,7 +271,17 @@ export function QuestionnaireDesign() {
     };
 
     const handleUseRecommend = (rq: Question) => {
-        setQuestions((prev) => [...prev, { ...rq, id: generateId() }]);
+        let duplicate = false;
+        setQuestions((prev) => {
+            if (prev.some((q) => q.recommendSourceId === rq.id)) {
+                duplicate = true;
+                return prev;
+            }
+            return [...prev, { ...rq, id: generateId(), recommendSourceId: rq.id }];
+        });
+        if (duplicate) {
+            toast.error("该推荐题目已在问卷中，请勿重复添加");
+        }
     };
 
     const invalidOptionQuestions = useMemo(() => {
@@ -676,7 +688,9 @@ export function QuestionnaireDesign() {
                                                 暂无推荐题目
                                             </div>
                                         )}
-                                        {recommendQuestions.map((rq) => (
+                                        {recommendQuestions.map((rq) => {
+                                            const recommendAlreadyInQuestionnaire = questions.some((q) => q.recommendSourceId === rq.id);
+                                            return (
                                             <div key={rq.id} className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                                                 <div className="space-y-1">
                                                     <div className="text-sm font-medium text-slate-700 dark:text-slate-300 line-clamp-2">{rq.content}</div>
@@ -684,11 +698,18 @@ export function QuestionnaireDesign() {
                                                         类型：{questionTypeLabels[rq.type]}
                                                     </div>
                                                 </div>
-                                                <Button size="sm" variant="outline" className="w-full mt-1 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100" onClick={() => handleUseRecommend(rq)}>
-                                                    使用此题
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    disabled={recommendAlreadyInQuestionnaire}
+                                                    className="w-full mt-1 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-50"
+                                                    onClick={() => handleUseRecommend(rq)}
+                                                >
+                                                    {recommendAlreadyInQuestionnaire ? "已在问卷中" : "使用此题"}
                                                 </Button>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </CardContent>
                                 )}
                             </Card>

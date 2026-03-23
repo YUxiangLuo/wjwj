@@ -1,8 +1,39 @@
 import { getRichTextPlainText } from "./rich-text";
 
-const ALLOWED_TAGS = new Set(["p", "br", "strong", "b", "em", "i", "u", "ul", "ol", "li"]);
+const ALLOWED_TAGS = new Set([
+    "p",
+    "br",
+    "strong",
+    "b",
+    "em",
+    "i",
+    "u",
+    "s",
+    "ul",
+    "ol",
+    "li",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "blockquote",
+    "hr",
+]);
 const BLOCK_LIKE_TAGS = new Set(["div", "section", "article", "header", "footer"]);
 const DROP_CONTENT_TAGS = new Set(["script", "style", "noscript"]);
+
+function getDomParserConstructor(): typeof DOMParser | undefined {
+    if (typeof globalThis.DOMParser !== "undefined") {
+        return globalThis.DOMParser;
+    }
+    const w = globalThis as typeof globalThis & { window?: { DOMParser?: typeof DOMParser } };
+    if (typeof w.window?.DOMParser !== "undefined") {
+        return w.window.DOMParser;
+    }
+    return undefined;
+}
 
 function escapeHtml(input: string) {
     return input
@@ -69,6 +100,10 @@ function sanitizeNode(node: Node, safeDoc: Document): Node[] {
         return [safeDoc.createElement("br")];
     }
 
+    if (tagName === "hr") {
+        return [safeDoc.createElement("hr")];
+    }
+
     const cleaned = safeDoc.createElement(tagName);
     childNodes.forEach((child) => cleaned.appendChild(child));
 
@@ -83,12 +118,13 @@ export function sanitizeRichTextHtml(input: string): string {
     const raw = typeof input === "string" ? input : "";
     if (!raw.trim()) return "";
 
-    if (typeof DOMParser === "undefined") {
+    const ParserClass = getDomParserConstructor();
+    if (!ParserClass) {
         const plain = getRichTextPlainText(raw);
         return plain ? escapeHtml(plain).replace(/\n/g, "<br>") : "";
     }
 
-    const parser = new DOMParser();
+    const parser = new ParserClass();
     const parsed = parser.parseFromString(`<div>${raw}</div>`, "text/html");
     const sourceRoot = parsed.body.firstElementChild ?? parsed.body;
     const safeDoc = parsed.implementation.createHTMLDocument("safe-rich-text");

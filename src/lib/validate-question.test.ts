@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+    parseRecommendQuestionFromPayload,
     parseRecommendQuestionsPayload,
     validateQuestionAtIndex,
     validateRecommendQuestionsPayload,
@@ -48,6 +49,22 @@ describe("validateQuestionAtIndex", () => {
 
     test("rejects scale with invalid range", () => {
         expect(validateQuestionAtIndex({ type: "scale", content: "?", scaleMin: 2, scaleMax: 2 }, 1)).toMatch(/量表范围/);
+    });
+});
+
+describe("parseRecommendQuestionFromPayload", () => {
+    test("preserves recommendSourceId for student questionnaire round-trip", () => {
+        const r = parseRecommendQuestionFromPayload(
+            {
+                type: "boolean",
+                content: "是否？",
+                recommendSourceId: "teacher_rq_42",
+            },
+            1,
+        );
+        expect(typeof r).not.toBe("string");
+        if (typeof r === "string") return;
+        expect(r.recommendSourceId).toBe("teacher_rq_42");
     });
 });
 

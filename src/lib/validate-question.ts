@@ -33,6 +33,12 @@ export function parseRecommendQuestionFromPayload(rawQuestion: unknown, index: n
     const type = typeRaw as QuestionType;
     const id = typeof question.id === "string" && question.id.trim() ? question.id.trim() : generateQuestionId();
     const base: Question = { id, type, content };
+    if (typeof question.recommendSourceId === "string") {
+        const sid = question.recommendSourceId.trim();
+        if (sid.length > 0 && sid.length <= 120) {
+            base.recommendSourceId = sid;
+        }
+    }
 
     if (type === "boolean") {
         return base;
