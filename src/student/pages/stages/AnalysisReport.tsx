@@ -582,7 +582,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm text-indigo-800/70 dark:text-indigo-200/70">
-                            <p>• 先比较均值差异，判断三种方法估计结果是否一致。</p>
+                            <p>• 先比较均值差异，判断四种抽样方法估计结果是否一致。</p>
                             <p>• 再看分类分布，识别各方法在结构上的偏移。</p>
                             <p>• 最后结合标准误，说明方法稳定性和可靠性。</p>
                         </CardContent>
