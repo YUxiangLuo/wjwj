@@ -3,6 +3,7 @@ import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 }
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "../api-client";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
+import { FIELD_LABELS } from "./sampling-shared";
 
 interface StratifiedLayer {
     name: string;
@@ -188,17 +189,6 @@ type Phase =
     | { type: "sampling" }       // highlight selected dots one by one
     | { type: "complete" };      // show summary, allow proceed
 
-const FIELD_LABELS: Record<string, string> = {
-    gender: "性别",
-    education: "学历",
-    age: "年龄段",
-    age_group: "年龄段",
-    income: "收入水平",
-    city: "城市",
-    city_tier: "城市等级",
-    monthly_expense: "月支出",
-    spending: "消费支出",
-};
 
 export function ImmersiveSamplingAnimation({
     method,
