@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
     AlertDialog,
@@ -24,19 +23,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-} from "@/components/ui/dialog";
-import { CheckCircle2, Play, RefreshCw, Loader2, Users, Target, Layers, ArrowRight, BarChart3, Database } from "lucide-react";
+import { CheckCircle2, Play, Loader2, Target, Layers, ArrowRight, Database } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
+import type { MethodKey as SamplingMethod } from "../../api-client";
 import { ImmersiveSamplingAnimation } from "../../components/ImmersiveSamplingAnimation";
 import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
-import { StratifiedAllocationComparison } from "../../components/StratifiedAllocationComparison";
+import { SamplingSuccessState } from "../../components/SamplingSuccessState";
+import { SamplePreviewTable } from "../../components/SamplePreviewTable";
+import { StratifiedSamplingTab, type StratifiedLayer } from "../../components/StratifiedSamplingTab";
 import {
     formatSystematicRange,
     getSystematicAcceptedRange,
@@ -46,15 +41,6 @@ import {
 
 interface SamplingExecutionProps {
     onPrev: () => void;
-}
-
-import type { MethodKey as SamplingMethod } from "../../api-client";
-
-interface SamplingSuccessStateProps {
-    summary: string;
-    onRerun: () => void;
-    disabled: boolean;
-    rerunTestId: string;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -68,32 +54,6 @@ const FIELD_LABELS: Record<string, string> = {
     "monthly_expense": "月支出",
     "spending": "消费支出",
 };
-
-function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }: SamplingSuccessStateProps) {
-    return (
-        <div className="space-y-4">
-            <div className="flex items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
-                <div className="rounded-full bg-emerald-500/20 p-3">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div>
-                    <p className="text-lg font-medium text-emerald-600">抽样完成</p>
-                    <p className="mt-1 text-sm text-emerald-800/70 dark:text-emerald-200/70">{summary}</p>
-                </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onRerun}
-                    disabled={disabled}
-                    data-testid={rerunTestId}
-                    className="ml-auto rounded-full text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-500/15 dark:hover:text-emerald-200"
-                >
-                    <RefreshCw className="w-4 h-4" />
-                </Button>
-            </div>
-        </div>
-    );
-}
 
 export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const { populationSize, experiment, registerStageSave, saveExperiment } = useExperiment();
@@ -114,18 +74,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [kValue, setKValue] = useState(initialResults?.systematic?.kValue ?? Math.round(N / n));
     const [ppsSizeField, setPpsSizeField] = useState(initialResults?.pps?.sizeField ?? "");
     const [ppsSampleSize, setPpsSampleSize] = useState(initialResults?.pps?.sampleCount ?? n);
-    const [stratifyBy, setStratifyBy] = useState(initialResults?.stratified?.stratifyBy ?? "gender");
     const [simpleSeed, setSimpleSeed] = useState(initialResults?.simple?.seed ? String(initialResults.simple.seed) : "");
     const [systematicSeed, setSystematicSeed] = useState(initialResults?.systematic?.seed ? String(initialResults.systematic.seed) : "");
     const [ppsSeed, setPpsSeed] = useState(initialResults?.pps?.seed ? String(initialResults.pps.seed) : "");
-    const [stratifiedSeed, setStratifiedSeed] = useState(initialResults?.stratified?.seed ? String(initialResults.stratified.seed) : "");
     const [executionTimes, setExecutionTimes] = useState<Record<SamplingMethod, number | null>>({ simple: null, systematic: null, pps: null, stratified: null });
-    // Stats state
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [numericFields, setNumericFields] = useState<string[]>([]);
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
-    const [layers, setLayers] = useState<Array<{ name: string; count: number; ratio: number }>>([]);
-    const [layerSampleCounts, setLayerSampleCounts] = useState<number[]>([]);
 
     /** 从经典样本量规划「确认并进入下一阶段」进入时播放一次（sessionStorage 由 SamplePlanning 设置） */
     const [showSamplingStageIntro, setShowSamplingStageIntro] = useState(false);
@@ -166,55 +121,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         }
     }, [experiment?.taskId]);
 
-    // Update layers when stratifyBy changes or stats load
-    useEffect(() => {
-        const stats = populationStats[stratifyBy];
-
-        if (!stats) {
-            if (initialResults?.stratified?.stratifyBy === stratifyBy && initialResults.stratified.layers?.length) {
-                const savedLayers = initialResults.stratified.layers.map((layer) => {
-                    const ratio = Number.isFinite(layer.ratio)
-                        ? layer.ratio
-                        : layer.count > 0
-                            ? parseFloat(((layer.count / N) * 100).toFixed(1))
-                            : 0;
-                    return {
-                        name: layer.name,
-                        count: layer.count,
-                        ratio,
-                        sampleCount: layer.sampleCount,
-                    };
-                });
-                setLayers(savedLayers);
-                setLayerSampleCounts(savedLayers.map((layer) => layer.sampleCount ?? 0));
-                return;
-            }
-            setLayers([]);
-            return;
-        }
-
-        const total = Object.values(stats).reduce((a, b) => a + b, 0);
-        const newLayers = Object.entries(stats).map(([name, count]) => ({
-            name,
-            count,
-            ratio: total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0,
-        }));
-
-        setLayers(newLayers);
-
-        if (initialResults?.stratified?.stratifyBy === stratifyBy && initialResults.stratified.layers) {
-            const savedMap = new Map(initialResults.stratified.layers.map((l) => [l.name, l.sampleCount]));
-            setLayerSampleCounts(newLayers.map((l) => savedMap.get(l.name) ?? 0));
-        } else {
-            setLayerSampleCounts(newLayers.map((l) => Math.round(n * l.ratio / 100)));
-        }
-    }, [stratifyBy, populationStats, n, N, initialResults?.stratified]);
-
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [animatingMethod, setAnimatingMethod] = useState<SamplingMethod | null>(null);
-    const [showAllocationComparison, setShowAllocationComparison] = useState(false);
     const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
+    const [stratifiedAnimationLayers, setStratifiedAnimationLayers] = useState<StratifiedLayer[]>([]);
+    const [stratifiedAnimationStratifyBy, setStratifiedAnimationStratifyBy] = useState("gender");
+    const stratifiedExecuteRef = useRef<(() => void) | null>(null);
 
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
@@ -325,49 +238,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         }
     };
 
-    const executeStratified = async () => {
-        if (!taskId) return;
-        setExecuting("stratified");
-        setAnimationSampledData(null);
-        const startTime = performance.now();
-        const layersPayload = layers.map((layer, i) => ({
-            name: layer.name,
-            count: layer.count,
-            ratio: layer.ratio,
-            sampleCount: layerSampleCounts[i] ?? 0,
-        }));
-
-        try {
-            const { seed, error: seedError } = parseSeed(stratifiedSeed);
-            if (seedError) { toast.error(seedError); setExecuting(null); return; }
-            const res = await experimentApi.executeSampling(taskId, "stratified", {
-                stratifyBy,
-                layers: layersPayload,
-                seed,
-            });
-            if (res.success && res.data?.result) {
-                const nextStratified = res.data.result;
-                setStratifiedResult(nextStratified);
-                setExecutionTimes(prev => ({ ...prev, stratified: Math.round(performance.now() - startTime) }));
-                const dataArr = (nextStratified.data ?? []) as Array<Record<string, unknown>>;
-                setAnimationSampledData({ data: dataArr, total: nextStratified.sampleCount ?? dataArr.length });
-                try {
-                    await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: nextStratified }) });
-                } catch {
-                    toast.error("抽样结果保存失败");
-                }
-            } else {
-                toast.error(res.error?.message || "分层抽样执行失败");
-                setAnimatingMethod(null);
-            }
-        } catch (e) {
-            toast.error("分层抽样执行失败，请检查网络后重试");
-            setAnimatingMethod(null);
-        } finally {
-            setExecuting(null);
-        }
-    };
-
     const executePPS = async () => {
         if (!taskId) return;
         setExecuting("pps");
@@ -414,11 +284,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const ppsMaxSize = systematicAcceptedRange?.max ?? N;
     const isPpsSizeValid = ppsSampleSize >= ppsMinSize && ppsSampleSize <= ppsMaxSize && ppsSampleSize >= 1 && ppsSampleSize <= N;
 
-    const stratifiedTotal = layerSampleCounts.reduce((a, b) => a + b, 0);
-    const layerOverflows = layers.map((l, i) => (layerSampleCounts[i] ?? 0) > l.count);
-    const hasLayerOverflow = layerOverflows.some(Boolean);
-    const isStratifiedValid = layers.length > 0 && stratifiedTotal === n && !hasLayerOverflow;
-
     const allCompleted = simpleResult?.completed && systematicResult?.completed && ppsResult?.completed && stratifiedResult?.completed;
 
     const handleConfirmNext = async () => {
@@ -426,71 +291,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         if (!saved) return;
 
         await saveExperiment({ currentStage: 4 });
-    };
-
-    // Allocation helpers
-    const normalizeCountsToTarget = (counts: number[]) => {
-        const caps = layers.map((l) => l.count);
-        const normalized = counts.map((count, i) => Math.max(0, Math.min(Math.round(count), caps[i] ?? Infinity)));
-        if (normalized.length === 0) return normalized;
-
-        let total = normalized.reduce((sum, count) => sum + count, 0);
-        let cursor = 0;
-        let safetyLimit = normalized.length * 2;
-        while (total < n && safetyLimit > 0) {
-            const idx = cursor % normalized.length;
-            const current = normalized[idx] ?? 0;
-            const cap = caps[idx] ?? Infinity;
-            if (current < cap) {
-                normalized[idx] = current + 1;
-                total += 1;
-            }
-            cursor += 1;
-            safetyLimit -= 1;
-        }
-
-        cursor = 0;
-        while (total > n) {
-            const idx = cursor % normalized.length;
-            const current = normalized[idx] ?? 0;
-            if (current > 0) {
-                normalized[idx] = current - 1;
-                total -= 1;
-            }
-            cursor += 1;
-        }
-
-        return normalized;
-    };
-
-    const applyProportionalAllocation = () => {
-        setLayerSampleCounts(normalizeCountsToTarget(layers.map((l) => n * l.ratio / 100)));
-    };
-
-    const applyEqualAllocation = () => {
-        if (layers.length === 0) return;
-        const equalCount = Math.floor(n / layers.length);
-        const remainder = n % layers.length;
-        setLayerSampleCounts(normalizeCountsToTarget(layers.map((_, i) => equalCount + (i < remainder ? 1 : 0))));
-    };
-
-    const applyNeymanAllocation = () => {
-        // Simplified Neyman allocation heuristic:
-        // True Neyman allocation uses n_h ∝ N_h × S_h (stratum size × stratum std dev),
-        // but we lack per-stratum standard deviations. This heuristic uses N_h^1.5
-        // to give disproportionately more samples to larger strata, approximating
-        // the Neyman principle when variability correlates with stratum size.
-        if (layers.length === 0) return;
-        const weights = layers.map((l) => l.count * Math.sqrt(l.count));
-        const totalWeight = weights.reduce((a, b) => a + b, 0);
-        if (totalWeight <= 0) return;
-        setLayerSampleCounts(normalizeCountsToTarget(weights.map((w) => n * w / totalWeight)));
-    };
-
-    const updateLayerCount = (index: number, value: number) => {
-        const newCounts = [...layerSampleCounts];
-        newCounts[index] = Math.max(0, value);
-        setLayerSampleCounts(newCounts);
     };
 
     return (
@@ -886,206 +686,40 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                 {/* Stratified Sampling */}
                 <TabsContent value="stratified" className="mt-0 focus-visible:outline-none">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="lg:col-span-2 space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                                <CardHeader>
-                                    <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                        <div className="w-2 h-6 bg-amber-500 rounded-full mr-2"></div>
-                                        分层抽样
-                                    </CardTitle>
-                                    <CardDescription className="text-slate-600 dark:text-slate-400 pt-1">
-                                        按分层变量将总体分层，然后从各层中抽取样本。
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6 pt-4">
-                                    <div className="grid gap-4 rounded-2xl border border-slate-200/70 bg-white/40 p-4 dark:border-slate-800/70 dark:bg-slate-950/20 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[220px_220px_minmax(0,1fr)] xl:items-end">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-slate-700 dark:text-slate-300">选择分层变量</Label>
-                                            <Select value={stratifyBy} onValueChange={setStratifyBy}>
-                                                <SelectTrigger data-testid="student-sampling-stratify-by" className="w-48 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                                    {Object.keys(populationStats).length > 0 ? (
-                                                        Object.keys(populationStats).map(key => (
-                                                            <SelectItem key={key} value={key}>
-                                                                {FIELD_LABELS[key] || key}
-                                                            </SelectItem>
-                                                        ))
-                                                    ) : (
-                                                        <>
-                                                            <SelectItem value="gender">性别</SelectItem>
-                                                            <SelectItem value="education">学历</SelectItem>
-                                                        </>
-                                                    )}
-                                                </SelectContent>
-                                            </Select>
-                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                                                系统会根据该变量的总体分布，自动计算下方每层的占比。
-                                            </p>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="stratifiedSeed" className="text-xs text-slate-700 dark:text-slate-300">随机种子（可选）</Label>
-                                            <Input
-                                                id="stratifiedSeed"
-                                                type="number"
-                                                value={stratifiedSeed}
-                                                onChange={(e) => setStratifiedSeed(e.target.value)}
-                                                placeholder="留空则每次随机"
-                                                data-testid="student-sampling-stratified-seed"
-                                                className="w-48 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                                            />
-                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                                                留空时每次重新随机，填写后可复现同一组结果。
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                                        <Table>
-                                            <TableHeader className="bg-white/50 dark:bg-slate-950/50">
-                                                <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
-                                                    <TableHead className="text-slate-600 dark:text-slate-400">层 (Layer)</TableHead>
-                                                    <TableHead className="text-slate-600 dark:text-slate-400">人数 (N_h)</TableHead>
-                                                    <TableHead className="text-slate-600 dark:text-slate-400">占比（自动）</TableHead>
-                                                    <TableHead className="text-slate-600 dark:text-slate-400 w-[120px]">样本数 (n_h，可改)</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {layers.length > 0 ? layers.map((layer, index) => (
-                                                    <TableRow key={layer.name} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/30 dark:hover:bg-slate-800/30">
-                                                        <TableCell className="font-medium text-slate-700 dark:text-slate-300">{layer.name}</TableCell>
-                                                        <TableCell className="text-slate-600 dark:text-slate-400">{layer.count.toLocaleString()}</TableCell>
-                                                        <TableCell className="text-slate-600 dark:text-slate-400">{layer.ratio}%</TableCell>
-                                                        <TableCell>
-                                                            <Input
-                                                                type="number"
-                                                                value={layerSampleCounts[index] ?? 0}
-                                                                onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
-                                                                data-testid={`student-sampling-layer-count-${index + 1}`}
-                                                                className={`w-20 h-8 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-center ${layerOverflows[index] ? "border-rose-500" : "border-slate-300 dark:border-slate-700"}`}
-                                                                min={0}
-                                                            />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )) : (
-                                                    <TableRow>
-                                                        <TableCell colSpan={4} className="text-center text-slate-500 h-32">
-                                                            正在加载统计数据或该变量无数据...
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                                <TableRow className="bg-white/30 dark:bg-slate-950/30 border-t border-slate-300 dark:border-slate-700 font-medium hover:bg-white/30 dark:hover:bg-slate-950/30">
-                                                    <TableCell colSpan={3} className="text-right text-slate-700 dark:text-slate-300 pr-4">合计 Total</TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={isStratifiedValid ? "text-emerald-600" : "text-rose-600"}>
-                                                                {stratifiedTotal}
-                                                            </span>
-                                                            <span className="text-slate-500 text-xs">/ {n}</span>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-
-                                    {!isStratifiedValid && layers.length > 0 && (
-                                        <div className="p-3 bg-amber-500/10 text-amber-600 border border-amber-500/20 rounded-xl text-xs flex items-center gap-2">
-                                            <Target className="w-4 h-4 shrink-0" />
-                                            {hasLayerOverflow
-                                                ? `部分层的样本数超过了该层总体人数，请调整`
-                                                : `各层样本数之和必须等于目标样本量 ${n}（当前：${stratifiedTotal}）`}
-                                        </div>
-                                    )}
-
-                                    {!stratifiedResult?.completed ? (
-                                        <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("stratified")} disabled={executing !== null || !isStratifiedValid || layers.length === 0} data-testid="student-sampling-stratified-run" className="bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-500/20 w-auto px-8">
-                                                {executing === "stratified" ? (
-                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                ) : (
-                                                    <Play className="w-4 h-4 mr-2" />
-                                                )}
-                                                执行分层抽样
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <SamplingSuccessState
-                                            summary={`按 ${FIELD_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 ${stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本${executionTimes.stratified !== null ? `，耗时 ${executionTimes.stratified} ms` : ""}`}
-                                            onRerun={() => setAnimatingMethod("stratified")}
-                                            disabled={executing !== null || !isStratifiedValid || layers.length === 0}
-                                            rerunTestId="student-sampling-stratified-rerun"
-                                        />
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
-                        <div className="space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base text-slate-800 dark:text-slate-200">抽样预览</CardTitle>
-                                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">分页预览</Badge>
-                                    </div>
-                                    <CardDescription className="text-slate-600 dark:text-slate-400">展示部分抽样结果数据</CardDescription>
-                                </CardHeader>
-                                <CardContent className="h-[200px] overflow-hidden">
-                                    {!stratifiedResult?.completed ? (
-                                        <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">
-                                            完成抽样后展示
-                                        </div>
-                                    ) : (
-                                        <SamplePreviewTable data={stratifiedResult.data ?? []} total={stratifiedResult.layers?.reduce((a, l) => a + l.sampleCount, 0) ?? 0} />
-                                    )}
-                                </CardContent>
-                            </Card>
-                            
-                            {/* 分配方法对比入口 */}
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowAllocationComparison(true)}
-                                disabled={layers.length === 0}
-                                className="w-full border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 dark:hover:bg-violet-900/30"
-                            >
-                                <BarChart3 className="w-4 h-4 mr-2" />
-                                分配方法对比分析
-                            </Button>
-                        </div>
-                    </div>
+                    <StratifiedSamplingTab
+                        n={n}
+                        N={N}
+                        taskId={taskId}
+                        populationStats={populationStats}
+                        numericFields={numericFields}
+                        stratumNumericStats={stratumNumericStats}
+                        initialResult={initialResults?.stratified ?? null}
+                        executing={executing}
+                        setExecuting={setExecuting}
+                        onResult={(result) => {
+                            setStratifiedResult(result);
+                            const dataArr = (result.data ?? []) as Array<Record<string, unknown>>;
+                            setAnimationSampledData({ data: dataArr, total: result.layers?.reduce((a, l) => a + l.sampleCount, 0) ?? dataArr.length });
+                        }}
+                        onAnimate={(animLayers, animStratifyBy) => {
+                            setStratifiedAnimationLayers(animLayers);
+                            setStratifiedAnimationStratifyBy(animStratifyBy);
+                            setAnimatingMethod("stratified");
+                        }}
+                        onRegisterExecute={(fn) => { stratifiedExecuteRef.current = fn; }}
+                        onExecutionError={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
+                        buildSavePayload={async (result) => {
+                            try {
+                                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: result }) });
+                            } catch {
+                                toast.error("抽样结果保存失败");
+                            }
+                        }}
+                        executionTime={executionTimes.stratified}
+                        setExecutionTime={(ms) => setExecutionTimes(prev => ({ ...prev, stratified: ms }))}
+                    />
                 </TabsContent>
             </Tabs>
-
-            {/* 分配方法对比 Modal */}
-            <Dialog open={showAllocationComparison} onOpenChange={setShowAllocationComparison}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-3xl max-h-[85vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">分配方法对比分析</DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">不同分配方法的样本分布与效率比较</DialogDescription>
-                    </DialogHeader>
-                    <StratifiedAllocationComparison
-                        layers={layers}
-                        totalSampleSize={n}
-                        numericFields={numericFields}
-                        stratumStdDevs={stratumNumericStats[stratifyBy]}
-                        onApplyAllocation={(method) => {
-                            if (method === "proportional") applyProportionalAllocation();
-                            else if (method === "neyman") applyNeymanAllocation();
-                            else if (method === "equal") applyEqualAllocation();
-                            setShowAllocationComparison(false);
-                        }}
-                        onApplyAllocationWithOverflow={(method, allocation) => {
-                            const newCounts = allocation.map(a => a.sampleCount);
-                            setLayerSampleCounts(newCounts);
-                            const hasOverflow = allocation.some(a => a.sampleCount >= a.count);
-                            const label = method === "proportional" ? "按比例" : method === "neyman" ? "奈曼" : method === "sqrt" ? "平方根" : "等额";
-                            toast.success(`已应用${label}分配${hasOverflow ? "（自动处理超额层）" : ""}`);
-                            setShowAllocationComparison(false);
-                        }}
-                    />
-                </DialogContent>
-            </Dialog>
 
             {/* Navigation */}
             <div className="flex justify-between pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
@@ -1131,172 +765,19 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     sampleSize={animatingMethod === "systematic" ? Math.ceil(N / kValue) : animatingMethod === "pps" ? ppsSampleSize : n}
                     kValue={animatingMethod === "systematic" ? kValue : undefined}
                     sizeField={animatingMethod === "pps" ? ppsSizeField : undefined}
-                    stratifyBy={animatingMethod === "stratified" ? stratifyBy : undefined}
-                    layers={animatingMethod === "stratified" ? layers.map((l, i) => ({ ...l, sampleCount: layerSampleCounts[i] ?? 0 })) : undefined}
+                    stratifyBy={animatingMethod === "stratified" ? stratifiedAnimationStratifyBy : undefined}
+                    layers={animatingMethod === "stratified" ? stratifiedAnimationLayers : undefined}
                     onAnimationComplete={() => {
                         if (animatingMethod === "simple") executeSimple();
                         else if (animatingMethod === "systematic") executeSystematic();
                         else if (animatingMethod === "pps") executePPS();
-                        else if (animatingMethod === "stratified") executeStratified();
+                        else if (animatingMethod === "stratified") stratifiedExecuteRef.current?.();
                     }}
                     onClose={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
                     sampledData={animationSampledData?.data}
                     sampledTotal={animationSampledData?.total}
                 />
             )}
-        </div>
-    );
-}
-
-
-
-// Sample preview table component
-function SamplePreviewTable({ data, total }: { data: unknown[]; total: number }) {
-    const samples = (data as Array<Record<string, unknown>>) ?? [];
-    const pageSize = 20;
-    const [page, setPage] = useState(1);
-    const [scrollTrackWidth, setScrollTrackWidth] = useState(0);
-    const tableScrollRef = useRef<HTMLDivElement | null>(null);
-    const horizontalScrollRef = useRef<HTMLDivElement | null>(null);
-    const syncingRef = useRef<"table" | "track" | null>(null);
-
-    useEffect(() => {
-        setPage(1);
-    }, [data]);
-
-    useEffect(() => {
-        const updateScrollTrackWidth = () => {
-            setScrollTrackWidth(tableScrollRef.current?.scrollWidth ?? 0);
-        };
-
-        updateScrollTrackWidth();
-
-        const tableEl = tableScrollRef.current;
-        if (!tableEl || typeof ResizeObserver === "undefined") {
-            window.addEventListener("resize", updateScrollTrackWidth);
-            return () => window.removeEventListener("resize", updateScrollTrackWidth);
-        }
-
-        const observer = new ResizeObserver(updateScrollTrackWidth);
-        observer.observe(tableEl);
-        const table = tableEl.querySelector("table");
-        if (table) observer.observe(table);
-        window.addEventListener("resize", updateScrollTrackWidth);
-
-        return () => {
-            observer.disconnect();
-            window.removeEventListener("resize", updateScrollTrackWidth);
-        };
-    }, [data, page]);
-
-    const syncHorizontalScroll = useCallback((source: "table" | "track") => {
-        const tableEl = tableScrollRef.current;
-        const trackEl = horizontalScrollRef.current;
-        if (!tableEl || !trackEl) return;
-
-        if (source === "table") {
-            trackEl.scrollLeft = tableEl.scrollLeft;
-        } else {
-            tableEl.scrollLeft = trackEl.scrollLeft;
-        }
-    }, []);
-
-    const handleTableScroll = useCallback(() => {
-        if (syncingRef.current === "track") {
-            syncingRef.current = null;
-            return;
-        }
-        syncingRef.current = "table";
-        syncHorizontalScroll("table");
-    }, [syncHorizontalScroll]);
-
-    const handleTrackScroll = useCallback(() => {
-        if (syncingRef.current === "table") {
-            syncingRef.current = null;
-            return;
-        }
-        syncingRef.current = "track";
-        syncHorizontalScroll("track");
-    }, [syncHorizontalScroll]);
-
-    if (samples.length === 0) {
-        return <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">暂无抽样数据</div>;
-    }
-
-    const keys = Object.keys(samples[0] ?? {});
-    const totalPages = Math.max(1, Math.ceil(samples.length / pageSize));
-    const currentPage = Math.min(page, totalPages);
-    const start = (currentPage - 1) * pageSize;
-    const end = Math.min(start + pageSize, samples.length);
-    const rows = samples.slice(start, end);
-
-    return (
-        <div className="flex h-full min-h-0 w-full flex-col">
-            <div
-                ref={tableScrollRef}
-                onScroll={handleTableScroll}
-                className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 dark:border-slate-800 [scrollbar-gutter:stable]"
-            >
-                <div className="min-w-max pr-3 [&_[data-slot=table-container]]:w-max [&_[data-slot=table-container]]:overflow-visible">
-                    <Table className="min-w-max">
-                        <TableHeader className="sticky top-0 bg-white/50 dark:bg-slate-950/50">
-                            <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
-                                {keys.map((key) => (
-                                    <TableHead key={key} className="h-8 whitespace-nowrap text-xs text-slate-500">
-                                        {FIELD_LABELS[key] || key}
-                                    </TableHead>
-                                ))}
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rows.map((row, rowIndex) => (
-                                <TableRow key={`${start + rowIndex}`} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
-                                    {keys.map((key) => (
-                                        <TableCell key={`${start + rowIndex}-${key}`} className="py-2 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                                            {String(row[key] ?? "")}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
-            {scrollTrackWidth > 0 && (
-                <div
-                    ref={horizontalScrollRef}
-                    onScroll={handleTrackScroll}
-                    className="mt-2 overflow-x-auto overflow-y-hidden"
-                >
-                    <div className="h-1" style={{ width: scrollTrackWidth }} />
-                </div>
-            )}
-            <div className="mt-3 flex items-center justify-between gap-2">
-                <p className="text-xs text-slate-500">
-                    显示第 {start + 1}-{end} 条，共 {Math.max(total, samples.length)} 条
-                </p>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
-                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                        disabled={currentPage <= 1}
-                    >
-                        上一页
-                    </Button>
-                    <span className="text-xs text-slate-500">{currentPage}/{totalPages}</span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
-                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage >= totalPages}
-                    >
-                        下一页
-                    </Button>
-                </div>
-            </div>
         </div>
     );
 }

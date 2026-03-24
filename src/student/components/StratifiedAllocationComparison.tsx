@@ -18,7 +18,6 @@ interface LayerInfo {
 }
 
 type AllocationMethod = "proportional" | "neyman" | "equal" | "optimal" | "sqrt" | "sizeMeasure" | "sqrtSizeMeasure";
-type OverflowApplicableMethod = Exclude<AllocationMethod, "optimal">;
 
 interface AllocationComparison {
     method: AllocationMethod;
@@ -60,8 +59,7 @@ interface StratifiedAllocationComparisonProps {
     totalSampleSize: number;
     numericFields?: string[];
     stratumStdDevs?: Record<string, Record<string, { mean: number; stdDev: number }>>;
-    onApplyAllocation?: (method: AllocationMethod) => void;
-    onApplyAllocationWithOverflow?: (method: OverflowApplicableMethod, allocation: { name: string; count: number; sampleCount: number }[]) => void;
+    onApplyAllocation?: (allocation: { name: string; count: number; sampleCount: number }[]) => void;
 }
 
 export function StratifiedAllocationComparison({
@@ -70,7 +68,6 @@ export function StratifiedAllocationComparison({
     numericFields,
     stratumStdDevs,
     onApplyAllocation,
-    onApplyAllocationWithOverflow,
 }: StratifiedAllocationComparisonProps) {
     const [targetVariable, setTargetVariable] = useState<string | null>(null);
     const [showOverflowDetails, setShowOverflowDetails] = useState(false);
@@ -204,23 +201,16 @@ export function StratifiedAllocationComparison({
                                             </Badge>
                                         )}
                                     </div>
-                                    {(onApplyAllocationWithOverflow || onApplyAllocation) && (
+                                    {onApplyAllocation && comparison.method !== "optimal" && (
                                         <Button
                                             variant="outline"
                                             size="sm"
                                             onClick={() => {
-                                                if (onApplyAllocationWithOverflow) {
-                                                    const allocation = comparison.allocation.map(a => ({
-                                                        name: a.layerName,
-                                                        count: a.populationSize,
-                                                        sampleCount: a.sampleSize,
-                                                    }));
-                                                    if (comparison.method !== "optimal") {
-                                                        onApplyAllocationWithOverflow(comparison.method, allocation);
-                                                    }
-                                                } else {
-                                                    onApplyAllocation!(comparison.method);
-                                                }
+                                                onApplyAllocation(comparison.allocation.map(a => ({
+                                                    name: a.layerName,
+                                                    count: a.populationSize,
+                                                    sampleCount: a.sampleSize,
+                                                })));
                                             }}
                                             className="text-xs h-7 border-violet-300 hover:bg-violet-100 dark:border-violet-700 dark:hover:bg-violet-900/30"
                                         >
@@ -402,20 +392,16 @@ export function StratifiedAllocationComparison({
                                             </div>
 
                                             {/* 应用按钮（带超额处理） */}
-                                                {onApplyAllocationWithOverflow && (
+                                            {onApplyAllocation && comparison.method !== "optimal" && (
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={() => {
-                                                        // 构建处理超额分配后的分配方案
-                                                        const adjustedAllocation = comparison.allocation.map(a => ({
+                                                        onApplyAllocation(comparison.allocation.map(a => ({
                                                             name: a.layerName,
                                                             count: a.populationSize,
                                                             sampleCount: a.isOverAllocated ? a.populationSize : a.sampleSize,
-                                                        }));
-                                                        if (comparison.method !== "optimal") {
-                                                            onApplyAllocationWithOverflow(comparison.method, adjustedAllocation);
-                                                        }
+                                                        })));
                                                     }}
                                                     className="w-full text-xs border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-400"
                                                 >
