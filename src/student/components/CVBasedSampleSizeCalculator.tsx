@@ -298,6 +298,27 @@ export function CVBasedSampleSizeCalculator({
                     </div>
                 )}
 
+                {/* 分层抽样中的 CV 准则（课件第24页） */}
+                <div className="rounded-xl border border-violet-200/90 bg-violet-50/50 p-3 dark:border-violet-800/40 dark:bg-violet-950/20">
+                    <div className="flex items-start gap-2">
+                        <Info className="w-4 h-4 text-violet-500 shrink-0 mt-0.5" />
+                        <div className="text-xs text-violet-900 dark:text-violet-100 space-y-1.5">
+                            <p className="font-medium">给定变异系数确定分层抽样样本量（课件第24页）</p>
+                            <p className="text-violet-700/90 dark:text-violet-300/90 leading-relaxed">
+                                在分层抽样中，可通过给定总体估计值的变异系数 <em>C</em> 来确定各层所需样本量：
+                            </p>
+                            <div className="font-mono text-[11px] bg-white/60 dark:bg-slate-950/60 rounded p-2 border border-violet-200/50 dark:border-violet-700/40 leading-relaxed">
+                                n = Σ(N<sub>h</sub>²S<sub>h</sub>²/a<sub>h</sub>) / (N²C²Ȳ² + ΣN<sub>h</sub>S<sub>h</sub>²)
+                                <br />
+                                其中 a<sub>h</sub> 为分配系数，n<sub>h</sub> = n × a<sub>h</sub>
+                            </div>
+                            <p className="text-violet-600/80 dark:text-violet-400/80">
+                                上方简单随机抽样的 CV 计算适用于单阶段设计；如使用分层抽样，可在「抽样执行」阶段的分配方法对比中查看各层实际分配。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 {/* 参考值 */}
                 <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
                     <p className="text-xs font-medium text-slate-800 dark:text-slate-200 mb-2">常见变异系数参考</p>

@@ -400,7 +400,75 @@ export function DomainEstimationManager({
                         </p>
                     </div>
                 )}
+
+                {/* 方案对比（课件例7.2） */}
+                {domains.length >= 2 && (
+                    <div className="rounded-xl border border-violet-200/90 bg-violet-50/50 p-4 dark:border-violet-800/40 dark:bg-violet-950/20">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Info className="w-4 h-4 text-violet-500" />
+                            <span className="font-medium text-sm text-violet-900 dark:text-violet-200">
+                                方案对比（课件例 7.2）
+                            </span>
+                        </div>
+
+                        <SchemeComparison domains={domains} baseSampleSize={baseSampleSize} />
+                    </div>
+                )}
             </CardContent>
         </Card>
+    );
+}
+
+function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; baseSampleSize: number }) {
+    const sumOfDomains = domains.reduce((s, d) => s + d.requiredSampleSize, 0);
+    const ratio = baseSampleSize > 0 ? sumOfDomains / baseSampleSize : 0;
+
+    return (
+        <div className="space-y-2">
+            <div className="rounded-lg border border-violet-200/60 bg-white p-3 dark:border-violet-700/40 dark:bg-slate-950">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <span className="text-sm font-medium text-violet-900 dark:text-violet-100">方案一</span>
+                        <span className="text-xs text-violet-500 ml-2">仅需整体估计</span>
+                    </div>
+                    <span className="font-mono font-bold text-violet-700 dark:text-violet-300">
+                        n = {baseSampleSize.toLocaleString()}
+                    </span>
+                </div>
+            </div>
+
+            <div className="rounded-lg border border-violet-200/60 bg-white p-3 dark:border-violet-700/40 dark:bg-slate-950">
+                <div className="flex justify-between items-center mb-2">
+                    <div>
+                        <span className="text-sm font-medium text-violet-900 dark:text-violet-100">方案二</span>
+                        <span className="text-xs text-violet-500 ml-2">需各子总体分别精确估计</span>
+                    </div>
+                    <span className="font-mono font-bold text-violet-700 dark:text-violet-300">
+                        n = {sumOfDomains.toLocaleString()}
+                    </span>
+                </div>
+                <div className="text-xs text-violet-600/80 dark:text-violet-400/80">
+                    {domains.map(d => `${d.name}: ${d.requiredSampleSize.toLocaleString()}`).join(" + ")} = {sumOfDomains.toLocaleString()}
+                </div>
+            </div>
+
+            {ratio > 1 && (
+                <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2 dark:bg-amber-900/30 dark:border-amber-700/50">
+                    <div className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                            <p>
+                                <span className="font-medium">方案二是方案一的 {ratio.toFixed(1)} 倍</span>
+                                —— 对各子总体分别进行估计时，需确保每个子总体样本量都足够大，
+                                总样本量远大于仅估计总体时的需求。
+                            </p>
+                            <p className="mt-1 text-amber-700/90 dark:text-amber-300/90">
+                                最终样本量的确定需要在精度、费用、时限和操作可行性之间进行协调。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
