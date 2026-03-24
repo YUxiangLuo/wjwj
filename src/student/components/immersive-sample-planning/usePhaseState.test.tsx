@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { cleanup } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
 import { usePhaseState } from "./usePhaseState";
+import { QUIZ_QUESTION_COUNT } from "./phases/QuizPhase";
 
 let restoreDom: (() => void) | null = null;
 
@@ -28,7 +29,7 @@ describe("usePhaseState", () => {
         expect(result.current.phase.type).toBe("challenge");
     });
 
-    test("challenge 揭示后 goNext 进入 formula:z，goPrev 回到 challenge 并保留猜测", () => {
+    test("challenge 揭示后 goNext 进入 precision，goPrev 回到 challenge 并保留猜测", () => {
         const { result } = renderHook(() => usePhaseState());
         act(() => {
             result.current.setPhase({ type: "challenge", guess: 42, revealed: true });
@@ -36,11 +37,33 @@ describe("usePhaseState", () => {
         act(() => {
             result.current.goNext();
         });
-        expect(result.current.phase).toEqual({ type: "formula", step: "z" });
+        expect(result.current.phase).toEqual({ type: "precision" });
         act(() => {
             result.current.goPrev();
         });
         expect(result.current.phase).toEqual({ type: "challenge", guess: 42, revealed: true });
+    });
+
+    test("precision → factors:error_tolerance → ... → factors:summary → formula:z", () => {
+        const { result } = renderHook(() => usePhaseState());
+        act(() => {
+            result.current.setPhase({ type: "precision" });
+        });
+        act(() => {
+            result.current.goNext();
+        });
+        expect(result.current.phase).toEqual({ type: "factors", step: "error_tolerance" });
+        // Walk through all factors steps
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "subpopulation" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "variability" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "cost_balance" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "formula", step: "z" });
     });
 
     test("formula 子步骤 z→e→summary→fpc", () => {
@@ -62,21 +85,45 @@ describe("usePhaseState", () => {
         expect(result.current.phase).toEqual({ type: "fpc" });
     });
 
-    test("quiz 0→1→2→confirm，goPrev 从 confirm 回到 quiz:2", () => {
+    test("formula:z goPrev 回到 factors:summary", () => {
+        const { result } = renderHook(() => usePhaseState());
+        act(() => {
+            result.current.setPhase({ type: "formula", step: "z" });
+        });
+        act(() => {
+            result.current.goPrev();
+        });
+        expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
+    });
+
+    test("fpc → fourstep:deff → fourstep:nrr → fourstep:summary → decision", () => {
+        const { result } = renderHook(() => usePhaseState());
+        act(() => {
+            result.current.setPhase({ type: "fpc" });
+        });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "fourstep", scenario: "deff" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "fourstep", scenario: "nrr" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
+        act(() => { result.current.goNext(); });
+        expect(result.current.phase).toEqual({ type: "decision" });
+    });
+
+    test("quiz 0→...→last→confirm，goPrev 从 confirm 回到 last quiz", () => {
         const { result } = renderHook(() => usePhaseState());
         act(() => {
             result.current.setPhase({ type: "quiz", questionIndex: 0 });
         });
-        act(() => {
-            result.current.goNext();
-            result.current.goNext();
-            result.current.goNext();
-        });
+        for (let i = 0; i < QUIZ_QUESTION_COUNT; i++) {
+            act(() => { result.current.goNext(); });
+        }
         expect(result.current.phase).toEqual({ type: "confirm" });
         act(() => {
             result.current.goPrev();
         });
-        expect(result.current.phase).toEqual({ type: "quiz", questionIndex: 2 });
+        expect(result.current.phase).toEqual({ type: "quiz", questionIndex: QUIZ_QUESTION_COUNT - 1 });
     });
 
     test("skipQuiz 直接进入 confirm", () => {

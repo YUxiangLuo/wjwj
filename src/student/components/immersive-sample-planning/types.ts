@@ -1,13 +1,16 @@
 /** Phase state machine for the guided sample planning flow. */
 
 export type FormulaStep = "z" | "e" | "summary";
-export type RealWorldScenario = "deff" | "nrr" | "summary";
+export type FourStepScenario = "deff" | "nrr" | "summary";
+export type FactorsStep = "error_tolerance" | "subpopulation" | "variability" | "cost_balance" | "summary";
 
 export type Phase =
     | { type: "challenge"; guess: number | null; revealed: boolean }
+    | { type: "precision" }
+    | { type: "factors"; step: FactorsStep }
     | { type: "formula"; step: FormulaStep }
     | { type: "fpc" }
-    | { type: "realworld"; scenario: RealWorldScenario }
+    | { type: "fourstep"; scenario: FourStepScenario }
     | { type: "decision" }
     | { type: "quiz"; questionIndex: number }
     | { type: "confirm" }
@@ -16,9 +19,11 @@ export type Phase =
 
 export const PHASE_ORDER = [
     "challenge",
+    "precision",
+    "factors",
     "formula",
     "fpc",
-    "realworld",
+    "fourstep",
     "decision",
     "quiz",
     "confirm",

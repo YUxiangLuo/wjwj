@@ -15,7 +15,19 @@ interface QuizQuestion {
     explanation: string;
 }
 
+export const QUIZ_QUESTION_COUNT = 7;
+
 const QUESTIONS: QuizQuestion[] = [
+    {
+        question: "标准误差 (SE)、误差限 (ME)、变异系数 (CV) 之间的关系是？",
+        options: [
+            "ME = Z × SE，CV = SE / 估计值",
+            "SE = Z × ME，CV = ME / 估计值",
+            "CV = Z × SE，ME = SE / 估计值",
+        ],
+        correctIndex: 0,
+        explanation: "ME（误差限）= Z × SE（标准误差），表示置信区间的半宽；CV（变异系数）= SE / 估计值，是无量纲的相对精度指标。",
+    },
     {
         question: "如果将置信水平从 95% 提高到 99%，所需样本量会？",
         options: ["增加", "减少", "不变"],
@@ -37,6 +49,36 @@ const QUESTIONS: QuizQuestion[] = [
         ],
         correctIndex: 0,
         explanation: "deff 是方差膨胀系数，最终样本量 n = n₁ × deff。deff=2 表示复杂抽样的方差是 SRS 的 2 倍，需要 2 倍样本来弥补。",
+    },
+    {
+        question: "需要对 3 个子总体分别做精度为 ±5% 的估计，相比仅做整体估计，总样本量通常会？",
+        options: [
+            "保持不变",
+            "增加为约 2-3 倍",
+            "减少",
+        ],
+        correctIndex: 1,
+        explanation: "每个子总体都需要达到 ±5% 的精度要求，各自需要足够的样本量。各域样本量之和通常远大于整体估计所需的样本量，可能增加 2-3 倍甚至更多。",
+    },
+    {
+        question: "奈曼分配（Neyman allocation）相比按比例分配的优势是？",
+        options: [
+            "计算更简单",
+            "变异大的层分配更多样本，总体精度更高",
+            "每层获得相同的样本量",
+        ],
+        correctIndex: 1,
+        explanation: "奈曼分配使 nₕ ∝ Nₕ × Sₕ，即变异大的层获得更多样本。这样做能最小化总体估计的方差，精度优于按比例分配。",
+    },
+    {
+        question: "当误差限从 5% 减小到 1% 时，样本量会增加约多少倍？",
+        options: [
+            "约 5 倍",
+            "约 25 倍",
+            "约 10 倍",
+        ],
+        correctIndex: 1,
+        explanation: "n₀ ∝ 1/E²，所以 E 减小 5 倍（从 5% 到 1%），n₀ 增加 5² = 25 倍。精度提升的成本呈平方增长，这就是边际递减效应。",
     },
 ];
 

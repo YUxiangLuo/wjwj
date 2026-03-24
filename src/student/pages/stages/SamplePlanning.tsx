@@ -111,6 +111,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     initialDesignEffect={displayData?.designEffect}
                     initialNonResponseRate={displayData?.nonResponseRate}
                     initialFinalSampleSize={displayData?.finalSampleSize}
+                    initialEstimationType={displayData?.estimationType ?? "proportion"}
+                    initialPopulationVariance={displayData?.populationVariance ?? 100}
                     onComplete={handleImmersiveComplete}
                     onClose={() => setImmersiveOpen(false)}
                     saveExperiment={saveExperiment}

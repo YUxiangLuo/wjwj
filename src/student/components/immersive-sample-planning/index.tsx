@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useId } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, useId } from "react";
 import { X, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { calculateFinitePopulationSampleSize } from "../../experiment/sample-plan";
+import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../experiment/sample-plan";
 import type { ConfidenceLevel } from "../../experiment/confidence-level";
 import { normalizeConfidenceLevel } from "../../experiment/confidence-level";
 import type { SamplePlanData } from "../../api-client";
@@ -23,9 +23,11 @@ import { ImmersiveExperimentLaunch } from "../ImmersiveExperimentLaunch";
 import { usePhaseState } from "./usePhaseState";
 import { PHASE_ORDER, type SampleParams } from "./types";
 import { ChallengePhase } from "./phases/ChallengePhase";
-import { FormulaPhase } from "./phases/FormulaPhase";
+import { PrecisionPhase } from "./phases/PrecisionPhase";
+import { FactorsPhase } from "./phases/FactorsPhase";
+import { FormulaPhase, type EstimationType } from "./phases/FormulaPhase";
 import { FPCPhase } from "./phases/FPCPhase";
-import { RealWorldPhase } from "./phases/RealWorldPhase";
+import { FourStepPhase } from "./phases/FourStepPhase";
 import { DecisionPhase } from "./phases/DecisionPhase";
 import { QuizPhase } from "./phases/QuizPhase";
 
@@ -39,9 +41,11 @@ const NAVIGABLE_PHASES = PHASE_ORDER.filter(
 
 const PHASE_LABELS: Record<string, string> = {
     challenge: "任务情境",
+    precision: "精度指标",
+    factors: "影响因素",
     formula: "核心公式",
     fpc: "有限总体",
-    realworld: "现实调整",
+    fourstep: "四步法",
     decision: "你的决策",
     quiz: "理解自检",
     confirm: "确认",
@@ -56,6 +60,8 @@ interface Props {
     initialDesignEffect?: number;
     initialNonResponseRate?: number;
     initialFinalSampleSize?: number;
+    initialEstimationType?: EstimationType;
+    initialPopulationVariance?: number;
     onComplete: (params: SampleParams) => void;
     onClose: () => void;
     /** When provided, 「确认并保存」只写入 samplePlan 并关闭浮层，不进入抽样执行开场动画。未提供时（独立预览）仍会走启动动画。 */
@@ -71,6 +77,8 @@ export function ImmersiveSamplePlanning({
     initialDesignEffect = 1,
     initialNonResponseRate = 0,
     initialFinalSampleSize,
+    initialEstimationType = "proportion",
+    initialPopulationVariance = 100,
     onComplete,
     onClose,
     saveExperiment,
@@ -83,18 +91,36 @@ export function ImmersiveSamplePlanning({
     const [marginOfError, setMarginOfError] = useState(initialMarginOfError);
     const [designEffect, setDesignEffect] = useState(initialDesignEffect);
     const [nonResponseRate, setNonResponseRate] = useState(initialNonResponseRate);
+    const [estimationType, setEstimationType] = useState<EstimationType>(initialEstimationType);
+    const [populationVariance, setPopulationVariance] = useState(initialPopulationVariance);
 
-    // With valid ConfidenceLevel and positive populationSize the null case should
-    // not occur; getFinalSampleSizeBounds(N).min (30) is a safer fallback than the
-    // old hardcoded 384 which silently assumed 95%/5%.
-    const recommendedSize =
-        calculateFinitePopulationSampleSize({
+    const handleEstimationTypeChange = useCallback((next: EstimationType) => {
+        setEstimationType((prev) => {
+            if (prev === next) return prev;
+            setMarginOfError(next === "proportion" ? 5 : 2);
+            return next;
+        });
+    }, []);
+
+    const recommendedSize = useMemo(() => {
+        if (estimationType === "mean") {
+            return calculateMeanEstimationSampleSize({
+                confidenceLevel,
+                marginOfError,
+                populationSize,
+                populationVariance,
+                designEffect,
+                nonResponseRate,
+            }) ?? Math.min(30, populationSize);
+        }
+        return calculateFinitePopulationSampleSize({
             confidenceLevel,
             marginOfError,
             populationSize,
             designEffect,
             nonResponseRate,
         }) ?? Math.min(30, populationSize);
+    }, [estimationType, confidenceLevel, marginOfError, populationSize, populationVariance, designEffect, nonResponseRate]);
 
     const [finalSampleSize, setFinalSampleSize] = useState(initialFinalSampleSize ?? recommendedSize);
 
@@ -119,7 +145,7 @@ export function ImmersiveSamplePlanning({
     const paramsRef = useRef(params);
     paramsRef.current = params;
 
-    // --- Advanced tools state（仅随阶段导航保留在内存；不写入 saveExperiment / 后端，与 SamplePlanData 无关，P0）---
+    // --- Advanced tools state (session-only, not persisted to backend / SamplePlanData) ---
     const [domains, setDomains] = useState<Domain[]>([]);
     const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
 
@@ -128,7 +154,7 @@ export function ImmersiveSamplePlanning({
     const surveyVariablesRef = useRef(surveyVariables);
     surveyVariablesRef.current = surveyVariables;
 
-    /** 仅当样本量来自成本/多变量/CV/整群等非标准公式路径时锁定；取消时恢复到首次锁定前的快照 */
+    /** Locks standard params when sample size comes from cost/multi-var/CV/cluster tools; cancel restores pre-lock snapshot. */
     const [advancedPlanLock, setAdvancedPlanLock] = useState<AdvancedNonStandardSampleLockSource | null>(null);
     const preAdvancedBaselineRef = useRef<{
         confidenceLevel: ConfidenceLevel;
@@ -152,7 +178,7 @@ export function ImmersiveSamplePlanning({
         userTouchedFinal: userTouchedFinal.current,
     }), [confidenceLevel, marginOfError, designEffect, nonResponseRate, finalSampleSize]);
 
-    /** 仅在首次进入非标准样本量前打快照；已锁定时不再刷新，「取消应用」始终回到首次锁定前（若需逐步撤销需先取消再重试） */
+    /** Snapshot taken only on first lock; already-locked state is not re-snapshotted (cancel always restores initial baseline). */
     const handleBeforeAdvancedCommit = useCallback(() => {
         if (advancedPlanLock != null) return;
         preAdvancedBaselineRef.current = capturePlanningBaseline();
@@ -196,11 +222,12 @@ export function ImmersiveSamplePlanning({
         savingRef.current = true;
         setSaving(true);
         try {
-            // 仅同步 SamplePlanData；子总体/多变量等高级工具状态不参与后端持久化（P0）
             const success = await saveExperiment({
                 samplePlan: {
+                    estimationType,
                     confidenceLevel,
                     marginOfError,
+                    ...(estimationType === "mean" ? { populationVariance } : {}),
                     designEffect,
                     nonResponseRate,
                     recommendedSize,
@@ -208,7 +235,7 @@ export function ImmersiveSamplePlanning({
                 },
             });
             if (success) {
-                // Persist-only flow: return to classic page — do not show sampling-stage launch animation
+                // Persist-only flow: return to classic page without launch animation
                 onComplete(paramsRef.current);
                 onClose();
             } else {
@@ -218,7 +245,7 @@ export function ImmersiveSamplePlanning({
             savingRef.current = false;
             setSaving(false);
         }
-    }, [saveExperiment, jumpTo, confidenceLevel, marginOfError, designEffect, nonResponseRate, recommendedSize, finalSampleSize, onComplete, onClose]);
+    }, [saveExperiment, jumpTo, estimationType, confidenceLevel, marginOfError, populationVariance, designEffect, nonResponseRate, recommendedSize, finalSampleSize, onComplete, onClose]);
 
     const handleLaunchComplete = useCallback(() => {
         jumpTo("done");
@@ -229,7 +256,6 @@ export function ImmersiveSamplePlanning({
     const onLaunchCompleteRef = useRef(onLaunchComplete);
     onLaunchCompleteRef.current = onLaunchComplete;
 
-    // When phase reaches "done" (after launch animation in no-save mode), trigger completion
     const doneTriggered = useRef(false);
     useEffect(() => {
         if (phase.type === "done" && !doneTriggered.current) {
@@ -263,9 +289,10 @@ export function ImmersiveSamplePlanning({
 
     const pageKey =
         phase.type === "formula" ? `formula-${phase.step}`
-            : phase.type === "realworld" ? `realworld-${phase.scenario}`
-                : phase.type === "quiz" ? `quiz-${phase.questionIndex}`
-                    : phase.type;
+            : phase.type === "factors" ? `factors-${phase.step}`
+                : phase.type === "fourstep" ? `fourstep-${phase.scenario}`
+                    : phase.type === "quiz" ? `quiz-${phase.questionIndex}`
+                        : phase.type;
 
     useEffect(() => {
         if (exitConfirmOpen) return;
@@ -330,7 +357,6 @@ export function ImmersiveSamplePlanning({
         && phase.type !== "launching"
         && phase.type !== "done";
 
-    /** Global prev/next chrome — confirm/launching use custom UI only */
     const showNav = canGoNext || canGoPrev;
 
     // --- Handle setting final size (marks user-touched) ---
@@ -362,11 +388,30 @@ export function ImmersiveSamplePlanning({
                         onNext={goNext}
                     />
                 );
+            case "precision":
+                return (
+                    <PrecisionPhase
+                        params={params}
+                        onNext={goNext}
+                    />
+                );
+            case "factors":
+                return (
+                    <FactorsPhase
+                        step={phase.step}
+                        params={params}
+                        onNext={goNext}
+                    />
+                );
             case "formula":
                 return (
                     <FormulaPhase
                         step={phase.step}
                         params={params}
+                        estimationType={estimationType}
+                        populationVariance={populationVariance}
+                        onEstimationTypeChange={handleEstimationTypeChange}
+                        onPopulationVarianceChange={setPopulationVariance}
                         onConfidenceLevelChange={(v) => setConfidenceLevel(normalizeConfidenceLevel(v))}
                         onMarginOfErrorChange={setMarginOfError}
                         onNext={goNext}
@@ -376,11 +421,13 @@ export function ImmersiveSamplePlanning({
                 return (
                     <FPCPhase params={params} onNext={goNext} />
                 );
-            case "realworld":
+            case "fourstep":
                 return (
-                    <RealWorldPhase
+                    <FourStepPhase
                         scenario={phase.scenario}
                         params={params}
+                        estimationType={estimationType}
+                        populationVariance={populationVariance}
                         onDesignEffectChange={setDesignEffect}
                         onNonResponseRateChange={setNonResponseRate}
                         onNext={goNext}
@@ -436,10 +483,14 @@ export function ImmersiveSamplePlanning({
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
+                                <ParamSummaryItem label="估计类型" value={estimationType === "proportion" ? "比例" : "均值"} />
                                 <ParamSummaryItem label="置信水平" value={`${confidenceLevel}%`} />
-                                <ParamSummaryItem label="允许误差" value={`±${marginOfError}%`} />
+                                <ParamSummaryItem label="允许误差" value={estimationType === "proportion" ? `±${marginOfError}%` : `±${marginOfError}`} />
                                 <ParamSummaryItem label="设计效应" value={designEffect.toFixed(1)} />
                                 <ParamSummaryItem label="无回答率" value={`${Math.round(nonResponseRate * 100)}%`} />
+                                {estimationType === "mean" && (
+                                    <ParamSummaryItem label="总体方差" value={populationVariance.toString()} />
+                                )}
                             </div>
                         </div>
 
@@ -476,7 +527,6 @@ export function ImmersiveSamplePlanning({
 
     if (phase.type === "done") return null;
 
-    // Launching phase: render ImmersiveExperimentLaunch full-screen (replaces overlay)
     if (phase.type === "launching") {
         return (
             <ImmersiveExperimentLaunch
@@ -551,7 +601,7 @@ export function ImmersiveSamplePlanning({
                     </div>
                 </div>
 
-                {/* Bottom bar: 上一步 only — 继续/下一步由各阶段主按钮与右侧箭头承担，避免重复 */}
+                {/* Bottom bar */}
                 {canGoPrev && (
                     <div className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-4 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-white dark:from-slate-950 via-white/80 dark:via-slate-950/80 to-transparent">
                         <Button

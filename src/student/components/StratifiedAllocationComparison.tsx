@@ -17,8 +17,11 @@ interface LayerInfo {
     ratio: number;      // 层占比
 }
 
+type AllocationMethod = "proportional" | "neyman" | "equal" | "optimal" | "sqrt" | "sizeMeasure" | "sqrtSizeMeasure";
+type OverflowApplicableMethod = Exclude<AllocationMethod, "optimal">;
+
 interface AllocationComparison {
-    method: "proportional" | "neyman" | "equal" | "optimal" | "sqrt";
+    method: AllocationMethod;
     name: string;
     description: string;
     allocation: Array<{
@@ -57,8 +60,8 @@ interface StratifiedAllocationComparisonProps {
     totalSampleSize: number;
     numericFields?: string[];
     stratumStdDevs?: Record<string, Record<string, { mean: number; stdDev: number }>>;
-    onApplyAllocation?: (method: "proportional" | "neyman" | "equal" | "optimal" | "sqrt") => void;
-    onApplyAllocationWithOverflow?: (method: "proportional" | "neyman" | "equal" | "sqrt", allocation: { name: string; count: number; sampleCount: number }[]) => void;
+    onApplyAllocation?: (method: AllocationMethod) => void;
+    onApplyAllocationWithOverflow?: (method: OverflowApplicableMethod, allocation: { name: string; count: number; sampleCount: number }[]) => void;
 }
 
 export function StratifiedAllocationComparison({
@@ -79,22 +82,33 @@ export function StratifiedAllocationComparison({
         return devs.every((s): s is number => s !== undefined && s > 0) ? devs : undefined;
     }, [layers, targetVariable, stratumStdDevs]);
 
-    // 计算四种基本分配方法，以按比例分配的方差为基准计算相对效率
+    const layerMeans = useMemo(() => {
+        if (!targetVariable || !stratumStdDevs) return undefined;
+        const means = layers.map(l => stratumStdDevs[l.name]?.[targetVariable]?.mean);
+        return means.every((m): m is number => m !== undefined && m > 0) ? means : undefined;
+    }, [layers, targetVariable, stratumStdDevs]);
+
     const comparisons: AllocationComparison[] = useMemo(() => {
         if (!layers.length) return [];
-        const raw = [
+        const raw: AllocationComparison[] = [
             calculateProportionalAllocation(layers, totalSampleSize, layerStdDevs),
             calculateEqualAllocation(layers, totalSampleSize, layerStdDevs),
             calculateNeymanAllocation(layers, totalSampleSize, layerStdDevs),
             calculateSquareRootNAllocation(layers, totalSampleSize, layerStdDevs),
         ];
+        if (layerMeans) {
+            raw.push(
+                calculateSizeMeasureNAllocation(layers, totalSampleSize, layerMeans, layerStdDevs),
+                calculateSqrtSizeMeasureNAllocation(layers, totalSampleSize, layerMeans, layerStdDevs),
+            );
+        }
         const propVariance = raw[0]?.totalVariance;
         if (!propVariance || propVariance <= 0) return raw;
         return raw.map(c => ({
             ...c,
             efficiency: c.totalVariance > 0 ? propVariance / c.totalVariance : 1,
         }));
-    }, [layers, totalSampleSize, layerStdDevs]);
+    }, [layers, totalSampleSize, layerStdDevs, layerMeans]);
 
     if (!layers.length) return null;
 
@@ -201,10 +215,9 @@ export function StratifiedAllocationComparison({
                                                         count: a.populationSize,
                                                         sampleCount: a.sampleSize,
                                                     }));
-                                                    onApplyAllocationWithOverflow(
-                                                        comparison.method as "proportional" | "neyman" | "equal" | "sqrt",
-                                                        allocation,
-                                                    );
+                                                    if (comparison.method !== "optimal") {
+                                                        onApplyAllocationWithOverflow(comparison.method, allocation);
+                                                    }
                                                 } else {
                                                     onApplyAllocation!(comparison.method);
                                                 }
@@ -400,11 +413,9 @@ export function StratifiedAllocationComparison({
                                                             count: a.populationSize,
                                                             sampleCount: a.isOverAllocated ? a.populationSize : a.sampleSize,
                                                         }));
-                                                        // 安全地调用回调，method 已经限制了类型
-                                                        onApplyAllocationWithOverflow(
-                                                            comparison.method as "proportional" | "neyman" | "equal" | "sqrt", 
-                                                            adjustedAllocation
-                                                        );
+                                                        if (comparison.method !== "optimal") {
+                                                            onApplyAllocationWithOverflow(comparison.method, adjustedAllocation);
+                                                        }
                                                     }}
                                                     className="w-full text-xs border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-700 dark:text-rose-400"
                                                 >
@@ -659,6 +670,86 @@ function calculateVariance(
     });
 
     return totalVariance;
+}
+
+// 与 Nh×Yh（层规模×层均值）成比例分配（课件第25页）
+function calculateSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSize: number, layerMeans: number[], stdDevs?: number[]): AllocationComparison {
+    const weights = layers.map((layer, i) => layer.count * (layerMeans[i] ?? 1));
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+    let allocation = layers.map((layer, index) => {
+        const weight = weights[index] ?? 0;
+        const proportion = totalWeight > 0 ? weight / totalWeight : 0;
+        return {
+            layerName: layer.name,
+            populationSize: layer.count,
+            sampleSize: Math.round(totalSampleSize * proportion),
+            proportion,
+        };
+    });
+
+    allocation = normalizeAllocation(allocation, totalSampleSize, layers);
+
+    const {
+        markedAllocation,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
+    } = detectOverAllocation(allocation, layers);
+
+    const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
+
+    return {
+        method: "sizeMeasure",
+        name: "与 Nₕ×Ȳₕ 成比例",
+        description: "各层样本量与 Nₕ×Ȳₕ 成比例，适用于估计总量时",
+        allocation: markedAllocation,
+        totalVariance,
+        efficiency: 1,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
+    };
+}
+
+// 与 √(Nh×Yh)（层规模×层均值的平方根）成比例分配（课件第25页）
+function calculateSqrtSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSize: number, layerMeans: number[], stdDevs?: number[]): AllocationComparison {
+    const weights = layers.map((layer, i) => Math.sqrt(layer.count * (layerMeans[i] ?? 1)));
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+    let allocation = layers.map((layer, index) => {
+        const weight = weights[index] ?? 0;
+        const proportion = totalWeight > 0 ? weight / totalWeight : 0;
+        return {
+            layerName: layer.name,
+            populationSize: layer.count,
+            sampleSize: Math.round(totalSampleSize * proportion),
+            proportion,
+        };
+    });
+
+    allocation = normalizeAllocation(allocation, totalSampleSize, layers);
+
+    const {
+        markedAllocation,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
+    } = detectOverAllocation(allocation, layers);
+
+    const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
+
+    return {
+        method: "sqrtSizeMeasure",
+        name: "与 √(Nₕ×Ȳₕ) 成比例",
+        description: "各层样本量与 √(Nₕ×Ȳₕ) 成比例，在按比例和 Nₕ×Ȳₕ 分配之间折中",
+        allocation: markedAllocation,
+        totalVariance,
+        efficiency: 1,
+        hasOverAllocation,
+        overAllocatedLayers,
+        adjustedTotalSampleSize,
+    };
 }
 
 // 与N的平方根成比例分配

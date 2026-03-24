@@ -164,7 +164,7 @@ export function FPCPhase({ params, onNext }: Props) {
                     onClick={onNext}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
                 >
-                    接下来：现实世界的调整
+                    接下来：四步法确定样本量
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>

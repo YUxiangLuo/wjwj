@@ -8,6 +8,11 @@ import {
     calculateSquareRootAllocation,
     calculateSampleSizeForDifferentP,
     calculateSampleSizeSensitivity,
+    calculateMeanEstimationSampleSize,
+    calculateMeanSampleSizeMetrics,
+    calculateSampleSizeSteps,
+    calculateSizeMeasureAllocation,
+    calculateSqrtSizeMeasureAllocation,
 } from "./sample-plan";
 
 test("basic sample size with 95% confidence and 5% margin", () => {
@@ -474,4 +479,229 @@ test("sensitivity: higher confidence or lower margin -> larger sample", () => {
     const n95_1 = matrix!.find(m => m.confidenceLevel === "95" && m.marginOfError === 1);
     const n95_10 = matrix!.find(m => m.confidenceLevel === "95" && m.marginOfError === 10);
     expect(n95_1!.sampleSize).toBeGreaterThan(n95_10!.sampleSize);
+});
+
+// ========== calculateMeanEstimationSampleSize tests ==========
+
+test("mean estimation: basic sample size calculation", () => {
+    // n0 = Z² × σ² / e² = 1.96² × 100 / 4 = 96.04 → with FPC for N=1000
+    const n = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 1000,
+        populationVariance: 100,
+    });
+    expect(n).not.toBeNull();
+    expect(n!).toBeGreaterThan(50);
+    expect(n!).toBeLessThan(200);
+});
+
+test("mean estimation: larger variance increases sample size", () => {
+    const nSmall = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 5000,
+        populationVariance: 50,
+    });
+    const nLarge = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 5000,
+        populationVariance: 200,
+    });
+    expect(nSmall).not.toBeNull();
+    expect(nLarge).not.toBeNull();
+    expect(nLarge!).toBeGreaterThan(nSmall!);
+});
+
+test("mean estimation: deff and NRR adjust multiplicatively", () => {
+    const base = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 10000,
+        populationVariance: 100,
+    });
+    const adjusted = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 10000,
+        populationVariance: 100,
+        designEffect: 2,
+        nonResponseRate: 0.1,
+    });
+    expect(base).not.toBeNull();
+    expect(adjusted).not.toBeNull();
+    const expected = Math.ceil(base! * 2 / 0.9);
+    expect(Math.abs(adjusted! - expected)).toBeLessThanOrEqual(2);
+});
+
+test("mean estimation: returns null for invalid inputs", () => {
+    expect(calculateMeanEstimationSampleSize({
+        confidenceLevel: "95", marginOfError: 2,
+        populationSize: 0, populationVariance: 100,
+    })).toBeNull();
+    expect(calculateMeanEstimationSampleSize({
+        confidenceLevel: "95", marginOfError: 2,
+        populationSize: 1000, populationVariance: 0,
+    })).toBeNull();
+    expect(calculateMeanEstimationSampleSize({
+        confidenceLevel: "95", marginOfError: 0,
+        populationSize: 1000, populationVariance: 100,
+    })).toBeNull();
+    expect(calculateMeanEstimationSampleSize({
+        confidenceLevel: "80", marginOfError: 2,
+        populationSize: 1000, populationVariance: 100,
+    })).toBeNull();
+});
+
+test("mean estimation: infinite population approaches n0 = Z²σ²/e²", () => {
+    const n = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 10_000_000,
+        populationVariance: 100,
+    });
+    // n0 = 1.96² × 100 / 4 = 96.04 → ceil = 97
+    expect(n).toBe(97);
+});
+
+// ========== calculateMeanSampleSizeMetrics tests ==========
+
+test("mean metrics: returns valid SE and confidence interval", () => {
+    const metrics = calculateMeanSampleSizeMetrics({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 5000,
+        populationVariance: 100,
+        estimatedMean: 50,
+    });
+    expect(metrics).not.toBeNull();
+    expect(metrics!.standardError).toBeGreaterThan(0);
+    expect(metrics!.confidenceInterval.lower).toBeLessThan(50);
+    expect(metrics!.confidenceInterval.upper).toBeGreaterThan(50);
+});
+
+test("mean metrics: RSE = SE / |mean|", () => {
+    const metrics = calculateMeanSampleSizeMetrics({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 5000,
+        populationVariance: 100,
+        estimatedMean: 50,
+    });
+    expect(metrics).not.toBeNull();
+    expect(Math.abs(metrics!.relativeStandardError - metrics!.standardError / 50)).toBeLessThan(1e-10);
+});
+
+// ========== calculateSizeMeasureAllocation tests ==========
+
+test("size measure allocation sums to total exactly", () => {
+    const alloc = calculateSizeMeasureAllocation(
+        [
+            { name: "Urban", populationSize: 500, sizeMeasure: 1000 },
+            { name: "Suburban", populationSize: 300, sizeMeasure: 600 },
+            { name: "Rural", populationSize: 200, sizeMeasure: 200 },
+        ],
+        100,
+    );
+    expect(alloc.length).toBe(3);
+    const total = alloc.reduce((s, a) => s + a.sampleSize, 0);
+    expect(total).toBe(100);
+});
+
+test("size measure allocation: larger Nh×Yh gets more samples", () => {
+    const alloc = calculateSizeMeasureAllocation(
+        [
+            { name: "A", populationSize: 100, sizeMeasure: 10 },
+            { name: "B", populationSize: 100, sizeMeasure: 100 },
+        ],
+        100,
+    );
+    expect(alloc[1]!.sampleSize).toBeGreaterThan(alloc[0]!.sampleSize);
+});
+
+test("size measure allocation: empty layers returns empty", () => {
+    expect(calculateSizeMeasureAllocation([], 100)).toEqual([]);
+});
+
+// ========== calculateSqrtSizeMeasureAllocation tests ==========
+
+test("sqrt size measure allocation sums to total exactly", () => {
+    const alloc = calculateSqrtSizeMeasureAllocation(
+        [
+            { name: "Urban", populationSize: 500, sizeMeasure: 1000 },
+            { name: "Suburban", populationSize: 300, sizeMeasure: 600 },
+            { name: "Rural", populationSize: 200, sizeMeasure: 200 },
+        ],
+        100,
+    );
+    expect(alloc.length).toBe(3);
+    const total = alloc.reduce((s, a) => s + a.sampleSize, 0);
+    expect(total).toBe(100);
+});
+
+test("sqrt allocation gives more balanced distribution than linear", () => {
+    const layers = [
+        { name: "A", populationSize: 100, sizeMeasure: 10 },
+        { name: "B", populationSize: 100, sizeMeasure: 1000 },
+    ];
+    const linear = calculateSizeMeasureAllocation(layers, 100);
+    const sqrt = calculateSqrtSizeMeasureAllocation(layers, 100);
+    // sqrt should give "A" a larger share compared to linear
+    expect(sqrt[0]!.sampleSize).toBeGreaterThan(linear[0]!.sampleSize);
+});
+
+// ========== calculateSampleSizeSteps tests ==========
+
+test("steps proportion: n3 close to canonical (per-step ceil causes small rounding delta)", () => {
+    const steps = calculateSampleSizeSteps({
+        estimationType: "proportion",
+        confidenceLevel: "95",
+        marginOfError: 5,
+        populationSize: 1000,
+        designEffect: 1.5,
+        nonResponseRate: 0.1,
+    });
+    const canonical = calculateFinitePopulationSampleSize({
+        confidenceLevel: "95", marginOfError: 5, populationSize: 1000,
+        designEffect: 1.5, nonResponseRate: 0.1,
+    })!;
+    expect(Math.abs(steps.n3 - canonical)).toBeLessThanOrEqual(3);
+    expect(steps.n3).toBeGreaterThanOrEqual(canonical);
+    expect(steps.n0).toBeGreaterThanOrEqual(steps.n1);
+    expect(steps.n2).toBeGreaterThanOrEqual(steps.n1);
+    expect(steps.n3).toBeGreaterThanOrEqual(steps.n2);
+    expect(steps.formulaLabel).toBe("Z²p(1-p)/E²");
+});
+
+test("steps mean: n3 close to canonical (per-step ceil causes small rounding delta)", () => {
+    const steps = calculateSampleSizeSteps({
+        estimationType: "mean",
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 5000,
+        populationVariance: 100,
+        designEffect: 2,
+        nonResponseRate: 0.15,
+    });
+    const canonical = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95", marginOfError: 2, populationSize: 5000,
+        populationVariance: 100, designEffect: 2, nonResponseRate: 0.15,
+    })!;
+    expect(Math.abs(steps.n3 - canonical)).toBeLessThanOrEqual(3);
+    expect(steps.n3).toBeGreaterThanOrEqual(canonical);
+    expect(steps.formulaLabel).toBe("Z²σ²/e²");
+});
+
+test("steps: returns zeros for invalid inputs", () => {
+    const steps = calculateSampleSizeSteps({
+        estimationType: "proportion",
+        confidenceLevel: "95",
+        marginOfError: 0,
+        populationSize: 1000,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+    expect(steps.n0).toBe(0);
+    expect(steps.n3).toBe(0);
 });

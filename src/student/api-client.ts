@@ -82,8 +82,15 @@ export type { QuestionType, Question, QuestionnaireData };
  * 仅用于前端会话内推演与 UI，不进入本结构与后端同步逻辑（见 P0 约定）。
  */
 export interface SamplePlanData {
+    estimationType?: "proportion" | "mean";
     confidenceLevel: string;
+    /**
+     * 比例估计时为百分比（如 5 表示 ±5%），均值估计时为绝对误差（与均值同单位，如 2 表示 ±2）。
+     * 具体含义取决于 {@link estimationType}。
+     */
     marginOfError: number;
+    /** 仅均值估计时使用的总体方差 σ² 估计值。 */
+    populationVariance?: number;
     designEffect: number;
     nonResponseRate: number;
     recommendedSize: number;

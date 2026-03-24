@@ -229,6 +229,175 @@ export function attachCalculatedSampleSize(samplePlan: Record<string, any>, popu
     return samplePlan;
 }
 
+// ========== 均值估计样本量计算（课件第16页） ==========
+
+/** 均值估计 n₀ 计算的内部核心（无副作用，无参数校验）。 */
+function meanEstimationCore(z: number, sigma2: number, e: number, N: number, deff: number, nrr: number) {
+    const n0 = (z * z * sigma2) / (e * e);
+    const n1 = n0 / (1 + (n0 - 1) / N);
+    let n = n1;
+    if (Number.isFinite(deff) && deff > 0) n *= deff;
+    if (Number.isFinite(nrr) && nrr > 0 && nrr < 1) n /= (1 - nrr);
+    return { n0, n1, n: Math.ceil(n) };
+}
+
+function parseMeanEstimationParams(params: {
+    confidenceLevel: unknown;
+    marginOfError: unknown;
+    populationSize: number | null | undefined;
+    populationVariance: number;
+    designEffect?: unknown;
+    nonResponseRate?: unknown;
+}) {
+    if (params.populationSize == null || !(params.populationSize > 0)) return null;
+    if (!(params.populationVariance > 0)) return null;
+    const clStr = String(params.confidenceLevel);
+    if (!isConfidenceLevel(clStr)) return null;
+    const z = Z_VALUES[clStr];
+    const e = Number(params.marginOfError);
+    if (!Number.isFinite(e) || e <= 0) return null;
+    return {
+        z, e,
+        N: params.populationSize,
+        sigma2: params.populationVariance,
+        deff: Number(params.designEffect),
+        nrr: Number(params.nonResponseRate),
+    };
+}
+
+/**
+ * 均值估计下的样本量计算（简单随机抽样）
+ *
+ * 无限总体: n₀ = Z² × σ² / e²
+ * 有限总体: n₁ = n₀ / (1 + (n₀ - 1) / N)
+ * 最终:     n  = n₁ × deff / (1 - NRR)
+ *
+ * 其中 σ² 为总体方差估计值，e 为绝对误差限（与均值同单位）。
+ */
+export function calculateMeanEstimationSampleSize(params: {
+    confidenceLevel: unknown;
+    marginOfError: unknown;
+    populationSize: number | null | undefined;
+    populationVariance: number;
+    designEffect?: unknown;
+    nonResponseRate?: unknown;
+}): number | null {
+    const parsed = parseMeanEstimationParams(params);
+    if (!parsed) return null;
+    return meanEstimationCore(parsed.z, parsed.sigma2, parsed.e, parsed.N, parsed.deff, parsed.nrr).n;
+}
+
+export interface MeanSampleSizeMetrics {
+    n0: number;
+    n1: number;
+    n: number;
+    standardError: number;
+    relativeStandardError: number;
+    marginOfError: number;
+    confidenceInterval: { lower: number; upper: number };
+}
+
+/**
+ * 均值估计的精度指标计算。
+ * estimatedMean 用于计算相对标准误差和置信区间。
+ */
+export function calculateMeanSampleSizeMetrics(params: {
+    confidenceLevel: unknown;
+    marginOfError: unknown;
+    populationSize: number | null | undefined;
+    populationVariance: number;
+    designEffect?: unknown;
+    nonResponseRate?: unknown;
+    estimatedMean?: number;
+}): MeanSampleSizeMetrics | null {
+    const parsed = parseMeanEstimationParams(params);
+    if (!parsed) return null;
+    const { z, sigma2, N, deff, nrr } = parsed;
+
+    const { n0, n1, n: finalN } = meanEstimationCore(z, sigma2, parsed.e, N, deff, nrr);
+    const effectiveN = Math.ceil(n1);
+
+    const fpc = Math.max(0, 1 - effectiveN / N);
+    const standardError = Math.sqrt(sigma2 / effectiveN * fpc);
+
+    const mean = params.estimatedMean ?? 0;
+    const relativeStandardError = mean !== 0 ? standardError / Math.abs(mean) : 0;
+
+    const marginOfErrorAbs = z * standardError;
+
+    const confidenceInterval = {
+        lower: mean - marginOfErrorAbs,
+        upper: mean + marginOfErrorAbs,
+    };
+
+    return {
+        n0,
+        n1,
+        n: finalN,
+        standardError,
+        relativeStandardError,
+        marginOfError: marginOfErrorAbs,
+        confidenceInterval,
+    };
+}
+
+// ========== 四步法中间步骤（课件第18页，供 UI 展示用） ==========
+
+export interface SampleSizeSteps {
+    n0: number; // Step 1: 初始样本量
+    n1: number; // Step 2: 有限总体校正后
+    n2: number; // Step 3: 设计效应调整后
+    n3: number; // Step 4: 无回答率调整后（最终值）
+    formulaLabel: string;
+}
+
+/**
+ * 返回四步法（n₀ → FPC → deff → NRR）各阶段的整数样本量。
+ * 供 FourStepPhase 展示使用，避免 UI 层重复实现公式。
+ *
+ * 注意：每一步都做 ceil 取整以便展示清晰的整数管线，因此 n3 可能比
+ * calculateFinitePopulationSampleSize / calculateMeanEstimationSampleSize
+ * 的结果略大（差值 ≤ 3），后者在全部步骤完成后才做一次 ceil。
+ */
+export function calculateSampleSizeSteps(params: {
+    estimationType: "proportion" | "mean";
+    confidenceLevel: unknown;
+    marginOfError: number;
+    populationSize: number;
+    populationVariance?: number;
+    designEffect: number;
+    nonResponseRate: number;
+}): SampleSizeSteps {
+    const clStr = String(params.confidenceLevel);
+    const z = isConfidenceLevel(clStr) ? Z_VALUES[clStr] : 1.96;
+    const N = params.populationSize;
+    const deff = params.designEffect;
+    const nrr = params.nonResponseRate;
+
+    let n0Raw: number;
+    let formulaLabel: string;
+
+    if (params.estimationType === "mean") {
+        const sigma2 = params.populationVariance ?? 0;
+        const e = params.marginOfError;
+        if (e <= 0 || sigma2 <= 0) return { n0: 0, n1: 0, n2: 0, n3: 0, formulaLabel: "Z²σ²/e²" };
+        n0Raw = (z * z * sigma2) / (e * e);
+        formulaLabel = "Z²σ²/e²";
+    } else {
+        const E = normalizeMarginOfError(params.marginOfError);
+        if (E <= 0) return { n0: 0, n1: 0, n2: 0, n3: 0, formulaLabel: "Z²p(1-p)/E²" };
+        n0Raw = (z * z * 0.25) / (E * E);
+        formulaLabel = "Z²p(1-p)/E²";
+    }
+
+    const n0 = Math.ceil(n0Raw);
+    const n1 = Math.ceil(n0Raw / (1 + (n0Raw - 1) / N));
+    const n2 = Math.ceil(n1 * deff);
+    const n3 = nrr > 0 && nrr < 1 ? Math.ceil(n2 / (1 - nrr)) : n2;
+
+    return { n0, n1, n2, n3, formulaLabel };
+}
+
 // ========== 补充功能：基于变异系数(CV)的样本量计算 ==========
 
 export interface CVBasedSampleSizeParams {
@@ -506,6 +675,71 @@ export function calculateSquareRootAllocation(
 
     // Largest remainder method: guarantees sum exactly equals totalSampleSize
     const exactShares = weights.map(w => totalWeight > 0 ? totalSampleSize * w / totalWeight : 0);
+    const floored = exactShares.map(s => Math.floor(s));
+    let remainder = totalSampleSize - floored.reduce((a, b) => a + b, 0);
+
+    const indices = floored.map((_, i) => i);
+    indices.sort((a, b) => (exactShares[b]! - floored[b]!) - (exactShares[a]! - floored[a]!));
+    for (const idx of indices) {
+        if (remainder <= 0) break;
+        floored[idx] = (floored[idx] ?? 0) + 1;
+        remainder--;
+    }
+
+    return layers.map((layer, index) => ({
+        name: layer.name,
+        sampleSize: floored[index] ?? 0,
+        proportion: totalWeight > 0 ? (weights[index] ?? 0) / totalWeight : 0,
+    }));
+}
+
+// ========== 分层抽样：按规模度量的比例分配（课件第25页） ==========
+
+/**
+ * 与 Nh×Yh 成比例分配
+ * 分配系数 wh = (Nh × Yh) / Σ(Ni × Yi)
+ * 适用于总体估计值 Y 是总值大小度量时。
+ */
+export function calculateSizeMeasureAllocation(
+    layers: Array<{ name: string; populationSize: number; sizeMeasure: number }>,
+    totalSampleSize: number
+): Array<{ name: string; sampleSize: number; proportion: number }> {
+    if (!layers.length) return [];
+
+    const weights = layers.map(l => l.populationSize * l.sizeMeasure);
+    return applyLargestRemainderAllocation(layers, weights, totalSampleSize);
+}
+
+/**
+ * 与 √(Nh×Yh) 成比例分配
+ * 分配系数 wh = √(Nh × Yh) / Σ√(Ni × Yi)
+ * 精度高于与 Nh×Yh 成比例分配。
+ */
+export function calculateSqrtSizeMeasureAllocation(
+    layers: Array<{ name: string; populationSize: number; sizeMeasure: number }>,
+    totalSampleSize: number
+): Array<{ name: string; sampleSize: number; proportion: number }> {
+    if (!layers.length) return [];
+
+    const weights = layers.map(l => Math.sqrt(l.populationSize * l.sizeMeasure));
+    return applyLargestRemainderAllocation(layers, weights, totalSampleSize);
+}
+
+/**
+ * 最大余数法分配（保证合计恰好等于 totalSampleSize）。
+ * 供各种按权重比例分配方法复用。
+ */
+function applyLargestRemainderAllocation(
+    layers: Array<{ name: string }>,
+    weights: number[],
+    totalSampleSize: number,
+): Array<{ name: string; sampleSize: number; proportion: number }> {
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    if (totalWeight <= 0) {
+        return layers.map(l => ({ name: l.name, sampleSize: 0, proportion: 0 }));
+    }
+
+    const exactShares = weights.map(w => totalSampleSize * w / totalWeight);
     const floored = exactShares.map(s => Math.floor(s));
     let remainder = totalSampleSize - floored.reduce((a, b) => a + b, 0);
 

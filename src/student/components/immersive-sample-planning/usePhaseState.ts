@@ -1,9 +1,12 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { PHASE_ORDER, type Phase, type PhaseType, initialPhase } from "./types";
+import { QUIZ_QUESTION_COUNT } from "./phases/QuizPhase";
 
 function phaseIndex(type: PhaseType): number {
     return PHASE_ORDER.indexOf(type);
 }
+
+const FACTORS_STEPS = ["error_tolerance", "subpopulation", "variability", "cost_balance", "summary"] as const;
 
 /** Percentage progress through the sample planning flow (0–100). */
 function phaseProgress(phase: Phase): number {
@@ -12,10 +15,13 @@ function phaseProgress(phase: Phase): number {
     let sub = 0;
     if (phase.type === "formula") {
         sub = phase.step === "z" ? 0 : phase.step === "e" ? 0.33 : 0.66;
-    } else if (phase.type === "realworld") {
+    } else if (phase.type === "factors") {
+        const idx = FACTORS_STEPS.indexOf(phase.step);
+        sub = idx >= 0 ? idx / FACTORS_STEPS.length : 0;
+    } else if (phase.type === "fourstep") {
         sub = phase.scenario === "deff" ? 0 : phase.scenario === "nrr" ? 0.33 : 0.66;
     } else if (phase.type === "quiz") {
-        sub = Math.min(phase.questionIndex / 3, 0.99);
+        sub = Math.min(phase.questionIndex / QUIZ_QUESTION_COUNT, 0.99);
     }
     return Math.min(100, ((base + sub) / (total - 1)) * 100);
 }
@@ -23,9 +29,11 @@ function phaseProgress(phase: Phase): number {
 function defaultPhaseFor(type: PhaseType): Phase {
     switch (type) {
         case "challenge": return initialPhase();
+        case "precision": return { type: "precision" };
+        case "factors": return { type: "factors", step: "error_tolerance" };
         case "formula": return { type: "formula", step: "z" };
         case "fpc": return { type: "fpc" };
-        case "realworld": return { type: "realworld", scenario: "deff" };
+        case "fourstep": return { type: "fourstep", scenario: "deff" };
         case "decision": return { type: "decision" };
         case "quiz": return { type: "quiz", questionIndex: 0 };
         case "confirm": return { type: "confirm" };
@@ -52,10 +60,19 @@ export function usePhaseState() {
     const goNext = useCallback(() => {
         setDirection("forward");
         setPhase((prev) => {
-            // Sub-step navigation within phases
             if (prev.type === "challenge") {
-                if (!prev.revealed) return prev; // must reveal first
+                if (!prev.revealed) return prev;
                 challengeSnapshotRef.current = { guess: prev.guess, revealed: prev.revealed };
+                return { type: "precision" };
+            }
+            if (prev.type === "precision") {
+                return { type: "factors", step: "error_tolerance" };
+            }
+            if (prev.type === "factors") {
+                const idx = FACTORS_STEPS.indexOf(prev.step);
+                if (idx < FACTORS_STEPS.length - 1) {
+                    return { type: "factors", step: FACTORS_STEPS[idx + 1]! };
+                }
                 return { type: "formula", step: "z" };
             }
             if (prev.type === "formula") {
@@ -63,19 +80,16 @@ export function usePhaseState() {
                 if (prev.step === "e") return { type: "formula", step: "summary" };
                 return { type: "fpc" };
             }
-            if (prev.type === "realworld") {
-                if (prev.scenario === "deff") return { type: "realworld", scenario: "nrr" };
-                if (prev.scenario === "nrr") return { type: "realworld", scenario: "summary" };
+            if (prev.type === "fourstep") {
+                if (prev.scenario === "deff") return { type: "fourstep", scenario: "nrr" };
+                if (prev.scenario === "nrr") return { type: "fourstep", scenario: "summary" };
                 return { type: "decision" };
             }
             if (prev.type === "quiz") {
-                if (prev.questionIndex < 2) return { type: "quiz", questionIndex: prev.questionIndex + 1 };
+                if (prev.questionIndex < QUIZ_QUESTION_COUNT - 1) return { type: "quiz", questionIndex: prev.questionIndex + 1 };
                 return { type: "confirm" };
             }
-            // confirm → launching is handled externally (after save succeeds)
-            // launching → done is handled externally (after animation completes)
             if (prev.type === "confirm" || prev.type === "launching") return prev;
-            // Simple phase advancement
             const idx = phaseIndex(prev.type);
             const nextIdx = Math.min(idx + 1, PHASE_ORDER.length - 1);
             return defaultPhaseFor(PHASE_ORDER[nextIdx]!);
@@ -85,29 +99,36 @@ export function usePhaseState() {
     const goPrev = useCallback(() => {
         setDirection("backward");
         setPhase((prev) => {
-            // Sub-step navigation backward
-            if (prev.type === "formula") {
-                if (prev.step === "summary") return { type: "formula", step: "e" };
-                if (prev.step === "e") return { type: "formula", step: "z" };
+            if (prev.type === "precision") {
                 return {
                     type: "challenge",
                     guess: challengeSnapshotRef.current.guess,
                     revealed: challengeSnapshotRef.current.revealed,
                 };
             }
-            if (prev.type === "realworld") {
-                if (prev.scenario === "summary") return { type: "realworld", scenario: "nrr" };
-                if (prev.scenario === "nrr") return { type: "realworld", scenario: "deff" };
+            if (prev.type === "factors") {
+                const idx = FACTORS_STEPS.indexOf(prev.step);
+                if (idx > 0) {
+                    return { type: "factors", step: FACTORS_STEPS[idx - 1]! };
+                }
+                return { type: "precision" };
+            }
+            if (prev.type === "formula") {
+                if (prev.step === "summary") return { type: "formula", step: "e" };
+                if (prev.step === "e") return { type: "formula", step: "z" };
+                return { type: "factors", step: "summary" };
+            }
+            if (prev.type === "fourstep") {
+                if (prev.scenario === "summary") return { type: "fourstep", scenario: "nrr" };
+                if (prev.scenario === "nrr") return { type: "fourstep", scenario: "deff" };
                 return { type: "fpc" };
             }
             if (prev.type === "quiz") {
                 if (prev.questionIndex > 0) return { type: "quiz", questionIndex: prev.questionIndex - 1 };
                 return { type: "decision" };
             }
-            // confirm → back to last quiz question; launching is locked
-            if (prev.type === "confirm") return { type: "quiz", questionIndex: 2 };
+            if (prev.type === "confirm") return { type: "quiz", questionIndex: QUIZ_QUESTION_COUNT - 1 };
             if (prev.type === "launching") return prev;
-            // Simple phase go-back
             const idx = phaseIndex(prev.type);
             if (idx <= 0) return prev;
             return defaultPhaseFor(PHASE_ORDER[idx - 1]!);
