@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle, Ruler, ListTree } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
@@ -38,6 +38,7 @@ import {
     buildRepresentativenessRows,
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
+import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -188,7 +189,7 @@ function FieldSelect({
 // ---------------------------------------------------------------------------
 
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
-    const { experiment, registerStageSave, saveExperiment } = useExperiment();
+    const { experiment, populationSize, registerStageSave, saveExperiment } = useExperiment();
 
     const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -467,13 +468,53 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
                             <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
                                 <BarChart3 className="w-5 h-5 text-indigo-500" />
-                                图表分析
+                                分析数据
                             </CardTitle>
                             <CardDescription className="text-slate-600 dark:text-slate-400">
-                                {statsLoading ? "正在加载总体统计数据…" : "基于阶段三真实抽样结果自动生成"}
+                                {statsLoading
+                                    ? "正在加载总体统计数据…"
+                                    : "在图表分析、样本量规划决策参数与抽样执行参数之间切换查看"}
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6">
+                            <Tabs defaultValue="charts" className="w-full">
+                                <TabsList
+                                    className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950"
+                                    data-testid="student-analysis-section-tabs"
+                                >
+                                    <TabsTrigger
+                                        value="charts"
+                                        data-testid="student-analysis-section-tab-charts"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                    >
+                                        <span className="flex items-center justify-center gap-1.5">
+                                            <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+                                            图表分析
+                                        </span>
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="plan"
+                                        data-testid="student-analysis-section-tab-plan"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                    >
+                                        <span className="flex items-center justify-center gap-1.5">
+                                            <Ruler className="h-3.5 w-3.5 shrink-0" />
+                                            样本量规划
+                                        </span>
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="sampling"
+                                        data-testid="student-analysis-section-tab-sampling"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                    >
+                                        <span className="flex items-center justify-center gap-1.5">
+                                            <ListTree className="h-3.5 w-3.5 shrink-0" />
+                                            抽样参数
+                                        </span>
+                                    </TabsTrigger>
+                                </TabsList>
+
+                                <TabsContent value="charts" className="mt-0 focus-visible:outline-none">
                             <Tabs defaultValue="mean">
                                 <TabsList className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 rounded-xl w-full flex h-auto" data-testid="student-analysis-tabs">
                                     <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">均值对比</TabsTrigger>
@@ -539,6 +580,23 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                         emptyMessage="暂无可用于代表性分析的数据"
                                         onZoom={() => setZoomChart("represent")}
                                         onDownload={() => downloadChart("represent")}
+                                    />
+                                </TabsContent>
+                            </Tabs>
+                                </TabsContent>
+
+                                <TabsContent value="plan" className="mt-0 focus-visible:outline-none">
+                                    <SamplePlanDecisionPanel
+                                        samplePlan={experiment?.samplePlan ?? null}
+                                        populationSize={populationSize}
+                                    />
+                                </TabsContent>
+
+                                <TabsContent value="sampling" className="mt-0 focus-visible:outline-none">
+                                    <SamplingMethodParamsPanel
+                                        samplingResults={experiment?.samplingResults ?? null}
+                                        targetSampleSize={experiment?.samplePlan?.finalSampleSize ?? null}
+                                        populationSize={populationSize}
                                     />
                                 </TabsContent>
                             </Tabs>
