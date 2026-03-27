@@ -15,17 +15,18 @@ import { toast } from "sonner";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../experiment/sample-plan";
 import type { ConfidenceLevel } from "../../experiment/confidence-level";
 import { normalizeConfidenceLevel } from "../../experiment/confidence-level";
+import { formatMarginOfError } from "../../experiment/sample-plan-display";
 import type { SamplePlanData } from "../../api-client";
-import type { AdvancedNonStandardSampleLockSource } from "../sample-planning/advancedTabs";
+import type { AdvancedNonStandardSampleSource } from "../sample-planning/advancedTabs";
 import type { Domain } from "../DomainEstimationManager";
 import type { SurveyVariable } from "../MultiVariableSamplePlan";
 import { ImmersiveExperimentLaunch } from "../ImmersiveExperimentLaunch";
 import { usePhaseState } from "./usePhaseState";
-import { PHASE_ORDER, type SampleParams } from "./types";
+import { PHASE_ORDER, type EstimationType, type SampleParams } from "./types";
 import { ChallengePhase } from "./phases/ChallengePhase";
 import { PrecisionPhase } from "./phases/PrecisionPhase";
 import { FactorsPhase } from "./phases/FactorsPhase";
-import { FormulaPhase, type EstimationType } from "./phases/FormulaPhase";
+import { FormulaPhase } from "./phases/FormulaPhase";
 import { FPCPhase } from "./phases/FPCPhase";
 import { FourStepPhase } from "./phases/FourStepPhase";
 import { DecisionPhase } from "./phases/DecisionPhase";
@@ -62,6 +63,7 @@ interface Props {
     initialFinalSampleSize?: number;
     initialEstimationType?: EstimationType;
     initialPopulationVariance?: number;
+    initialAdvancedPlanSource?: AdvancedNonStandardSampleSource | null;
     onComplete: (params: SampleParams) => void;
     onClose: () => void;
     /** When provided, 「确认并保存」只写入 samplePlan 并关闭浮层，不进入抽样执行开场动画。未提供时（独立预览）仍会走启动动画。 */
@@ -79,6 +81,7 @@ export function ImmersiveSamplePlanning({
     initialFinalSampleSize,
     initialEstimationType = "proportion",
     initialPopulationVariance = 100,
+    initialAdvancedPlanSource = null,
     onComplete,
     onClose,
     saveExperiment,
@@ -94,13 +97,20 @@ export function ImmersiveSamplePlanning({
     const [estimationType, setEstimationType] = useState<EstimationType>(initialEstimationType);
     const [populationVariance, setPopulationVariance] = useState(initialPopulationVariance);
 
+    const [advancedPlanSource, setAdvancedPlanSource] = useState<AdvancedNonStandardSampleSource | null>(initialAdvancedPlanSource);
+
+    const clearAdvancedPlanSource = useCallback(() => {
+        setAdvancedPlanSource(null);
+    }, []);
+
     const handleEstimationTypeChange = useCallback((next: EstimationType) => {
         setEstimationType((prev) => {
             if (prev === next) return prev;
+            clearAdvancedPlanSource();
             setMarginOfError(next === "proportion" ? 5 : 2);
             return next;
         });
-    }, []);
+    }, [clearAdvancedPlanSource]);
 
     const recommendedSize = useMemo(() => {
         if (estimationType === "mean") {
@@ -134,8 +144,10 @@ export function ImmersiveSamplePlanning({
 
     const params: SampleParams = {
         populationSize,
+        estimationType,
         confidenceLevel,
         marginOfError,
+        populationVariance: estimationType === "mean" ? populationVariance : undefined,
         designEffect,
         nonResponseRate,
         finalSampleSize,
@@ -149,60 +161,9 @@ export function ImmersiveSamplePlanning({
     const [domains, setDomains] = useState<Domain[]>([]);
     const [surveyVariables, setSurveyVariables] = useState<SurveyVariable[]>([]);
 
-    const domainsRef = useRef(domains);
-    domainsRef.current = domains;
-    const surveyVariablesRef = useRef(surveyVariables);
-    surveyVariablesRef.current = surveyVariables;
-
-    /** Locks standard params when sample size comes from cost/multi-var/CV/cluster tools; cancel restores pre-lock snapshot. */
-    const [advancedPlanLock, setAdvancedPlanLock] = useState<AdvancedNonStandardSampleLockSource | null>(null);
-    const preAdvancedBaselineRef = useRef<{
-        confidenceLevel: ConfidenceLevel;
-        marginOfError: number;
-        designEffect: number;
-        nonResponseRate: number;
-        finalSampleSize: number;
-        domains: Domain[];
-        surveyVariables: SurveyVariable[];
-        userTouchedFinal: boolean;
-    } | null>(null);
-
-    const capturePlanningBaseline = useCallback(() => ({
-        confidenceLevel,
-        marginOfError,
-        designEffect,
-        nonResponseRate,
-        finalSampleSize,
-        domains: structuredClone(domainsRef.current),
-        surveyVariables: structuredClone(surveyVariablesRef.current),
-        userTouchedFinal: userTouchedFinal.current,
-    }), [confidenceLevel, marginOfError, designEffect, nonResponseRate, finalSampleSize]);
-
-    /** Snapshot taken only on first lock; already-locked state is not re-snapshotted (cancel always restores initial baseline). */
-    const handleBeforeAdvancedCommit = useCallback(() => {
-        if (advancedPlanLock != null) return;
-        preAdvancedBaselineRef.current = capturePlanningBaseline();
-    }, [advancedPlanLock, capturePlanningBaseline]);
-
-    const handleAdvancedCommitted = useCallback((source: AdvancedNonStandardSampleLockSource) => {
-        setAdvancedPlanLock(source);
-    }, []);
-
-    const handleCancelAdvancedLock = useCallback(() => {
-        const b = preAdvancedBaselineRef.current;
-        if (b) {
-            setConfidenceLevel(b.confidenceLevel);
-            setMarginOfError(b.marginOfError);
-            setDesignEffect(b.designEffect);
-            setNonResponseRate(b.nonResponseRate);
-            setFinalSampleSize(b.finalSampleSize);
-            setDomains(b.domains);
-            setSurveyVariables(b.surveyVariables);
-            userTouchedFinal.current = b.userTouchedFinal;
-        }
-        preAdvancedBaselineRef.current = null;
-        setAdvancedPlanLock(null);
-        toast.success("已恢复为标准规划，可重新调整参数与最终样本量");
+    /** Tracks when final sample size currently comes from a non-standard tool. */
+    const handleAdvancedApplied = useCallback((source: AdvancedNonStandardSampleSource) => {
+        setAdvancedPlanSource(source);
     }, []);
 
     // --- Phase navigation ---
@@ -224,6 +185,7 @@ export function ImmersiveSamplePlanning({
         try {
             const success = await saveExperiment({
                 samplePlan: {
+                    ...(advancedPlanSource ? { advancedPlanSource } : {}),
                     estimationType,
                     confidenceLevel,
                     marginOfError,
@@ -245,7 +207,7 @@ export function ImmersiveSamplePlanning({
             savingRef.current = false;
             setSaving(false);
         }
-    }, [saveExperiment, jumpTo, estimationType, confidenceLevel, marginOfError, populationVariance, designEffect, nonResponseRate, recommendedSize, finalSampleSize, onComplete, onClose]);
+    }, [saveExperiment, jumpTo, advancedPlanSource, estimationType, confidenceLevel, marginOfError, populationVariance, designEffect, nonResponseRate, recommendedSize, finalSampleSize, onComplete, onClose]);
 
     const handleLaunchComplete = useCallback(() => {
         jumpTo("done");
@@ -359,6 +321,32 @@ export function ImmersiveSamplePlanning({
 
     const showNav = canGoNext || canGoPrev;
 
+    // --- Standard-flow setters: changing params clears any advanced source tag ---
+    const handleConfidenceLevelChange = useCallback((v: string) => {
+        clearAdvancedPlanSource();
+        setConfidenceLevel(normalizeConfidenceLevel(v));
+    }, [clearAdvancedPlanSource]);
+
+    const handleMarginOfErrorChange = useCallback((v: number) => {
+        clearAdvancedPlanSource();
+        setMarginOfError(v);
+    }, [clearAdvancedPlanSource]);
+
+    const handleDesignEffectChange = useCallback((v: number) => {
+        clearAdvancedPlanSource();
+        setDesignEffect(v);
+    }, [clearAdvancedPlanSource]);
+
+    const handleNonResponseRateChange = useCallback((v: number) => {
+        clearAdvancedPlanSource();
+        setNonResponseRate(v);
+    }, [clearAdvancedPlanSource]);
+
+    const handlePopulationVarianceChange = useCallback((v: number) => {
+        clearAdvancedPlanSource();
+        setPopulationVariance(v);
+    }, [clearAdvancedPlanSource]);
+
     // --- Handle setting final size (marks user-touched) ---
     const handleSetFinalSize = useCallback((v: number) => {
         userTouchedFinal.current = true;
@@ -366,9 +354,10 @@ export function ImmersiveSamplePlanning({
     }, []);
 
     const resetFinalSize = useCallback(() => {
+        clearAdvancedPlanSource();
         userTouchedFinal.current = false;
         setFinalSampleSize(recommendedSize);
-    }, [recommendedSize]);
+    }, [clearAdvancedPlanSource, recommendedSize]);
 
     // --- Render current phase ---
     const renderPhase = () => {
@@ -377,6 +366,7 @@ export function ImmersiveSamplePlanning({
                 return (
                     <ChallengePhase
                         populationSize={populationSize}
+                        estimationType={estimationType}
                         confidenceLevel={confidenceLevel}
                         marginOfError={marginOfError}
                         recommendedSize={recommendedSize}
@@ -411,9 +401,9 @@ export function ImmersiveSamplePlanning({
                         estimationType={estimationType}
                         populationVariance={populationVariance}
                         onEstimationTypeChange={handleEstimationTypeChange}
-                        onPopulationVarianceChange={setPopulationVariance}
-                        onConfidenceLevelChange={(v) => setConfidenceLevel(normalizeConfidenceLevel(v))}
-                        onMarginOfErrorChange={setMarginOfError}
+                        onPopulationVarianceChange={handlePopulationVarianceChange}
+                        onConfidenceLevelChange={handleConfidenceLevelChange}
+                        onMarginOfErrorChange={handleMarginOfErrorChange}
                         onNext={goNext}
                     />
                 );
@@ -428,8 +418,8 @@ export function ImmersiveSamplePlanning({
                         params={params}
                         estimationType={estimationType}
                         populationVariance={populationVariance}
-                        onDesignEffectChange={setDesignEffect}
-                        onNonResponseRateChange={setNonResponseRate}
+                        onDesignEffectChange={handleDesignEffectChange}
+                        onNonResponseRateChange={handleNonResponseRateChange}
                         onNext={goNext}
                     />
                 );
@@ -437,10 +427,10 @@ export function ImmersiveSamplePlanning({
                 return (
                     <DecisionPhase
                         params={params}
-                        onConfidenceLevelChange={(v) => setConfidenceLevel(normalizeConfidenceLevel(v))}
-                        onMarginOfErrorChange={setMarginOfError}
-                        onDesignEffectChange={setDesignEffect}
-                        onNonResponseRateChange={setNonResponseRate}
+                        onConfidenceLevelChange={handleConfidenceLevelChange}
+                        onMarginOfErrorChange={handleMarginOfErrorChange}
+                        onDesignEffectChange={handleDesignEffectChange}
+                        onNonResponseRateChange={handleNonResponseRateChange}
                         onFinalSizeChange={handleSetFinalSize}
                         onResetFinalSize={resetFinalSize}
                         onNext={goNext}
@@ -448,10 +438,9 @@ export function ImmersiveSamplePlanning({
                         onDomainsChange={setDomains}
                         surveyVariables={surveyVariables}
                         onSurveyVariablesChange={setSurveyVariables}
-                        advancedPlanLock={advancedPlanLock}
-                        onBeforeAdvancedCommit={handleBeforeAdvancedCommit}
-                        onAdvancedCommitted={handleAdvancedCommitted}
-                        onCancelAdvancedLock={handleCancelAdvancedLock}
+                        advancedPlanSource={advancedPlanSource}
+                        onAdvancedApplied={handleAdvancedApplied}
+                        onClearAdvancedSource={clearAdvancedPlanSource}
                     />
                 );
             case "quiz":
@@ -485,7 +474,10 @@ export function ImmersiveSamplePlanning({
                             <div className="grid grid-cols-2 gap-3">
                                 <ParamSummaryItem label="估计类型" value={estimationType === "proportion" ? "比例" : "均值"} />
                                 <ParamSummaryItem label="置信水平" value={`${confidenceLevel}%`} />
-                                <ParamSummaryItem label="允许误差" value={estimationType === "proportion" ? `±${marginOfError}%` : `±${marginOfError}`} />
+                                <ParamSummaryItem
+                                    label={estimationType === "mean" ? "绝对误差限" : "允许误差"}
+                                    value={formatMarginOfError(marginOfError, estimationType)}
+                                />
                                 <ParamSummaryItem label="设计效应" value={designEffect.toFixed(1)} />
                                 <ParamSummaryItem label="无回答率" value={`${Math.round(nonResponseRate * 100)}%`} />
                                 {estimationType === "mean" && (
@@ -532,6 +524,7 @@ export function ImmersiveSamplePlanning({
             <ImmersiveExperimentLaunch
                 populationSize={populationSize}
                 sampleSize={finalSampleSize}
+                estimationType={estimationType}
                 confidenceLevel={confidenceLevel}
                 marginOfError={marginOfError}
                 onComplete={handleLaunchComplete}

@@ -2,13 +2,16 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronRight, Users } from "lucide-react";
+import { formatMarginOfError } from "../../../experiment/sample-plan-display";
 import { PopulationDots } from "../visualizations/PopulationDots";
+import type { EstimationType } from "../types";
 
 interface Props {
     populationSize: number;
     /** 与当前推荐样本量计算一致的置信水平（百分比字符串，如 "95"） */
     confidenceLevel: string;
-    /** 与当前推荐样本量计算一致的允许误差（%） */
+    /** 与当前推荐样本量计算一致的误差限 */
+    estimationType: EstimationType;
     marginOfError: number;
     recommendedSize: number;
     guess: number | null;
@@ -21,6 +24,7 @@ interface Props {
 export function ChallengePhase({
     populationSize,
     confidenceLevel,
+    estimationType,
     marginOfError,
     recommendedSize,
     guess,
@@ -123,7 +127,7 @@ export function ChallengePhase({
                             textColor="text-amber-600 dark:text-amber-400"
                         />
                         <ComparisonBar
-                            label={`统计学建议 (${confidenceLevel}% 置信, ±${marginOfError}%)`}
+                            label={`统计学建议 (${confidenceLevel}% 置信, ${formatMarginOfError(marginOfError, estimationType)})`}
                             value={recommendedSize}
                             max={populationSize}
                             color="bg-emerald-500"

@@ -3,6 +3,7 @@
 export type FormulaStep = "z" | "e" | "summary";
 export type FourStepScenario = "deff" | "nrr" | "summary";
 export type FactorsStep = "error_tolerance" | "subpopulation" | "variability" | "cost_balance" | "summary";
+export type EstimationType = "proportion" | "mean";
 
 export type Phase =
     | { type: "challenge"; guess: number | null; revealed: boolean }
@@ -42,8 +43,10 @@ export { Z_VALUES, zForConfidenceLevel };
 /** Parameters shared across all phases. */
 export interface SampleParams {
     populationSize: number;
+    estimationType: EstimationType;
     confidenceLevel: ConfidenceLevel;
     marginOfError: number;
+    populationVariance?: number;
     designEffect: number;
     nonResponseRate: number;
     finalSampleSize: number;
@@ -56,5 +59,4 @@ export function initialPhase(): Phase {
 
 export {
     getFinalSampleSizeBounds,
-    isSmallPopulationSampleBounds,
 } from "../../experiment/final-sample-bounds";

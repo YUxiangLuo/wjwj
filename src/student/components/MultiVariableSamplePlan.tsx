@@ -24,7 +24,7 @@ import { calculateFinitePopulationSampleSize } from "../experiment/sample-plan";
 export interface SurveyVariable {
     id: string;
     name: string;
-    type: "proportion" | "mean" | "total";
+    type: "proportion" | "mean";
     estimatedValue: number;      // 估计值 (p或均值)
     estimatedStdDev?: number;    // 估计标准差 (均值类型时需要)
     importance: "primary" | "secondary" | "tertiary";
@@ -43,8 +43,12 @@ interface MultiVariableSamplePlanProps {
     onApplyToPlan?: (payload: { variables: SurveyVariable[]; recommendedSampleSize: number }) => void;
     /** 新增变量时的默认置信水平（与决策面板一致） */
     defaultConfidenceLevel?: string;
-    /** 新增变量时的默认允许误差 %（与决策面板一致） */
+    /** 新增比例变量时的默认允许误差 % */
     defaultMarginOfError?: number;
+    /** 新增均值变量时的默认相对误差 % */
+    defaultMeanRelativeMargin?: number;
+    /** 新增变量时默认类型 */
+    defaultVariableType?: "proportion" | "mean";
 }
 
 const IMPORTANCE_LABELS: Record<string, { label: string; color: string; description: string }> = {
@@ -73,6 +77,8 @@ export function MultiVariableSamplePlan({
     initialVariables = [],
     defaultConfidenceLevel = "95",
     defaultMarginOfError = 5,
+    defaultMeanRelativeMargin = 5,
+    defaultVariableType = "proportion",
 }: MultiVariableSamplePlanProps) {
     const [variables, setVariables] = useState<SurveyVariable[]>(initialVariables);
     const [expandedVariable, setExpandedVariable] = useState<string | null>(null);
@@ -80,6 +86,9 @@ export function MultiVariableSamplePlan({
 
     const onVariablesChangeRef = useRef(onVariablesChange);
     onVariablesChangeRef.current = onVariablesChange;
+
+    const getDefaultMarginForType = (type: SurveyVariable["type"]) =>
+        type === "mean" ? defaultMeanRelativeMargin : defaultMarginOfError;
 
     /** 仅当影响样本量计算的字段变化时变化，避免改名称/重要性等触发重算 */
     const variablesSampleCalcKey = useMemo(
@@ -121,15 +130,6 @@ export function MultiVariableSamplePlan({
                 const n0 = Math.pow((z * sigma) / e, 2);
                 // 有限总体校正
                 requiredSampleSize = Math.ceil(n0 / (1 + (n0 - 1) / populationSize));
-            } else {
-                // 默认使用比例估计
-                requiredSampleSize = calculateFinitePopulationSampleSize({
-                    confidenceLevel: variable.confidenceLevel,
-                    marginOfError: variable.marginOfError,
-                    populationSize,
-                    designEffect: 1,
-                    nonResponseRate: 0,
-                }) ?? 0;
             }
 
             return {
@@ -184,14 +184,16 @@ export function MultiVariableSamplePlan({
 
     // 添加新变量
     const addVariable = () => {
+        const type = defaultVariableType;
         const newVariable: SurveyVariable = {
             id: `var-${Date.now()}`,
             name: `调查变量 ${variables.length + 1}`,
-            type: "proportion",
-            estimatedValue: 0.5,
+            type,
+            estimatedValue: type === "proportion" ? 0.5 : 0,
             importance: "primary",
             confidenceLevel: defaultConfidenceLevel,
-            marginOfError: defaultMarginOfError,
+            marginOfError: getDefaultMarginForType(type),
+            estimatedStdDev: type === "mean" ? undefined : undefined,
             requiredSampleSize: 0,
         };
         const newVariables = [...variables, newVariable];
@@ -351,8 +353,15 @@ export function MultiVariableSamplePlan({
                                             <Label className="text-xs text-indigo-700 dark:text-indigo-300">变量类型</Label>
                                             <Select 
                                                 value={variable.type} 
-                                                onValueChange={(value: "proportion" | "mean" | "total") => 
-                                                    updateVariable(variable.id, { type: value })
+                                                onValueChange={(value: "proportion" | "mean") =>
+                                                    updateVariable(variable.id, {
+                                                        type: value,
+                                                        estimatedValue: value === "proportion"
+                                                            ? Math.min(Math.max(variable.estimatedValue, 0), 1) || 0.5
+                                                            : variable.estimatedValue,
+                                                        estimatedStdDev: value === "mean" ? variable.estimatedStdDev : undefined,
+                                                        marginOfError: getDefaultMarginForType(value),
+                                                    })
                                                 }
                                             >
                                                 <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
@@ -361,7 +370,6 @@ export function MultiVariableSamplePlan({
                                                 <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
                                                     <SelectItem value="proportion">比例（如知晓率、满意度）</SelectItem>
                                                     <SelectItem value="mean">均值（如消费金额、年龄）</SelectItem>
-                                                    <SelectItem value="total">总量（如总消费、总人数）</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -369,8 +377,7 @@ export function MultiVariableSamplePlan({
                                         {/* 估计值 */}
                                         <div className="space-y-2">
                                             <Label className="text-xs text-indigo-700 dark:text-indigo-300">
-                                                {variable.type === "proportion" ? "估计比例 (p)" : 
-                                                 variable.type === "mean" ? "估计均值" : "估计总量"}
+                                                {variable.type === "proportion" ? "估计比例 p（0-1）" : "估计均值"}
                                             </Label>
                                             <div className="flex items-center gap-2">
                                                 <Input
@@ -385,12 +392,12 @@ export function MultiVariableSamplePlan({
                                                     max={variable.type === "proportion" ? 1 : undefined}
                                                 />
                                                 {variable.type === "proportion" && (
-                                                    <span className="text-indigo-600 dark:text-indigo-400 text-sm">%</span>
+                                                    <span className="text-indigo-600 dark:text-indigo-400 text-sm">0-1</span>
                                                 )}
                                             </div>
                                             {variable.type === "proportion" && (
                                                 <p className="text-xs text-indigo-800 dark:text-indigo-200">
-                                                    保守估计使用 p=0.5，此时方差最大
+                                                    输入 0-1 小数，例如 0.5 = 50%。保守估计通常取 p=0.5，此时方差最大。
                                                 </p>
                                             )}
                                         </div>
@@ -485,6 +492,11 @@ export function MultiVariableSamplePlan({
                                                     />
                                                     <span className="text-indigo-600 dark:text-indigo-400 text-sm">%</span>
                                                 </div>
+                                                {variable.type === "mean" && (
+                                                    <p className="text-xs text-indigo-800 dark:text-indigo-200">
+                                                        这里使用相对误差：绝对误差限 e = 相对误差 × 估计均值。它与左侧主流程里的绝对误差限不是同一语义。
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 

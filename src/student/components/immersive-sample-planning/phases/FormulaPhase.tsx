@@ -3,10 +3,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { ChevronRight } from "lucide-react";
-import { Z_VALUES, type FormulaStep, type SampleParams } from "../types";
+import { Z_VALUES, type EstimationType, type FormulaStep, type SampleParams } from "../types";
+import { calculateSampleSizeStepDetails } from "../../../experiment/sample-plan";
 import { PhaseNextButton as NextButton } from "./shared";
-
-export type EstimationType = "proportion" | "mean";
 
 interface Props {
     step: FormulaStep;
@@ -262,10 +261,21 @@ export function FormulaPhase({
     }
 
     // step === "summary"
-    const n0Rounded = Number.isFinite(n0) ? Math.ceil(n0) : 0;
-    const n1 = n0Rounded > 0
-        ? Math.ceil(n0 / (1 + (n0 - 1) / params.populationSize))
-        : 0;
+    const stepDetails = calculateSampleSizeStepDetails({
+        estimationType,
+        confidenceLevel: params.confidenceLevel,
+        marginOfError: params.marginOfError,
+        populationSize: params.populationSize,
+        populationVariance,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+
+    const n0Rounded = stepDetails.n0;
+    const n1Rounded = stepDetails.n1;
+    const n0RawDisplay = stepDetails.n0Raw.toFixed(2);
+    const n1RawDisplay = stepDetails.n1Raw.toFixed(2);
+    const n0MinusOneRawDisplay = Math.max(stepDetails.n0Raw - 1, 0).toFixed(2);
 
     return (
         <div className="space-y-8">
@@ -283,22 +293,22 @@ export function FormulaPhase({
                     <FormulaLine
                         label="无限总体"
                         formula={`n₀ = (${z}² × 0.5 × 0.5) / ${E_proportion}²`}
-                        result={n0Rounded}
+                        result={`≈ ${n0RawDisplay}，取 ${n0Rounded.toLocaleString()}`}
                         delay={0}
                     />
                 ) : (
                     <FormulaLine
                         label="无限总体"
                         formula={`n₀ = (${z}² × ${populationVariance}) / ${E_mean}²`}
-                        result={n0Rounded}
+                        result={`≈ ${n0RawDisplay}，取 ${n0Rounded.toLocaleString()}`}
                         delay={0}
                     />
                 )}
                 <div className="border-t border-dashed border-slate-200 dark:border-slate-700 my-3" />
                 <FormulaLine
                     label="有限总体校正"
-                    formula={`n₁ = ${n0Rounded} / (1 + ${Math.max(n0Rounded - 1, 0)} / ${params.populationSize.toLocaleString()})`}
-                    result={n1}
+                    formula={`n₁ = ${n0RawDisplay} / (1 + ${n0MinusOneRawDisplay} / ${params.populationSize.toLocaleString()})`}
+                    result={`≈ ${n1RawDisplay}，取 ${n1Rounded.toLocaleString()}`}
                     delay={400}
                 />
             </div>
@@ -323,8 +333,9 @@ export function FormulaPhase({
 
             <div className="text-center space-y-2 animate-in fade-in duration-500" style={{ animationDelay: "800ms", animationFillMode: "both" }}>
                 <p className="text-gray-600 dark:text-slate-300 text-lg">
-                    在无限大总体中需要 <strong className="text-indigo-500 tabular-nums">{n0Rounded.toLocaleString()}</strong> 人，
-                    考虑你的总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，需要 <strong className="text-emerald-500 tabular-nums">{n1.toLocaleString()}</strong> 人。
+                    在无限大总体下先算得 <strong className="text-indigo-500 tabular-nums">{n0RawDisplay}</strong>，
+                    规划时向上取整为 <strong className="text-indigo-500 tabular-nums">{n0Rounded.toLocaleString()}</strong> 人；
+                    再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，约为 <strong className="text-emerald-500 tabular-nums">{n1RawDisplay}</strong>，规划时取 <strong className="text-emerald-500 tabular-nums">{n1Rounded.toLocaleString()}</strong> 人。
                 </p>
                 <p className="text-gray-400 dark:text-slate-500 text-sm">
                     接下来看看"有限总体校正"的原理。
@@ -369,7 +380,7 @@ function FormulaDisplay({ parts }: { parts: Array<{ text: string; dim?: boolean;
     );
 }
 
-function FormulaLine({ label, formula, result, delay }: { label: string; formula: string; result: number; delay: number }) {
+function FormulaLine({ label, formula, result, delay }: { label: string; formula: string; result: string | number; delay: number }) {
     return (
         <div
             className="space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-500"
@@ -377,7 +388,9 @@ function FormulaLine({ label, formula, result, delay }: { label: string; formula
         >
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
             <p className="font-mono text-sm text-slate-600 dark:text-slate-300 break-all">{formula}</p>
-            <p className="text-right text-xl font-bold tabular-nums text-indigo-500">= {result.toLocaleString()}</p>
+            <p className="text-right text-xl font-bold tabular-nums text-indigo-500">
+                = {typeof result === "number" ? result.toLocaleString() : result}
+            </p>
         </div>
     );
 }
@@ -409,4 +422,3 @@ function ErrorRangeVisual({ margin }: { margin: number }) {
         </div>
     );
 }
-

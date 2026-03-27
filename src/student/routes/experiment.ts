@@ -6,6 +6,7 @@ import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { buildStratifiedStats, buildStratifiedNumericStats, parseTopicFieldMapping, readPopulationData } from "../experiment/population-data";
 import { deserializeExperimentFields, parseStoredJson } from "../experiment/serialization";
+import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
 import { executeSamplingAction } from "../experiment/sampling-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
 import { submitStudentExperiment } from "../experiment/submit-service";
@@ -53,7 +54,7 @@ function buildExperimentSnapshotResponse(
         currentStage: normalizedExperiment.currentStage,
         status: normalizedExperiment.status,
         questionnaire: normalizedExperiment.questionnaire,
-        samplePlan: normalizedExperiment.samplePlan,
+        samplePlan: normalizeSamplePlanData(normalizedExperiment.samplePlan, populationSize),
         samplingResults: normalizedExperiment.samplingResults,
         reportContent: normalizedExperiment.reportContent ?? null,
         lastSavedAt: normalizedExperiment.lastSavedAt

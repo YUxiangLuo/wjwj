@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Rocket, Target, Shield, Hash, ChevronRight } from "lucide-react";
+import { formatMarginOfError, getMarginOfErrorLabel } from "../experiment/sample-plan-display";
 
 interface Props {
     populationSize: number;
     sampleSize: number;
+    estimationType?: "proportion" | "mean";
     confidenceLevel: string;
     marginOfError: number;
     onComplete: () => void;
@@ -25,6 +27,7 @@ type Phase =
 export function ImmersiveExperimentLaunch({
     populationSize,
     sampleSize,
+    estimationType = "proportion",
     confidenceLevel,
     marginOfError,
     onComplete,
@@ -82,7 +85,14 @@ export function ImmersiveExperimentLaunch({
         { icon: Target, label: "总体规模", value: populationSize.toLocaleString(), color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
         { icon: Hash, label: "样本量", value: sampleSize.toLocaleString(), color: "text-teal-600 dark:text-teal-400", bg: "bg-teal-500/10", border: "border-teal-500/20" },
         { icon: Shield, label: "置信水平", value: CONFIDENCE_LABELS[confidenceLevel] ?? `${confidenceLevel}%`, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-        { icon: Target, label: "允许误差", value: `±${marginOfError}%`, color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+        {
+            icon: Target,
+            label: getMarginOfErrorLabel(estimationType),
+            value: formatMarginOfError(marginOfError, estimationType),
+            color: "text-rose-600 dark:text-rose-400",
+            bg: "bg-rose-500/10",
+            border: "border-rose-500/20",
+        },
     ];
 
     return (

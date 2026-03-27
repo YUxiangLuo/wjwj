@@ -24,6 +24,7 @@ interface CVBasedSampleSizeCalculatorProps {
     populationSize: number;
     /** 决策面板传入，作为本工具内可改的初值 */
     confidenceLevel: string;
+    estimationType?: "proportion" | "mean";
     /** 与决策面板一致的设计效应 */
     initialDesignEffect?: number;
     /** 小数 0～1，与决策面板无回答率一致 */
@@ -34,6 +35,7 @@ interface CVBasedSampleSizeCalculatorProps {
 export function CVBasedSampleSizeCalculator({
     populationSize,
     confidenceLevel,
+    estimationType = "proportion",
     initialDesignEffect,
     initialNonResponseRate,
     onApplySampleSize,
@@ -111,8 +113,9 @@ export function CVBasedSampleSizeCalculator({
                             <p className="text-teal-900/95 dark:text-teal-100/95 leading-relaxed">
                                 <span className="font-medium">为何 n 往往比「误差限公式」小？</span>
                                 本工具按 SE(ȳ)/ȳ ≤ 目标 CV 推导，核心为 n ∝ (CV<sub>总体</sub>/CV<sub>目标</sub>)²，
-                                <strong className="font-semibold">不含 Z 值</strong>；左侧决策面板的比例估计法则含 Z²，
-                                二者不是同一套目标，数值不可直接对比。下方「置信水平」仅用于说明如何把 CV 换算成
+                                <strong className="font-semibold">不含 Z 值</strong>；左侧常规面板
+                                {estimationType === "mean" ? "的均值误差限公式" : "的误差限公式"}同样含 Z²，
+                                但目标是控制误差限而非 CV，二者不是同一套目标，数值不可直接对比。下方「置信水平」仅用于说明如何把 CV 换算成
                                 置信区间相对半宽（Z×CV），<strong className="font-semibold">不参与上式求 n</strong>。
                             </p>
                         </div>

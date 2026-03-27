@@ -2,8 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronRight } from "lucide-react";
-import { calculateFinitePopulationSampleSize } from "../../../experiment/sample-plan";
-import { zForConfidenceLevel, type SampleParams } from "../types";
+import {
+    calculateFinitePopulationSampleSize,
+    calculateMeanEstimationSampleSize,
+    calculateSampleSizeStepDetails,
+} from "../../../experiment/sample-plan";
+import type { SampleParams } from "../types";
 
 interface Props {
     params: SampleParams;
@@ -13,27 +17,21 @@ interface Props {
 const DEMO_POPULATIONS = [500, 2_000, 10_000, 100_000];
 const MAX_CUSTOM_POPULATION = 10_000_000;
 
-function calcN0(z: number, e: number, p = 0.5): number {
-    return Math.ceil((z * z * p * (1 - p)) / (e * e));
-}
-
 export function FPCPhase({ params, onNext }: Props) {
     const [customN, setCustomN] = useState<string>("");
 
-    const z = zForConfidenceLevel(params.confidenceLevel);
-    const E = params.marginOfError / 100;
-    const n0 = calcN0(z, E);
+    const { n0Raw, n0, n1: fpcOnlyUserN } = calculateSampleSizeStepDetails({
+        estimationType: params.estimationType,
+        confidenceLevel: params.confidenceLevel,
+        marginOfError: params.marginOfError,
+        populationSize: params.populationSize,
+        populationVariance: params.populationVariance,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+    const n0RawDisplay = n0Raw.toFixed(2);
 
     /** 仅含 FPC，不含设计效应与无回答率，与「现实世界」步骤后的 recommendedSize 区分 */
-    const fpcOnlyUserN =
-        calculateFinitePopulationSampleSize({
-            confidenceLevel: params.confidenceLevel,
-            marginOfError: params.marginOfError,
-            populationSize: params.populationSize,
-            designEffect: 1,
-            nonResponseRate: 0,
-        }) ?? n0;
-
     // Build comparison rows
     const populations = [...DEMO_POPULATIONS];
     if (!populations.includes(params.populationSize)) {
@@ -51,13 +49,22 @@ export function FPCPhase({ params, onNext }: Props) {
     }
 
     const rows = populations.map((N) => {
-        const n1 = calculateFinitePopulationSampleSize({
-            confidenceLevel: params.confidenceLevel,
-            marginOfError: params.marginOfError,
-            populationSize: N,
-            designEffect: 1,
-            nonResponseRate: 0,
-        }) ?? n0;
+        const n1 = params.estimationType === "mean"
+            ? calculateMeanEstimationSampleSize({
+                confidenceLevel: params.confidenceLevel,
+                marginOfError: params.marginOfError,
+                populationSize: N,
+                populationVariance: params.populationVariance ?? 0,
+                designEffect: 1,
+                nonResponseRate: 0,
+            }) ?? n0
+            : calculateFinitePopulationSampleSize({
+                confidenceLevel: params.confidenceLevel,
+                marginOfError: params.marginOfError,
+                populationSize: N,
+                designEffect: 1,
+                nonResponseRate: 0,
+            }) ?? n0;
         const ratio = ((n1 / N) * 100).toFixed(1);
         return { N, n1, ratio, isUser: N === params.populationSize };
     });
@@ -79,7 +86,7 @@ export function FPCPhase({ params, onNext }: Props) {
             <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
                 <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
                     <div className="font-mono text-sm text-slate-500 dark:text-slate-400 text-center">
-                        n₁ = n₀ / (1 + (n₀ − 1) / <strong className="text-violet-500">N</strong>)　　n₀ = {n0}
+                        n₁ = n₀ / (1 + (n₀ − 1) / <strong className="text-violet-500">N</strong>)　　n₀ ≈ {n0RawDisplay}
                     </div>
                 </div>
 
@@ -107,7 +114,7 @@ export function FPCPhase({ params, onNext }: Props) {
                                         className={`h-full rounded-full transition-all duration-500 ${
                                             row.isUser ? "bg-indigo-500" : "bg-violet-400 dark:bg-violet-600"
                                         }`}
-                                        style={{ width: `${Math.max(3, (row.n1 / n0) * 100)}%` }}
+                                        style={{ width: `${Math.max(3, (row.n1 / Math.max(n0Raw, 1)) * 100)}%` }}
                                     />
                                 </div>
                             </div>
@@ -131,7 +138,7 @@ export function FPCPhase({ params, onNext }: Props) {
                             </div>
                         </div>
                         <div className="w-20 text-right">
-                            <span className="text-sm font-bold tabular-nums text-slate-500">{n0.toLocaleString()}</span>
+                            <span className="text-sm font-bold tabular-nums text-slate-500">{n0RawDisplay}</span>
                         </div>
                     </div>
                 </div>
@@ -154,7 +161,7 @@ export function FPCPhase({ params, onNext }: Props) {
                     总体越小，校正减少的样本量越多。<br />
                     你的总体 {params.populationSize.toLocaleString()} 人 → 在仅考虑 FPC（不含设计效应与无回答率）时约需{" "}
                     <strong className="text-indigo-500 tabular-nums">{fpcOnlyUserN.toLocaleString()}</strong>
-                    （无限总体近似为 {n0.toLocaleString()}）
+                    （无限总体计算值约为 {n0RawDisplay}，规划时取 {n0.toLocaleString()}）
                 </p>
             </div>
 

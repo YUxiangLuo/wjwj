@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, Crosshair, Layers, BarChart3, DollarSign, CheckCircle2 } from "lucide-react";
-import { calculateFinitePopulationSampleSize } from "../../../experiment/sample-plan";
+import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../../experiment/sample-plan";
 import type { SampleParams } from "../types";
 import type { FactorsStep } from "../types";
 
@@ -18,6 +18,16 @@ const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeo
     cost_balance: { label: "精度与费用的平衡", badge: "因素 4", icon: DollarSign },
     summary: { label: "四因素汇总", badge: "汇总", icon: CheckCircle2 },
 };
+
+function formatAbsoluteErrorValue(value: number): string {
+    return Number(value.toFixed(1)).toString();
+}
+
+function buildMeanErrorChoices(current: number) {
+    const base = [0.5, 1, 2, 3, 5, 8];
+    if (current > 0) base.push(current);
+    return [...new Set(base)].sort((a, b) => a - b);
+}
 
 export function FactorsPhase({ step, params, onNext }: Props) {
     const meta = STEP_META[step];
@@ -56,34 +66,58 @@ export function FactorsPhase({ step, params, onNext }: Props) {
 /* ---- Sub-step content components ---- */
 
 function ErrorToleranceContent({ params }: { params: SampleParams }) {
+    const isMeanEstimation = params.estimationType === "mean";
+    const sigma2 = params.populationVariance ?? 100;
     const [demoError, setDemoError] = useState(params.marginOfError);
+    const demoN = isMeanEstimation
+        ? calculateMeanEstimationSampleSize({
+            confidenceLevel: params.confidenceLevel,
+            marginOfError: demoError,
+            populationSize: params.populationSize,
+            populationVariance: sigma2,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? 0
+        : calculateFinitePopulationSampleSize({
+            confidenceLevel: params.confidenceLevel,
+            marginOfError: demoError,
+            populationSize: params.populationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? 0;
 
-    const demoN = calculateFinitePopulationSampleSize({
-        confidenceLevel: params.confidenceLevel,
-        marginOfError: demoError,
-        populationSize: params.populationSize,
-        designEffect: 1,
-        nonResponseRate: 0,
-    }) ?? 0;
-
-    const ERRORS = [1, 2, 3, 5, 7, 10];
+    const errors = isMeanEstimation ? buildMeanErrorChoices(params.marginOfError) : [1, 2, 3, 5, 7, 10];
 
     return (
         <div className="space-y-6">
             <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
-                误差限越小，对精度的要求越高，所需样本量呈<strong className="text-slate-700 dark:text-slate-200">非线性增长</strong>。
-                通常需要在可接受的误差和可承受的成本之间取得平衡。
+                {isMeanEstimation ? (
+                    <>
+                        绝对误差限 <strong className="text-slate-700 dark:text-slate-200">e</strong> 越小，对均值估计的精度要求越高，
+                        所需样本量按 <strong className="text-slate-700 dark:text-slate-200">1/e²</strong> 增长。
+                    </>
+                ) : (
+                    <>
+                        误差限越小，对精度的要求越高，所需样本量呈<strong className="text-slate-700 dark:text-slate-200">非线性增长</strong>。
+                        通常需要在可接受的误差和可承受的成本之间取得平衡。
+                    </>
+                )}
             </p>
 
             <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
                 <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
                     <p className="text-sm text-center text-slate-500 dark:text-slate-400">
-                        不同误差限下的样本量 <span className="text-xs">(N={params.populationSize.toLocaleString()}, {params.confidenceLevel}% CI)</span>
+                        {isMeanEstimation ? "不同绝对误差限下的样本量" : "不同误差限下的样本量"}
+                        <span className="text-xs">
+                            {isMeanEstimation
+                                ? ` (σ²=${sigma2}, N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`
+                                : ` (N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`}
+                        </span>
                     </p>
                 </div>
                 <div className="p-4 space-y-3">
                     <div className="flex gap-2 flex-wrap justify-center" role="group" aria-label="选择误差限">
-                        {ERRORS.map((e) => (
+                        {errors.map((e) => (
                             <button
                                 key={e}
                                 type="button"
@@ -95,7 +129,7 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                                 }`}
                             >
-                                ±{e}%
+                                {isMeanEstimation ? `±${formatAbsoluteErrorValue(e)}` : `±${e}%`}
                             </button>
                         ))}
                     </div>
@@ -110,8 +144,17 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
 
             <div className="mx-auto max-w-lg rounded-xl border border-teal-200 dark:border-teal-800/50 bg-teal-50/50 dark:bg-teal-950/20 p-4">
                 <p className="text-sm text-teal-700 dark:text-teal-400/80">
-                    <strong>关键洞察：</strong>将误差限从 5% 缩小到 1%，样本量会增加约 25 倍！
-                    在实际项目中，±3%~5% 是最常见的精度要求。
+                    {isMeanEstimation ? (
+                        <>
+                            <strong>关键洞察：</strong>把绝对误差限减半，样本量大约增加 4 倍。
+                            教学中常先用历史数据或预调查估计 σ²，再根据业务能接受的绝对误差来定样本量。
+                        </>
+                    ) : (
+                        <>
+                            <strong>关键洞察：</strong>将误差限从 5% 缩小到 1%，样本量会增加约 25 倍！
+                            在实际项目中，±3%~5% 是最常见的精度要求。
+                        </>
+                    )}
                 </p>
             </div>
         </div>
@@ -119,17 +162,26 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
 }
 
 function SubpopulationContent({ params }: { params: SampleParams }) {
-    const nOverall = calculateFinitePopulationSampleSize({
-        confidenceLevel: params.confidenceLevel,
-        marginOfError: 5,
-        populationSize: params.populationSize,
-        designEffect: 1,
-        nonResponseRate: 0,
-    }) ?? 0;
+    const isMeanEstimation = params.estimationType === "mean";
+    const sigma2 = params.populationVariance ?? 100;
+    const nOverall = isMeanEstimation
+        ? calculateMeanEstimationSampleSize({
+            confidenceLevel: params.confidenceLevel,
+            marginOfError: params.marginOfError,
+            populationSize: params.populationSize,
+            populationVariance: sigma2,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? 0
+        : calculateFinitePopulationSampleSize({
+            confidenceLevel: params.confidenceLevel,
+            marginOfError: 5,
+            populationSize: params.populationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? 0;
 
     const DOMAINS = [
-        { name: "男性", share: 0.48 },
-        { name: "女性", share: 0.52 },
         { name: "18-30岁", share: 0.25 },
         { name: "31-50岁", share: 0.40 },
         { name: "51岁以上", share: 0.35 },
@@ -137,13 +189,22 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
 
     const domainSizes = DOMAINS.map((d) => {
         const domainN = Math.ceil(d.share * params.populationSize);
-        const domainSample = calculateFinitePopulationSampleSize({
-            confidenceLevel: params.confidenceLevel,
-            marginOfError: 5,
-            populationSize: domainN,
-            designEffect: 1,
-            nonResponseRate: 0,
-        }) ?? 0;
+        const domainSample = isMeanEstimation
+            ? calculateMeanEstimationSampleSize({
+                confidenceLevel: params.confidenceLevel,
+                marginOfError: params.marginOfError,
+                populationSize: domainN,
+                populationVariance: sigma2,
+                designEffect: 1,
+                nonResponseRate: 0,
+            }) ?? 0
+            : calculateFinitePopulationSampleSize({
+                confidenceLevel: params.confidenceLevel,
+                marginOfError: 5,
+                populationSize: domainN,
+                designEffect: 1,
+                nonResponseRate: 0,
+            }) ?? 0;
         return { ...d, domainN, domainSample };
     });
 
@@ -153,12 +214,18 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
         <div className="space-y-6">
             <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
                 如果需要分别估计各<strong className="text-slate-700 dark:text-slate-200">子总体</strong>（域）的参数，
-                每个域都需要足够的样本量来保证精度，总样本量将远大于仅做整体估计的需求。
+                每个域都需要足够的样本量来保证精度。这里的示例把子总体视为<strong className="text-slate-700 dark:text-slate-200">互不重叠的年龄层</strong>，
+                因此总样本量按各层样本量求和，会显著高于仅做整体估计的需求。
+                {isMeanEstimation && ` 这里为便于比较，暂假定各层方差近似相同，统一使用 σ²=${sigma2}。`}
             </p>
 
             <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
                 <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
-                    <p className="text-sm text-center text-slate-500 dark:text-slate-400">方案对比示例 (±5%, {params.confidenceLevel}% CI)</p>
+                    <p className="text-sm text-center text-slate-500 dark:text-slate-400">
+                        {isMeanEstimation
+                            ? `方案对比示例：按互斥年龄层分别估计均值 (±${formatAbsoluteErrorValue(params.marginOfError)}, σ²=${sigma2}, ${params.confidenceLevel}% CI)`
+                            : `方案对比示例：按互斥年龄层分别估计 (±5%, ${params.confidenceLevel}% CI)`}
+                    </p>
                 </div>
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     <div className="flex items-center justify-between px-4 py-3 bg-blue-50/50 dark:bg-blue-950/20">
@@ -232,7 +299,7 @@ function VariabilityContent() {
                     </p>
                     <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/30 p-4">
                         <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">
-                            以估计值最小（变异系数最大）的那个指标所需的精度为准来确定样本量，
+                            以<strong>所需样本量最大的那个指标</strong>为准来确定样本量，
                             从而保证所有指标都能达到预期精度。
                         </p>
                     </div>
@@ -243,16 +310,27 @@ function VariabilityContent() {
 }
 
 function CostBalanceContent({ params }: { params: SampleParams }) {
-    const MARGINS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    const barData = MARGINS.map((e) => ({
+    const isMeanEstimation = params.estimationType === "mean";
+    const sigma2 = params.populationVariance ?? 100;
+    const errorChoices = isMeanEstimation ? buildMeanErrorChoices(params.marginOfError) : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const barData = errorChoices.map((e) => ({
         e,
-        n: calculateFinitePopulationSampleSize({
-            confidenceLevel: params.confidenceLevel,
-            marginOfError: e,
-            populationSize: params.populationSize,
-            designEffect: 1,
-            nonResponseRate: 0,
-        }) ?? 0,
+        n: isMeanEstimation
+            ? calculateMeanEstimationSampleSize({
+                confidenceLevel: params.confidenceLevel,
+                marginOfError: e,
+                populationSize: params.populationSize,
+                populationVariance: sigma2,
+                designEffect: 1,
+                nonResponseRate: 0,
+            }) ?? 0
+            : calculateFinitePopulationSampleSize({
+                confidenceLevel: params.confidenceLevel,
+                marginOfError: e,
+                populationSize: params.populationSize,
+                designEffect: 1,
+                nonResponseRate: 0,
+            }) ?? 0,
     }));
     const maxN = Math.max(...barData.map((d) => d.n), 1);
 
@@ -260,19 +338,26 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
         <div className="space-y-6">
             <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
                 精度提升的边际收益<strong className="text-slate-700 dark:text-slate-200">递减</strong>：
-                每减少一个百分点的误差限，所需额外样本量越来越多。
+                {isMeanEstimation ? "每减少一部分绝对误差限，所需额外样本量都会更快地增加。" : "每减少一个百分点的误差限，所需额外样本量越来越多。"}
             </p>
 
             <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
                 <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
                     <p className="text-sm text-center text-slate-500 dark:text-slate-400">
-                        误差限 vs 样本量 <span className="text-xs">(N={params.populationSize.toLocaleString()}, {params.confidenceLevel}% CI)</span>
+                        {isMeanEstimation ? "绝对误差限 vs 样本量" : "误差限 vs 样本量"}
+                        <span className="text-xs">
+                            {isMeanEstimation
+                                ? ` (σ²=${sigma2}, N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`
+                                : ` (N=${params.populationSize.toLocaleString()}, ${params.confidenceLevel}% CI)`}
+                        </span>
                     </p>
                 </div>
                 <div className="p-4 space-y-2">
                     {barData.map((d) => (
                         <div key={d.e} className="flex items-center gap-3">
-                            <span className="text-xs tabular-nums text-slate-500 w-10 text-right">±{d.e}%</span>
+                            <span className="text-xs tabular-nums text-slate-500 w-14 text-right">
+                                {isMeanEstimation ? `±${formatAbsoluteErrorValue(d.e)}` : `±${d.e}%`}
+                            </span>
                             <div className="flex-1 h-5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-300 ${
@@ -294,7 +379,9 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
             <div className="mx-auto max-w-lg rounded-xl border border-teal-200 dark:border-teal-800/50 bg-teal-50/50 dark:bg-teal-950/20 p-4">
                 <p className="text-sm text-teal-700 dark:text-teal-400/80">
                     <strong>实践建议：</strong>找到"精度够用、费用可控"的平衡点。
-                    超过某个阈值后，增加样本量带来的精度提升已经微乎其微。
+                    {isMeanEstimation
+                        ? " 对均值估计而言，误差限 e 每减半，样本量大约要增加 4 倍。"
+                        : " 超过某个阈值后，增加样本量带来的精度提升已经微乎其微。"}
                 </p>
             </div>
         </div>

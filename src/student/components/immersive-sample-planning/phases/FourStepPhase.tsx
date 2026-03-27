@@ -4,8 +4,7 @@ import { Slider } from "@/components/ui/slider";
 import { ChevronRight, School, MailX } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize, calculateSampleSizeSteps } from "../../../experiment/sample-plan";
-import type { FourStepScenario, SampleParams } from "../types";
-import type { EstimationType } from "./FormulaPhase";
+import type { EstimationType, FourStepScenario, SampleParams } from "../types";
 import { PhaseNextButton } from "./shared";
 
 interface Props {
@@ -180,24 +179,42 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
     });
 
     const { plan1n, plan2DomainSamples, plan2n } = useMemo(() => {
-        const p1 = calculateFinitePopulationSampleSize({
-            confidenceLevel: "95", marginOfError: 5, populationSize: 10000,
-            designEffect: 1, nonResponseRate: 0.1,
-        }) ?? 0;
+        const p1 = estimationType === "mean"
+            ? calculateMeanEstimationSampleSize({
+                confidenceLevel: "95",
+                marginOfError: params.marginOfError,
+                populationSize: 10000,
+                populationVariance,
+                designEffect: 1,
+                nonResponseRate: 0.1,
+            }) ?? 0
+            : calculateFinitePopulationSampleSize({
+                confidenceLevel: "95", marginOfError: 5, populationSize: 10000,
+                designEffect: 1, nonResponseRate: 0.1,
+            }) ?? 0;
         const domains = [
-            { name: "域A (20%)", n: 2000 },
-            { name: "域B (30%)", n: 3000 },
-            { name: "域C (50%)", n: 5000 },
+            { name: "东部地区 (20%)", n: 2000 },
+            { name: "中部地区 (30%)", n: 3000 },
+            { name: "西部地区 (50%)", n: 5000 },
         ];
         const domainSamples = domains.map((d) => ({
             ...d,
-            sample: calculateFinitePopulationSampleSize({
-                confidenceLevel: "95", marginOfError: 5, populationSize: d.n,
-                designEffect: 1, nonResponseRate: 0.1,
-            }) ?? 0,
+            sample: estimationType === "mean"
+                ? calculateMeanEstimationSampleSize({
+                    confidenceLevel: "95",
+                    marginOfError: params.marginOfError,
+                    populationSize: d.n,
+                    populationVariance,
+                    designEffect: 1,
+                    nonResponseRate: 0.1,
+                }) ?? 0
+                : calculateFinitePopulationSampleSize({
+                    confidenceLevel: "95", marginOfError: 5, populationSize: d.n,
+                    designEffect: 1, nonResponseRate: 0.1,
+                }) ?? 0,
         }));
         return { plan1n: p1, plan2DomainSamples: domainSamples, plan2n: domainSamples.reduce((s, d) => s + d.sample, 0) };
-    }, []);
+    }, [estimationType, params.marginOfError, populationVariance]);
 
     return (
         <div className="space-y-8">
@@ -222,16 +239,20 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 <StepRow step={4} label="无回答率调整 n" formula={`n₂/(1-NRR) (${(params.nonResponseRate * 100).toFixed(0)}%)`} value={n3} color="text-emerald-600 dark:text-emerald-400" highlight />
             </div>
 
-            {/* Plan comparison (courseware example 7.2, fixed parameters) */}
+            {/* Plan comparison (mutually exclusive strata) */}
             <div className="mx-auto max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 p-5 space-y-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-slate-400">方案对比（课件例 7.2，N=10,000）</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                    {isProportion
+                        ? "方案对比（课件例 7.2，互斥分层，N=10,000）"
+                        : `方案对比（互斥分层，σ²=${populationVariance}，e=${params.marginOfError}，N=10,000）`}
+                </p>
                 <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-xl bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
                         <p className="text-[10px] font-medium uppercase tracking-wider text-blue-400">方案1: 整体估计</p>
                         <p className="text-2xl font-black tabular-nums text-blue-600 dark:text-blue-400">{plan1n.toLocaleString()}</p>
                     </div>
                     <div className="rounded-xl bg-rose-50 dark:bg-rose-950/30 p-3 text-center">
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-rose-400">方案2: 各域分别估计</p>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-rose-400">方案2: 各层分别估计</p>
                         <p className="text-2xl font-black tabular-nums text-rose-600 dark:text-rose-400">{plan2n.toLocaleString()}</p>
                     </div>
                 </div>
@@ -244,7 +265,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                     ))}
                 </div>
                 <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
-                    域估计使总样本量增加约 {plan1n > 0 ? (plan2n / plan1n).toFixed(1) : "—"} 倍
+                    当三个层互不重叠且都要单独达标时，总样本量约增加 {plan1n > 0 ? (plan2n / plan1n).toFixed(1) : "—"} 倍
                 </p>
             </div>
 

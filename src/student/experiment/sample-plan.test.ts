@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+    attachCalculatedSampleSize,
     calculateFinitePopulationSampleSize,
     calculateSampleSizeMetrics,
     calculateSampleSizeByCV,
@@ -10,6 +11,7 @@ import {
     calculateSampleSizeSensitivity,
     calculateMeanEstimationSampleSize,
     calculateMeanSampleSizeMetrics,
+    calculateSampleSizeStepDetails,
     calculateSampleSizeSteps,
     calculateSizeMeasureAllocation,
     calculateSqrtSizeMeasureAllocation,
@@ -651,6 +653,47 @@ test("sqrt allocation gives more balanced distribution than linear", () => {
     expect(sqrt[0]!.sampleSize).toBeGreaterThan(linear[0]!.sampleSize);
 });
 
+test("attachCalculatedSampleSize uses mean formula when estimationType=mean", () => {
+    const attached = attachCalculatedSampleSize({
+        estimationType: "mean",
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationVariance: 100,
+        designEffect: 1,
+        nonResponseRate: 0,
+    }, 5000);
+
+    expect(attached.calculatedSampleSize).toBe(
+        calculateMeanEstimationSampleSize({
+            confidenceLevel: "95",
+            marginOfError: 2,
+            populationSize: 5000,
+            populationVariance: 100,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }),
+    );
+});
+
+test("attachCalculatedSampleSize keeps proportion formula as default", () => {
+    const attached = attachCalculatedSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 5,
+        designEffect: 1,
+        nonResponseRate: 0,
+    }, 1000);
+
+    expect(attached.calculatedSampleSize).toBe(
+        calculateFinitePopulationSampleSize({
+            confidenceLevel: "95",
+            marginOfError: 5,
+            populationSize: 1000,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }),
+    );
+});
+
 // ========== calculateSampleSizeSteps tests ==========
 
 test("steps proportion: n3 close to canonical (per-step ceil causes small rounding delta)", () => {
@@ -704,4 +747,20 @@ test("steps: returns zeros for invalid inputs", () => {
     });
     expect(steps.n0).toBe(0);
     expect(steps.n3).toBe(0);
+});
+
+test("step details expose raw values consistent with canonical formulas", () => {
+    const details = calculateSampleSizeStepDetails({
+        estimationType: "proportion",
+        confidenceLevel: "95",
+        marginOfError: 5,
+        populationSize: 8000,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+
+    expect(details.n0Raw).toBeCloseTo(384.16, 2);
+    expect(details.n1Raw).toBeCloseTo(366.60, 2);
+    expect(details.n0).toBe(385);
+    expect(details.n1).toBe(367);
 });
