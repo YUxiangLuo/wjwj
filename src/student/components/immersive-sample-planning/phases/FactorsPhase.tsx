@@ -11,12 +11,37 @@ interface Props {
     onNext: () => void;
 }
 
-const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeof Crosshair }> = {
-    error_tolerance: { label: "允许多大的误差", badge: "因素 1", icon: Crosshair },
-    subpopulation: { label: "子总体估计需求", badge: "因素 2", icon: Layers },
-    variability: { label: "总体的变异程度", badge: "因素 3", icon: BarChart3 },
-    cost_balance: { label: "精度与费用的平衡", badge: "因素 4", icon: DollarSign },
-    summary: { label: "四因素汇总", badge: "汇总", icon: CheckCircle2 },
+const STEP_META: Record<FactorsStep, { label: string; badge: string; icon: typeof Crosshair; intro: string }> = {
+    error_tolerance: {
+        label: "允许多大的误差",
+        badge: "因素 1",
+        icon: Crosshair,
+        intro: "先判断你希望估计多精确。误差限是最直接影响样本量大小的因素。",
+    },
+    subpopulation: {
+        label: "子总体估计需求",
+        badge: "因素 2",
+        icon: Layers,
+        intro: "再判断是否需要对子总体单独达标。若每个子总体都要分别估计，总样本量往往会明显增加。",
+    },
+    variability: {
+        label: "总体的变异程度",
+        badge: "因素 3",
+        icon: BarChart3,
+        intro: "接着判断总体本身有多分散。总体越不稳定，越需要更多样本去把波动压下来。",
+    },
+    cost_balance: {
+        label: "精度与费用的平衡",
+        badge: "因素 4",
+        icon: DollarSign,
+        intro: "最后把统计精度和调查成本放在一起看，找到既合理又可执行的样本量。",
+    },
+    summary: {
+        label: "四因素汇总",
+        badge: "汇总",
+        icon: CheckCircle2,
+        intro: "四类关键条件已经看完。下一步把它们带入公式，正式计算样本量。",
+    },
 };
 
 function formatAbsoluteErrorValue(value: number): string {
@@ -41,6 +66,7 @@ export function FactorsPhase({ step, params, onNext }: Props) {
                     {meta.badge}
                 </span>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{meta.label}</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">{meta.intro}</p>
             </div>
 
             {step === "error_tolerance" && <ErrorToleranceContent params={params} />}
@@ -55,7 +81,7 @@ export function FactorsPhase({ step, params, onNext }: Props) {
                     onClick={onNext}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
                 >
-                    {step === "summary" ? "接下来：样本量计算公式" : "下一个因素"}
+                    {step === "summary" ? "继续：进入样本量公式" : "继续：看下一个因素"}
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>
@@ -265,7 +291,7 @@ function VariabilityContent() {
     return (
         <div className="space-y-6">
             <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
-                总体的变异程度直接影响所需样本量。变异越大，需要的样本越多。
+                这一步是在判断公式里的“变异度”该怎么理解。变异越大，需要的样本越多。
             </p>
 
             <div className="mx-auto max-w-lg space-y-4">
@@ -399,8 +425,8 @@ function SummaryContent() {
     return (
         <div className="space-y-6">
             <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
-                在确定样本量之前，需要综合考虑以下四个因素。
-                它们共同决定了"多少样本才够"。
+                到这里，你已经看完决定样本量的四类关键条件。
+                它们会一起决定“多少样本才够”。
             </p>
 
             <div className="mx-auto max-w-lg grid grid-cols-2 gap-3">
@@ -417,7 +443,7 @@ function SummaryContent() {
 
             <div className="mx-auto max-w-lg rounded-xl border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/50 dark:bg-indigo-950/20 p-4">
                 <p className="text-sm text-indigo-700 dark:text-indigo-400/80">
-                    接下来，我们将学习具体的样本量计算公式——将这些因素量化为数字。
+                    下一步进入公式阶段：先选估计目标，再把这些条件量化成样本量 n。
                 </p>
             </div>
         </div>

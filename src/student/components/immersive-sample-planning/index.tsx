@@ -41,16 +41,16 @@ const NAVIGABLE_PHASES = PHASE_ORDER.filter(
 );
 
 const PHASE_LABELS: Record<string, string> = {
-    challenge: "任务情境",
-    precision: "精度指标",
-    factors: "影响因素",
-    formula: "核心公式",
-    fpc: "有限总体",
-    fourstep: "四步法",
-    decision: "你的决策",
-    quiz: "理解自检",
-    confirm: "确认",
-    launching: "启动",
+    challenge: "开始规划",
+    precision: "认识精度",
+    factors: "判断条件",
+    formula: "进入公式",
+    fpc: "总体修正",
+    fourstep: "汇总 n",
+    decision: "确认方案",
+    quiz: "快速自检",
+    confirm: "确认保存",
+    launching: "进入抽样",
     done: "完成",
 };
 
@@ -459,7 +459,9 @@ export function ImmersiveSamplePlanning({
                                 <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">确认样本量规划</h2>
-                            <p className="text-gray-500 dark:text-slate-400">请确认以下参数，保存后将回到样本量规划页，可继续调整或稍后再进入抽样执行</p>
+                            <p className="text-gray-500 dark:text-slate-400">
+                                请确认以下核心参数。保存后，这里的最终样本量会写入实验，并直接用于后续抽样执行与分析报告；之后仍可返回修改。
+                            </p>
                         </div>
 
                         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm space-y-5">

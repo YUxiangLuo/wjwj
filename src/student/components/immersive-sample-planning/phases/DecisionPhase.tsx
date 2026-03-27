@@ -250,7 +250,10 @@ export function DecisionPhase({
                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300">
                     决策面板
                 </span>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">确认你的样本量</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">确认会用于抽样执行的最终样本量</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                    这里确认的 n 会保存到实验，并直接带入下一阶段的抽样执行与后续分析报告。
+                </p>
             </div>
 
             {hasAdvancedSource && (
@@ -276,7 +279,7 @@ export function DecisionPhase({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Left: Parameter controls */}
                 <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-5 shadow-sm transition-colors">
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">参数控制</h3>
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">常规公式参数</h3>
 
                     <div className="space-y-1.5">
                         <Label className="text-xs text-slate-500">置信水平</Label>
@@ -355,7 +358,7 @@ export function DecisionPhase({
 
                 {/* Right: Metrics gauge */}
                 <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm flex flex-col items-center justify-center space-y-4 transition-colors">
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">建议样本量</h3>
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">常规公式建议值</h3>
                     <div className="text-5xl font-black tabular-nums text-indigo-500">
                         {recommendedSize.toLocaleString()}
                     </div>
@@ -375,8 +378,8 @@ export function DecisionPhase({
             {/* Sensitivity heatmap */}
             {sensitivity && (
                 <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3 transition-opacity">
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">权衡探索器</h3>
-                    <p className="text-xs text-slate-400">不同置信水平与允许误差组合下的样本量</p>
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">常规公式权衡探索</h3>
+                    <p className="text-xs text-slate-400">看看不同置信水平与允许误差组合下，样本量会如何变化。</p>
                     <SensitivityGrid
                         data={sensitivity}
                         currentCL={params.confidenceLevel}
@@ -389,7 +392,7 @@ export function DecisionPhase({
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-slate-400" />
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">高级工具</h3>
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">高级工具（特殊规划场景）</h3>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {ADVANCED_TAB_CONFIG.map(({ key, label }) => {
@@ -661,11 +664,11 @@ export function DecisionPhase({
                         : "border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30",
                 )}
             >
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">最终样本量</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">最终样本量（将带入抽样执行）</h3>
                 <div className="flex gap-3 items-end">
                     <div className="flex-1 space-y-1">
                         <div className="flex justify-between text-xs">
-                            <span className="text-slate-500">设定样本量</span>
+                            <span className="text-slate-500">这里实际准备调查多少人</span>
                             <span className="text-emerald-600 dark:text-emerald-400 font-medium">
                                 建议值 {recommendedSize.toLocaleString()}
                             </span>
@@ -702,6 +705,9 @@ export function DecisionPhase({
                         重置
                     </Button>
                 </div>
+                <p className="text-xs text-slate-400">
+                    这里确认的 n 会作为下一阶段抽样执行的目标样本量。
+                </p>
                 {hasAdvancedSource && (
                     <p className="text-xs text-amber-700 dark:text-amber-300">
                         当前最终样本量保留了「{sourceLabel}」的结果。手动修改或重置后，将自动切回常规规划。
@@ -723,7 +729,7 @@ export function DecisionPhase({
                     data-testid="immersive-sp-decision-next"
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20 disabled:opacity-40"
                 >
-                    进入理解自检
+                    继续：完成理解自检
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>

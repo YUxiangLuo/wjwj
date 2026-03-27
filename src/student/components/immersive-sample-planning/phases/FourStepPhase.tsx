@@ -224,7 +224,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 </span>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">样本量确定四步法</h2>
                 <p className="text-gray-500 dark:text-slate-400 text-sm">
-                    从初始公式到最终样本量的完整路径（{isProportion ? "比例估计" : "均值估计"}）
+                    现在把前面的判断全部串起来，得到真正用于调查规划的最终样本量（{isProportion ? "比例估计" : "均值估计"}）
                 </p>
             </div>
 
@@ -271,7 +271,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
 
             <div className="text-center space-y-2">
                 <p className="text-gray-500 dark:text-slate-400">
-                    接下来，你将在决策面板中确认或调整最终样本量。
+                    到这里，样本量规划的计算部分已经结束。下一步确认的 n 会直接带入抽样执行阶段。
                 </p>
             </div>
 
@@ -281,7 +281,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                     onClick={onNext}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
                 >
-                    进入决策面板
+                    继续：进入决策面板
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>

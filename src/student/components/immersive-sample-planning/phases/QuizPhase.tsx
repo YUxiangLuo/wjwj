@@ -118,6 +118,9 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 leading-snug">
                     {q.question}
                 </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                    最后用几道题快速确认一下：你是否抓住了样本量规划里最关键的概念。
+                </p>
             </div>
 
             <div className="max-w-md mx-auto space-y-3">
@@ -186,7 +189,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                             className="text-slate-400 hover:text-slate-600"
                         >
                             <SkipForward className="w-4 h-4 mr-1" />
-                            跳过自检
+                            跳过，直接去确认
                         </Button>
                         <Button
                             type="button"
@@ -204,7 +207,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                         data-testid="immersive-sp-quiz-next"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
                     >
-                        {isLast ? "完成自检" : "下一题"}
+                        {isLast ? "完成自检，去确认" : "下一题"}
                         <ChevronRight className="w-5 h-5 ml-2" />
                     </Button>
                 )}

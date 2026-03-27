@@ -54,8 +54,8 @@ export function PrecisionPhase({ params, onNext }: Props) {
                 </h2>
                 <p className="text-gray-500 dark:text-slate-400">
                     {isMeanEstimation
-                        ? "均值估计主要看标准误差和误差限；若需要比较相对精度，可再计算相对标准误差。"
-                        : "抽样估计有三个核心精度指标：标准误差、误差限和变异系数"}
+                        ? "正式计算样本量之前，先认识后面会反复出现的精度指标。均值估计主要看标准误差和误差限；若需要比较相对精度，可再计算相对标准误差。"
+                        : "正式计算样本量之前，先认识后面会反复出现的精度指标。它们决定你要求多“准”，也决定样本量会有多大。"}
                 </p>
             </div>
 
@@ -97,7 +97,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
             <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
                 <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
                     <p className="text-sm text-center text-slate-600 dark:text-slate-300">
-                        {isMeanEstimation ? "调整样本量，观察 SE 与 ME 的变化" : "调整样本量，观察三个指标的变化"}
+                        {isMeanEstimation ? "先直观看一眼：样本量变化时，SE 与 ME 怎么变" : "先直观看一眼：样本量变化时，三个精度指标怎么变"}
                         <span className="text-xs text-slate-400 ml-2">
                             {isMeanEstimation
                                 ? `(σ²=${sigma2}, N=${N.toLocaleString()}, ${params.confidenceLevel}% CI)`
@@ -164,7 +164,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                     onClick={onNext}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
                 >
-                    接下来：确定精度的考虑因素
+                    继续：判断哪些条件会影响样本量
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>

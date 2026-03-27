@@ -76,10 +76,10 @@ export function FPCPhase({ params, onNext }: Props) {
                     有限总体校正
                 </span>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                    你没有无限多的人
+                    把公式修正到你的真实总体
                 </h2>
                 <p className="text-gray-500 dark:text-slate-400">
-                    总体越小，有限总体校正 (FPC) 的效果越明显
+                    前一步得到的是无限总体下的初始样本量 n₀；这一步根据你的总体规模 N 做有限总体校正，得到更贴近真实调查的 n₁。
                 </p>
             </div>
 
@@ -158,10 +158,13 @@ export function FPCPhase({ params, onNext }: Props) {
 
             <div className="text-center space-y-2">
                 <p className="text-sm text-gray-500 dark:text-slate-400">
-                    总体越小，校正减少的样本量越多。<br />
+                    总体越小，有限总体校正减少的样本量越多。<br />
                     你的总体 {params.populationSize.toLocaleString()} 人 → 在仅考虑 FPC（不含设计效应与无回答率）时约需{" "}
                     <strong className="text-indigo-500 tabular-nums">{fpcOnlyUserN.toLocaleString()}</strong>
                     （无限总体计算值约为 {n0RawDisplay}，规划时取 {n0.toLocaleString()}）
+                </p>
+                <p className="text-xs text-slate-400">
+                    这意味着：你现在已经得到可用于真实总体的基础样本量 n₁。
                 </p>
             </div>
 
@@ -171,7 +174,7 @@ export function FPCPhase({ params, onNext }: Props) {
                     onClick={onNext}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
                 >
-                    接下来：四步法确定样本量
+                    继续：汇总为最终样本量
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>

@@ -49,31 +49,54 @@ export function FormulaPhase({
             <div className="space-y-8">
                 <StepHeader current={1} total={3} />
 
-                {/* Estimation type toggle */}
-                <div className="flex justify-center">
-                    <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-1">
-                        <button
-                            type="button"
-                            onClick={() => onEstimationTypeChange("proportion")}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                isProportion
-                                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                            }`}
-                        >
-                            比例估计
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => onEstimationTypeChange("mean")}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                !isProportion
-                                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                            }`}
-                        >
-                            均值估计
-                        </button>
+                <div className="text-center space-y-3">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">现在进入样本量公式阶段</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                        先选这次要规划的估计目标，再设置信心水平。后面的公式、误差定义和示例都会跟着这里的选择变化。
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    <p className="text-center text-sm font-medium text-slate-600 dark:text-slate-300">先选择你要估计什么</p>
+
+                    <div className="flex justify-center">
+                        <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-1">
+                            <button
+                                type="button"
+                                onClick={() => onEstimationTypeChange("proportion")}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    isProportion
+                                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                                }`}
+                            >
+                                比例估计
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onEstimationTypeChange("mean")}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                    !isProportion
+                                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                                }`}
+                            >
+                                均值估计
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 max-w-2xl mx-auto">
+                        <EstimationMethodCard
+                            active={isProportion}
+                            title="比例估计"
+                            description="适合支持率、满意率、占比、渗透率等“比例/百分比”类指标。"
+                        />
+                        <EstimationMethodCard
+                            active={!isProportion}
+                            title="均值估计"
+                            description="适合平均收入、平均消费、平均时长等“平均值”类指标。"
+                        />
                     </div>
                 </div>
 
@@ -96,8 +119,8 @@ export function FormulaPhase({
                         />
                     )}
                     <p className="text-gray-500 dark:text-slate-400 mt-4 text-lg">
-                        如果做 100 次同样的调查，<br />
-                        你希望有多少次结果是"靠谱的"？
+                        这一步是在决定：<br />
+                        如果重复抽样很多次，你希望有多大把握让区间覆盖总体真值？
                     </p>
                 </div>
 
@@ -108,13 +131,13 @@ export function FormulaPhase({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="90">
-                                <span className="flex items-center gap-2">90 次 (Z = 1.645) — 宽松</span>
+                                <span className="flex items-center gap-2">90 次 (Z = 1.645) — 要求较宽松</span>
                             </SelectItem>
                             <SelectItem value="95">
-                                <span className="flex items-center gap-2">95 次 (Z = 1.96) — 标准 ✓</span>
+                                <span className="flex items-center gap-2">95 次 (Z = 1.96) — 最常用 ✓</span>
                             </SelectItem>
                             <SelectItem value="99">
-                                <span className="flex items-center gap-2">99 次 (Z = 2.576) — 严谨</span>
+                                <span className="flex items-center gap-2">99 次 (Z = 2.576) — 要求更严格</span>
                             </SelectItem>
                         </SelectContent>
                     </Select>
@@ -129,11 +152,11 @@ export function FormulaPhase({
                     </div>
 
                     <p className="text-sm text-gray-400 dark:text-slate-500 text-center">
-                        越想"靠谱"，需要的样本越多
+                        置信水平越高，Z 值越大，初始样本量 n₀ 也越大
                     </p>
                 </div>
 
-                <NextButton onClick={onNext} />
+                <NextButton onClick={onNext} label="继续：设置误差要求" />
             </div>
         );
     }
@@ -142,6 +165,13 @@ export function FormulaPhase({
         return (
             <div className="space-y-8">
                 <StepHeader current={2} total={3} />
+
+                <div className="text-center space-y-2">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100">继续补齐公式里的关键参数</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                        上一步确定了“要多可靠”，这一步再确定“要多精确”。误差要求越严格，样本量就会越大。
+                    </p>
+                </div>
 
                 <div className="text-center space-y-2">
                     {isProportion ? (
@@ -153,10 +183,10 @@ export function FormulaPhase({
                                 ]}
                             />
                             <p className="text-gray-500 dark:text-slate-400 mt-4 text-lg">
-                                你能容忍多大的误差？
+                                再确定你能容忍多大的误差
                             </p>
                             <p className="text-gray-400 dark:text-slate-500 text-sm">
-                                "真实值是 50%，你的调查结果在 ±E 范围内"
+                                这里的 E 是比例估计的误差限。E 越小，区间越窄，需要的样本越多。
                             </p>
                         </>
                     ) : (
@@ -170,10 +200,10 @@ export function FormulaPhase({
                                 ]}
                             />
                             <p className="text-gray-500 dark:text-slate-400 mt-4 text-lg">
-                                设置总体方差和误差限
+                                再设置总体方差和误差限
                             </p>
                             <p className="text-gray-400 dark:text-slate-500 text-sm">
-                                σ² 通常来自历史数据或预调查；e 是允许的绝对误差
+                                先给出 σ²，再决定均值估计允许偏离总体真值多少。
                             </p>
                         </>
                     )}
@@ -255,7 +285,7 @@ export function FormulaPhase({
                     </p>
                 </div>
 
-                <NextButton onClick={onNext} />
+                <NextButton onClick={onNext} label="继续：查看公式汇总" />
             </div>
         );
     }
@@ -281,10 +311,10 @@ export function FormulaPhase({
         <div className="space-y-8">
             <StepHeader current={3} total={3} />
 
-            <div className="text-center">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">公式全貌</h2>
+            <div className="text-center space-y-2">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">公式阶段小结</h2>
                 <p className="text-sm text-slate-400">
-                    {isProportion ? "比例估计" : "均值估计"}
+                    你已经得到 {isProportion ? "比例估计" : "均值估计"} 在无限总体与有限总体下的基础样本量
                 </p>
             </div>
 
@@ -338,11 +368,11 @@ export function FormulaPhase({
                     再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，约为 <strong className="text-emerald-500 tabular-nums">{n1RawDisplay}</strong>，规划时取 <strong className="text-emerald-500 tabular-nums">{n1Rounded.toLocaleString()}</strong> 人。
                 </p>
                 <p className="text-gray-400 dark:text-slate-500 text-sm">
-                    接下来看看"有限总体校正"的原理。
+                    接下来单独看看“有限总体校正”为何会起作用。
                 </p>
             </div>
 
-            <NextButton onClick={onNext} label="探索有限总体校正" />
+            <NextButton onClick={onNext} label="继续：理解有限总体校正" />
         </div>
     );
 }
@@ -391,6 +421,21 @@ function FormulaLine({ label, formula, result, delay }: { label: string; formula
             <p className="text-right text-xl font-bold tabular-nums text-indigo-500">
                 = {typeof result === "number" ? result.toLocaleString() : result}
             </p>
+        </div>
+    );
+}
+
+function EstimationMethodCard({ active, title, description }: { active: boolean; title: string; description: string }) {
+    return (
+        <div
+            className={`rounded-2xl border p-4 text-left transition-colors ${
+                active
+                    ? "border-indigo-300 bg-indigo-50/80 dark:border-indigo-700 dark:bg-indigo-950/30"
+                    : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+            }`}
+        >
+            <p className={`text-sm font-semibold ${active ? "text-indigo-700 dark:text-indigo-300" : "text-slate-700 dark:text-slate-200"}`}>{title}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{description}</p>
         </div>
     );
 }

@@ -71,15 +71,16 @@ export function ChallengePhase({
                 <>
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-300 text-sm font-medium">
                         <Users className="w-4 h-4" />
-                        任务情境
+                        样本量规划起点
                     </div>
 
                     <div className="space-y-3">
                         <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-slate-100 leading-tight">
-                            你的调查总体有 <span className="text-indigo-500 tabular-nums">{populationSize.toLocaleString()}</span> 人
+                            现在开始规划你的样本量
                         </h2>
                         <p className="text-gray-500 dark:text-slate-400 text-lg">
-                            你觉得需要调查多少人才能代表整体？
+                            你的调查总体共有 <span className="text-indigo-500 tabular-nums">{populationSize.toLocaleString()}</span> 人。<br />
+                            先凭直觉猜一猜：至少调查多少人，结果才算“有代表性”？
                         </p>
                     </div>
 
@@ -89,7 +90,7 @@ export function ChallengePhase({
                         <Input
                             ref={inputRef}
                             type="number"
-                            placeholder="输入你的猜测…"
+                            placeholder="先猜一个样本量…"
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -105,7 +106,7 @@ export function ChallengePhase({
                             data-testid="immersive-sp-guess-submit"
                             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-base py-6 rounded-xl shadow-lg shadow-indigo-500/20"
                         >
-                            提交我的猜测
+                            提交我的直觉判断
                         </Button>
                     </div>
                 </>
@@ -113,7 +114,7 @@ export function ChallengePhase({
                 <>
                     <div className="space-y-4 animate-in fade-in duration-500">
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                            对比结果
+                            你的直觉判断 vs 统计学建议
                         </h2>
                         <p className="text-gray-500 dark:text-slate-400">{guessLabel}</p>
                     </div>
@@ -141,8 +142,8 @@ export function ChallengePhase({
                         <p className="text-gray-600 dark:text-slate-300 text-lg">
                             但这个 <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{recommendedSize}</span> 是怎么算出来的？
                         </p>
-                        <p className="text-gray-500 dark:text-slate-400 text-sm">
-                            让我们一步步拆解样本量公式。
+                        <p className="text-gray-500 dark:text-slate-400 text-sm max-w-md mx-auto">
+                            你已经进入样本量规划学习阶段。接下来会依次看到精度指标、关键影响因素、公式推导和最终决策，弄清楚这个建议值为什么成立。
                         </p>
                         <Button
                             type="button"
@@ -150,7 +151,7 @@ export function ChallengePhase({
                             data-testid="immersive-sp-challenge-next"
                             className="bg-indigo-600 hover:bg-indigo-700 text-white text-base px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
                         >
-                            开始学习
+                            开始拆解样本量规划
                             <ChevronRight className="w-5 h-5 ml-2" />
                         </Button>
                     </div>
