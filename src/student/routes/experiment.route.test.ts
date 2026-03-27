@@ -1,4 +1,5 @@
 import { expect, mock, test } from "bun:test";
+import { calculateMeanEstimationSampleSize } from "../experiment/sample-plan";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function createJsonRequest(url: string, method: string, body?: unknown, headers?: HeadersInit) {
@@ -244,6 +245,7 @@ test("experiment save updates stage and recalculates sample size", async () => {
         {
             currentStage: 2,
             samplePlan: {
+                advancedPlanSource: "cv",
                 confidenceLevel: "95",
                 marginOfError: 5,
                 finalSampleSize: 50,
@@ -263,6 +265,7 @@ test("experiment save updates stage and recalculates sample size", async () => {
         status: 0,
         questionnaire: buildValidQuestionnaire(),
         samplePlan: {
+            advancedPlanSource: "cv",
             confidenceLevel: "95",
             marginOfError: 5,
             finalSampleSize: 50,
@@ -280,11 +283,72 @@ test("experiment save updates stage and recalculates sample size", async () => {
         version: 4,
         stage2CompletedAt: expect.any(Date),
         samplePlan: {
+            advancedPlanSource: "cv",
             confidenceLevel: "95",
             marginOfError: 5,
             finalSampleSize: 50,
             calculatedSampleSize: 132,
         },
+    });
+});
+
+test("experiment save recalculates sample size with mean formula", async () => {
+    const calculatedSampleSize = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: 200,
+        populationVariance: 100,
+    });
+
+    const { module } = await loadExperimentRoutes({
+        select: [
+            [{ id: 40 }],
+            [{
+                id: 88,
+                studentId: 11,
+                taskId: 40,
+                currentStage: 1,
+                status: 0,
+                version: 3,
+                questionnaire: JSON.stringify(buildValidQuestionnaire()),
+                stage1CompletedAt: new Date("2026-03-01T00:00:00.000Z"),
+                stage2CompletedAt: null,
+                stage3CompletedAt: null,
+                stage4CompletedAt: null,
+            }],
+            [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
+            [{ topicId: 12, excelRowCount: 200 }],
+        ],
+        update: [[{ affectedRows: 1 }]],
+    });
+
+    const request = withRouteParam(createJsonRequest(
+        "https://example.com/api/student/tasks/40/experiment",
+        "PUT",
+        {
+            currentStage: 2,
+            samplePlan: {
+                estimationType: "mean",
+                confidenceLevel: "95",
+                marginOfError: 2,
+                populationVariance: 100,
+                finalSampleSize: 50,
+            },
+        },
+    ), "40");
+
+    const response = await module.experimentRoutes.PUT!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.success).toBe(true);
+    expect(payload.data.samplePlan).toMatchObject({
+        estimationType: "mean",
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationVariance: 100,
+        finalSampleSize: 50,
+        calculatedSampleSize,
     });
 });
 
@@ -320,7 +384,7 @@ test("experiment save blocks invalid sample plan when advancing to stage 3", asy
                 confidenceLevel: "95",
                 marginOfError: 5,
                 recommendedSize: 132,
-                finalSampleSize: 29,
+                finalSampleSize: 201,
             },
         }
     ), "40");
@@ -333,7 +397,7 @@ test("experiment save blocks invalid sample plan when advancing to stage 3", asy
         success: false,
         error: {
             code: "VALIDATION_ERROR",
-            message: "最终样本量需在 30～100 人之间",
+            message: "最终样本量需在 1～200 人之间",
         },
     });
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
@@ -436,6 +500,9 @@ test("experiment submit marks experiment submitted, inserts submission, and noti
     expect(submissionInsert?.values).toMatchObject({
         experimentId: 88,
         pdfSnapshotQuestionnaire: buildValidQuestionnaire(),
+        pdfSnapshotSamplingResults: buildValidSamplingResults(),
+        pdfSnapshotSamplePlan: buildValidSamplePlan(),
+        pdfSnapshotPopulationSize: 200,
         pdfSnapshotReportContent: "这是实验报告正文，用于验证提交逻辑与通知逻辑是否按预期执行。".repeat(10),
         pdfSnapshotTopicName: "抽样调查",
         pdfSnapshotStudentName: "Alice",

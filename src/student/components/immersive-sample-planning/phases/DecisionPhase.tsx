@@ -15,19 +15,23 @@ import { ChevronRight, RotateCcw, Info, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
+    calculateMeanSampleSizeMetrics,
     calculateSampleSizeMetrics,
     calculateSampleSizeSensitivity,
     calculateSampleSizeForDifferentP,
 } from "../../../experiment/sample-plan";
 import {
+    formatMarginOfError,
+    getMarginOfErrorLabel,
+} from "../../../experiment/sample-plan-display";
+import {
     type SampleParams,
     getFinalSampleSizeBounds,
-    isSmallPopulationSampleBounds,
 } from "../types";
 import {
     ADVANCED_TAB_CONFIG,
     type AdvancedTab,
-    type AdvancedNonStandardSampleLockSource,
+    type AdvancedNonStandardSampleSource,
 } from "../../../components/sample-planning/advancedTabs";
 import { DomainEstimationManager, type Domain } from "../../../components/DomainEstimationManager";
 import { PrecisionCostTradeoff } from "../../../components/PrecisionCostTradeoff";
@@ -39,13 +43,13 @@ import { EnhancedMetricsCard } from "../../../components/EnhancedMetricsCard";
 import { PValueComparisonCard } from "../../../components/PValueComparisonCard";
 import { SensitivityAnalysisCard } from "../../../components/SensitivityAnalysisCard";
 
-/** 成本/CV/整群等非标准路径：仅写最终 n；工具内参数不写入左侧，解释 n 时以本工具为准 */
+/** 成本/CV/整群等非标准路径：仅写最终 n；左侧常规建议继续显示，但解释该 n 时以本工具为准 */
 const TOAST_APPLY_SAMPLE_SIZE_ONLY_DESC =
-    "仅将最终样本量按工具结果更新。本工具内试算参数未写回左侧；若与左侧不一致，解释此 n 时以本工具推演为准，勿用左侧显示参数代回标准公式验算。";
+    "已将最终样本量更新为工具结果。左侧仍显示常规公式建议；若继续调整参数或最终样本量，将自动切回常规规划。";
 
 /** 多变量表为会话内状态（P0），不入持久化 samplePlan */
 const TOAST_APPLY_MULTIVAR_DESC =
-    "变量调查表仅保存在当前会话。持久化含当时决策面板参数与最终样本量；若与多变量推荐不一致，解释最终样本量时以本工具推演为准。";
+    "变量调查表仅保存在当前会话。已将最终样本量更新为多变量推荐；若继续调整参数或最终样本量，将自动切回常规规划。";
 
 interface Props {
     params: SampleParams;
@@ -63,11 +67,9 @@ interface Props {
     surveyVariables?: SurveyVariable[];
     onSurveyVariablesChange?: (v: SurveyVariable[]) => void;
     /** 样本量来自非标准公式时，记录来源（仅 cost / multivar / cv / cluster） */
-    advancedPlanLock: AdvancedNonStandardSampleLockSource | null;
-    /** 在首次写入「非标准样本量」前调用：父级保存基线快照 */
-    onBeforeAdvancedCommit: () => void;
-    onAdvancedCommitted: (source: AdvancedNonStandardSampleLockSource) => void;
-    onCancelAdvancedLock: () => void;
+    advancedPlanSource: AdvancedNonStandardSampleSource | null;
+    onAdvancedApplied: (source: AdvancedNonStandardSampleSource) => void;
+    onClearAdvancedSource: () => void;
 }
 
 export function DecisionPhase({
@@ -83,20 +85,19 @@ export function DecisionPhase({
     onDomainsChange: externalOnDomainsChange,
     surveyVariables: externalSurveyVariables,
     onSurveyVariablesChange: externalOnSurveyVariablesChange,
-    advancedPlanLock,
-    onBeforeAdvancedCommit,
-    onAdvancedCommitted,
-    onCancelAdvancedLock,
+    advancedPlanSource,
+    onAdvancedApplied,
+    onClearAdvancedSource,
 }: Props) {
     const { populationSize: N, recommendedSize, finalSampleSize } = params;
+    const isMeanEstimation = params.estimationType === "mean";
     const { min: minSize, max: maxSize } = useMemo(() => getFinalSampleSizeBounds(N), [N]);
     const isValidSize = finalSampleSize >= minSize && finalSampleSize <= maxSize;
-    const showSmallPopulationHint = isSmallPopulationSampleBounds(N);
 
-    const paramsLocked = advancedPlanLock != null;
-    const lockLabel =
-        advancedPlanLock != null
-            ? (ADVANCED_TAB_CONFIG.find((c) => c.key === advancedPlanLock)?.label ?? "")
+    const hasAdvancedSource = advancedPlanSource != null;
+    const sourceLabel =
+        advancedPlanSource != null
+            ? (ADVANCED_TAB_CONFIG.find((c) => c.key === advancedPlanSource)?.label ?? "")
             : "";
 
     // --- Advanced tools ---
@@ -112,59 +113,111 @@ export function DecisionPhase({
     const onSurveyVariablesChange = externalOnSurveyVariablesChange ?? setLocalSurveyVariables;
 
     // --- Metrics ---
-    const metrics = useMemo(
+    const proportionMetrics = useMemo(
         () =>
-            calculateSampleSizeMetrics({
-                confidenceLevel: params.confidenceLevel,
-                marginOfError: params.marginOfError,
-                populationSize: N,
-                designEffect: params.designEffect,
-                nonResponseRate: params.nonResponseRate,
-            }),
-        [params.confidenceLevel, params.marginOfError, N, params.designEffect, params.nonResponseRate],
+            isMeanEstimation
+                ? null
+                : calculateSampleSizeMetrics({
+                    confidenceLevel: params.confidenceLevel,
+                    marginOfError: params.marginOfError,
+                    populationSize: N,
+                    designEffect: params.designEffect,
+                    nonResponseRate: params.nonResponseRate,
+                }),
+        [isMeanEstimation, params.confidenceLevel, params.marginOfError, N, params.designEffect, params.nonResponseRate],
     );
+
+    const meanMetrics = useMemo(
+        () =>
+            !isMeanEstimation || params.populationVariance == null
+                ? null
+                : calculateMeanSampleSizeMetrics({
+                    confidenceLevel: params.confidenceLevel,
+                    marginOfError: params.marginOfError,
+                    populationSize: N,
+                    populationVariance: params.populationVariance,
+                    designEffect: params.designEffect,
+                    nonResponseRate: params.nonResponseRate,
+                }),
+        [
+            isMeanEstimation,
+            params.confidenceLevel,
+            params.marginOfError,
+            N,
+            params.populationVariance,
+            params.designEffect,
+            params.nonResponseRate,
+        ],
+    );
+
+    const metrics = isMeanEstimation ? meanMetrics : proportionMetrics;
 
     const sensitivity = useMemo(
         () =>
-            calculateSampleSizeSensitivity({
-                populationSize: N,
-                designEffect: params.designEffect,
-                nonResponseRate: params.nonResponseRate,
-            }),
-        [N, params.designEffect, params.nonResponseRate],
+            isMeanEstimation
+                ? null
+                : calculateSampleSizeSensitivity({
+                    populationSize: N,
+                    designEffect: params.designEffect,
+                    nonResponseRate: params.nonResponseRate,
+                }),
+        [isMeanEstimation, N, params.designEffect, params.nonResponseRate],
     );
 
     const pComparison = useMemo(
         () =>
-            calculateSampleSizeForDifferentP({
-                confidenceLevel: params.confidenceLevel,
-                marginOfError: params.marginOfError,
-                populationSize: N,
-                designEffect: params.designEffect,
-                nonResponseRate: params.nonResponseRate,
-            }),
-        [params.confidenceLevel, params.marginOfError, N, params.designEffect, params.nonResponseRate],
+            isMeanEstimation
+                ? []
+                : calculateSampleSizeForDifferentP({
+                    confidenceLevel: params.confidenceLevel,
+                    marginOfError: params.marginOfError,
+                    populationSize: N,
+                    designEffect: params.designEffect,
+                    nonResponseRate: params.nonResponseRate,
+                }),
+        [isMeanEstimation, params.confidenceLevel, params.marginOfError, N, params.designEffect, params.nonResponseRate],
     );
+
+    const currentMarginLabel = getMarginOfErrorLabel(params.estimationType);
+    const currentMarginValue = formatMarginOfError(params.marginOfError, params.estimationType);
+    const formattedMeanMetricMargin = formatMarginOfError(Number(metrics?.marginOfError.toFixed(4) ?? 0), "mean");
+
+    const metricCards = useMemo(() => {
+        if (!metrics) return [];
+        if (isMeanEstimation) {
+            return [
+                { label: "SE", value: metrics.standardError.toFixed(4) },
+                { label: "ME", value: formattedMeanMetricMargin },
+                { label: "n₁", value: Math.ceil(metrics.n1).toLocaleString() },
+            ];
+        }
+        return [
+            { label: "SE", value: metrics.standardError.toFixed(4) },
+            { label: "CV", value: `${(metrics.relativeStandardError * 100).toFixed(1)}%` },
+            {
+                label: "CI",
+                value: `[${metrics.confidenceInterval.lower.toFixed(2)}, ${metrics.confidenceInterval.upper.toFixed(2)}]`,
+            },
+        ];
+    }, [formattedMeanMetricMargin, isMeanEstimation, metrics]);
 
     /** 高级工具弹层：仅在点击「应用」后写回父级状态，并关闭弹层 */
     const closeAdvancedDialog = useCallback(() => {
         setActiveAdvancedTab(null);
     }, []);
 
-    /** 非标准样本量提交：保证先打基线快照，再写状态，再标记锁定（P2） */
-    const commitNonStandardLock = useCallback(
-        (source: AdvancedNonStandardSampleLockSource, apply: () => void) => {
-            onBeforeAdvancedCommit();
+    const applyAdvancedSource = useCallback(
+        (source: AdvancedNonStandardSampleSource, apply: () => void) => {
             apply();
-            onAdvancedCommitted(source);
+            onAdvancedApplied(source);
         },
-        [onBeforeAdvancedCommit, onAdvancedCommitted],
+        [onAdvancedApplied],
     );
 
-    const isSecondaryToolBlockedWhileLocked = useCallback(
+    const isUnsupportedInMeanMode = useCallback(
         (key: AdvancedTab) =>
-            paramsLocked && (key === "domain" || key === "deff"),
-        [paramsLocked],
+            isMeanEstimation && (key === "cost" || key === "cluster"),
+        [isMeanEstimation],
     );
 
     const [domainDraft, setDomainDraft] = useState<Domain[]>([]);
@@ -197,48 +250,44 @@ export function DecisionPhase({
                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/50 text-xs font-medium text-indigo-700 dark:text-indigo-300">
                     决策面板
                 </span>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">确认你的样本量</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">确认会用于抽样执行的最终样本量</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                    这里确认的 n 会保存到实验，并直接带入下一阶段的抽样执行与后续分析报告。
+                </p>
             </div>
 
-            {paramsLocked && (
+            {hasAdvancedSource && (
                 <div className="rounded-xl border border-amber-200/90 bg-amber-50/95 dark:border-amber-800/60 dark:bg-amber-950/35 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-start gap-2 text-sm text-amber-950 dark:text-amber-100">
                         <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                         <span>
-                            当前最终样本量由非标准公式工具「<span className="font-semibold">{lockLabel}</span>」确定；解释此样本量请以该工具内推演为准，勿用左侧快照参数代回标准公式验算。左侧参数与建议样本量已锁定展示，最终样本量不可在输入框中直接修改，请先「取消应用」后再调整。
+                            当前最终样本量正在使用高级工具「<span className="font-semibold">{sourceLabel}</span>」的结果；左侧继续显示常规公式建议值。若继续修改参数或最终样本量，将自动切回常规规划；解释当前 n 时请以该工具内推演为准。
                         </span>
                     </div>
                     <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={onCancelAdvancedLock}
+                        onClick={onClearAdvancedSource}
                         className="shrink-0 border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-100 dark:hover:bg-amber-950/80"
                     >
-                        取消应用，恢复常规规划
+                        按常规继续
                     </Button>
                 </div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Left: Parameter controls */}
-                <div
-                    className={cn(
-                        "rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-5 shadow-sm transition-colors",
-                        paramsLocked && "opacity-55 grayscale-[0.35] pointer-events-none select-none",
-                    )}
-                    aria-disabled={paramsLocked}
-                >
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">参数控制</h3>
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-5 shadow-sm transition-colors">
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">常规公式参数</h3>
 
                     <div className="space-y-1.5">
                         <Label className="text-xs text-slate-500">置信水平</Label>
                         <Select
                             value={params.confidenceLevel}
                             onValueChange={onConfidenceLevelChange}
-                            disabled={paramsLocked}
                         >
-                            <SelectTrigger className="h-9 text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 disabled:opacity-60">
+                            <SelectTrigger className="h-9 text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -251,16 +300,33 @@ export function DecisionPhase({
 
                     <div className="space-y-1.5">
                         <div className="flex justify-between">
-                            <Label className="text-xs text-slate-500">允许误差</Label>
-                            <span className="text-xs font-bold text-teal-600 dark:text-teal-400 tabular-nums">&plusmn;{params.marginOfError}%</span>
+                            <Label className="text-xs text-slate-500">{currentMarginLabel}</Label>
+                            <span className="text-xs font-bold text-teal-600 dark:text-teal-400 tabular-nums">
+                                {currentMarginValue}
+                            </span>
                         </div>
-                        <Slider
-                            value={[params.marginOfError]}
-                            onValueChange={([v]) => v != null && onMarginOfErrorChange(v)}
-                            min={1} max={10} step={1}
-                            disabled={paramsLocked}
-                            className="py-1 [&>.relative>.absolute]:bg-teal-500"
-                        />
+                        {isMeanEstimation ? (
+                            <div className="space-y-2">
+                                <Input
+                                    type="number"
+                                    value={params.marginOfError}
+                                    onChange={(e) => onMarginOfErrorChange(Number.parseFloat(e.target.value) || 0)}
+                                    min={0.01}
+                                    step={0.1}
+                                    className="h-9 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                                />
+                                <p className="text-[11px] text-slate-400">
+                                    均值估计使用与指标同单位的绝对误差，不使用百分比滑块。
+                                </p>
+                            </div>
+                        ) : (
+                            <Slider
+                                value={[params.marginOfError]}
+                                onValueChange={([v]) => v != null && onMarginOfErrorChange(v)}
+                                min={1} max={10} step={1}
+                                className="py-1 [&>.relative>.absolute]:bg-teal-500"
+                            />
+                        )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -272,7 +338,6 @@ export function DecisionPhase({
                             value={[params.designEffect * 10]}
                             onValueChange={([v]) => v != null && onDesignEffectChange(Math.round(v) / 10)}
                             min={10} max={50} step={1}
-                            disabled={paramsLocked}
                             className="py-1 [&>.relative>.absolute]:bg-amber-500"
                         />
                     </div>
@@ -286,49 +351,35 @@ export function DecisionPhase({
                             value={[Math.round(params.nonResponseRate * 100)]}
                             onValueChange={([v]) => v != null && onNonResponseRateChange(v / 100)}
                             min={0} max={50} step={5}
-                            disabled={paramsLocked}
                             className="py-1 [&>.relative>.absolute]:bg-rose-500"
                         />
                     </div>
                 </div>
 
-                {/* Right: Metrics gauge — 锁定与非标准 n 一致置灰 */}
-                <div
-                    className={cn(
-                        "rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm flex flex-col items-center justify-center space-y-4 transition-colors",
-                        paramsLocked && "opacity-55 grayscale-[0.35] pointer-events-none select-none",
-                    )}
-                    aria-disabled={paramsLocked}
-                >
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">建议样本量</h3>
+                {/* Right: Metrics gauge */}
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm flex flex-col items-center justify-center space-y-4 transition-colors">
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">常规公式建议值</h3>
                     <div className="text-5xl font-black tabular-nums text-indigo-500">
                         {recommendedSize.toLocaleString()}
                     </div>
                     <div className="grid grid-cols-3 gap-3 w-full text-center">
-                        <MetricBadge label="SE" value={metrics?.standardError.toFixed(4) ?? "–"} />
-                        <MetricBadge label="CV" value={metrics ? `${(metrics.relativeStandardError * 100).toFixed(1)}%` : "–"} />
-                        <MetricBadge
-                            label="CI"
-                            value={
-                                metrics
-                                    ? `[${metrics.confidenceInterval.lower.toFixed(2)}, ${metrics.confidenceInterval.upper.toFixed(2)}]`
-                                    : "–"
-                            }
-                        />
+                        {metricCards.map((card) => (
+                            <MetricBadge key={card.label} label={card.label} value={card.value} />
+                        ))}
                     </div>
+                    {hasAdvancedSource && (
+                        <p className="text-center text-[11px] text-amber-700 dark:text-amber-300">
+                            当前最终样本量来自「{sourceLabel}」，这里仍展示常规公式建议值。
+                        </p>
+                    )}
                 </div>
             </div>
 
             {/* Sensitivity heatmap */}
             {sensitivity && (
-                <div
-                    className={cn(
-                        "rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3 transition-opacity",
-                        paramsLocked && "opacity-45 pointer-events-none",
-                    )}
-                >
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">权衡探索器</h3>
-                    <p className="text-xs text-slate-400">不同置信水平与允许误差组合下的样本量</p>
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3 transition-opacity">
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">常规公式权衡探索</h3>
+                    <p className="text-xs text-slate-400">看看不同置信水平与允许误差组合下，样本量会如何变化。</p>
                     <SensitivityGrid
                         data={sensitivity}
                         currentCL={params.confidenceLevel}
@@ -341,37 +392,33 @@ export function DecisionPhase({
             <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-slate-400" />
-                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">高级工具</h3>
+                    <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">高级工具（特殊规划场景）</h3>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {ADVANCED_TAB_CONFIG.map(({ key, label }) => {
-                        const isActiveLock = advancedPlanLock === key;
-                        const dimOthers =
-                            advancedPlanLock != null && key !== advancedPlanLock && key !== "metrics";
-                        const secondaryBlocked = isSecondaryToolBlockedWhileLocked(key);
+                        const isActiveSource = advancedPlanSource === key;
+                        const isDisabled =
+                            isUnsupportedInMeanMode(key);
                         return (
                             <button
                                 key={key}
                                 type="button"
-                                disabled={secondaryBlocked}
+                                disabled={isDisabled}
                                 title={
-                                    secondaryBlocked
-                                        ? "请先取消「非标准公式样本量」应用后，再调整子总体或设计效应"
-                                        : undefined
+                                    isUnsupportedInMeanMode(key)
+                                            ? "当前工具仅支持比例估计，请切换为比例估计后使用"
+                                            : undefined
                                 }
                                 onClick={() => {
-                                    if (secondaryBlocked) return;
+                                    if (isDisabled) return;
                                     setActiveAdvancedTab(key);
                                 }}
                                 className={cn(
                                     "rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors",
-                                    secondaryBlocked && "opacity-45 cursor-not-allowed",
-                                    isActiveLock
+                                    isDisabled && "opacity-45 cursor-not-allowed",
+                                    isActiveSource
                                         ? "ring-2 ring-indigo-500 border-indigo-400 bg-indigo-50 text-indigo-800 dark:ring-indigo-400 dark:border-indigo-500 dark:bg-indigo-950/55 dark:text-indigo-200 shadow-sm"
-                                        : cn(
-                                            "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:border-indigo-600 dark:hover:text-indigo-300",
-                                            dimOthers && "opacity-45",
-                                        ),
+                                        : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 dark:hover:bg-indigo-950/40 dark:hover:border-indigo-600 dark:hover:text-indigo-300",
                                 )}
                             >
                                 {label}
@@ -412,6 +459,10 @@ export function DecisionPhase({
                                 stratifiedFields={[]}
                                 onDomainsChange={setDomainDraft}
                                 initialDomains={domainDraft}
+                                estimationType={params.estimationType}
+                                populationVariance={params.populationVariance}
+                                defaultConfidenceLevel={params.confidenceLevel}
+                                defaultMarginOfError={params.marginOfError}
                             />
                             <div className="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
                                 <Button
@@ -424,12 +475,6 @@ export function DecisionPhase({
                                 </Button>
                                 <Button
                                     type="button"
-                                    disabled={paramsLocked}
-                                    title={
-                                        paramsLocked
-                                            ? "请先取消「非标准公式样本量」应用后再调整子总体"
-                                            : undefined
-                                    }
                                     onClick={() => {
                                         onDomainsChange(domainDraft);
                                         toast.success("已应用子总体设置");
@@ -451,7 +496,7 @@ export function DecisionPhase({
                             nonResponseRate={params.nonResponseRate}
                             initialMarginOfError={params.marginOfError}
                             onApplyBudget={(_budget, sampleSize) => {
-                                commitNonStandardLock("cost", () => {
+                                applyAdvancedSource("cost", () => {
                                     onFinalSizeChange(sampleSize);
                                 });
                                 toast.success(`已应用样本量 ${sampleSize}`, {
@@ -479,18 +524,12 @@ export function DecisionPhase({
                                 </Button>
                                 <Button
                                     type="button"
-                                    disabled={paramsLocked}
-                                    title={
-                                        paramsLocked
-                                            ? "请先取消「非标准公式样本量」应用后再调整设计效应"
-                                            : undefined
-                                    }
                                     onClick={() => {
                                         onDesignEffectChange(deffDraft);
                                         toast.success(`已应用设计效应 deff = ${deffDraft.toFixed(1)}`);
                                         closeAdvancedDialog();
                                     }}
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
                                 >
                                     应用到样本量规划
                                 </Button>
@@ -503,25 +542,19 @@ export function DecisionPhase({
                             key={multivarKey}
                             populationSize={N}
                             defaultConfidenceLevel={params.confidenceLevel}
-                            defaultMarginOfError={params.marginOfError}
+                            defaultMarginOfError={params.estimationType === "proportion" ? params.marginOfError : 5}
+                            defaultMeanRelativeMargin={5}
+                            defaultVariableType={params.estimationType}
                             onVariablesChange={setMultivarDraft}
                             initialVariables={multivarDraft}
                             onApplyToPlan={({ variables, recommendedSampleSize }) => {
-                                const locksPanel =
+                                const hasRecommendation =
                                     variables.length > 0 && recommendedSampleSize > 0;
-                                if (locksPanel) {
-                                    commitNonStandardLock("multivar", () => {
-                                        onSurveyVariablesChange(variables);
-                                        if (recommendedSampleSize > 0) {
-                                            onFinalSizeChange(recommendedSampleSize);
-                                        }
-                                    });
-                                } else {
-                                    onSurveyVariablesChange(variables);
-                                    if (recommendedSampleSize > 0) {
-                                        onFinalSizeChange(recommendedSampleSize);
-                                    }
+                                onSurveyVariablesChange(variables);
+                                if (recommendedSampleSize > 0) {
+                                    onFinalSizeChange(recommendedSampleSize);
                                 }
+                                if (hasRecommendation) onAdvancedApplied("multivar");
                                 toast.success("已应用多变量规划", {
                                     description: TOAST_APPLY_MULTIVAR_DESC,
                                 });
@@ -534,10 +567,11 @@ export function DecisionPhase({
                         <CVBasedSampleSizeCalculator
                             populationSize={N}
                             confidenceLevel={params.confidenceLevel}
+                            estimationType={params.estimationType}
                             initialDesignEffect={params.designEffect}
                             initialNonResponseRate={params.nonResponseRate}
                             onApplySampleSize={(size) => {
-                                commitNonStandardLock("cv", () => {
+                                applyAdvancedSource("cv", () => {
                                     onFinalSizeChange(size);
                                 });
                                 toast.success(`已应用样本量 ${size}`, {
@@ -555,7 +589,7 @@ export function DecisionPhase({
                             marginOfError={params.marginOfError}
                             initialNonResponseRate={params.nonResponseRate}
                             onApplyResult={(clusters, sampleSize) => {
-                                commitNonStandardLock("cluster", () => {
+                                applyAdvancedSource("cluster", () => {
                                     onFinalSizeChange(sampleSize);
                                 });
                                 toast.success(`整群方案：${clusters} 个群，共 ${sampleSize} 人`, {
@@ -568,17 +602,21 @@ export function DecisionPhase({
 
                     {activeAdvancedTab === "metrics" && metrics && (
                         <>
-                            <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
+                            <div className={cn("grid min-w-0 grid-cols-1 gap-5", !isMeanEstimation && "lg:grid-cols-3 lg:gap-6")}>
                                 <EnhancedMetricsCard
                                     metrics={metrics}
+                                    estimationType={params.estimationType}
                                     confidenceLevel={params.confidenceLevel}
+                                    populationVariance={params.populationVariance}
                                     finalSampleSize={finalSampleSize}
                                 />
-                                <PValueComparisonCard
-                                    comparison={pComparison}
-                                    currentSampleSize={recommendedSize}
-                                />
-                                {sensitivity && (
+                                {!isMeanEstimation && (
+                                    <PValueComparisonCard
+                                        comparison={pComparison}
+                                        currentSampleSize={recommendedSize}
+                                    />
+                                )}
+                                {!isMeanEstimation && sensitivity && (
                                     <SensitivityAnalysisCard
                                         matrix={sensitivity}
                                         currentConfidenceLevel={params.confidenceLevel}
@@ -617,7 +655,7 @@ export function DecisionPhase({
                 </DialogContent>
             </Dialog>
 
-            {/* Final sample size — 锁定时保持正常对比度，仅只读且隐藏建议值/重置 */}
+            {/* Final sample size */}
             <div
                 className={cn(
                     "rounded-2xl border p-5 shadow-sm space-y-3 transition-colors",
@@ -626,53 +664,55 @@ export function DecisionPhase({
                         : "border-rose-300 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30",
                 )}
             >
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">最终样本量</h3>
-                {showSmallPopulationHint && !paramsLocked && (
-                    <p className="text-xs text-amber-700/95 dark:text-amber-300/90 leading-relaxed">
-                        总体规模较小时，合法区间会随上限 ⌊N/2⌋ 收紧（下限与上限对齐，避免出现无法选取的区间）。
-                    </p>
-                )}
-                <div className={cn("flex gap-3", paramsLocked ? "items-stretch" : "items-end")}>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">最终样本量（将带入抽样执行）</h3>
+                <div className="flex gap-3 items-end">
                     <div className="flex-1 space-y-1">
                         <div className="flex justify-between text-xs">
-                            <span className="text-slate-500">设定样本量</span>
-                            {!paramsLocked && (
-                                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                                    建议值 {recommendedSize.toLocaleString()}
-                                </span>
-                            )}
+                            <span className="text-slate-500">这里实际准备调查多少人</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                建议值 {recommendedSize.toLocaleString()}
+                            </span>
                         </div>
                         <div className="relative">
                             <Input
                                 type="number"
                                 value={finalSampleSize}
-                                readOnly={paramsLocked}
-                                aria-readonly={paramsLocked || undefined}
-                                onChange={(e) => onFinalSizeChange(parseInt(e.target.value, 10) || 0)}
+                                onChange={(e) => {
+                                    if (hasAdvancedSource) onClearAdvancedSource();
+                                    onFinalSizeChange(parseInt(e.target.value, 10) || 0);
+                                }}
                                 min={minSize}
                                 max={maxSize}
                                 data-testid="immersive-sp-final-size"
                                 className={cn(
                                     "pr-12 text-lg font-bold bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
                                     isValidSize ? "text-indigo-600 dark:text-indigo-400" : "text-rose-500",
-                                    paramsLocked && "cursor-not-allowed opacity-100",
                                 )}
                             />
                             <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">人</span>
                         </div>
                     </div>
-                    {!paramsLocked && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={onResetFinalSize}
-                            className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 shrink-0"
-                        >
-                            <RotateCcw className="w-4 h-4 mr-1" />
-                            重置
-                        </Button>
-                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                            if (hasAdvancedSource) onClearAdvancedSource();
+                            onResetFinalSize();
+                        }}
+                        className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 shrink-0"
+                    >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        重置
+                    </Button>
                 </div>
+                <p className="text-xs text-slate-400">
+                    这里确认的 n 会作为下一阶段抽样执行的目标样本量。
+                </p>
+                {hasAdvancedSource && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                        当前最终样本量保留了「{sourceLabel}」的结果。手动修改或重置后，将自动切回常规规划。
+                    </p>
+                )}
                 {!isValidSize && (
                     <div className="flex items-center gap-2 text-sm text-rose-600 dark:text-rose-400">
                         <Info className="w-4 h-4 shrink-0" />
@@ -689,7 +729,7 @@ export function DecisionPhase({
                     data-testid="immersive-sp-decision-next"
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20 disabled:opacity-40"
                 >
-                    进入理解自检
+                    继续：完成理解自检
                     <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
             </div>

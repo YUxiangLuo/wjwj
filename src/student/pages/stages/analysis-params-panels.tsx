@@ -1,6 +1,12 @@
 import type { ReactNode } from "react";
 import { Info } from "lucide-react";
 import type { SamplePlanData, SamplingResultsData } from "../../api-client";
+import {
+    formatMarginOfError,
+    getAdvancedPlanSourceLabel,
+    getEstimationTypeLabel,
+    getMarginOfErrorLabel,
+} from "../../experiment/sample-plan-display";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { METHOD_META, type MethodKey } from "./analysis-utils";
 
@@ -177,6 +183,8 @@ export function SamplePlanDecisionPanel({
     samplePlan: SamplePlanData | null;
     populationSize: number;
 }) {
+    const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
+
     return (
         <div className="space-y-4">
             <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-3 dark:border-amber-800/40 dark:bg-amber-950/20">
@@ -185,8 +193,9 @@ export function SamplePlanDecisionPanel({
                     <div className="space-y-1.5 text-xs leading-relaxed text-amber-900/90 dark:text-amber-100/90">
                         <p className="font-medium text-amber-950 dark:text-amber-50">关于高级工具（子总体、多变量、成本/CV/整群等）</p>
                         <p className="text-amber-800/85 dark:text-amber-200/80">
-                            这些工具在样本量规划阶段仅用于课堂推演与辅助决策，<span className="font-medium">不会写入实验存档</span>。
-                            下方展示的是「确认并进入下一阶段」时已保存的<span className="font-medium">核心决策参数</span>；若你主要借助高级工具推演了最终样本量，撰写报告时请结合此处<strong>最终样本量</strong>及「抽样参数」中的实际执行设置一并说明。
+                            高级工具的<span className="font-medium">完整中间状态与推演明细不会完整写入实验存档</span>，
+                            但回写到核心决策参数里的结果仍会保存，例如最终样本量或设计效应。
+                            下方展示的是「确认并进入下一阶段」时真正保存下来的核心参数；若最终样本量来自某个非标准工具，页面会直接标出来源。
                         </p>
                     </div>
                 </div>
@@ -202,20 +211,24 @@ export function SamplePlanDecisionPanel({
                     <ParamRow
                         label="估计类型"
                         value={
-                            samplePlan.estimationType === "mean"
-                                ? "均值估计"
-                                : samplePlan.estimationType === "proportion"
-                                    ? "比例估计"
-                                    : "比例估计（默认）"
+                            samplePlan.estimationType == null
+                                ? "比例估计（默认）"
+                                : getEstimationTypeLabel(samplePlan.estimationType)
                         }
                     />
+                    {advancedSourceLabel && (
+                        <ParamRow
+                            label="最终样本量来源"
+                            value={`${advancedSourceLabel}（高级工具）`}
+                        />
+                    )}
                     <ParamRow label="置信水平" value={`${samplePlan.confidenceLevel}%`} />
                     <ParamRow
-                        label="允许误差"
+                        label={getMarginOfErrorLabel(samplePlan.estimationType)}
                         value={
                             samplePlan.estimationType === "mean"
-                                ? `±${samplePlan.marginOfError}（与均值同单位）`
-                                : `±${samplePlan.marginOfError}%（边际误差）`
+                                ? `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（与均值同单位）`
+                                : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（边际误差）`
                         }
                     />
                     {samplePlan.estimationType === "mean" && samplePlan.populationVariance !== undefined && samplePlan.populationVariance !== null && (
@@ -230,8 +243,13 @@ export function SamplePlanDecisionPanel({
                                 : "—"
                         }
                     />
-                    <ParamRow label="推荐样本量 n₀" value={samplePlan.recommendedSize?.toLocaleString() ?? "—"} />
+                    <ParamRow label="推荐样本量 n" value={samplePlan.recommendedSize?.toLocaleString() ?? "—"} />
                     <ParamRow label="最终样本量 n" value={samplePlan.finalSampleSize?.toLocaleString() ?? "—"} />
+                    {advancedSourceLabel && (
+                        <p className="mt-2 text-[11px] text-amber-700/90 dark:text-amber-300/90">
+                            当前最终样本量由「{advancedSourceLabel}」回写；此处的“推荐样本量 n”仍是常规公式建议值。
+                        </p>
+                    )}
                 </div>
             )}
         </div>

@@ -214,13 +214,23 @@ export function attachCalculatedSampleSize(samplePlan: Record<string, any>, popu
         return samplePlan;
     }
 
-    const calculatedSampleSize = calculateFinitePopulationSampleSize({
-        confidenceLevel: samplePlan.confidenceLevel,
-        marginOfError: samplePlan.marginOfError,
-        populationSize,
-        designEffect: samplePlan.designEffect,
-        nonResponseRate: samplePlan.nonResponseRate,
-    });
+    const estimationType = samplePlan.estimationType === "mean" ? "mean" : "proportion";
+    const calculatedSampleSize = estimationType === "mean"
+        ? calculateMeanEstimationSampleSize({
+            confidenceLevel: samplePlan.confidenceLevel,
+            marginOfError: samplePlan.marginOfError,
+            populationSize,
+            populationVariance: Number(samplePlan.populationVariance),
+            designEffect: samplePlan.designEffect,
+            nonResponseRate: samplePlan.nonResponseRate,
+        })
+        : calculateFinitePopulationSampleSize({
+            confidenceLevel: samplePlan.confidenceLevel,
+            marginOfError: samplePlan.marginOfError,
+            populationSize,
+            designEffect: samplePlan.designEffect,
+            nonResponseRate: samplePlan.nonResponseRate,
+        });
 
     if (calculatedSampleSize) {
         return { ...samplePlan, calculatedSampleSize };
@@ -351,6 +361,13 @@ export interface SampleSizeSteps {
     formulaLabel: string;
 }
 
+export interface SampleSizeStepDetails extends SampleSizeSteps {
+    n0Raw: number;
+    n1Raw: number;
+    n2Raw: number;
+    n3Raw: number;
+}
+
 /**
  * 返回四步法（n₀ → FPC → deff → NRR）各阶段的整数样本量。
  * 供 FourStepPhase 展示使用，避免 UI 层重复实现公式。
@@ -368,6 +385,25 @@ export function calculateSampleSizeSteps(params: {
     designEffect: number;
     nonResponseRate: number;
 }): SampleSizeSteps {
+    const details = calculateSampleSizeStepDetails(params);
+    return {
+        n0: details.n0,
+        n1: details.n1,
+        n2: details.n2,
+        n3: details.n3,
+        formulaLabel: details.formulaLabel,
+    };
+}
+
+export function calculateSampleSizeStepDetails(params: {
+    estimationType: "proportion" | "mean";
+    confidenceLevel: unknown;
+    marginOfError: number;
+    populationSize: number;
+    populationVariance?: number;
+    designEffect: number;
+    nonResponseRate: number;
+}): SampleSizeStepDetails {
     const clStr = String(params.confidenceLevel);
     const z = isConfidenceLevel(clStr) ? Z_VALUES[clStr] : 1.96;
     const N = params.populationSize;
@@ -380,22 +416,35 @@ export function calculateSampleSizeSteps(params: {
     if (params.estimationType === "mean") {
         const sigma2 = params.populationVariance ?? 0;
         const e = params.marginOfError;
-        if (e <= 0 || sigma2 <= 0) return { n0: 0, n1: 0, n2: 0, n3: 0, formulaLabel: "Z²σ²/e²" };
+        if (e <= 0 || sigma2 <= 0) {
+            return { n0Raw: 0, n1Raw: 0, n2Raw: 0, n3Raw: 0, n0: 0, n1: 0, n2: 0, n3: 0, formulaLabel: "Z²σ²/e²" };
+        }
         n0Raw = (z * z * sigma2) / (e * e);
         formulaLabel = "Z²σ²/e²";
     } else {
         const E = normalizeMarginOfError(params.marginOfError);
-        if (E <= 0) return { n0: 0, n1: 0, n2: 0, n3: 0, formulaLabel: "Z²p(1-p)/E²" };
+        if (E <= 0) {
+            return { n0Raw: 0, n1Raw: 0, n2Raw: 0, n3Raw: 0, n0: 0, n1: 0, n2: 0, n3: 0, formulaLabel: "Z²p(1-p)/E²" };
+        }
         n0Raw = (z * z * 0.25) / (E * E);
         formulaLabel = "Z²p(1-p)/E²";
     }
 
-    const n0 = Math.ceil(n0Raw);
-    const n1 = Math.ceil(n0Raw / (1 + (n0Raw - 1) / N));
-    const n2 = Math.ceil(n1 * deff);
-    const n3 = nrr > 0 && nrr < 1 ? Math.ceil(n2 / (1 - nrr)) : n2;
+    const n1Raw = n0Raw / (1 + (n0Raw - 1) / N);
+    const n2Raw = n1Raw * deff;
+    const n3Raw = nrr > 0 && nrr < 1 ? n2Raw / (1 - nrr) : n2Raw;
 
-    return { n0, n1, n2, n3, formulaLabel };
+    return {
+        n0Raw,
+        n1Raw,
+        n2Raw,
+        n3Raw,
+        n0: Math.ceil(n0Raw),
+        n1: Math.ceil(n1Raw),
+        n2: Math.ceil(n2Raw),
+        n3: Math.ceil(n3Raw),
+        formulaLabel,
+    };
 }
 
 // ========== 补充功能：基于变异系数(CV)的样本量计算 ==========

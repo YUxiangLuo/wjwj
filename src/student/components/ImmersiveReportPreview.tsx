@@ -2,6 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { X, FileText, Users, BarChart3, Layers, ChevronDown } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
 import type { ExperimentData } from "../api-client";
+import {
+    formatMarginOfError,
+    getAdvancedPlanSourceLabel,
+    getEstimationTypeLabel,
+    getMarginOfErrorLabel,
+} from "../experiment/sample-plan-display";
 
 interface Props {
     experiment: ExperimentData;
@@ -158,12 +164,38 @@ function OverviewSection({
     samplingResults: ExperimentData["samplingResults"];
     questionCount: number;
 }) {
+    const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
     const stats = [
         { label: "总体规模", value: populationSize.toLocaleString(), sub: "人" },
         { label: "最终样本量", value: samplePlan?.finalSampleSize?.toLocaleString() ?? "—", sub: "个" },
         { label: "置信水平", value: samplePlan ? `${samplePlan.confidenceLevel}%` : "—", sub: "" },
         { label: "问卷题数", value: String(questionCount), sub: "题" },
     ];
+    const samplePlanRows = samplePlan ? [
+        { label: "估计类型", value: getEstimationTypeLabel(samplePlan.estimationType) },
+        ...(advancedSourceLabel
+            ? [{ label: "最终样本量来源", value: `${advancedSourceLabel}（高级工具）` }]
+            : []),
+        { label: "置信水平", value: `${samplePlan.confidenceLevel}%` },
+        {
+            label: getMarginOfErrorLabel(samplePlan.estimationType),
+            value: samplePlan.estimationType === "mean"
+                ? `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（与均值同单位）`
+                : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（边际误差）`,
+        },
+        ...(samplePlan.estimationType === "mean" && samplePlan.populationVariance != null
+            ? [{ label: "总体方差 σ²", value: String(samplePlan.populationVariance) }]
+            : []),
+        { label: "设计效应 deff", value: samplePlan.designEffect?.toFixed(2) ?? "—" },
+        {
+            label: "预期无回答率",
+            value: typeof samplePlan.nonResponseRate === "number"
+                ? `${Math.round(samplePlan.nonResponseRate * 100)}%`
+                : "—",
+        },
+        { label: "推荐样本量 n", value: samplePlan.recommendedSize?.toLocaleString() ?? "—" },
+        { label: "最终样本量 n", value: samplePlan.finalSampleSize?.toLocaleString() ?? "—" },
+    ] : [];
 
     const methods = [
         { label: "简单随机", done: samplingResults?.simple?.completed, count: samplingResults?.simple?.sampleCount },
@@ -192,6 +224,22 @@ function OverviewSection({
             </div>
 
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-5">
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">样本量规划摘要</h3>
+                {!samplePlan ? (
+                    <div className="text-sm text-slate-500 dark:text-slate-400">暂无样本量规划数据</div>
+                ) : (
+                    <div className="space-y-2.5">
+                        {samplePlanRows.map((row) => (
+                            <div key={row.label} className="flex items-center justify-between gap-3 text-sm">
+                                <span className="text-slate-500 dark:text-slate-400">{row.label}</span>
+                                <span className="text-right text-slate-800 dark:text-slate-200">{row.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-5">
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4">抽样方法完成情况</h3>
                 <div className="space-y-3">
                     {methods.map((m) => (
@@ -204,6 +252,12 @@ function OverviewSection({
                     ))}
                 </div>
             </div>
+
+            {advancedSourceLabel && (
+                <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/20 p-4 text-sm text-amber-900 dark:text-amber-100">
+                    最终样本量来源：{advancedSourceLabel}。报告解读当前 n 时，应以该高级工具的推演结论为准；上方“推荐样本量 n”仅表示常规公式的基线建议。
+                </div>
+            )}
 
             <button
                 onClick={() => {
@@ -294,6 +348,8 @@ function SamplingSection({
         return <EmptyState text="暂无抽样数据" />;
     }
 
+    const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
+
     const methodCards: { key: string; label: string; color: string; data: { completed?: boolean; sampleCount?: number; seed?: number; kValue?: number; stratifyBy?: string; sizeField?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
         {
             key: "simple",
@@ -328,6 +384,11 @@ function SamplingSection({
                 <p className="text-sm text-slate-500">
                     规划样本量: {samplePlan?.finalSampleSize?.toLocaleString() ?? "—"}
                 </p>
+                {advancedSourceLabel && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                        当前最终样本量来自「{advancedSourceLabel}」。
+                    </p>
+                )}
             </div>
 
             <div className="space-y-4">

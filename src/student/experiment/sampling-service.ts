@@ -120,9 +120,22 @@ export async function executeSamplingAction(params: {
                 return { ok: false as const, errorMessage: "请选择规模变量" };
             }
 
+            const mapping = parseTopicFieldMapping(params.fieldMapping);
+            if (mapping?.numeric?.length && !mapping.numeric.includes(sizeField)) {
+                return { ok: false as const, errorMessage: "规模变量需为包含正数的数值字段" };
+            }
+
             const hasField = params.population.some((row) => Object.prototype.hasOwnProperty.call(row, sizeField));
             if (!hasField) {
                 return { ok: false as const, errorMessage: "规模变量不存在于总体数据中" };
+            }
+
+            const hasPositiveNumericValue = params.population.some((row) => {
+                const value = Number(row[sizeField]);
+                return Number.isFinite(value) && value > 0;
+            });
+            if (!hasPositiveNumericValue) {
+                return { ok: false as const, errorMessage: "规模变量需为包含正数的数值字段" };
             }
 
             const sampleSize = Number.parseInt(String(parsedParams.sampleSize ?? ""), 10);

@@ -25,6 +25,7 @@ import { experimentApi, type MethodKey } from "../api-client";
 import { SamplingSuccessState } from "./SamplingSuccessState";
 import { SamplePreviewTable } from "./SamplePreviewTable";
 import { StratifiedAllocationComparison } from "./StratifiedAllocationComparison";
+import { allocateStratifiedSampleCounts } from "./stratified-allocation";
 
 const FIELD_LABELS: Record<string, string> = {
     "gender": "性别",
@@ -122,17 +123,22 @@ export function StratifiedSamplingTab({
             ratio: total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0,
             sampleCount: 0,
         }));
+        const defaultSampleCounts = allocateStratifiedSampleCounts({
+            targetSampleSize: n,
+            rawCounts: newLayers.map((layer) => n * (total > 0 ? layer.count / total : 1 / Math.max(newLayers.length, 1))),
+            caps: newLayers.map((layer) => layer.count),
+        });
 
         if (initialResult?.stratifyBy === stratifyBy && initialResult.layers) {
             const savedMap = new Map(initialResult.layers.map((l) => [l.name, l.sampleCount]));
-            setLayers(newLayers.map((l) => ({
+            setLayers(newLayers.map((l, index) => ({
                 ...l,
-                sampleCount: savedMap.get(l.name) ?? Math.max(1, Math.round(n * l.ratio / 100)),
+                sampleCount: savedMap.get(l.name) ?? defaultSampleCounts[index] ?? 1,
             })));
         } else {
-            setLayers(newLayers.map((l) => ({
+            setLayers(newLayers.map((l, index) => ({
                 ...l,
-                sampleCount: Math.max(1, Math.round(n * l.ratio / 100)),
+                sampleCount: defaultSampleCounts[index] ?? 1,
             })));
         }
     }, [stratifyBy, populationStats, n, N, initialResult]);
@@ -182,33 +188,13 @@ export function StratifiedSamplingTab({
                 : layers.map(() => n / layers.length);
         }
 
-        const caps = layers.map((l) => l.count);
-        const floored = rawCounts.map((c, i) => Math.min(Math.max(1, Math.floor(c)), caps[i]!));
-        let remainder = n - floored.reduce((a, b) => a + b, 0);
+        const nextCounts = allocateStratifiedSampleCounts({
+            targetSampleSize: n,
+            rawCounts,
+            caps: layers.map((layer) => layer.count),
+        });
 
-        const indices = floored.map((_, i) => i);
-        indices.sort((a, b) => (rawCounts[b]! - floored[b]!) - (rawCounts[a]! - floored[a]!));
-
-        for (const idx of indices) {
-            if (remainder <= 0) break;
-            if (floored[idx]! < caps[idx]!) {
-                floored[idx]!++;
-                remainder--;
-            }
-        }
-
-        let cursor = 0;
-        while (remainder > 0) {
-            const idx = cursor % floored.length;
-            if (floored[idx]! < caps[idx]!) {
-                floored[idx]!++;
-                remainder--;
-            }
-            cursor++;
-            if (cursor > floored.length * 2) break;
-        }
-
-        setLayers((prev) => prev.map((l, i) => ({ ...l, sampleCount: floored[i]! })));
+        setLayers((prev) => prev.map((l, i) => ({ ...l, sampleCount: nextCounts[i]! })));
         const labels = { proportional: "按比例", equal: "等额", neyman: "奈曼" };
         toast.success(`已应用${labels[method]}分配`);
     };

@@ -17,41 +17,31 @@ function plan(overrides: Record<string, unknown>) {
 describe("validateSamplePlanForSubmit", () => {
     test("完整合法：有总体规模且在区间内", () => {
         expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 50 }), 200)).toBeNull();
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 30 }), 200)).toBeNull();
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 100 }), 200)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 1 }), 200)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 200 }), 200)).toBeNull();
     });
 
-    test("小总体：与 getFinalSampleSizeBounds 一致，允许低于 30 的合法上界", () => {
-        // N=50 → [25, 25]
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 25 }), 50)).toBeNull();
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 24 }), 50)).toBe(
-            "最终样本量需在 25～25 人之间",
-        );
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 26 }), 50)).toBe(
-            "最终样本量需在 25～25 人之间",
+    test("有总体规模时：与 getFinalSampleSizeBounds 一致，允许 1..N", () => {
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 1 }), 50)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 50 }), 50)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 51 }), 50)).toBe(
+            "最终样本量需在 1～50 人之间",
         );
     });
 
-    test("大总体：低于下限或高于上限", () => {
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 29 }), 200)).toBe(
-            "最终样本量需在 30～100 人之间",
-        );
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 101 }), 200)).toBe(
-            "最终样本量需在 30～100 人之间",
+    test("有总体规模时：高于上限时报错", () => {
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 201 }), 200)).toBe(
+            "最终样本量需在 1～200 人之间",
         );
     });
 
-    test("无总体规模时沿用不低于 30", () => {
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 29 }), null)).toBe(
-            "最终样本量不能小于30",
-        );
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 30 }), null)).toBeNull();
+    test("无总体规模时不额外施加课堂下限", () => {
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 1 }), null)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 29 }), null)).toBeNull();
     });
 
-    test("populationSize 为 0 时走无总体分支", () => {
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 29 }), 0)).toBe(
-            "最终样本量不能小于30",
-        );
+    test("populationSize 为 0 时不额外施加课堂下限", () => {
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 29 }), 0)).toBeNull();
     });
 
     test("finalSampleSize 须为整数", () => {
@@ -79,6 +69,33 @@ describe("validateSamplePlanForSubmit", () => {
             validateSamplePlanForSubmit({ ...plan({}), marginOfError: 11 }, 200),
         ).toBe("允许误差需在1%-10%之间");
     });
+
+    test("均值估计校验绝对误差限与总体方差", () => {
+        expect(
+            validateSamplePlanForSubmit(
+                plan({ estimationType: "mean", marginOfError: 2, populationVariance: 100 }),
+                200,
+            ),
+        ).toBeNull();
+        expect(
+            validateSamplePlanForSubmit(
+                plan({ estimationType: "mean", marginOfError: 0, populationVariance: 100 }),
+                200,
+            ),
+        ).toBe("均值估计的绝对误差限需为正数");
+        expect(
+            validateSamplePlanForSubmit(
+                plan({ estimationType: "mean", marginOfError: 12, populationVariance: 100 }),
+                200,
+            ),
+        ).toBeNull();
+        expect(
+            validateSamplePlanForSubmit(
+                plan({ estimationType: "mean", marginOfError: 2, populationVariance: 0 }),
+                200,
+            ),
+        ).toBe("均值估计时需提供正的总体方差估计");
+    });
 });
 
 describe("getTargetSampleSizeFromSamplePlan", () => {
@@ -94,4 +111,3 @@ describe("getTargetSampleSizeFromSamplePlan", () => {
         expect(getTargetSampleSizeFromSamplePlan({ finalSampleSize: -3 })).toBeNull();
     });
 });
-

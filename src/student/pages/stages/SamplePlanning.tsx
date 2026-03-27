@@ -14,10 +14,15 @@ import { Users, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Info, Loader
 import { toast } from "sonner";
 import { useExperiment } from "../ExperimentLayout";
 import type { SamplePlanData } from "../../api-client";
+import {
+    formatMarginOfError,
+    getEstimationTypeLabel,
+    getMarginOfErrorLabel,
+    normalizeSamplePlanData,
+} from "../../experiment/sample-plan-display";
 import { ImmersiveSamplePlanning } from "../../components/immersive-sample-planning";
 import {
     getFinalSampleSizeBounds,
-    isSmallPopulationSampleBounds,
     type SampleParams,
 } from "../../components/immersive-sample-planning/types";
 
@@ -28,8 +33,11 @@ interface SamplePlanningProps {
 export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     const { populationSize, experiment, registerStageSave, saveExperiment } = useExperiment();
 
-    const initialData = experiment?.samplePlan as SamplePlanData | null;
     const N = populationSize;
+    const initialData = useMemo(
+        () => normalizeSamplePlanData(experiment?.samplePlan, N),
+        [experiment?.samplePlan, N],
+    );
 
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [confirmNextSaving, setConfirmNextSaving] = useState(false);
@@ -42,8 +50,12 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     const handleImmersiveComplete = useCallback((result: SampleParams) => {
         setDisplayData({
+            estimationType: result.estimationType,
             confidenceLevel: result.confidenceLevel,
             marginOfError: result.marginOfError,
+            ...(result.estimationType === "mean" && result.populationVariance != null
+                ? { populationVariance: result.populationVariance }
+                : {}),
             designEffect: result.designEffect,
             nonResponseRate: result.nonResponseRate,
             recommendedSize: result.recommendedSize,
@@ -63,11 +75,14 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         return () => registerStageSave(null);
     }, [registerStageSave, saveSamplePlan]);
 
+    useEffect(() => {
+        setDisplayData(initialData);
+    }, [initialData]);
+
     const { min: minSampleSize, max: maxSampleSize } = useMemo(
         () => getFinalSampleSizeBounds(N),
         [N],
     );
-    const showSmallPopulationHint = isSmallPopulationSampleBounds(N);
     const isValidFinalSize =
         displayData != null
         && displayData.finalSampleSize >= minSampleSize
@@ -113,6 +128,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     initialFinalSampleSize={displayData?.finalSampleSize}
                     initialEstimationType={displayData?.estimationType ?? "proportion"}
                     initialPopulationVariance={displayData?.populationVariance ?? 100}
+                    initialAdvancedPlanSource={displayData?.advancedPlanSource ?? null}
                     onComplete={handleImmersiveComplete}
                     onClose={() => setImmersiveOpen(false)}
                     saveExperiment={saveExperiment}
@@ -147,8 +163,21 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         </CardHeader>
                         <CardContent className="px-4 pb-2 pt-3" data-testid="student-sample-plan-summary">
                             <div className="grid grid-cols-1 gap-x-6 gap-y-0 sm:grid-cols-2">
+                                <SummaryRow
+                                    label="估计类型"
+                                    value={getEstimationTypeLabel(displayData.estimationType)}
+                                />
                                 <SummaryRow label="置信水平" value={`${displayData.confidenceLevel}%`} />
-                                <SummaryRow label="允许误差" value={`±${displayData.marginOfError}%`} />
+                                <SummaryRow
+                                    label={getMarginOfErrorLabel(displayData.estimationType)}
+                                    value={formatMarginOfError(displayData.marginOfError, displayData.estimationType)}
+                                />
+                                {displayData.estimationType === "mean" && displayData.populationVariance != null && (
+                                    <SummaryRow
+                                        label="总体方差 σ²"
+                                        value={String(displayData.populationVariance)}
+                                    />
+                                )}
                                 <SummaryRow label="设计效应" value={displayData.designEffect.toFixed(1)} />
                                 <SummaryRow label="无回答率" value={`${Math.round(displayData.nonResponseRate * 100)}%`} />
                             </div>
@@ -178,11 +207,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         </Button>
                     </div>
 
-                    {showSmallPopulationHint && (
-                        <p className="text-center text-xs text-amber-700/95 dark:text-amber-300/90 px-1">
-                            总体规模较小时，最终样本量合法区间已随 ⌊N/2⌋ 收紧。
-                        </p>
-                    )}
                     {!isValidFinalSize && (
                         <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-600 dark:text-rose-400">
                             <Info className="h-4 w-4 shrink-0" />

@@ -87,7 +87,7 @@ export function performPPSSampling(
     n: number,
     random: () => number,
 ): any[] {
-    if (data.length === 0 || n <= 0) return [];
+    if (data.length === 0 || n <= 0 || !sizeField) return [];
 
     const sampleSize = Math.min(n, data.length);
 
@@ -99,8 +99,7 @@ export function performPPSSampling(
 
     const totalSize = sizes.reduce((a, b) => a + b, 0);
     if (totalSize <= 0) {
-        // Fallback to simple random sampling when all sizes are zero
-        return performSimpleSampling(data, sampleSize, random);
+        return [];
     }
 
     const interval = totalSize / sampleSize;

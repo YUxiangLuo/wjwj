@@ -1,5 +1,6 @@
 import { getRichTextPlainLength, getRichTextPlainText } from "../../utils/rich-text";
 import { validateQuestionAtIndex } from "../../lib/validate-question";
+import { normalizeSamplePlanEstimationType } from "./sample-plan-display";
 import { getFinalSampleSizeBounds } from "./final-sample-bounds";
 import { getSystematicAcceptedRange } from "./systematic-sampling";
 
@@ -66,8 +67,10 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
     }
 
     const data = samplePlan as Record<string, unknown>;
+    const estimationType = normalizeSamplePlanEstimationType(data.estimationType);
     const confidenceLevel = toTrimmedString(data.confidenceLevel);
     const marginOfError = Number(data.marginOfError);
+    const populationVariance = Number(data.populationVariance);
     const finalSampleSize = Number(data.finalSampleSize);
 
     if (!confidenceLevel) {
@@ -79,7 +82,14 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
         return "置信水平需为 90%、95% 或 99%";
     }
 
-    if (!Number.isFinite(marginOfError) || marginOfError < 1 || marginOfError > 10) {
+    if (estimationType === "mean") {
+        if (!Number.isFinite(marginOfError) || marginOfError <= 0) {
+            return "均值估计的绝对误差限需为正数";
+        }
+        if (!Number.isFinite(populationVariance) || populationVariance <= 0) {
+            return "均值估计时需提供正的总体方差估计";
+        }
+    } else if (!Number.isFinite(marginOfError) || marginOfError < 1 || marginOfError > 10) {
         return "允许误差需在1%-10%之间";
     }
 
@@ -91,11 +101,6 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
         const { min, max } = getFinalSampleSizeBounds(populationSize);
         if (finalSampleSize < min || finalSampleSize > max) {
             return `最终样本量需在 ${min}～${max} 人之间`;
-        }
-    } else {
-        // 无总体规模时沿用不低于 30 的保守约定（与历史行为一致）
-        if (finalSampleSize < 30) {
-            return "最终样本量不能小于30";
         }
     }
 

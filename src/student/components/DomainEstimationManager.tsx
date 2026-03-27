@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
+import {
     Plus, 
     Trash2, 
     Target, 
@@ -16,7 +16,11 @@ import {
     ChevronDown,
     ChevronUp
 } from "lucide-react";
-import { calculateFinitePopulationSampleSize } from "../experiment/sample-plan";
+import {
+    calculateFinitePopulationSampleSize,
+    calculateMeanEstimationSampleSize,
+} from "../experiment/sample-plan";
+import { formatMarginOfError } from "../experiment/sample-plan-display";
 
 export interface Domain {
     id: string;
@@ -34,37 +38,62 @@ interface DomainEstimationManagerProps {
     stratifiedFields: string[];
     onDomainsChange: (domains: Domain[]) => void;
     initialDomains?: Domain[];
+    estimationType?: "proportion" | "mean";
+    populationVariance?: number;
+    defaultConfidenceLevel?: string;
+    defaultMarginOfError?: number;
 }
 
 export function DomainEstimationManager({ 
     totalPopulationSize, 
     stratifiedFields,
     onDomainsChange,
-    initialDomains = []
+    initialDomains = [],
+    estimationType = "proportion",
+    populationVariance,
+    defaultConfidenceLevel = "95",
+    defaultMarginOfError,
 }: DomainEstimationManagerProps) {
     const [domains, setDomains] = useState<Domain[]>(initialDomains);
     const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
     const [showExplanation, setShowExplanation] = useState(true);
+    const isMeanEstimation = estimationType === "mean";
+    const resolvedDefaultMarginOfError = defaultMarginOfError
+        ?? (isMeanEstimation ? 2 : 5);
+    const marginLabel = isMeanEstimation ? "绝对误差限" : "允许误差";
+    const marginInputSuffix = isMeanEstimation ? "" : " (%)";
 
     const onDomainsChangeRef = useRef(onDomainsChange);
     onDomainsChangeRef.current = onDomainsChange;
 
     /** 仅当影响样本量公式的字段变化时变化，避免改名称等无关字段触发重算或二次 effect */
     const domainsSampleCalcKey = useMemo(
-        () => domains.map((d) => `${d.confidenceLevel}-${d.marginOfError}-${d.populationSize}`).join(","),
-        [domains],
+        () =>
+            `${estimationType}|${populationVariance ?? ""}|${domains
+                .map((d) => `${d.confidenceLevel}-${d.marginOfError}-${d.populationSize}`)
+                .join(",")}`,
+        [domains, estimationType, populationVariance],
     );
 
     // 计算每个域的所需样本量
     useEffect(() => {
         const updatedDomains = domains.map(domain => {
-            const requiredSampleSize = calculateFinitePopulationSampleSize({
-                confidenceLevel: domain.confidenceLevel,
-                marginOfError: domain.marginOfError,
-                populationSize: domain.populationSize,
-                designEffect: 1,  // 假设简单随机抽样
-                nonResponseRate: 0,
-            }) ?? 0;
+            const requiredSampleSize = isMeanEstimation
+                ? calculateMeanEstimationSampleSize({
+                    confidenceLevel: domain.confidenceLevel,
+                    marginOfError: domain.marginOfError,
+                    populationSize: domain.populationSize,
+                    populationVariance: Number(populationVariance),
+                    designEffect: 1,
+                    nonResponseRate: 0,
+                }) ?? 0
+                : calculateFinitePopulationSampleSize({
+                    confidenceLevel: domain.confidenceLevel,
+                    marginOfError: domain.marginOfError,
+                    populationSize: domain.populationSize,
+                    designEffect: 1,  // 假设简单随机抽样
+                    nonResponseRate: 0,
+                }) ?? 0;
 
             return {
                 ...domain,
@@ -91,8 +120,8 @@ export function DomainEstimationManager({
             id: `domain-${Date.now()}`,
             name: `子总体 ${domains.length + 1}`,
             populationSize: Math.floor(totalPopulationSize / 2),
-            confidenceLevel: "95",
-            marginOfError: 5,
+            confidenceLevel: defaultConfidenceLevel,
+            marginOfError: resolvedDefaultMarginOfError,
             requiredSampleSize: 0,
         };
         const newDomains = [...domains, newDomain];
@@ -117,18 +146,29 @@ export function DomainEstimationManager({
         onDomainsChange(newDomains);
     };
 
-    // 计算总样本量需求（取各域样本量的最大值）
-    const maxRequiredSampleSize = Math.max(0, ...domains.map(d => d.requiredSampleSize));
-    const totalRequiredSampleSize = maxRequiredSampleSize;
+    // 互斥子总体（层）下，总样本量为各层样本量之和。
+    const largestRequiredSampleSize = Math.max(0, ...domains.map(d => d.requiredSampleSize));
+    const totalRequiredSampleSize = domains.reduce((sum, d) => sum + d.requiredSampleSize, 0);
+    const allocatedPopulationSize = domains.reduce((sum, d) => sum + d.populationSize, 0);
+    const populationOverflow = allocatedPopulationSize - totalPopulationSize;
 
     // 计算简单随机抽样的基准样本量
-    const baseSampleSize = calculateFinitePopulationSampleSize({
-        confidenceLevel: "95",
-        marginOfError: 5,
-        populationSize: totalPopulationSize,
-        designEffect: 1,
-        nonResponseRate: 0,
-    }) ?? 0;
+    const baseSampleSize = isMeanEstimation
+        ? calculateMeanEstimationSampleSize({
+            confidenceLevel: defaultConfidenceLevel,
+            marginOfError: resolvedDefaultMarginOfError,
+            populationSize: totalPopulationSize,
+            populationVariance: Number(populationVariance),
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? 0
+        : calculateFinitePopulationSampleSize({
+            confidenceLevel: defaultConfidenceLevel,
+            marginOfError: resolvedDefaultMarginOfError,
+            populationSize: totalPopulationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? 0;
 
     // 样本量增量
     const sampleSizeIncrease = totalRequiredSampleSize - baseSampleSize;
@@ -141,7 +181,7 @@ export function DomainEstimationManager({
                     <div className="flex items-center gap-2">
                         <Layers className="w-5 h-5 text-indigo-500" />
                         <CardTitle className="text-base text-indigo-900 dark:text-indigo-200">
-                            子总体（域）估计支持
+                            互斥子总体（层）估计支持
                         </CardTitle>
                     </div>
                     <Badge 
@@ -152,22 +192,44 @@ export function DomainEstimationManager({
                     </Badge>
                 </div>
                 <CardDescription className="text-slate-700 dark:text-slate-300">
-                    当需要对总体的细分部分（如分省、分性别）进行估计时，设置各子总体的精度要求
+                    {isMeanEstimation
+                        ? "当需要对互不重叠的细分层分别估计均值时，设置各层的绝对误差限"
+                        : "当需要对互不重叠的细分层分别估计时，设置各层的精度要求"}
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
+                {isMeanEstimation && !(Number(populationVariance) > 0) && (
+                    <div className="rounded-xl border border-rose-200/90 bg-rose-50/80 p-3 dark:border-rose-800/40 dark:bg-rose-950/25">
+                        <div className="flex items-start gap-2 text-xs text-rose-900 dark:text-rose-100">
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span>
+                                均值子总体估计需要先给出共同方差假设 σ²。当前未提供有效方差，因此暂时无法计算各层样本量。
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* 说明卡片 */}
                 {showExplanation && (
                     <div className="rounded-xl border border-teal-200/90 bg-teal-50/70 p-3 dark:border-teal-800/40 dark:bg-teal-950/25">
                         <div className="flex gap-2">
                             <Info className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
                             <div className="text-xs text-teal-950 dark:text-teal-100 space-y-1">
-                                <p className="font-medium">为什么需要子总体估计？</p>
+                                <p className="font-medium">为什么要强调“互斥子总体”？</p>
                                 <p>
-                                    如果调查结果需要包括细分数据（如各省指标、分性别特征），则需要确保每个子总体都有足够的样本量。
-                                    总样本量取各子总体所需样本量的最大值，而非简单相加。
+                                    如果调查结果需要分别报告各层结果（如东部/中部/西部，或三个年龄组），则每一层都要单独满足精度要求。
+                                    这里默认每一行代表一个<strong>互不重叠</strong>的子总体，同一个总体单元只能出现一次，因此总样本量按各层样本量求和。
                                 </p>
+                                <p>
+                                    若你分析的是相互重叠的 domain（如“男性/女性”再叠加“年龄组”），则不能直接把所需样本量相加，应另行设计抽样与估计方案。
+                                </p>
+                                {isMeanEstimation && populationVariance != null && (
+                                    <p>
+                                        这里默认各层暂共用同一个方差假设 <strong>σ²={populationVariance}</strong>。
+                                        如果已知各层方差差异很大，应分别估计各层方差后再规划。
+                                    </p>
+                                )}
                                 <button 
                                     onClick={() => setShowExplanation(false)}
                                     className="text-teal-800 hover:underline dark:text-teal-200 text-xs"
@@ -216,7 +278,7 @@ export function DomainEstimationManager({
                                         variant="outline" 
                                         className="text-xs bg-indigo-100/50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30"
                                     >
-                                        ±{domain.marginOfError}% / {domain.confidenceLevel}%
+                                        {formatMarginOfError(domain.marginOfError, estimationType)} / {domain.confidenceLevel}%
                                     </Badge>
                                     {expandedDomain === domain.id ? (
                                         <ChevronUp className="w-4 h-4 text-indigo-500" />
@@ -249,7 +311,7 @@ export function DomainEstimationManager({
                                             value={domain.name}
                                             onChange={(e) => updateDomain(domain.id, { name: e.target.value })}
                                             className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
-                                            placeholder="如：广东省、女性群体、18-25岁"
+                                            placeholder="如：东部地区、31-50岁、A层"
                                         />
                                     </div>
 
@@ -312,14 +374,15 @@ export function DomainEstimationManager({
                                             </Select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">允许误差 (%)</Label>
+                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">{marginLabel}{marginInputSuffix}</Label>
                                             <Input
                                                 type="number"
                                                 value={domain.marginOfError}
-                                                onChange={(e) => updateDomain(domain.id, { marginOfError: parseInt(e.target.value) || 0 })}
+                                                onChange={(e) => updateDomain(domain.id, { marginOfError: Number.parseFloat(e.target.value) || 0 })}
                                                 className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
-                                                min={1}
-                                                max={20}
+                                                min={isMeanEstimation ? 0.1 : 1}
+                                                max={isMeanEstimation ? undefined : 20}
+                                                step={isMeanEstimation ? 0.1 : 1}
                                             />
                                         </div>
                                     </div>
@@ -333,7 +396,8 @@ export function DomainEstimationManager({
                                             </span>
                                         </div>
                                         <p className="text-xs text-indigo-800 dark:text-indigo-200 mt-1">
-                                            基于置信度 {domain.confidenceLevel}% 和误差限 ±{domain.marginOfError}%
+                                            基于置信度 {domain.confidenceLevel}%、{marginLabel} {formatMarginOfError(domain.marginOfError, estimationType)}
+                                            {isMeanEstimation && populationVariance != null ? ` 和 σ²=${populationVariance}` : ""}
                                         </p>
                                     </div>
                                 </div>
@@ -367,9 +431,16 @@ export function DomainEstimationManager({
                             </div>
                             
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-indigo-700 dark:text-indigo-300">子总体最大需求</span>
+                                <span className="text-indigo-700 dark:text-indigo-300">单层最大需求</span>
                                 <span className="font-mono text-indigo-900 dark:text-indigo-100">
-                                    {Math.max(0, ...domains.map(d => d.requiredSampleSize)).toLocaleString()}
+                                    {largestRequiredSampleSize.toLocaleString()}
+                                </span>
+                            </div>
+
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="text-indigo-700 dark:text-indigo-300">各层样本量合计</span>
+                                <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                                    {totalRequiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
 
@@ -393,10 +464,22 @@ export function DomainEstimationManager({
                                     </div>
                                 </div>
                             )}
+
+                            {populationOverflow > 0 && (
+                                <div className="rounded-lg bg-rose-50/80 border border-rose-200 p-2 dark:bg-rose-900/30 dark:border-rose-700/50">
+                                    <div className="flex items-start gap-2 text-xs text-rose-800 dark:text-rose-200">
+                                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                        <span>
+                                            当前各层规模之和为 {allocatedPopulationSize.toLocaleString()}，已超过总体规模 {totalPopulationSize.toLocaleString()}。
+                                            这通常表示层之间发生重叠，不能直接按 Σn_h 相加。
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <p className="text-xs text-indigo-900 dark:text-indigo-100 mt-3 leading-relaxed">
-                            原则：总样本量 = max(基准样本量, 各子总体所需样本量)。取最大值可确保所有子总体都有足够精度。
+                            原则：当各层互不重叠时，总样本量可写为 Σn_h。若录入的是重叠 domain，则不能直接相加。
                         </p>
                     </div>
                 )}
@@ -440,7 +523,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                     <div className="flex justify-between items-center mb-2">
                         <div>
                             <span className="text-sm font-medium text-violet-900 dark:text-violet-100">方案二</span>
-                            <span className="text-xs text-violet-500 ml-2">需各子总体分别精确估计</span>
+                            <span className="text-xs text-violet-500 ml-2">互斥各层分别精确估计</span>
                         </div>
                         <span className="font-mono font-bold text-violet-700 dark:text-violet-300">
                             n = {domainTotal.toLocaleString()}
@@ -458,7 +541,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                             <div>
                                 <p>
                                     <span className="font-medium">方案二是方案一的 {ratio.toFixed(1)} 倍</span>
-                                    —— 对各子总体分别进行估计时，需确保每个子总体样本量都足够大，总样本量远大于仅估计总体时的需求。
+                                    —— 当需要对互斥各层分别进行估计时，需确保每层样本量都足够大，总样本量往往远高于仅估计总体时的需求。
                                 </p>
                                 <p className="mt-1 text-amber-700/90 dark:text-amber-300/90">
                                     最终样本量的确定需要在精度、费用、时限和操作可行性之间进行协调。

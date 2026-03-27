@@ -7,8 +7,8 @@ export type AdvancedTab =
     | "cluster"
     | "metrics";
 
-/** 会写入「非标准公式」路径样本量的高级工具 — 应用后主面板参数锁定 */
-export type AdvancedNonStandardSampleLockSource = Extract<
+/** 会写入「非标准公式」路径样本量的高级工具 — 应用后仅记录最终样本量来源 */
+export type AdvancedNonStandardSampleSource = Extract<
     AdvancedTab,
     "cost" | "multivar" | "cv" | "cluster"
 >;
@@ -26,8 +26,8 @@ export const ADVANCED_TAB_CONFIG: Array<{
     {
         key: "domain",
         label: "子总体估计",
-        title: "子总体（域）估计支持",
-        description: "设置各子总体的精度要求",
+        title: "互斥子总体（层）估计支持",
+        description: "为互不重叠的子总体设置精度要求",
         activeClass: ADVANCED_TAB_ACTIVE_CLASS,
     },
     {

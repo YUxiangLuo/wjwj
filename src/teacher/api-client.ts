@@ -5,6 +5,7 @@
 
 import { shouldDispatchSessionExpired, createSessionExpiredInterceptor } from "@/lib/session-expired";
 import type { Question } from "@/lib/questionnaire-types";
+import type { QuestionnaireData, SamplePlanData, SamplingResultsData } from "../student/api-client";
 
 // ============================================================
 // Types
@@ -129,9 +130,9 @@ export interface GradingListParams {
 export interface SubmissionDetail extends GradingItem {
     topicDesc: string;
     reportContent: string;
-    samplePlan: any;
-    questionnaire: any;
-    samplingResults?: any;
+    samplePlan: SamplePlanData | null;
+    questionnaire: QuestionnaireData | null;
+    samplingResults?: SamplingResultsData | null;
     questionnairePdfPath?: string | null;
     reportPdfPath?: string | null;
     pdfStatus?: "pending" | "generating" | "ready" | "failed";

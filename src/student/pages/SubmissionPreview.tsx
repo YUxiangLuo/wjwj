@@ -22,6 +22,12 @@ import {
     formatSystematicRange,
     getSystematicAcceptedRange,
 } from "../experiment/systematic-sampling";
+import {
+    formatMarginOfError,
+    getAdvancedPlanSourceLabel,
+    getEstimationTypeLabel,
+    getMarginOfErrorLabel,
+} from "../experiment/sample-plan-display";
 import { getPreviewSubmitBlocker } from "../experiment/preview-submit";
 import { ImmersiveReportPreview } from "../components/ImmersiveReportPreview";
 import { clearReportDraft } from "../draft-sync";
@@ -215,6 +221,7 @@ export function SubmissionPreview() {
     const canSubmit = submitBlocker === null;
     const systematicAcceptedRange = getSystematicAcceptedRange(samplePlan?.finalSampleSize);
     const systematicSampleCount = samplingResults?.systematic?.sampleCount ?? null;
+    const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
     const showSystematicSampleNote =
         samplePlan !== null &&
         samplingResults?.systematic?.completed === true &&
@@ -280,10 +287,25 @@ export function SubmissionPreview() {
                                     <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">阶段二：样本量规划</h3>
                                     {samplePlan ? (
                                         <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                                            <p>估计类型：{getEstimationTypeLabel(samplePlan.estimationType)}</p>
+                                            {advancedSourceLabel && (
+                                                <p>最终样本量来源：{advancedSourceLabel}（高级工具）</p>
+                                            )}
                                             <p>置信水平：{samplePlan.confidenceLevel}%</p>
-                                            <p>允许误差：{samplePlan.marginOfError}%</p>
+                                            <p>
+                                                {getMarginOfErrorLabel(samplePlan.estimationType)}：
+                                                {formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}
+                                            </p>
+                                            {samplePlan.estimationType === "mean" && samplePlan.populationVariance != null && (
+                                                <p>总体方差 σ²：{samplePlan.populationVariance}</p>
+                                            )}
                                             <p>建议样本量：{samplePlan.recommendedSize}</p>
                                             <p>最终样本量：{samplePlan.finalSampleSize}</p>
+                                            {advancedSourceLabel && (
+                                                <p className="text-xs text-amber-700 dark:text-amber-300">
+                                                    说明：推荐样本量仍对应常规公式建议，当前最终样本量来自「{advancedSourceLabel}」。
+                                                </p>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="text-sm text-slate-500 italic">暂无样本量规划数据</div>

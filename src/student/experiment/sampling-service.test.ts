@@ -35,3 +35,33 @@ test("systematic sampling still accepts K values whose count range stays within 
 
     expect(result.result.sampleCount).toBe(10);
 });
+
+test("PPS sampling rejects categorical size fields even when the field exists", async () => {
+    const result = await executeSamplingAction({
+        method: "pps",
+        rawParams: { sizeField: "gender", sampleSize: 10, seed: 2026 },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: { numeric: ["income"] },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+
+    expect(result.errorMessage).toBe("规模变量需为包含正数的数值字段");
+});
+
+test("PPS sampling rejects fields that have no positive numeric size values", async () => {
+    const result = await executeSamplingAction({
+        method: "pps",
+        rawParams: { sizeField: "weight", sampleSize: 10, seed: 2026 },
+        targetSampleSize: 10,
+        population: population.map((row) => ({ ...row, weight: 0 })),
+        fieldMapping: { numeric: ["weight"] },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+
+    expect(result.errorMessage).toBe("规模变量需为包含正数的数值字段");
+});

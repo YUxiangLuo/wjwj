@@ -40,6 +40,8 @@ import {
 import { eq, and, inArray } from "drizzle-orm";
 import type { Question, QuestionType } from "../../lib/questionnaire-types";
 import { SubmissionPdfStatus } from "../../student/experiment/pdf-status";
+import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
+import { parseStoredJson } from "../../student/experiment/serialization";
 
 function buildSeedRecommendQuestion(r: {
     topicIdx: number;
@@ -1161,10 +1163,13 @@ async function seed() {
             .select({
                 id: experiment.id,
                 questionnaire: experiment.questionnaire,
+                samplePlan: experiment.samplePlan,
+                samplingResults: experiment.samplingResults,
                 reportContent: experiment.reportContent,
                 studentName: student.name,
                 studentIdText: student.studentId,
                 topicName: topic.name,
+                populationSize: topic.excelRowCount,
             })
             .from(experiment)
             .innerJoin(student, eq(experiment.studentId, student.id))
@@ -1178,6 +1183,8 @@ async function seed() {
             );
         if (!expRow) continue;
 
+        const normalizedPopulationSize = typeof expRow.populationSize === "number" ? expRow.populationSize : null;
+
         const submissionSeed = {
             pdfStatus: s.questionnairePdfPath && s.reportPdfPath ? SubmissionPdfStatus.READY : SubmissionPdfStatus.PENDING,
             pdfGenerationAttempts: s.questionnairePdfPath && s.reportPdfPath ? 1 : 0,
@@ -1185,7 +1192,13 @@ async function seed() {
             pdfGeneratedAt: s.questionnairePdfPath && s.reportPdfPath ? daysAgo(s.submittedAgo ?? 1) : null,
             pdfError: null,
             experimentId: expRow.id,
-            pdfSnapshotQuestionnaire: expRow.questionnaire ?? null,
+            pdfSnapshotQuestionnaire: parseStoredJson(expRow.questionnaire) ?? null,
+            pdfSnapshotSamplingResults: parseStoredJson(expRow.samplingResults) ?? null,
+            pdfSnapshotSamplePlan: normalizeSamplePlanData(
+                parseStoredJson(expRow.samplePlan),
+                normalizedPopulationSize,
+            ),
+            pdfSnapshotPopulationSize: normalizedPopulationSize,
             pdfSnapshotReportContent: expRow.reportContent ?? "",
             pdfSnapshotTopicName: expRow.topicName ?? "未命名课题",
             pdfSnapshotStudentName: expRow.studentName ?? expRow.studentIdText,

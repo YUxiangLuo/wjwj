@@ -176,16 +176,16 @@ test("PPS sampling with n=0 returns empty array", async () => {
     expect(result).toEqual([]);
 });
 
-test("PPS sampling falls back to simple random when all sizes are zero", async () => {
+test("PPS sampling returns empty array when all sizes are zero", async () => {
     const zeroSizePop = Array.from({ length: 20 }, (_, i) => ({ id: i + 1, size: 0 }));
     const result = await performPPSSampling(zeroSizePop, "size", 5, createSeededRandom("pps-zero-size"));
-    expect(result.length).toBe(5);
+    expect(result).toEqual([]);
 });
 
-test("PPS sampling falls back when size field is missing", async () => {
+test("PPS sampling returns empty array when size field is missing", async () => {
     const noSizePop = Array.from({ length: 20 }, (_, i) => ({ id: i + 1 }));
     const result = await performPPSSampling(noSizePop, "missing_field", 5, createSeededRandom("pps-no-field"));
-    expect(result.length).toBe(5);
+    expect(result).toEqual([]);
 });
 
 test("PPS sampling returns exact count even with highly skewed sizes", async () => {

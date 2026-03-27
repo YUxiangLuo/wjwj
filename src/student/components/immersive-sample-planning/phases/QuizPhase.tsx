@@ -51,14 +51,14 @@ const QUESTIONS: QuizQuestion[] = [
         explanation: "deff 是方差膨胀系数，最终样本量 n = n₁ × deff。deff=2 表示复杂抽样的方差是 SRS 的 2 倍，需要 2 倍样本来弥补。",
     },
     {
-        question: "需要对 3 个子总体分别做精度为 ±5% 的估计，相比仅做整体估计，总样本量通常会？",
+        question: "需要对 3 个互斥子总体分别做精度为 ±5% 的估计，相比仅做整体估计，总样本量通常会？",
         options: [
             "保持不变",
             "增加为约 2-3 倍",
             "减少",
         ],
         correctIndex: 1,
-        explanation: "每个子总体都需要达到 ±5% 的精度要求，各自需要足够的样本量。各域样本量之和通常远大于整体估计所需的样本量，可能增加 2-3 倍甚至更多。",
+        explanation: "每个互斥子总体都需要达到 ±5% 的精度要求，各层都要有足够样本量。按 Σn_h 求和后，所需总样本量通常显著高于仅做整体估计，可能增加 2-3 倍甚至更多。",
     },
     {
         question: "奈曼分配（Neyman allocation）相比按比例分配的优势是？",
@@ -118,6 +118,9 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 leading-snug">
                     {q.question}
                 </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                    最后用几道题快速确认一下：你是否抓住了样本量规划里最关键的概念。
+                </p>
             </div>
 
             <div className="max-w-md mx-auto space-y-3">
@@ -186,7 +189,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                             className="text-slate-400 hover:text-slate-600"
                         >
                             <SkipForward className="w-4 h-4 mr-1" />
-                            跳过自检
+                            跳过，直接去确认
                         </Button>
                         <Button
                             type="button"
@@ -204,7 +207,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                         data-testid="immersive-sp-quiz-next"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
                     >
-                        {isLast ? "完成自检" : "下一题"}
+                        {isLast ? "完成自检，去确认" : "下一题"}
                         <ChevronRight className="w-5 h-5 ml-2" />
                     </Button>
                 )}

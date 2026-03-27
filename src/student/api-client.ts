@@ -78,11 +78,13 @@ export type { QuestionType, Question, QuestionnaireData };
 
 /**
  * 与实验一并持久化、经 `experimentApi.save` 同步到后端的样本量规划字段。
- * 沉浸式规划里「高级工具」产生的辅助状态（子总体划分、多变量调查表、成本/CV/整群方案的中间数据等）
- * 仅用于前端会话内推演与 UI，不进入本结构与后端同步逻辑（见 P0 约定）。
+ * 高级工具的完整中间状态（子总体划分、多变量调查表、成本/CV/整群方案的明细参数等）
+ * 仍只保留在前端会话内；但若最终样本量来自某个非标准工具，会额外记录一个最小来源标签，
+ * 供分析页、预览页和教师端说明「最终 n 从何而来」。
  */
 export interface SamplePlanData {
     estimationType?: "proportion" | "mean";
+    advancedPlanSource?: "cost" | "multivar" | "cv" | "cluster";
     confidenceLevel: string;
     /**
      * 比例估计时为百分比（如 5 表示 ±5%），均值估计时为绝对误差（与均值同单位，如 2 表示 ±2）。
