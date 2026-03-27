@@ -146,3 +146,31 @@ test("AnalysisReport restores a valid local report draft before persistence clea
     expect(localStorage.getItem(draftKey)).not.toBeNull();
     expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1);
 });
+
+test("AnalysisReport shows persisted advanced tool source in the sample plan panel", async () => {
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplePlan: {
+            finalSampleSize: 420,
+            recommendedSize: 367,
+            confidenceLevel: "95",
+            marginOfError: 5,
+            estimationType: "proportion",
+            designEffect: 1,
+            nonResponseRate: 0,
+            advancedPlanSource: "cv",
+        },
+    };
+
+    const view = render(
+        <AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />
+    );
+
+    await waitFor(() => {
+        expect(view.getByText("最终样本量来源")).toBeTruthy();
+    });
+
+    expect(view.getByText("CV-based计算（高级工具）")).toBeTruthy();
+    expect(view.getByText(/完整中间状态与推演明细不会完整写入实验存档/)).toBeTruthy();
+    expect(view.getByText(/当前最终样本量由「CV-based计算」回写/)).toBeTruthy();
+});

@@ -6,6 +6,7 @@ import { kickSubmissionPdfProcessing } from "./submission-pdf";
 import { SubmissionPdfStatus } from "./pdf-status";
 import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "./status";
+import { normalizeSamplePlanData } from "./sample-plan-display";
 import {
     getTargetSampleSizeFromSamplePlan,
     validateQuestionnaireForSubmit,
@@ -95,6 +96,8 @@ export async function submitStudentExperiment(params: {
     student: SubmitStudentInfo;
 }) {
     const questionnaire = parseStoredJson<Record<string, unknown>>(params.experimentRecord.questionnaire);
+    const samplePlan = parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan);
+    const samplingResults = parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults);
 
     const validation = validateExperimentSubmission({
         experimentRecord: params.experimentRecord,
@@ -103,6 +106,9 @@ export async function submitStudentExperiment(params: {
     if (!validation.ok) {
         return validation;
     }
+
+    const normalizedPopulationSize = normalizePopulationSize(params.taskInfo.populationSize);
+    const samplePlanSnapshot = normalizeSamplePlanData(samplePlan, normalizedPopulationSize);
 
     const transactionResult: SubmitFailure | SubmitSuccess = await db.transaction(async (tx) => {
         const nextLastSavedAt = new Date();
@@ -128,6 +134,9 @@ export async function submitStudentExperiment(params: {
         const [submissionResult] = await tx.insert(submission).values({
             experimentId: params.experimentRecord.id,
             pdfSnapshotQuestionnaire: questionnaire,
+            pdfSnapshotSamplingResults: samplingResults,
+            pdfSnapshotSamplePlan: samplePlanSnapshot,
+            pdfSnapshotPopulationSize: normalizedPopulationSize,
             pdfSnapshotReportContent: params.experimentRecord.reportContent ?? "",
             pdfSnapshotTopicName: params.taskInfo.topicName ?? "未命名课题",
             pdfSnapshotStudentName: params.student.name ?? params.student.studentId,

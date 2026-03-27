@@ -15,6 +15,14 @@ import {
     SUBMISSION_PDF_RETRY_DELAY_MS,
     SUBMISSION_PDF_STALE_GENERATING_MS,
 } from "./pdf-status";
+import type { SamplePlanData } from "../api-client";
+import {
+    formatMarginOfError,
+    getAdvancedPlanSourceLabel,
+    getEstimationTypeLabel,
+    getMarginOfErrorLabel,
+    normalizeSamplePlanData,
+} from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
 
 const SUBMISSION_PDF_BATCH_LIMIT = 3;
@@ -46,6 +54,8 @@ interface SubmissionPdfJobPayload {
     topicName: string;
     submittedAt: Date;
     questionnaire: SubmissionPdfQuestionnaire | null;
+    samplePlan: SamplePlanData | null;
+    populationSize: number | null;
     reportContent: string;
 }
 
@@ -188,6 +198,8 @@ async function generateQuestionnairePdf(params: {
 async function generateReportPdf(params: {
     outputPath: string;
     reportContent: string;
+    samplePlan: SamplePlanData | null;
+    populationSize: number | null;
     meta: { topicName: string; studentName: string; submittedAt: Date };
 }) {
     await writePdf(params.outputPath, (doc) => {
@@ -197,8 +209,49 @@ async function generateReportPdf(params: {
         doc.text(`学生：${params.meta.studentName}`);
         doc.text(`提交时间：${formatDateTimeCN(params.meta.submittedAt)}`);
         doc.moveDown();
+        const samplePlanSummaryLines = buildSamplePlanSummaryLines(params.samplePlan, params.populationSize);
+        if (samplePlanSummaryLines.length > 0) {
+            doc.fontSize(14).text("样本量规划摘要");
+            doc.moveDown(0.5);
+            doc.fontSize(12);
+            for (const line of samplePlanSummaryLines) {
+                doc.text(line);
+            }
+            doc.moveDown();
+        }
+        doc.fontSize(14).text("报告正文");
+        doc.moveDown(0.5);
         doc.fontSize(12).text(getRichTextPlainText(params.reportContent) || "");
     });
+}
+
+export function buildSamplePlanSummaryLines(samplePlan: SamplePlanData | null, populationSize: number | null = null) {
+    if (!samplePlan) return [];
+
+    const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan.advancedPlanSource);
+    const lines = [
+        ...(populationSize != null && populationSize > 0 ? [`总体规模 N：${populationSize.toLocaleString()}`] : []),
+        `估计类型：${getEstimationTypeLabel(samplePlan.estimationType)}`,
+        ...(advancedSourceLabel ? [`最终样本量来源：${advancedSourceLabel}（高级工具）`] : []),
+        `置信水平：${samplePlan.confidenceLevel}%`,
+        `${getMarginOfErrorLabel(samplePlan.estimationType)}：${
+            samplePlan.estimationType === "mean"
+                ? `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（与均值同单位）`
+                : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（边际误差）`
+        }`,
+        ...(samplePlan.estimationType === "mean" && samplePlan.populationVariance != null
+            ? [`总体方差 σ²：${samplePlan.populationVariance}`]
+            : []),
+        `设计效应 deff：${samplePlan.designEffect.toFixed(2)}`,
+        `预期无回答率：${Math.round(samplePlan.nonResponseRate * 100)}%`,
+        `推荐样本量 n：${samplePlan.recommendedSize.toLocaleString()}`,
+        `最终样本量 n：${samplePlan.finalSampleSize.toLocaleString()}`,
+        ...(advancedSourceLabel
+            ? [`说明：推荐样本量仍对应常规公式建议，当前最终样本量来自「${advancedSourceLabel}」。`]
+            : []),
+    ];
+
+    return lines;
 }
 
 function getSubmissionPdfPaths(submissionId: number) {
@@ -245,11 +298,15 @@ export async function loadSubmissionPdfJobPayload(submissionId: number): Promise
             currentStudentName: student.name,
             teacherId: topic.teacherId,
             currentTopicName: topic.name,
+            populationSize: topic.excelRowCount,
+            snapshotPopulationSize: submission.pdfSnapshotPopulationSize,
             submittedAt: submission.submittedAt,
             snapshotQuestionnaire: submission.pdfSnapshotQuestionnaire,
+            snapshotSamplePlan: submission.pdfSnapshotSamplePlan,
             snapshotReportContent: submission.pdfSnapshotReportContent,
             snapshotTopicName: submission.pdfSnapshotTopicName,
             snapshotStudentName: submission.pdfSnapshotStudentName,
+            currentSamplePlan: experiment.samplePlan,
         })
         .from(submission)
         .innerJoin(experiment, eq(submission.experimentId, experiment.id))
@@ -272,6 +329,11 @@ export async function loadSubmissionPdfJobPayload(submissionId: number): Promise
         topicName: row.snapshotTopicName ?? row.currentTopicName ?? "未命名课题",
         submittedAt: row.submittedAt,
         questionnaire: parseStoredJson<SubmissionPdfQuestionnaire>(row.snapshotQuestionnaire),
+        samplePlan: normalizeSamplePlanData(
+            parseStoredJson(row.snapshotSamplePlan) ?? parseStoredJson(row.currentSamplePlan),
+            row.snapshotPopulationSize ?? row.populationSize ?? null,
+        ),
+        populationSize: row.snapshotPopulationSize ?? row.populationSize ?? null,
         reportContent: row.snapshotReportContent ?? "",
     };
 }
@@ -447,6 +509,8 @@ async function processClaimedSubmissionPdfJob(job: ClaimedSubmissionPdfJob) {
         await generateReportPdf({
             outputPath: reportTempPath,
             reportContent: payload.reportContent,
+            samplePlan: payload.samplePlan,
+            populationSize: payload.populationSize,
             meta: {
                 topicName: payload.topicName,
                 studentName: payload.studentName,

@@ -5,6 +5,7 @@ import { assistant, assistantClass, class_, experiment, student, submission, tas
 import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { getSubmissionPdfMessage, getSubmissionPdfState } from "../../student/experiment/pdf-status";
+import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
 import { parseStoredJson } from "../../student/experiment/serialization";
 import {
     ASSISTANT_USER_TYPE,
@@ -199,9 +200,17 @@ const gradingDetailRoutes: RouteDefinition = {
                 className: class_.name,
                 topicName: topic.name,
                 topicDesc: topic.description,
+                populationSize: topic.excelRowCount,
                 weightConfig: topic.weightConfig,
                 status: submission.status,
                 submittedAt: submission.submittedAt,
+                snapshotStudentName: submission.pdfSnapshotStudentName,
+                snapshotTopicName: submission.pdfSnapshotTopicName,
+                snapshotPopulationSize: submission.pdfSnapshotPopulationSize,
+                snapshotQuestionnaire: submission.pdfSnapshotQuestionnaire,
+                snapshotSamplingResults: submission.pdfSnapshotSamplingResults,
+                snapshotSamplePlan: submission.pdfSnapshotSamplePlan,
+                snapshotReportContent: submission.pdfSnapshotReportContent,
                 lockedById: submission.lockedById,
                 lockedByType: submission.lockedByType,
                 lockedAt: submission.lockedAt,
@@ -281,10 +290,17 @@ const gradingDetailRoutes: RouteDefinition = {
 
         return json({
             ...row,
-            topic: row.topicName,
-            questionnaire: parseStoredJson(row.questionnaire),
-            samplePlan: parseStoredJson(row.samplePlan),
-            samplingResults: parseStoredJson(row.samplingResults),
+            studentName: row.snapshotStudentName ?? row.studentName,
+            topic: row.snapshotTopicName ?? row.topicName,
+            topicName: row.snapshotTopicName ?? row.topicName,
+            reportContent: row.snapshotReportContent ?? row.reportContent ?? "",
+            questionnaire: parseStoredJson(row.snapshotQuestionnaire) ?? parseStoredJson(row.questionnaire),
+            samplePlan: normalizeSamplePlanData(
+                parseStoredJson(row.snapshotSamplePlan) ?? parseStoredJson(row.samplePlan),
+                row.snapshotPopulationSize ?? row.populationSize ?? null,
+            ),
+            samplingResults: parseStoredJson(row.snapshotSamplingResults) ?? parseStoredJson(row.samplingResults),
+            populationSize: row.snapshotPopulationSize ?? row.populationSize,
             weights,
             readonly: lockedByOther,
             isAssistant,
