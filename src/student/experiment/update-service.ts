@@ -63,6 +63,70 @@ function validateStageAdvance(params: {
     return null;
 }
 
+function getNormalizedRequestedStage(currentStage: number | undefined) {
+    if (currentStage === undefined) {
+        return undefined;
+    }
+
+    return Number(currentStage);
+}
+
+type ComparableSamplePlanBasis = {
+    estimationType: "proportion" | "mean";
+    confidenceLevel: string;
+    marginOfError: number;
+    populationVariance: number | null;
+    designEffect: number;
+    nonResponseRate: number;
+    advancedPlanSource: "cost" | "multivar" | "cv" | "cluster" | null;
+};
+
+function getComparableSamplePlanBasis(samplePlan: unknown): ComparableSamplePlanBasis | null {
+    if (!samplePlan || typeof samplePlan !== "object") {
+        return null;
+    }
+
+    const data = samplePlan as Record<string, unknown>;
+    const confidenceLevel = typeof data.confidenceLevel === "string"
+        ? data.confidenceLevel
+        : String(data.confidenceLevel ?? "");
+    const marginOfError = Number(data.marginOfError);
+
+    if (!confidenceLevel || !Number.isFinite(marginOfError) || marginOfError <= 0) {
+        return null;
+    }
+
+    const estimationType = data.estimationType === "mean" ? "mean" : "proportion";
+    const designEffect = Number(data.designEffect);
+    const nonResponseRate = Number(data.nonResponseRate);
+    const populationVariance = Number(data.populationVariance);
+    const advancedPlanSource =
+        data.advancedPlanSource === "cost"
+        || data.advancedPlanSource === "multivar"
+        || data.advancedPlanSource === "cv"
+        || data.advancedPlanSource === "cluster"
+            ? data.advancedPlanSource
+            : null;
+
+    return {
+        estimationType,
+        confidenceLevel,
+        marginOfError,
+        populationVariance: estimationType === "mean" && Number.isFinite(populationVariance) && populationVariance > 0
+            ? populationVariance
+            : null,
+        designEffect: Number.isFinite(designEffect) && designEffect > 0 ? designEffect : 1,
+        nonResponseRate: Number.isFinite(nonResponseRate) && nonResponseRate >= 0 && nonResponseRate < 1 ? nonResponseRate : 0,
+        advancedPlanSource,
+    };
+}
+
+function haveComparableSamplePlanBasisChanged(previousSamplePlan: unknown, nextSamplePlan: unknown) {
+    const previousBasis = getComparableSamplePlanBasis(previousSamplePlan);
+    const nextBasis = getComparableSamplePlanBasis(nextSamplePlan);
+    return JSON.stringify(previousBasis) !== JSON.stringify(nextBasis);
+}
+
 export function buildExperimentSaveUpdates(params: {
     experimentRecord: ExperimentRecord;
     body: {
@@ -88,9 +152,10 @@ export function buildExperimentSaveUpdates(params: {
     const nextQuestionnaire = params.body.questionnaire !== undefined
         ? params.body.questionnaire
         : parseStoredJson(exp.questionnaire);
+    const previousSamplePlan = parseStoredJson(exp.samplePlan);
     const nextSamplePlan = params.body.samplePlan !== undefined
         ? attachCalculatedSampleSize(params.body.samplePlan as Record<string, any>, params.populationSize)
-        : parseStoredJson(exp.samplePlan);
+        : previousSamplePlan;
     const nextSamplingResults = params.body.samplingResults !== undefined
         ? params.body.samplingResults
         : parseStoredJson(exp.samplingResults);
@@ -99,8 +164,42 @@ export function buildExperimentSaveUpdates(params: {
         version: exp.version + 1,
     };
 
-    if (params.body.currentStage !== undefined) {
-        const nextStage = Number(params.body.currentStage);
+    if (params.body.samplePlan !== undefined) {
+        const samplePlanError = validateSamplePlanForSubmit(nextSamplePlan, params.populationSize ?? null);
+        if (samplePlanError) {
+            return fail(samplePlanError, "VALIDATION_ERROR");
+        }
+    }
+
+    const previousTargetSampleSize = getTargetSampleSizeFromSamplePlan(previousSamplePlan);
+    const nextTargetSampleSize = getTargetSampleSizeFromSamplePlan(nextSamplePlan);
+    const shouldInvalidateSampling =
+        params.body.samplePlan !== undefined
+        && previousTargetSampleSize !== nextTargetSampleSize;
+    const shouldInvalidateReport =
+        params.body.samplePlan !== undefined
+        && (
+            shouldInvalidateSampling
+            || haveComparableSamplePlanBasisChanged(previousSamplePlan, nextSamplePlan)
+        );
+
+    let effectiveCurrentStage = getNormalizedRequestedStage(params.body.currentStage);
+    let effectiveSamplingResults = nextSamplingResults;
+
+    if (shouldInvalidateSampling) {
+        effectiveSamplingResults = null;
+
+        if (effectiveCurrentStage === undefined) {
+            if (exp.currentStage > 3) {
+                effectiveCurrentStage = 3;
+            }
+        } else if (effectiveCurrentStage > 3) {
+            effectiveCurrentStage = 3;
+        }
+    }
+
+    if (effectiveCurrentStage !== undefined) {
+        const nextStage = effectiveCurrentStage;
         if (!isValidStage(nextStage)) {
             return fail("当前阶段必须是0-4的整数", "VALIDATION_ERROR");
         }
@@ -113,7 +212,7 @@ export function buildExperimentSaveUpdates(params: {
             currentStage: exp.currentStage,
             questionnaire: nextQuestionnaire,
             samplePlan: nextSamplePlan,
-            samplingResults: nextSamplingResults,
+            samplingResults: effectiveSamplingResults,
             populationSize: params.populationSize,
         });
         if (stageAdvanceError) {
@@ -131,6 +230,20 @@ export function buildExperimentSaveUpdates(params: {
     if (params.body.samplePlan !== undefined) updates.samplePlan = nextSamplePlan;
     if (params.body.samplingResults !== undefined) updates.samplingResults = params.body.samplingResults;
     if (params.body.reportContent !== undefined) updates.reportContent = params.body.reportContent;
+
+    if (shouldInvalidateSampling) {
+        updates.samplingResults = null;
+        updates.stage3CompletedAt = null;
+
+        if (effectiveCurrentStage === 3 || (params.body.currentStage === undefined && exp.currentStage > 3)) {
+            updates.currentStage = 3;
+        }
+    }
+
+    if (shouldInvalidateReport) {
+        updates.reportContent = null;
+        updates.stage4CompletedAt = null;
+    }
 
     if (exp.status === ExperimentStatus.REJECTED) {
         updates.status = ExperimentStatus.IN_PROGRESS;

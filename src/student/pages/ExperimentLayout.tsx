@@ -157,7 +157,7 @@ export function ExperimentLayout() {
         loadExperiment();
     }, [taskId]);
 
-    // Save experiment data（samplePlan 仅含 SamplePlanData；高级工具子状态不入库，见 api-client 中 SamplePlanData 注释）
+    // Save experiment data（samplePlan 仅含核心决策参数；高级工具完整中间状态不入库，仅保留最小来源标签）
     const saveExperiment = useCallback(async (data: Partial<{
         currentStage: number;
         questionnaire: QuestionnaireData;

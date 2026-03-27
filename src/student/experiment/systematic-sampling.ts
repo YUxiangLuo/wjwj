@@ -45,6 +45,41 @@ export function getSystematicAcceptedRange(targetSampleSize: number | null | und
     };
 }
 
+export function findBestSystematicKValue(populationSize: number, targetSampleSize: number | null | undefined) {
+    const normalizedPopulationSize = Math.max(0, Math.floor(Number(populationSize) || 0));
+    const normalizedTargetSampleSize = toPositiveInteger(targetSampleSize);
+    const acceptedRange = getSystematicAcceptedRange(normalizedTargetSampleSize);
+
+    if (normalizedPopulationSize === 0 || normalizedTargetSampleSize === null || !acceptedRange) {
+        return null;
+    }
+
+    let bestMatch: { kValue: number; targetDiff: number; width: number; kDiff: number } | null = null;
+
+    for (let kValue = 1; kValue <= normalizedPopulationSize; kValue += 1) {
+        const sampleCountRange = getSystematicSampleCountRange(normalizedPopulationSize, kValue);
+        if (!isSystematicRangeWithinAcceptedRange(sampleCountRange, acceptedRange)) {
+            continue;
+        }
+
+        const midpoint = (sampleCountRange.min + sampleCountRange.max) / 2;
+        const targetDiff = Math.abs(midpoint - normalizedTargetSampleSize);
+        const width = sampleCountRange.max - sampleCountRange.min;
+        const kDiff = Math.abs((normalizedPopulationSize / normalizedTargetSampleSize) - kValue);
+
+        if (
+            !bestMatch
+            || targetDiff < bestMatch.targetDiff
+            || (targetDiff === bestMatch.targetDiff && width < bestMatch.width)
+            || (targetDiff === bestMatch.targetDiff && width === bestMatch.width && kDiff < bestMatch.kDiff)
+        ) {
+            bestMatch = { kValue, targetDiff, width, kDiff };
+        }
+    }
+
+    return bestMatch?.kValue ?? null;
+}
+
 export function isSystematicRangeWithinAcceptedRange(
     sampleCountRange: SystematicSampleCountRange,
     acceptedRange: SystematicAcceptedRange | null,

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+    findBestSystematicKValue,
     formatSystematicRange,
     getSystematicAcceptedRange,
     getSystematicSampleCountRange,
@@ -26,4 +27,9 @@ test("systematic range validation requires the whole fluctuation band to stay wi
 test("systematic range formatting collapses equal bounds", () => {
     expect(formatSystematicRange({ min: 10, max: 10 })).toBe("10");
     expect(formatSystematicRange({ min: 9, max: 10 })).toBe("9-10");
+});
+
+test("best systematic K prefers a valid value close to the target sample size", () => {
+    expect(findBestSystematicKValue(100, 13)).toBe(8);
+    expect(findBestSystematicKValue(15, 10)).toBeNull();
 });
