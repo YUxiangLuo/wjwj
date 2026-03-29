@@ -9,6 +9,7 @@ function withRouteParam(request: Request, id: string) {
 async function loadSubmissionRoutes(selectQueue: unknown[]) {
     const { db } = createMockDb({ select: selectQueue });
 
+    mock.restore();
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
         requireAuth: async () => ({
@@ -25,7 +26,7 @@ async function loadSubmissionRoutes(selectQueue: unknown[]) {
         }),
     }));
 
-    return import("./submissions");
+    return import(`./submissions?student-submissions-route-test=${Math.random()}`);
 }
 
 test("submission detail exposes pending pdf state and message", async () => {

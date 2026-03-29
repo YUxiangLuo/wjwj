@@ -9,6 +9,7 @@ function withRouteParam(request: Request, id: string) {
 async function loadTaskRoutes(selectQueue: unknown[]) {
     const { db } = createMockDb({ select: selectQueue });
 
+    mock.restore();
     mock.module("../../db", () => ({ db }));
     mock.module("../../server/system-config", () => ({
         getConfigNumber: async () => 30,
@@ -28,7 +29,7 @@ async function loadTaskRoutes(selectQueue: unknown[]) {
         }),
     }));
 
-    return import("./tasks");
+    return import(`./tasks?student-tasks-route-test=${Math.random()}`);
 }
 
 test("tasks route hides stale reject reason after experiment restarts", async () => {

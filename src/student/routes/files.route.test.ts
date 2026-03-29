@@ -16,6 +16,7 @@ async function loadFilesRoutes(options: {
 } = {}) {
     const { db } = createMockDb(options);
 
+    mock.restore();
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
         requireAuth: async () => ({
@@ -33,7 +34,7 @@ async function loadFilesRoutes(options: {
         }),
     }));
 
-    const module = await import("./files");
+    const module = await import(`./files?student-files-route-test=${Math.random()}`);
     return module;
 }
 

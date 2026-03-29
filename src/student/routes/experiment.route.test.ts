@@ -48,7 +48,7 @@ async function loadExperimentRoutes(options: {
         kickSubmissionPdfProcessing: () => undefined,
     }));
 
-    const module = await import("./experiment");
+    const module = await import(`./experiment?student-experiment-route-test=${Math.random()}`);
     return { module, operations };
 }
 

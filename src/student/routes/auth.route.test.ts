@@ -24,12 +24,13 @@ async function loadStudentAuthModule(options: {
     const { db, operations } = createMockDb(options);
     const config = options.config ?? {};
 
+    mock.restore();
     mock.module("../../db", () => ({ db }));
     mock.module("../../server/system-config", () => ({
         getConfigNumber: async (key: string, fallback: number) => config[key] ?? fallback,
     }));
 
-    const module = await import("./auth");
+    const module = await import(`./auth?student-auth-route-test=${Math.random()}`);
     return { module, operations };
 }
 
