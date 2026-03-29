@@ -117,6 +117,7 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
     const systematic = data.systematic as Record<string, unknown> | undefined;
     const pps = data.pps as Record<string, unknown> | undefined;
     const stratified = data.stratified as Record<string, unknown> | undefined;
+    const isPpsUnavailable = pps?.unavailable === true;
 
     if (!simple || !isSamplingStepCompleted(simple.completed)) {
         return "请先完成简单随机抽样";
@@ -126,7 +127,7 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
         return "请先完成系统抽样";
     }
 
-    if (!pps || !isSamplingStepCompleted(pps.completed)) {
+    if (!isPpsUnavailable && (!pps || !isSamplingStepCompleted(pps.completed))) {
         return "请先完成PPS抽样";
     }
 
@@ -146,12 +147,14 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
             return `系统抽样样本量需在 ${acceptedRange.min}-${acceptedRange.max} 之间`;
         }
 
-        const ppsCount = toInteger(pps.sampleCount);
-        if (ppsCount === null || ppsCount < 1) {
-            return "PPS抽样样本量需大于0";
-        }
-        if (acceptedRange && (ppsCount < acceptedRange.min || ppsCount > acceptedRange.max)) {
-            return `PPS抽样样本量需在目标样本量的80%-120%之间（${acceptedRange.min}-${acceptedRange.max}）`;
+        if (!isPpsUnavailable) {
+            const ppsCount = toInteger(pps?.sampleCount);
+            if (ppsCount === null || ppsCount < 1) {
+                return "PPS抽样样本量需大于0";
+            }
+            if (acceptedRange && (ppsCount < acceptedRange.min || ppsCount > acceptedRange.max)) {
+                return `PPS抽样样本量需在目标样本量的80%-120%之间（${acceptedRange.min}-${acceptedRange.max}）`;
+            }
         }
 
         const stratifiedLayers = Array.isArray(stratified.layers) ? stratified.layers : [];

@@ -33,6 +33,10 @@ import { SamplingSuccessState } from "../../components/SamplingSuccessState";
 import { SamplePreviewTable } from "../../components/SamplePreviewTable";
 import { StratifiedSamplingTab, type StratifiedLayer } from "../../components/StratifiedSamplingTab";
 import {
+    PPS_UNAVAILABLE_REASON,
+    PPS_UNAVAILABLE_STATUS_MESSAGE,
+} from "../../experiment/sampling-messages";
+import {
     formatSystematicRange,
     findBestSystematicKValue,
     getSystematicAcceptedRange,
@@ -98,6 +102,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [executionTimes, setExecutionTimes] = useState<Record<SamplingMethod, number | null>>({ simple: null, systematic: null, pps: null, stratified: null });
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [numericFields, setNumericFields] = useState<string[]>([]);
+    const [ppsEligibleFields, setPpsEligibleFields] = useState<string[]>([]);
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
 
     /** 从经典样本量规划「确认并进入下一阶段」进入时播放一次（sessionStorage 由 SamplePlanning 设置） */
@@ -130,6 +135,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 if (res.success && res.data?.numericFields) {
                     setNumericFields(res.data.numericFields);
                 }
+                if (res.success && res.data?.ppsEligibleFields) {
+                    setPpsEligibleFields(res.data.ppsEligibleFields);
+                }
             }).catch((e) => {
                 console.error("Failed to load population stats:", e);
             });
@@ -137,15 +145,31 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     }, [experiment?.taskId]);
 
     useEffect(() => {
-        if (numericFields.length === 0) {
+        if (ppsEligibleFields.length === 0) {
             setPpsSizeField("");
             return;
         }
 
-        if (!ppsSizeField || !numericFields.includes(ppsSizeField)) {
-            setPpsSizeField(numericFields[0] ?? "");
+        if (!ppsSizeField || !ppsEligibleFields.includes(ppsSizeField)) {
+            setPpsSizeField(ppsEligibleFields[0] ?? "");
         }
-    }, [numericFields, ppsSizeField]);
+    }, [ppsEligibleFields, ppsSizeField]);
+
+    useEffect(() => {
+        if (!hasValidSamplePlan) return;
+
+        if (ppsEligibleFields.length === 0) {
+            setPpsResult((current) => current?.unavailable
+                ? current
+                : {
+                    unavailable: true,
+                    unavailableReason: PPS_UNAVAILABLE_REASON,
+                });
+            return;
+        }
+
+        setPpsResult((current) => current?.unavailable ? null : current);
+    }, [hasValidSamplePlan, ppsEligibleFields.length]);
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
@@ -269,7 +293,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     };
 
     const executePPS = async () => {
-        if (!taskId || !hasValidSamplePlan || !ppsSizeField || numericFields.length === 0) return;
+        if (!taskId || !hasValidSamplePlan || !ppsSizeField || ppsEligibleFields.length === 0) return;
         setExecuting("pps");
         setAnimationSampledData(null);
         const startTime = performance.now();
@@ -313,9 +337,19 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const ppsMinSize = systematicAcceptedRange?.min ?? 1;
     const ppsMaxSize = systematicAcceptedRange?.max ?? N;
     const isPpsSizeValid = ppsSampleSize >= ppsMinSize && ppsSampleSize <= ppsMaxSize && ppsSampleSize >= 1 && ppsSampleSize <= N;
-    const hasPpsNumericField = numericFields.length > 0;
-
-    const allCompleted = simpleResult?.completed && systematicResult?.completed && ppsResult?.completed && stratifiedResult?.completed;
+    const hasPpsNumericField = ppsEligibleFields.length > 0;
+    const ppsCompletedOrUnavailable = Boolean(ppsResult?.completed || ppsResult?.unavailable || !hasPpsNumericField);
+    const ppsPreviewTotal = ppsResult?.sampleCount ?? ppsResult?.data?.length ?? 0;
+    const ppsSummaryFieldLabel = ppsResult?.sizeField
+        ? FIELD_LABELS[ppsResult.sizeField] || ppsResult.sizeField
+        : "所选规模变量";
+    const allCompleted = Boolean(simpleResult?.completed && systematicResult?.completed && ppsCompletedOrUnavailable && stratifiedResult?.completed);
+    const completedMethodCount = [
+        Boolean(simpleResult?.completed),
+        Boolean(systematicResult?.completed),
+        ppsCompletedOrUnavailable,
+        Boolean(stratifiedResult?.completed),
+    ].filter(Boolean).length;
 
     const handleConfirmNext = async () => {
         const saved = await saveResults();
@@ -649,7 +683,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                         <SelectValue placeholder="选择数值变量" />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                                        {numericFields.map(key => (
+                                                        {ppsEligibleFields.map(key => (
                                                             <SelectItem key={key} value={key}>
                                                                 {FIELD_LABELS[key] || key}
                                                             </SelectItem>
@@ -658,13 +692,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 </Select>
                                             ) : (
                                                 <div className="flex h-10 items-center rounded-md border border-rose-300/70 bg-rose-500/10 px-3 text-sm text-rose-700 dark:border-rose-800/70 dark:bg-rose-950/20 dark:text-rose-300" data-testid="student-sampling-pps-unavailable">
-                                                    当前总体未配置可用的数值型规模变量
+                                                    {PPS_UNAVAILABLE_STATUS_MESSAGE}
                                                 </div>
                                             )}
                                             <p className={`text-xs leading-relaxed ${hasPpsNumericField ? "text-slate-500 dark:text-slate-400" : "text-rose-600 dark:text-rose-300"}`}>
                                                 {hasPpsNumericField
-                                                    ? "选择一个数值变量（如收入、人口等），取值越大的单位被抽中概率越高。"
-                                                    : "PPS 抽样必须基于包含正数的数值规模变量；若缺失该字段，当前任务无法执行 PPS 抽样。"}
+                                                    ? "选择一个规模变量（如收入、人口等），该字段必须在总体中对每个单位都为正数。"
+                                                    : PPS_UNAVAILABLE_REASON}
                                             </p>
                                         </div>
                                         <div className="space-y-3">
@@ -713,7 +747,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         </div>
                                     ) : (
                                         <SamplingSuccessState
-                                            summary={`按 ${FIELD_LABELS[ppsResult.sizeField] || ppsResult.sizeField} 进行PPS抽样，共抽取 ${ppsResult.sampleCount} 个样本${executionTimes.pps !== null ? `，耗时 ${executionTimes.pps} ms` : ""}`}
+                                            summary={`按 ${ppsSummaryFieldLabel} 进行PPS抽样，共抽取 ${ppsPreviewTotal} 个样本${executionTimes.pps !== null ? `，耗时 ${executionTimes.pps} ms` : ""}`}
                                             onRerun={() => setAnimatingMethod("pps")}
                                             disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid}
                                             rerunTestId="student-sampling-pps-rerun"
@@ -737,7 +771,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             完成抽样后展示
                                         </div>
                                     ) : (
-                                        <SamplePreviewTable data={ppsResult.data ?? []} total={ppsResult.sampleCount} />
+                                        <SamplePreviewTable data={ppsResult.data ?? []} total={ppsPreviewTotal} />
                                     )}
                                 </CardContent>
                             </Card>
@@ -788,7 +822,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     上一阶段
                 </Button>
                 <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-200 dark:bg-slate-800 text-slate-500"}>
-                    {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${[simpleResult?.completed, systematicResult?.completed, ppsResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/4)`}
+                    {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${completedMethodCount}/4)`}
                     <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
             </div>
@@ -804,7 +838,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 mt-3 mb-3 space-y-2">
                                     <div className="flex justify-between"><span>简单随机抽样:</span> <span className="text-slate-800 dark:text-slate-200">{simpleResult?.sampleCount} 样本</span></div>
                                     <div className="flex justify-between"><span>系统抽样:</span> <span className="text-slate-800 dark:text-slate-200">{systematicResult?.sampleCount} 样本 (K={systematicResult?.kValue})</span></div>
-                                    <div className="flex justify-between"><span>PPS抽样:</span> <span className="text-slate-800 dark:text-slate-200">{ppsResult?.sampleCount} 样本</span></div>
+                                    <div className="flex justify-between">
+                                        <span>PPS抽样:</span>
+                                        <span className="text-slate-800 dark:text-slate-200">
+                                            {ppsResult?.unavailable
+                                                ? PPS_UNAVAILABLE_STATUS_MESSAGE
+                                                : `${ppsResult?.sampleCount} 样本`}
+                                        </span>
+                                    </div>
                                     <div className="flex justify-between"><span>分层抽样:</span> <span className="text-slate-800 dark:text-slate-200">{stratifiedResult?.layers?.reduce((a, l) => a + l.sampleCount, 0)} 样本</span></div>
                                 </div>
                                 <p>确认后将进入分析与报告阶段。</p>

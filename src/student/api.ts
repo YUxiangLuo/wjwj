@@ -3,7 +3,7 @@
  */
 
 import { loginRoutes, logoutRoutes, meRoutes, passwordRoutes, sessionRoutes } from "./routes/auth";
-import { experimentRoutes, resetRoutes, samplingActionRoutes, statsRoutes, submitRoutes } from "./routes/experiment";
+import { analysisMetricsRoutes, experimentRoutes, resetRoutes, samplingActionRoutes, statsRoutes, submitRoutes } from "./routes/experiment";
 import { attachmentDownloadRoutes, exportRoutes } from "./routes/files";
 import {
     announcementReadRoutes,
@@ -34,6 +34,7 @@ export const studentApiRoutes = {
     "/api/student/tasks/:id/experiment": experimentRoutes,
     "/api/student/tasks/:id/sampling": samplingActionRoutes,
     "/api/student/tasks/:id/stats": statsRoutes,
+    "/api/student/tasks/:id/analysis-metrics": analysisMetricsRoutes,
     "/api/student/tasks/:id/submit": submitRoutes,
     "/api/student/tasks/:id/reset": resetRoutes,
     "/api/student/tasks/:id/export": exportRoutes,

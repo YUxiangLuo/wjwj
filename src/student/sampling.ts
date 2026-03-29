@@ -69,67 +69,214 @@ export function performStratifiedSampling(data: any[], stratifyBy: string, layer
     return result;
 }
 
+export interface PPSSamplingResult<T> {
+    data: T[];
+    indices: number[];
+    inclusionProbabilities: number[];
+    randomStart: number;
+}
+
+export interface PreparedPPSSampling<T> {
+    data: T[];
+    sampleSize: number;
+    designFrame: PpsDesignFrame;
+}
+
+const PPS_EPSILON = 1e-9;
+
+function toPositiveSizeValue(value: unknown) {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0 ? numericValue : 0;
+}
+
+interface PpsDesignFrame {
+    certaintyIndices: number[];
+    certaintyProbabilities: number[];
+    systematicIndices: number[];
+    systematicProbabilities: number[];
+    systematicSampleSize: number;
+}
+
+function buildPpsWithoutReplacementDesign(sizes: number[], sampleSize: number): PpsDesignFrame | null {
+    const positiveIndices = sizes
+        .map((size, index) => ({ size, index }))
+        .filter((entry) => entry.size > 0)
+        .map((entry) => entry.index);
+
+    if (sampleSize < 1 || positiveIndices.length < sampleSize) {
+        return null;
+    }
+
+    let activeIndices = [...positiveIndices];
+    let remainingSampleSize = sampleSize;
+    let remainingTotal = activeIndices.reduce((sum, index) => sum + sizes[index]!, 0);
+    const certaintyIndices: number[] = [];
+    const certaintyProbabilities: number[] = [];
+
+    while (remainingSampleSize > 0 && activeIndices.length > 0) {
+        const certaintyThisRound = activeIndices.filter((index) =>
+            remainingTotal > 0 && (remainingSampleSize * sizes[index]! / remainingTotal) >= 1 - PPS_EPSILON
+        );
+
+        if (certaintyThisRound.length === 0) {
+            break;
+        }
+
+        for (const index of certaintyThisRound) {
+            certaintyIndices.push(index);
+            certaintyProbabilities.push(1);
+        }
+
+        const certaintySet = new Set(certaintyThisRound);
+        activeIndices = activeIndices.filter((index) => !certaintySet.has(index));
+        remainingSampleSize -= certaintyThisRound.length;
+        remainingTotal -= certaintyThisRound.reduce((sum, index) => sum + sizes[index]!, 0);
+
+        if (activeIndices.length < remainingSampleSize) {
+            return null;
+        }
+    }
+
+    if (remainingSampleSize === 0) {
+        return {
+            certaintyIndices,
+            certaintyProbabilities,
+            systematicIndices: [],
+            systematicProbabilities: [],
+            systematicSampleSize: 0,
+        };
+    }
+
+    if (remainingTotal <= 0) {
+        return null;
+    }
+
+    const systematicIndices = [...activeIndices];
+    const systematicProbabilities = systematicIndices.map((index) =>
+        remainingSampleSize * sizes[index]! / remainingTotal
+    );
+
+    return {
+        certaintyIndices,
+        certaintyProbabilities,
+        systematicIndices,
+        systematicProbabilities,
+        systematicSampleSize: remainingSampleSize,
+    };
+}
+
+function selectFixedPiSystematicSample(
+    indices: number[],
+    inclusionProbabilities: number[],
+    randomStart: number,
+) {
+    const selectedIndices: number[] = [];
+    const selectedProbabilities: number[] = [];
+    let cumulativeProbability = 0;
+    let thresholdIndex = 0;
+    const targetSampleSize = Math.round(
+        inclusionProbabilities.reduce((sum, probability) => sum + probability, 0)
+    );
+
+    for (let position = 0; position < indices.length && thresholdIndex < targetSampleSize; position += 1) {
+        const index = indices[position]!;
+        const probability = inclusionProbabilities[position]!;
+        const nextCumulativeProbability = cumulativeProbability + probability;
+        const threshold = randomStart + thresholdIndex;
+
+        if (
+            threshold + PPS_EPSILON >= cumulativeProbability
+            && threshold < nextCumulativeProbability - PPS_EPSILON
+        ) {
+            selectedIndices.push(index);
+            selectedProbabilities.push(probability);
+            thresholdIndex += 1;
+        }
+
+        cumulativeProbability = nextCumulativeProbability;
+    }
+
+    return { selectedIndices, selectedProbabilities };
+}
+
+export function preparePPSSampling(
+    data: any[],
+    sizeField: string,
+    n: number,
+): PreparedPPSSampling<any> | null {
+    if (data.length === 0 || n <= 0 || !sizeField) {
+        return null;
+    }
+
+    const sampleSize = Math.min(Math.floor(n), data.length);
+    const sizes = data.map((item) => toPositiveSizeValue(item[sizeField]));
+    const designFrame = buildPpsWithoutReplacementDesign(sizes, sampleSize);
+
+    if (!designFrame) {
+        return null;
+    }
+
+    return {
+        data,
+        sampleSize,
+        designFrame,
+    };
+}
+
+export function drawPreparedPPSSample(
+    prepared: PreparedPPSSampling<any>,
+    random: () => number,
+): PPSSamplingResult<any> {
+    const randomStart = prepared.designFrame.systematicSampleSize > 0 ? random() : 0;
+    const systematicSelection = prepared.designFrame.systematicSampleSize > 0
+        ? selectFixedPiSystematicSample(
+            prepared.designFrame.systematicIndices,
+            prepared.designFrame.systematicProbabilities,
+            randomStart,
+        )
+        : { selectedIndices: [], selectedProbabilities: [] };
+
+    const combined = [
+        ...prepared.designFrame.certaintyIndices.map((index, position) => ({
+            index,
+            inclusionProbability: prepared.designFrame.certaintyProbabilities[position]!,
+        })),
+        ...systematicSelection.selectedIndices.map((index, position) => ({
+            index,
+            inclusionProbability: systematicSelection.selectedProbabilities[position]!,
+        })),
+    ].sort((left, right) => left.index - right.index);
+
+    return {
+        data: combined.map((entry) => prepared.data[entry.index]),
+        indices: combined.map((entry) => entry.index),
+        inclusionProbabilities: combined.map((entry) => entry.inclusionProbability),
+        randomStart,
+    };
+}
+
 /**
- * PPS (Probability Proportional to Size) sampling.
+ * PPS (Probability Proportional to Size) sampling without replacement.
  *
- * Each unit's selection probability is proportional to its "size" value
- * (given by `sizeField`). Uses systematic PPS selection:
- *   1. Compute cumulative sizes.
- *   2. Determine the sampling interval = totalSize / n.
- *   3. Pick a random start in [0, interval).
- *   4. Walk through cumulative sizes to select n units.
- *
- * Returns an array of selected data items.
+ * Uses fixed-size systematic PPS on first-order inclusion probabilities.
+ * Certainty units (πᵢ ≥ 1) are selected first; the remaining units are sampled
+ * by a single random start on cumulative inclusion probabilities.
  */
 export function performPPSSampling(
     data: any[],
     sizeField: string,
     n: number,
     random: () => number,
-): any[] {
-    if (data.length === 0 || n <= 0 || !sizeField) return [];
-
-    const sampleSize = Math.min(n, data.length);
-
-    // Build cumulative size array
-    const sizes: number[] = data.map((item) => {
-        const val = Number(item[sizeField]);
-        return Number.isFinite(val) && val > 0 ? val : 0;
-    });
-
-    const totalSize = sizes.reduce((a, b) => a + b, 0);
-    if (totalSize <= 0) {
-        return [];
+): PPSSamplingResult<any> {
+    const prepared = preparePPSSampling(data, sizeField, n);
+    if (!prepared) {
+        return {
+            data: [],
+            indices: [],
+            inclusionProbabilities: [],
+            randomStart: 0,
+        };
     }
 
-    const interval = totalSize / sampleSize;
-    const start = random() * interval;
-
-    const cumulative: number[] = [];
-    let cumSum = 0;
-    for (const size of sizes) {
-        cumSum += size;
-        cumulative.push(cumSum);
-    }
-
-    const selected: any[] = [];
-    let pointer = start;
-    let dataIdx = 0;
-
-    for (let i = 0; i < sampleSize; i++) {
-        // Find the unit where cumulative size crosses the pointer
-        while (dataIdx < cumulative.length - 1 && (cumulative[dataIdx] ?? 0) < pointer) {
-            dataIdx++;
-        }
-        selected.push(data[dataIdx]);
-        pointer += interval;
-
-        // Wrap around if pointer exceeds totalSize (shouldn't happen with correct n)
-        if (pointer >= totalSize && i < sampleSize - 1) {
-            pointer -= totalSize;
-            dataIdx = 0;
-        }
-    }
-
-    return selected;
+    return drawPreparedPPSSample(prepared, random);
 }

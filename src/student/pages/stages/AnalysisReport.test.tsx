@@ -5,13 +5,17 @@ import { installDomGlobals } from "@/test-utils/dom";
 import { createReportDraftBasis, getReportDraftKey } from "../../draft-sync";
 
 const mockExperimentApi = {
-    getStats: mock(async () => ({
+    getAnalysisMetrics: mock(async () => ({
         success: true,
         data: {
-            stats: {},
+            numericFields: [],
+            categoricalFields: [],
+            numeric: {},
+            categorical: {},
         },
     })),
 };
+const mockToastError = mock(() => undefined);
 
 let mockExperimentContext: {
     experiment: Record<string, unknown> | null;
@@ -25,6 +29,12 @@ mock.module("../ExperimentLayout", () => ({
 
 mock.module("../../api-client", () => ({
     experimentApi: mockExperimentApi,
+}));
+
+mock.module("sonner", () => ({
+    toast: {
+        error: mockToastError,
+    },
 }));
 
 mock.module("@/components/ui/button", () => ({
@@ -89,7 +99,8 @@ beforeEach(() => {
     const dom = installDomGlobals("http://localhost/student/task/2/experiment");
     restoreDom = dom.restore;
     localStorage.clear();
-    mockExperimentApi.getStats.mockClear();
+    mockExperimentApi.getAnalysisMetrics.mockClear();
+    mockToastError.mockClear();
     mockExperimentContext = {
         experiment: {
             id: 88,
@@ -144,7 +155,41 @@ test("AnalysisReport restores a valid local report draft before persistence clea
 
     expect(view.getByTestId("student-analysis-report-editor").innerHTML).toBe(draftContent);
     expect(localStorage.getItem(draftKey)).not.toBeNull();
-    expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1);
+    expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
+});
+
+test("AnalysisReport does not refetch metrics when sampling results receive a new reference with unchanged content", async () => {
+    const view = render(
+        <AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />
+    );
+
+    await waitFor(() => {
+        expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
+    });
+
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingResults: JSON.parse(JSON.stringify(mockExperimentContext.experiment?.samplingResults ?? null)),
+    };
+    view.rerender(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
+});
+
+test("AnalysisReport shows a visible error when analysis metrics fail to load", async () => {
+    mockExperimentApi.getAnalysisMetrics.mockRejectedValueOnce(new Error("network"));
+
+    const view = render(
+        <AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />
+    );
+
+    await waitFor(() => {
+        expect(view.getByTestId("student-analysis-metrics-error")).toBeTruthy();
+    });
+
+    expect(view.getByTestId("student-analysis-metrics-error").textContent).toContain("分析指标加载失败");
+    expect(mockToastError).toHaveBeenCalledWith("分析指标加载失败，请刷新后重试");
 });
 
 test("AnalysisReport shows persisted advanced tool source in the sample plan panel", async () => {

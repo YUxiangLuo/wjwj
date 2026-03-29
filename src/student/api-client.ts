@@ -111,13 +111,18 @@ export interface SamplingResultsData {
         kValue: number;
         sampleCount: number;
         seed?: number;
+        startIndex?: number;
         data?: unknown[];
     };
     pps?: {
-        completed: boolean;
-        sizeField: string;
-        sampleCount: number;
+        completed?: boolean;
+        unavailable?: boolean;
+        unavailableReason?: string;
+        sizeField?: string;
+        sampleCount?: number;
         seed?: number;
+        randomStart?: number;
+        inclusionProbabilities?: number[];
         data?: unknown[];
     };
     stratified?: {
@@ -145,6 +150,28 @@ export interface ExperimentData {
     reportContent: string | null;
     lastSavedAt: string | null;
     populationSize: number;
+}
+
+export interface AnalysisNumericFieldMetrics {
+    populationMean: number;
+    populationVariance: number;
+    methods: Record<MethodKey, {
+        estimate: number | null;
+        standardError: number | null;
+    }>;
+}
+
+export interface AnalysisCategoricalFieldMetrics {
+    population: Record<string, number>;
+    methods: Record<MethodKey, Record<string, number>>;
+    representativeness: Record<MethodKey, number | null>;
+}
+
+export interface AnalysisMetricsData {
+    numericFields: string[];
+    categoricalFields: string[];
+    numeric: Record<string, AnalysisNumericFieldMetrics>;
+    categorical: Record<string, AnalysisCategoricalFieldMetrics>;
 }
 
 export interface Notification {
@@ -348,9 +375,18 @@ export const experimentApi = {
         request<{
             stats: Record<string, Record<string, number>>;
             numericFields?: string[];
+            categoricalFields?: string[];
+            categoricalStats?: Record<string, Record<string, number>>;
+            populationNumericStats?: Record<string, { mean: number; variance: number; stdDev: number; count: number }>;
+            ppsEligibleFields?: string[];
             stratumNumericStats?: Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>;
         }>(
             `/api/student/tasks/${taskId}/stats`
+        ),
+
+    getAnalysisMetrics: (taskId: number) =>
+        request<AnalysisMetricsData>(
+            `/api/student/tasks/${taskId}/analysis-metrics`
         ),
 };
 

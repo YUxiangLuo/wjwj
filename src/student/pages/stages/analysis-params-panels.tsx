@@ -7,6 +7,10 @@ import {
     getEstimationTypeLabel,
     getMarginOfErrorLabel,
 } from "../../experiment/sample-plan-display";
+import {
+    PPS_UNAVAILABLE_REASON,
+    PPS_UNAVAILABLE_STATUS_MESSAGE,
+} from "../../experiment/sampling-messages";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { METHOD_META, type MethodKey } from "./analysis-utils";
 
@@ -97,6 +101,19 @@ function samplingMethodPanelForKey(
         }
         case "pps": {
             const r = samplingResults.pps;
+            if (r?.unavailable) {
+                return {
+                    completed: true,
+                    content: (
+                        <div className="space-y-0">
+                            <ParamRow label="执行状态" value={PPS_UNAVAILABLE_STATUS_MESSAGE} />
+                            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                {r.unavailableReason || PPS_UNAVAILABLE_REASON}
+                            </p>
+                        </div>
+                    ),
+                };
+            }
             if (!r?.completed) {
                 return { completed: false, content: notDoneHint };
             }

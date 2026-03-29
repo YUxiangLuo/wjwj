@@ -112,6 +112,13 @@ export interface StratumNumericStat {
     stdDev: number;
 }
 
+export interface PopulationNumericStat {
+    mean: number;
+    variance: number;
+    stdDev: number;
+    count: number;
+}
+
 /**
  * Compute within-stratum standard deviations for each numeric field,
  * grouped by each stratification field. This enables proper Neyman allocation.
@@ -161,4 +168,81 @@ export function buildStratifiedNumericStats(
     }
 
     return result;
+}
+
+export function buildPopulationNumericStats(
+    population: Array<Record<string, unknown>>,
+    numericFields: string[],
+): Record<string, PopulationNumericStat> {
+    const stats: Record<string, PopulationNumericStat> = {};
+
+    for (const field of numericFields) {
+        const values = population
+            .map((row) => Number(row[field]))
+            .filter((value) => Number.isFinite(value));
+
+        if (values.length === 0) {
+            continue;
+        }
+
+        const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+        const variance = values.length > 1
+            ? values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (values.length - 1)
+            : 0;
+
+        stats[field] = {
+            mean,
+            variance,
+            stdDev: Math.sqrt(variance),
+            count: values.length,
+        };
+    }
+
+    return stats;
+}
+
+export function buildPopulationCategoricalStats(
+    population: Array<Record<string, unknown>>,
+    categoricalFields: string[],
+): Record<string, Record<string, number>> {
+    const stats: Record<string, Record<string, number>> = {};
+
+    for (const field of categoricalFields) {
+        const counts: Record<string, number> = {};
+        for (const row of population) {
+            const raw = row[field];
+            if (raw === undefined || raw === null) continue;
+            const value = String(raw).trim();
+            if (!value) continue;
+            counts[value] = (counts[value] || 0) + 1;
+        }
+
+        if (Object.keys(counts).length > 0) {
+            stats[field] = counts;
+        }
+    }
+
+    return stats;
+}
+
+export function getCategoricalFieldsFromTopicMapping(fieldMapping: unknown) {
+    const mapping = parseTopicFieldMapping(fieldMapping);
+    if (!mapping) return [];
+
+    return Array.from(
+        new Set([...(mapping.stratified ?? []), ...(mapping.others ?? [])].filter(Boolean))
+    );
+}
+
+export function getPpsEligibleNumericFields(
+    population: Array<Record<string, unknown>>,
+    numericFields: string[],
+) {
+    return numericFields.filter((field) =>
+        population.length > 0
+        && population.every((row) => {
+            const value = Number(row[field]);
+            return Number.isFinite(value) && value > 0;
+        })
+    );
 }
