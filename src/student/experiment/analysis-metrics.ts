@@ -3,7 +3,9 @@ import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling, type PPS
 import {
     buildPopulationCategoricalStats,
     buildPopulationNumericStats,
+    getCategoricalFieldsFromTopicMapping,
     type PopulationNumericStat,
+    type TopicFieldMapping,
 } from "./population-data";
 
 const METHODS: MethodKey[] = ["simple", "systematic", "pps", "stratified"];
@@ -39,14 +41,6 @@ export interface AnalysisMetricsResult {
 
 function unique<T>(values: T[]) {
     return Array.from(new Set(values));
-}
-
-function getCategoricalFieldsFromMapping(fieldMapping: unknown) {
-    if (!fieldMapping || typeof fieldMapping !== "object") return [];
-    const data = fieldMapping as Record<string, unknown>;
-    const stratified = Array.isArray(data.stratified) ? data.stratified.filter((value): value is string => typeof value === "string") : [];
-    const others = Array.isArray(data.others) ? data.others.filter((value): value is string => typeof value === "string") : [];
-    return unique([...stratified, ...others]);
 }
 
 function buildEmptyNumericMethodAnalysis(): Record<MethodKey, NumericMethodAnalysis> {
@@ -397,15 +391,11 @@ function toPopulationPercentages(counts: Record<string, number>) {
 
 export function buildAnalysisMetrics(params: {
     population: Array<Record<string, unknown>>;
-    fieldMapping: unknown;
+    fieldMapping: TopicFieldMapping | null;
     samplingResults: SamplingResultsData | null | undefined;
 }): AnalysisMetricsResult {
-    const numericFields = unique(
-        Array.isArray((params.fieldMapping as Record<string, unknown> | null)?.numeric)
-            ? ((params.fieldMapping as Record<string, unknown>).numeric as string[])
-            : []
-    );
-    const categoricalFields = getCategoricalFieldsFromMapping(params.fieldMapping);
+    const numericFields = unique(params.fieldMapping?.numeric ?? []);
+    const categoricalFields = getCategoricalFieldsFromTopicMapping(params.fieldMapping);
     const populationSize = params.population.length;
 
     const populationNumericStats = buildPopulationNumericStats(params.population, numericFields);

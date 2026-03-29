@@ -24,7 +24,7 @@ export function getLegacyTaskReportDraftKey(taskId: number) {
     return `student_report_draft_${taskId}`;
 }
 
-function hashSerializedValue(value: unknown) {
+export function hashSerializedValue(value: unknown) {
     const serialized = JSON.stringify(value ?? null);
     let hash = 0x811c9dc5;
 

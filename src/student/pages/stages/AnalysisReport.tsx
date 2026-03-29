@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle, Ruler, ListTree } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle, Ruler, ListTree, AlertCircle } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
@@ -20,6 +21,7 @@ import {
     clearReportDraft,
     clearLegacyTaskReportDraft,
     createReportDraftBasis,
+    hashSerializedValue,
     loadReportDraft,
     saveReportDraft,
 } from "../../draft-sync";
@@ -189,6 +191,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [exportType, setExportType] = useState<MethodKey | "all">("all");
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
     const [analysisMetrics, setAnalysisMetrics] = useState<AnalysisMetricsData | null>(null);
+    const [analysisMetricsError, setAnalysisMetricsError] = useState<string | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
@@ -204,6 +207,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         ? null
         : `${experimentId}::${reportDraftBasis}::${serverReportContent}`;
     const [hydratedReportSourceKey, setHydratedReportSourceKey] = useState<string | null>(null);
+    const samplingResultsKey = useMemo(
+        () => hashSerializedValue(experiment?.samplingResults ?? null),
+        [experiment?.samplingResults],
+    );
+    const isPpsUnavailable = Boolean(experiment?.samplingResults?.pps?.unavailable);
 
     const minLength = 100;
     const maxLength = 5000;
@@ -228,24 +236,50 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     }, [categoricalFields, selectedCategoricalField]);
 
     useEffect(() => {
+        let cancelled = false;
+
         async function loadAnalysisMetrics() {
             if (!experiment?.taskId) return;
-            setStatsLoading(true);
+            if (!cancelled) {
+                setStatsLoading(true);
+                setAnalysisMetricsError(null);
+            }
             try {
                 const res = await experimentApi.getAnalysisMetrics(experiment.taskId);
+                if (cancelled) return;
+
                 if (res.success && res.data) {
                     setAnalysisMetrics(res.data);
+                    setAnalysisMetricsError(null);
+                    return;
                 }
+
+                const message = res.error?.message
+                    ? `分析指标加载失败：${res.error.message}`
+                    : "分析指标加载失败，请刷新后重试";
+                setAnalysisMetrics(null);
+                setAnalysisMetricsError(message);
+                toast.error(message);
             } catch (error) {
+                if (cancelled) return;
                 console.error("Failed to load analysis metrics:", error);
                 setAnalysisMetrics(null);
+                const message = "分析指标加载失败，请刷新后重试";
+                setAnalysisMetricsError(message);
+                toast.error(message);
             } finally {
-                setStatsLoading(false);
+                if (!cancelled) {
+                    setStatsLoading(false);
+                }
             }
         }
 
         void loadAnalysisMetrics();
-    }, [experiment?.taskId, experiment?.samplingResults]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [experiment?.taskId, samplingResultsKey]);
 
     // ---- Chart data (memoized) ----
 
@@ -364,7 +398,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             }
 
             const methodKeys = (Object.keys(METHOD_META) as MethodKey[]).filter((method) =>
-                method !== "pps" || !experiment?.samplingResults?.pps?.unavailable
+                method !== "pps" || !isPpsUnavailable
             );
 
             return [
@@ -376,7 +410,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 POPULATION_SERIES,
             ];
         },
-    [analysisMetrics, experiment?.samplingResults, methodSeries, selectedCategoricalField]);
+    [analysisMetrics, isPpsUnavailable, methodSeries, selectedCategoricalField]);
 
     const representSeries = useMemo<ChartSeries[]>(() => {
         const availableMethodKeys = (Object.keys(METHOD_META) as MethodKey[]).filter((method) =>
@@ -555,6 +589,15 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="pt-6">
+                            {analysisMetricsError && (
+                                <div
+                                    className="mb-4 flex items-start gap-2 rounded-xl border border-rose-300/70 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:border-rose-800/70 dark:bg-rose-950/20 dark:text-rose-300"
+                                    data-testid="student-analysis-metrics-error"
+                                >
+                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <span>{analysisMetricsError}</span>
+                                </div>
+                            )}
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList
                                     className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950"

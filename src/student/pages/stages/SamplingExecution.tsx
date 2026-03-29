@@ -33,6 +33,10 @@ import { SamplingSuccessState } from "../../components/SamplingSuccessState";
 import { SamplePreviewTable } from "../../components/SamplePreviewTable";
 import { StratifiedSamplingTab, type StratifiedLayer } from "../../components/StratifiedSamplingTab";
 import {
+    PPS_UNAVAILABLE_REASON,
+    PPS_UNAVAILABLE_STATUS_MESSAGE,
+} from "../../experiment/sampling-messages";
+import {
     formatSystematicRange,
     findBestSystematicKValue,
     getSystematicAcceptedRange,
@@ -58,7 +62,6 @@ const FIELD_LABELS: Record<string, string> = {
 
 export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const { populationSize, experiment, registerStageSave, saveExperiment } = useExperiment();
-    const ppsUnavailableReason = "当前总体不存在对每个单位都为正数的规模变量";
 
     // Get sample size from sample plan
     const samplePlan = experiment?.samplePlan as SamplePlanData | null;
@@ -160,13 +163,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 ? current
                 : {
                     unavailable: true,
-                    unavailableReason: ppsUnavailableReason,
+                    unavailableReason: PPS_UNAVAILABLE_REASON,
                 });
             return;
         }
 
         setPpsResult((current) => current?.unavailable ? null : current);
-    }, [hasValidSamplePlan, ppsEligibleFields.length, ppsUnavailableReason]);
+    }, [hasValidSamplePlan, ppsEligibleFields.length]);
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
@@ -689,13 +692,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 </Select>
                                             ) : (
                                                 <div className="flex h-10 items-center rounded-md border border-rose-300/70 bg-rose-500/10 px-3 text-sm text-rose-700 dark:border-rose-800/70 dark:bg-rose-950/20 dark:text-rose-300" data-testid="student-sampling-pps-unavailable">
-                                                    当前总体未配置可用的正数型规模变量
+                                                    {PPS_UNAVAILABLE_STATUS_MESSAGE}
                                                 </div>
                                             )}
                                             <p className={`text-xs leading-relaxed ${hasPpsNumericField ? "text-slate-500 dark:text-slate-400" : "text-rose-600 dark:text-rose-300"}`}>
                                                 {hasPpsNumericField
                                                     ? "选择一个规模变量（如收入、人口等），该字段必须在总体中对每个单位都为正数。"
-                                                    : "PPS 抽样必须基于对总体每个单位都为正数的规模变量；若缺失该字段，当前任务无法执行 PPS 抽样。"}
+                                                    : PPS_UNAVAILABLE_REASON}
                                             </p>
                                         </div>
                                         <div className="space-y-3">
@@ -839,7 +842,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         <span>PPS抽样:</span>
                                         <span className="text-slate-800 dark:text-slate-200">
                                             {ppsResult?.unavailable
-                                                ? "当前任务无可用规模变量，已跳过"
+                                                ? PPS_UNAVAILABLE_STATUS_MESSAGE
                                                 : `${ppsResult?.sampleCount} 样本`}
                                         </span>
                                     </div>
