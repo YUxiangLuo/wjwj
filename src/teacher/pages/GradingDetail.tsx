@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, SkipForward, MessageSquarePlus, ChevronDown, ChevronUp, ChevronRight, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, MessageSquarePlus, ChevronDown, ChevronUp, ChevronRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -72,7 +72,6 @@ export function GradingDetail() {
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
     const [showTemplates, setShowTemplates] = useState(false);
-    const [loadingNext, setLoadingNext] = useState(false);
     const [refreshingPdfState, setRefreshingPdfState] = useState(false);
     /** 样本数据各方法表格是否展开（默认折叠） */
     const [samplingSectionOpen, setSamplingSectionOpen] = useState<Record<string, boolean>>({});
@@ -213,27 +212,6 @@ export function GradingDetail() {
             }
         } else {
             toast.error("提交失败: " + res.error?.message);
-        }
-    }
-
-    async function handleNextStudent() {
-        if (!submissionId) return;
-        setLoadingNext(true);
-        try {
-            const listRes = await teacherApi.getGradingList({ status: "pending", pageSize: 50 });
-            if (listRes.success && listRes.data) {
-                const next = listRes.data.items.find(item => item.id !== Number(submissionId));
-                if (next) {
-                    navigate(`/grading/${next.id}`, { replace: true });
-                } else {
-                    toast.info("没有更多待批改作业");
-                    navigate("/grading");
-                }
-            } else {
-                toast.error("获取列表失败");
-            }
-        } finally {
-            setLoadingNext(false);
         }
     }
 
@@ -735,10 +713,6 @@ export function GradingDetail() {
                             )}
                             {(data.status === 0 || data.status === 1) && !isReadOnly && (
                                 <>
-                                    <Button data-testid="teacher-grading-next" variant="outline" className="w-full border-slate-300 dark:border-slate-700 bg-transparent text-slate-700 dark:text-slate-300 hover:text-indigo-500 hover:bg-indigo-500/10 h-11" onClick={() => { void handleNextStudent(); }} disabled={saving || loadingNext}>
-                                        <SkipForward className="w-4 h-4 mr-2" />
-                                        {loadingNext ? "处理中..." : "下一位"}
-                                    </Button>
                                     <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => { void handleSubmit(2); }} disabled={saving}>
                                         <CheckCircle className="w-4 h-4 mr-2" />
                                         {saving ? "提交中..." : "确认评分"}

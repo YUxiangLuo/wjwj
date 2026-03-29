@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 import type { QuestionnaireData } from "../api-client";
@@ -125,5 +125,36 @@ describe("ImmersiveQuestionnairePreview", () => {
         expect(view.getByTestId("immersive-preview-submit")).toBeTruthy();
         fireEvent.click(view.getByTestId("immersive-preview-submit"));
         expect(onComplete).toHaveBeenCalled();
+    });
+
+    test("dialog container keeps focus so space does not accidentally trigger exit or select options", async () => {
+        const onClose = mock(() => {});
+        const view = render(
+            <ImmersiveQuestionnairePreview
+                questionnaire={baseQuestionnaire()}
+                onComplete={() => {}}
+                onClose={onClose}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(document.activeElement).toBe(view.getByTestId("immersive-questionnaire-preview"));
+        });
+
+        fireEvent.click(view.getByTestId("immersive-preview-start"));
+
+        await waitFor(() => {
+            expect(document.activeElement).toBe(view.getByTestId("immersive-questionnaire-preview"));
+        });
+
+        fireEvent.keyDown(view.getByTestId("immersive-questionnaire-preview"), {
+            key: " ",
+            code: "Space",
+        });
+
+        expect(onClose).not.toHaveBeenCalled();
+        expect(view.queryByTestId("mock-alert-dialog")).toBeNull();
+        expect(view.queryByTestId("immersive-preview-submit")).toBeNull();
+        expect(view.getByText("是否测试？")).toBeTruthy();
     });
 });

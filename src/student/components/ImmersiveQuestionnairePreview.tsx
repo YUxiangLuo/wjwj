@@ -186,17 +186,13 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         }
     }, [totalQuestions, page]);
 
-    // 切页后将焦点移入模态，便于键盘与读屏
+    // 切页后将焦点移入对话框容器本身，避免空格误触发首个可点击控件
     useEffect(() => {
         if (exitConfirmOpen) return;
         const root = overlayRef.current;
         if (!root) return;
         const t = window.setTimeout(() => {
-            const focusables = Array.from(
-                root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-            );
-            const first = focusables[0];
-            first?.focus();
+            root.focus();
         }, 0);
         return () => window.clearTimeout(t);
     }, [pageKey, exitConfirmOpen]);
@@ -230,6 +226,11 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         if (focusables.length === 0) return;
         const first = focusables[0]!;
         const last = focusables[focusables.length - 1]!;
+        if (document.activeElement === root) {
+            e.preventDefault();
+            (e.shiftKey ? last : first).focus();
+            return;
+        }
         if (e.shiftKey) {
             if (document.activeElement === first) {
                 e.preventDefault();
