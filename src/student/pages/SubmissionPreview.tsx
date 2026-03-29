@@ -317,7 +317,7 @@ export function SubmissionPreview() {
                                     <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
                                         <p>简单随机抽样：{samplingResults?.simple?.completed ? `已完成（${samplingResults.simple.sampleCount} 样本）` : "未完成"}</p>
                                         <p>系统抽样：{samplingResults?.systematic?.completed ? `已完成（${samplingResults.systematic.sampleCount} 样本）` : "未完成"}</p>
-                                        <p>PPS抽样：{samplingResults?.pps?.completed ? `已完成（${samplingResults.pps.sampleCount} 样本）` : "未完成"}</p>
+                                        <p>PPS抽样：{samplingResults?.pps?.unavailable ? "当前任务无可用规模变量，已跳过" : samplingResults?.pps?.completed ? `已完成（${samplingResults.pps.sampleCount} 样本）` : "未完成"}</p>
                                         <p>分层抽样：{samplingResults?.stratified?.completed ? "已完成" : "未完成"}</p>
                                     </div>
                                     {showSystematicSampleNote && (

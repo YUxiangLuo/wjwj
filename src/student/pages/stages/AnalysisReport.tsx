@@ -15,7 +15,7 @@ import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, Chec
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
-import { experimentApi } from "../../api-client";
+import { experimentApi, type AnalysisMetricsData } from "../../api-client";
 import {
     clearReportDraft,
     clearLegacyTaskReportDraft,
@@ -25,17 +25,10 @@ import {
 } from "../../draft-sync";
 import {
     type MethodKey,
-    type SampleRow,
     type ChartSeries,
     type ChartRow,
     METHOD_META,
     POPULATION_SERIES,
-    calculateMean,
-    calculateStdError,
-    collectNumericFields,
-    collectCategoricalFields,
-    buildDistributionRows,
-    buildRepresentativenessRows,
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
@@ -195,7 +188,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [exportType, setExportType] = useState<MethodKey | "all">("all");
     const [zoomChart, setZoomChart] = useState<ZoomChartType>(null);
-    const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
+    const [analysisMetrics, setAnalysisMetrics] = useState<AnalysisMetricsData | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
@@ -219,19 +212,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     // ---- Data derivation ----
 
-    const methodRows = useMemo<Record<MethodKey, SampleRow[]>>(() => ({
-        simple: ((experiment?.samplingResults as any)?.simple?.data ?? []) as SampleRow[],
-        systematic: ((experiment?.samplingResults as any)?.systematic?.data ?? []) as SampleRow[],
-        pps: ((experiment?.samplingResults as any)?.pps?.data ?? []) as SampleRow[],
-        stratified: ((experiment?.samplingResults as any)?.stratified?.data ?? []) as SampleRow[],
-    }), [experiment?.samplingResults]);
-
-    const allRows = useMemo(() => {
-        return [...methodRows.simple, ...methodRows.systematic, ...methodRows.pps, ...methodRows.stratified];
-    }, [methodRows]);
-
-    const numericFields = useMemo(() => collectNumericFields(allRows), [allRows]);
-    const categoricalFields = useMemo(() => collectCategoricalFields(allRows, populationStats), [allRows, populationStats]);
+    const numericFields = analysisMetrics?.numericFields ?? [];
+    const categoricalFields = analysisMetrics?.categoricalFields ?? [];
 
     useEffect(() => {
         if (!numericFields.includes(selectedNumericField)) {
@@ -246,51 +228,117 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     }, [categoricalFields, selectedCategoricalField]);
 
     useEffect(() => {
-        async function loadPopulationStats() {
+        async function loadAnalysisMetrics() {
             if (!experiment?.taskId) return;
             setStatsLoading(true);
             try {
-                const res = await experimentApi.getStats(experiment.taskId);
-                if (res.success && res.data?.stats) {
-                    setPopulationStats(res.data.stats);
+                const res = await experimentApi.getAnalysisMetrics(experiment.taskId);
+                if (res.success && res.data) {
+                    setAnalysisMetrics(res.data);
                 }
             } catch (error) {
-                console.error("Failed to load population stats:", error);
+                console.error("Failed to load analysis metrics:", error);
+                setAnalysisMetrics(null);
             } finally {
                 setStatsLoading(false);
             }
         }
 
-        void loadPopulationStats();
-    }, [experiment?.taskId]);
+        void loadAnalysisMetrics();
+    }, [experiment?.taskId, experiment?.samplingResults]);
 
     // ---- Chart data (memoized) ----
 
     const meanRows = useMemo<ChartRow[]>(() => {
-        if (!selectedNumericField) return [];
-        return (Object.keys(METHOD_META) as MethodKey[]).map((method) => ({
-            label: METHOD_META[method].label,
-            values: { value: calculateMean(methodRows[method], selectedNumericField) },
-        }));
-    }, [methodRows, selectedNumericField]);
+        const fieldMetrics = selectedNumericField ? analysisMetrics?.numeric[selectedNumericField] : null;
+        if (!fieldMetrics) return [];
+
+        return (Object.keys(METHOD_META) as MethodKey[]).reduce<ChartRow[]>((rows, method) => {
+            const estimate = fieldMetrics.methods[method].estimate;
+            if (estimate !== null) {
+                rows.push({ label: METHOD_META[method].label, values: { value: estimate } });
+            }
+            return rows;
+        }, []);
+    }, [analysisMetrics, selectedNumericField]);
 
     const errorRows = useMemo<ChartRow[]>(() => {
-        if (!selectedNumericField) return [];
-        return (Object.keys(METHOD_META) as MethodKey[]).map((method) => ({
-            label: METHOD_META[method].label,
-            values: { value: calculateStdError(methodRows[method], selectedNumericField) },
+        const fieldMetrics = selectedNumericField ? analysisMetrics?.numeric[selectedNumericField] : null;
+        if (!fieldMetrics) return [];
+
+        return (Object.keys(METHOD_META) as MethodKey[]).reduce<ChartRow[]>((rows, method) => {
+            const standardError = fieldMetrics.methods[method].standardError;
+            if (standardError !== null) {
+                rows.push({ label: METHOD_META[method].label, values: { value: standardError } });
+            }
+            return rows;
+        }, []);
+    }, [analysisMetrics, selectedNumericField]);
+
+    const distributionRows = useMemo(() => {
+        const fieldMetrics = selectedCategoricalField ? analysisMetrics?.categorical[selectedCategoricalField] : null;
+        if (!fieldMetrics) return [];
+
+        const categories = Array.from(new Set([
+            ...Object.keys(fieldMetrics.population),
+            ...Object.values(fieldMetrics.methods).flatMap((methodValues) => Object.keys(methodValues)),
+        ])).sort((left, right) => left.localeCompare(right, "zh-CN"));
+
+        return categories.map((category) => ({
+            label: category,
+            values: {
+                simple: fieldMetrics.methods.simple[category] ?? 0,
+                systematic: fieldMetrics.methods.systematic[category] ?? 0,
+                pps: fieldMetrics.methods.pps[category] ?? 0,
+                stratified: fieldMetrics.methods.stratified[category] ?? 0,
+                population: fieldMetrics.population[category] ?? 0,
+            },
         }));
-    }, [methodRows, selectedNumericField]);
-
-    const distributionResult = useMemo(() => {
-        return buildDistributionRows(selectedCategoricalField, methodRows, populationStats);
-    }, [selectedCategoricalField, methodRows, populationStats]);
-
-    const distributionRows = distributionResult.rows;
+    }, [analysisMetrics, selectedCategoricalField]);
 
     const representativenessRows = useMemo(() => {
-        return buildRepresentativenessRows(numericFields, categoricalFields, methodRows, populationStats);
-    }, [numericFields, categoricalFields, methodRows, populationStats]);
+        const rows: ChartRow[] = [];
+
+        for (const field of numericFields) {
+            const fieldMetrics = analysisMetrics?.numeric[field];
+            if (!fieldMetrics || fieldMetrics.populationMean === 0) continue;
+
+            const values: Record<string, number> = {};
+            let hasValue = false;
+
+            for (const method of Object.keys(METHOD_META) as MethodKey[]) {
+                const estimate = fieldMetrics.methods[method].estimate;
+                if (estimate === null) continue;
+                values[method] = Math.abs(estimate - fieldMetrics.populationMean) / Math.abs(fieldMetrics.populationMean) * 100;
+                hasValue = true;
+            }
+
+            if (hasValue) {
+                rows.push({ label: `${field}（均值偏差）`, values });
+            }
+        }
+
+        for (const field of categoricalFields) {
+            const fieldMetrics = analysisMetrics?.categorical[field];
+            if (!fieldMetrics) continue;
+
+            const values: Record<string, number> = {};
+            let hasValue = false;
+
+            for (const method of Object.keys(METHOD_META) as MethodKey[]) {
+                const representativeness = fieldMetrics.representativeness[method];
+                if (representativeness === null) continue;
+                values[method] = representativeness;
+                hasValue = true;
+            }
+
+            if (hasValue) {
+                rows.push({ label: `${field}（分布偏差）`, values });
+            }
+        }
+
+        return rows;
+    }, [analysisMetrics, categoricalFields, numericFields]);
 
     // ---- Series ----
 
@@ -301,16 +349,46 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     []);
 
     const meanSeries = useMemo<ChartSeries[]>(() => [
-        { key: "value", label: selectedNumericField || "均值", color: "#60a5fa" },
+        { key: "value", label: selectedNumericField ? `${selectedNumericField} 估计均值` : "估计均值", color: "#60a5fa" },
     ], [selectedNumericField]);
 
     const errorSeries = useMemo<ChartSeries[]>(() => [
-        { key: "value", label: `${selectedNumericField || "字段"} 标准误`, color: "#f59e0b" },
+        { key: "value", label: `${selectedNumericField || "字段"} 设计标准误`, color: "#f59e0b" },
     ], [selectedNumericField]);
 
     const distributionSeries = useMemo<ChartSeries[]>(() =>
-        distributionResult.withPopulation ? [...methodSeries, POPULATION_SERIES] : methodSeries,
-    [methodSeries, distributionResult.withPopulation]);
+        {
+            const fieldMetrics = selectedCategoricalField ? analysisMetrics?.categorical[selectedCategoricalField] : null;
+            if (!fieldMetrics) {
+                return methodSeries;
+            }
+
+            const methodKeys = (Object.keys(METHOD_META) as MethodKey[]).filter((method) =>
+                method !== "pps" || !experiment?.samplingResults?.pps?.unavailable
+            );
+
+            return [
+                ...methodKeys.map((key) => ({
+                    key,
+                    label: METHOD_META[key].label,
+                    color: METHOD_META[key].color,
+                })),
+                POPULATION_SERIES,
+            ];
+        },
+    [analysisMetrics, experiment?.samplingResults, methodSeries, selectedCategoricalField]);
+
+    const representSeries = useMemo<ChartSeries[]>(() => {
+        const availableMethodKeys = (Object.keys(METHOD_META) as MethodKey[]).filter((method) =>
+            representativenessRows.some((row) => Object.prototype.hasOwnProperty.call(row.values, method))
+        );
+
+        return availableMethodKeys.map((key) => ({
+            key,
+            label: METHOD_META[key].label,
+            color: METHOD_META[key].color,
+        }));
+    }, [representativenessRows]);
 
     // ---- Chart config (shared by tabs, zoom dialog, and SVG download) ----
 
@@ -325,8 +403,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         mean: { title: "均值对比", rows: meanRows, series: meanSeries, emptyMessage: "暂无可用于均值分析的数值字段", downloadFileName: `mean_${sanitizeFileName(selectedNumericField)}.svg` },
         dist: { title: "分布对比", rows: distributionRows, series: distributionSeries, unit: "%", emptyMessage: "暂无可用于分布分析的分类字段", downloadFileName: `distribution_${sanitizeFileName(selectedCategoricalField)}.svg` },
         error: { title: "误差分析", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于误差分析的数值字段", downloadFileName: `error_${sanitizeFileName(selectedNumericField)}.svg` },
-        represent: { title: "样本代表性", rows: representativenessRows, series: methodSeries, unit: "%", emptyMessage: "暂无可用于代表性分析的数据", downloadFileName: "representativeness.svg" },
-    }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representativenessRows, methodSeries, selectedNumericField, selectedCategoricalField]);
+        represent: { title: "样本代表性", rows: representativenessRows, series: representSeries, unit: "%", emptyMessage: "暂无可用于代表性分析的数据", downloadFileName: "representativeness.svg" },
+    }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representSeries, representativenessRows, selectedNumericField, selectedCategoricalField]);
 
     const activeZoom = zoomChart ? chartConfig[zoomChart] : null;
 
@@ -525,7 +603,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="mean">
                                     <ChartTabPanel
-                                        description="比较各抽样方法在同一数值变量上的均值。"
+                                        description="比较各抽样方法对同一数值变量的总体均值估计。"
                                         rows={meanRows}
                                         series={meanSeries}
                                         emptyMessage="暂无可用于均值分析的数值字段"
@@ -559,7 +637,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="error">
                                     <ChartTabPanel
-                                        description="比较各抽样方法在同一变量上的抽样标准误。"
+                                        description="比较各抽样方法对同一数值变量均值估计的设计标准误。"
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
@@ -573,9 +651,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="represent">
                                     <ChartTabPanel
-                                        description="比较各抽样方法样本与总体关键指标的偏差程度（%）。"
+                                        description="比较各抽样方法估计结果与总体指标的偏差程度（%）。"
                                         rows={representativenessRows}
-                                        series={methodSeries}
+                                        series={representSeries}
                                         unit="%"
                                         emptyMessage="暂无可用于代表性分析的数据"
                                         onZoom={() => setZoomChart("represent")}
@@ -640,9 +718,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm text-indigo-800/70 dark:text-indigo-200/70">
-                            <p>• 先比较均值差异，判断四种抽样方法估计结果是否一致。</p>
-                            <p>• 再看分类分布，识别各方法在结构上的偏移。</p>
-                            <p>• 最后结合标准误，说明方法稳定性和可靠性。</p>
+                            <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。</p>
+                            <p>• 再看分类分布与代表性偏差，识别各方法对总体结构的贴近程度。</p>
+                            <p>• 最后结合设计标准误，说明估计精度与稳定性。</p>
                         </CardContent>
                     </Card>
                 </div>

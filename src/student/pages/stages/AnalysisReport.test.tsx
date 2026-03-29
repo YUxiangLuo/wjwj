@@ -5,10 +5,13 @@ import { installDomGlobals } from "@/test-utils/dom";
 import { createReportDraftBasis, getReportDraftKey } from "../../draft-sync";
 
 const mockExperimentApi = {
-    getStats: mock(async () => ({
+    getAnalysisMetrics: mock(async () => ({
         success: true,
         data: {
-            stats: {},
+            numericFields: [],
+            categoricalFields: [],
+            numeric: {},
+            categorical: {},
         },
     })),
 };
@@ -89,7 +92,7 @@ beforeEach(() => {
     const dom = installDomGlobals("http://localhost/student/task/2/experiment");
     restoreDom = dom.restore;
     localStorage.clear();
-    mockExperimentApi.getStats.mockClear();
+    mockExperimentApi.getAnalysisMetrics.mockClear();
     mockExperimentContext = {
         experiment: {
             id: 88,
@@ -144,7 +147,7 @@ test("AnalysisReport restores a valid local report draft before persistence clea
 
     expect(view.getByTestId("student-analysis-report-editor").innerHTML).toBe(draftContent);
     expect(localStorage.getItem(draftKey)).not.toBeNull();
-    expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1);
+    expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
 });
 
 test("AnalysisReport shows persisted advanced tool source in the sample plan panel", async () => {

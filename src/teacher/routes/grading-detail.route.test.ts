@@ -54,6 +54,10 @@ test("grading detail GET returns normalized sample plan instead of raw any-shape
                 },
                 snapshotSamplingResults: {
                     simple: { completed: true, sampleCount: 240, data: [{ id: 1, name: "快照样本" }] },
+                    pps: {
+                        unavailable: true,
+                        unavailableReason: "当前总体不存在对每个单位都为正数的规模变量",
+                    },
                 },
                 snapshotSamplePlan: {
                     estimationType: "proportion",
@@ -126,5 +130,9 @@ test("grading detail GET returns normalized sample plan instead of raw any-shape
     });
     expect(payload.data.samplingResults).toMatchObject({
         simple: { completed: true, sampleCount: 240, data: [{ id: 1, name: "快照样本" }] },
+        pps: {
+            unavailable: true,
+            unavailableReason: "当前总体不存在对每个单位都为正数的规模变量",
+        },
     });
 });

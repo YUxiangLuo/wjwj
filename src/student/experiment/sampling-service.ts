@@ -130,12 +130,12 @@ export async function executeSamplingAction(params: {
                 return { ok: false as const, errorMessage: "规模变量不存在于总体数据中" };
             }
 
-            const hasPositiveNumericValue = params.population.some((row) => {
+            const hasInvalidSizeValue = params.population.some((row) => {
                 const value = Number(row[sizeField]);
-                return Number.isFinite(value) && value > 0;
+                return !Number.isFinite(value) || value <= 0;
             });
-            if (!hasPositiveNumericValue) {
-                return { ok: false as const, errorMessage: "规模变量需为包含正数的数值字段" };
+            if (hasInvalidSizeValue) {
+                return { ok: false as const, errorMessage: "规模变量需在总体中对每个单位都为正数" };
             }
 
             const sampleSize = Number.parseInt(String(parsedParams.sampleSize ?? ""), 10);
@@ -153,10 +153,21 @@ export async function executeSamplingAction(params: {
                 };
             }
 
-            const data = await performPPSSampling(params.population, sizeField, sampleSize, random);
+            const selection = await performPPSSampling(params.population, sizeField, sampleSize, random);
+            if (selection.data.length !== sampleSize) {
+                return { ok: false as const, errorMessage: "PPS抽样执行失败，请检查规模变量与样本量设置" };
+            }
             return {
                 ok: true as const,
-                result: { completed: true, sizeField, sampleCount: data.length, seed, data },
+                result: {
+                    completed: true,
+                    sizeField,
+                    sampleCount: selection.data.length,
+                    seed,
+                    randomStart: selection.randomStart,
+                    inclusionProbabilities: selection.inclusionProbabilities,
+                    data: selection.data,
+                },
             };
         }
         case "stratified": {

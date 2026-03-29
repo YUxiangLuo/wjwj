@@ -63,5 +63,5 @@ test("PPS sampling rejects fields that have no positive numeric size values", as
     expect(result.ok).toBe(false);
     if (result.ok) return;
 
-    expect(result.errorMessage).toBe("规模变量需为包含正数的数值字段");
+    expect(result.errorMessage).toBe("规模变量需在总体中对每个单位都为正数");
 });

@@ -97,6 +97,21 @@ function samplingMethodPanelForKey(
         }
         case "pps": {
             const r = samplingResults.pps;
+            if (r?.unavailable) {
+                return {
+                    completed: true,
+                    content: (
+                        <div className="space-y-0">
+                            <ParamRow label="执行状态" value="当前任务无可用规模变量，已跳过" />
+                            {r.unavailableReason && (
+                                <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                                    {r.unavailableReason}
+                                </p>
+                            )}
+                        </div>
+                    ),
+                };
+            }
             if (!r?.completed) {
                 return { completed: false, content: notDoneHint };
             }

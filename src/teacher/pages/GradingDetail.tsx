@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type SubmissionDetail } from "../api-client";
 import { didPendingGradingCountChange, dispatchTeacherGradingQueueUpdated } from "../grading-queue-events";
+import { DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE, getSamplingPreviewState } from "./grading-detail-utils";
 import { toast } from "sonner";
 
 const COMMENT_TEMPLATES = [
@@ -292,8 +293,22 @@ export function GradingDetail() {
         }
     };
 
-    const renderSamplingPreview = (sectionKey: string, label: string, dataList: any[] | undefined) => {
-        if (!dataList || dataList.length === 0) {
+    const renderSamplingPreview = (sectionKey: string, label: string, section: unknown) => {
+        const previewState = getSamplingPreviewState(section);
+
+        if (previewState.kind === "unavailable") {
+            return (
+                <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+                    <div className="font-medium text-slate-700 dark:text-slate-300">{label}</div>
+                    <div className="text-sm text-amber-700 dark:text-amber-300">{DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE}</div>
+                    {previewState.reason !== DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE && (
+                        <div className="text-xs text-amber-700/80 dark:text-amber-300/80">{previewState.reason}</div>
+                    )}
+                </div>
+            );
+        }
+
+        if (previewState.kind === "empty") {
             return (
                 <div className="space-y-2">
                     <div className="font-medium text-slate-700 dark:text-slate-300">{label}</div>
@@ -301,6 +316,8 @@ export function GradingDetail() {
                 </div>
             );
         }
+
+        const dataList = previewState.rows;
         const columns = Object.keys(dataList[0] ?? {}).slice(0, 6);
         const isOpen = !!samplingSectionOpen[sectionKey];
         return (
@@ -569,10 +586,10 @@ export function GradingDetail() {
                                     样本数据概览
                                 </h3>
                                 <div className="space-y-8">
-                                    {renderSamplingPreview("simple", "简单随机抽样", samplingResults?.simple?.data)}
-                                    {renderSamplingPreview("systematic", "系统抽样", samplingResults?.systematic?.data)}
-                                    {renderSamplingPreview("pps", "PPS 抽样", samplingResults?.pps?.data)}
-                                    {renderSamplingPreview("stratified", "分层抽样", samplingResults?.stratified?.data)}
+                                    {renderSamplingPreview("simple", "简单随机抽样", samplingResults?.simple)}
+                                    {renderSamplingPreview("systematic", "系统抽样", samplingResults?.systematic)}
+                                    {renderSamplingPreview("pps", "PPS 抽样", samplingResults?.pps)}
+                                    {renderSamplingPreview("stratified", "分层抽样", samplingResults?.stratified)}
                                 </div>
                             </TabsContent>
                         </div>

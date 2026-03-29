@@ -4,12 +4,22 @@ import { experiment, topic } from "../../db/schema";
 import { getAffectedRows } from "../../db/utils";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { buildStratifiedStats, buildStratifiedNumericStats, parseTopicFieldMapping, readPopulationData } from "../experiment/population-data";
+import {
+    buildPopulationCategoricalStats,
+    buildPopulationNumericStats,
+    buildStratifiedStats,
+    buildStratifiedNumericStats,
+    getCategoricalFieldsFromTopicMapping,
+    getPpsEligibleNumericFields,
+    parseTopicFieldMapping,
+    readPopulationData,
+} from "../experiment/population-data";
 import { deserializeExperimentFields, parseStoredJson } from "../experiment/serialization";
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
 import { executeSamplingAction } from "../experiment/sampling-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
 import { submitStudentExperiment } from "../experiment/submit-service";
+import { buildAnalysisMetrics } from "../experiment/analysis-metrics";
 import {
     findStudentTaskPopulationSize,
     findStudentTaskSamplingInfo,
@@ -201,8 +211,20 @@ const statsRoutes: RouteDefinition = {
         const stratumNumericStats = buildStratifiedNumericStats(population, taskInfo.fieldMapping);
         const mapping = parseTopicFieldMapping(taskInfo.fieldMapping);
         const numericFields = mapping?.numeric ?? [];
+        const categoricalFields = getCategoricalFieldsFromTopicMapping(taskInfo.fieldMapping);
+        const categoricalStats = buildPopulationCategoricalStats(population, categoricalFields);
+        const populationNumericStats = buildPopulationNumericStats(population, numericFields);
+        const ppsEligibleFields = getPpsEligibleNumericFields(population, numericFields);
 
-        return json({ stats, numericFields, stratumNumericStats });
+        return json({
+            stats,
+            numericFields,
+            categoricalFields,
+            categoricalStats,
+            populationNumericStats,
+            ppsEligibleFields,
+            stratumNumericStats,
+        });
     },
 };
 
@@ -258,6 +280,43 @@ const samplingActionRoutes: RouteDefinition = {
         }
 
         return json({ success: true, result: samplingResult.result });
+    },
+};
+
+const analysisMetricsRoutes: RouteDefinition = {
+    async GET(req) {
+        const auth = await requireAuth(req);
+        if (auth.error) return auth.error;
+        const currentStudent = auth.student!;
+
+        const taskId = getTaskId(req);
+        if (!taskId) return error("无效的任务ID", "INVALID_ID");
+
+        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
+        if (taskAccessError) return taskAccessError;
+
+        const [exp] = await db
+            .select({ samplingResults: experiment.samplingResults })
+            .from(experiment)
+            .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
+
+        if (!exp) {
+            return error("实验记录不存在", "NOT_FOUND", 404);
+        }
+
+        const taskInfo = await findStudentTaskSamplingInfo(taskId, currentStudent.classId);
+        if (!taskInfo || !taskInfo.excelFilePath) {
+            return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
+        }
+
+        const population = await readPopulationData(taskInfo.excelFilePath);
+        const metrics = buildAnalysisMetrics({
+            population,
+            fieldMapping: parseTopicFieldMapping(taskInfo.fieldMapping),
+            samplingResults: parseStoredJson(exp.samplingResults),
+        });
+
+        return json(metrics);
     },
 };
 
@@ -382,4 +441,4 @@ const resetRoutes: RouteDefinition = {
     },
 };
 
-export { experimentRoutes, resetRoutes, samplingActionRoutes, statsRoutes, submitRoutes };
+export { analysisMetricsRoutes, experimentRoutes, resetRoutes, samplingActionRoutes, statsRoutes, submitRoutes };
