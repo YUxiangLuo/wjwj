@@ -8,7 +8,7 @@ import { experiment, notification, student, submission, task, topic } from "../.
 import { getAffectedRows } from "../../db/utils";
 import { resolveStoragePath } from "../../server/storage-files";
 import { formatDateTimeCN } from "../../utils/format";
-import { getRichTextPlainText } from "../../utils/rich-text";
+import { renderRichTextToPdf, type PdfDocLike } from "../../utils/rich-text-pdf";
 import {
     MAX_SUBMISSION_PDF_ATTEMPTS,
     SubmissionPdfStatus,
@@ -28,7 +28,11 @@ import { parseStoredJson } from "./serialization";
 const SUBMISSION_PDF_BATCH_LIMIT = 3;
 const SUBMISSION_PDF_KICK_MAX_ROUNDS = 10;
 const DEFAULT_PDF_FONT_PATH = path.join(process.cwd(), "public", "fonts", "NotoSansSC-Regular.otf");
+const DEFAULT_PDF_BOLD_FONT_PATH = path.join(process.cwd(), "public", "fonts", "NotoSansSC-Bold.otf");
 const PDF_FONT_ENV = "PDF_FONT_PATH";
+const PDF_BOLD_FONT_ENV = "PDF_BOLD_FONT_PATH";
+const PDF_REGULAR_FONT_ALIAS = "pdf-regular";
+const PDF_BOLD_FONT_ALIAS = "pdf-bold";
 
 interface SubmissionPdfQuestion {
     type?: string;
@@ -64,6 +68,25 @@ interface ClaimedSubmissionPdfJob {
     attemptNumber: number;
 }
 
+interface PdfFontSource {
+    path: string;
+    family?: string;
+}
+
+interface ResolvedPdfFonts {
+    regular: PdfFontSource;
+    bold: PdfFontSource;
+    hasTrueBold: boolean;
+}
+
+interface PdfRichTextRenderOptions {
+    fontAliases: {
+        regular: string;
+        bold: string;
+    };
+    useBoldFont: boolean;
+}
+
 function sanitizePdfError(error: unknown) {
     const message = error instanceof Error ? error.message : "未知错误";
     return message.slice(0, 500);
@@ -85,35 +108,75 @@ async function notifyUser(
     });
 }
 
-let cachedPdfFontPath: string | null = null;
+let cachedPdfFonts: ResolvedPdfFonts | null = null;
 
-async function resolvePdfFontPath() {
-    if (cachedPdfFontPath) {
-        return cachedPdfFontPath;
-    }
-
-    const candidates = [
-        process.env[PDF_FONT_ENV]?.trim(),
-        DEFAULT_PDF_FONT_PATH,
-        "/usr/share/fonts/opentype/noto/NotoSansSC-Regular.otf",
-        "C:\\Windows\\Fonts\\msyh.ttf",
-    ].filter((value): value is string => Boolean(value && value.trim()));
-
+async function resolveExistingFont(candidates: PdfFontSource[]) {
     for (const candidate of candidates) {
         try {
-            await fs.access(candidate);
-            cachedPdfFontPath = candidate;
+            await fs.access(candidate.path);
             return candidate;
         } catch {
             // Try the next configured font candidate.
         }
     }
-
-    throw new Error(`未找到可用的中文 PDF 字体，请设置 ${PDF_FONT_ENV} 或提供 public/fonts/NotoSansSC-Regular.otf`);
+    return null;
 }
 
-async function writePdf(filePath: string, build: (doc: InstanceType<typeof PDFDocument>) => void) {
-    const fontPath = await resolvePdfFontPath();
+async function resolvePdfFonts() {
+    if (cachedPdfFonts) {
+        return cachedPdfFonts;
+    }
+
+    const regularCandidates = [
+        process.env[PDF_FONT_ENV]?.trim()
+            ? {
+                path: process.env[PDF_FONT_ENV]!.trim(),
+            }
+            : null,
+        {
+            path: DEFAULT_PDF_FONT_PATH,
+        },
+        {
+            path: "/usr/share/fonts/opentype/noto/NotoSansSC-Regular.otf",
+        },
+        {
+            path: "C:\\Windows\\Fonts\\msyh.ttf",
+        },
+    ].filter((value): value is PdfFontSource => Boolean(value?.path));
+
+    const boldCandidates = [
+        process.env[PDF_BOLD_FONT_ENV]?.trim()
+            ? {
+                path: process.env[PDF_BOLD_FONT_ENV]!.trim(),
+            }
+            : null,
+        {
+            path: DEFAULT_PDF_BOLD_FONT_PATH,
+        },
+        {
+            path: "/usr/share/fonts/opentype/noto/NotoSansSC-Bold.otf",
+        },
+    ].filter((value): value is PdfFontSource => Boolean(value?.path));
+
+    const regular = await resolveExistingFont(regularCandidates);
+    if (!regular) {
+        throw new Error(`未找到可用的中文 PDF 字体，请设置 ${PDF_FONT_ENV} 或提供 public/fonts/NotoSansSC-Regular.otf`);
+    }
+
+    const bold = await resolveExistingFont(boldCandidates);
+    cachedPdfFonts = {
+        regular,
+        bold: bold ?? regular,
+        hasTrueBold: Boolean(bold),
+    };
+    return cachedPdfFonts;
+}
+
+async function writePdf(
+    filePath: string,
+    build: (doc: InstanceType<typeof PDFDocument>, richTextOptions: PdfRichTextRenderOptions) => void
+) {
+    const fonts = await resolvePdfFonts();
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
     return new Promise<void>((resolve, reject) => {
@@ -124,10 +187,18 @@ async function writePdf(filePath: string, build: (doc: InstanceType<typeof PDFDo
         const stream = createWriteStream(filePath);
 
         doc.pipe(stream);
-        doc.font(fontPath);
+        doc.registerFont(PDF_REGULAR_FONT_ALIAS, fonts.regular.path, fonts.regular.family);
+        doc.registerFont(PDF_BOLD_FONT_ALIAS, fonts.bold.path, fonts.bold.family);
+        doc.font(PDF_REGULAR_FONT_ALIAS);
 
         try {
-            build(doc);
+            build(doc, {
+                fontAliases: {
+                    regular: PDF_REGULAR_FONT_ALIAS,
+                    bold: PDF_BOLD_FONT_ALIAS,
+                },
+                useBoldFont: fonts.hasTrueBold,
+            });
             doc.end();
         } catch (error) {
             try { doc.end(); } catch { /* ignore close errors */ }
@@ -160,7 +231,7 @@ async function generateQuestionnairePdf(params: {
     questionnaire: SubmissionPdfQuestionnaire;
     meta: { topicName: string; studentName: string; submittedAt: Date };
 }) {
-    await writePdf(params.outputPath, (doc) => {
+    await writePdf(params.outputPath, (doc, richTextOptions) => {
         doc.fontSize(18).text("问卷设计", { align: "center" });
         doc.moveDown(0.5);
         doc.fontSize(12).text(`课题：${params.meta.topicName}`);
@@ -170,7 +241,7 @@ async function generateQuestionnairePdf(params: {
 
         doc.fontSize(16).text(params.questionnaire.title || "未命名问卷");
         doc.moveDown(0.5);
-        doc.fontSize(12).text(getRichTextPlainText(params.questionnaire.welcomeText) || "");
+        renderRichTextToPdf(doc as unknown as PdfDocLike, params.questionnaire.welcomeText ?? "", richTextOptions);
         doc.moveDown();
 
         for (const [index, question] of (params.questionnaire.questions ?? []).entries()) {
@@ -191,7 +262,7 @@ async function generateQuestionnairePdf(params: {
         }
 
         doc.moveDown();
-        doc.fontSize(12).text(getRichTextPlainText(params.questionnaire.endingText) || "");
+        renderRichTextToPdf(doc as unknown as PdfDocLike, params.questionnaire.endingText ?? "", richTextOptions);
     });
 }
 
@@ -202,7 +273,7 @@ async function generateReportPdf(params: {
     populationSize: number | null;
     meta: { topicName: string; studentName: string; submittedAt: Date };
 }) {
-    await writePdf(params.outputPath, (doc) => {
+    await writePdf(params.outputPath, (doc, richTextOptions) => {
         doc.fontSize(18).text("实验报告", { align: "center" });
         doc.moveDown(0.5);
         doc.fontSize(12).text(`课题：${params.meta.topicName}`);
@@ -221,7 +292,7 @@ async function generateReportPdf(params: {
         }
         doc.fontSize(14).text("报告正文");
         doc.moveDown(0.5);
-        doc.fontSize(12).text(getRichTextPlainText(params.reportContent) || "");
+        renderRichTextToPdf(doc as unknown as PdfDocLike, params.reportContent, richTextOptions);
     });
 }
 
