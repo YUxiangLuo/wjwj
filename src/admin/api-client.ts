@@ -462,7 +462,6 @@ export interface SystemLog {
     source: string;
 }
 
-
 export const systemApi = {
     getMetrics: () => request<SystemMetrics>("/api/admin/system/metrics"),
     getLogs: () => request<SystemLog[]>("/api/admin/system/logs"),
