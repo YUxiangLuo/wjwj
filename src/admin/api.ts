@@ -457,5 +457,4 @@ export const adminApiRoutes = {
     "/api/admin/system/metrics": withAdminAuth(systemMetricsRoutes),
     "/api/admin/system/logs": withAdminAuth(systemLogsRoutes),
     "/api/admin/settings": withAdminAuth(systemSettingsRoutes),
-
 };
