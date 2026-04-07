@@ -190,7 +190,7 @@ export function AssistantManagement() {
 
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return "-";
-        return new Date(dateStr).toLocaleDateString("zh-CN");
+        return new Date(dateStr).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" });
     };
 
     const summary = useMemo(() => {

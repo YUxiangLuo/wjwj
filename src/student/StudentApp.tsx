@@ -471,6 +471,7 @@ function StudentAppContent() {
                                             </button>
                                             <div className="text-[10px] text-slate-500 whitespace-nowrap pt-1">
                                                 {new Date(notice.createdAt).toLocaleString("zh-CN", {
+                                                    timeZone: "Asia/Shanghai",
                                                     month: "2-digit",
                                                     day: "2-digit",
                                                     hour: "2-digit",

@@ -452,7 +452,7 @@ export function TeacherApp() {
 
                     <div className="flex items-center gap-2 sm:gap-4">
                         <span className="hidden sm:block text-xs text-slate-500 font-mono bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
-                            {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" })}
+                            {new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric" })}
                         </span>
 
                         <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
@@ -595,7 +595,7 @@ export function TeacherApp() {
                                             {item.title}
                                             {!item.isRead && <span className="ml-2 w-1.5 h-1.5 inline-block rounded-full bg-indigo-500"></span>}
                                         </div>
-                                        <span className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleString()}</span>
+                                        <span className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
                                     </div>
                                     <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.content}</div>
                                     {!item.isRead && (

@@ -410,7 +410,7 @@ export function TopicManagement() {
                                                 <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20">草稿</Badge>
                                             )}
                                         </div>
-                                        <div className="text-xs text-slate-500 mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString()}</div>
+                                        <div className="text-xs text-slate-500 mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
                                         <div className="text-sm text-slate-600 dark:text-slate-400 mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
                                     </div>
                                 </div>

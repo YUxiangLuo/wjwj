@@ -149,12 +149,12 @@ export function SubmissionDetailPage() {
                     <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400 mt-2">
                         <div className="flex items-center gap-1.5">
                             <Calendar className="w-4 h-4 text-slate-500" />
-                            <span>提交: <span className="text-slate-700 dark:text-slate-300 ml-1">{detail.submittedAt ? new Date(detail.submittedAt).toLocaleString("zh-CN") : "-"}</span></span>
+                            <span>提交: <span className="text-slate-700 dark:text-slate-300 ml-1">{detail.submittedAt ? new Date(detail.submittedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</span></span>
                         </div>
                         {detail.gradedAt && (
                             <div className="flex items-center gap-1.5">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-500/80" />
-                                <span>批改: <span className="text-slate-700 dark:text-slate-300 ml-1">{new Date(detail.gradedAt).toLocaleString("zh-CN")}</span></span>
+                                <span>批改: <span className="text-slate-700 dark:text-slate-300 ml-1">{new Date(detail.gradedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</span></span>
                             </div>
                         )}
                         {detail.graderName && (

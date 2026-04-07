@@ -20,6 +20,7 @@ import { experimentApi, tasksApi, type TaskDetail, type TaskStatus, type TopicAt
 import { clearReportDraft } from "../draft-sync";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
+import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -32,25 +33,8 @@ const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
 };
 
-function parseDeadline(deadline: string | null): Date | null {
-    if (!deadline) return null;
-    const withTime = deadline.includes("T") ? deadline : `${deadline}T23:59:00`;
-    const parsed = new Date(withTime);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 function formatDateTime(value: string | null) {
-    if (!value) return "无";
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleString("zh-CN", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    });
+    return formatDateTimeDisplay(value, "无");
 }
 
 type PreviewType = "image" | "pdf" | "video";

@@ -337,7 +337,7 @@ export function ExperimentLayout() {
                             )}
                             {lastSavedAt && (
                                 <span className="text-xs text-slate-500 font-mono hidden sm:inline-block">
-                                    已保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN")}
+                                    已保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai" })}
                                 </span>
                             )}
                             <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} data-testid="student-experiment-save" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">

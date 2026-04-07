@@ -162,7 +162,7 @@ async function checkAndRunAutoBackup() {
             if (!enableBackup) return;
 
             const frequencyMs = getFrequencyMs(frequency);
-            if (Date.now() - lastRunAt < frequencyMs) return;
+            if (Number.isFinite(lastRunAt) && Date.now() - lastRunAt < frequencyMs) return;
 
             const result = await createBackupArtifacts("auto");
             if (!result.ok) {
@@ -347,7 +347,10 @@ async function checkAndSendDeadlineReminders() {
                     ));
 
                 const existingReceiverIds = new Set(existingReminderRows.map((row) => row.receiverId));
-                const remainingHours = Math.max(1, Math.ceil((dueTask.deadline.getTime() - Date.now()) / (60 * 60 * 1000)));
+                const deadlineMs = dueTask.deadline.getTime();
+                const remainingHours = Number.isFinite(deadlineMs)
+                    ? Math.max(1, Math.ceil((deadlineMs - Date.now()) / (60 * 60 * 1000)))
+                    : 0;
                 const deadlineText = formatDateTimeCN(dueTask.deadline);
 
                 const reminderInserts = remindStudentIds

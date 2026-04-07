@@ -103,7 +103,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                 ) : (
                                     <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">草稿</Badge>
                                 )}
-                                <span className="text-xs text-slate-500">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN")}</span>
+                                <span className="text-xs text-slate-500">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
                             </div>
                         </div>
                     </div>
@@ -274,7 +274,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                         <div className="text-sm text-slate-800 dark:text-slate-200">{a.fileName}</div>
                                                         <div className="text-xs text-slate-500">
                                                             {a.fileSize > 0 ? `${(a.fileSize / 1024).toFixed(1)} KB` : ""}
-                                                            {a.createdAt ? ` · ${new Date(a.createdAt).toLocaleDateString("zh-CN")}` : ""}
+                                                            {a.createdAt ? ` · ${new Date(a.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}` : ""}
                                                         </div>
                                                     </div>
                                                 </div>
