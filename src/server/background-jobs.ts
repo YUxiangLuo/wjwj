@@ -348,9 +348,8 @@ async function checkAndSendDeadlineReminders() {
 
                 const existingReceiverIds = new Set(existingReminderRows.map((row) => row.receiverId));
                 const deadlineMs = dueTask.deadline.getTime();
-                const remainingHours = Number.isFinite(deadlineMs)
-                    ? Math.max(1, Math.ceil((deadlineMs - Date.now()) / (60 * 60 * 1000)))
-                    : 0;
+                if (!Number.isFinite(deadlineMs)) continue;
+                const remainingHours = Math.max(1, Math.ceil((deadlineMs - Date.now()) / (60 * 60 * 1000)));
                 const deadlineText = formatDateTimeCN(dueTask.deadline);
 
                 const reminderInserts = remindStudentIds
