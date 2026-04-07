@@ -155,7 +155,7 @@ export function SemesterManagement() {
     }
 
     const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString("zh-CN");
+        return new Date(dateStr).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" });
     };
 
     const summary = useMemo(() => {

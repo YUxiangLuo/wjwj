@@ -117,7 +117,7 @@ export function Dashboard() {
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
-        return date.toLocaleDateString("zh-CN");
+        return date.toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" });
     };
 
     const totalUsers = (stats?.studentCount ?? 0) + (stats?.teacherCount ?? 0) + (stats?.assistantCount ?? 0);

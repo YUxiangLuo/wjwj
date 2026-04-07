@@ -361,7 +361,7 @@ export function AdminApp() {
                         <div>
                             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{pageTitle}</h2>
                             <p className="hidden md:block text-xs text-slate-500">
-                                {new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" })}
+                                {new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric", weekday: "long" })}
                             </p>
                         </div>
                     </div>
@@ -535,7 +535,7 @@ export function AdminApp() {
                                             <span className={`text-sm font-medium ${item.isRead ? "text-slate-600 dark:text-slate-400" : "text-slate-800 dark:text-slate-200"}`}>{item.title}</span>
                                         </div>
                                         <span className="text-xs text-slate-500 font-mono">
-                                            {new Date(item.createdAt).toLocaleString("zh-CN", { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                            {new Date(item.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                     <div className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 pl-4 border-l-2 border-slate-200 dark:border-slate-800">{item.content}</div>

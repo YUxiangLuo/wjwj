@@ -111,7 +111,7 @@ export function SubmissionHistory() {
                                                         {status.label}
                                                     </Badge>
                                                     <span className="text-sm text-slate-500">
-                                                        提交时间：<span className="text-slate-700 dark:text-slate-300 font-mono">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN") : "-"}</span>
+                                                        提交时间：<span className="text-slate-700 dark:text-slate-300 font-mono">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</span>
                                                     </span>
                                                 </div>
 

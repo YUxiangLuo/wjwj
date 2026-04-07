@@ -273,7 +273,7 @@ export function Dashboard() {
                                                 {item.title}
                                             </div>
                                             <div className="text-xs text-slate-500 mt-1">
-                                                {new Date(item.createdAt).toLocaleString("zh-CN")}
+                                                {new Date(item.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
                                             </div>
                                         </div>
                                         <ChevronRight className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
@@ -295,7 +295,7 @@ export function Dashboard() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="text-xs text-slate-500 -mt-2">
-                        {selectedAnnouncement?.createdAt && new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN")}
+                        {selectedAnnouncement?.createdAt && new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
                     </div>
                     <div className="flex-1 overflow-y-auto py-4">
                         <RichTextContent

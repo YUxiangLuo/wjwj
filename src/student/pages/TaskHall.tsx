@@ -23,6 +23,7 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { announcementsApi, experimentApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
 import { clearReportDraft } from "../draft-sync";
+import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
 
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
@@ -38,25 +39,8 @@ const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
     rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
 };
 
-function parseDeadline(deadline: string | null): Date | null {
-    if (!deadline) return null;
-    const withTime = deadline.includes("T") ? deadline : `${deadline}T23:59:00`;
-    const parsed = new Date(withTime);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 function formatDateTime(value: string | null) {
-    if (!value) return "无";
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleString("zh-CN", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    });
+    return formatDateTimeDisplay(value, "无");
 }
 
 function getRemainingMs(deadline: string | null): number | null {
@@ -523,6 +507,7 @@ export function TaskHall() {
                                     </div>
                                     <div className="text-xs text-slate-500 mt-2 font-mono opacity-70">
                                         {new Date(announcement.createdAt).toLocaleString("zh-CN", {
+                                            timeZone: "Asia/Shanghai",
                                             month: "2-digit",
                                             day: "2-digit",
                                             hour: "2-digit",
@@ -540,7 +525,7 @@ export function TaskHall() {
                                         <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">{selectedAnnouncement.title}</h3>
                                         <div className="flex items-center gap-2 mt-2 text-xs text-slate-500 font-mono bg-white/50 dark:bg-slate-950/50 inline-flex px-2 py-1 rounded">
                                             <Clock className="w-3 h-3" />
-                                            {new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN")}
+                                            {new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
                                         </div>
                                     </div>
                                     <div className="w-full h-px bg-slate-200 dark:bg-slate-800" />

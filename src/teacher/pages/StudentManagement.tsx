@@ -287,7 +287,7 @@ export function StudentManagement() {
                                             <span className="text-slate-500 text-xs">否</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-slate-500 text-xs">{student.lastLogin ? new Date(student.lastLogin).toLocaleString() : "-"}</TableCell>
+                                    <TableCell className="text-slate-500 text-xs">{student.lastLogin ? new Date(student.lastLogin).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">

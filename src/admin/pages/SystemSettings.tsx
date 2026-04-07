@@ -705,7 +705,7 @@ export function SystemSettings() {
                             ) : backupList.length > 0 ? (
                                 <div className="text-xs text-slate-500">
                                     {backupList.find(item => item.backupId === restoreForm.backupId)?.createdAt ?
-                                        `备份时间：${new Date(backupList.find(item => item.backupId === restoreForm.backupId)!.createdAt).toLocaleString("zh-CN")}`
+                                        `备份时间：${new Date(backupList.find(item => item.backupId === restoreForm.backupId)!.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`
                                         : ""
                                     }
                                 </div>

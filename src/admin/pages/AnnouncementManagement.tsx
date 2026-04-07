@@ -192,7 +192,7 @@ export function AnnouncementManagement() {
     }
 
     const formatDateTime = (dateStr: string) => {
-        return new Date(dateStr).toLocaleString("zh-CN");
+        return new Date(dateStr).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" });
     };
 
     const summary = useMemo(() => {

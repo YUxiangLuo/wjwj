@@ -408,7 +408,7 @@ export function GradingDetail() {
                 <div className="px-6 py-2 text-sm text-blue-700 dark:text-blue-300 bg-blue-900/20 border-b border-blue-900/30 flex items-center justify-center">
                     <UserCheck className="w-4 h-4 mr-2" />
                     由 {data.gradedByType === 2 ? '教师' : '助教'} <span className="font-medium mx-1">{data.gradedByName}</span> 
-                    于 {data.gradedAt ? new Date(data.gradedAt).toLocaleString() : '-'} 批改
+                    于 {data.gradedAt ? new Date(data.gradedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : '-'} 批改
                 </div>
             )}
             {data.status === 3 && data.rejectReason && (

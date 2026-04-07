@@ -100,7 +100,7 @@ export function TaskProgressDetail() {
                         <span className="flex items-center gap-1"><Users className="w-3 h-3" />{data.task.className}</span>
                         <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {data.task.deadline ? `截止: ${new Date(data.task.deadline).toLocaleString("zh-CN")}` : "无截止时间"}
+                            {data.task.deadline ? `截止: ${new Date(data.task.deadline).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}` : "无截止时间"}
                         </span>
                         <span>{total} 名学生</span>
                     </div>
@@ -265,7 +265,7 @@ export function TaskProgressDetail() {
                                             {s.stage !== null ? `阶段 ${s.stage}` : "-"}
                                         </TableCell>
                                         <TableCell className="text-slate-500 text-xs">
-                                            {s.lastActivity ? new Date(s.lastActivity).toLocaleString("zh-CN") : "-"}
+                                            {s.lastActivity ? new Date(s.lastActivity).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {STATUSES_WITH_SUBMISSION.includes(s.status as StatusKey) && s.submissionId ? (

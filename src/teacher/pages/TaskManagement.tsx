@@ -273,8 +273,8 @@ export function TaskManagement() {
                                     <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
                                         <TableCell className="font-medium text-slate-800 dark:text-slate-200">{task.topic}</TableCell>
                                         <TableCell className="text-slate-700 dark:text-slate-300">{task.className}</TableCell>
-                                        <TableCell className="text-slate-500 text-xs">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString() : "-"}</TableCell>
-                                        <TableCell className="text-slate-500 text-xs">{task.deadline ? new Date(task.deadline).toLocaleDateString() : "无"}</TableCell>
+                                        <TableCell className="text-slate-500 text-xs">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</TableCell>
+                                        <TableCell className="text-slate-500 text-xs">{task.deadline ? new Date(task.deadline).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "无"}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-slate-200 dark:bg-slate-800 [&>div]:bg-emerald-500" />

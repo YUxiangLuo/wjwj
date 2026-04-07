@@ -115,7 +115,7 @@ export function SystemMonitor() {
     }, [metrics]);
 
     function handleExportReport() {
-        const now = new Date().toLocaleString("zh-CN");
+        const now = new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" });
         const lines = [
             `系统监控报告 - ${now}`,
             "",
@@ -141,7 +141,7 @@ export function SystemMonitor() {
                 : "无告警",
             "",
             "=== 最近日志 ===",
-            ...logs.slice(0, 20).map(l => `[${new Date(l.time).toLocaleString("zh-CN")}] [${l.level}] ${l.message} (${l.source})`),
+            ...logs.slice(0, 20).map(l => `[${new Date(l.time).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}] [${l.level}] ${l.message} (${l.source})`),
         );
         const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
         const url = URL.createObjectURL(blob);
@@ -324,7 +324,7 @@ export function SystemMonitor() {
                     {logs.map((log) => (
                         <div key={log.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/50 p-3 text-sm sm:flex-row sm:items-start group hover:bg-white dark:hover:bg-slate-950 transition-colors">
                             <div className="text-xs text-slate-500 font-mono sm:w-20 pt-1 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors">
-                                {new Date(log.time).toLocaleTimeString("zh-CN")}
+                                {new Date(log.time).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai" })}
                             </div>
                             <div className="min-w-[70px]">
                                 {getLevelBadge(log.level)}

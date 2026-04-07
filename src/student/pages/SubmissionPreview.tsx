@@ -32,6 +32,7 @@ import { PPS_UNAVAILABLE_STATUS_MESSAGE } from "../experiment/sampling-messages"
 import { getPreviewSubmitBlocker } from "../experiment/preview-submit";
 import { ImmersiveReportPreview } from "../components/ImmersiveReportPreview";
 import { clearReportDraft } from "../draft-sync";
+import { parseDeadline } from "@/utils/format";
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
@@ -133,8 +134,8 @@ export function SubmissionPreview() {
 
         // Pre-submission deadline check
         if (task?.deadline) {
-            const deadlineDate = new Date(task.deadline.includes("T") ? task.deadline : `${task.deadline}T23:59:00`);
-            if (new Date() > deadlineDate) {
+            const deadlineDate = parseDeadline(task.deadline);
+            if (deadlineDate && new Date() > deadlineDate) {
                 setError("任务已截止，无法提交");
                 return;
             }

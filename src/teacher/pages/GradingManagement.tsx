@@ -205,7 +205,7 @@ export function GradingManagement() {
                                         <div className="flex flex-col items-end gap-2">
                                             {getStatusBadge(sub.status, sub.score)}
                                             {getGraderBadge(sub)}
-                                            <div className="text-xs text-slate-500 mt-1">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : "-"}</div>
+                                            <div className="text-xs text-slate-500 mt-1">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</div>
                                         </div>
                                     </div>
                                     <div className="flex justify-end mt-4 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">

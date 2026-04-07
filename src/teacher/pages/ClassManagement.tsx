@@ -147,7 +147,7 @@ export function ClassManagement() {
                                                 {cls.studentCount} 人
                                             </span>
                                         </TableCell>
-                                        <TableCell className="text-slate-500 text-xs">{new Date(cls.createdAt).toLocaleDateString()}</TableCell>
+                                        <TableCell className="text-slate-500 text-xs">{new Date(cls.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</TableCell>
                                         <TableCell className="text-right">
                                             <Link to={`/class/${cls.id}/students`}>
                                                 <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="sm" className="h-8 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
