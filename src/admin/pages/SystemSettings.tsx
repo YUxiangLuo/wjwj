@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Settings, FlaskConical, Shield, Database, Save, Loader2, Lock, ArrowLeft, FileText, Bell } from "lucide-react";
+import { Settings, FlaskConical, Shield, Save, Loader2, Lock, FileText, Bell } from "lucide-react";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
-import { settingsApi, systemApi, authApi, type BackupInfo } from "../api-client";
+import { settingsApi, authApi } from "../api-client";
 import { validateAdminSettingsPayload } from "../settings-validation";
 import { toast } from "sonner";
 
@@ -28,7 +25,6 @@ const sections: SettingSection[] = [
     { id: "security", title: "安全设置", icon: Shield },
     { id: "file-limits", title: "文件限制", icon: FileText },
     { id: "notifications", title: "通知设置", icon: Bell },
-    { id: "backup", title: "备份恢复", icon: Database },
 ];
 
 const sectionDescriptions: Record<string, string> = {
@@ -37,22 +33,12 @@ const sectionDescriptions: Record<string, string> = {
     security: "登录保护与会话超时策略",
     "file-limits": "Excel行数、附件大小与批量导入限制",
     notifications: "截止提醒与通知保留策略",
-    backup: "自动备份、保留周期与恢复操作",
 };
 
 export function SystemSettings() {
-    const navigate = useNavigate();
     const [activeSection, setActiveSection] = useState("general");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [backupLoading, setBackupLoading] = useState(false);
-    const [restoreLoading, setRestoreLoading] = useState(false);
-    const [lastBackupId, setLastBackupId] = useState<string | null>(null);
-    const [showRestoreModal, setShowRestoreModal] = useState(false);
-    const [restoreForm, setRestoreForm] = useState({ backupId: "", password: "", confirmPassword: "" });
-    const [restoreError, setRestoreError] = useState<string | null>(null);
-    const [backupList, setBackupList] = useState<BackupInfo[]>([]);
-    const [backupListLoading, setBackupListLoading] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [adminUsername, setAdminUsername] = useState<string | null>(null);
     const [settings, setSettings] = useState({
@@ -67,9 +53,6 @@ export function SystemSettings() {
         experimentTimeLimit: 120,
         autoSaveInterval: 5,
         requireApproval: true,
-        enableBackup: true,
-        backupFrequency: "daily",
-        backupRetentionDays: 30,
         excelMaxRows: 100000,
         maxAttachmentSizeMb: 10,
         batchImportMaxRows: 500,
@@ -123,9 +106,6 @@ export function SystemSettings() {
                     experimentTimeLimit: (data.experiment_time_limit as number) ?? prev.experimentTimeLimit,
                     autoSaveInterval: (data.auto_save_interval as number) ?? prev.autoSaveInterval,
                     requireApproval: (data.require_approval as boolean) ?? prev.requireApproval,
-                    enableBackup: (data.enable_backup as boolean) ?? prev.enableBackup,
-                    backupFrequency: (data.backup_frequency as string) ?? prev.backupFrequency,
-                    backupRetentionDays: (data["backup.retention_days"] as number) ?? prev.backupRetentionDays,
                     excelMaxRows: (data["file.excel_max_rows"] as number) ?? prev.excelMaxRows,
                     maxAttachmentSizeMb: (data["file.max_attachment_size_mb"] as number) ?? prev.maxAttachmentSizeMb,
                     batchImportMaxRows: (data["file.batch_import_max_rows"] as number) ?? prev.batchImportMaxRows,
@@ -153,9 +133,6 @@ export function SystemSettings() {
             experiment_time_limit: settings.experimentTimeLimit,
             auto_save_interval: settings.autoSaveInterval,
             require_approval: settings.requireApproval,
-            enable_backup: settings.enableBackup,
-            backup_frequency: settings.backupFrequency,
-            "backup.retention_days": settings.backupRetentionDays,
             "file.excel_max_rows": settings.excelMaxRows,
             "file.max_attachment_size_mb": settings.maxAttachmentSizeMb,
             "file.batch_import_max_rows": settings.batchImportMaxRows,
@@ -186,106 +163,12 @@ export function SystemSettings() {
         }
     };
 
-    const handleCreateBackup = async () => {
-        setBackupLoading(true);
-        try {
-            const res = await systemApi.createBackup();
-            if (res.success && res.data) {
-                setLastBackupId(res.data.backupId);
-                toast.success(`备份已创建：${res.data.backupId}`);
-            } else {
-                toast.error(res.error?.message ?? "备份失败");
-            }
-        } catch (error) {
-            console.error("Failed to create backup:", error);
-            toast.error("备份失败");
-        } finally {
-            setBackupLoading(false);
-        }
-    };
-
-    const handleRestoreBackup = async () => {
-        setRestoreError(null);
-        setBackupListLoading(true);
-        setRestoreForm({
-            backupId: lastBackupId ?? "",
-            password: "",
-            confirmPassword: "",
-        });
-        try {
-            const res = await systemApi.listBackups();
-            if (res.success && res.data) {
-                const data = res.data;
-                setBackupList(data);
-                if (!lastBackupId) {
-                    const firstBackupId = data.find((item) => item.hasZip)?.backupId;
-                    if (firstBackupId) {
-                        setRestoreForm(prev => ({ ...prev, backupId: firstBackupId }));
-                    }
-                }
-            } else {
-                setBackupList([]);
-            }
-        } catch (error) {
-            console.error("Failed to load backups:", error);
-            setBackupList([]);
-        } finally {
-            setBackupListLoading(false);
-        }
-        setShowRestoreModal(true);
-    };
-
-    const handleConfirmRestore = async () => {
-        setRestoreError(null);
-        if (!restoreForm.backupId.trim()) {
-            setRestoreError("请输入备份ID");
-            return;
-        }
-
-        const selectedBackup = backupList.find((item) => item.backupId === restoreForm.backupId.trim());
-        if (selectedBackup && !selectedBackup.hasZip) {
-            setRestoreError("该备份缺少资源文件，无法用于恢复");
-            return;
-        }
-
-        if (!restoreForm.password || !restoreForm.confirmPassword) {
-            setRestoreError("请输入管理员密码确认");
-            return;
-        }
-        if (restoreForm.password !== restoreForm.confirmPassword) {
-            setRestoreError("两次输入的密码不一致");
-            return;
-        }
-
-        setRestoreLoading(true);
-        try {
-            const res = await systemApi.restoreBackup({
-                backupId: restoreForm.backupId.trim(),
-                password: restoreForm.password,
-                confirmPassword: restoreForm.confirmPassword,
-            });
-            if (res.success) {
-                setShowRestoreModal(false);
-                toast.success("恢复操作已完成，请重新登录。");
-                await authApi.logout();
-                navigate("/login", { replace: true });
-            } else {
-                setRestoreError(res.error?.message ?? "恢复失败");
-            }
-        } catch (error) {
-            console.error("Failed to restore backup:", error);
-            setRestoreError("恢复失败");
-        } finally {
-            setRestoreLoading(false);
-        }
-    };
-
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">系统设置</h2>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">集中管理系统参数、安全策略与备份方案。</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">集中管理系统参数与安全策略。</p>
                 </div>
             </div>
 
@@ -578,69 +461,6 @@ export function SystemSettings() {
                             </div>
                         )}
 
-                        {activeSection === "backup" && (
-                            <div className="space-y-6">
-                                <div className="grid gap-6 max-w-2xl">
-                                    <div className="flex items-center justify-between p-4 rounded-lg bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800">
-                                        <div className="space-y-0.5">
-                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">自动备份</div>
-                                            <div className="text-xs text-slate-500">定期自动备份数据库和文件，防止数据丢失</div>
-                                        </div>
-                                        <Switch
-                                            checked={settings.enableBackup}
-                                            onCheckedChange={(checked) => setSettings({ ...settings, enableBackup: checked })}
-                                            className="data-[state=checked]:bg-indigo-600"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <Label className="text-slate-700 dark:text-slate-300">备份频率</Label>
-                                            <Select value={settings.backupFrequency} onValueChange={(v) => setSettings({ ...settings, backupFrequency: v })}>
-                                                <SelectTrigger className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                                    <SelectItem value="hourly">每小时</SelectItem>
-                                                    <SelectItem value="daily">每天</SelectItem>
-                                                    <SelectItem value="weekly">每周</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <Label htmlFor="backupRetentionDays" className="text-slate-700 dark:text-slate-300">保留天数</Label>
-                                            <Input
-                                                id="backupRetentionDays"
-                                                type="number"
-                                                value={settings.backupRetentionDays}
-                                                onChange={(e) => setSettings({ ...settings, backupRetentionDays: parseInt(e.target.value) || 0 })}
-                                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500/50"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-4 mt-2">
-                                        <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">手动备份与恢复</h4>
-                                        <div className="flex flex-col sm:flex-row gap-3">
-                                            <Button data-testid="settings-backup-create" onClick={handleCreateBackup} disabled={backupLoading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                                                {backupLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Database className="w-4 h-4 mr-2" />}
-                                                立即备份
-                                            </Button>
-                                            <Button data-testid="settings-backup-restore-open" variant="outline" onClick={handleRestoreBackup} disabled={restoreLoading} className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
-                                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                                恢复备份
-                                            </Button>
-                                        </div>
-                                        {lastBackupId && (
-                                            <div className="text-xs text-emerald-600 font-mono flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                                                最近备份ID：{lastBackupId}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
                         <div className="pt-6 mt-6 border-t border-slate-200 dark:border-slate-800 flex justify-end">
                             <Button data-testid="settings-save" onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
                                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
@@ -670,88 +490,6 @@ export function SystemSettings() {
                     confirmPassword: "settings-change-password-confirm",
                 }}
             />
-
-            <Dialog open={showRestoreModal} onOpenChange={setShowRestoreModal}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                            <Database className="w-5 h-5 text-amber-500" />
-                            恢复备份
-                        </DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">
-                            恢复将清空当前数据库并覆盖数据，这是一个不可逆的操作。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="restoreBackupId" className="text-slate-700 dark:text-slate-300">选择备份</Label>
-                            <Select
-                                value={restoreForm.backupId}
-                                onValueChange={(value) => setRestoreForm({ ...restoreForm, backupId: value })}
-                            >
-                                <SelectTrigger id="restoreBackupId" data-testid="settings-backup-restore-select" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                    <SelectValue placeholder={backupListLoading ? "加载中..." : "请选择备份"} />
-                                </SelectTrigger>
-                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                    {backupList.map((item) => (
-                                        <SelectItem key={item.backupId} value={item.backupId} disabled={!item.hasZip}>
-                                            <span className="font-mono">{item.backupId}</span> {item.hasZip ? "" : "(不可用)"}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {backupListLoading ? (
-                                <div className="text-xs text-slate-500">正在加载备份列表...</div>
-                            ) : backupList.length > 0 ? (
-                                <div className="text-xs text-slate-500">
-                                    {backupList.find(item => item.backupId === restoreForm.backupId)?.createdAt ?
-                                        `备份时间：${new Date(backupList.find(item => item.backupId === restoreForm.backupId)!.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`
-                                        : ""
-                                    }
-                                </div>
-                            ) : (
-                                <div className="text-xs text-slate-500">暂无可用备份</div>
-                            )}
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="restorePassword" className="text-slate-700 dark:text-slate-300">管理员密码</Label>
-                            <Input
-                                id="restorePassword"
-                                data-testid="settings-backup-restore-password"
-                                type="password"
-                                value={restoreForm.password}
-                                onChange={(e) => setRestoreForm({ ...restoreForm, password: e.target.value })}
-                                autoComplete="current-password"
-                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-red-500/50 focus:ring-red-500/20"
-                                placeholder="输入密码以确认操作"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="restoreConfirmPassword" className="text-slate-700 dark:text-slate-300">确认管理员密码</Label>
-                            <Input
-                                id="restoreConfirmPassword"
-                                data-testid="settings-backup-restore-confirm-password"
-                                type="password"
-                                value={restoreForm.confirmPassword}
-                                onChange={(e) => setRestoreForm({ ...restoreForm, confirmPassword: e.target.value })}
-                                autoComplete="current-password"
-                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-red-500/50 focus:ring-red-500/20"
-                                placeholder="再次输入密码"
-                            />
-                        </div>
-                        {restoreError && <div className="text-sm text-rose-600 bg-rose-500/10 p-2 rounded border border-rose-500/20">{restoreError}</div>}
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowRestoreModal(false)} disabled={restoreLoading} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">
-                            取消
-                        </Button>
-                        <Button data-testid="settings-backup-restore-submit" onClick={handleConfirmRestore} disabled={restoreLoading} className="bg-rose-600 hover:bg-rose-700 text-white">
-                            {restoreLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                            确认恢复
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

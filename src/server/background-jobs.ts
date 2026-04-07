@@ -1,14 +1,9 @@
 import { and, eq, gte, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
-import { readdir, stat, unlink } from "node:fs/promises";
-import { extname, join } from "node:path";
-import { createBackupArtifacts } from "../admin/backup";
 import { db } from "../db";
-import { admin, experiment, notification, operationLog, student, systemConfig, task, topic } from "../db/schema";
+import { experiment, notification, student, systemConfig, task, topic } from "../db/schema";
 import { processPendingSubmissionPdfs } from "../student/experiment/submission-pdf";
 import { formatDateTimeCN } from "../utils/format";
 
-const AUTO_BACKUP_CHECK_INTERVAL_MS = 5 * 60 * 1000;
-const AUTO_BACKUP_LEASE_MS = 60 * 60 * 1000;
 const NOTIFICATION_CLEANUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const NOTIFICATION_CLEANUP_LEASE_MS = 30 * 60 * 1000;
 const DEFAULT_NOTIFICATION_RETENTION_DAYS = 90;
@@ -20,22 +15,9 @@ const SUBMISSION_PDF_LEASE_MS = 60 * 1000;
 
 const schedulerOwnerId = `scheduler-${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
 
-let autoBackupRunning = false;
 let notificationCleanupRunning = false;
 let deadlineReminderRunning = false;
 let submissionPdfRunning = false;
-
-function getFrequencyMs(freq: string) {
-    switch (freq) {
-        case "hourly":
-            return 60 * 60 * 1000;
-        case "weekly":
-            return 7 * 24 * 60 * 60 * 1000;
-        case "daily":
-        default:
-            return 24 * 60 * 60 * 1000;
-    }
-}
 
 function getResultHeader(result: unknown) {
     if (Array.isArray(result) && result.length > 0 && result[0] && typeof result[0] === "object") {
@@ -47,16 +29,6 @@ function getResultHeader(result: unknown) {
     }
 
     return null;
-}
-
-async function upsertConfig(key: string, value: string, valueType: "string" | "number" | "boolean" = "string") {
-    await db.insert(systemConfig).values({
-        configKey: key,
-        configValue: value,
-        valueType,
-    }).onDuplicateKeyUpdate({
-        set: { configValue: value, valueType },
-    });
 }
 
 async function tryAcquireJobLease(jobName: string, leaseMs: number) {
@@ -104,139 +76,6 @@ async function runWithLease(jobName: string, leaseMs: number, job: () => Promise
         await releaseJobLease(jobName).catch((error) => {
             console.error(`Failed to release ${jobName} lease:`, error);
         });
-    }
-}
-
-async function cleanupExpiredBackups(retentionDays: number) {
-    if (!Number.isFinite(retentionDays) || retentionDays <= 0) return;
-    const backupDir = join(process.cwd(), "backups");
-    const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
-
-    try {
-        const entries = await readdir(backupDir);
-        const sqlFiles = entries.filter((file) => extname(file) === ".sql");
-
-        for (const sqlFile of sqlFiles) {
-            const sqlPath = join(backupDir, sqlFile);
-            const fileStat = await stat(sqlPath);
-            if (fileStat.mtime.getTime() < cutoff) {
-                const baseName = sqlFile.replace(/\.sql$/, "");
-                const zipPath = join(backupDir, `${baseName}.zip`);
-                await unlink(sqlPath).catch(() => undefined);
-                await unlink(zipPath).catch(() => undefined);
-            }
-        }
-    } catch {
-        // ignore cleanup errors
-    }
-}
-
-async function checkAndRunAutoBackup() {
-    if (autoBackupRunning) return;
-    autoBackupRunning = true;
-
-    try {
-        await runWithLease("auto_backup", AUTO_BACKUP_LEASE_MS, async () => {
-            const keys = [
-                "enable_backup",
-                "backup_frequency",
-                "backup.last_run_at",
-                "backup.last_backup_id",
-                "backup.retention_days",
-            ];
-            const rows = await db
-                .select({ key: systemConfig.configKey, value: systemConfig.configValue, valueType: systemConfig.valueType })
-                .from(systemConfig)
-                .where(inArray(systemConfig.configKey, keys));
-
-            const config: Record<string, string> = {};
-            rows.forEach((row) => {
-                config[row.key] = row.value;
-            });
-
-            const enableBackup = (config["enable_backup"] ?? "false") === "true";
-            const frequency = config["backup_frequency"] ?? "daily";
-            const lastRunAt = config["backup.last_run_at"] ? new Date(config["backup.last_run_at"]).getTime() : 0;
-            const retentionDays = Number(config["backup.retention_days"] ?? 30) || 30;
-
-            if (!enableBackup) return;
-
-            const frequencyMs = getFrequencyMs(frequency);
-            if (Number.isFinite(lastRunAt) && Date.now() - lastRunAt < frequencyMs) return;
-
-            const result = await createBackupArtifacts("auto");
-            if (!result.ok) {
-                await db.insert(operationLog).values({
-                    userType: 1,
-                    userId: 0,
-                    action: "AUTO_BACKUP_FAILED",
-                    targetType: "system",
-                    detail: { error: result.error, code: result.code },
-                    ipAddress: "127.0.0.1",
-                });
-
-                const admins = await db.select({ id: admin.id }).from(admin);
-                if (admins.length > 0) {
-                    await db.insert(notification).values(
-                        admins.map((a) => ({
-                            receiverType: 1,
-                            receiverId: a.id,
-                            type: "AUTO_BACKUP_FAILED",
-                            title: "自动备份失败",
-                            content: `自动备份失败：${result.error}`,
-                        }))
-                    );
-                }
-                return;
-            }
-
-            await upsertConfig("backup.last_run_at", new Date().toISOString());
-            await upsertConfig("backup.last_backup_id", result.backupId);
-
-            await db.insert(operationLog).values({
-                userType: 1,
-                userId: 0,
-                action: "AUTO_BACKUP",
-                targetType: "system",
-                detail: { backupId: result.backupId, sqlPath: result.sqlPath, zipPath: result.zipPath },
-                ipAddress: "127.0.0.1",
-            });
-
-            const admins = await db.select({ id: admin.id }).from(admin);
-            if (admins.length > 0) {
-                await db.insert(notification).values(
-                    admins.map((a) => ({
-                        receiverType: 1,
-                        receiverId: a.id,
-                        type: "AUTO_BACKUP_CREATED",
-                        title: "自动备份已完成",
-                        content: `自动备份 ${result.backupId} 已创建成功。`,
-                    }))
-                );
-            }
-
-            await cleanupExpiredBackups(retentionDays);
-        });
-    } catch (error) {
-        console.error("Auto backup failed:", error);
-        try {
-            const admins = await db.select({ id: admin.id }).from(admin);
-            if (admins.length > 0) {
-                await db.insert(notification).values(
-                    admins.map((a) => ({
-                        receiverType: 1,
-                        receiverId: a.id,
-                        type: "AUTO_BACKUP_FAILED",
-                        title: "自动备份异常",
-                        content: `自动备份异常：${error instanceof Error ? error.message : "未知错误"}`,
-                    }))
-                );
-            }
-        } catch (notifyError) {
-            console.error("Auto backup notify failed:", notifyError);
-        }
-    } finally {
-        autoBackupRunning = false;
     }
 }
 
@@ -393,11 +232,6 @@ async function checkAndProcessSubmissionPdfs() {
 
 export function startBackgroundJobs() {
     const timers: Array<ReturnType<typeof setInterval>> = [];
-
-    if (process.env.DISABLE_AUTO_BACKUP !== "1") {
-        timers.push(setInterval(checkAndRunAutoBackup, AUTO_BACKUP_CHECK_INTERVAL_MS));
-        void checkAndRunAutoBackup();
-    }
 
     if (process.env.DISABLE_NOTIFICATION_CLEANUP !== "1") {
         timers.push(setInterval(checkAndCleanupNotifications, NOTIFICATION_CLEANUP_INTERVAL_MS));

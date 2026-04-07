@@ -35,7 +35,7 @@ import {
     withAdminAuth,
     withAdminAuthAllowFirstLogin,
 } from "./routes/auth";
-import { backupCreateRoutes, backupListRoutes, backupRestoreRoutes } from "./routes/backup";
+
 import {
     announcementPublishRoutes,
     announcementRoutes,
@@ -272,9 +272,6 @@ const ALLOWED_SETTING_KEYS = new Set([
     "experiment_time_limit",
     "auto_save_interval",
     "require_approval",
-    "enable_backup",
-    "backup_frequency",
-    "backup.retention_days",
     "file.excel_max_rows",
     "file.max_attachment_size_mb",
     "file.batch_import_max_rows",
@@ -460,7 +457,5 @@ export const adminApiRoutes = {
     "/api/admin/system/metrics": withAdminAuth(systemMetricsRoutes),
     "/api/admin/system/logs": withAdminAuth(systemLogsRoutes),
     "/api/admin/settings": withAdminAuth(systemSettingsRoutes),
-    "/api/admin/backups": withAdminAuth(backupListRoutes),
-    "/api/admin/backup": withAdminAuth(backupCreateRoutes),
-    "/api/admin/restore": withAdminAuth(backupRestoreRoutes),
+
 };
