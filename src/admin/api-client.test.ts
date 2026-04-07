@@ -127,11 +127,11 @@ test("session-expired helper only matches real auth expiry responses", () => {
         error: { code: "INVALID_CREDENTIALS", message: "当前密码不正确" },
     })).toBe(false);
 
-    expect(shouldDispatchAdminSessionExpired("/api/admin/restore", 401, {
+    expect(shouldDispatchAdminSessionExpired("/api/admin/settings", 401, {
         error: { code: "ACCOUNT_NOT_FOUND", message: "账户不存在" },
     })).toBe(true);
 
-    expect(shouldDispatchAdminSessionExpired("/api/admin/restore", 401, {
+    expect(shouldDispatchAdminSessionExpired("/api/admin/settings", 401, {
         error: { code: "UNAUTHORIZED", message: "未登录或登录已过期" },
     })).toBe(true);
 

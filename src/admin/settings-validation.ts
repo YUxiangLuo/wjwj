@@ -16,7 +16,6 @@ const NUMERIC_SETTING_RULES: NumericSettingRule[] = [
     { key: "session.admin_timeout_minutes", label: "管理员会话超时", min: 15, max: 60 },
     { key: "session.teacher_timeout_minutes", label: "教师会话超时", min: 60, max: 240 },
     { key: "session.student_timeout_minutes", label: "学生会话超时", min: 120, max: 480 },
-    { key: "backup.retention_days", label: "备份保留天数", min: 1 },
     { key: "file.excel_max_rows", label: "Excel 最大行数", min: 10000, max: 500000 },
     { key: "file.max_attachment_size_mb", label: "单个附件最大大小", min: 1 },
     { key: "file.batch_import_max_rows", label: "批量导入最大行数", min: 100, max: 1000 },

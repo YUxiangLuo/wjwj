@@ -3,7 +3,6 @@ import { validateAdminSettingsPayload } from "./settings-validation";
 
 test("validateAdminSettingsPayload accepts valid notification and retention settings", () => {
     expect(validateAdminSettingsPayload({
-        "backup.retention_days": 30,
         "file.max_attachment_size_mb": 10,
         "notification.deadline_reminder_hours": 12,
         "notification.retention_days": 88,
@@ -26,14 +25,7 @@ test("validateAdminSettingsPayload rejects zero notification settings", () => {
     });
 });
 
-test("validateAdminSettingsPayload rejects non-positive retention and attachment limits", () => {
-    expect(validateAdminSettingsPayload({
-        "backup.retention_days": 0,
-    })).toEqual({
-        key: "backup.retention_days",
-        message: "备份保留天数须大于等于 1",
-    });
-
+test("validateAdminSettingsPayload rejects non-positive attachment limits", () => {
     expect(validateAdminSettingsPayload({
         "file.max_attachment_size_mb": 0,
     })).toEqual({
@@ -53,9 +45,9 @@ test("validateAdminSettingsPayload rejects out-of-range batch import rows", () =
 
 test("validateAdminSettingsPayload rejects non-integer numeric settings", () => {
     expect(validateAdminSettingsPayload({
-        "backup.retention_days": "30",
+        "notification.retention_days": "30",
     })).toEqual({
-        key: "backup.retention_days",
-        message: "备份保留天数必须为整数",
+        key: "notification.retention_days",
+        message: "通知保留天数必须为整数",
     });
 });

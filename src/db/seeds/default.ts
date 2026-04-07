@@ -1238,7 +1238,6 @@ async function seed() {
         { title: "期中实验进度提醒", content: "请各位同学注意：期中节点已过，请确保至少完成第二阶段（抽样方案设计）。未按时完成的同学请尽快补齐进度。", targetScope: "student", status: 1 },
         { title: "新学期教学安排", content: "2024-2025 学年第一学期课程安排已发布，请各位教师登录系统查看并确认课题与班级设置。", targetScope: "teacher", status: 1 },
         { title: "助教培训通知", content: "定于下周三 14:00 在教学楼 B302 举行助教操作培训，请所有助教准时参加。", targetScope: "assistant", status: 1 },
-        { title: "数据备份说明（已下线）", content: "此通知已过期。", targetScope: "all", status: 0 },
     ];
 
     await db.delete(announcementRead);
@@ -1275,7 +1274,6 @@ async function seed() {
     const notifDefs = [
         // 管理员通知
         { rt: USER.admin, rid: 1, type: "SYSTEM_ALERT", title: "系统运行状态正常", content: "今日凌晨自动巡检已完成，系统核心服务运行正常。", isRead: 0 },
-        { rt: USER.admin, rid: 1, type: "BACKUP_CREATED", title: "备份已完成", content: "例行备份 backup_daily_demo 已生成，可在系统设置中查看。", isRead: 0 },
         { rt: USER.admin, rid: 1, type: "SETTINGS_UPDATED", title: "系统设置已更新", content: "最近一次系统设置变更已成功保存。", isRead: 1 },
         // 学生通知
         { rt: USER.student, rid: studentIds[0]!, type: "TASK_ASSIGNED", title: "新任务发布", content: "您有一个新的实验任务：消费者行为分析实验，请及时完成。", isRead: 0 },
@@ -1346,8 +1344,6 @@ async function seed() {
         { ut: USER.teacher, uid: teacherIds[1]!, action: "CREATE_TOPIC", targetType: "topic", targetId: topicIds[1]!, detail: { name: "大学生网购趋势调查" } },
         { ut: USER.teacher, uid: teacherIds[1]!, action: "CREATE_TOPIC", targetType: "topic", targetId: topicIds[3]!, detail: { name: "数据分析基础实战" } },
         { ut: USER.teacher, uid: teacherIds[2]!, action: "CREATE_TOPIC", targetType: "topic", targetId: topicIds[5]!, detail: { name: "居民健康与运动习惯调查" } },
-        { ut: USER.admin, uid: 1, action: "CREATE_BACKUP", targetType: "system", targetId: null as any, detail: { reason: "日常备份" } },
-        { ut: USER.admin, uid: 1, action: "CREATE_BACKUP", targetType: "system", targetId: null as any, detail: { reason: "版本升级前备份" } },
     ];
     await db.delete(operationLog);
     for (const o of opDefs) {

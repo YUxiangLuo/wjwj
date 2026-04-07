@@ -462,30 +462,15 @@ export interface SystemLog {
     source: string;
 }
 
-export interface BackupInfo {
-    backupId: string;
-    createdAt: string;
-    sqlPath: string;
-    zipPath: string;
-    hasZip: boolean;
-}
-
 export const systemApi = {
     getMetrics: () => request<SystemMetrics>("/api/admin/system/metrics"),
     getLogs: () => request<SystemLog[]>("/api/admin/system/logs"),
-    listBackups: () => request<BackupInfo[]>("/api/admin/backups"),
     getNotifications: () => request<{ count: number; items: AdminNotification[]; sessionExpiresAt?: string | null }>("/api/admin/notifications"),
     markNotificationRead: (id: number) => request<{ success: boolean }>(`/api/admin/notifications/${id}/read`, {
         method: "PUT",
     }),
     markAllNotificationsRead: () => request<{ success: boolean }>("/api/admin/notifications/read-all", {
         method: "PUT",
-    }),
-    createBackup: () => request<{ backupId: string; createdAt: string }>("/api/admin/backup", { method: "POST" }),
-    restoreBackup: (data: { backupId: string; password: string; confirmPassword: string }) =>
-        request<{ success: boolean; restoredFrom: string }>("/api/admin/restore", {
-        method: "POST",
-        body: JSON.stringify(data),
     }),
 };
 
