@@ -293,26 +293,32 @@ type FilterType = "all" | "in_progress" | "submitted" | "graded";
 export function TaskHall() {
     const [tasks, setTasks] = useState<StudentTask[]>([]);
     const [loading, setLoading] = useState(true);
+    const [taskError, setTaskError] = useState(false);
     const [filter, setFilter] = useState<FilterType>("all");
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [showAnnouncements, setShowAnnouncements] = useState(false);
     const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
 
     // 加载任务列表
-    useEffect(() => {
-        async function loadTasks() {
-            setLoading(true);
-            try {
-                const res = await tasksApi.list();
-                if (res.success && res.data) {
-                    setTasks(res.data);
-                }
-            } catch (error) {
-                console.error("Failed to load tasks:", error);
-            } finally {
-                setLoading(false);
+    async function loadTasks() {
+        setLoading(true);
+        setTaskError(false);
+        try {
+            const res = await tasksApi.list();
+            if (res.success && res.data) {
+                setTasks(res.data);
+            } else {
+                setTaskError(true);
             }
+        } catch (error) {
+            console.error("Failed to load tasks:", error);
+            setTaskError(true);
+        } finally {
+            setLoading(false);
         }
+    }
+
+    useEffect(() => {
         loadTasks();
     }, []);
 
@@ -463,7 +469,18 @@ export function TaskHall() {
 
             {/* Task Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
-                {filteredTasks.length > 0 ? (
+                {taskError ? (
+                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-red-50/30 dark:bg-red-950/20 rounded-3xl border border-dashed border-red-200 dark:border-red-800/50">
+                        <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mb-4 border border-red-200 dark:border-red-800/50">
+                            <AlertCircle className="w-8 h-8 text-red-400 dark:text-red-500" />
+                        </div>
+                        <p className="text-lg text-slate-600 dark:text-slate-400 font-medium">任务加载失败</p>
+                        <p className="text-sm text-slate-500 mt-1">请检查网络连接后重试</p>
+                        <Button variant="outline" size="sm" className="mt-4" onClick={() => loadTasks()}>
+                            重试
+                        </Button>
+                    </div>
+                ) : filteredTasks.length > 0 ? (
                     filteredTasks.map(task => (
                         <TaskCard key={task.id} task={task} />
                     ))
