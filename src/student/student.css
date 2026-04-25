@@ -1,125 +1,13 @@
 /*
  * ═══════════════════════════════════════════════════════════════════
- * Theme Architecture — light-first + dark: prefix
+ * Student-specific styles
  * ═══════════════════════════════════════════════════════════════════
  *
- * Components use standard Tailwind colors with `dark:` variants:
- *   e.g. `bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200`
- *
- * Semantic tokens (`bg-background`, `text-foreground`, `bg-card`,
- * `bg-muted`, etc.) adapt automatically via CSS variables.
+ * Shared theme variables and base styles from styles/globals.css
  * ═══════════════════════════════════════════════════════════════════
  */
 
-@import "tailwindcss";
-
-@custom-variant dark (&:where(.dark, .dark *));
-
-@theme inline {
-    --font-sans: "Noto Sans SC", ui-sans-serif, system-ui, -apple-system,
-        BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC",
-        "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
-        "WenQuanYi Micro Hei", sans-serif, "Apple Color Emoji",
-        "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-
-    /* Semantic tokens */
-    --color-border: var(--sem-border);
-    --color-input: var(--sem-input);
-    --color-ring: var(--sem-ring);
-    --color-background: var(--sem-background);
-    --color-foreground: var(--sem-foreground);
-    --color-primary: var(--sem-primary);
-    --color-primary-foreground: var(--sem-primary-foreground);
-    --color-secondary: var(--sem-secondary);
-    --color-secondary-foreground: var(--sem-secondary-foreground);
-    --color-destructive: var(--sem-destructive);
-    --color-destructive-foreground: var(--sem-destructive-foreground);
-    --color-muted: var(--sem-muted);
-    --color-muted-foreground: var(--sem-muted-foreground);
-    --color-accent: var(--sem-accent);
-    --color-accent-foreground: var(--sem-accent-foreground);
-    --color-popover: var(--sem-popover);
-    --color-popover-foreground: var(--sem-popover-foreground);
-    --color-card: var(--sem-card);
-    --color-card-foreground: var(--sem-card-foreground);
-
-    --radius-lg: 0.5rem;
-    --radius-md: calc(0.5rem - 2px);
-    --radius-sm: calc(0.5rem - 4px);
-
-    --animate-accordion-down: accordion-down 0.2s ease-out;
-    --animate-accordion-up: accordion-up 0.2s ease-out;
-
-    @keyframes accordion-down {
-        from {
-            height: 0;
-        }
-
-        to {
-            height: var(--radix-accordion-content-height);
-        }
-    }
-
-    @keyframes accordion-up {
-        from {
-            height: var(--radix-accordion-content-height);
-        }
-
-        to {
-            height: 0;
-        }
-    }
-}
-
-/* ───── Light mode (default) ───── */
-:root {
-    color-scheme: light;
-
-    --sem-background: #ffffff;
-    --sem-foreground: #0f172a;
-    --sem-card: #ffffff;
-    --sem-card-foreground: #0f172a;
-    --sem-popover: #ffffff;
-    --sem-popover-foreground: #0f172a;
-    --sem-primary: #2563eb;
-    --sem-primary-foreground: #ffffff;
-    --sem-secondary: #f1f5f9;
-    --sem-secondary-foreground: #1e293b;
-    --sem-muted: #f1f5f9;
-    --sem-muted-foreground: #64748b;
-    --sem-accent: #f1f5f9;
-    --sem-accent-foreground: #1e293b;
-    --sem-destructive: #ef4444;
-    --sem-destructive-foreground: #ffffff;
-    --sem-border: #e2e8f0;
-    --sem-input: #e2e8f0;
-    --sem-ring: #2563eb;
-}
-
-/* ───── Dark mode ───── */
-.dark {
-    color-scheme: dark;
-
-    --sem-background: hsl(240 10% 3.9%);
-    --sem-foreground: hsl(0 0% 98%);
-    --sem-card: hsl(240 10% 3.9%);
-    --sem-card-foreground: hsl(0 0% 98%);
-    --sem-popover: hsl(240 10% 3.9%);
-    --sem-popover-foreground: hsl(0 0% 98%);
-    --sem-primary: hsl(0 0% 98%);
-    --sem-primary-foreground: hsl(240 5.9% 10%);
-    --sem-secondary: hsl(240 3.7% 15.9%);
-    --sem-secondary-foreground: hsl(0 0% 98%);
-    --sem-destructive: hsl(0 62.8% 30.6%);
-    --sem-destructive-foreground: hsl(0 0% 98%);
-    --sem-muted: hsl(240 3.7% 15.9%);
-    --sem-muted-foreground: hsl(240 5% 64.9%);
-    --sem-accent: hsl(240 3.7% 15.9%);
-    --sem-accent-foreground: hsl(0 0% 98%);
-    --sem-border: hsl(240 3.7% 15.9%);
-    --sem-input: hsl(240 3.7% 15.9%);
-    --sem-ring: hsl(240 4.9% 83.9%);
-}
+@import "../../styles/globals.css";
 
 @utility container {
     margin-inline: auto;
@@ -135,8 +23,6 @@
 }
 
 body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
     font-feature-settings: "rlig" 1, "calt" 1;
 }
 
