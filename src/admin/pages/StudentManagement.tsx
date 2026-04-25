@@ -30,12 +30,10 @@ export function StudentManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "active" | "disabled">("all");
 
-    // Transfer Modal State
     const [transferStudent, setTransferStudent] = useState<Student | null>(null);
     const [targetClassId, setTargetClassId] = useState<string>("");
     const [transferReason, setTransferReason] = useState("");
 
-    // Experiment Modal State
     const [selectedStudentForExp, setSelectedStudentForExp] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
     const [loadingExperiments, setLoadingExperiments] = useState(false);
@@ -212,7 +210,7 @@ export function StudentManagement() {
     const getProgressColor = (progress: number) => {
         if (progress >= 80) return "[&>div]:bg-emerald-500";
         if (progress >= 50) return "[&>div]:bg-amber-500";
-        return "[&>div]:bg-rose-500";
+        return "[&>div]:bg-destructive";
     };
 
     const formatDateTime = (dateStr: string | null) => {
@@ -242,85 +240,85 @@ export function StudentManagement() {
             <div className="space-y-6 animate-in fade-in duration-500">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">学生管理</h2>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">查看学生档案、实验进度与班级调整。</p>
+                        <h2 className="text-lg font-semibold">学生管理</h2>
+                        <p className="text-sm text-muted-foreground mt-1">查看学生档案、实验进度与班级调整。</p>
                     </div>
-                    <Button data-testid="student-search-refresh" variant="outline" onClick={handleSearch} disabled={loading} className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
+                    <Button data-testid="student-search-refresh" variant="outline" onClick={handleSearch} disabled={loading}>
                         <Search className="w-4 h-4 mr-2" />
                         刷新结果
                     </Button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                    <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                    <Card className="hover:border-primary/30 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Total Students</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Students</p>
+                                <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.total}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
+                            <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
                                 <Users className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                    <Card className="hover:border-primary/30 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Active</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.active}</p>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active</p>
+                                <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.active}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                            <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
                                 <CheckCircle2 className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                    <Card className="hover:border-primary/30 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Disabled</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.disabled}</p>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Disabled</p>
+                                <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.disabled}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                            <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
                                 <PauseCircle className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                    <Card className="hover:border-primary/30 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Avg Progress</p>
-                                <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : `${summary.avgProgress}%`}</p>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Avg Progress</p>
+                                <p className="text-2xl font-bold mt-1">{loading ? "-" : `${summary.avgProgress}%`}</p>
                             </div>
-                            <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                            <div className="w-10 h-10 bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
                                 <GraduationCap className="w-5 h-5" />
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
-                    <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+                <Card>
+                    <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                         <div>
-                            <CardTitle className="text-base text-slate-900 dark:text-slate-100">学生列表</CardTitle>
-                            <p className="text-xs text-slate-500 mt-1">共 {filteredStudents.length} 条数据</p>
+                            <CardTitle className="text-base">学生列表</CardTitle>
+                            <p className="text-xs text-muted-foreground mt-1">共 {filteredStudents.length} 条数据</p>
                         </div>
                         <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                             <div className="relative sm:w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                 <Input
                                     placeholder="搜索学号或姓名"
                                     data-testid="student-search-input"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                    className="pl-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
+                                    className="pl-9"
                                 />
                             </div>
                             <Select value={filterClass} onValueChange={setFilterClass}>
-                                <SelectTrigger data-testid="student-filter-class" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-44">
+                                <SelectTrigger data-testid="student-filter-class" className="sm:w-44">
                                     <SelectValue placeholder="全部班级" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <SelectContent>
                                     <SelectItem value="all">全部班级</SelectItem>
                                     {classes.map((c) => (
                                         <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
@@ -328,10 +326,10 @@ export function StudentManagement() {
                                 </SelectContent>
                             </Select>
                             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
-                                <SelectTrigger data-testid="student-filter-status" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-36">
+                                <SelectTrigger data-testid="student-filter-status" className="sm:w-36">
                                     <SelectValue placeholder="状态筛选" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <SelectContent>
                                     <SelectItem value="all">全部状态</SelectItem>
                                     <SelectItem value="active">正常</SelectItem>
                                     <SelectItem value="disabled">已停用</SelectItem>
@@ -342,43 +340,43 @@ export function StudentManagement() {
                     <CardContent className="pt-0">
                         {loading ? (
                             <div className="flex items-center justify-center py-12">
-                                <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
+                                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
                             <Table>
                                 <TableHeader>
-                                    <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                        <TableHead className="text-slate-600 dark:text-slate-400">学号</TableHead>
-                                        <TableHead className="text-slate-600 dark:text-slate-400">姓名</TableHead>
-                                        <TableHead className="text-slate-600 dark:text-slate-400">班级</TableHead>
-                                        <TableHead className="text-slate-600 dark:text-slate-400">状态</TableHead>
-                                        <TableHead className="text-slate-600 dark:text-slate-400">实验进度</TableHead>
-                                        <TableHead className="text-slate-600 dark:text-slate-400">最后活跃</TableHead>
-                                        <TableHead className="text-slate-600 dark:text-slate-400 text-right">操作</TableHead>
+                                    <TableRow>
+                                        <TableHead>学号</TableHead>
+                                        <TableHead>姓名</TableHead>
+                                        <TableHead>班级</TableHead>
+                                        <TableHead>状态</TableHead>
+                                        <TableHead>实验进度</TableHead>
+                                        <TableHead>最后活跃</TableHead>
+                                        <TableHead className="text-right">操作</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredStudents.map((student) => (
-                                        <TableRow key={student.id} data-testid={`student-row-${student.studentId}`} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
-                                            <TableCell className="font-mono text-indigo-700 dark:text-indigo-300">{student.studentId}</TableCell>
-                                            <TableCell className="font-medium text-slate-800 dark:text-slate-200">{student.name}</TableCell>
-                                            <TableCell className="text-slate-700 dark:text-slate-300">{student.className}</TableCell>
+                                        <TableRow key={student.id} data-testid={`student-row-${student.studentId}`}>
+                                            <TableCell className="font-mono text-primary">{student.studentId}</TableCell>
+                                            <TableCell className="font-medium">{student.name}</TableCell>
+                                            <TableCell>{student.className}</TableCell>
                                             <TableCell>
                                                 {student.isLocked ? (
-                                                    <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/20">已锁定</Badge>
+                                                    <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">已锁定</Badge>
                                                 ) : student.status === 1 ? (
                                                     <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">正常</Badge>
                                                 ) : (
-                                                    <Badge variant="destructive" className="bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-400 dark:hover:bg-slate-600">已停用</Badge>
+                                                    <Badge variant="secondary">已停用</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
-                                                    <Progress value={student.progress} className={`w-24 h-1.5 bg-slate-200 dark:bg-slate-800 ${getProgressColor(student.progress)}`} />
-                                                    <span className="text-xs text-slate-600 dark:text-slate-400 w-8">{student.progress}%</span>
+                                                    <Progress value={student.progress} className={`w-24 h-1.5 ${getProgressColor(student.progress)}`} />
+                                                    <span className="text-xs text-muted-foreground w-8">{student.progress}%</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-slate-500 text-xs">{formatDateTime(student.lastActive)}</TableCell>
+                                            <TableCell className="text-muted-foreground text-xs">{formatDateTime(student.lastActive)}</TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {student.isLocked && (
@@ -392,12 +390,12 @@ export function StudentManagement() {
                                                         size="sm"
                                                         data-testid={`student-open-experiments-${student.studentId}`}
                                                         onClick={() => openExperimentsModal(student)}
-                                                        className="h-8 text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-500/10"
+                                                        className="h-8"
                                                     >
                                                         <Search className="w-3.5 h-3.5 mr-1" />
                                                         实验
                                                     </Button>
-                                                    <Button data-testid={`student-reset-${student.studentId}`} variant="ghost" size="sm" onClick={() => handleResetPassword(student)} className="h-8 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10">
+                                                    <Button data-testid={`student-reset-${student.studentId}`} variant="ghost" size="sm" onClick={() => handleResetPassword(student)} className="h-8">
                                                         <RotateCcw className="w-3.5 h-3.5 mr-1" />
                                                         重置
                                                     </Button>
@@ -406,7 +404,7 @@ export function StudentManagement() {
                                                         size="sm"
                                                         data-testid={`student-open-transfer-${student.studentId}`}
                                                         onClick={() => openTransferModal(student)}
-                                                        className="h-8 text-slate-600 dark:text-slate-400 hover:text-purple-600 hover:bg-purple-500/10"
+                                                        className="h-8 hover:text-purple-600 hover:bg-purple-500/10"
                                                     >
                                                         <ArrowRight className="w-3.5 h-3.5 mr-1" />
                                                         转班
@@ -416,7 +414,7 @@ export function StudentManagement() {
                                                         size="sm"
                                                         data-testid={`student-toggle-status-${student.studentId}`}
                                                         onClick={() => handleToggleStatus(student)}
-                                                        className={`h-8 ${student.status === 1 ? "text-rose-600 hover:text-rose-500 hover:bg-rose-500/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
+                                                        className={`h-8 ${student.status === 1 ? "text-destructive hover:text-destructive hover:bg-destructive/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                                     >
                                                         {student.status === 1 ? "停用" : "启用"}
                                                     </Button>
@@ -426,10 +424,10 @@ export function StudentManagement() {
                                     ))}
                                     {filteredStudents.length === 0 && (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center py-16 text-slate-500">
+                                            <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
                                                 <div className="flex flex-col items-center gap-2">
-                                                    <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center">
-                                                        <Search className="w-5 h-5 text-slate-500" />
+                                                    <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                                                        <Search className="w-5 h-5 text-muted-foreground" />
                                                     </div>
                                                     <p>暂无符合条件的数据</p>
                                                 </div>
@@ -444,21 +442,21 @@ export function StudentManagement() {
             </div>
 
             <Dialog open={!!transferStudent} onOpenChange={(open) => !open && setTransferStudent(null)}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">学生转班</DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">
-                            将学生 <span className="text-indigo-500 font-mono">{transferStudent?.studentId}</span> <span className="text-slate-800 dark:text-slate-200 font-medium">{transferStudent?.name}</span> 从 <span className="text-amber-600">{transferStudent?.className}</span> 转至新班级。
+                        <DialogTitle>学生转班</DialogTitle>
+                        <DialogDescription>
+                            将学生 <span className="text-primary font-mono">{transferStudent?.studentId}</span> <span className="font-medium text-foreground">{transferStudent?.name}</span> 从 <span className="text-amber-600">{transferStudent?.className}</span> 转至新班级。
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">目标班级</label>
+                            <label className="text-sm font-medium">目标班级</label>
                             <Select value={targetClassId} onValueChange={setTargetClassId}>
-                                <SelectTrigger data-testid="student-transfer-target-class" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <SelectTrigger data-testid="student-transfer-target-class">
                                     <SelectValue placeholder="选择新班级" />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <SelectContent>
                                     {classes
                                         .filter((c) => c.id !== transferStudent?.classId)
                                         .map((c) => (
@@ -470,13 +468,12 @@ export function StudentManagement() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">转班原因 (可选)</label>
+                            <label className="text-sm font-medium">转班原因 (可选)</label>
                             <Input
                                 data-testid="student-transfer-reason"
                                 value={transferReason}
                                 onChange={(e) => setTransferReason(e.target.value)}
                                 placeholder="例如：行政调班"
-                                className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500"
                             />
                         </div>
                         <div className="bg-amber-500/10 text-amber-600 p-3 rounded-md text-sm border border-amber-500/20">
@@ -488,10 +485,10 @@ export function StudentManagement() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setTransferStudent(null)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">
+                        <Button variant="ghost" onClick={() => setTransferStudent(null)}>
                             取消
                         </Button>
-                        <Button data-testid="student-transfer-submit" onClick={handleTransfer} disabled={!targetClassId} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button data-testid="student-transfer-submit" onClick={handleTransfer} disabled={!targetClassId}>
                             确认转班
                         </Button>
                     </DialogFooter>
@@ -499,58 +496,58 @@ export function StudentManagement() {
             </Dialog>
 
             <Dialog open={!!selectedStudentForExp} onOpenChange={(open) => !open && setSelectedStudentForExp(null)}>
-                <DialogContent className="max-w-3xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent className="max-w-3xl">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <DialogTitle className="flex items-center gap-2">
                             实验记录
-                            <span className="text-sm font-normal text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
+                            <span className="text-sm font-normal text-muted-foreground px-2 py-0.5 rounded-full bg-muted border border-border">
                                 {selectedStudentForExp?.name} ({selectedStudentForExp?.studentId})
                             </span>
                         </DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">
+                        <DialogDescription>
                             查看该学生在各个实验任务中的阶段进度、提交状态和成绩记录。
                         </DialogDescription>
                     </DialogHeader>
 
                     {loadingExperiments ? (
                         <div className="flex justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-slate-500" />
+                            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                         </div>
                     ) : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                    <TableHead className="text-slate-600 dark:text-slate-400">实验/任务名称</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">当前阶段</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">状态</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">进度</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">得分</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">提交时间</TableHead>
+                                <TableRow>
+                                    <TableHead>实验/任务名称</TableHead>
+                                    <TableHead>当前阶段</TableHead>
+                                    <TableHead>状态</TableHead>
+                                    <TableHead>进度</TableHead>
+                                    <TableHead>得分</TableHead>
+                                    <TableHead>提交时间</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {experiments.map((exp) => (
-                                    <TableRow key={exp.id} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
-                                        <TableCell className="text-slate-800 dark:text-slate-200">{exp.taskName || "未命名任务"}</TableCell>
-                                        <TableCell className="text-slate-600 dark:text-slate-400">第 {exp.currentStage} 阶段</TableCell>
+                                    <TableRow key={exp.id}>
+                                        <TableCell>{exp.taskName || "未命名任务"}</TableCell>
+                                        <TableCell className="text-muted-foreground">第 {exp.currentStage} 阶段</TableCell>
                                         <TableCell>
-                                            <Badge variant={exp.status >= 1 ? "default" : "secondary"} className={exp.status >= 1 ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}>
+                                            <Badge variant={exp.status >= 1 ? "default" : "secondary"} className={exp.status >= 1 ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20" : ""}>
                                                 {exp.statusText}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress value={exp.progress} className={`w-16 h-1.5 bg-slate-200 dark:bg-slate-800 ${getProgressColor(exp.progress)}`} />
-                                                <span className="text-xs text-slate-500">{exp.progress}%</span>
+                                                <Progress value={exp.progress} className={`w-16 h-1.5 ${getProgressColor(exp.progress)}`} />
+                                                <span className="text-xs text-muted-foreground">{exp.progress}%</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="font-mono text-indigo-700 dark:text-indigo-300">{exp.score !== null ? exp.score : "-"}</TableCell>
-                                        <TableCell className="text-slate-500 text-xs">{formatDateTime(exp.submitTime)}</TableCell>
+                                        <TableCell className="font-mono text-primary">{exp.score !== null ? exp.score : "-"}</TableCell>
+                                        <TableCell className="text-muted-foreground text-xs">{formatDateTime(exp.submitTime)}</TableCell>
                                     </TableRow>
                                 ))}
                                 {experiments.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                             暂无实验记录
                                         </TableCell>
                                     </TableRow>
