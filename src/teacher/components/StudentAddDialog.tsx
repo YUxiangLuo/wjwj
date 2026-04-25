@@ -24,38 +24,36 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle className="text-slate-900 dark:text-slate-100">添加学生</DialogTitle>
+                    <DialogTitle>添加学生</DialogTitle>
                     <DialogDescription className="sr-only">
                         录入学生学号、姓名和邮箱信息。
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="studentId" className="text-slate-700 dark:text-slate-300">学号</Label>
+                        <Label htmlFor="studentId" className="text-foreground">学号</Label>
                         <Input
                             id="studentId"
                             data-testid="teacher-student-add-id"
                             placeholder="请输入学号"
                             value={form.id}
                             onChange={(e) => onFormChange({ ...form, id: e.target.value })}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="studentName" className="text-slate-700 dark:text-slate-300">姓名</Label>
+                        <Label htmlFor="studentName" className="text-foreground">姓名</Label>
                         <Input
                             id="studentName"
                             data-testid="teacher-student-add-name"
                             placeholder="请输入姓名"
                             value={form.name}
                             onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="studentEmail" className="text-slate-700 dark:text-slate-300">邮箱（可选）</Label>
+                        <Label htmlFor="studentEmail" className="text-foreground">邮箱（可选）</Label>
                         <Input
                             id="studentEmail"
                             data-testid="teacher-student-add-email"
@@ -63,13 +61,12 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             placeholder="请输入邮箱"
                             value={form.email}
                             onChange={(e) => onFormChange({ ...form, email: e.target.value })}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
                         />
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">取消</Button>
-                    <Button data-testid="teacher-student-add-submit" onClick={onSubmit} disabled={submitting} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
+                    <Button data-testid="teacher-student-add-submit" onClick={onSubmit} disabled={submitting} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "确认添加"}
                     </Button>
                 </DialogFooter>

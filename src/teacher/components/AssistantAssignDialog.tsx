@@ -25,9 +25,9 @@ export function AssistantAssignDialog(props: AssistantAssignDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-slate-900 dark:text-slate-100">分配班级 - {assistant?.name}</DialogTitle>
+                    <DialogTitle>分配班级 - {assistant?.name}</DialogTitle>
                     <DialogDescription className="sr-only">
                         为助教分配或取消负责的班级。
                     </DialogDescription>
@@ -35,11 +35,11 @@ export function AssistantAssignDialog(props: AssistantAssignDialogProps) {
                 <div className="space-y-4 py-4">
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
                         {classes.map((cls) => (
-                            <label key={cls.id} className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-800 rounded-lg cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors bg-white dark:bg-slate-950">
+                            <label key={cls.id} className="flex items-center gap-3 p-3 border border-border cursor-pointer hover:bg-muted transition-colors bg-background">
                                 <input
                                     data-testid={`teacher-assistant-assign-check-${cls.id}`}
                                     type="checkbox"
-                                    className="rounded border-slate-400 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-indigo-500 focus:ring-indigo-500/20 w-4 h-4"
+                                    className="rounded border-border bg-card text-primary focus:ring-primary/20 w-4 h-4"
                                     checked={selectedClassIds.includes(cls.id)}
                                     onChange={(e) => {
                                         if (e.target.checked) {
@@ -50,16 +50,16 @@ export function AssistantAssignDialog(props: AssistantAssignDialogProps) {
                                     }}
                                 />
                                 <div>
-                                    <div className="font-medium text-slate-800 dark:text-slate-200">{cls.name}</div>
-                                    <div className="text-xs text-slate-500">{cls.studentCount}人 · {cls.semester}</div>
+                                    <div className="font-medium text-foreground">{cls.name}</div>
+                                    <div className="text-xs text-muted-foreground">{cls.studentCount}人 · {cls.semester}</div>
                                 </div>
                             </label>
                         ))}
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">取消</Button>
-                    <Button data-testid="teacher-assistant-assign-submit" onClick={onSubmit} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认分配</Button>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
+                    <Button data-testid="teacher-assistant-assign-submit" onClick={onSubmit} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认分配</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

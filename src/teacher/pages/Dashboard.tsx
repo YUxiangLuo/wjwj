@@ -18,28 +18,28 @@ function StatCard({ icon: Icon, label, value, color, loading, to }: {
 }) {
     // Map colors to class names
     const colorStyles: Record<string, { bg: string, text: string, border: string }> = {
-        blue: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", border: "border-blue-500/20" },
+        blue: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/20" },
         emerald: { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/20" },
-        rose: { bg: "bg-rose-500/10", text: "text-rose-600", border: "border-rose-500/20" },
+        rose: { bg: "bg-destructive/10", text: "text-destructive", border: "border-destructive/20" },
         amber: { bg: "bg-amber-500/10", text: "text-amber-600", border: "border-amber-500/20" },
-        slate: { bg: "bg-slate-200 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-400", border: "border-slate-300 dark:border-slate-700" },
+        slate: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" },
     };
 
     const style = colorStyles[color] || colorStyles.slate!;
 
     const card = (
-        <Card className={`border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 ${to ? "cursor-pointer" : ""}`}>
+        <Card className={`border-border bg-card transition-all duration-200 ${to ? "cursor-pointer" : ""}`}>
             <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-sm font-medium text-slate-500">{label}</p>
+                        <p className="text-sm font-medium text-muted-foreground">{label}</p>
                         <div className="mt-2 flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-                                {loading ? <div className="h-9 w-12 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" /> : value}
+                            <span className="text-3xl font-bold text-foreground">
+                                {loading ? <div className="h-9 w-12 bg-muted animate-pulse" /> : value}
                             </span>
                         </div>
                     </div>
-                    <div className={`w-12 h-12 rounded-xl ${style.bg} ${style.text} flex items-center justify-center border ${style.border}`}>
+                    <div className={`w-12 h-12 ${style.bg} ${style.text} flex items-center justify-center border ${style.border}`}>
                         <Icon className="w-6 h-6" />
                     </div>
                 </div>
@@ -106,8 +106,8 @@ export function Dashboard() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">教学概览</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">关注班级、课题与待批改任务。</p>
+                <h2 className="text-lg font-semibold text-foreground">教学概览</h2>
+                <p className="text-sm text-muted-foreground mt-1">关注班级、课题与待批改任务。</p>
             </div>
 
             {/* Announcement Banner */}
@@ -116,7 +116,7 @@ export function Dashboard() {
                 if (unread.length === 0) return null;
                 const latest = unread[0]!;
                 return (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20">
                         <Megaphone className="w-5 h-5 text-amber-600 shrink-0" />
                         <div className="flex-1 min-w-0">
                             <span className="text-sm text-amber-800 dark:text-amber-200 font-medium truncate block">{latest.title}</span>
@@ -159,35 +159,35 @@ export function Dashboard() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Recent Submissions */}
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-                        <CardTitle className="text-lg text-slate-900 dark:text-slate-100">最近提交</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
+                <Card className="border-border bg-card">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+                        <CardTitle className="text-lg text-foreground">最近提交</CardTitle>
+                        <Button variant="outline" size="sm" asChild>
                             <Link to="/grading">全部作业</Link>
                         </Button>
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         {loading ? (
-                            <div className="text-sm text-slate-500 flex items-center justify-center py-6">加载中...</div>
+                            <div className="text-sm text-muted-foreground flex items-center justify-center py-6">加载中...</div>
                         ) : recentSubmissions.length === 0 ? (
-                            <div className="text-center text-sm text-slate-500 py-8">暂无提交记录</div>
+                            <div className="text-center text-sm text-muted-foreground py-8">暂无提交记录</div>
                         ) : (
                             recentSubmissions.map((item, idx) => (
-                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-4">
+                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border bg-card/30 hover:bg-accent transition-all gap-4">
                                     <div className="flex items-center gap-4">
-                                        <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
-                                            <AvatarFallback className="bg-indigo-950 text-indigo-500 text-sm font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
+                                        <Avatar className="w-10 h-10 border border-border">
+                                            <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.student}</div>
-                                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                                                <span className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">{item.class}</span>
+                                            <div className="text-sm font-medium text-foreground">{item.student}</div>
+                                            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                                                <span className="bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{item.class}</span>
                                                 <span>·</span>
-                                                <span className="text-indigo-500">{item.topic}</span>
+                                                <span className="text-primary">{item.topic}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-slate-500 font-mono">{item.time}</span>
+                                    <span className="text-xs text-muted-foreground font-mono">{item.time}</span>
                                 </div>
                             ))
                         )}
@@ -195,37 +195,37 @@ export function Dashboard() {
                 </Card>
 
                 {/* Recent Gradings */}
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-                        <CardTitle className="text-lg text-slate-900 dark:text-slate-100">最近批改</CardTitle>
-                        <Button variant="outline" size="sm" asChild className="border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
+                <Card className="border-border bg-card">
+                    <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+                        <CardTitle className="text-lg text-foreground">最近批改</CardTitle>
+                        <Button variant="outline" size="sm" asChild>
                             <Link to="/grading">批改列表</Link>
                         </Button>
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         {loading ? (
-                            <div className="text-sm text-slate-500 flex items-center justify-center py-6">加载中...</div>
+                            <div className="text-sm text-muted-foreground flex items-center justify-center py-6">加载中...</div>
                         ) : recentGradings.length === 0 ? (
-                            <div className="text-center text-sm text-slate-500 py-8">暂无批改记录</div>
+                            <div className="text-center text-sm text-muted-foreground py-8">暂无批改记录</div>
                         ) : (
                             recentGradings.map((item, idx) => (
-                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-950/30 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-all gap-4">
+                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border bg-card/30 hover:bg-accent transition-all gap-4">
                                     <div className="flex items-center gap-4">
-                                        <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
-                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-rose-950 text-rose-600" : "bg-emerald-950 text-emerald-600"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
+                                        <Avatar className="w-10 h-10 border border-border">
+                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-600"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{item.student}</div>
-                                            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
-                                                <span className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">{item.class}</span>
+                                            <div className="text-sm font-medium text-foreground">{item.student}</div>
+                                            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                                                <span className="bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{item.class}</span>
                                                 <span>·</span>
-                                                <span className="text-indigo-500">{item.topic}</span>
+                                                <span className="text-primary">{item.topic}</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         {item.rejected ? (
-                                            <span className="flex items-center gap-1 text-xs text-rose-600">
+                                            <span className="flex items-center gap-1 text-xs text-destructive">
                                                 <XCircle className="w-3.5 h-3.5" />
                                                 已驳回
                                             </span>
@@ -235,7 +235,7 @@ export function Dashboard() {
                                                 {item.score ?? "-"} 分
                                             </span>
                                         )}
-                                        <span className="text-xs text-slate-500 font-mono">{item.time}</span>
+                                        <span className="text-xs text-muted-foreground font-mono">{item.time}</span>
                                     </div>
                                 </div>
                             ))
@@ -246,9 +246,9 @@ export function Dashboard() {
 
             {/* Announcement List Dialog */}
             <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 max-w-lg max-h-[80vh] flex flex-col">
+                <DialogContent className="bg-card border-border text-foreground max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <DialogTitle className="text-foreground flex items-center gap-2">
                             <Megaphone className="w-5 h-5 text-amber-600" />
                             系统公告
                         </DialogTitle>
@@ -258,25 +258,25 @@ export function Dashboard() {
                     </DialogHeader>
                     <div className="flex-1 overflow-y-auto space-y-2 py-2">
                         {announcements.length === 0 ? (
-                            <div className="text-center text-sm text-slate-500 py-8">暂无公告</div>
+                            <div className="text-center text-sm text-muted-foreground py-8">暂无公告</div>
                         ) : (
                             announcements.map(item => (
                                 <button
                                     key={item.id}
-                                    className="w-full text-left p-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                                    className="w-full text-left p-3 border border-border hover:bg-accent transition-colors"
                                     onClick={() => handleAnnouncementClick(item)}
                                 >
                                     <div className="flex items-start gap-2">
                                         {item.isRead === 0 && <Circle className="w-2 h-2 mt-1.5 text-amber-600 fill-amber-400 shrink-0" />}
                                         <div className="flex-1 min-w-0">
-                                            <div className={`text-sm font-medium truncate ${item.isRead === 0 ? "text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"}`}>
+                                            <div className={`text-sm font-medium truncate ${item.isRead === 0 ? "text-foreground" : "text-muted-foreground"}`}>
                                                 {item.title}
                                             </div>
-                                            <div className="text-xs text-slate-500 mt-1">
+                                            <div className="text-xs text-muted-foreground mt-1">
                                                 {new Date(item.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
                                             </div>
                                         </div>
-                                        <ChevronRight className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                                     </div>
                                 </button>
                             ))
@@ -287,20 +287,20 @@ export function Dashboard() {
 
             {/* Announcement Detail Dialog */}
             <Dialog open={!!selectedAnnouncement} onOpenChange={(open) => { if (!open) setSelectedAnnouncement(null); }}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 max-w-lg max-h-[80vh] flex flex-col">
+                <DialogContent className="bg-card border-border text-foreground max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100 text-base">{selectedAnnouncement?.title}</DialogTitle>
+                        <DialogTitle className="text-foreground text-base">{selectedAnnouncement?.title}</DialogTitle>
                         <DialogDescription className="sr-only">
                             查看系统公告的完整内容。
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="text-xs text-slate-500 -mt-2">
+                    <div className="text-xs text-muted-foreground -mt-2">
                         {selectedAnnouncement?.createdAt && new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
                     </div>
                     <div className="flex-1 overflow-y-auto py-4">
                         <RichTextContent
                             html={selectedAnnouncement?.content ?? ""}
-                            className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"
+                            className="text-sm text-foreground leading-relaxed"
                         />
                     </div>
                 </DialogContent>

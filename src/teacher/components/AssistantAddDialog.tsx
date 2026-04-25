@@ -28,40 +28,38 @@ export function AssistantAddDialog(props: AssistantAddDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-slate-900 dark:text-slate-100">添加助教</DialogTitle>
+                    <DialogTitle>添加助教</DialogTitle>
                     <DialogDescription className="sr-only">
                         填写工号和姓名以创建新的助教账号。
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="assistantStudentId" className="text-slate-700 dark:text-slate-300">工号</Label>
+                        <Label htmlFor="assistantStudentId" className="text-foreground">工号</Label>
                         <Input
                             id="assistantStudentId"
                             data-testid="teacher-assistant-add-account"
                             placeholder="请输入工号"
                             value={form.studentId}
                             onChange={(e) => onFormChange({ ...form, studentId: e.target.value })}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="assistantName" className="text-slate-700 dark:text-slate-300">姓名</Label>
+                        <Label htmlFor="assistantName" className="text-foreground">姓名</Label>
                         <Input
                             id="assistantName"
                             data-testid="teacher-assistant-add-name"
                             placeholder="请输入姓名"
                             value={form.name}
                             onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200"
                         />
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">取消</Button>
-                    <Button data-testid="teacher-assistant-add-submit" onClick={onSubmit} disabled={!canSubmit} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认添加</Button>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
+                    <Button data-testid="teacher-assistant-add-submit" onClick={onSubmit} disabled={!canSubmit} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认添加</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

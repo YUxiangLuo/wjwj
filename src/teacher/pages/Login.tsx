@@ -36,7 +36,6 @@ export function Login() {
             });
             if (res.success) {
                 markLoginSuccess(TEACHER_LOGIN_SUCCESS_KEY);
-                // 如果是助教，直接跳转到批改页面
                 if (res.data?.user?.type === "assistant") {
                     navigate("/grading", { replace: true });
                 } else {
@@ -53,82 +52,80 @@ export function Login() {
     };
 
     return (
-        <div className="min-h-screen grid lg:grid-cols-2 bg-white dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-200">
+        <div className="min-h-screen grid lg:grid-cols-2 bg-background font-sans text-foreground">
             {/* Left Side: Hero / Branding */}
-            <div className="hidden lg:flex flex-col justify-between bg-slate-50 dark:bg-slate-900 relative overflow-hidden p-12 border-r border-slate-200 dark:border-slate-800">
+            <div className="hidden lg:flex flex-col justify-between bg-card relative overflow-hidden p-12 border-r border-border">
                 <div className="absolute inset-0 z-0 opacity-40">
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-slate-50 dark:via-slate-900 to-white dark:to-slate-950 z-10" />
-                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-500/10 via-slate-50/5 dark:via-slate-900/5 to-transparent" />
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-card to-background z-10" />
+                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-card/5 to-transparent" />
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:24px_24px]" />
                 </div>
 
-                <div className="relative z-20 flex items-center gap-3 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                    <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-500/20">
-                        <BarChart3 className="w-6 h-6 text-white" />
+                <div className="relative z-20 flex items-center gap-3 text-xl font-semibold tracking-tight">
+                    <div className="bg-primary p-2">
+                        <BarChart3 className="w-6 h-6 text-primary-foreground" />
                     </div>
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-900 dark:from-slate-100 to-slate-600 dark:to-slate-400">
+                    <span className="font-heading uppercase tracking-wider text-foreground">
                         统计学虚拟仿真实验平台
                     </span>
                 </div>
 
                 <div className="relative z-20 flex-1 flex flex-col justify-center max-w-lg">
                     <div className="relative">
-                        <div className="absolute -top-10 -left-10 w-24 h-24 bg-indigo-500/30 rounded-full blur-3xl" />
-                        <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-sky-500/20 rounded-full blur-3xl" />
-                        <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-slate-900 dark:text-slate-100 mb-6">
+                        <div className="absolute -top-10 -left-10 w-24 h-24 bg-primary/30 rounded-full blur-3xl" />
+                        <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
+                        <h1 className="text-4xl sm:text-5xl font-bold font-heading leading-tight tracking-tighter mb-6">
                             探索数据背后的<br />
-                            <span className="text-indigo-500">数学真理</span>
+                            <span className="text-primary">数学真理</span>
                         </h1>
                     </div>
 
-                    <p className="text-lg text-slate-600 dark:text-slate-400 font-light leading-relaxed max-w-md">
+                    <p className="text-lg text-muted-foreground font-light leading-relaxed max-w-md">
                         通过沉浸式虚拟仿真实验，深入理解抽样分布、参数估计与假设检验的核心原理，掌握统计学的精髓。
                     </p>
 
                     <div className="mt-12 flex gap-8">
                         <div className="flex flex-col gap-2">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-indigo-500 shadow-lg">
+                            <div className="w-12 h-12 flex items-center justify-center text-primary bg-primary/10 border border-primary/20">
                                 <LineChart className="w-6 h-6" />
                             </div>
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">实时可视化</span>
+                            <span className="text-sm font-medium">实时可视化</span>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-sky-600 shadow-lg">
+                            <div className="w-12 h-12 flex items-center justify-center text-primary bg-primary/10 border border-primary/20">
                                 <PieChart className="w-6 h-6" />
                             </div>
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">动态交互</span>
+                            <span className="text-sm font-medium">动态交互</span>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <div className="w-12 h-12 rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700 flex items-center justify-center text-emerald-600 shadow-lg">
+                            <div className="w-12 h-12 flex items-center justify-center text-emerald-600 bg-emerald-500/10 border border-emerald-500/20">
                                 <ShieldCheck className="w-6 h-6" />
                             </div>
-                            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">精准评估</span>
+                            <span className="text-sm font-medium">精准评估</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="relative z-20 text-sm text-slate-500">
+                <div className="relative z-20 text-sm text-muted-foreground">
                     © 2026 Sampling Simulation System. All rights reserved.
                 </div>
             </div>
 
             {/* Right Side: Login Form */}
-            <div className="flex flex-col justify-center items-center p-8 bg-white dark:bg-slate-950 relative">
+            <div className="flex flex-col justify-center items-center p-8 bg-background relative">
                 <div className="absolute top-0 right-0 p-8 lg:hidden">
-                    <div className="flex items-center gap-2 font-semibold">
-                        <div className="bg-indigo-600 p-1.5 rounded-lg">
-                            <BarChart3 className="w-4 h-4 text-white" />
-                        </div>
+                    <div className="flex items-center gap-2 font-semibold font-heading">
+                        <BarChart3 className="w-4 h-4 text-primary" />
                         SSS
                     </div>
                 </div>
 
                 <div className="w-full max-w-md space-y-10">
                     <div className="flex flex-col space-y-3 text-center">
-                        <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                        <h2 className="text-3xl font-bold font-heading uppercase tracking-wider">
                             教师登录
                         </h2>
-                        <p className="text-base text-slate-600 dark:text-slate-400">
+                        <p className="text-base text-muted-foreground">
                             请输入您的工号/助教账号和密码登录系统
                         </p>
                     </div>
@@ -136,7 +133,7 @@ export function Login() {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-5">
                             <div className="space-y-2.5">
-                                <Label htmlFor="username" className="text-slate-700 dark:text-slate-300 text-sm font-medium ml-1">工号/助教账号</Label>
+                                <Label htmlFor="username" className="text-sm font-medium ml-1">工号/助教账号</Label>
                                 <Input
                                     id="username"
                                     data-testid="teacher-login-username"
@@ -144,13 +141,13 @@ export function Login() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     autoComplete="username"
-                                    className="h-12 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 rounded-xl transition-all"
+                                    className="h-12 bg-card border-border focus:border-primary focus:ring-primary/20"
                                 />
                             </div>
                             <div className="space-y-2.5">
                                 <div className="flex items-center justify-between ml-1">
-                                    <Label htmlFor="password" className="text-slate-700 dark:text-slate-300 text-sm font-medium">密码</Label>
-                                    <span className="text-xs font-medium text-indigo-700/80 dark:text-indigo-300/80">
+                                    <Label htmlFor="password" className="text-sm font-medium">密码</Label>
+                                    <span className="text-xs font-medium text-muted-foreground">
                                         忘记密码？请联系系统管理员重置
                                     </span>
                                 </div>
@@ -162,20 +159,20 @@ export function Login() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     autoComplete="current-password"
-                                    className="h-12 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-indigo-500/20 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 rounded-xl transition-all"
+                                    className="h-12 bg-card border-border focus:border-primary focus:ring-primary/20"
                                 />
                             </div>
                         </div>
 
                         {error && (
-                            <div className="p-4 text-sm text-rose-600 bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center gap-3 animate-in slide-in-from-top-2">
-                                <div className="w-2 h-2 rounded-full bg-rose-500" />
+                            <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 flex items-center gap-3 animate-in slide-in-from-top-2">
+                                <div className="w-2 h-2 rounded-full bg-destructive" />
                                 {error}
                             </div>
                         )}
 
                         <div className="space-y-4 pt-2">
-                            <Button type="submit" data-testid="teacher-login-submit" className="w-full h-12 text-base font-medium bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
+                            <Button type="submit" data-testid="teacher-login-submit" className="w-full h-12 text-base font-medium hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
                                 {loading ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -185,20 +182,20 @@ export function Login() {
                                     <>安全登录</>
                                 )}
                             </Button>
-                            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-4 space-y-3">
-                                <p className="text-xs font-medium tracking-[0.2em] text-slate-500 dark:text-slate-400 text-center">
+                            <div className="border border-border bg-muted p-4 space-y-3">
+                                <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground text-center font-heading uppercase">
                                     其他端入口
                                 </p>
                                 <div className="grid grid-cols-2 gap-3">
                                     <a
                                         href="/admin/login"
-                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-medium text-slate-700 dark:text-slate-200 transition-all hover:border-indigo-300 hover:text-indigo-600 dark:hover:border-indigo-500/60 dark:hover:text-indigo-300"
+                                        className="inline-flex h-11 items-center justify-center border border-border bg-card text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
                                     >
                                         管理员登录
                                     </a>
                                     <a
                                         href="/student/login"
-                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-medium text-slate-700 dark:text-slate-200 transition-all hover:border-indigo-300 hover:text-indigo-600 dark:hover:border-indigo-500/60 dark:hover:text-indigo-300"
+                                        className="inline-flex h-11 items-center justify-center border border-border bg-card text-sm font-medium text-foreground transition-all hover:border-primary hover:text-primary"
                                     >
                                         学生登录
                                     </a>
@@ -207,12 +204,12 @@ export function Login() {
                         </div>
                     </form>
 
-                    <div className="flex justify-center gap-8 text-sm text-slate-500">
-                        <span className="flex items-center gap-1.5 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer">
+                    <div className="flex justify-center gap-8 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer">
                             <HelpCircle className="w-4 h-4" />
                             使用指南
                         </span>
-                        <span className="flex items-center gap-1.5 hover:text-slate-700 dark:hover:text-slate-300 transition-colors cursor-pointer">
+                        <span className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer">
                             <Lock className="w-4 h-4" />
                             隐私政策
                         </span>

@@ -9,39 +9,39 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { teacherApi, type TaskProgressData } from "../api-client";
 
 const STATUS_CONFIG = {
-    not_started: { label: "未开始", color: "text-slate-600 dark:text-slate-400", bgColor: "bg-slate-500/10", borderColor: "border-slate-500/20" },
-    stage1: { label: "问卷设计", color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-500/10", borderColor: "border-blue-500/20" },
+    not_started: { label: "未开始", color: "text-muted-foreground", bgColor: "bg-muted/10", borderColor: "border-muted/20" },
+    stage1: { label: "问卷设计", color: "text-primary", bgColor: "bg-primary/10", borderColor: "border-primary/20" },
     stage2: { label: "样本规划", color: "text-cyan-600", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/20" },
-    stage3: { label: "抽样执行", color: "text-violet-600 dark:text-violet-400", bgColor: "bg-violet-500/10", borderColor: "border-violet-500/20" },
+    stage3: { label: "抽样执行", color: "text-chart-3", bgColor: "bg-chart-3/10", borderColor: "border-chart-3/20" },
     stage4: { label: "分析报告", color: "text-amber-600", bgColor: "bg-amber-500/10", borderColor: "border-amber-500/20" },
     submitted: { label: "已提交", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-500/10", borderColor: "border-yellow-500/20" },
     graded: { label: "已批改", color: "text-emerald-600", bgColor: "bg-emerald-500/10", borderColor: "border-emerald-500/20" },
-    rejected: { label: "已驳回", color: "text-rose-600", bgColor: "bg-rose-500/10", borderColor: "border-rose-500/20" },
+    rejected: { label: "已驳回", color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive/20" },
 } as const;
 
 type StatusKey = keyof typeof STATUS_CONFIG;
 const STATUS_KEYS = Object.keys(STATUS_CONFIG) as StatusKey[];
 
 const PROGRESS_COLORS: Record<StatusKey, string> = {
-    not_started: "bg-slate-400 dark:bg-slate-600",
-    stage1: "bg-blue-500",
+    not_started: "bg-muted-foreground/50",
+    stage1: "bg-primary",
     stage2: "bg-cyan-500",
-    stage3: "bg-violet-500",
+    stage3: "bg-chart-3",
     stage4: "bg-amber-500",
     submitted: "bg-yellow-500",
     graded: "bg-emerald-500",
-    rejected: "bg-rose-500",
+    rejected: "bg-destructive",
 };
 
 const RING_COLORS: Record<StatusKey, string> = {
-    not_started: "#475569",
-    stage1: "#3b82f6",
-    stage2: "#06b6d4",
-    stage3: "#8b5cf6",
-    stage4: "#f59e0b",
-    submitted: "#eab308",
-    graded: "#10b981",
-    rejected: "#f43f5e",
+    not_started: "var(--muted-foreground)",
+    stage1: "var(--primary)",
+    stage2: "var(--color-cyan-500)",
+    stage3: "var(--chart-3)",
+    stage4: "var(--color-amber-500)",
+    submitted: "var(--color-yellow-500)",
+    graded: "var(--color-emerald-500)",
+    rejected: "var(--destructive)",
 };
 
 const CHART_SIZE = 160;
@@ -83,20 +83,20 @@ export function TaskProgressDetail() {
 
     const total = data ? Object.values(data.counts).reduce((a, b) => a + b, 0) : 0;
 
-    if (loading) return <div className="p-12 text-center text-slate-500">加载中...</div>;
-    if (!data) return <div className="p-12 text-center text-slate-500">未找到任务</div>;
+    if (loading) return <div className="p-12 text-center text-muted-foreground">加载中...</div>;
+    if (!data) return <div className="p-12 text-center text-muted-foreground">未找到任务</div>;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => navigate("/task")}>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-accent" onClick={() => navigate("/task")}>
                     <ArrowLeft className="w-4 h-4 mr-1" />
                     返回列表
                 </Button>
-                <div className="h-6 w-px bg-slate-200 dark:bg-slate-800"></div>
+                <div className="h-6 w-px bg-border"></div>
                 <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{data.task.topicName}</h2>
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <h2 className="text-lg font-semibold text-foreground">{data.task.topicName}</h2>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Users className="w-3 h-3" />{data.task.className}</span>
                         <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
@@ -113,10 +113,10 @@ export function TaskProgressDetail() {
                     const cfg = STATUS_CONFIG[key];
                     const count = data.counts[key];
                     return (
-                        <Card key={key} className={`border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm ${count > 0 ? "hover:border-slate-300 dark:hover:border-slate-700" : ""} transition-colors`}>
+                        <Card key={key} className={`border-border bg-card ${count > 0 ? "hover:border-border" : ""} transition-colors`}>
                             <CardContent className="p-3 text-center">
-                                <p className="text-xs text-slate-500 mb-1">{cfg.label}</p>
-                                <p className={`text-xl font-bold ${count > 0 ? cfg.color : "text-slate-300 dark:text-slate-700"}`}>{count}</p>
+                                <p className="text-xs text-muted-foreground mb-1">{cfg.label}</p>
+                                <p className={`text-xl font-bold ${count > 0 ? cfg.color : "text-muted-foreground/40"}`}>{count}</p>
                             </CardContent>
                         </Card>
                     );
@@ -127,7 +127,7 @@ export function TaskProgressDetail() {
             {total > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Ring chart */}
-                    <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
+                    <Card className="border-border bg-card">
                         <CardContent className="p-6 flex flex-col items-center">
                             <svg width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-4">
                                 {(() => {
@@ -160,10 +160,10 @@ export function TaskProgressDetail() {
 
                                     return (
                                         <>
-                                            <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" stroke="rgb(30,41,59)" strokeWidth={RING_STROKE} />
+                                            <circle cx={CHART_CENTER} cy={CHART_CENTER} r={RING_RADIUS} fill="none" stroke="currentColor" className="text-muted-foreground" strokeWidth={RING_STROKE} />
                                             {segments}
-                                            <text x={CHART_CENTER} y={CHART_CENTER - 8} textAnchor="middle" className="fill-slate-900 dark:fill-slate-100 text-2xl font-bold" fontSize="28">{total}</text>
-                                            <text x={CHART_CENTER} y={CHART_CENTER + 14} textAnchor="middle" className="fill-slate-500 text-xs" fontSize="12">总人数</text>
+                                            <text x={CHART_CENTER} y={CHART_CENTER - 8} textAnchor="middle" className="fill-foreground text-2xl font-bold" fontSize="28">{total}</text>
+                                            <text x={CHART_CENTER} y={CHART_CENTER + 14} textAnchor="middle" className="fill-muted-foreground text-xs" fontSize="12">总人数</text>
                                         </>
                                     );
                                 })()}
@@ -176,7 +176,7 @@ export function TaskProgressDetail() {
                                     return (
                                         <div key={key} className="flex items-center gap-2">
                                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RING_COLORS[key] }} />
-                                            <span className="text-slate-600 dark:text-slate-400">{cfg.label}</span>
+                                            <span className="text-muted-foreground">{cfg.label}</span>
                                             <span className={`font-medium ${cfg.color}`}>{count}</span>
                                         </div>
                                     );
@@ -186,10 +186,10 @@ export function TaskProgressDetail() {
                     </Card>
 
                     {/* Distribution bar (now wider, takes 2 cols) */}
-                    <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm lg:col-span-2">
+                    <Card className="border-border bg-card lg:col-span-2">
                         <CardContent className="p-6 flex flex-col justify-center h-full gap-4">
-                            <span className="text-sm font-medium text-slate-800 dark:text-slate-200">各阶段分布</span>
-                            <div className="flex h-4 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                            <span className="text-sm font-medium text-foreground">各阶段分布</span>
+                            <div className="flex h-4 rounded-full overflow-hidden bg-muted">
                                 {STATUS_KEYS.map((key) => {
                                     const count = data.counts[key];
                                     if (count === 0) return null;
@@ -211,9 +211,9 @@ export function TaskProgressDetail() {
                                     return (
                                         <div key={key} className="flex items-center gap-2 text-xs">
                                             <span className={`w-2 h-2 rounded-full ${PROGRESS_COLORS[key]}`} />
-                                            <span className="text-slate-600 dark:text-slate-400">{cfg.label}</span>
+                                            <span className="text-muted-foreground">{cfg.label}</span>
                                             <span className={`font-medium ${cfg.color}`}>{count}</span>
-                                            <span className="text-slate-500">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
+                                            <span className="text-muted-foreground">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
                                         </div>
                                     );
                                 })}
@@ -224,47 +224,47 @@ export function TaskProgressDetail() {
             )}
 
             {/* Student list */}
-            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">学生列表</span>
+            <Card className="border-border bg-card">
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">学生列表</span>
                     <div className="relative w-56">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             placeholder="搜索学号/姓名"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 h-8 text-sm"
+                            className="pl-9 bg-background dark:bg-card border-border text-foreground placeholder:text-muted-foreground h-8 text-sm"
                         />
                     </div>
                 </div>
                 <CardContent className="pt-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                <TableHead className="text-slate-600 dark:text-slate-400">学号</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">姓名</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">状态</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">当前阶段</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">最近活动</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400 text-right">操作</TableHead>
+                            <TableRow className="border-border hover:bg-muted/50">
+                                <TableHead className="text-muted-foreground">学号</TableHead>
+                                <TableHead className="text-muted-foreground">姓名</TableHead>
+                                <TableHead className="text-muted-foreground">状态</TableHead>
+                                <TableHead className="text-muted-foreground">当前阶段</TableHead>
+                                <TableHead className="text-muted-foreground">最近活动</TableHead>
+                                <TableHead className="text-muted-foreground text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredStudents.map((s) => {
                                 const cfg = STATUS_CONFIG[s.status as StatusKey] ?? STATUS_CONFIG.not_started;
                                 return (
-                                    <TableRow key={s.studentId} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
-                                        <TableCell className="font-mono text-slate-700 dark:text-slate-300 text-sm">{s.studentId}</TableCell>
-                                        <TableCell className="text-slate-800 dark:text-slate-200">{s.name}</TableCell>
+                                    <TableRow key={s.studentId} className="border-border hover:bg-accent transition-colors">
+                                        <TableCell className="font-mono text-foreground text-sm">{s.studentId}</TableCell>
+                                        <TableCell className="text-foreground">{s.name}</TableCell>
                                         <TableCell>
                                             <Badge className={`${cfg.bgColor} ${cfg.color} ${cfg.borderColor}`}>
                                                 {cfg.label}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-slate-500 text-sm">
+                                        <TableCell className="text-muted-foreground text-sm">
                                             {s.stage !== null ? `阶段 ${s.stage}` : "-"}
                                         </TableCell>
-                                        <TableCell className="text-slate-500 text-xs">
+                                        <TableCell className="text-muted-foreground text-xs">
                                             {s.lastActivity ? new Date(s.lastActivity).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -272,7 +272,7 @@ export function TaskProgressDetail() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="h-7 text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
+                                                    className="h-7 text-xs text-primary hover:text-primary hover:bg-primary/10"
                                                     onClick={() => navigate(`/grading/${s.submissionId}`)}
                                                 >
                                                     {s.status === "submitted" ? (
@@ -282,7 +282,7 @@ export function TaskProgressDetail() {
                                                     )}
                                                 </Button>
                                             ) : (
-                                                <span className="text-xs text-slate-500">-</span>
+                                                <span className="text-xs text-muted-foreground">-</span>
                                             )}
                                         </TableCell>
                                     </TableRow>
@@ -290,7 +290,7 @@ export function TaskProgressDetail() {
                             })}
                             {filteredStudents.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                         暂无数据
                                     </TableCell>
                                 </TableRow>

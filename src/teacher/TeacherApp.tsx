@@ -280,8 +280,8 @@ export function TeacherApp() {
     if (isLoginPage) {
         if (authState === "checking") {
             return (
-                <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
-                    <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                <div className="min-h-screen flex items-center justify-center bg-background">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                 </div>
             );
         }
@@ -293,16 +293,16 @@ export function TeacherApp() {
 
     if (authState === "checking") {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
-                <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     if (isRecoveringLogin) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
-                <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
         );
     }
@@ -314,20 +314,20 @@ export function TeacherApp() {
     if (teacherUser?.isFirstLogin) {
         const accountLabel = teacherUser.type === "assistant" ? teacherUser.account : teacherUser.employeeId;
         return (
-            <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-8 shadow-2xl shadow-slate-300/40 dark:shadow-slate-950/40">
+            <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
+                <div className="w-full max-w-2xl border border-border bg-card p-8 shadow-sm">
                     <div className="space-y-3 text-center">
-                        <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold text-white shadow-lg ${teacherUser.type === "assistant" ? "bg-purple-600 shadow-purple-500/20" : "bg-indigo-600 shadow-indigo-500/20"}`}>
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold font-heading bg-primary text-primary-foreground">
                             {teacherUser.type === "assistant" ? "助" : "师"}
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">首次登录需完成密码更新</h1>
-                        <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
+                        <h1 className="text-2xl font-semibold font-heading uppercase tracking-wider">首次登录需完成密码更新</h1>
+                        <p className="text-sm leading-6 text-muted-foreground">
                             为保护账号安全，修改密码前暂不开放课程、批改、通知和导出操作。
                         </p>
                     </div>
 
-                    <div className="mt-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/50 p-4 text-sm text-slate-600 dark:text-slate-400">
-                        当前账号：<span className="font-mono text-slate-800 dark:text-slate-200">{accountLabel ?? teacherUser.name}</span>
+                    <div className="mt-6 border border-border bg-muted p-4 text-sm text-muted-foreground">
+                        当前账号：<span className="font-mono text-foreground">{accountLabel ?? teacherUser.name}</span>
                     </div>
                 </div>
 
@@ -352,26 +352,26 @@ export function TeacherApp() {
     }
 
     return (
-        <div className="flex h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 overflow-hidden">
+        <div className="flex h-screen bg-background text-foreground overflow-hidden">
             <Toaster richColors position="top-right" theme={theme} />
             {/* Sidebar */}
             <aside className={`
-                fixed inset-y-0 left-0 z-50 w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 flex flex-col
+                fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 flex flex-col
                 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
-                <div className="min-h-16 px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center shrink-0">
+                <div className="min-h-16 px-4 sm:px-6 py-3 border-b border-sidebar-border flex items-center shrink-0">
                     <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="bg-indigo-600 p-1.5 rounded-xl shadow-md shadow-indigo-500/20 shrink-0">
-                            <BarChart3 className="w-5 h-5 text-white" />
+                        <div className="bg-primary p-1.5 shrink-0">
+                            <BarChart3 className="w-5 h-5 text-primary-foreground" />
                         </div>
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-slate-900 dark:from-slate-100 to-slate-600 dark:to-slate-400 text-sm font-semibold tracking-tight leading-snug">
+                        <span className="text-sm font-semibold font-heading uppercase tracking-wider text-sidebar-foreground">
                             统计学虚拟仿真实验平台
                         </span>
                     </div>
                 </div>
 
                 <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-                    <div className="px-3 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <div className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         {teacherUser?.type === "assistant" ? "助教菜单" : "教师菜单"}
                     </div>
                     {(teacherUser?.type === "assistant" ? assistantMenuItems : teacherMenuItems).map((item) => {
@@ -384,18 +384,18 @@ export function TeacherApp() {
                                 to={item.path}
                                 data-testid={`teacher-nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
                                 onClick={() => setIsSidebarOpen(false)}
-                                className={`flex items-center justify-between px-3 py-2.5 text-sm rounded-lg transition-all duration-200 group
+                                className={`flex items-center justify-between px-3 py-2.5 text-sm transition-all duration-200 group
                                     ${isActive
-                                        ? "bg-indigo-500/10 text-indigo-500"
-                                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:text-slate-800 dark:hover:text-slate-200"
+                                        ? "bg-primary/10 text-primary"
+                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-indigo-500" : "text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300"}`} />
+                                    <Icon className="w-4 h-4 transition-colors" />
                                     <span className="font-medium">{item.label}</span>
                                 </div>
                                 {item.path === "/grading" && pendingGradingCount > 0 && (
-                                    <Badge className="bg-rose-500/20 text-rose-600 border-none hover:bg-rose-500/30">
+                                    <Badge variant="default">
                                         {pendingGradingCount}
                                     </Badge>
                                 )}
@@ -404,18 +404,18 @@ export function TeacherApp() {
                     })}
                 </nav>
 
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-200/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
-                        <Avatar className="w-9 h-9 border border-slate-300 dark:border-slate-700">
-                            <AvatarFallback className={`text-xs font-semibold ${teacherUser?.type === "assistant" ? "bg-purple-950 text-purple-600" : "bg-indigo-950 text-indigo-500"}`}>
+                <div className="p-4 border-t border-sidebar-border">
+                    <div className="flex items-center gap-3 p-2 border border-sidebar-border bg-sidebar-accent">
+                        <Avatar size="sm">
+                            <AvatarFallback>
                                 {teacherUser?.name?.charAt(0) ?? (teacherUser?.type === "assistant" ? "助" : "师")}
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{teacherUser?.name ?? (teacherUser?.type === "assistant" ? "助教" : "教师")}</div>
-                            <div className="text-xs text-slate-500 truncate">
+                            <div className="text-sm font-medium truncate">{teacherUser?.name ?? (teacherUser?.type === "assistant" ? "助教" : "教师")}</div>
+                            <div className="text-xs text-muted-foreground truncate">
                                 {teacherUser?.type === "assistant" ? (
-                                    <span className="text-purple-600">助教 · {teacherUser?.account ?? ""}</span>
+                                    <span>助教 · {teacherUser?.account ?? ""}</span>
                                 ) : (
                                     teacherUser?.employeeId ?? ""
                                 )}
@@ -434,46 +434,45 @@ export function TeacherApp() {
             )}
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 bg-white dark:bg-slate-950 relative z-0">
-                <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+            <main className="flex-1 flex flex-col min-w-0 bg-background relative z-0">
+                <header className="h-16 border-b border-border bg-background/50 backdrop-blur-xl flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="lg:hidden text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                            className="lg:hidden"
                             onClick={() => setIsSidebarOpen(true)}
                         >
                             <Menu className="w-5 h-5" />
                         </Button>
                         <div>
-                            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{pageTitle}</h2>
+                            <h2 className="text-lg font-semibold font-heading uppercase tracking-wider">{pageTitle}</h2>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-4">
-                        <span className="hidden sm:block text-xs text-slate-500 font-mono bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded border border-slate-200 dark:border-slate-800">
+                        <span className="hidden sm:block text-xs text-muted-foreground font-mono bg-muted px-2 py-1 border border-border">
                             {new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric" })}
                         </span>
 
-                        <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+                        <div className="h-4 w-px bg-border hidden sm:block"></div>
 
                         <Button
                             variant="ghost"
                             size="icon"
                             data-testid="teacher-open-notifications"
-                            className="relative text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
+                            className="relative"
                             onClick={() => { void openNotifications(); }}
                         >
                             <Bell className="w-5 h-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-slate-50 dark:ring-slate-900"></span>
+                                <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full ring-2 ring-background"></span>
                             )}
                         </Button>
 
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800"
                             onClick={toggleTheme}
                             title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                             aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
@@ -490,7 +489,6 @@ export function TeacherApp() {
                                     passwordChange.clearError();
                                     setShowPasswordModal(true);
                                 }}
-                                className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                             >
                                 修改密码
                             </Button>
@@ -500,25 +498,24 @@ export function TeacherApp() {
                                         variant="ghost"
                                         size="icon"
                                         data-testid="teacher-logout"
-                                        className="text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
                                         title="退出登录"
                                     >
                                         <LogOut className="w-5 h-5" />
                                     </Button>
                                 </AlertDialogTrigger>
-                                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认退出登录?</AlertDialogTitle>
-                                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                                        <AlertDialogTitle>确认退出登录?</AlertDialogTitle>
+                                        <AlertDialogDescription>
                                             您确定要退出当前账号吗？未保存的内容可能会丢失。
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel className="bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
+                                        <AlertDialogCancel>取消</AlertDialogCancel>
                                         <AlertDialogAction
+                                            variant="destructive"
                                             data-testid="teacher-logout-confirm"
                                             onClick={() => { void handleLogout(); }}
-                                            className="bg-rose-600 hover:bg-rose-700 text-white border-none"
                                         >
                                             退出
                                         </AlertDialogAction>
@@ -529,7 +526,7 @@ export function TeacherApp() {
                     </div>
                 </header>
 
-                <div className="flex-1 p-4 lg:p-8 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                <div className="flex-1 p-4 lg:p-8 overflow-y-auto scrollbar-thin scrollbar-track-transparent">
                     <div className="max-w-7xl mx-auto space-y-6">
                         <Routes>
                             <Route index element={teacherUser?.type === "assistant" ? <GradingManagement /> : <Dashboard />} />
@@ -567,9 +564,9 @@ export function TeacherApp() {
 
             {/* Notifications Modal */}
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent showCloseButton={false} className="sm:max-w-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent showCloseButton={false} className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center justify-between text-slate-900 dark:text-slate-100">
+                        <DialogTitle className="flex items-center justify-between">
                             通知
                             <Button
                                 variant="ghost"
@@ -577,32 +574,31 @@ export function TeacherApp() {
                                 data-testid="teacher-notification-read-all"
                                 onClick={() => { void markAllAsRead(); }}
                                 disabled={unreadCount === 0}
-                                className="text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
                             >
                                 全部已读
                             </Button>
                         </DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">最近通知</DialogDescription>
+                        <DialogDescription>最近通知</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800 scrollbar-track-transparent">
+                    <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
                         {notifications.length === 0 ? (
-                            <div className="text-sm text-slate-500 text-center py-8">暂无通知</div>
+                            <div className="text-sm text-muted-foreground text-center py-8">暂无通知</div>
                         ) : (
                             notifications.map((item) => (
-                                <div key={item.id} className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-white dark:bg-slate-950 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 transition-colors">
+                                <div key={item.id} className="border border-border p-4 bg-card hover:bg-muted/50 transition-colors">
                                     <div className="flex items-center justify-between mb-2">
-                                        <div className={`text-sm font-medium ${item.isRead ? "text-slate-600 dark:text-slate-400" : "text-indigo-500"}`}>
+                                        <div className={`text-sm font-medium ${item.isRead ? "text-muted-foreground" : "text-primary"}`}>
                                             {item.title}
-                                            {!item.isRead && <span className="ml-2 w-1.5 h-1.5 inline-block rounded-full bg-indigo-500"></span>}
+                                            {!item.isRead && <span className="ml-2 w-1.5 h-1.5 inline-block rounded-full bg-primary"></span>}
                                         </div>
-                                        <span className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
+                                        <span className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
                                     </div>
-                                    <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.content}</div>
+                                    <div className="text-sm text-muted-foreground leading-relaxed">{item.content}</div>
                                     {!item.isRead && (
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="mt-3 h-7 text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
+                                            className="mt-3 h-7 text-xs"
                                             onClick={async () => {
                                                 await markNotificationAsRead(item.id);
                                             }}
@@ -619,21 +615,21 @@ export function TeacherApp() {
 
             {/* Session Warning Dialog */}
             <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="text-amber-600 flex items-center gap-2">
+                        <DialogTitle className="flex items-center gap-2 text-amber-500">
                             <Clock className="w-5 h-5" />
                             会话即将过期
                         </DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">
+                        <DialogDescription>
                             您的登录会话即将过期，请选择继续使用或退出登录。
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={handleLogout} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">
+                        <Button variant="ghost" onClick={handleLogout}>
                             退出登录
                         </Button>
-                        <Button onClick={handleExtendSession} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button variant="default" onClick={handleExtendSession}>
                             继续使用
                         </Button>
                     </DialogFooter>
