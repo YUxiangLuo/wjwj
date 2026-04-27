@@ -5,10 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import {
     Plus, 
     Trash2, 
-    Target, 
     Layers, 
     Calculator, 
     AlertCircle, 
@@ -177,34 +177,34 @@ export function DomainEstimationManager({
     const increaseRatio = baseSampleSize > 0 ? (sampleSizeIncrease / baseSampleSize) : 0;
 
     return (
-        <Card className="rounded-2xl border-indigo-200/90 bg-indigo-50/90 shadow-sm dark:border-indigo-900/45 dark:bg-slate-950">
+        <Card className="rounded-2xl border-primary/20 bg-primary/5 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Layers className="w-5 h-5 text-indigo-500" />
-                        <CardTitle className="text-base text-indigo-900 dark:text-indigo-200">
+                        <Layers className="size-5 text-primary" />
+                        <CardTitle className="text-base text-foreground">
                             互斥子总体（层）估计支持
                         </CardTitle>
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-indigo-100/50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30 dark:text-indigo-300"
+                        className="border-primary/20 bg-primary/10 text-xs text-primary"
                     >
                         {domains.length} 个子总体
                     </Badge>
                 </div>
-                <CardDescription className="text-slate-700 dark:text-slate-300">
+                <CardDescription className="text-muted-foreground">
                     {isMeanEstimation
                         ? "当需要对互不重叠的细分层分别估计均值时，设置各层的绝对误差限"
                         : "当需要对互不重叠的细分层分别估计时，设置各层的精度要求"}
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-col gap-4">
                 {isMeanEstimation && !(Number(populationVariance) > 0) && (
-                    <div className="rounded-xl border border-rose-200/90 bg-rose-50/80 p-3 dark:border-rose-800/40 dark:bg-rose-950/25">
-                        <div className="flex items-start gap-2 text-xs text-rose-900 dark:text-rose-100">
-                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3">
+                        <div className="flex items-start gap-2 text-xs text-destructive">
+                            <AlertCircle className="mt-0.5 size-4 shrink-0" />
                             <span>
                                 均值子总体估计需要先给出共同方差假设 σ²。当前未提供有效方差，因此暂时无法计算各层样本量。
                             </span>
@@ -214,10 +214,10 @@ export function DomainEstimationManager({
 
                 {/* 说明卡片 */}
                 {showExplanation && (
-                    <div className="rounded-xl border border-teal-200/90 bg-teal-50/70 p-3 dark:border-teal-800/40 dark:bg-teal-950/25">
+                    <div className="rounded-xl border border-primary/20 bg-primary/10 p-3">
                         <div className="flex gap-2">
-                            <Info className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-                            <div className="text-xs text-teal-950 dark:text-teal-100 space-y-1">
+                            <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+                            <div className="flex flex-col gap-1 text-xs text-foreground">
                                 <p className="font-medium">为什么要强调“互斥子总体”？</p>
                                 <p>
                                     如果调查结果需要分别报告各层结果（如东部/中部/西部，或三个年龄组），则每一层都要单独满足精度要求。
@@ -234,7 +234,7 @@ export function DomainEstimationManager({
                                 )}
                                 <button 
                                     onClick={() => setShowExplanation(false)}
-                                    className="text-teal-800 hover:underline dark:text-teal-200 text-xs"
+                                    className="self-start text-xs text-primary underline-offset-4 hover:underline"
                                 >
                                     隐藏说明
                                 </button>
@@ -244,32 +244,33 @@ export function DomainEstimationManager({
                 )}
 
                 {/* 域列表 */}
-                <div className="space-y-3">
+                <div className="flex flex-col gap-3">
                     {domains.map((domain, index) => (
                         <div 
                             key={domain.id}
-                            className={`rounded-xl border transition-all ${
+                            className={cn(
+                                "rounded-xl border transition-all",
                                 expandedDomain === domain.id
-                                    ? "border-indigo-300 bg-white shadow-sm dark:border-indigo-700/50 dark:bg-slate-950"
-                                    : "border-indigo-200/80 bg-white/95 dark:border-indigo-800/40 dark:bg-slate-950"
-                            }`}
+                                    ? "border-primary/30 bg-card shadow-sm"
+                                    : "border-border bg-card/80",
+                            )}
                         >
                             {/* 域头部（可点击展开） */}
                             <div 
-                                className="flex items-center justify-between p-3 cursor-pointer"
+                                className="flex cursor-pointer items-center justify-between p-3"
                                 onClick={() => setExpandedDomain(expandedDomain === domain.id ? null : domain.id)}
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-sm">
+                                    <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                                         {index + 1}
                                     </div>
                                     <div>
-                                        <div className="font-medium text-indigo-900 dark:text-indigo-100">
+                                        <div className="font-medium text-foreground">
                                             {domain.name}
                                         </div>
-                                        <div className="text-xs text-slate-700 dark:text-slate-300">
+                                        <div className="text-xs text-muted-foreground">
                                             N = {domain.populationSize.toLocaleString()} | 需 n ≥{" "}
-                                            <span className="font-semibold text-teal-700 dark:text-teal-300 tabular-nums">
+                                            <span className="font-semibold tabular-nums text-chart-3">
                                                 {domain.requiredSampleSize.toLocaleString()}
                                             </span>
                                         </div>
@@ -278,65 +279,64 @@ export function DomainEstimationManager({
                                 <div className="flex items-center gap-2">
                                     <Badge 
                                         variant="outline" 
-                                        className="text-xs bg-indigo-100/50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30"
+                                        className="border-primary/20 bg-primary/10 text-xs text-primary"
                                     >
                                         {formatMarginOfError(domain.marginOfError, estimationType)} / {domain.confidenceLevel}%
                                     </Badge>
                                     {expandedDomain === domain.id ? (
-                                        <ChevronUp className="w-4 h-4 text-indigo-500" />
+                                        <ChevronUp className="size-4 text-primary" />
                                     ) : (
-                                        <ChevronDown className="w-4 h-4 text-indigo-500" />
+                                        <ChevronDown className="size-4 text-primary" />
                                     )}
                                     <Button
                                         variant="ghost"
-                                        size="sm"
+                                        size="icon-xs"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             removeDomain(domain.id);
                                         }}
-                                        className="h-8 w-8 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30"
+                                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                        aria-label={`删除${domain.name}`}
                                     >
-                                        <Trash2 className="w-4 h-4" />
+                                        <Trash2 />
                                     </Button>
                                 </div>
                             </div>
 
                             {/* 展开的配置面板 */}
                             {expandedDomain === domain.id && (
-                                <div className="px-4 pb-4 space-y-4">
-                                    <div className="h-px bg-indigo-200/50 dark:bg-indigo-700/30" />
+                                <div className="flex flex-col gap-4 px-4 pb-4">
+                                    <div className="h-px bg-border" />
                                     
                                     {/* 名称 */}
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-indigo-700 dark:text-indigo-300">子总体名称</Label>
+                                    <div className="flex flex-col gap-2">
+                                        <Label className="text-xs text-muted-foreground">子总体名称</Label>
                                         <Input
                                             value={domain.name}
                                             onChange={(e) => updateDomain(domain.id, { name: e.target.value })}
-                                            className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
                                             placeholder="如：东部地区、31-50岁、A层"
                                         />
                                     </div>
 
                                     {/* 总体规模 */}
-                                    <div className="space-y-2">
-                                        <Label className="text-xs text-indigo-700 dark:text-indigo-300">子总体规模 (N)</Label>
+                                    <div className="flex flex-col gap-2">
+                                        <Label className="text-xs text-muted-foreground">子总体规模 (N)</Label>
                                         <Input
                                             type="number"
                                             value={domain.populationSize}
                                             onChange={(e) => updateDomain(domain.id, { populationSize: parseInt(e.target.value) || 0 })}
-                                            className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
                                             min={1}
                                             max={totalPopulationSize}
                                         />
-                                        <p className="text-xs text-indigo-800 dark:text-indigo-200">
+                                        <p className="text-xs text-muted-foreground">
                                             该子总体在总体中的人数
                                         </p>
                                     </div>
 
                                     {/* 分层变量（可选） */}
                                     {stratifiedFields.length > 0 && (
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">关联分层变量（可选）</Label>
+                                        <div className="flex flex-col gap-2">
+                                            <Label className="text-xs text-muted-foreground">关联分层变量（可选）</Label>
                                             <Select 
                                                 value={domain.stratifiedVariable || NO_STRATIFIED_VARIABLE_VALUE}
                                                 onValueChange={(value) => updateDomain(domain.id, { 
@@ -344,10 +344,10 @@ export function DomainEstimationManager({
                                                     stratifiedValue: undefined 
                                                 })}
                                             >
-                                                <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
+                                                <SelectTrigger>
                                                     <SelectValue placeholder="选择分层变量" />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
+                                                <SelectContent>
                                                     <SelectGroup>
                                                         <SelectItem value={NO_STRATIFIED_VARIABLE_VALUE}>无</SelectItem>
                                                         {stratifiedFields.map(field => (
@@ -361,16 +361,16 @@ export function DomainEstimationManager({
 
                                     {/* 精度要求 */}
                                     <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">置信水平</Label>
+                                        <div className="flex flex-col gap-2">
+                                            <Label className="text-xs text-muted-foreground">置信水平</Label>
                                             <Select 
                                                 value={domain.confidenceLevel} 
                                                 onValueChange={(value) => updateDomain(domain.id, { confidenceLevel: value })}
                                             >
-                                                <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
+                                                <SelectTrigger>
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
+                                                <SelectContent>
                                                     <SelectGroup>
                                                         <SelectItem value="90">90%</SelectItem>
                                                         <SelectItem value="95">95%</SelectItem>
@@ -379,13 +379,12 @@ export function DomainEstimationManager({
                                                 </SelectContent>
                                             </Select>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">{marginLabel}{marginInputSuffix}</Label>
+                                        <div className="flex flex-col gap-2">
+                                            <Label className="text-xs text-muted-foreground">{marginLabel}{marginInputSuffix}</Label>
                                             <Input
                                                 type="number"
                                                 value={domain.marginOfError}
                                                 onChange={(e) => updateDomain(domain.id, { marginOfError: Number.parseFloat(e.target.value) || 0 })}
-                                                className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
                                                 min={isMeanEstimation ? 0.1 : 1}
                                                 max={isMeanEstimation ? undefined : 20}
                                                 step={isMeanEstimation ? 0.1 : 1}
@@ -394,14 +393,14 @@ export function DomainEstimationManager({
                                     </div>
 
                                     {/* 计算结果 */}
-                                    <div className="rounded-lg border border-indigo-200 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950">
+                                    <div className="rounded-lg border bg-background p-3">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs text-indigo-800 dark:text-indigo-200">所需样本量</span>
-                                            <span className="text-lg font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                                            <span className="text-xs text-muted-foreground">所需样本量</span>
+                                            <span className="text-lg font-bold tabular-nums text-chart-3">
                                                 {domain.requiredSampleSize.toLocaleString()}
                                             </span>
                                         </div>
-                                        <p className="text-xs text-indigo-800 dark:text-indigo-200 mt-1">
+                                        <p className="mt-1 text-xs text-muted-foreground">
                                             基于置信度 {domain.confidenceLevel}%、{marginLabel} {formatMarginOfError(domain.marginOfError, estimationType)}
                                             {isMeanEstimation && populationVariance != null ? ` 和 σ²=${populationVariance}` : ""}
                                         </p>
@@ -416,53 +415,53 @@ export function DomainEstimationManager({
                 <Button
                     variant="outline"
                     onClick={addDomain}
-                    className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+                    className="w-full"
                 >
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus data-icon="inline-start" />
                     添加子总体
                 </Button>
 
                 {/* 总样本量计算 */}
                 {domains.length > 0 && (
-                    <div className="rounded-xl border-2 border-indigo-300 bg-white p-4 shadow-sm dark:border-indigo-700/50 dark:bg-slate-950">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Calculator className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                            <span className="font-bold text-indigo-900 dark:text-indigo-100">总样本量计算</span>
+                    <div className="rounded-xl border-2 border-primary/30 bg-card p-4 shadow-sm">
+                        <div className="mb-3 flex items-center gap-2">
+                            <Calculator className="size-5 text-primary" />
+                            <span className="font-bold text-foreground">总样本量计算</span>
                         </div>
                         
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-indigo-700 dark:text-indigo-300">基准样本量（总体估计）</span>
-                                <span className="font-mono text-indigo-900 dark:text-indigo-100">{baseSampleSize.toLocaleString()}</span>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">基准样本量（总体估计）</span>
+                                <span className="font-mono text-foreground">{baseSampleSize.toLocaleString()}</span>
                             </div>
                             
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-indigo-700 dark:text-indigo-300">单层最大需求</span>
-                                <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">单层最大需求</span>
+                                <span className="font-mono text-foreground">
                                     {largestRequiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
 
-                            <div className="flex justify-between items-center text-sm">
-                                <span className="text-indigo-700 dark:text-indigo-300">各层样本量合计</span>
-                                <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">各层样本量合计</span>
+                                <span className="font-mono text-foreground">
                                     {totalRequiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
 
-                            <div className="h-px bg-indigo-300/50 dark:bg-indigo-700/50" />
+                            <div className="h-px bg-border" />
 
-                            <div className="flex justify-between items-center">
-                                <span className="font-bold text-indigo-900 dark:text-indigo-100">建议总样本量</span>
-                                <span className="text-2xl font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                            <div className="flex items-center justify-between">
+                                <span className="font-bold text-foreground">建议总样本量</span>
+                                <span className="text-2xl font-bold tabular-nums text-chart-3">
                                     {totalRequiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
 
                             {sampleSizeIncrease > 0 && (
-                                <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2 dark:bg-amber-900/30 dark:border-amber-700/50">
-                                    <div className="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200">
-                                        <AlertCircle className="w-4 h-4" />
+                                <div className="rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                                    <div className="flex items-center gap-2 text-xs text-foreground">
+                                        <AlertCircle className="size-4 text-chart-4" />
                                         <span>
                                             相比仅估计总体，样本量需增加 {sampleSizeIncrease.toLocaleString()} 
                                             ({(increaseRatio * 100).toFixed(0)}%)
@@ -472,9 +471,9 @@ export function DomainEstimationManager({
                             )}
 
                             {populationOverflow > 0 && (
-                                <div className="rounded-lg bg-rose-50/80 border border-rose-200 p-2 dark:bg-rose-900/30 dark:border-rose-700/50">
-                                    <div className="flex items-start gap-2 text-xs text-rose-800 dark:text-rose-200">
-                                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-2">
+                                    <div className="flex items-start gap-2 text-xs text-destructive">
+                                        <AlertCircle className="mt-0.5 size-4 shrink-0" />
                                         <span>
                                             当前各层规模之和为 {allocatedPopulationSize.toLocaleString()}，已超过总体规模 {totalPopulationSize.toLocaleString()}。
                                             这通常表示层之间发生重叠，不能直接按 Σn_h 相加。
@@ -484,7 +483,7 @@ export function DomainEstimationManager({
                             )}
                         </div>
 
-                        <p className="text-xs text-indigo-900 dark:text-indigo-100 mt-3 leading-relaxed">
+                        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                             原则：当各层互不重叠时，总样本量可写为 Σn_h。若录入的是重叠 domain，则不能直接相加。
                         </p>
                     </div>
@@ -504,52 +503,52 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
     const ratio = baseSampleSize > 0 ? domainTotal / baseSampleSize : 0;
 
     return (
-        <div className="rounded-xl border border-violet-200/90 bg-violet-50/50 p-4 dark:border-violet-800/40 dark:bg-violet-950/20">
-            <div className="flex items-center gap-2 mb-3">
-                <Info className="w-4 h-4 text-violet-500" />
-                <span className="font-medium text-sm text-violet-900 dark:text-violet-200">
+        <div className="rounded-xl border border-primary/20 bg-primary/10 p-4">
+            <div className="mb-3 flex items-center gap-2">
+                <Info className="size-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">
                     方案对比（课件例 7.2）
                 </span>
             </div>
 
-            <div className="space-y-2">
-                <div className="rounded-lg border border-violet-200/60 bg-white p-3 dark:border-violet-700/40 dark:bg-slate-950">
-                    <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-2">
+                <div className="rounded-lg border bg-background p-3">
+                    <div className="flex items-center justify-between">
                         <div>
-                            <span className="text-sm font-medium text-violet-900 dark:text-violet-100">方案一</span>
-                            <span className="text-xs text-violet-500 ml-2">仅需整体估计</span>
+                            <span className="text-sm font-medium text-foreground">方案一</span>
+                            <span className="ml-2 text-xs text-muted-foreground">仅需整体估计</span>
                         </div>
-                        <span className="font-mono font-bold text-violet-700 dark:text-violet-300">
+                        <span className="font-mono font-bold text-primary">
                             n = {baseSampleSize.toLocaleString()}
                         </span>
                     </div>
                 </div>
 
-                <div className="rounded-lg border border-violet-200/60 bg-white p-3 dark:border-violet-700/40 dark:bg-slate-950">
-                    <div className="flex justify-between items-center mb-2">
+                <div className="rounded-lg border bg-background p-3">
+                    <div className="mb-2 flex items-center justify-between">
                         <div>
-                            <span className="text-sm font-medium text-violet-900 dark:text-violet-100">方案二</span>
-                            <span className="text-xs text-violet-500 ml-2">互斥各层分别精确估计</span>
+                            <span className="text-sm font-medium text-foreground">方案二</span>
+                            <span className="ml-2 text-xs text-muted-foreground">互斥各层分别精确估计</span>
                         </div>
-                        <span className="font-mono font-bold text-violet-700 dark:text-violet-300">
+                        <span className="font-mono font-bold text-primary">
                             n = {domainTotal.toLocaleString()}
                         </span>
                     </div>
-                    <div className="text-xs text-violet-600/80 dark:text-violet-400/80">
+                    <div className="text-xs text-muted-foreground">
                         {domains.map(d => `${d.name}: ${d.requiredSampleSize.toLocaleString()}`).join(" + ")} = {domainTotal.toLocaleString()}
                     </div>
                 </div>
 
                 {ratio > 1 && (
-                    <div className="rounded-lg bg-amber-50/80 border border-amber-200 p-2 dark:bg-amber-900/30 dark:border-amber-700/50">
-                        <div className="flex items-start gap-2 text-xs text-amber-800 dark:text-amber-200">
-                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div className="rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                        <div className="flex items-start gap-2 text-xs text-foreground">
+                            <AlertCircle className="mt-0.5 size-4 shrink-0 text-chart-4" />
                             <div>
                                 <p>
                                     <span className="font-medium">方案二是方案一的 {ratio.toFixed(1)} 倍</span>
                                     —— 当需要对互斥各层分别进行估计时，需确保每层样本量都足够大，总样本量往往远高于仅估计总体时的需求。
                                 </p>
-                                <p className="mt-1 text-amber-700/90 dark:text-amber-300/90">
+                                <p className="mt-1 text-muted-foreground">
                                     最终样本量的确定需要在精度、费用、时限和操作可行性之间进行协调。
                                 </p>
                             </div>
