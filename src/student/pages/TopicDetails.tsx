@@ -454,19 +454,19 @@ export function TopicDetails() {
             </Card>
 
             <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认重新开始实验</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
-                            重新开始将<strong className="text-rose-600">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
+                        <AlertDialogTitle>确认重新开始实验</AlertDialogTitle>
+                        <AlertDialogDescription className="text-base leading-relaxed">
+                            重新开始将<strong className="text-destructive">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
                             <br />
                             确定继续吗？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-rose-600 hover:bg-rose-700 text-white"
+                            variant="destructive"
                             onClick={async () => {
                                 if (!taskId) return;
                                 const res = await experimentApi.reset(Number(taskId), {
@@ -486,19 +486,19 @@ export function TopicDetails() {
             </AlertDialog>
 
             <Dialog open={!!previewFile} onOpenChange={(open) => { if (!open) setPreviewFile(null); }}>
-                <DialogContent className="max-w-5xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent className="max-w-5xl">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">附件预览</DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">
+                        <DialogTitle>附件预览</DialogTitle>
+                        <DialogDescription>
                             {previewFile?.name}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/60 p-2">
+                    <div className="mt-4 rounded-lg border border-border bg-background/60 p-2">
                         {previewType === "image" && (
                             <img src={previewUrl} alt={previewFile?.name ?? "附件图片"} className="max-h-[70vh] w-full object-contain rounded-lg" />
                         )}
                         {previewType === "pdf" && (
-                            <iframe title={previewFile?.name ?? "PDF预览"} src={previewUrl} className="w-full h-[70vh] rounded-lg" />
+                            <iframe title={previewFile?.name ?? "PDF预览"} src={previewUrl} className="h-[70vh] w-full rounded-lg" />
                         )}
                         {previewType === "video" && (
                             <video src={previewUrl} controls className="max-h-[70vh] w-full rounded-lg bg-black" />
