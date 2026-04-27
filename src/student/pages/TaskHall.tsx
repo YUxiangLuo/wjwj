@@ -81,7 +81,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
     if (!deadline) return null;
     if (status === "graded") return null;
     if (notOpenYet) {
-        return <span className="text-sm text-cyan-800">尚未开放</span>;
+        return <span className="text-sm text-primary">尚未开放</span>;
     }
 
     const remainingMs = getRemainingMs(deadline);

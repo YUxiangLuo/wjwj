@@ -4,6 +4,7 @@ import { ArrowLeft, FileText, Send, Loader2, CheckCircle2, AlertCircle, Maximize
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -36,36 +37,36 @@ import { parseDeadline } from "@/utils/format";
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
-        <Card className="bg-slate-200/50 dark:bg-slate-800/50 border-slate-300/50 dark:border-slate-700/50">
+        <Card size="sm" className="bg-muted/30">
             <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center text-sm font-bold mt-0.5">
+                    <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                         {index + 1}
                     </span>
-                    <div className="space-y-2 flex-1">
-                        <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    <div className="flex flex-1 flex-col gap-2">
+                        <div className="text-sm font-medium text-foreground">
                             {question.content}
                         </div>
                         {question.type === "boolean" && (
-                            <div className="text-xs text-slate-500 bg-slate-50/40 dark:bg-slate-900/40 inline-block px-2 py-1 rounded border border-slate-300/50 dark:border-slate-700/50">
+                            <div className="inline-block rounded border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
                                 选项：是 / 否
                             </div>
                         )}
                         {(question.type === "single" || question.type === "multiple") && (
-                            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1 mt-2">
+                            <ul className="mt-2 flex flex-col gap-1 text-sm text-muted-foreground">
                                 {(question.options ?? []).map((opt, i) => (
                                     <li key={`${question.id}-opt-${i}`} className="flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-600" />
+                                        <div className="size-1.5 rounded-full bg-muted-foreground/60" />
                                         {opt}
                                     </li>
                                 ))}
                             </ul>
                         )}
                         {question.type === "scale" && (
-                            <div className="text-xs text-slate-500 bg-slate-50/40 dark:bg-slate-900/40 inline-flex items-center gap-2 px-3 py-1.5 rounded border border-slate-300/50 dark:border-slate-700/50">
+                            <div className="inline-flex items-center gap-2 rounded border border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
                                 <span>量表范围：{question.scaleMin ?? 1} - {question.scaleMax ?? 10}</span>
                                 {(question.scaleMinLabel || question.scaleMaxLabel) && (
-                                    <span className="text-slate-500">
+                                    <span className="text-muted-foreground">
                                         ({question.scaleMinLabel ?? "Min"} ~ {question.scaleMaxLabel ?? "Max"})
                                     </span>
                                 )}
@@ -191,7 +192,7 @@ export function SubmissionPreview() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
+                <Loader2 className="size-8 animate-spin text-primary" />
             </div>
         );
     }
@@ -202,7 +203,7 @@ export function SubmissionPreview() {
 
     if (!task || !experiment) {
         return (
-            <div className="text-center text-slate-500 mt-20">未找到实验数据</div>
+            <div className="mt-20 text-center text-muted-foreground">未找到实验数据</div>
         );
     }
 
@@ -231,64 +232,64 @@ export function SubmissionPreview() {
         systematicSampleCount !== samplePlan.finalSampleSize;
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-preview">
-            <Link to={`/task/${task.id}/experiment`}>
-                <Button variant="ghost" className="gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
-                    <ArrowLeft className="w-4 h-4" />
+        <div className="mx-auto flex max-w-4xl flex-col gap-6" data-testid="student-submission-preview">
+            <Button asChild variant="ghost" className="self-start">
+                <Link to={`/task/${task.id}/experiment`}>
+                    <ArrowLeft data-icon="inline-start" />
                     返回修改
-                </Button>
-            </Link>
+                </Link>
+            </Button>
 
-            <Card className="border-indigo-500/20 bg-slate-50/40 dark:bg-slate-900/40 backdrop-blur-xl shadow-2xl">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
-                <CardHeader className="border-b border-slate-300/30 dark:border-slate-700/30 pb-4">
+            <Card className="relative">
+                <div className="absolute left-0 top-0 h-1 w-full bg-primary/15" />
+                <CardHeader className="border-b border-border">
                     <div className="flex items-center justify-between">
-                        <CardTitle className="flex items-center gap-3 text-2xl text-slate-900 dark:text-slate-100">
-                            <FileText className="w-6 h-6 text-indigo-500" />
+                        <CardTitle className="flex items-center gap-3 text-2xl text-foreground">
+                            <FileText className="size-6 text-primary" />
                             提交前预览
                         </CardTitle>
-                        <Button variant="outline" size="sm" className="border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-800 dark:hover:text-indigo-200" onClick={() => setShowFullPreview(true)}>
-                            <Maximize2 className="w-4 h-4 mr-1.5" />
+                        <Button variant="outline" size="sm" onClick={() => setShowFullPreview(true)}>
+                            <Maximize2 data-icon="inline-start" />
                             全屏预览
                         </Button>
                     </div>
-                    <CardDescription className="text-slate-600 dark:text-slate-400">
-                        课题：<span className="text-slate-700 dark:text-slate-300 font-medium">{task.name}</span>
+                    <CardDescription>
+                        课题：<span className="font-medium text-foreground">{task.name}</span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
                     <Tabs defaultValue="report" className="w-full">
-                        <TabsList className="bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300/30 dark:border-slate-700/30 p-1 w-full md:w-auto h-auto rounded-lg" data-testid="student-preview-tabs">
+                        <TabsList className="h-auto w-full md:w-auto" data-testid="student-preview-tabs">
                             <TabsTrigger
                                 value="report"
                                 data-testid="student-preview-tab-report"
-                                className="px-6 py-2 rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-all"
+                                className="px-6"
                             >
                                 实验报告预览
                             </TabsTrigger>
                             <TabsTrigger
                                 value="questionnaire"
                                 data-testid="student-preview-tab-questionnaire"
-                                className="px-6 py-2 rounded-md data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-all"
+                                className="px-6"
                             >
                                 问卷预览
                             </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="report" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
-                            <div className="bg-slate-200/30 dark:bg-slate-800/30 rounded-xl p-6 border border-slate-200 dark:border-slate-800 min-h-[300px] space-y-5">
-                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 p-4">
-                                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">阶段一：问卷设计</h3>
-                                    <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                        <TabsContent value="report" className="mt-6 animate-in fade-in-50 slide-in-from-bottom-2">
+                            <div className="flex min-h-[300px] flex-col gap-5 rounded-lg border border-border bg-muted/30 p-6">
+                                <div className="rounded-lg border border-border bg-card/70 p-4">
+                                    <h3 className="mb-3 text-base font-semibold text-foreground">阶段一：问卷设计</h3>
+                                    <div className="flex flex-col gap-1 text-sm text-foreground/80">
                                         <p>问卷标题：{questionnaire?.title || "未填写"}</p>
                                         <p>题目数量：{questionnaireQuestions.length} 题</p>
                                     </div>
                                 </div>
 
-                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 p-4">
-                                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">阶段二：样本量规划</h3>
+                                <div className="rounded-lg border border-border bg-card/70 p-4">
+                                    <h3 className="mb-3 text-base font-semibold text-foreground">阶段二：样本量规划</h3>
                                     {samplePlan ? (
-                                        <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                                        <div className="flex flex-col gap-1 text-sm text-foreground/80">
                                             <p>估计类型：{getEstimationTypeLabel(samplePlan.estimationType)}</p>
                                             {advancedSourceLabel && (
                                                 <p>最终样本量来源：{advancedSourceLabel}（高级工具）</p>
@@ -304,26 +305,26 @@ export function SubmissionPreview() {
                                             <p>建议样本量：{samplePlan.recommendedSize}</p>
                                             <p>最终样本量：{samplePlan.finalSampleSize}</p>
                                             {advancedSourceLabel && (
-                                                <p className="text-xs text-amber-700 dark:text-amber-300">
+                                                <p className="text-xs text-muted-foreground">
                                                     说明：推荐样本量仍对应常规公式建议，当前最终样本量来自「{advancedSourceLabel}」。
                                                 </p>
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="text-sm text-slate-500 italic">暂无样本量规划数据</div>
+                                        <div className="text-sm italic text-muted-foreground">暂无样本量规划数据</div>
                                     )}
                                 </div>
 
-                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 p-4">
-                                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">阶段三：抽样执行</h3>
-                                    <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                                <div className="rounded-lg border border-border bg-card/70 p-4">
+                                    <h3 className="mb-3 text-base font-semibold text-foreground">阶段三：抽样执行</h3>
+                                    <div className="flex flex-col gap-1 text-sm text-foreground/80">
                                         <p>简单随机抽样：{samplingResults?.simple?.completed ? `已完成（${samplingResults.simple.sampleCount} 样本）` : "未完成"}</p>
                                         <p>系统抽样：{samplingResults?.systematic?.completed ? `已完成（${samplingResults.systematic.sampleCount} 样本）` : "未完成"}</p>
                                         <p>PPS抽样：{samplingResults?.pps?.unavailable ? PPS_UNAVAILABLE_STATUS_MESSAGE : samplingResults?.pps?.completed ? `已完成（${samplingResults.pps.sampleCount} 样本）` : "未完成"}</p>
                                         <p>分层抽样：{samplingResults?.stratified?.completed ? "已完成" : "未完成"}</p>
                                     </div>
                                     {showSystematicSampleNote && (
-                                        <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-800 dark:text-cyan-200">
+                                        <div className="mt-3 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2 text-xs text-primary">
                                             系统抽样样本量受 K 值和随机起点影响，不要求与规划样本量完全一致。
                                             当前结果为 {systematicSampleCount}，规划样本量为 {samplePlan.finalSampleSize}，
                                             允许范围为 {formatSystematicRange(systematicAcceptedRange)}。
@@ -331,40 +332,41 @@ export function SubmissionPreview() {
                                     )}
                                 </div>
 
-                                <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 p-4">
-                                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3 flex items-center gap-2">
-                                        <FileText className="w-4 h-4 text-emerald-600" />
+                                <div className="rounded-lg border border-border bg-card/70 p-4">
+                                    <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
+                                        <FileText className="size-4 text-primary" />
                                         阶段四：分析报告
                                     </h3>
                                     {reportContent ? (
                                         <RichTextContent
                                             html={reportContent}
-                                            className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed pl-4 border-l-2 border-slate-300 dark:border-slate-700"
+                                            className="border-l-2 border-border pl-4 text-sm leading-relaxed text-foreground/80"
                                         />
                                     ) : (
-                                        <div className="text-sm text-slate-500 italic">暂无报告内容</div>
+                                        <div className="text-sm italic text-muted-foreground">暂无报告内容</div>
                                     )}
                                 </div>
                             </div>
                         </TabsContent>
 
-                        <TabsContent value="questionnaire" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
-                            <div className="bg-slate-200/30 dark:bg-slate-800/30 rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+                        <TabsContent value="questionnaire" className="mt-6 animate-in fade-in-50 slide-in-from-bottom-2">
+                            <div className="rounded-lg border border-border bg-muted/30 p-6">
                                 {!questionnaire ? (
-                                    <div className="text-sm text-slate-500 italic">暂无问卷内容</div>
+                                    <div className="text-sm italic text-muted-foreground">暂无问卷内容</div>
                                 ) : (
-                                    <>
-                                        <div className="mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
-                                            <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">{questionnaire.title || "未命名问卷"}</div>
+                                    <div className="flex flex-col gap-6">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="text-xl font-bold text-foreground">{questionnaire.title || "未命名问卷"}</div>
                                             <RichTextContent
                                                 html={questionnaire.welcomeText ?? ""}
-                                                className="text-sm text-slate-600 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-200 dark:border-slate-800"
+                                                className="rounded-lg border border-border bg-card/70 p-3 text-sm text-muted-foreground"
                                             />
+                                            <Separator />
                                         </div>
 
-                                        <div className="space-y-3">
+                                        <div className="flex flex-col gap-3">
                                             {questionnaireQuestions.length === 0 ? (
-                                                <div className="text-sm text-slate-500">暂无题目</div>
+                                                <div className="text-sm text-muted-foreground">暂无题目</div>
                                             ) : (
                                                 questionnaireQuestions.map((q, index) => (
                                                     <QuestionPreview key={q.id} question={q} index={index} />
@@ -372,13 +374,14 @@ export function SubmissionPreview() {
                                             )}
                                         </div>
 
-                                        <div className="mt-6 pt-4 border-t border-slate-950/10 dark:border-slate-50/10">
+                                        <div className="flex flex-col gap-4">
+                                            <Separator />
                                             <RichTextContent
                                                 html={questionnaire.endingText ?? ""}
-                                                className="text-sm text-slate-600 dark:text-slate-400 bg-slate-50/30 dark:bg-slate-900/30 p-3 rounded-lg border border-slate-950/5 dark:border-slate-50/5"
+                                                className="rounded-lg border border-border bg-card/70 p-3 text-sm text-muted-foreground"
                                             />
                                         </div>
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         </TabsContent>
@@ -388,13 +391,13 @@ export function SubmissionPreview() {
 
             <div className="flex flex-col items-end gap-4 pb-12">
                 {!canSubmit && (
-                    <div className="text-sm text-red-600 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20 flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4" />
+                    <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
+                        <AlertCircle className="size-4" />
                         {submitBlocker}
                     </div>
                 )}
                 {error && (
-                    <div className="text-sm text-red-600 bg-red-500/10 px-4 py-2 rounded-lg border border-red-500/20">
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
                         {error}
                     </div>
                 )}
@@ -403,16 +406,17 @@ export function SubmissionPreview() {
                     onClick={() => setConfirmOpen(true)}
                     disabled={!canSubmit || submitting}
                     data-testid="student-preview-submit"
-                    className="w-full md:w-auto h-12 px-8 text-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                    size="lg"
+                    className="w-full md:w-auto"
                 >
                     {submitting ? (
                         <>
-                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            <Loader2 data-icon="inline-start" className="animate-spin" />
                             提交中...
                         </>
                     ) : (
                         <>
-                            <Send className="w-5 h-5 mr-2" />
+                            <Send data-icon="inline-start" />
                             确认提交
                         </>
                     )}
@@ -420,17 +424,16 @@ export function SubmissionPreview() {
             </div>
 
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-preview-submit-dialog">
+                <AlertDialogContent data-testid="student-preview-submit-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认提交实验</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                        <AlertDialogTitle>确认提交实验</AlertDialogTitle>
+                        <AlertDialogDescription>
                             提交后将无法修改实验内容。确定现在提交吗？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                             onClick={handleSubmit}
                             disabled={submitting}
                             data-testid="student-preview-submit-confirm"
