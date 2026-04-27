@@ -1,7 +1,6 @@
 import { useEffect, useCallback, type ReactNode } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import UnderlineExt from "@tiptap/extension-underline";
 import Placeholder from "@tiptap/extension-placeholder";
 import {
     Bold,
@@ -92,7 +91,6 @@ export function RichTextEditor({
             StarterKit.configure({
                 heading: { levels: [2, 3] },
             }),
-            UnderlineExt,
             Placeholder.configure({ placeholder }),
         ],
         content: value,
