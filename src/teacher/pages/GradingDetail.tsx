@@ -460,7 +460,7 @@ export function GradingDetail() {
             {/* Main Content */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Left: Submission Content */}
-                <div className="flex-1 overflow-y-auto p-6 bg-background">
+                <div className="flex-1 overflow-y-auto bg-background p-5">
                     <Tabs defaultValue="report" className="h-full flex flex-col">
                         <TabsList variant="line" className="mb-6 self-start">
                             <TabsTrigger value="report">
@@ -475,7 +475,7 @@ export function GradingDetail() {
                         </TabsList>
 
                         <div className="flex-1">
-                            <TabsContent value="report" className="mt-0 bg-card border border-border p-8 min-h-[500px]">
+                            <TabsContent value="report" className="mt-0 min-h-[500px] border border-border bg-card p-6">
                                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
                                     <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                                         <FileText className="w-5 h-5 text-primary" />
@@ -502,7 +502,7 @@ export function GradingDetail() {
                                     {data.reportContent ? (
                                         <RichTextContent
                                             html={data.reportContent}
-                                            className="text-sm text-foreground leading-relaxed bg-background/50 p-6 border border-border/50"
+                                            className="border border-border/50 bg-background/50 p-5 text-sm leading-relaxed text-foreground"
                                         />
                                     ) : (
                                         <div className="text-muted-foreground text-center py-20 bg-muted/30 border border-dashed border-border">
@@ -512,7 +512,7 @@ export function GradingDetail() {
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="questionnaire" className="mt-0 bg-card border border-border p-8 min-h-[500px]">
+                            <TabsContent value="questionnaire" className="mt-0 min-h-[500px] border border-border bg-card p-6">
                                 <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
                                     <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                                         <ListChecks className="w-5 h-5 text-primary" />
@@ -537,7 +537,7 @@ export function GradingDetail() {
                                 </div>
                                 <div className="space-y-6">
                                     {questionnaire && questionnaire.title ? (
-                                        <div className="space-y-6 max-w-3xl mx-auto bg-background p-8 border border-border shadow-inner">
+                                        <div className="mx-auto max-w-3xl space-y-6 border border-border bg-background p-6 shadow-inner">
                                             <div className="text-center space-y-2 border-b border-border pb-6 mb-6">
                                                 <div className="font-bold text-xl text-foreground">{questionnaire.title}</div>
                                                 {questionnaire.welcomeText && (
@@ -569,7 +569,7 @@ export function GradingDetail() {
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="data" className="mt-0 bg-card border border-border p-8 min-h-[500px]">
+                            <TabsContent value="data" className="mt-0 min-h-[500px] border border-border bg-card p-6">
                                 <h3 className="text-lg font-semibold text-foreground mb-6 pb-4 border-b border-border flex items-center gap-2">
                                     <BarChart3 className="w-5 h-5 text-primary" />
                                     样本数据概览
@@ -586,13 +586,13 @@ export function GradingDetail() {
                 </div>
 
                 {/* Right: Grading Form */}
-                <div className="w-96 bg-card border-l border-border shrink-0 flex flex-col min-h-0 shadow-xl z-10">
+                <div className="z-10 flex min-h-0 w-80 shrink-0 flex-col border-l border-border bg-card shadow-xl">
                     <div className="p-4 border-b border-border font-medium text-foreground bg-card/50 flex items-center justify-between shrink-0">
                         <span>{data.isAssistant ? '助教评分' : '评分'}</span>
                         <div className="text-xs text-muted-foreground">权重总和: {weights.questionnaire + weights.process + weights.report}%</div>
                     </div>
                     <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-                        <FieldGroup className="gap-8 p-6 pb-4">
+                        <FieldGroup className="gap-5 p-5 pb-4">
                             <Field>
                                 <FieldLabel className="w-full justify-between">
                                     <span>问卷设计</span>
@@ -605,7 +605,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.questionnaire}
                                         onChange={(e) => setScores({ ...scores, questionnaire: e.target.value })}
-                                        className="text-left text-lg font-mono"
+                                        className="h-9 border-input bg-background px-3 text-left font-mono"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -624,7 +624,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.process}
                                         onChange={(e) => setScores({ ...scores, process: e.target.value })}
-                                        className="text-left text-lg font-mono"
+                                        className="h-9 border-input bg-background px-3 text-left font-mono"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -643,7 +643,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.report}
                                         onChange={(e) => setScores({ ...scores, report: e.target.value })}
-                                        className="text-left text-lg font-mono"
+                                        className="h-9 border-input bg-background px-3 text-left font-mono"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -652,7 +652,7 @@ export function GradingDetail() {
 
                             <Separator className="bg-border" />
 
-                            <div className="flex justify-between items-center bg-primary/20 p-4 border border-primary/20">
+                            <div className="flex items-center justify-between border border-primary/20 bg-primary/20 p-3">
                                 <span className="font-semibold text-primary">总分</span>
                                 <span className="text-3xl font-bold text-primary font-mono">{totalScore.toFixed(1)}</span>
                             </div>
@@ -699,7 +699,7 @@ export function GradingDetail() {
                                 )}
                                 <Textarea
                                     data-testid="teacher-grading-comment"
-                                    rows={8}
+                                    rows={6}
                                     maxLength={2000}
                                     placeholder="请输入评语..."
                                     value={comment}
@@ -711,7 +711,7 @@ export function GradingDetail() {
                             </Field>
                         </FieldGroup>
 
-                        <div className="px-6 pb-6 pt-4 border-t border-b border-border space-y-3 bg-card/50">
+                        <div className="space-y-3 border-t border-b border-border bg-card/50 px-5 pb-5 pt-4">
                             {!gradingLocked && data.status === 2 && (
                                 <Button
                                     data-testid="teacher-grading-update"

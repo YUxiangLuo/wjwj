@@ -16,7 +16,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus, BarChart3, Trash2 } from "lucide-react";
+import { ClipboardList, CalendarDays, CheckCircle2, AlertTriangle, Search, Clock, Plus, BarChart3, Trash2, PenLine } from "lucide-react";
 import { teacherApi, type Task, type Topic, type TeacherClass } from "../api-client";
 import { TaskExtendDialog } from "../components/TaskExtendDialog";
 import { TaskPublishDialog } from "../components/TaskPublishDialog";
@@ -168,6 +168,9 @@ export function TaskManagement() {
         });
     }, [tasks, classFilter, searchTerm]);
 
+    const formatTaskDate = (value?: string | null, fallback = "-") =>
+        value ? new Date(value).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : fallback;
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
@@ -254,30 +257,35 @@ export function TaskManagement() {
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="px-0 pt-0">
                     {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : (
-                        <Table>
+                        <Table className="min-w-[860px]">
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-muted/50">
-                                    <TableHead className="text-muted-foreground">课题</TableHead>
-                                    <TableHead className="text-muted-foreground">班级</TableHead>
-                                    <TableHead className="text-muted-foreground">发布时间</TableHead>
-                                    <TableHead className="text-muted-foreground">截止时间</TableHead>
-                                    <TableHead className="text-muted-foreground">完成进度</TableHead>
-                                    <TableHead className="text-muted-foreground">待批改</TableHead>
-                                    <TableHead className="text-muted-foreground text-right">操作</TableHead>
+                                    <TableHead className="w-[260px] pl-8 text-muted-foreground">课题</TableHead>
+                                    <TableHead className="w-[150px] text-muted-foreground">班级</TableHead>
+                                    <TableHead className="w-[110px] text-muted-foreground">截止时间</TableHead>
+                                    <TableHead className="w-[150px] text-muted-foreground">完成进度</TableHead>
+                                    <TableHead className="w-[80px] text-muted-foreground">待批改</TableHead>
+                                    <TableHead className="w-[210px] pr-8 text-right text-muted-foreground">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredTasks.map((task) => (
                                     <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="border-border hover:bg-accent transition-colors">
-                                        <TableCell className="font-medium text-foreground">{task.topic}</TableCell>
-                                        <TableCell className="text-foreground">{task.className}</TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">{task.deadline ? new Date(task.deadline).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "无"}</TableCell>
+                                        <TableCell className="pl-8 text-foreground">
+                                            <div className="flex max-w-[240px] flex-col gap-1">
+                                                <span className="truncate font-medium">{task.topic}</span>
+                                                <span className="text-xs text-muted-foreground">发布于 {formatTaskDate(task.publishedAt)}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-foreground">
+                                            <span className="block max-w-[140px] truncate">{task.className}</span>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">{formatTaskDate(task.deadline, "无")}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
+                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="h-1.5 w-24 bg-muted [&>div]:bg-success" />
                                                 <span className="text-xs text-muted-foreground">{task.completed}/{task.total}</span>
                                             </div>
                                         </TableCell>
@@ -290,7 +298,7 @@ export function TaskManagement() {
                                                 <span className="text-muted-foreground text-xs">-</span>
                                             )}
                                         </TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className="pr-8 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button variant="success" size="xs" asChild>
                                                     <Link to={`/task/${task.id}/progress`}>
@@ -312,7 +320,10 @@ export function TaskManagement() {
                                                     延时
                                                 </Button>
                                                 <Button variant="ghost" size="xs" asChild>
-                                                    <Link to="/grading">批改</Link>
+                                                    <Link to="/grading">
+                                                        <PenLine data-icon="inline-start" />
+                                                        批改
+                                                    </Link>
                                                 </Button>
                                                 <Button
                                                     data-testid={`teacher-task-delete-open-${task.id}`}
@@ -330,7 +341,7 @@ export function TaskManagement() {
                                 ))}
                                 {filteredTasks.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
+                                        <TableCell colSpan={6} className="text-center py-16 text-muted-foreground">
                                             <Empty className="py-0">
                                                 <EmptyHeader>
                                                     <EmptyMedia variant="icon">

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Clock, Sun, Moon, BarChart3,
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Clock, Sun, Moon, BarChart3, KeyRound,
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -500,7 +500,7 @@ export function TeacherApp() {
 
                         <div className="flex items-center gap-1">
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 data-testid="teacher-change-password-open"
                                 onClick={() => {
@@ -508,6 +508,7 @@ export function TeacherApp() {
                                     setShowPasswordModal(true);
                                 }}
                             >
+                                <KeyRound data-icon="inline-start" />
                                 修改密码
                             </Button>
                             <AlertDialog>
