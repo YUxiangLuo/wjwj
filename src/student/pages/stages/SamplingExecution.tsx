@@ -107,9 +107,26 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [numericFields, setNumericFields] = useState<string[]>([]);
     const [ppsEligibleFields, setPpsEligibleFields] = useState<string[]>([]);
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
+    const [statsLoaded, setStatsLoaded] = useState(false);
 
     /** 从经典样本量规划「确认并进入下一阶段」进入时播放一次（sessionStorage 由 SamplePlanning 设置） */
     const [showSamplingStageIntro, setShowSamplingStageIntro] = useState(false);
+    useEffect(() => {
+        if (!experiment) return;
+
+        const savedResults = experiment.samplingResults as SamplingResultsData | null;
+        setSimpleResult(savedResults?.simple ?? null);
+        setSystematicResult(savedResults?.systematic ?? null);
+        setPpsResult(savedResults?.pps ?? null);
+        setStratifiedResult(savedResults?.stratified ?? null);
+        setKValue(savedResults?.systematic?.kValue ?? defaultSystematicK);
+        setPpsSizeField(savedResults?.pps?.sizeField ?? "");
+        setPpsSampleSize(savedResults?.pps?.sampleCount ?? n);
+        setSimpleSeed(savedResults?.simple?.seed ? String(savedResults.simple.seed) : "");
+        setSystematicSeed(savedResults?.systematic?.seed ? String(savedResults.systematic.seed) : "");
+        setPpsSeed(savedResults?.pps?.seed ? String(savedResults.pps.seed) : "");
+    }, [defaultSystematicK, experiment?.id, experiment?.samplingResults, n]);
+
     useEffect(() => {
         if (!experiment?.id) return;
         const key = `wj-sampling-intro-${experiment.id}`;
@@ -129,6 +146,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     // Fetch stats on mount
     useEffect(() => {
+        setStatsLoaded(false);
         if (experiment?.taskId) {
             experimentApi.getStats(experiment.taskId).then(res => {
                 if (res.success && res.data?.stats) {
@@ -143,11 +161,15 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 }
             }).catch((e) => {
                 console.error("Failed to load population stats:", e);
+            }).finally(() => {
+                setStatsLoaded(true);
             });
         }
     }, [experiment?.taskId]);
 
     useEffect(() => {
+        if (!statsLoaded) return;
+
         if (ppsEligibleFields.length === 0) {
             setPpsSizeField("");
             return;
@@ -156,13 +178,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         if (!ppsSizeField || !ppsEligibleFields.includes(ppsSizeField)) {
             setPpsSizeField(ppsEligibleFields[0] ?? "");
         }
-    }, [ppsEligibleFields, ppsSizeField]);
+    }, [ppsEligibleFields, ppsSizeField, statsLoaded]);
 
     useEffect(() => {
-        if (!hasValidSamplePlan) return;
+        if (!hasValidSamplePlan || !statsLoaded) return;
 
         if (ppsEligibleFields.length === 0) {
             setPpsResult((current) => current?.unavailable
+                || current?.completed
                 ? current
                 : {
                     unavailable: true,
@@ -172,7 +195,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         }
 
         setPpsResult((current) => current?.unavailable ? null : current);
-    }, [hasValidSamplePlan, ppsEligibleFields.length]);
+    }, [hasValidSamplePlan, ppsEligibleFields.length, statsLoaded]);
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);

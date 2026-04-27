@@ -7,8 +7,9 @@ const mockExperimentApi = {
     getStats: mock(async () => ({
         success: true,
         data: {
-            stats: {},
-            numericFields: [],
+            stats: {} as Record<string, Record<string, number>>,
+            numericFields: [] as string[],
+            ppsEligibleFields: [] as string[],
         },
     })),
     executeSampling: mock(async () => ({ success: true, data: { result: null } })),
@@ -159,6 +160,7 @@ test("SamplingExecution marks PPS as unavailable when no numeric size field exis
         data: {
             stats: { gender: { 男: 50, 女: 50 } },
             numericFields: [],
+            ppsEligibleFields: [],
         },
     });
 
@@ -181,4 +183,52 @@ test("SamplingExecution chooses the best valid default K for systematic sampling
     const input = view.getByTestId("student-sampling-systematic-k") as HTMLInputElement;
 
     expect(input.value).toBe("8");
+});
+
+test("SamplingExecution hydrates saved sampling results after experiment data changes", async () => {
+    mockExperimentApi.getStats.mockResolvedValue({
+        success: true,
+        data: {
+            stats: { gender: { 男: 50, 女: 50 } },
+            numericFields: ["income"],
+            ppsEligibleFields: ["income"],
+        },
+    });
+
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+
+    await waitFor(() => {
+        expect((view.getByTestId("student-sampling-next") as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    const baseExperiment = mockExperimentContext.experiment!;
+    mockExperimentContext = {
+        ...mockExperimentContext,
+        experiment: {
+            ...baseExperiment,
+            samplingResults: {
+                simple: { completed: true, sampleCount: 13, seed: 11, data: [] },
+                systematic: { completed: true, sampleCount: 13, kValue: 8, seed: 12, data: [] },
+                pps: { completed: true, sampleCount: 13, sizeField: "income", seed: 13, data: [] },
+                stratified: {
+                    completed: true,
+                    stratifyBy: "gender",
+                    layers: [
+                        { name: "男", count: 50, ratio: 0.5, sampleCount: 6 },
+                        { name: "女", count: 50, ratio: 0.5, sampleCount: 7 },
+                    ],
+                    seed: 14,
+                    data: [],
+                },
+            },
+        },
+    };
+
+    view.rerender(<SamplingExecution onPrev={() => undefined} />);
+
+    await waitFor(() => {
+        const nextButton = view.getByTestId("student-sampling-next") as HTMLButtonElement;
+        expect(nextButton.disabled).toBe(false);
+        expect(nextButton.textContent).toContain("完成本阶段");
+    });
 });
