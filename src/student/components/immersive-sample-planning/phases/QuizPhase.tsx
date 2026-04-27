@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ChevronRight, Check, X as XIcon, SkipForward } from "lucide-react";
 
 interface Props {
@@ -110,28 +111,28 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
     }, [onNext]);
 
     return (
-        <div className="space-y-8">
-            <div className="text-center space-y-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-100 dark:bg-sky-950/50 text-xs font-medium text-sky-700 dark:text-sky-300">
+        <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-2 text-center">
+                <span className="inline-flex items-center gap-2 self-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
                     快速自检　{questionIndex + 1} / {QUESTIONS.length}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 leading-snug">
+                <h2 className="text-xl font-bold leading-snug text-foreground sm:text-2xl">
                     {q.question}
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">
+                <p className="mx-auto max-w-2xl text-sm text-muted-foreground">
                     最后用几道题快速确认一下：你是否抓住了样本量规划里最关键的概念。
                 </p>
             </div>
 
-            <div className="max-w-md mx-auto space-y-3">
+            <div className="mx-auto flex max-w-md flex-col gap-3">
                 {q.options.map((option, i) => {
-                    let borderClass = "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 hover:border-gray-300 dark:hover:bg-slate-800";
+                    let optionClass = "border-border bg-card text-card-foreground hover:bg-muted";
                     if (submitted && i === q.correctIndex) {
-                        borderClass = "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 shadow-sm";
+                        optionClass = "border-chart-3 bg-chart-3/10 shadow-sm";
                     } else if (submitted && i === selected && !isCorrect) {
-                        borderClass = "border-rose-500 bg-rose-50 dark:bg-rose-950/30";
+                        optionClass = "border-destructive bg-destructive/10";
                     } else if (!submitted && i === selected) {
-                        borderClass = "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 shadow-sm";
+                        optionClass = "border-primary bg-primary/10 shadow-sm";
                     }
 
                     return (
@@ -140,24 +141,25 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                             type="button"
                             onClick={() => !submitted && setSelected(i)}
                             disabled={submitted}
-                            className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${borderClass}`}
+                            className={cn("flex w-full items-center gap-4 rounded-xl border-2 p-4 text-left transition-all", optionClass)}
                         >
-                            <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${
-                                submitted && i === q.correctIndex
-                                    ? "bg-emerald-500 text-white"
-                                    : submitted && i === selected && !isCorrect
-                                        ? "bg-rose-500 text-white"
-                                        : !submitted && i === selected
-                                            ? "bg-indigo-500 text-white"
-                                            : "bg-gray-100 dark:bg-slate-800 text-gray-500"
-                            }`}>
-                                {submitted && i === q.correctIndex ? <Check className="w-4 h-4" />
-                                    : submitted && i === selected && !isCorrect ? <XIcon className="w-4 h-4" />
+                            <span
+                                className={cn(
+                                    "flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
+                                    submitted && i === q.correctIndex
+                                        ? "bg-chart-3 text-primary-foreground"
+                                        : submitted && i === selected && !isCorrect
+                                            ? "bg-destructive text-destructive-foreground"
+                                            : !submitted && i === selected
+                                                ? "bg-primary text-primary-foreground"
+                                                : "bg-muted text-muted-foreground",
+                                )}
+                            >
+                                {submitted && i === q.correctIndex ? <Check className="size-4" />
+                                    : submitted && i === selected && !isCorrect ? <XIcon className="size-4" />
                                         : String.fromCharCode(65 + i)}
                             </span>
-                            <span className={`text-base ${
-                                !submitted && i === selected ? "text-indigo-700 dark:text-indigo-300 font-medium" : "text-gray-700 dark:text-slate-200"
-                            }`}>
+                            <span className={cn("text-base text-foreground", !submitted && i === selected && "font-medium text-primary")}>
                                 {option}
                             </span>
                         </button>
@@ -167,15 +169,16 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
 
             {/* Explanation after submission */}
             {submitted && (
-                <div className={`max-w-md mx-auto rounded-xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300 ${
-                    isCorrect
-                        ? "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800"
-                        : "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800"
-                }`}>
-                    <p className={`text-sm font-medium mb-1 ${isCorrect ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"}`}>
+                <div
+                    className={cn(
+                        "animate-in fade-in slide-in-from-bottom-2 mx-auto max-w-md rounded-xl border p-4 duration-300",
+                        isCorrect ? "border-chart-3/20 bg-chart-3/10" : "border-chart-4/20 bg-chart-4/10",
+                    )}
+                >
+                    <p className={cn("mb-1 text-sm font-medium", isCorrect ? "text-chart-3" : "text-chart-4")}>
                         {isCorrect ? "正确！" : "不太对 —"}
                     </p>
-                    <p className="text-sm text-slate-600 dark:text-slate-300">{q.explanation}</p>
+                    <p className="text-sm text-foreground">{q.explanation}</p>
                 </div>
             )}
 
@@ -186,16 +189,16 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                             type="button"
                             variant="ghost"
                             onClick={onSkip}
-                            className="text-slate-400 hover:text-slate-600"
+                            className="text-muted-foreground hover:text-foreground"
                         >
-                            <SkipForward className="w-4 h-4 mr-1" />
+                            <SkipForward data-icon="inline-start" />
                             跳过，直接去确认
                         </Button>
                         <Button
                             type="button"
                             onClick={handleSubmit}
                             disabled={selected == null}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-xl shadow-lg shadow-indigo-500/20 disabled:opacity-40"
+                            className="rounded-xl px-6 shadow-lg shadow-primary/20 disabled:opacity-40"
                         >
                             提交答案
                         </Button>
@@ -205,10 +208,11 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                         type="button"
                         onClick={handleNext}
                         data-testid="immersive-sp-quiz-next"
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
+                        size="lg"
+                        className="rounded-xl px-8 shadow-lg shadow-primary/20"
                     >
                         {isLast ? "完成自检，去确认" : "下一题"}
-                        <ChevronRight className="w-5 h-5 ml-2" />
+                        <ChevronRight data-icon="inline-end" />
                     </Button>
                 )}
             </div>
