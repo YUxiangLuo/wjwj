@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyRound, Sun, Moon } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Bell, ArrowLeft, Loader2, LogOut, User, Trash2, KeyRound, Sun, Moon } from "lucide-react";
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+    Popover,
+    PopoverContent,
+    PopoverDescription,
+    PopoverHeader,
+    PopoverTitle,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
     AlertDialog,
@@ -39,7 +47,6 @@ function StudentAppContent() {
     const location = useLocation();
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
-    const authMenuRef = useRef<HTMLDivElement | null>(null);
     const isTaskHall = location.pathname === "/";
     const isLoginPage = location.pathname === "/login";
     const {
@@ -60,14 +67,16 @@ function StudentAppContent() {
 
     const [showPasswordModal, setShowPasswordModal] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [showAuthDialog, setShowAuthDialog] = useState(false);
+    const [showAccountMenu, setShowAccountMenu] = useState(false);
+    const [showAuthStatusDialog, setShowAuthStatusDialog] = useState(false);
     const [authDialogCode, setAuthDialogCode] = useState<string | null>(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     function redirectToLoginWithReason(message: string) {
         setShowSessionWarning(false);
         setShowNotifications(false);
-        setShowAuthDialog(false);
+        setShowAccountMenu(false);
+        setShowAuthStatusDialog(false);
         setShowLogoutConfirm(false);
         clearLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
         setLoginRedirectReason(STUDENT_LOGIN_REDIRECT_REASON_KEY, message);
@@ -99,37 +108,23 @@ function StudentAppContent() {
 
     useEffect(() => {
         if (!authErrorCode) {
-            setShowAuthDialog(false);
+            setShowAuthStatusDialog(false);
             setAuthDialogCode(null);
             return;
         }
         const hasLoginFlag = sessionStorage.getItem(STUDENT_LOGIN_SUCCESS_KEY) === "1";
         if (hasLoginFlag && (authErrorCode === "AUTH_004" || authErrorCode === "AUTH_005")) {
             setAuthDialogCode(authErrorCode);
-            setShowAuthDialog(true);
+            setShowAuthStatusDialog(true);
             clearLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
         } else {
-            setShowAuthDialog(false);
+            setShowAuthStatusDialog(false);
             setAuthDialogCode(null);
         }
     }, [authErrorCode]);
 
-    useEffect(() => {
-        if (!showAuthDialog) return;
-
-        const handlePointerDown = (event: PointerEvent) => {
-            const target = event.target;
-            if (!(target instanceof Node)) return;
-            if (authMenuRef.current?.contains(target)) return;
-            setShowAuthDialog(false);
-        };
-
-        document.addEventListener("pointerdown", handlePointerDown);
-        return () => document.removeEventListener("pointerdown", handlePointerDown);
-    }, [showAuthDialog]);
-
     const handleReLogin = useCallback(() => {
-        setShowAuthDialog(false);
+        setShowAuthStatusDialog(false);
         setAuthDialogCode(null);
         navigate("/login", { replace: true });
     }, [navigate]);
@@ -149,8 +144,8 @@ function StudentAppContent() {
         },
     });
 
-    const authStatusDialog = authDialogCode && showAuthDialog ? (
-        <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
+    const authStatusDialog = authDialogCode && showAuthStatusDialog ? (
+        <Dialog open={showAuthStatusDialog} onOpenChange={setShowAuthStatusDialog}>
             <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                 <DialogHeader>
                     <DialogTitle className="text-slate-900 dark:text-slate-100">登录状态已变更</DialogTitle>
@@ -189,7 +184,7 @@ function StudentAppContent() {
     }
 
     if (!currentUser) {
-        if (authDialogCode && showAuthDialog) {
+        if (authDialogCode && showAuthStatusDialog) {
             return (
                 <>
                     <Login />
@@ -314,63 +309,69 @@ function StudentAppContent() {
                             {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                         </Button>
 
-                        <div ref={authMenuRef} className="relative">
-                            <Button
-                                variant="ghost"
-                                className="relative h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 focus:ring-0 px-0"
-                                onClick={() => setShowAuthDialog(prev => !prev)}
-                            >
-                                <Avatar className="h-9 w-9 border border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800">
-                                    <AvatarFallback className="bg-indigo-600 text-white font-medium text-sm" data-testid="student-avatar">
-                                        {displayInitial}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </Button>
-
-                            {/* Custom Dropdown Menu */}
-                            {showAuthDialog && (
-                                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-xl z-50 py-1 animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="px-3 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                                            <p className="text-sm font-medium leading-none text-slate-900 dark:text-slate-100">{displayName}</p>
-                                            <p className="text-xs leading-none text-slate-500 mt-1.5">{currentUser.studentId}</p>
-                                        </div>
-                                        <button
-                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer text-left"
-                                            data-testid="student-nav-profile"
-                                            onClick={() => {
-                                                setShowAuthDialog(false);
-                                                navigate("/profile");
-                                            }}
-                                        >
-                                            <User className="mr-2 h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                            个人信息
-                                        </button>
-                                        <button
-                                            className="w-full flex items-center px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer text-left"
-                                            data-testid="student-open-password-modal"
-                                            onClick={() => {
-                                                setShowAuthDialog(false);
-                                                passwordChange.clearError();
-                                                setShowPasswordModal(true);
-                                            }}
-                                        >
-                                            <KeyRound className="mr-2 h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                            修改密码
-                                        </button>
-                                        <button
-                                            className="w-full flex items-center px-3 py-2.5 text-sm text-rose-600 hover:bg-rose-500/10 hover:text-rose-500 transition-colors cursor-pointer text-left"
-                                            data-testid="student-logout-trigger"
-                                            onClick={() => {
-                                                setShowAuthDialog(false);
-                                                setShowLogoutConfirm(true);
-                                            }}
-                                        >
-                                            <LogOut className="mr-2 h-4 w-4 text-rose-600" />
-                                            退出登录
-                                        </button>
-                                    </div>
-                            )}
-                        </div>
+                        <Popover open={showAccountMenu} onOpenChange={setShowAccountMenu}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-full focus:ring-0"
+                                    aria-label="打开账号菜单"
+                                >
+                                    <Avatar className="size-9 bg-muted">
+                                        <AvatarFallback className="bg-primary text-primary-foreground font-medium text-sm" data-testid="student-avatar">
+                                            {displayInitial}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-56 gap-0 rounded-xl border-border bg-popover p-0 text-popover-foreground shadow-xl">
+                                <PopoverHeader className="gap-1 border-b border-border bg-muted/40 px-3 py-2.5">
+                                    <PopoverTitle className="text-sm font-medium leading-none normal-case tracking-normal text-popover-foreground">
+                                        {displayName}
+                                    </PopoverTitle>
+                                    <PopoverDescription className="mt-1.5 text-xs leading-none text-muted-foreground">
+                                        {currentUser.studentId}
+                                    </PopoverDescription>
+                                </PopoverHeader>
+                                <button
+                                    type="button"
+                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-popover-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                                    data-testid="student-nav-profile"
+                                    onClick={() => {
+                                        setShowAccountMenu(false);
+                                        navigate("/profile");
+                                    }}
+                                >
+                                    <User className="size-4 text-muted-foreground" />
+                                    个人信息
+                                </button>
+                                <button
+                                    type="button"
+                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-popover-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                                    data-testid="student-open-password-modal"
+                                    onClick={() => {
+                                        setShowAccountMenu(false);
+                                        passwordChange.clearError();
+                                        setShowPasswordModal(true);
+                                    }}
+                                >
+                                    <KeyRound className="size-4 text-muted-foreground" />
+                                    修改密码
+                                </button>
+                                <button
+                                    type="button"
+                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-destructive transition-colors hover:bg-destructive/10 focus-visible:bg-destructive/10 focus-visible:outline-none"
+                                    data-testid="student-logout-trigger"
+                                    onClick={() => {
+                                        setShowAccountMenu(false);
+                                        setShowLogoutConfirm(true);
+                                    }}
+                                >
+                                    <LogOut className="size-4" />
+                                    退出登录
+                                </button>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                 </div>
             </header>
