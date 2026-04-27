@@ -41,6 +41,7 @@ import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { useTheme } from "@/components/ThemeProvider";
 import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
 import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
+import { cn } from "@/lib/utils";
 import "./student.css";
 
 function StudentAppContent() {
@@ -416,34 +417,40 @@ function StudentAppContent() {
             />
 
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent showCloseButton={false} className="max-w-lg bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent showCloseButton={false} className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center justify-between text-slate-900 dark:text-slate-100">
-                            通知
+                        <div className="flex items-center justify-between gap-3">
+                            <DialogTitle>通知</DialogTitle>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => markAllNotificationsAsRead()}
                                 disabled={!notifications || notifications.unreadCount === 0}
-                                className="text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10"
+                                className="text-xs"
                                 data-testid="student-notification-read-all"
                             >
                                 全部已读
                             </Button>
-                        </DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">查看任务与批改提醒</DialogDescription>
+                        </div>
+                        <DialogDescription>查看任务与批改提醒</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="custom-scrollbar flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-2">
                         {!notifications || notifications.notifications.length === 0 ? (
-                            <div className="text-sm text-slate-500 text-center py-8">暂无通知</div>
+                            <div className="py-8 text-center text-sm text-muted-foreground">暂无通知</div>
                         ) : (
                             notifications.notifications.map((notice) => (
                                 <div
                                     key={notice.id}
-                                    className={`p-3 rounded-lg border transition-all ${notice.isRead ? "bg-white dark:bg-slate-950 border-slate-200/50 dark:border-slate-800/50 opacity-70" : "bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-sm hover:bg-slate-200/80 dark:hover:bg-slate-800/80"}`}
+                                    className={cn(
+                                        "rounded-lg border p-3 transition-all",
+                                        notice.isRead
+                                            ? "border-border/60 bg-background/60 opacity-70"
+                                            : "border-border bg-muted/70 shadow-sm hover:bg-muted"
+                                    )}
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <button
+                                            type="button"
                                             className="flex-1 text-left"
                                             onClick={() => {
                                                 if (!notice.isRead) {
@@ -452,11 +459,11 @@ function StudentAppContent() {
                                             }}
                                         >
                                             <div>
-                                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                                                <div className="text-sm font-medium text-foreground">
                                                     {notice.title}
-                                                    {!notice.isRead && <span className="ml-2 inline-block w-1.5 h-1.5 bg-rose-500 rounded-full align-middle"></span>}
+                                                    {!notice.isRead && <span className="ml-2 inline-block size-1.5 rounded-full bg-destructive align-middle"></span>}
                                                 </div>
-                                                <div className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
+                                                <div className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                                                     {notice.content}
                                                 </div>
                                             </div>
@@ -464,13 +471,13 @@ function StudentAppContent() {
                                         <div className="flex items-start gap-1">
                                             <button
                                                 type="button"
-                                                className="h-7 w-7 rounded-md text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center"
+                                                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                                                 onClick={() => deleteNotification(notice.id)}
                                                 title="删除通知"
                                             >
-                                                <Trash2 className="h-3.5 w-3.5" />
+                                                <Trash2 className="size-3.5" />
                                             </button>
-                                            <div className="text-[10px] text-slate-500 whitespace-nowrap pt-1">
+                                            <div className="whitespace-nowrap pt-1 text-[10px] text-muted-foreground">
                                                 {new Date(notice.createdAt).toLocaleString("zh-CN", {
                                                     timeZone: "Asia/Shanghai",
                                                     month: "2-digit",
