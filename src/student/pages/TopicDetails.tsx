@@ -21,6 +21,7 @@ import { clearReportDraft } from "../draft-sync";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
+import { cn } from "@/lib/utils";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -83,18 +84,18 @@ function getOpeningLabel(publishedAt: string) {
 function getFileIcon(type: string) {
     const lowerType = type.toLowerCase();
     if (lowerType.includes("image") || lowerType.includes("png") || lowerType.includes("jpg")) {
-        return <Image className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+        return <Image className="size-5 text-primary" />;
     }
     if (lowerType.includes("video") || lowerType.includes("mp4")) {
-        return <Play className="w-5 h-5 text-purple-600" />;
+        return <Play className="size-5 text-primary" />;
     }
     if (lowerType.includes("pdf")) {
-        return <FileText className="w-5 h-5 text-rose-600" />;
+        return <FileText className="size-5 text-destructive" />;
     }
     if (lowerType.includes("doc") || lowerType.includes("word")) {
-        return <FileText className="w-5 h-5 text-blue-500" />;
+        return <FileText className="size-5 text-primary" />;
     }
-    return <File className="w-5 h-5 text-slate-600 dark:text-slate-400" />;
+    return <File className="size-5 text-muted-foreground" />;
 }
 
 function formatFileSize(bytes: number): string {
@@ -148,7 +149,7 @@ export function TopicDetails() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+                <Loader2 className="size-10 animate-spin text-primary" />
             </div>
         );
     }
@@ -210,46 +211,46 @@ export function TopicDetails() {
     const previewUrl = previewFile ? `/api/student/attachments/${previewFile.id}/download?mode=preview` : "";
 
     return (
-        <div className="space-y-4 pb-12" data-testid="student-task-detail">
+        <div className="flex flex-col gap-4 pb-12" data-testid="student-task-detail">
             <div>
                 <Link to="/">
-                    <Button variant="ghost" className="gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 -ml-4 h-8 text-sm">
-                        <ArrowLeft className="w-3.5 h-3.5" />
+                    <Button variant="ghost" size="sm" className="-ml-4">
+                        <ArrowLeft data-icon="inline-start" />
                         返回任务列表
                     </Button>
                 </Link>
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-1">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{task.name}</h1>
-                        <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-slate-600 dark:text-slate-400">
-                            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}</span>
+                        <h1 className="text-2xl font-bold text-foreground">{task.name}</h1>
+                        <div className="mt-1 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1"><Clock className="size-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}</span>
                             {task.deadline && <span>截止于 {formatDateTime(task.deadline)}</span>}
                         </div>
                     </div>
-                    <Badge variant="outline" className={`${effectiveStatus.color} px-3 py-1 text-sm h-7`}>{effectiveStatus.label}</Badge>
+                    <Badge variant="outline" className={cn("px-3 py-1 text-sm", effectiveStatus.color)}>{effectiveStatus.label}</Badge>
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 shadow-sm">
-                <CardContent className="px-5 py-4">
+            <Card size="sm">
+                <CardContent>
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <div className="space-y-1 max-w-2xl">
-                            <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-medium text-indigo-500 border border-indigo-500/20">
-                                <BookOpen className="w-3 h-3" />
+                        <div className="flex max-w-2xl flex-col gap-1">
+                            <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                                <BookOpen className="size-3" />
                                 实验目标
                             </div>
-                            <p className="text-base font-medium text-slate-800 dark:text-slate-200 leading-relaxed">完成抽样统计实验，形成完整报告。</p>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">按步骤推进，及时提交，体验完整的数据分析流程。</p>
+                            <p className="text-base font-medium leading-relaxed text-foreground">完成抽样统计实验，形成完整报告。</p>
+                            <p className="text-sm text-muted-foreground">按步骤推进，及时提交，体验完整的数据分析流程。</p>
                         </div>
-                        <div className="rounded-xl bg-slate-50/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 px-5 py-3 shadow-sm backdrop-blur-sm min-w-[180px]">
-                            <div className="text-xs text-slate-500 font-medium uppercase tracking-wider">
+                        <div className="min-w-[180px] rounded-lg border border-border bg-background/60 px-5 py-3 shadow-sm">
+                            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                 {notOpenYet ? "开放状态" : "截止状态"}
                             </div>
-                            <div className="text-xl font-bold text-slate-800 dark:text-slate-200 mt-0.5">
+                            <div className="mt-0.5 text-xl font-bold text-foreground">
                                 {notOpenYet ? getOpeningLabel(task.publishedAt) : getDeadlineLabel(task.deadline)}
                             </div>
-                            <div className="text-xs text-slate-500 mt-0.5 font-mono">
+                            <div className="mt-0.5 font-mono text-xs text-muted-foreground">
                                 {notOpenYet
                                     ? `开放于 ${formatDateTime(task.publishedAt)}`
                                     : task.deadline ? formatDateTime(task.deadline) : "未设置截止时间"}
@@ -260,64 +261,62 @@ export function TopicDetails() {
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2 space-y-4">
-                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-indigo-500" />
+                <div className="flex flex-col gap-4 lg:col-span-2">
+                    <Card size="sm">
+                        <CardHeader className="border-b border-border">
+                            <CardTitle className="flex items-center gap-2 text-sm normal-case tracking-normal">
+                                <FileText className="size-4 text-primary" />
                                 课题介绍
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-4 pb-4">
+                        <CardContent>
                             <RichTextContent
                                 html={task.description ?? ""}
-                                className="prose prose-sm prose-invert max-w-none text-slate-700 dark:text-slate-300 leading-relaxed"
+                                className="prose prose-sm max-w-none leading-relaxed text-foreground/80 dark:prose-invert"
                                 emptyFallback="暂无描述"
                             />
                         </CardContent>
                     </Card>
 
                     {task.attachments.length > 0 && (
-                        <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                            <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
-                                <CardTitle className="text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                    <Download className="w-4 h-4 text-indigo-500" />
+                        <Card size="sm">
+                            <CardHeader className="border-b border-border">
+                                <CardTitle className="flex items-center gap-2 text-sm normal-case tracking-normal">
+                                    <Download className="size-4 text-primary" />
                                     相关资料 ({task.attachments.length})
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="pt-3 pb-3">
+                            <CardContent>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {task.attachments.map((file) => (
-                                        <div key={file.id} className="flex items-center justify-between rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-200/50 dark:bg-slate-800/50 px-3 py-2 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors group gap-2">
+                                        <div key={file.id} className="group flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 transition-colors hover:bg-muted">
                                             <div className="flex items-center gap-2.5 overflow-hidden">
-                                                <div className="p-1.5 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shrink-0">
+                                                <div className="shrink-0 rounded-md border border-border bg-background p-1.5">
                                                     {getFileIcon(file.type)}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate group-hover:text-indigo-500 transition-colors">{file.name}</p>
-                                                    <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
+                                                    <p className="truncate text-sm font-medium text-foreground transition-colors group-hover:text-primary">{file.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-0.5 shrink-0">
                                                 {getAttachmentPreviewType(file) && (
                                                     <Button
                                                         variant="ghost"
-                                                        size="icon"
-                                                        className="h-7 w-7 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
+                                                        size="icon-xs"
                                                         onClick={() => setPreviewFile(file)}
                                                         title="预览"
                                                     >
-                                                        <Eye className="w-3.5 h-3.5" />
+                                                        <Eye />
                                                     </Button>
                                                 )}
                                                 <Button
                                                     variant="ghost"
-                                                    size="icon"
-                                                    className="h-7 w-7 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700"
+                                                    size="icon-xs"
                                                     onClick={() => handleDownload(file)}
                                                     title="下载"
                                                 >
-                                                    <Download className="w-3.5 h-3.5" />
+                                                    <Download />
                                                 </Button>
                                             </div>
                                         </div>
@@ -328,13 +327,13 @@ export function TopicDetails() {
                     )}
 
                     {task.status === "rejected" && task.rejectReason && (
-                        <Card className="rounded-2xl border-rose-500/20 bg-rose-500/10">
-                            <CardContent className="py-4">
+                        <Card size="sm" className="border-destructive/20 bg-destructive/10">
+                            <CardContent>
                                 <div className="flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+                                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
                                     <div>
-                                        <div className="text-sm font-semibold text-rose-600 mb-1">驳回理由</div>
-                                        <p className="text-rose-500 text-sm leading-relaxed opacity-90">{task.rejectReason}</p>
+                                        <div className="mb-1 text-sm font-semibold text-destructive">驳回理由</div>
+                                        <p className="text-sm leading-relaxed text-destructive opacity-90">{task.rejectReason}</p>
                                     </div>
                                 </div>
                             </CardContent>
