@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { 
     DollarSign, 
     TrendingUp, 
@@ -194,59 +195,53 @@ export function PrecisionCostTradeoff({
         };
     }, [targetMarginOfError, confidenceLevelLocal, populationSize, designEffectLocal, nonResponseRateLocal, currentScenario]);
 
-    /** 与「高级分析（SE/CV/敏感性）」一致：靛蓝主结构 + 青绿强调精度数值 + 白底内容区 */
-    const sliderIndigo =
-        "py-2 [&_[data-slot=slider-range]]:!bg-indigo-600 [&_[data-slot=slider-track]]:!bg-indigo-100 dark:[&_[data-slot=slider-track]]:!bg-indigo-950/80 [&_[data-slot=slider-thumb]]:!border-indigo-600 [&_[data-slot=slider-thumb]]:!bg-white dark:[&_[data-slot=slider-thumb]]:!bg-slate-950 [&_[data-slot=slider-thumb]]:!ring-indigo-500/25";
+    const sliderClass =
+        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-muted [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
 
     return (
-        <Card className="rounded-2xl border-indigo-200/90 bg-indigo-50/80 shadow-sm dark:border-indigo-900/50 dark:bg-slate-950">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        <CardTitle className="text-base text-indigo-950 dark:text-indigo-100">
+                        <DollarSign className="size-5 text-primary" />
+                        <CardTitle className="text-base text-foreground">
                             精度与成本权衡
                         </CardTitle>
                     </div>
                 </div>
-                <CardDescription className="text-slate-700 dark:text-slate-300">
+                <CardDescription className="text-muted-foreground">
                     在给定预算约束下，评估可达到的精度水平
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-col gap-4">
                 {/* 场景选择 */}
-                <div className="space-y-2">
-                    <Label className="text-xs font-medium text-slate-800 dark:text-slate-200">调查场景</Label>
+                <div className="flex flex-col gap-2">
+                    <Label className="text-xs font-medium text-foreground">调查场景</Label>
                     <div className="grid grid-cols-3 gap-2">
-                        {PRESET_SCENARIOS.map(scenario => (
-                            <Button
-                                key={scenario.id}
-                                variant={!useCustom && selectedScenario.id === scenario.id ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => {
-                                    setSelectedScenario(scenario);
-                                    setUseCustom(false);
-                                }}
-                                className={`text-xs h-auto py-2 ${
-                                    !useCustom && selectedScenario.id === scenario.id
-                                        ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-sm"
-                                        : "border-indigo-200 bg-white text-indigo-900 hover:bg-indigo-50 dark:border-indigo-800 dark:bg-slate-950 dark:text-indigo-100 dark:hover:bg-indigo-950/50"
-                                }`}
-                            >
-                                {scenario.name}
-                            </Button>
-                        ))}
+                        {PRESET_SCENARIOS.map(scenario => {
+                            const isSelected = !useCustom && selectedScenario.id === scenario.id;
+                            return (
+                                <Button
+                                    key={scenario.id}
+                                    variant={isSelected ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => {
+                                        setSelectedScenario(scenario);
+                                        setUseCustom(false);
+                                    }}
+                                    className={cn("h-auto py-2 text-xs", isSelected && "shadow-sm")}
+                                >
+                                    {scenario.name}
+                                </Button>
+                            );
+                        })}
                     </div>
                     <Button
                         variant={useCustom ? "default" : "outline"}
                         size="sm"
                         onClick={() => setUseCustom(true)}
-                        className={`w-full text-xs ${
-                            useCustom
-                                ? "bg-indigo-600 text-white hover:bg-indigo-500"
-                                : "border-indigo-200 bg-white text-indigo-900 hover:bg-indigo-50 dark:border-indigo-800 dark:bg-slate-950 dark:text-indigo-100 dark:hover:bg-indigo-950/50"
-                        }`}
+                        className="w-full text-xs"
                     >
                         自定义成本参数
                     </Button>
@@ -254,9 +249,9 @@ export function PrecisionCostTradeoff({
 
                 {/* 自定义参数 */}
                 {useCustom && (
-                    <div className="space-y-3 p-3 rounded-xl border border-indigo-200/90 bg-white dark:border-indigo-800/50 dark:bg-slate-950">
-                        <div className="space-y-2">
-                            <Label className="text-xs text-slate-800 dark:text-slate-200">固定成本（元）</Label>
+                    <div className="flex flex-col gap-3 rounded-xl border bg-background p-3">
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-xs text-foreground">固定成本（元）</Label>
                             <Input
                                 type="number"
                                 value={customScenario.fixedCost}
@@ -264,12 +259,12 @@ export function PrecisionCostTradeoff({
                                     ...customScenario,
                                     fixedCost: parseInt(e.target.value) || 0
                                 })}
-                                className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-slate-100"
+                                className="bg-background text-foreground"
                             />
-                            <p className="text-xs text-slate-600 dark:text-slate-400">培训、督导、设备等固定支出</p>
+                            <p className="text-xs text-muted-foreground">培训、督导、设备等固定支出</p>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs text-slate-800 dark:text-slate-200">单位样本成本（元/样本）</Label>
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-xs text-foreground">单位样本成本（元/样本）</Label>
                             <Input
                                 type="number"
                                 value={customScenario.variableCostPerUnit}
@@ -277,12 +272,12 @@ export function PrecisionCostTradeoff({
                                     ...customScenario,
                                     variableCostPerUnit: parseInt(e.target.value) || 0
                                 })}
-                                className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-slate-100"
+                                className="bg-background text-foreground"
                             />
-                            <p className="text-xs text-slate-600 dark:text-slate-400">每个样本的调查费用（访问费、礼品等）</p>
+                            <p className="text-xs text-muted-foreground">每个样本的调查费用（访问费、礼品等）</p>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs text-slate-800 dark:text-slate-200">总预算（元）</Label>
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-xs text-foreground">总预算（元）</Label>
                             <Input
                                 type="number"
                                 value={customScenario.totalBudget}
@@ -290,41 +285,41 @@ export function PrecisionCostTradeoff({
                                     ...customScenario,
                                     totalBudget: parseInt(e.target.value) || 0
                                 })}
-                                className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-slate-100"
+                                className="bg-background text-foreground"
                             />
                         </div>
                     </div>
                 )}
 
                 {/* 当前场景摘要 */}
-                <div className="rounded-xl border border-indigo-200/90 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950 space-y-2">
+                <div className="flex flex-col gap-2 rounded-xl border bg-background p-3">
                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-700 dark:text-slate-300">固定成本</span>
-                        <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                        <span className="text-muted-foreground">固定成本</span>
+                        <span className="font-mono text-foreground">
                             ¥{currentScenario.fixedCost.toLocaleString()}
                         </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-700 dark:text-slate-300">单位成本</span>
-                        <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                        <span className="text-muted-foreground">单位成本</span>
+                        <span className="font-mono text-foreground">
                             ¥{currentScenario.variableCostPerUnit}/样本
                         </span>
                     </div>
                     <div className="flex justify-between text-sm font-medium">
-                        <span className="text-slate-700 dark:text-slate-300">总预算</span>
-                        <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                        <span className="text-muted-foreground">总预算</span>
+                        <span className="font-mono text-foreground">
                             ¥{currentScenario.totalBudget.toLocaleString()}
                         </span>
                     </div>
                 </div>
 
                 {/* 抽样假设：继承决策面板初值，仅影响本工具内演算 */}
-                <div className="rounded-xl border border-indigo-200/90 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950 space-y-4">
-                    <p className="text-xs font-medium text-slate-800 dark:text-slate-200">抽样假设（可在此调整）</p>
-                    <div className="space-y-1.5">
-                        <Label className="text-xs text-slate-600 dark:text-slate-400">置信水平</Label>
+                <div className="flex flex-col gap-4 rounded-xl border bg-background p-3">
+                    <p className="text-xs font-medium text-foreground">抽样假设（可在此调整）</p>
+                    <div className="flex flex-col gap-1.5">
+                        <Label className="text-xs text-muted-foreground">置信水平</Label>
                         <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
-                            <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-800">
+                            <SelectTrigger className="h-9 bg-background text-sm">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -336,10 +331,10 @@ export function PrecisionCostTradeoff({
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col gap-1.5">
                         <div className="flex justify-between text-xs">
-                            <span className="text-slate-600 dark:text-slate-400">设计效应</span>
-                            <span className="font-bold tabular-nums text-indigo-800 dark:text-indigo-200">
+                            <span className="text-muted-foreground">设计效应</span>
+                            <span className="font-bold tabular-nums text-primary">
                                 {designEffectLocal.toFixed(1)}
                             </span>
                         </div>
@@ -349,13 +344,13 @@ export function PrecisionCostTradeoff({
                             min={10}
                             max={50}
                             step={1}
-                            className={sliderIndigo}
+                            className={sliderClass}
                         />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col gap-1.5">
                         <div className="flex justify-between text-xs">
-                            <span className="text-slate-600 dark:text-slate-400">无回答率</span>
-                            <span className="font-bold tabular-nums text-rose-700 dark:text-rose-300">
+                            <span className="text-muted-foreground">无回答率</span>
+                            <span className="font-bold tabular-nums text-destructive">
                                 {Math.round(nonResponseRateLocal * 100)}%
                             </span>
                         </div>
@@ -365,37 +360,37 @@ export function PrecisionCostTradeoff({
                             min={0}
                             max={50}
                             step={5}
-                            className={sliderIndigo}
+                            className={sliderClass}
                         />
                     </div>
                 </div>
 
                 {/* 预算约束分析 */}
-                <div className="rounded-xl border-2 border-indigo-300/90 bg-white p-4 shadow-sm dark:border-indigo-700/60 dark:bg-slate-950">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        <span className="font-bold text-indigo-950 dark:text-indigo-50">预算约束分析</span>
+                <div className="rounded-xl border-2 border-primary/30 bg-background p-4 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Target className="size-5 text-primary" />
+                        <span className="font-bold text-foreground">预算约束分析</span>
                     </div>
 
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm text-slate-700 dark:text-slate-300">预算可支持的最大样本量</span>
-                            <span className="text-xl font-bold tabular-nums text-indigo-700 dark:text-indigo-300">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">预算可支持的最大样本量</span>
+                            <span className="text-xl font-bold tabular-nums text-primary">
                                 {maxFeasibleSampleSize.toLocaleString()}
                             </span>
                         </div>
 
                         {achievablePrecision && (
                             <>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-slate-700 dark:text-slate-300">可达到的最佳精度</span>
-                                    <span className="text-lg font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-muted-foreground">可达到的最佳精度</span>
+                                    <span className="text-lg font-bold tabular-nums text-chart-3">
                                         ±{achievablePrecision.marginOfError.toFixed(1)}%
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center text-sm">
-                                    <span className="text-slate-700 dark:text-slate-300">实际总成本</span>
-                                    <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="text-muted-foreground">实际总成本</span>
+                                    <span className="font-mono text-foreground">
                                         ¥{achievablePrecision.totalCost.toLocaleString()}
                                     </span>
                                 </div>
@@ -404,9 +399,9 @@ export function PrecisionCostTradeoff({
                     </div>
 
                     {achievablePrecision && achievablePrecision.totalCost > currentScenario.totalBudget * 0.9 && (
-                        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-2 dark:border-amber-800/50 dark:bg-amber-950/40">
-                            <div className="flex items-center gap-2 text-xs text-amber-950 dark:text-amber-100">
-                                <AlertCircle className="w-4 h-4 shrink-0 text-amber-700 dark:text-amber-300" />
+                        <div className="mt-3 rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                            <div className="flex items-center gap-2 text-xs text-foreground">
+                                <AlertCircle className="size-4 shrink-0 text-chart-4" />
                                 <span>预算已接近上限，无法进一步提高精度</span>
                             </div>
                         </div>
@@ -414,16 +409,16 @@ export function PrecisionCostTradeoff({
                 </div>
 
                 {/* 目标精度分析（与决策面板「允许误差」1～10% 可保存值不同，此处为工具内试算 1～15%） */}
-                <div className="space-y-3">
+                <div className="flex flex-col gap-3">
                     <div>
-                        <Label className="text-xs font-medium text-slate-800 dark:text-slate-200">
+                        <Label className="text-xs font-medium text-foreground">
                             目标精度（工具内试算，1～15%）
                         </Label>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                             左侧决策面板的「允许误差」为可保存的 1～10%；此处滑块仅用于在本工具中估算所需样本量与成本，不会单独写入保存记录。
                         </p>
                     </div>
-                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 tabular-nums">
+                    <p className="text-xs font-medium tabular-nums text-muted-foreground">
                         当前设定：±{targetMarginOfError}%
                     </p>
                     <Slider
@@ -432,36 +427,36 @@ export function PrecisionCostTradeoff({
                         min={1}
                         max={15}
                         step={1}
-                        className={sliderIndigo}
+                        className={sliderClass}
                     />
 
-                    <div className="rounded-xl border border-indigo-200/90 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950">
-                        <div className="space-y-2">
+                    <div className="rounded-xl border bg-background p-3">
+                        <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-700 dark:text-slate-300">所需样本量</span>
-                                <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                                <span className="text-muted-foreground">所需样本量</span>
+                                <span className="font-mono text-foreground">
                                     {targetAnalysis.requiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-700 dark:text-slate-300">预估总成本</span>
-                                <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                                <span className="text-muted-foreground">预估总成本</span>
+                                <span className="font-mono text-foreground">
                                     ¥{targetAnalysis.totalCost.toLocaleString()}
                                 </span>
                             </div>
 
                             {targetAnalysis.isFeasible ? (
-                                <div className="flex items-center gap-2 text-sm text-teal-800 dark:text-teal-200">
-                                    <Badge className="border-0 bg-teal-600 text-white hover:bg-teal-600">可行</Badge>
+                                <div className="flex items-center gap-2 text-sm text-foreground">
+                                    <Badge className="border-0 bg-chart-3 text-primary-foreground hover:bg-chart-3">可行</Badge>
                                     <span>预算充足，可实现目标精度</span>
                                 </div>
                             ) : (
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-sm text-rose-700 dark:text-rose-200">
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2 text-sm text-destructive">
                                         <Badge variant="destructive">超预算</Badge>
                                         <span>还需 ¥{targetAnalysis.budgetGap.toLocaleString()}</span>
                                     </div>
-                                    <p className="text-xs text-rose-800 dark:text-rose-100">
+                                    <p className="text-xs text-destructive">
                                         建议：放宽误差限至 ±{Math.ceil(achievablePrecision?.marginOfError || targetMarginOfError)}% 
                                         或增加预算
                                     </p>
@@ -471,16 +466,16 @@ export function PrecisionCostTradeoff({
 
                         {targetAnalysis.isFeasible && (
                             <>
-                                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mt-3">
+                                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                                     「应用」仅将样本量写入最终样本量。若抽样假设与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回验算。
                                 </p>
                                 <Button
                                     onClick={() => onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize)}
-                                    className="w-full mt-2 bg-indigo-600 text-white hover:bg-indigo-500"
+                                    className="mt-2 w-full"
                                     size="sm"
                                 >
                                     应用此样本量
-                                    <ChevronRight className="w-4 h-4 ml-1" />
+                                    <ChevronRight data-icon="inline-end" />
                                 </Button>
                             </>
                         )}
@@ -488,25 +483,25 @@ export function PrecisionCostTradeoff({
                 </div>
 
                 {/* 精度-成本曲线图 */}
-                <div className="rounded-xl border border-indigo-200/90 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950">
-                    <div className="flex items-center gap-2 mb-3">
-                        <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                        <span className="font-medium text-indigo-950 dark:text-indigo-50 text-sm">
+                <div className="rounded-xl border bg-background p-3">
+                    <div className="mb-3 flex items-center gap-2">
+                        <TrendingUp className="size-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">
                             精度-成本关系
                         </span>
                     </div>
 
                     {/* 简化的可视化 */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                    <div className="flex flex-col gap-2">
+                        <div className="flex justify-between text-xs text-muted-foreground">
                             <span>样本量 →</span>
                             <span>成本 →</span>
                         </div>
-                        <div className="relative h-32 rounded-lg overflow-hidden border border-indigo-200/70 bg-indigo-50/80 dark:border-indigo-800/40 dark:bg-indigo-950/30">
+                        <div className="relative h-32 overflow-hidden rounded-lg border bg-primary/10">
                             {/* 网格线 */}
                             <div className="absolute inset-0 flex flex-col justify-between p-2">
                                 {[0, 1, 2, 3].map(i => (
-                                    <div key={i} className="border-t border-indigo-200/50 dark:border-indigo-800/30" />
+                                    <div key={i} className="border-t border-primary/20" />
                                 ))}
                             </div>
 
@@ -525,10 +520,10 @@ export function PrecisionCostTradeoff({
                                             style={{ width: `${100 / 8}%` }}
                                         >
                                             <div 
-                                                className="w-2 rounded-t bg-indigo-500 transition-all dark:bg-indigo-400"
+                                                className="w-2 rounded-t bg-primary transition-all"
                                                 style={{ height: `${heightPercent}%` }}
                                             />
-                                            <span className="text-[10px] text-slate-700 dark:text-slate-300">
+                                            <span className="text-[10px] text-muted-foreground">
                                                 {point.sampleSize < 1000 
                                                     ? point.sampleSize 
                                                     : (point.sampleSize / 1000).toFixed(1) + 'k'
@@ -539,19 +534,19 @@ export function PrecisionCostTradeoff({
                                 })}
                             </div>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 text-center">
+                        <p className="text-center text-xs text-muted-foreground">
                             随着样本量增加，边际精度收益递减
                         </p>
                     </div>
                 </div>
 
                 {/* 决策建议（与比例对比卡片的说明区一致：浅青绿提示框） */}
-                <div className="rounded-xl border border-teal-200/90 bg-teal-50/70 p-3 dark:border-teal-800/40 dark:bg-teal-950/25">
+                <div className="rounded-xl border border-chart-3/20 bg-chart-3/10 p-3">
                     <div className="flex items-start gap-2">
-                        <Info className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-                        <div className="text-xs space-y-1 text-teal-950 dark:text-teal-100">
+                        <Info className="mt-0.5 size-4 shrink-0 text-chart-3" />
+                        <div className="flex flex-col gap-1 text-xs text-foreground">
                             <p className="font-medium">决策建议</p>
-                            <ul className="space-y-1 list-disc list-inside text-teal-900/95 dark:text-teal-100/95">
+                            <ul className="flex list-inside list-disc flex-col gap-1 text-muted-foreground">
                                 <li>在预算约束下，精度与成本呈非线性关系</li>
                                 <li>当样本量超过1000后，精度提升的边际效益显著下降</li>
                                 <li>建议优先保证 ±3-5% 的误差限，性价比最高</li>
