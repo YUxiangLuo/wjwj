@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Users, School, CalendarDays, Search } from "lucide-react";
 import { teacherApi, type TeacherClass } from "../api-client";
 
@@ -98,21 +98,18 @@ export function ClassManagement() {
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredClasses.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                data-testid="teacher-class-search"
-                                placeholder="搜索班级名称"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground sm:w-64 focus:border-primary/50"
-                            />
-                        </div>
+                        <SearchInput
+                            data-testid="teacher-class-search"
+                            placeholder="搜索班级名称"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="sm:w-64"
+                        />
                         <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-                            <SelectTrigger data-testid="teacher-class-semester-filter" className="bg-background border-border text-foreground sm:w-44">
+                            <SelectTrigger data-testid="teacher-class-semester-filter" className="sm:w-44">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">全部学期</SelectItem>
                                     {semesters.map((semester) => (

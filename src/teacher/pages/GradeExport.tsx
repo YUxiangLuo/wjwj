@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { teacherApi, type GradeExportPreviewItem, type TeacherClass, type Topic } from "../api-client";
 import { toast } from "sonner";
 import { formatLocalDateStamp } from "@/utils/format";
@@ -194,10 +195,10 @@ export function GradeExport() {
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto flex-wrap">
                         <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setClassFilter("all"); }}>
-                            <SelectTrigger data-testid="teacher-export-semester-filter" className="bg-background border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-semester-filter" className="sm:w-40">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">全部学期</SelectItem>
                                     {semesters.map((s) => (
@@ -207,10 +208,10 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger data-testid="teacher-export-class-filter" className="bg-background border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-class-filter" className="sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">全部班级</SelectItem>
                                     {filteredClasses.map((cls) => (
@@ -220,10 +221,10 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Select value={topicFilter} onValueChange={setTopicFilter}>
-                            <SelectTrigger data-testid="teacher-export-topic-filter" className="bg-background border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-topic-filter" className="sm:w-40">
                                 <SelectValue placeholder="全部课题" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">全部课题</SelectItem>
                                     {topics.map((t) => (
@@ -249,13 +250,11 @@ export function GradeExport() {
                         <TableHeader>
                             <TableRow className="border-border hover:bg-muted/50">
                                 <TableHead className="w-12 text-center text-muted-foreground">
-                                    <input
+                                    <Checkbox
                                         data-testid="teacher-export-check-all"
-                                        type="checkbox"
-                                        className="rounded border-border bg-card text-primary focus:ring-primary/20 w-4 h-4 cursor-pointer"
                                         checked={selectedTaskIds.length > 0 && selectedTaskIds.length === preview.length}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
+                                        onCheckedChange={(checked) => {
+                                            if (checked === true) {
                                                 setSelectedTaskIds(preview.map(p => p.taskId));
                                             } else {
                                                 setSelectedTaskIds([]);
@@ -289,12 +288,10 @@ export function GradeExport() {
                             ) : preview.map((task) => (
                                 <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-border hover:bg-accent transition-colors">
                                     <TableCell className="text-center">
-                                        <input
+                                        <Checkbox
                                             data-testid={`teacher-export-check-${task.taskId}`}
-                                            type="checkbox"
-                                            className="rounded border-border bg-card text-primary focus:ring-primary/20 w-4 h-4 cursor-pointer"
                                             checked={selectedTaskIds.includes(task.taskId)}
-                                            onChange={() => toggleTask(task.taskId)}
+                                            onCheckedChange={() => toggleTask(task.taskId)}
                                         />
                                     </TableCell>
                                     <TableCell className="font-medium text-foreground">{task.topic}</TableCell>

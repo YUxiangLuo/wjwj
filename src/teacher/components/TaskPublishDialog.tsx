@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DatetimePicker24 } from "@/components/ui/datetime-picker";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { TeacherClass, Topic } from "../api-client";
 
 interface TaskPublishDialogProps {
@@ -39,7 +40,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
+            <DialogContent>
                 <DialogHeader>
                     <DialogTitle className="text-foreground">发布任务</DialogTitle>
                     <DialogDescription className="sr-only">
@@ -50,10 +51,10 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                     <div className="space-y-2">
                         <Label className="text-foreground">选择课题</Label>
                         <Select onValueChange={onSelectedTopicIdChange} value={selectedTopicId}>
-                            <SelectTrigger data-testid="teacher-task-topic-select" className="bg-background border-border text-foreground">
+                            <SelectTrigger data-testid="teacher-task-topic-select">
                                 <SelectValue placeholder="请选择课题" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     {availableTopics.length === 0 ? <SelectItem value="none" disabled>暂无已发布课题</SelectItem> :
                                         availableTopics.map((t) => (
@@ -79,14 +80,14 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                                                 : "text-foreground cursor-pointer hover:bg-accent"
                                         }`}
                                     >
-                                        <input
+                                        <Checkbox
                                             data-testid={`teacher-task-class-check-${cls.id}`}
-                                            type="checkbox"
                                             disabled={disabled}
-                                            className="rounded border-border bg-card text-primary focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                             checked={!disabled && selectedClassIds.includes(cls.id)}
-                                            onChange={() => {
-                                                if (!disabled) onToggleClass(cls.id);
+                                            onCheckedChange={() => {
+                                                if (!disabled) {
+                                                    onToggleClass(cls.id);
+                                                }
                                             }}
                                         />
                                         <span className="flex-1">{cls.name}</span>

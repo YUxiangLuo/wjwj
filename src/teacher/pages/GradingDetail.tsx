@@ -594,7 +594,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.questionnaire}
                                         onChange={(e) => setScores({ ...scores, questionnaire: e.target.value })}
-                                        className="text-left bg-background border-border text-foreground h-10 text-lg font-mono focus:border-primary"
+                                        className="text-left text-lg font-mono"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -613,7 +613,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.process}
                                         onChange={(e) => setScores({ ...scores, process: e.target.value })}
-                                        className="text-left bg-background border-border text-foreground h-10 text-lg font-mono focus:border-primary"
+                                        className="text-left text-lg font-mono"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -632,7 +632,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.report}
                                         onChange={(e) => setScores({ ...scores, report: e.target.value })}
-                                        className="text-left bg-background border-border text-foreground h-10 text-lg font-mono focus:border-primary"
+                                        className="text-left text-lg font-mono"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -692,7 +692,7 @@ export function GradingDetail() {
                                     placeholder="请输入评语..."
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
-                                    className="bg-background border-border text-foreground resize-none focus:border-primary"
+                                    className="resize-none"
                                     disabled={saving || gradingLocked}
                                 />
                                 <div className="text-xs text-muted-foreground text-right">{comment.length}/2000</div>
@@ -729,7 +729,7 @@ export function GradingDetail() {
             </div>
 
             <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-                <DialogContent className="bg-card border-border text-foreground">
+                <DialogContent>
                     <DialogHeader>
                         <DialogTitle className="text-foreground">驳回理由</DialogTitle>
                         <DialogDescription className="sr-only">
@@ -743,7 +743,6 @@ export function GradingDetail() {
                             rows={4}
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
-                            className="bg-background border-border text-foreground"
                             placeholder="请详细说明驳回原因..."
                         />
                     </div>

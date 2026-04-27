@@ -30,7 +30,7 @@ export function StudentConfirmDialog(props: StudentConfirmDialogProps) {
 
     return (
         <AlertDialog open={state.open} onOpenChange={onOpenChange}>
-            <AlertDialogContent className="bg-card border-border text-foreground">
+            <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle className="text-foreground">确认操作</AlertDialogTitle>
                     <AlertDialogDescription className="text-muted-foreground">

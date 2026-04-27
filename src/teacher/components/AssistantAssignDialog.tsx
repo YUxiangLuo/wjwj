@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Assistant, TeacherClass } from "../api-client";
 
@@ -36,13 +37,11 @@ export function AssistantAssignDialog(props: AssistantAssignDialogProps) {
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
                         {classes.map((cls) => (
                             <label key={cls.id} className="flex items-center gap-3 p-3 border border-border cursor-pointer hover:bg-muted transition-colors bg-background">
-                                <input
+                                <Checkbox
                                     data-testid={`teacher-assistant-assign-check-${cls.id}`}
-                                    type="checkbox"
-                                    className="rounded border-border bg-card text-primary focus:ring-primary/20 w-4 h-4"
                                     checked={selectedClassIds.includes(cls.id)}
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
+                                    onCheckedChange={(checked) => {
+                                        if (checked === true) {
                                             onSelectedClassIdsChange([...selectedClassIds, cls.id]);
                                         } else {
                                             onSelectedClassIdsChange(selectedClassIds.filter((id) => id !== cls.id));

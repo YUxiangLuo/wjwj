@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -228,21 +228,18 @@ export function TaskManagement() {
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredTasks.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                data-testid="teacher-task-search"
-                                placeholder="搜索课题"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
-                            />
-                        </div>
+                        <SearchInput
+                            className="sm:w-56"
+                            data-testid="teacher-task-search"
+                            placeholder="搜索课题"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger data-testid="teacher-task-class-filter" className="bg-background border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-task-class-filter" className="sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">全部班级</SelectItem>
                                     {Array.from(new Set(tasks.map((task) => task.className))).map((name) => (
@@ -375,7 +372,7 @@ export function TaskManagement() {
             />
 
             <AlertDialog open={taskToDelete !== null} onOpenChange={(open) => { if (!open) setTaskToDelete(null); }}>
-                <AlertDialogContent className="bg-card border-border text-foreground">
+                <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">删除任务？</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">

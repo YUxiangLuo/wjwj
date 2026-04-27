@@ -246,7 +246,7 @@ export function Dashboard() {
 
             {/* Announcement List Dialog */}
             <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>
-                <DialogContent className="bg-card border-border text-foreground max-w-lg max-h-[80vh] flex flex-col">
+                <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="text-foreground flex items-center gap-2">
                             <Megaphone className="w-5 h-5 text-amber-600" />
@@ -287,7 +287,7 @@ export function Dashboard() {
 
             {/* Announcement Detail Dialog */}
             <Dialog open={!!selectedAnnouncement} onOpenChange={(open) => { if (!open) setSelectedAnnouncement(null); }}>
-                <DialogContent className="bg-card border-border text-foreground max-w-lg max-h-[80vh] flex flex-col">
+                <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="text-foreground text-base">{selectedAnnouncement?.title}</DialogTitle>
                         <DialogDescription className="sr-only">

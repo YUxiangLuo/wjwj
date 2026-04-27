@@ -287,7 +287,7 @@ export function DecisionPhase({
                             value={params.confidenceLevel}
                             onValueChange={onConfidenceLevelChange}
                         >
-                            <SelectTrigger className="h-9 text-sm">
+                            <SelectTrigger size="sm">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

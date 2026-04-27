@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Users, CheckCircle2, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { StudentAddDialog } from "../components/StudentAddDialog";
@@ -223,16 +223,13 @@ export function StudentManagement() {
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredStudents.length} 人</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-52">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                data-testid="teacher-student-search"
-                                placeholder="搜索学生"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
-                            />
-                        </div>
+                        <SearchInput
+                            className="sm:w-52"
+                            data-testid="teacher-student-search"
+                            placeholder="搜索学生"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                         <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)}>
                             <Upload className="w-4 h-4 mr-2" />
                             批量导入

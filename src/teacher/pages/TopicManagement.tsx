@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { BookOpen, Search, Layers, FileText } from "lucide-react";
+import { BookOpen, Layers, FileText } from "lucide-react";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -368,21 +368,18 @@ export function TopicManagement() {
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredTopics.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                data-testid="teacher-topic-search"
-                                placeholder="搜索课题名称"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
-                            />
-                        </div>
+                        <SearchInput
+                            className="sm:w-56"
+                            data-testid="teacher-topic-search"
+                            placeholder="搜索课题名称"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger data-testid="teacher-topic-status-filter" className="bg-background border-border text-foreground sm:w-28">
+                            <SelectTrigger data-testid="teacher-topic-status-filter" className="sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">全部状态</SelectItem>
                                     <SelectItem value="draft">草稿</SelectItem>
@@ -525,7 +522,7 @@ export function TopicManagement() {
                 open={confirmDialog.open}
                 onOpenChange={(open) => !open && setConfirmDialog(markdown => ({ ...markdown, open: false }))}
             >
-                <AlertDialogContent className="bg-card border-border text-foreground">
+                <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">确认操作</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">

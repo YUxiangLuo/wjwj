@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Search, RotateCcw, Loader2, ArrowRight, Users, CheckCircle2, PauseCircle, GraduationCap, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -303,17 +304,14 @@ export function StudentManagement() {
                             <p className="text-xs text-muted-foreground mt-1">共 {filteredStudents.length} 条数据</p>
                         </div>
                         <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                            <div className="relative sm:w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="搜索学号或姓名"
-                                    data-testid="student-search-input"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                    className="pl-9"
-                                />
-                            </div>
+                            <SearchInput
+                                className="sm:w-64"
+                                placeholder="搜索学号或姓名"
+                                data-testid="student-search-input"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                            />
                             <Select value={filterClass} onValueChange={setFilterClass}>
                                 <SelectTrigger data-testid="student-filter-class" className="sm:w-44">
                                     <SelectValue placeholder="全部班级" />

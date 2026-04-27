@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, Star, Loader2, Pencil, CalendarDays, School, CheckCircle, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -248,7 +249,7 @@ export function SemesterManagement() {
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredSemesters.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <Input
+                        <SearchInput
                             placeholder="搜索学期名称..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}

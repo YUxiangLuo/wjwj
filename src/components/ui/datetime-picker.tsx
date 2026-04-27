@@ -14,6 +14,9 @@ import "react-day-picker/style.css";
 
 export { parseLocalDateTime } from "@/lib/datetime";
 
+const nativeTimeSelectClass =
+    "flex h-9 w-full rounded-none border border-transparent border-b-input bg-transparent px-0 py-2 text-sm text-foreground outline-none transition-[color,border-color] focus-visible:border-b-ring disabled:cursor-not-allowed disabled:opacity-50";
+
 export interface DatetimePicker24Props {
     value: string;
     onChange: (value: string) => void;
@@ -103,7 +106,7 @@ export function DatetimePicker24({
                         <div className="flex flex-col gap-1.5">
                             <Label className="text-xs text-muted-foreground">时（24 小时）</Label>
                             <select
-                                className="flex h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground shadow-sm outline-none focus-visible:border-ring"
+                                className={nativeTimeSelectClass}
                                 value={hour}
                                 onChange={(e) => handleHourChange(Number(e.target.value))}
                             >
@@ -117,7 +120,7 @@ export function DatetimePicker24({
                         <div className="flex flex-col gap-1.5">
                             <Label className="text-xs text-muted-foreground">分</Label>
                             <select
-                                className="flex h-9 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground shadow-sm outline-none focus-visible:border-ring"
+                                className={nativeTimeSelectClass}
                                 value={minute}
                                 onChange={(e) => handleMinuteChange(Number(e.target.value))}
                             >

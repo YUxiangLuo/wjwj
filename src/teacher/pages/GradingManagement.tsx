@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { CheckCircle2, AlertTriangle, ClipboardList, Search, XCircle, Clock, UserCheck, FileEdit, ChevronLeft, ChevronRight } from "lucide-react";
+import { SearchInput } from "@/components/ui/search-input";
+import { CheckCircle2, AlertTriangle, ClipboardList, XCircle, Clock, UserCheck, FileEdit, ChevronLeft, ChevronRight } from "lucide-react";
 import { teacherApi, type GradingItem, type GradingListParams } from "../api-client";
 
 const PAGE_SIZE = 20;
@@ -132,21 +132,18 @@ export function GradingManagement() {
                         <p className="text-xs text-muted-foreground mt-1">共 {total} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                data-testid="teacher-grading-search"
-                                placeholder="搜索学生/课题"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
-                            />
-                        </div>
+                        <SearchInput
+                            className="sm:w-56"
+                            data-testid="teacher-grading-search"
+                            placeholder="搜索学生/课题"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                         <Select value={filterClass} onValueChange={setFilterClass}>
-                            <SelectTrigger data-testid="teacher-grading-class-filter" className="bg-background border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-grading-class-filter" className="sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all-class">全部班级</SelectItem>
                                     {classOptions.map((name) => (
@@ -156,10 +153,10 @@ export function GradingManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterTopic} onValueChange={setFilterTopic}>
-                            <SelectTrigger data-testid="teacher-grading-topic-filter" className="bg-background border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-grading-topic-filter" className="sm:w-40">
                                 <SelectValue placeholder="全部课题" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all-topic">全部课题</SelectItem>
                                     {topicOptions.map((name) => (
@@ -169,10 +166,10 @@ export function GradingManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger data-testid="teacher-grading-status-filter" className="bg-background border-border text-foreground sm:w-28">
+                            <SelectTrigger data-testid="teacher-grading-status-filter" className="sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all-status">全部状态</SelectItem>
                                     <SelectItem value="pending">待批改</SelectItem>

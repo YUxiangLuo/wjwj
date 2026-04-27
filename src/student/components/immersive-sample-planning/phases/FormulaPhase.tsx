@@ -127,7 +127,7 @@ export function FormulaPhase({
 
                 <div className="mx-auto flex max-w-sm flex-col gap-3">
                     <Select value={params.confidenceLevel} onValueChange={onConfidenceLevelChange}>
-                        <SelectTrigger className="h-14 text-lg">
+                        <SelectTrigger size="lg">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

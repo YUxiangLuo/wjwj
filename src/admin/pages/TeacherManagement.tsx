@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCircle, Lock, GraduationCap, Pencil, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -288,17 +289,14 @@ export function TeacherManagement() {
                         <p className="text-xs text-muted-foreground mt-1">共 {teachers.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                placeholder="搜索工号或姓名"
-                                data-testid="teacher-search-input"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                className="pl-9"
-                            />
-                        </div>
+                        <SearchInput
+                            className="sm:w-64"
+                            placeholder="搜索工号或姓名"
+                            data-testid="teacher-search-input"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                        />
                         <Button data-testid="teacher-search-submit" variant="outline" onClick={handleSearch} disabled={loading}>
                             <Search className="w-4 h-4 mr-2" />
                             搜索

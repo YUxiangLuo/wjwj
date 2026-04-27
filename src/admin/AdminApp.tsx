@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import {
     LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
-    Activity, Megaphone, Settings, Bell, LogOut, Loader2, Search,
+    Activity, Megaphone, Settings, Bell, LogOut, Loader2,
     Menu, X, Sun, Moon, BarChart3,
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/ui/search-input";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
@@ -363,13 +364,7 @@ export function AdminApp() {
                     </div>
 
                     <div className="flex items-center gap-4 flex-1 justify-end">
-                        <div className="hidden md:flex items-center gap-2 bg-muted border border-border px-3 py-1.5 w-64 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all">
-                            <Search className="w-4 h-4 text-muted-foreground" />
-                            <input
-                                className="bg-transparent text-sm placeholder:text-muted-foreground outline-none w-full"
-                                placeholder="搜索功能或数据..."
-                            />
-                        </div>
+                        <SearchInput className="hidden md:flex w-64" placeholder="搜索功能或数据..." />
 
                         <div className="flex items-center gap-2">
                             <Button

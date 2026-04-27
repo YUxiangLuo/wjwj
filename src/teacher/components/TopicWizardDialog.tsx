@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import type { TopicDetail, Question } from "../api-client";
 import { teacherApi } from "../api-client";
@@ -544,17 +545,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                             : "text-foreground hover:bg-card cursor-pointer"
                                                             }`}
                                                     >
-                                                        <input
+                                                        <Checkbox
                                                             data-testid={`teacher-topic-mapping-stratified-${c}`}
-                                                            type="checkbox"
-                                                            className="rounded border-border bg-card text-primary focus:ring-primary/20"
                                                             disabled={disabled}
                                                             checked={checked}
-                                                            onChange={(e) => {
+                                                            onCheckedChange={(nextChecked) => {
                                                                 setFieldMapping(prev => ({
                                                                     ...prev,
-                                                                    stratified: e.target.checked ? [...prev.stratified, c] : prev.stratified.filter(x => x !== c),
-                                                                    numeric: e.target.checked ? prev.numeric.filter(x => x !== c) : prev.numeric,
+                                                                    stratified: nextChecked === true ? [...prev.stratified, c] : prev.stratified.filter(x => x !== c),
+                                                                    numeric: nextChecked === true ? prev.numeric.filter(x => x !== c) : prev.numeric,
                                                                 }));
                                                             }}
                                                         />
@@ -586,17 +585,15 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                             : "text-foreground hover:bg-card cursor-pointer"
                                                             }`}
                                                     >
-                                                        <input
+                                                        <Checkbox
                                                             data-testid={`teacher-topic-mapping-numeric-${c}`}
-                                                            type="checkbox"
-                                                            className="rounded border-border bg-card text-primary focus:ring-primary/20"
                                                             disabled={disabled}
                                                             checked={checked}
-                                                            onChange={(e) => {
+                                                            onCheckedChange={(nextChecked) => {
                                                                 setFieldMapping(prev => ({
                                                                     ...prev,
-                                                                    numeric: e.target.checked ? [...prev.numeric, c] : prev.numeric.filter(x => x !== c),
-                                                                    stratified: e.target.checked ? prev.stratified.filter(x => x !== c) : prev.stratified,
+                                                                    numeric: nextChecked === true ? [...prev.numeric, c] : prev.numeric.filter(x => x !== c),
+                                                                    stratified: nextChecked === true ? prev.stratified.filter(x => x !== c) : prev.stratified,
                                                                 }));
                                                             }}
                                                         />

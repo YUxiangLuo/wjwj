@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { UserPlus, Users, CheckCircle2, PauseCircle, Search, Trash2, KeyRound, UserCog } from "lucide-react";
+import { UserPlus, Users, CheckCircle2, PauseCircle, Trash2, KeyRound, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AlertDialog,
@@ -176,21 +176,18 @@ export function AssistantManagement() {
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredAssistants.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                data-testid="teacher-assistant-search"
-                                placeholder="搜索姓名/工号/邮箱"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
-                            />
-                        </div>
+                        <SearchInput
+                            className="sm:w-56"
+                            data-testid="teacher-assistant-search"
+                            placeholder="搜索姓名/工号/邮箱"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
-                            <SelectTrigger data-testid="teacher-assistant-status-filter" className="bg-background border-border text-foreground sm:w-28">
+                            <SelectTrigger data-testid="teacher-assistant-status-filter" className="sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent className="bg-card border-border text-foreground">
+                            <SelectContent>
                                 <SelectGroup>
                                     <SelectItem value="all">全部状态</SelectItem>
                                     <SelectItem value="active">正常</SelectItem>
@@ -316,7 +313,7 @@ export function AssistantManagement() {
             />
 
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="bg-card border-border text-foreground">
+                <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-foreground">确认移除助教</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">

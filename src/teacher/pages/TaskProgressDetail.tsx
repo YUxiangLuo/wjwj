@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, Clock, Search, FileEdit, Eye } from "lucide-react";
+import { ArrowLeft, Users, Clock, FileEdit, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { teacherApi, type TaskProgressData } from "../api-client";
 
@@ -227,15 +227,12 @@ export function TaskProgressDetail() {
             <Card className="border-border bg-card">
                 <div className="p-4 border-b border-border flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">学生列表</span>
-                    <div className="relative w-56">
-                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            placeholder="搜索学号/姓名"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground h-8 text-sm"
-                        />
-                    </div>
+                    <SearchInput
+                        className="h-8 w-56 text-sm"
+                        placeholder="搜索学号/姓名"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
                 <CardContent className="pt-0">
                     <Table>

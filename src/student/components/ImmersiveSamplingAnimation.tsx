@@ -173,7 +173,7 @@ const DotGrid = memo(function DotGrid({
                 return (
                     <div
                         key={i}
-                        className={cn("aspect-square rounded-[2px] transition-all duration-150", bgClass)}
+                        className={cn("aspect-square rounded-sm transition-all duration-150", bgClass)}
                         style={inlineStyle}
                     />
                 );

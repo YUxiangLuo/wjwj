@@ -319,7 +319,7 @@ export function PrecisionCostTradeoff({
                     <div className="flex flex-col gap-1.5">
                         <Label className="text-xs text-muted-foreground">置信水平</Label>
                         <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
-                            <SelectTrigger className="h-9 bg-background text-sm">
+                            <SelectTrigger size="sm">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

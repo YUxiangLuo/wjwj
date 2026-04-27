@@ -300,25 +300,25 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                 <div className="space-y-3 py-4 animate-in fade-in duration-300">
                                     {detail?.recommendQuestions && detail.recommendQuestions.length > 0 ? (
                                         detail.recommendQuestions.map((q, idx) => (
-                                            <div key={q.id} className="bg-background border border-border p-4 space-y-2">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-xs text-muted-foreground font-mono w-6 shrink-0">{idx + 1}.</span>
+                                            <div key={q.id} className="flex gap-3 bg-background border border-border p-4">
+                                                <span className="text-xs text-muted-foreground font-mono w-6 shrink-0">{idx + 1}.</span>
+                                                <div className="min-w-0 flex-1 space-y-2">
                                                     <Badge variant="secondary" className="bg-muted text-muted-foreground border-border text-xs">
                                                         {questionTypeLabels[q.type as QuestionType] ?? "未知"}
                                                     </Badge>
+                                                    <div className="text-sm text-foreground">{q.content || "（无内容）"}</div>
+                                                    {(q.type === "single" || q.type === "multiple") && q.options && q.options.length > 0 && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            选项：{q.options.join("；")}
+                                                        </div>
+                                                    )}
+                                                    {q.type === "scale" && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            量表 {q.scaleMin ?? 1}–{q.scaleMax ?? 10}
+                                                            {(q.scaleMinLabel || q.scaleMaxLabel) && `（${q.scaleMinLabel ?? ""} — ${q.scaleMaxLabel ?? ""}）`}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="text-sm text-foreground pl-9">{q.content || "（无内容）"}</div>
-                                                {(q.type === "single" || q.type === "multiple") && q.options && q.options.length > 0 && (
-                                                    <div className="pl-9 text-xs text-muted-foreground">
-                                                        选项：{q.options.join("；")}
-                                                    </div>
-                                                )}
-                                                {q.type === "scale" && (
-                                                    <div className="pl-9 text-xs text-muted-foreground">
-                                                        量表 {q.scaleMin ?? 1}–{q.scaleMax ?? 10}
-                                                        {(q.scaleMinLabel || q.scaleMaxLabel) && `（${q.scaleMinLabel ?? ""} — ${q.scaleMaxLabel ?? ""}）`}
-                                                    </div>
-                                                )}
                                             </div>
                                         ))
                                     ) : (

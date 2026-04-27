@@ -130,7 +130,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                 <div className="flex flex-col gap-2">
                     <label className="text-xs font-medium text-primary">抽样方法</label>
                     <Select value={selectedMethod} onValueChange={handleMethodChange}>
-                        <SelectTrigger className="bg-background text-foreground">
+                        <SelectTrigger>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -204,7 +204,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                 <div className="flex flex-col gap-2">
                     <label className="text-xs font-medium text-primary">调查方式</label>
                     <Select value={selectedMode} onValueChange={setSelectedMode}>
-                        <SelectTrigger className="bg-background text-foreground">
+                        <SelectTrigger>
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>

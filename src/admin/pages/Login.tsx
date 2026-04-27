@@ -132,7 +132,7 @@ export function Login() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     autoComplete="username"
-                                    className="h-12 bg-card border-border focus:border-primary focus:ring-primary/20"
+                                    className="h-12"
                                 />
                             </div>
                             <div className="space-y-2.5">
@@ -150,7 +150,7 @@ export function Login() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     autoComplete="current-password"
-                                    className="h-12 bg-card border-border focus:border-primary focus:ring-primary/20"
+                                    className="h-12"
                                 />
                             </div>
                         </div>
