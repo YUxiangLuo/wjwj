@@ -16,7 +16,7 @@
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
     "db:push": "bun run db:generate && bun run db:migrate",
-    "db:studio": "bunx drizzle-kit studio",
+    "db:studio": "bun -e \"console.error('db:studio is unavailable because drizzle-kit studio requires pg/postgres drivers; this project uses Bun SQL only. Use a PostgreSQL client with DB_HOST/DB_PORT instead.'); process.exit(1)\"",
     "db:drop": "bunx drizzle-kit drop",
     "db:check": "bunx drizzle-kit check",
     "db:clean": "bun run src/db/clean.ts --force",

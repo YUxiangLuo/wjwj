@@ -1,6 +1,7 @@
 import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import { resolve, sep } from "node:path";
 import { db } from "../../db";
+import { getAffectedRows } from "../../db/utils";
 import { assistant, assistantClass, class_, experiment, student, submission, task, teacher, topic } from "../../db/schema";
 import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
@@ -457,24 +458,27 @@ const gradingDetailRoutes: RouteDefinition = {
         // 乐观锁：仅当提交状态仍为待批改（0/1）时才写入，防止并发覆盖
         try {
             await db.transaction(async (tx) => {
-                const updated = await tx.update(submission).set({
-                    scoreQuestionnaire: String(body.scoreQuestionnaire),
-                    scoreProcess: String(body.scoreProcess),
-                    scoreReport: String(body.scoreReport),
-                    totalScore: String(Number(totalScore.toFixed(2))),
-                    teacherComment: body.comment,
-                    rejectReason: body.status === 3 ? (body.rejectReason ?? "") : null,
-                    status: body.status,
-                    gradedAt: new Date(),
-                    gradedById: userId,
-                    gradedByType: myUserType,
-                    lockedById: null,
-                    lockedByType: null,
-                    lockedAt: null,
-                }).where(and(eq(submission.id, submissionId), or(eq(submission.status, 0), eq(submission.status, 1))));
+                const updated = await tx
+                    .update(submission)
+                    .set({
+                        scoreQuestionnaire: String(body.scoreQuestionnaire),
+                        scoreProcess: String(body.scoreProcess),
+                        scoreReport: String(body.scoreReport),
+                        totalScore: String(Number(totalScore.toFixed(2))),
+                        teacherComment: body.comment,
+                        rejectReason: body.status === 3 ? (body.rejectReason ?? "") : null,
+                        status: body.status,
+                        gradedAt: new Date(),
+                        gradedById: userId,
+                        gradedByType: myUserType,
+                        lockedById: null,
+                        lockedByType: null,
+                        lockedAt: null,
+                    })
+                    .where(and(eq(submission.id, submissionId), or(eq(submission.status, 0), eq(submission.status, 1))))
+                    .returning({ id: submission.id });
 
-                const header = Array.isArray(updated) ? updated[0] : updated;
-                if ((header as { affectedRows?: number })?.affectedRows === 0) {
+                if (getAffectedRows(updated) === 0) {
                     throw new Error("CONCURRENT_GRADE");
                 }
 
