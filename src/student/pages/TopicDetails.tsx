@@ -4,6 +4,7 @@ import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import {
@@ -25,13 +26,19 @@ import { cn } from "@/lib/utils";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
-const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
-    not_started: { label: "未开始", color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20" },
-    in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
-    submitted: { label: "已提交", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
-    grading: { label: "批改中", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
-    graded: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-    rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
+type StatusView = {
+    label: string;
+    variant: "default" | "secondary" | "destructive" | "outline";
+    dotClass: string;
+};
+
+const statusConfig: Record<TaskStatus, StatusView> = {
+    not_started: { label: "未开始", variant: "secondary", dotClass: "bg-muted-foreground" },
+    in_progress: { label: "进行中", variant: "default", dotClass: "bg-primary animate-pulse" },
+    submitted: { label: "已提交", variant: "outline", dotClass: "bg-primary" },
+    grading: { label: "批改中", variant: "outline", dotClass: "bg-primary" },
+    graded: { label: "已批改", variant: "default", dotClass: "bg-primary" },
+    rejected: { label: "被驳回", variant: "destructive", dotClass: "bg-destructive" },
 };
 
 function formatDateTime(value: string | null) {
@@ -168,22 +175,11 @@ export function TopicDetails() {
     const notOpenYet = !Number.isNaN(openAt.getTime()) && openAt.getTime() > Date.now();
     const isActiveStatus = ["not_started", "in_progress", "rejected"].includes(task.status);
     const canStartExperiment = isActiveStatus && !deadlinePassed && !notOpenYet;
-    const effectiveStatus = deadlinePassed && isActiveStatus
-        ? { label: "已截止", color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20" }
+    const effectiveStatus: StatusView = deadlinePassed && isActiveStatus
+        ? { label: "已截止", variant: "secondary", dotClass: "bg-muted-foreground" }
         : notOpenYet && isActiveStatus
-            ? { label: "未开放", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20" }
+            ? { label: "未开放", variant: "outline", dotClass: "bg-primary" }
             : status;
-    const effectiveStatusDotClass = deadlinePassed && isActiveStatus
-        ? "bg-slate-500"
-        : notOpenYet && isActiveStatus
-            ? "bg-cyan-400"
-            : task.status === "in_progress"
-                ? "bg-indigo-500 animate-pulse"
-                : task.status === "not_started"
-                    ? "bg-slate-500"
-                    : task.status === "rejected"
-                        ? "bg-rose-500"
-                        : "bg-emerald-500";
 
     const action = getTaskPrimaryAction(task.id, task.status, canStartExperiment);
 
@@ -213,12 +209,12 @@ export function TopicDetails() {
     return (
         <div className="flex flex-col gap-4 pb-12" data-testid="student-task-detail">
             <div>
-                <Link to="/">
-                    <Button variant="ghost" size="sm" className="-ml-4">
+                <Button variant="ghost" size="sm" className="-ml-4" asChild>
+                    <Link to="/">
                         <ArrowLeft data-icon="inline-start" />
                         返回任务列表
-                    </Button>
-                </Link>
+                    </Link>
+                </Button>
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-1">
                     <div>
@@ -228,7 +224,7 @@ export function TopicDetails() {
                             {task.deadline && <span>截止于 {formatDateTime(task.deadline)}</span>}
                         </div>
                     </div>
-                    <Badge variant="outline" className={cn("px-3 py-1 text-sm", effectiveStatus.color)}>{effectiveStatus.label}</Badge>
+                    <Badge variant={effectiveStatus.variant} className="whitespace-nowrap">{effectiveStatus.label}</Badge>
                 </div>
             </div>
 
@@ -342,69 +338,67 @@ export function TopicDetails() {
 
                 </div>
 
-                <div className="space-y-4">
-                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-fit">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
-                            <CardTitle className="text-sm text-slate-800 dark:text-slate-200">任务状态</CardTitle>
+                <div className="flex flex-col gap-4">
+                    <Card size="sm" className="h-fit bg-muted/40">
+                        <CardHeader className="border-b border-border">
+                            <CardTitle className="text-sm normal-case tracking-normal">任务状态</CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-4 pb-4 space-y-3">
-                            <div className="space-y-0.5">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider font-medium">当前阶段</div>
-                                <div className="text-sm font-medium text-slate-800 dark:text-slate-200">{task.currentStage > 0 && task.currentStage <= 4 ? stageNames[task.currentStage - 1] : "尚未开始"}</div>
+                        <CardContent className="flex flex-col gap-3">
+                            <div className="flex flex-col gap-0.5">
+                                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">当前阶段</div>
+                                <div className="text-sm font-medium text-foreground">{task.currentStage > 0 && task.currentStage <= 4 ? stageNames[task.currentStage - 1] : "尚未开始"}</div>
                             </div>
-                            <div className="w-full h-px bg-slate-200 dark:bg-slate-800" />
-                            <div className="space-y-0.5">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider font-medium">任务状态</div>
+                            <Separator />
+                            <div className="flex flex-col gap-0.5">
+                                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">任务状态</div>
                                 <div className="flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-full ${effectiveStatusDotClass}`}></span>
-                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{effectiveStatus.label}</span>
+                                    <span className={cn("size-2 rounded-full", effectiveStatus.dotClass)}></span>
+                                    <span className="text-sm font-medium text-foreground">{effectiveStatus.label}</span>
                                 </div>
                             </div>
-                            <div className="w-full h-px bg-slate-200 dark:bg-slate-800" />
-                            <div className="space-y-0.5">
-                                <div className="text-xs text-slate-500 uppercase tracking-wider font-medium">操作提示</div>
-                                <div className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">开始实验后，请按步骤完成并保存进度。系统将自动记录您的每一次操作。</div>
+                            <Separator />
+                            <div className="flex flex-col gap-0.5">
+                                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">操作提示</div>
+                                <div className="text-sm leading-relaxed text-muted-foreground">开始实验后，请按步骤完成并保存进度。系统将自动记录您的每一次操作。</div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
-                        <CardContent className="pt-4 pb-4 space-y-3">
-                            <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                    <Card size="sm" className="border-primary/20 bg-primary/5">
+                        <CardContent className="flex flex-col gap-3">
+                            <div className="text-sm font-medium text-primary">
                                 {task.status === "submitted" || task.status === "graded" ? "已提交实验内容" : "准备好开始了吗？"}
                             </div>
                             {task.status === "graded" && task.score !== undefined && (
-                                <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
-                                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
-                                    <span className="text-sm font-medium text-emerald-600">实验成绩</span>
-                                    <span className="text-xl font-bold text-emerald-600 tracking-tight ml-auto">{task.score}</span>
+                                <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/10 px-3 py-2">
+                                    <CheckCircle className="size-4 shrink-0 text-primary" />
+                                    <span className="text-sm font-medium text-primary">实验成绩</span>
+                                    <span className="ml-auto text-xl font-bold tracking-tight text-primary">{task.score}</span>
                                 </div>
                             )}
                             {task.status === "rejected" ? (
                                 <Button
                                     size="lg"
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20"
+                                    className="w-full"
                                     disabled={action.disabled}
                                     onClick={() => setShowRestartConfirm(true)}
                                 >
-                                    {action.text} <ChevronRight className="w-4 h-4 ml-1" />
+                                    {action.text}
+                                    <ChevronRight data-icon="inline-end" />
                                 </Button>
-                            ) : action.link ? (
-                                <Link to={action.link} className="w-full block">
-                                    <Button
-                                        size="lg"
-                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 h-11 text-base font-medium"
-                                        disabled={action.disabled}
-                                    >
-                                        {action.text} <ChevronRight className="w-4 h-4 ml-1" />
-                                    </Button>
-                                </Link>
+                            ) : action.link && !action.disabled ? (
+                                <Button size="lg" className="w-full" asChild>
+                                    <Link to={action.link}>
+                                        {action.text}
+                                        <ChevronRight data-icon="inline-end" />
+                                    </Link>
+                                </Button>
                             ) : (
-                                <Button size="lg" className="w-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300" disabled>{action.text}</Button>
+                                <Button size="lg" variant="secondary" className="w-full" disabled>{action.text}</Button>
                             )}
                             {shouldShowTaskAvailabilityHint(task.status, canStartExperiment) && (
-                                <div className="flex items-center justify-center gap-1.5 text-xs text-rose-600 bg-rose-500/10 p-2 rounded-lg">
-                                    <AlertTriangle className="w-3 h-3" />
+                                <div className="flex items-center justify-center gap-1.5 rounded-lg bg-destructive/10 p-2 text-xs text-destructive">
+                                    <AlertTriangle className="size-3" />
                                     {notOpenYet ? "任务尚未开放，暂不可操作" : "任务已截止，无法继续操作"}
                                 </div>
                             )}
@@ -413,14 +407,13 @@ export function TopicDetails() {
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-3">
-                    <CardTitle className="text-sm text-slate-800 dark:text-slate-200">实验进度概览</CardTitle>
+            <Card size="sm" className="bg-muted/40">
+                <CardHeader className="border-b border-border">
+                    <CardTitle className="text-sm normal-case tracking-normal">实验进度概览</CardTitle>
                 </CardHeader>
-                <CardContent className="pt-6 pb-5">
-                    <div className="flex items-center justify-between relative px-4">
-                        {/* Connecting Line - Background */}
-                        <div className="absolute left-4 right-4 top-5 h-1 bg-slate-200 dark:bg-slate-800 rounded-full -z-0"></div>
+                <CardContent>
+                    <div className="relative flex items-center justify-between px-4">
+                        <div className="absolute left-4 right-4 top-5 h-1 rounded-full bg-border"></div>
 
                         {stageNames.map((stage, index) => {
                             const stageNum = index + 1;
@@ -428,26 +421,30 @@ export function TopicDetails() {
                             const isCurrent = task.currentStage === stageNum && task.status !== "graded";
 
                             return (
-                                <div key={stage} className="flex flex-col items-center relative z-10 flex-1">
-                                    <div className={`
-                                        w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-4 transition-all duration-300
-                                        ${isCompleted
-                                            ? "bg-emerald-500 border-slate-50 dark:border-slate-900 text-white shadow-lg shadow-emerald-500/30"
-                                            : isCurrent
-                                                ? "bg-indigo-600 border-slate-50 dark:border-slate-900 text-white ring-4 ring-indigo-500/20 scale-110 shadow-lg shadow-indigo-500/40"
-                                                : "bg-slate-200 dark:bg-slate-800 border-slate-50 dark:border-slate-900 text-slate-500"}
-                                    `}>
-                                        {isCompleted ? <CheckCircle className="w-5 h-5" /> : stageNum}
+                                <div key={stage} className="relative z-10 flex flex-1 flex-col items-center">
+                                    <div
+                                        className={cn(
+                                            "flex size-10 items-center justify-center rounded-full border-4 border-card text-sm font-bold transition-all duration-300",
+                                            isCompleted
+                                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                                                : isCurrent
+                                                    ? "scale-110 bg-primary text-primary-foreground shadow-lg shadow-primary/40 ring-4 ring-primary/20"
+                                                    : "bg-muted text-muted-foreground"
+                                        )}
+                                    >
+                                        {isCompleted ? <CheckCircle className="size-5" /> : stageNum}
                                     </div>
-                                    <span className={`text-xs mt-2 font-medium transition-colors duration-300 ${isCurrent ? "text-indigo-500" : isCompleted ? "text-emerald-500" : "text-slate-500"}`}>
+                                    <span
+                                        className={cn(
+                                            "mt-2 text-xs font-medium transition-colors duration-300",
+                                            isCurrent ? "text-primary" : isCompleted ? "text-foreground" : "text-muted-foreground"
+                                        )}
+                                    >
                                         {stage}
                                     </span>
                                 </div>
                             );
                         })}
-
-                        {/* Connecting Line - Active Progress (Partial implementation for visual simplified) */}
-                        {/* Real implementation needs exact widths which is hard in flex, visually the circles cover the line breaks */}
                     </div>
                 </CardContent>
             </Card>
