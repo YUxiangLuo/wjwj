@@ -200,7 +200,7 @@ function StudentAppContent() {
         return (
             <div className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
                 <div className="w-full max-w-2xl rounded-lg border border-border bg-card/60 p-8 text-card-foreground shadow-2xl shadow-foreground/10">
-                    <div className="space-y-3 text-center">
+                    <div className="flex flex-col gap-3 text-center">
                         <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-primary text-xl font-bold text-primary-foreground shadow-lg shadow-primary/20">
                             L
                         </div>
