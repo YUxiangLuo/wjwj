@@ -11,6 +11,7 @@ import {
     PPS_UNAVAILABLE_REASON,
     PPS_UNAVAILABLE_STATUS_MESSAGE,
 } from "../../experiment/sampling-messages";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { METHOD_META, type MethodKey } from "./analysis-utils";
 
@@ -32,15 +33,15 @@ function labelField(key: string) {
 
 function ParamRow({ label, value }: { label: string; value: ReactNode }) {
     return (
-        <div className="grid grid-cols-1 gap-1 border-b border-slate-200/80 py-2.5 last:border-0 dark:border-slate-800/80 sm:grid-cols-[minmax(140px,200px)_1fr] sm:gap-4">
-            <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
-            <div className="text-sm text-slate-800 dark:text-slate-200 break-words">{value}</div>
+        <div className="grid grid-cols-1 gap-1 border-b border-border/80 py-2.5 last:border-0 sm:grid-cols-[minmax(140px,200px)_1fr] sm:gap-4">
+            <div className="text-xs font-medium text-muted-foreground">{label}</div>
+            <div className="break-words text-sm text-foreground">{value}</div>
         </div>
     );
 }
 
 const notDoneHint = (
-    <p className="text-xs text-slate-500 dark:text-slate-400">该方法尚未执行或结果未保存。</p>
+    <p className="text-xs text-muted-foreground">该方法尚未执行或结果未保存。</p>
 );
 
 function samplingMethodPanelForKey(
@@ -58,10 +59,10 @@ function samplingMethodPanelForKey(
             return {
                 completed: true,
                 content: (
-                    <div className="space-y-0">
+                    <div className="flex flex-col">
                         <ParamRow label="抽取样本量" value={r.sampleCount?.toLocaleString() ?? "—"} />
                         {targetSampleSize !== null && r.sampleCount !== targetSampleSize && (
-                            <p className="mt-2 text-[11px] text-amber-700/90 dark:text-amber-300/90">
+                            <p className="mt-2 text-[11px] text-muted-foreground">
                                 与规划目标 {targetSampleSize.toLocaleString()} 不一致时，请在报告中说明原因（若仅为整数舍入可简述）。
                             </p>
                         )}
@@ -78,7 +79,7 @@ function samplingMethodPanelForKey(
             return {
                 completed: true,
                 content: (
-                    <div className="space-y-0">
+                    <div className="flex flex-col">
                         <ParamRow label="间隔 K" value={String(r.kValue)} />
                         <ParamRow label="实际抽取数量" value={r.sampleCount?.toLocaleString() ?? "—"} />
                         <ParamRow
@@ -91,7 +92,7 @@ function samplingMethodPanelForKey(
                         />
                         <ParamRow label="随机种子" value={r.seed !== undefined ? String(r.seed) : "未设置（每次随机）"} />
                         {targetSampleSize !== null && (
-                            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                            <p className="mt-2 text-[11px] text-muted-foreground">
                                 系统抽样实际样本量可能随 K 与随机起点在较小范围内波动；规划目标为 {targetSampleSize.toLocaleString()}。
                             </p>
                         )}
@@ -105,9 +106,9 @@ function samplingMethodPanelForKey(
                 return {
                     completed: true,
                     content: (
-                        <div className="space-y-0">
+                        <div className="flex flex-col">
                             <ParamRow label="执行状态" value={PPS_UNAVAILABLE_STATUS_MESSAGE} />
-                            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                            <p className="mt-2 text-[11px] text-muted-foreground">
                                 {r.unavailableReason || PPS_UNAVAILABLE_REASON}
                             </p>
                         </div>
@@ -120,7 +121,7 @@ function samplingMethodPanelForKey(
             return {
                 completed: true,
                 content: (
-                    <div className="space-y-0">
+                    <div className="flex flex-col">
                         <ParamRow
                             label="规模变量"
                             value={r.sizeField ? `${labelField(r.sizeField)}（${r.sizeField}）` : "—"}
@@ -128,7 +129,7 @@ function samplingMethodPanelForKey(
                         <ParamRow label="抽样数量" value={r.sampleCount?.toLocaleString() ?? "—"} />
                         <ParamRow label="随机种子" value={r.seed !== undefined ? String(r.seed) : "未设置（每次随机）"} />
                         {targetSampleSize !== null && r.sampleCount !== targetSampleSize && (
-                            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                            <p className="mt-2 text-[11px] text-muted-foreground">
                                 PPS 允许在规划样本量附近调整抽取数量；当前为 {r.sampleCount?.toLocaleString()}，规划目标 {targetSampleSize.toLocaleString()}。
                             </p>
                         )}
@@ -144,8 +145,8 @@ function samplingMethodPanelForKey(
             return {
                 completed: true,
                 content: (
-                    <div className="space-y-3">
-                        <div className="space-y-0">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex flex-col">
                             <ParamRow label="分层变量" value={`${labelField(r.stratifyBy)}（${r.stratifyBy}）`} />
                             <ParamRow
                                 label="总样本量（各层合计）"
@@ -154,10 +155,10 @@ function samplingMethodPanelForKey(
                             <ParamRow label="随机种子" value={r.seed !== undefined ? String(r.seed) : "未设置（每次随机）"} />
                         </div>
                         {r.layers && r.layers.length > 0 && (
-                            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                            <div className="overflow-hidden rounded-lg border border-border">
                                 <Table>
-                                    <TableHeader className="bg-slate-50/80 dark:bg-slate-900/80">
-                                        <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-transparent">
+                                    <TableHeader className="bg-muted/50">
+                                        <TableRow className="border-border hover:bg-transparent">
                                             <TableHead className="text-xs">层</TableHead>
                                             <TableHead className="text-xs text-right">Nₕ</TableHead>
                                             <TableHead className="text-xs text-right">占比</TableHead>
@@ -166,10 +167,10 @@ function samplingMethodPanelForKey(
                                     </TableHeader>
                                     <TableBody>
                                         {r.layers.map((layer) => (
-                                            <TableRow key={layer.name} className="border-slate-200 dark:border-slate-800">
+                                            <TableRow key={layer.name} className="border-border">
                                                 <TableCell className="text-sm font-medium">{layer.name}</TableCell>
                                                 <TableCell className="text-right font-mono text-xs">{layer.count.toLocaleString()}</TableCell>
-                                                <TableCell className="text-right text-xs text-slate-600 dark:text-slate-400">
+                                                <TableCell className="text-right text-xs text-muted-foreground">
                                                     {typeof layer.ratio === "number" && layer.ratio <= 1
                                                         ? `${(layer.ratio * 100).toFixed(1)}%`
                                                         : `${Number(layer.ratio).toFixed(1)}%`}
@@ -182,7 +183,7 @@ function samplingMethodPanelForKey(
                             </div>
                         )}
                         {targetSampleSize !== null && (
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            <p className="text-[11px] text-muted-foreground">
                                 各层 nₕ 之和应等于规划目标 {targetSampleSize.toLocaleString()}（执行前已在阶段三校验）。
                             </p>
                         )}
@@ -203,13 +204,13 @@ export function SamplePlanDecisionPanel({
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
 
     return (
-        <div className="space-y-4">
-            <div className="rounded-xl border border-amber-200/80 bg-amber-50/50 p-3 dark:border-amber-800/40 dark:bg-amber-950/20">
+        <div className="flex flex-col gap-4">
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                 <div className="flex gap-2">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                    <div className="space-y-1.5 text-xs leading-relaxed text-amber-900/90 dark:text-amber-100/90">
-                        <p className="font-medium text-amber-950 dark:text-amber-50">关于高级工具（子总体、多变量、成本/CV/整群等）</p>
-                        <p className="text-amber-800/85 dark:text-amber-200/80">
+                    <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <div className="flex flex-col gap-1.5 text-xs leading-relaxed text-foreground">
+                        <p className="font-medium">关于高级工具（子总体、多变量、成本/CV/整群等）</p>
+                        <p className="text-muted-foreground">
                             高级工具的<span className="font-medium">完整中间状态与推演明细不会完整写入实验存档</span>，
                             但回写到核心决策参数里的结果仍会保存，例如最终样本量或设计效应。
                             下方展示的是「确认并进入下一阶段」时真正保存下来的核心参数；若最终样本量来自某个非标准工具，页面会直接标出来源。
@@ -219,11 +220,11 @@ export function SamplePlanDecisionPanel({
             </div>
 
             {!samplePlan ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white/40 py-12 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-400">
+                <div className="rounded-lg border border-dashed border-border bg-muted/20 py-12 text-center text-sm text-muted-foreground">
                     尚未保存样本量规划数据
                 </div>
             ) : (
-                <div className="rounded-xl border border-slate-200/90 bg-white/50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                <div className="rounded-lg border border-border bg-card/70 p-4">
                     <ParamRow label="总体规模 N" value={populationSize > 0 ? populationSize.toLocaleString() : "—"} />
                     <ParamRow
                         label="估计类型"
@@ -263,7 +264,7 @@ export function SamplePlanDecisionPanel({
                     <ParamRow label="推荐样本量 n" value={samplePlan.recommendedSize?.toLocaleString() ?? "—"} />
                     <ParamRow label="最终样本量 n" value={samplePlan.finalSampleSize?.toLocaleString() ?? "—"} />
                     {advancedSourceLabel && (
-                        <p className="mt-2 text-[11px] text-amber-700/90 dark:text-amber-300/90">
+                        <p className="mt-2 text-[11px] text-muted-foreground">
                             当前最终样本量由「{advancedSourceLabel}」回写；此处的“推荐样本量 n”仍是常规公式建议值。
                         </p>
                     )}
@@ -284,7 +285,7 @@ export function SamplingMethodParamsPanel({
 }) {
     if (!samplingResults) {
         return (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white/40 py-12 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-400">
+            <div className="rounded-lg border border-dashed border-border bg-muted/20 py-12 text-center text-sm text-muted-foreground">
                 暂无抽样结果数据（请先在阶段三完成抽样）
             </div>
         );
@@ -293,10 +294,10 @@ export function SamplingMethodParamsPanel({
     const methods = (Object.keys(METHOD_META) as MethodKey[]).map((key) => ({ key, meta: METHOD_META[key] }));
 
     return (
-        <div className="space-y-5">
+        <div className="flex flex-col gap-5">
             {targetSampleSize !== null && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                    阶段二规划目标样本量：<span className="font-mono font-medium text-slate-700 dark:text-slate-300">{targetSampleSize.toLocaleString()}</span>
+                <p className="text-xs text-muted-foreground">
+                    阶段二规划目标样本量：<span className="font-mono font-medium text-foreground">{targetSampleSize.toLocaleString()}</span>
                     {populationSize > 0 && (
                         <span className="ml-2">（总体 N = {populationSize.toLocaleString()}）</span>
                     )}
@@ -314,20 +315,14 @@ export function SamplingMethodParamsPanel({
                 return (
                     <div
                         key={key}
-                        className="rounded-xl border border-slate-200/90 bg-white/50 p-4 dark:border-slate-800 dark:bg-slate-950/40"
+                        className="rounded-lg border border-border bg-card/70 p-4"
                         data-testid={`student-analysis-sampling-params-${key}`}
                     >
                         <div className="mb-3 flex items-center justify-between gap-2">
-                            <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{meta.label}</h4>
-                            <span
-                                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                    completed
-                                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                                        : "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-500"
-                                }`}
-                            >
+                            <h4 className="text-sm font-semibold text-foreground">{meta.label}</h4>
+                            <Badge variant={completed ? "default" : "secondary"}>
                                 {completed ? "已完成" : "未完成"}
-                            </span>
+                            </Badge>
                         </div>
                         {content}
                     </div>
