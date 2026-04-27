@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { 
     Plus, 
     Trash2, 
@@ -54,17 +55,17 @@ interface MultiVariableSamplePlanProps {
 const IMPORTANCE_LABELS: Record<string, { label: string; color: string; description: string }> = {
     primary: { 
         label: "主要变量", 
-        color: "bg-rose-500",
+        color: "bg-destructive",
         description: "核心调查指标，必须满足精度要求"
     },
     secondary: { 
         label: "次要变量", 
-        color: "bg-amber-500",
+        color: "bg-chart-4",
         description: "重要但可接受稍低精度"
     },
     tertiary: { 
         label: "参考变量", 
-        color: "bg-slate-400",
+        color: "bg-muted-foreground",
         description: "辅助参考，精度要求最低"
     },
 };
@@ -224,42 +225,42 @@ export function MultiVariableSamplePlan({
     };
 
     return (
-        <Card className="rounded-2xl border-indigo-200/90 bg-indigo-50/90 shadow-sm dark:border-indigo-900/45 dark:bg-slate-950">
+        <Card className="rounded-2xl border-primary/20 bg-primary/5 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <BarChart3 className="w-5 h-5 text-indigo-500" />
-                        <CardTitle className="text-base text-indigo-900 dark:text-indigo-200">
+                        <BarChart3 className="size-5 text-primary" />
+                        <CardTitle className="text-base text-foreground">
                             多变量样本量规划
                         </CardTitle>
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-indigo-100/50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30 dark:text-indigo-300"
+                        className="border-primary/20 bg-primary/10 text-xs text-primary"
                     >
                         {variables.length} 个变量
                     </Badge>
                 </div>
-                <CardDescription className="text-slate-700 dark:text-slate-300">
+                <CardDescription className="text-muted-foreground">
                     当调查包含多个指标时，确保所有重要变量都有足够精度
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-col gap-4">
                 {/* 说明卡片 */}
                 {showExplanation && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+                    <div className="rounded-xl border border-chart-4/20 bg-chart-4/10 p-3">
                         <div className="flex gap-2">
-                            <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                            <div className="text-xs text-amber-800 dark:text-amber-200 space-y-1">
+                            <Info className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                            <div className="flex flex-col gap-1 text-xs text-foreground">
                                 <p className="font-medium">为什么需要多变量规划？</p>
-                                <p className="text-amber-900 dark:text-amber-100">
+                                <p>
                                     一个调查通常包含多个指标（如满意度、知晓率、消费金额等）。不同指标的变异程度不同，
                                     所需样本量也不同。系统会自动选择能够满足所有主要变量的最大样本量。
                                 </p>
                                 <button 
                                     onClick={() => setShowExplanation(false)}
-                                    className="text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 text-xs underline"
+                                    className="self-start text-xs text-primary underline-offset-4 hover:underline"
                                 >
                                     隐藏说明
                                 </button>
@@ -269,7 +270,7 @@ export function MultiVariableSamplePlan({
                 )}
 
                 {/* 变量列表 */}
-                <div className="space-y-3">
+                <div className="flex flex-col gap-3">
                     {variables.map((variable, index) => {
                         const importanceConfig = getImportanceConfig(variable.importance);
                         const isExpanded = expandedVariable === variable.id;
@@ -282,27 +283,28 @@ export function MultiVariableSamplePlan({
                         return (
                             <div 
                                 key={variable.id}
-                                className={`rounded-xl border transition-all ${
+                                className={cn(
+                                    "rounded-xl border transition-all",
                                     isExpanded
-                                        ? "border-indigo-300 bg-white shadow-sm dark:border-indigo-700/50 dark:bg-slate-950"
-                                        : "border-indigo-200/80 bg-white/95 dark:border-indigo-800/40 dark:bg-slate-950"
-                                }`}
+                                        ? "border-primary/30 bg-card shadow-sm"
+                                        : "border-border bg-card/80",
+                                )}
                             >
                                 {/* 变量头部 */}
                                 <div 
-                                    className="flex items-center justify-between p-3 cursor-pointer"
+                                    className="flex cursor-pointer items-center justify-between p-3"
                                     onClick={() => setExpandedVariable(isExpanded ? null : variable.id)}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${importanceConfig.color}`}>
+                                        <div className={cn("flex size-8 items-center justify-center rounded-full text-sm font-bold text-primary-foreground", importanceConfig.color)}>
                                             {index + 1}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-indigo-900 dark:text-indigo-100 truncate">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="truncate font-medium text-foreground">
                                                 {variable.name}
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs text-indigo-800 dark:text-indigo-200">
-                                                <span className="px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50">
+                                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">
                                                     {importanceConfig.label}
                                                 </span>
                                                 <span>需 n ≥ {variable.requiredSampleSize.toLocaleString()}</span>
@@ -311,46 +313,46 @@ export function MultiVariableSamplePlan({
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {variable.importance === "primary" && (
-                                            <Star className="w-4 h-4 text-rose-500 fill-rose-500" />
+                                            <Star className="size-4 fill-destructive text-destructive" />
                                         )}
                                         {isExpanded ? (
-                                            <ChevronUp className="w-4 h-4 text-indigo-500" />
+                                            <ChevronUp className="size-4 text-primary" />
                                         ) : (
-                                            <ChevronDown className="w-4 h-4 text-indigo-500" />
+                                            <ChevronDown className="size-4 text-primary" />
                                         )}
                                         <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="icon-xs"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 removeVariable(variable.id);
                                             }}
-                                            className="h-8 w-8 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30"
+                                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                            aria-label={`删除${variable.name}`}
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 />
                                         </Button>
                                     </div>
                                 </div>
 
                                 {/* 展开的配置面板 */}
                                 {isExpanded && (
-                                    <div className="px-4 pb-4 space-y-4">
-                                        <div className="h-px bg-indigo-200/50 dark:bg-indigo-700/30" />
+                                    <div className="flex flex-col gap-4 px-4 pb-4">
+                                        <div className="h-px bg-border" />
                                         
                                         {/* 名称 */}
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">变量名称</Label>
+                                        <div className="flex flex-col gap-2">
+                                            <Label className="text-xs text-muted-foreground">变量名称</Label>
                                             <Input
                                                 value={variable.name}
                                                 onChange={(e) => updateVariable(variable.id, { name: e.target.value })}
-                                                className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
                                                 placeholder="如：满意度、知晓率、消费金额"
                                             />
                                         </div>
 
                                         {/* 变量类型 */}
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">变量类型</Label>
+                                        <div className="flex flex-col gap-2">
+                                            <Label className="text-xs text-muted-foreground">变量类型</Label>
                                             <Select 
                                                 value={variable.type} 
                                                 onValueChange={(value: "proportion" | "mean") =>
@@ -364,10 +366,10 @@ export function MultiVariableSamplePlan({
                                                     })
                                                 }
                                             >
-                                                <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
+                                                <SelectTrigger>
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
+                                                <SelectContent>
                                                     <SelectGroup>
                                                         <SelectItem value="proportion">比例（如知晓率、满意度）</SelectItem>
                                                         <SelectItem value="mean">均值（如消费金额、年龄）</SelectItem>
@@ -377,8 +379,8 @@ export function MultiVariableSamplePlan({
                                         </div>
 
                                         {/* 估计值 */}
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">
+                                        <div className="flex flex-col gap-2">
+                                            <Label className="text-xs text-muted-foreground">
                                                 {variable.type === "proportion" ? "估计比例 p（0-1）" : "估计均值"}
                                             </Label>
                                             <div className="flex items-center gap-2">
@@ -388,17 +390,16 @@ export function MultiVariableSamplePlan({
                                                     onChange={(e) => updateVariable(variable.id, { 
                                                         estimatedValue: parseFloat(e.target.value) || 0 
                                                     })}
-                                                    className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
                                                     step={0.01}
                                                     min={0}
                                                     max={variable.type === "proportion" ? 1 : undefined}
                                                 />
                                                 {variable.type === "proportion" && (
-                                                    <span className="text-indigo-600 dark:text-indigo-400 text-sm">0-1</span>
+                                                    <span className="text-sm text-muted-foreground">0-1</span>
                                                 )}
                                             </div>
                                             {variable.type === "proportion" && (
-                                                <p className="text-xs text-indigo-800 dark:text-indigo-200">
+                                                <p className="text-xs text-muted-foreground">
                                                     输入 0-1 小数，例如 0.5 = 50%。保守估计通常取 p=0.5，此时方差最大。
                                                 </p>
                                             )}
@@ -406,72 +407,71 @@ export function MultiVariableSamplePlan({
 
                                         {/* 标准差（均值类型时） */}
                                         {variable.type === "mean" && (
-                                            <div className="space-y-2">
-                                                <Label className="text-xs text-indigo-700 dark:text-indigo-300">估计标准差 (σ)</Label>
+                                            <div className="flex flex-col gap-2">
+                                                <Label className="text-xs text-muted-foreground">估计标准差 (σ)</Label>
                                                 <Input
                                                     type="number"
                                                     value={variable.estimatedStdDev || ""}
                                                     onChange={(e) => updateVariable(variable.id, { 
                                                         estimatedStdDev: parseFloat(e.target.value) || undefined 
                                                     })}
-                                                    className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
                                                     placeholder="输入估计的标准差"
                                                 />
                                             </div>
                                         )}
 
                                         {/* 重要性 */}
-                                        <div className="space-y-2">
-                                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">重要性</Label>
+                                        <div className="flex flex-col gap-2">
+                                            <Label className="text-xs text-muted-foreground">重要性</Label>
                                             <Select 
                                                 value={variable.importance} 
                                                 onValueChange={(value: "primary" | "secondary" | "tertiary") => 
                                                     updateVariable(variable.id, { importance: value })
                                                 }
                                             >
-                                                <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
+                                                <SelectTrigger>
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
+                                                <SelectContent>
                                                     <SelectGroup>
                                                         <SelectItem value="primary">
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-2 h-2 rounded-full bg-rose-500" />
+                                                                <div className="size-2 rounded-full bg-destructive" />
                                                                 主要变量（必须满足）
                                                             </div>
                                                         </SelectItem>
                                                         <SelectItem value="secondary">
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                                <div className="size-2 rounded-full bg-chart-4" />
                                                                 次要变量（尽量满足）
                                                             </div>
                                                         </SelectItem>
                                                         <SelectItem value="tertiary">
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                                                <div className="size-2 rounded-full bg-muted-foreground" />
                                                                 参考变量（参考性）
                                                             </div>
                                                         </SelectItem>
                                                     </SelectGroup>
                                                 </SelectContent>
                                             </Select>
-                                            <p className="text-xs text-indigo-800 dark:text-indigo-200">
+                                            <p className="text-xs text-muted-foreground">
                                                 {importanceConfig?.description || "设置变量重要性等级"}
                                             </p>
                                         </div>
 
                                         {/* 精度要求 */}
                                         <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs text-indigo-700 dark:text-indigo-300">置信水平</Label>
+                                            <div className="flex flex-col gap-2">
+                                                <Label className="text-xs text-muted-foreground">置信水平</Label>
                                                 <Select 
                                                     value={variable.confidenceLevel} 
                                                     onValueChange={(value) => updateVariable(variable.id, { confidenceLevel: value })}
                                                 >
-                                                    <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
+                                                    <SelectTrigger>
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
+                                                    <SelectContent>
                                                         <SelectGroup>
                                                             <SelectItem value="90">90%</SelectItem>
                                                             <SelectItem value="95">95%</SelectItem>
@@ -480,8 +480,8 @@ export function MultiVariableSamplePlan({
                                                     </SelectContent>
                                                 </Select>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-xs text-indigo-700 dark:text-indigo-300">
+                                            <div className="flex flex-col gap-2">
+                                                <Label className="text-xs text-muted-foreground">
                                                     {variable.type === "mean" ? "允许相对误差" : "允许误差"}
                                                 </Label>
                                                 <div className="flex items-center gap-1">
@@ -491,15 +491,14 @@ export function MultiVariableSamplePlan({
                                                         onChange={(e) => updateVariable(variable.id, { 
                                                             marginOfError: parseFloat(e.target.value) || 0 
                                                         })}
-                                                        className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
                                                         min={0.1}
                                                         max={50}
                                                         step={0.1}
                                                     />
-                                                    <span className="text-indigo-600 dark:text-indigo-400 text-sm">%</span>
+                                                    <span className="text-sm text-muted-foreground">%</span>
                                                 </div>
                                                 {variable.type === "mean" && (
-                                                    <p className="text-xs text-indigo-800 dark:text-indigo-200">
+                                                    <p className="text-xs text-muted-foreground">
                                                         这里使用相对误差：绝对误差限 e = 相对误差 × 估计均值。它与左侧主流程里的绝对误差限不是同一语义。
                                                     </p>
                                                 )}
@@ -507,10 +506,10 @@ export function MultiVariableSamplePlan({
                                         </div>
 
                                         {/* 计算结果 */}
-                                        <div className="rounded-lg border border-indigo-200 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950">
+                                        <div className="rounded-lg border bg-background p-3">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs text-slate-600 dark:text-slate-400">所需样本量</span>
-                                                <span className="text-lg font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                                                <span className="text-xs text-muted-foreground">所需样本量</span>
+                                                <span className="text-lg font-bold tabular-nums text-chart-3">
                                                     {variable.requiredSampleSize.toLocaleString()}
                                                 </span>
                                             </div>
@@ -526,9 +525,9 @@ export function MultiVariableSamplePlan({
                 <Button
                     variant="outline"
                     onClick={addVariable}
-                    className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-700 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+                    className="w-full"
                 >
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus data-icon="inline-start" />
                     添加调查变量
                 </Button>
 
@@ -536,14 +535,14 @@ export function MultiVariableSamplePlan({
 
                 {/* 总样本量计算 */}
                 {variables.length > 0 && (
-                    <div className="rounded-xl border-2 border-indigo-300 bg-white p-4 shadow-sm dark:border-indigo-700/50 dark:bg-slate-950">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                            <span className="font-bold text-indigo-900 dark:text-indigo-100">样本量决策</span>
+                    <div className="rounded-xl border-2 border-primary/30 bg-card p-4 shadow-sm">
+                        <div className="mb-4 flex items-center gap-2">
+                            <Target className="size-5 text-primary" />
+                            <span className="font-bold text-foreground">样本量决策</span>
                         </div>
 
                         {/* 按重要性分组显示 */}
-                        <div className="space-y-3 mb-4">
+                        <div className="mb-4 flex flex-col gap-3">
                             {["primary", "secondary", "tertiary"].map(importance => {
                                 const vars = variables.filter(v => v.importance === importance);
                                 if (vars.length === 0) return null;
@@ -556,12 +555,12 @@ export function MultiVariableSamplePlan({
                                 return (
                                     <div key={importance} className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-2">
-                                            <div className={`w-2 h-2 rounded-full ${config?.color || "bg-slate-400"}`} />
-                                            <span className="text-indigo-700 dark:text-indigo-300">
+                                            <div className={cn("size-2 rounded-full", config?.color || "bg-muted-foreground")} />
+                                            <span className="text-muted-foreground">
                                                 {config?.label || importance}（{vars.length}个）
                                             </span>
                                         </div>
-                                        <span className="font-mono text-indigo-900 dark:text-indigo-100">
+                                        <span className="font-mono text-foreground">
                                             max = {maxSampleSize.toLocaleString()}
                                         </span>
                                     </div>
@@ -569,16 +568,16 @@ export function MultiVariableSamplePlan({
                             })}
                         </div>
 
-                        <div className="h-px bg-indigo-300/50 dark:bg-indigo-700/50 mb-4" />
+                        <div className="mb-4 h-px bg-border" />
 
-                        <div className="flex justify-between items-center">
-                            <span className="font-bold text-indigo-950 dark:text-indigo-50">建议总样本量</span>
-                            <span className="text-2xl font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                        <div className="flex items-center justify-between">
+                            <span className="font-bold text-foreground">建议总样本量</span>
+                            <span className="text-2xl font-bold tabular-nums text-chart-3">
                                 {recommendedSampleSize.toLocaleString()}
                             </span>
                         </div>
 
-                        <p className="text-xs text-indigo-900 dark:text-indigo-100 mt-3 leading-relaxed">
+                        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                             原则：取主要变量所需样本量的最大值。次要变量和参考变量可能在样本量上有所妥协。
                         </p>
 
@@ -586,10 +585,10 @@ export function MultiVariableSamplePlan({
                             <Button
                                 type="button"
                                 onClick={() => onApplyToPlan({ variables, recommendedSampleSize })}
-                                className="w-full mt-4 bg-indigo-600 text-white hover:bg-indigo-500"
+                                className="mt-4 w-full"
                             >
                                 应用到样本量规划
-                                <ArrowRight className="w-4 h-4 ml-2" />
+                                <ArrowRight data-icon="inline-end" />
                             </Button>
                         )}
                     </div>
@@ -597,14 +596,14 @@ export function MultiVariableSamplePlan({
 
                 {/* 各变量样本量对比 */}
                 {variables.length > 1 && (
-                    <div className="rounded-xl border border-indigo-200 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950">
-                        <div className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mb-3">
+                    <div className="rounded-xl border bg-background p-3">
+                        <div className="mb-3 text-xs font-medium text-primary">
                             各变量样本量需求对比
                         </div>
-                        <div className="space-y-2">
-                            {variables
+                        <div className="flex flex-col gap-2">
+                            {[...variables]
                                 .sort((a, b) => b.requiredSampleSize - a.requiredSampleSize)
-                                .map((variable, index) => {
+                                .map((variable) => {
                                     const importanceConfig = getImportanceConfig(variable.importance);
                                     if (!importanceConfig) return null;
                                     
@@ -612,24 +611,24 @@ export function MultiVariableSamplePlan({
                                     
                                     return (
                                         <div key={variable.id} className="flex items-center gap-3">
-                                            <div className={`w-2 h-2 rounded-full ${importanceConfig?.color || "bg-slate-400"}`} />
-                                            <span className="text-xs text-indigo-600 dark:text-indigo-400 flex-1 truncate">
+                                            <div className={cn("size-2 rounded-full", importanceConfig?.color || "bg-muted-foreground")} />
+                                            <span className="flex-1 truncate text-xs text-muted-foreground">
                                                 {variable.name}
                                             </span>
                                             <div className="flex items-center gap-2">
-                                                <div className="w-20 h-1.5 rounded-full bg-indigo-200 dark:bg-indigo-800">
+                                                <div className="h-1.5 w-20 rounded-full bg-muted">
                                                     <div 
-                                                        className={`h-full rounded-full ${isMax ? "bg-rose-500" : "bg-indigo-400"}`}
+                                                        className={cn("h-full rounded-full", isMax ? "bg-destructive" : "bg-primary")}
                                                         style={{ 
                                                             width: `${Math.min(100, (variable.requiredSampleSize / recommendedSampleSize) * 100)}%` 
                                                         }}
                                                     />
                                                 </div>
-                                                <span className={`text-xs font-mono w-12 text-right ${isMax ? "font-bold text-rose-600 dark:text-rose-400" : "text-indigo-600 dark:text-indigo-400"}`}>
+                                                <span className={cn("w-12 text-right font-mono text-xs", isMax ? "font-bold text-destructive" : "text-muted-foreground")}>
                                                     {variable.requiredSampleSize.toLocaleString()}
                                                 </span>
                                                 {isMax && (
-                                                    <Badge className="bg-rose-500 text-white text-[10px] px-1">
+                                                    <Badge className="bg-destructive px-1 text-[10px] text-destructive-foreground">
                                                         决定因素
                                                     </Badge>
                                                 )}
@@ -643,12 +642,12 @@ export function MultiVariableSamplePlan({
 
                 {/* 提示信息 */}
                 {variables.some(v => v.importance !== "primary") && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-500/20 dark:bg-amber-500/10">
+                    <div className="rounded-xl border border-chart-4/20 bg-chart-4/10 p-3">
                         <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                            <div className="text-xs text-amber-800 dark:text-amber-200">
-                                <p className="font-medium mb-1">精度权衡提示</p>
-                                <p className="text-amber-900 dark:text-amber-100">
+                            <AlertCircle className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                            <div className="text-xs text-foreground">
+                                <p className="mb-1 font-medium">精度权衡提示</p>
+                                <p>
                                     非主要变量的实际精度可能低于设定值。如需所有变量都达到目标精度，
                                     建议将所有变量设为"主要"或将次要变量的误差限放宽。
                                 </p>
