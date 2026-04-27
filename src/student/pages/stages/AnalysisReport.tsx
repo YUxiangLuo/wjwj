@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
@@ -12,9 +13,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle, Ruler, ListTree, AlertCircle } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
+import { cn } from "@/lib/utils";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { experimentApi, type AnalysisMetricsData } from "../../api-client";
@@ -67,26 +69,26 @@ function ChartBars({
 
     if (rows.length === 0) {
         return (
-            <div className={`${heightClass} rounded-2xl bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 text-sm`}>
+            <div className={cn(heightClass, "flex items-center justify-center rounded-lg border border-border bg-muted/30 text-sm text-muted-foreground")}>
                 {emptyMessage}
             </div>
         );
     }
 
     return (
-        <div className={`${heightClass} rounded-2xl bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 p-4 overflow-auto`}>
-            <div className="space-y-4">
+        <div className={cn(heightClass, "overflow-auto rounded-lg border border-border bg-muted/30 p-4")}>
+            <div className="flex flex-col gap-4">
                 {rows.map((row) => (
-                    <div key={row.label} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 p-3">
-                        <div className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-2">{row.label}</div>
-                        <div className="space-y-2">
+                    <div key={row.label} className="rounded-lg border border-border bg-card/70 p-3">
+                        <div className="mb-2 text-xs font-medium text-foreground">{row.label}</div>
+                        <div className="flex flex-col gap-2">
                             {series.map((s) => {
                                 const value = row.values[s.key] ?? 0;
                                 const widthPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
                                 return (
                                     <div key={`${row.label}-${s.key}`} className="flex items-center gap-2">
-                                        <span className="w-20 text-[11px] text-slate-500 shrink-0">{s.label}</span>
-                                        <div className="h-3 flex-1 rounded bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                                        <span className="w-20 shrink-0 text-[11px] text-muted-foreground">{s.label}</span>
+                                        <div className="h-3 flex-1 overflow-hidden rounded bg-muted">
                                             <div
                                                 className="h-full rounded"
                                                 style={{
@@ -95,7 +97,7 @@ function ChartBars({
                                                 }}
                                             />
                                         </div>
-                                        <span className="w-20 text-right text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+                                        <span className="w-20 text-right font-mono text-[11px] text-muted-foreground">
                                             {value.toFixed(2)}{unit}
                                         </span>
                                     </div>
@@ -133,16 +135,16 @@ function ChartTabPanel({
     fieldSelector?: ReactNode;
 }) {
     return (
-        <div className="mt-6 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="text-sm text-slate-600 dark:text-slate-400">{description}</div>
+        <div className="mt-6 flex flex-col gap-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="text-sm text-muted-foreground">{description}</div>
                 <div className="flex items-center gap-2">
                     {fieldSelector}
-                    <Button variant="outline" size="icon" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700" onClick={onZoom}>
-                        <Maximize2 className="w-4 h-4" />
+                    <Button variant="outline" size="icon" onClick={onZoom}>
+                        <Maximize2 />
                     </Button>
-                    <Button variant="outline" size="icon" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700" onClick={onDownload}>
-                        <Download className="w-4 h-4" />
+                    <Button variant="outline" size="icon" onClick={onDownload}>
+                        <Download />
                     </Button>
                 </div>
             </div>
@@ -168,10 +170,10 @@ function FieldSelect({
 }) {
     return (
         <Select value={value} onValueChange={onChange}>
-            <SelectTrigger className="w-[220px] bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+            <SelectTrigger className="w-[220px]">
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
-            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+            <SelectContent>
                 <SelectGroup>
                     {fields.map((field) => (
                         <SelectItem key={field} value={field}>{field}</SelectItem>
@@ -562,30 +564,30 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     // ---- Render ----
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
+        <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
             {draftRestored && (
                 <Card
                     data-testid="student-analysis-draft-restored"
-                    className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 shadow-sm"
+                    className="border-primary/20 bg-primary/5"
                 >
                     <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
-                            <CheckCircle className="h-4 w-4" />
+                        <div className="flex items-center gap-2 text-sm text-primary">
+                            <CheckCircle className="size-4" />
                             <span>已恢复未提交的本地报告草稿。</span>
                         </div>
                     </CardContent>
                 </Card>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                                <BarChart3 className="w-5 h-5 text-indigo-500" />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="flex flex-col gap-6 lg:col-span-2">
+                    <Card>
+                        <CardHeader className="border-b border-border">
+                            <CardTitle className="flex items-center gap-2 text-foreground">
+                                <BarChart3 className="size-5 text-primary" />
                                 分析数据
                             </CardTitle>
-                            <CardDescription className="text-slate-600 dark:text-slate-400">
+                            <CardDescription>
                                 {statsLoading
                                     ? "正在加载总体统计数据…"
                                     : "在图表分析、样本量规划决策参数与抽样执行参数之间切换查看"}
@@ -594,119 +596,120 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <CardContent className="pt-6">
                             {analysisMetricsError && (
                                 <div
-                                    className="mb-4 flex items-start gap-2 rounded-xl border border-rose-300/70 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:border-rose-800/70 dark:bg-rose-950/20 dark:text-rose-300"
+                                    className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
                                     data-testid="student-analysis-metrics-error"
+                                    role="alert"
                                 >
-                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
                                     <span>{analysisMetricsError}</span>
                                 </div>
                             )}
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList
-                                    className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950"
+                                    className="mb-6 flex h-auto w-full flex-wrap gap-1"
                                     data-testid="student-analysis-section-tabs"
                                 >
                                     <TabsTrigger
                                         value="charts"
                                         data-testid="student-analysis-section-tab-charts"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                        className="min-w-[7rem] flex-1 py-2.5"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
-                                            <BarChart3 className="h-3.5 w-3.5 shrink-0" />
+                                            <BarChart3 data-icon="inline-start" />
                                             图表分析
                                         </span>
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="plan"
                                         data-testid="student-analysis-section-tab-plan"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                        className="min-w-[7rem] flex-1 py-2.5"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
-                                            <Ruler className="h-3.5 w-3.5 shrink-0" />
+                                            <Ruler data-icon="inline-start" />
                                             样本量规划
                                         </span>
                                     </TabsTrigger>
                                     <TabsTrigger
                                         value="sampling"
                                         data-testid="student-analysis-section-tab-sampling"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                        className="min-w-[7rem] flex-1 py-2.5"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
-                                            <ListTree className="h-3.5 w-3.5 shrink-0" />
+                                            <ListTree data-icon="inline-start" />
                                             抽样参数
                                         </span>
                                     </TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="charts" className="mt-0 focus-visible:outline-none">
-                            <Tabs defaultValue="mean">
-                                <TabsList className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 rounded-xl w-full flex h-auto" data-testid="student-analysis-tabs">
-                                    <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">均值对比</TabsTrigger>
-                                    <TabsTrigger value="dist" data-testid="student-analysis-tab-dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">分布对比</TabsTrigger>
-                                    <TabsTrigger value="error" data-testid="student-analysis-tab-error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">误差分析</TabsTrigger>
-                                    <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">样本代表性</TabsTrigger>
-                                </TabsList>
+                                    <Tabs defaultValue="mean">
+                                        <TabsList className="flex h-auto w-full" data-testid="student-analysis-tabs">
+                                            <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 py-2">均值对比</TabsTrigger>
+                                            <TabsTrigger value="dist" data-testid="student-analysis-tab-dist" className="flex-1 py-2">分布对比</TabsTrigger>
+                                            <TabsTrigger value="error" data-testid="student-analysis-tab-error" className="flex-1 py-2">误差分析</TabsTrigger>
+                                            <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 py-2">样本代表性</TabsTrigger>
+                                        </TabsList>
 
-                                <TabsContent value="mean">
-                                    <ChartTabPanel
-                                        description="比较各抽样方法对同一数值变量的总体均值估计。"
-                                        rows={meanRows}
-                                        series={meanSeries}
-                                        emptyMessage="暂无可用于均值分析的数值字段"
-                                        onZoom={() => setZoomChart("mean")}
-                                        onDownload={() => downloadChart("mean")}
-                                        fieldSelector={
-                                            <FieldSelect value={selectedNumericField} onChange={setSelectedNumericField} fields={numericFields} placeholder="选择数值变量" />
-                                        }
-                                    />
-                                </TabsContent>
-
-                                <TabsContent value="dist">
-                                    <ChartTabPanel
-                                        description="比较各抽样方法在分类变量上的分布占比（含总体对照）。"
-                                        rows={distributionRows}
-                                        series={distributionSeries}
-                                        unit="%"
-                                        emptyMessage="暂无可用于分布分析的分类字段"
-                                        onZoom={() => setZoomChart("dist")}
-                                        onDownload={() => downloadChart("dist")}
-                                        fieldSelector={
-                                            <FieldSelect
-                                                value={selectedCategoricalField}
-                                                onChange={setSelectedCategoricalField}
-                                                fields={categoricalFields}
-                                                placeholder="选择分类变量"
+                                        <TabsContent value="mean">
+                                            <ChartTabPanel
+                                                description="比较各抽样方法对同一数值变量的总体均值估计。"
+                                                rows={meanRows}
+                                                series={meanSeries}
+                                                emptyMessage="暂无可用于均值分析的数值字段"
+                                                onZoom={() => setZoomChart("mean")}
+                                                onDownload={() => downloadChart("mean")}
+                                                fieldSelector={
+                                                    <FieldSelect value={selectedNumericField} onChange={setSelectedNumericField} fields={numericFields} placeholder="选择数值变量" />
+                                                }
                                             />
-                                        }
-                                    />
-                                </TabsContent>
+                                        </TabsContent>
 
-                                <TabsContent value="error">
-                                    <ChartTabPanel
-                                        description="比较各抽样方法对同一数值变量均值估计的设计标准误。"
-                                        rows={errorRows}
-                                        series={errorSeries}
-                                        emptyMessage="暂无可用于误差分析的数值字段"
-                                        onZoom={() => setZoomChart("error")}
-                                        onDownload={() => downloadChart("error")}
-                                        fieldSelector={
-                                            <FieldSelect value={selectedNumericField} onChange={setSelectedNumericField} fields={numericFields} placeholder="选择数值变量" />
-                                        }
-                                    />
-                                </TabsContent>
+                                        <TabsContent value="dist">
+                                            <ChartTabPanel
+                                                description="比较各抽样方法在分类变量上的分布占比（含总体对照）。"
+                                                rows={distributionRows}
+                                                series={distributionSeries}
+                                                unit="%"
+                                                emptyMessage="暂无可用于分布分析的分类字段"
+                                                onZoom={() => setZoomChart("dist")}
+                                                onDownload={() => downloadChart("dist")}
+                                                fieldSelector={
+                                                    <FieldSelect
+                                                        value={selectedCategoricalField}
+                                                        onChange={setSelectedCategoricalField}
+                                                        fields={categoricalFields}
+                                                        placeholder="选择分类变量"
+                                                    />
+                                                }
+                                            />
+                                        </TabsContent>
 
-                                <TabsContent value="represent">
-                                    <ChartTabPanel
-                                        description="比较各抽样方法估计结果与总体指标的偏差程度（%）。"
-                                        rows={representativenessRows}
-                                        series={representSeries}
-                                        unit="%"
-                                        emptyMessage="暂无可用于代表性分析的数据"
-                                        onZoom={() => setZoomChart("represent")}
-                                        onDownload={() => downloadChart("represent")}
-                                    />
-                                </TabsContent>
-                            </Tabs>
+                                        <TabsContent value="error">
+                                            <ChartTabPanel
+                                                description="比较各抽样方法对同一数值变量均值估计的设计标准误。"
+                                                rows={errorRows}
+                                                series={errorSeries}
+                                                emptyMessage="暂无可用于误差分析的数值字段"
+                                                onZoom={() => setZoomChart("error")}
+                                                onDownload={() => downloadChart("error")}
+                                                fieldSelector={
+                                                    <FieldSelect value={selectedNumericField} onChange={setSelectedNumericField} fields={numericFields} placeholder="选择数值变量" />
+                                                }
+                                            />
+                                        </TabsContent>
+
+                                        <TabsContent value="represent">
+                                            <ChartTabPanel
+                                                description="比较各抽样方法估计结果与总体指标的偏差程度（%）。"
+                                                rows={representativenessRows}
+                                                series={representSeries}
+                                                unit="%"
+                                                emptyMessage="暂无可用于代表性分析的数据"
+                                                onZoom={() => setZoomChart("represent")}
+                                                onDownload={() => downloadChart("represent")}
+                                            />
+                                        </TabsContent>
+                                    </Tabs>
                                 </TabsContent>
 
                                 <TabsContent value="plan" className="mt-0 focus-visible:outline-none">
@@ -728,20 +731,20 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </Card>
                 </div>
 
-                <div className="space-y-6">
-                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                                <Download className="w-5 h-5 text-teal-500" />
+                <div className="flex flex-col gap-6">
+                    <Card>
+                        <CardHeader className="border-b border-border">
+                            <CardTitle className="flex items-center gap-2 text-foreground">
+                                <Download className="size-5 text-primary" />
                                 数据导出
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="pt-4 space-y-3">
+                        <CardContent className="flex flex-col gap-3 pt-4">
                             <Select value={exportType} onValueChange={(v) => setExportType(v as MethodKey | "all")}>
-                                <SelectTrigger className="w-full bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <SelectTrigger className="w-full">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <SelectContent>
                                     <SelectGroup>
                                         <SelectItem value="all">全部抽样数据</SelectItem>
                                         <SelectItem value="simple">{METHOD_META.simple.label}结果</SelectItem>
@@ -751,21 +754,21 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                            <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" onClick={() => handleExport(exportType)}>
-                                <Download className="w-4 h-4 mr-2" />
+                            <Button className="w-full" onClick={() => handleExport(exportType)}>
+                                <Download data-icon="inline-start" />
                                 导出 CSV
                             </Button>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
+                    <Card className="border-primary/20 bg-primary/5">
                         <CardHeader>
-                            <CardTitle className="text-base text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
-                                <Sparkles className="w-4 h-4" />
+                            <CardTitle className="flex items-center gap-2 text-base text-primary">
+                                <Sparkles className="size-4" />
                                 分析提示
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3 text-sm text-indigo-800/70 dark:text-indigo-200/70">
+                        <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground">
                             <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。</p>
                             <p>• 再看分类分布与代表性偏差，识别各方法对总体结构的贴近程度。</p>
                             <p>• 最后结合设计标准误，说明估计精度与稳定性。</p>
@@ -774,20 +777,20 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                        <FileText className="w-5 h-5 text-indigo-500" />
+            <Card>
+                <CardHeader className="border-b border-border">
+                    <CardTitle className="flex items-center gap-2 text-foreground">
+                        <FileText className="size-5 text-primary" />
                         撰写报告
                     </CardTitle>
-                    <CardDescription className="text-slate-600 dark:text-slate-400">
+                    <CardDescription>
                         请根据实验结果撰写分析报告（{minLength}-{maxLength}字）
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    <div className="p-4 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-600 dark:text-slate-400">
-                        <p className="font-semibold text-slate-700 dark:text-slate-300 mb-2">建议包含以下内容：</p>
-                        <ul className="list-disc list-inside space-y-1.5 pl-2">
+                <CardContent className="flex flex-col gap-6 pt-6">
+                    <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+                        <p className="mb-2 font-semibold text-foreground">建议包含以下内容：</p>
+                        <ul className="flex list-inside list-disc flex-col gap-1.5 pl-2">
                             <li>抽样方法选择的理由</li>
                             <li>各方法执行结果的对比分析</li>
                             <li>抽样误差的分析</li>
@@ -796,9 +799,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </ul>
                     </div>
 
-                    <div className="space-y-3">
-                        <Label htmlFor="report" className="text-slate-700 dark:text-slate-300">报告内容</Label>
-                        <div className="space-y-2">
+                    <div className="flex flex-col gap-3">
+                        <Label htmlFor="report">报告内容</Label>
+                        <div className="flex flex-col gap-2">
                             <RichTextEditor
                                 dataTestId="student-analysis-report"
                                 editorTestId="student-analysis-report-editor"
@@ -809,14 +812,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 editorClassName="min-h-[400px]"
                             />
                             <div className="text-right text-xs">
-                                <span className={reportTextLength < minLength || reportTextLength > maxLength ? "text-rose-600" : "text-emerald-600"}>
+                                <span className={cn(reportTextLength < minLength || reportTextLength > maxLength ? "text-destructive" : "text-primary")}>
                                     {reportTextLength > maxLength
                                         ? `已超出 ${reportTextLength - maxLength} 字`
                                         : reportTextLength < minLength
                                             ? `还需 ${minLength - reportTextLength} 字`
                                             : "✓ 字数符合要求"}
                                 </span>
-                                <span className="text-slate-500 ml-2">{reportTextLength}/{maxLength}</span>
+                                <span className="ml-2 text-muted-foreground">{reportTextLength}/{maxLength}</span>
                             </div>
                         </div>
                     </div>
@@ -824,32 +827,38 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </Card>
 
             {/* Navigation */}
-            <div className="flex justify-between items-center pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
-                    上一阶段
-                </Button>
-                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting} data-testid="student-analysis-preview" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
-                    {isSubmitting ? (
-                        <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            进入预览中...
-                        </>
-                    ) : (
-                        <>
-                            <Send className="w-4 h-4 mr-2" />
-                            完成并预览报告
-                        </>
+            <div className="flex flex-col gap-6">
+                <Separator />
+                <div className="flex items-center justify-between gap-3">
+                    <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev">
+                        上一阶段
+                    </Button>
+                    <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting} data-testid="student-analysis-preview">
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 data-icon="inline-start" className="animate-spin" />
+                                进入预览中...
+                            </>
+                        ) : (
+                            <>
+                                <Send data-icon="inline-start" />
+                                完成并预览报告
+                            </>
                     )}
-                </Button>
+                    </Button>
+                </div>
             </div>
 
             {/* Zoom dialog */}
             <Dialog open={zoomChart !== null} onOpenChange={(open) => { if (!open) setZoomChart(null); }}>
-                <DialogContent className="sm:max-w-[50vw] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-zoom-dialog">
+                <DialogContent className="sm:max-w-[50vw]" data-testid="student-analysis-zoom-dialog">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">
+                        <DialogTitle>
                             {activeZoom?.title}（放大）
                         </DialogTitle>
+                        <DialogDescription className="sr-only">
+                            放大查看当前分析图表。
+                        </DialogDescription>
                     </DialogHeader>
                     {activeZoom && (
                         <ChartBars
