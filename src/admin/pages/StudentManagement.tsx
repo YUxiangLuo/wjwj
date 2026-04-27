@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Dialog,
     DialogContent,
@@ -289,7 +289,7 @@ export function StudentManagement() {
                                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Avg Progress</p>
                                 <p className="text-2xl font-bold mt-1">{loading ? "-" : `${summary.avgProgress}%`}</p>
                             </div>
-                            <div className="w-10 h-10 bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                            <div className="w-10 h-10 bg-chart-4/10 text-chart-4 flex items-center justify-center border border-chart-4/20">
                                 <GraduationCap className="w-5 h-5" />
                             </div>
                         </CardContent>
@@ -319,10 +319,12 @@ export function StudentManagement() {
                                     <SelectValue placeholder="全部班级" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">全部班级</SelectItem>
-                                    {classes.map((c) => (
-                                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                                    ))}
+                                    <SelectGroup>
+                                        <SelectItem value="all">全部班级</SelectItem>
+                                        {classes.map((c) => (
+                                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
@@ -330,9 +332,11 @@ export function StudentManagement() {
                                     <SelectValue placeholder="状态筛选" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">全部状态</SelectItem>
-                                    <SelectItem value="active">正常</SelectItem>
-                                    <SelectItem value="disabled">已停用</SelectItem>
+                                    <SelectGroup>
+                                        <SelectItem value="all">全部状态</SelectItem>
+                                        <SelectItem value="active">正常</SelectItem>
+                                        <SelectItem value="disabled">已停用</SelectItem>
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -404,7 +408,7 @@ export function StudentManagement() {
                                                         size="sm"
                                                         data-testid={`student-open-transfer-${student.studentId}`}
                                                         onClick={() => openTransferModal(student)}
-                                                        className="h-8 hover:text-purple-600 hover:bg-purple-500/10"
+                                                        className="h-8 hover:text-primary hover:bg-primary/10"
                                                     >
                                                         <ArrowRight className="w-3.5 h-3.5 mr-1" />
                                                         转班
@@ -457,13 +461,15 @@ export function StudentManagement() {
                                     <SelectValue placeholder="选择新班级" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes
-                                        .filter((c) => c.id !== transferStudent?.classId)
-                                        .map((c) => (
-                                            <SelectItem key={c.id} value={String(c.id)}>
-                                                {c.name}
-                                            </SelectItem>
-                                        ))}
+                                    <SelectGroup>
+                                        {classes
+                                            .filter((c) => c.id !== transferStudent?.classId)
+                                            .map((c) => (
+                                                <SelectItem key={c.id} value={String(c.id)}>
+                                                    {c.name}
+                                                </SelectItem>
+                                            ))}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </div>

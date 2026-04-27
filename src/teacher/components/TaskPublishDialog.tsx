@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DatetimePicker24 } from "@/components/ui/datetime-picker";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { TeacherClass, Topic } from "../api-client";
 
 interface TaskPublishDialogProps {
@@ -50,21 +50,23 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                     <div className="space-y-2">
                         <Label className="text-foreground">选择课题</Label>
                         <Select onValueChange={onSelectedTopicIdChange} value={selectedTopicId}>
-                            <SelectTrigger data-testid="teacher-task-topic-select" className="bg-background dark:bg-card border-border text-foreground">
+                            <SelectTrigger data-testid="teacher-task-topic-select" className="bg-background border-border text-foreground">
                                 <SelectValue placeholder="请选择课题" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                {availableTopics.length === 0 ? <SelectItem value="none" disabled>暂无已发布课题</SelectItem> :
-                                    availableTopics.map((t) => (
-                                        <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
-                                    ))
-                                }
+                                <SelectGroup>
+                                    {availableTopics.length === 0 ? <SelectItem value="none" disabled>暂无已发布课题</SelectItem> :
+                                        availableTopics.map((t) => (
+                                            <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                                        ))
+                                    }
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="space-y-2">
                         <Label className="text-foreground">选择班级</Label>
-                        <div className="space-y-2 border border-border bg-background dark:bg-card rounded-md p-3 max-h-40 overflow-y-auto">
+                        <div className="space-y-2 border border-border bg-background rounded-md p-3 max-h-40 overflow-y-auto">
                             {availableClasses.length === 0 ? <div className="text-sm text-muted-foreground">无班级</div> : availableClasses.map((cls) => {
                                 const disabled = disabledClassIds.has(cls.id);
                                 return (

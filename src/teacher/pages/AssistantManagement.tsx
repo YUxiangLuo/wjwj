@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -183,17 +183,19 @@ export function AssistantManagement() {
                                 placeholder="搜索姓名/工号/邮箱"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background dark:bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
-                            <SelectTrigger data-testid="teacher-assistant-status-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-28">
+                            <SelectTrigger data-testid="teacher-assistant-status-filter" className="bg-background border-border text-foreground sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all">全部状态</SelectItem>
-                                <SelectItem value="active">正常</SelectItem>
-                                <SelectItem value="disabled">已停用</SelectItem>
+                                <SelectGroup>
+                                    <SelectItem value="all">全部状态</SelectItem>
+                                    <SelectItem value="active">正常</SelectItem>
+                                    <SelectItem value="disabled">已停用</SelectItem>
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Button data-testid="teacher-assistant-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">

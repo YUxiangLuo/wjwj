@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -375,17 +375,19 @@ export function TopicManagement() {
                                 placeholder="搜索课题名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background dark:bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger data-testid="teacher-topic-status-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-28">
+                            <SelectTrigger data-testid="teacher-topic-status-filter" className="bg-background border-border text-foreground sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all">全部状态</SelectItem>
-                                <SelectItem value="draft">草稿</SelectItem>
-                                <SelectItem value="published">已发布</SelectItem>
+                                <SelectGroup>
+                                    <SelectItem value="all">全部状态</SelectItem>
+                                    <SelectItem value="draft">草稿</SelectItem>
+                                    <SelectItem value="published">已发布</SelectItem>
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -395,7 +397,7 @@ export function TopicManagement() {
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4">
                     {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
-                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border bg-background dark:bg-card hover:bg-accent transition-all p-5">
+                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border bg-background hover:bg-accent transition-all p-5">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
                                 <div className="flex items-start gap-4">
                                     <div className="w-12 h-12 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">

@@ -119,7 +119,7 @@ export function Dashboard() {
                     <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20">
                         <Megaphone className="w-5 h-5 text-amber-600 shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <span className="text-sm text-amber-800 dark:text-amber-200 font-medium truncate block">{latest.title}</span>
+                            <span className="text-sm text-amber-700 font-medium truncate block">{latest.title}</span>
                         </div>
                         <span className="text-xs text-amber-600/70 shrink-0">{unread.length} 条未读</span>
                         <Button

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -235,18 +235,20 @@ export function TaskManagement() {
                                 placeholder="搜索课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background dark:bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                             />
                         </div>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger data-testid="teacher-task-class-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-task-class-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all">全部班级</SelectItem>
-                                {Array.from(new Set(tasks.map((task) => task.className))).map((name) => (
-                                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all">全部班级</SelectItem>
+                                    {Array.from(new Set(tasks.map((task) => task.className))).map((name) => (
+                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">

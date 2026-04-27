@@ -230,7 +230,7 @@ export function StudentManagement() {
                                 placeholder="搜索学生"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 bg-background dark:bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                             />
                         </div>
                         <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)}>

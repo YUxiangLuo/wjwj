@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { assistantApi, teacherApi, type Assistant, type Teacher } from "../api-client";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { toast } from "sonner";
@@ -276,7 +276,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Linked Teachers</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
-                        <div className="w-10 h-10 bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 bg-chart-4/10 text-chart-4 flex items-center justify-center border border-chart-4/20">
                             <UserRound className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -302,10 +302,12 @@ export function AssistantManagement() {
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">全部教师</SelectItem>
-                                {teachers.map((t) => (
-                                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all">全部教师</SelectItem>
+                                    {teachers.map((t) => (
+                                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                     </div>
@@ -434,9 +436,11 @@ export function AssistantManagement() {
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {teachers.map((t) => (
-                                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                                    ))}
+                                    <SelectGroup>
+                                        {teachers.map((t) => (
+                                            <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </div>

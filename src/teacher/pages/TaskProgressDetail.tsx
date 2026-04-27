@@ -14,7 +14,7 @@ const STATUS_CONFIG = {
     stage2: { label: "样本规划", color: "text-cyan-600", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/20" },
     stage3: { label: "抽样执行", color: "text-chart-3", bgColor: "bg-chart-3/10", borderColor: "border-chart-3/20" },
     stage4: { label: "分析报告", color: "text-amber-600", bgColor: "bg-amber-500/10", borderColor: "border-amber-500/20" },
-    submitted: { label: "已提交", color: "text-yellow-600 dark:text-yellow-400", bgColor: "bg-yellow-500/10", borderColor: "border-yellow-500/20" },
+    submitted: { label: "已提交", color: "text-yellow-600", bgColor: "bg-yellow-500/10", borderColor: "border-yellow-500/20" },
     graded: { label: "已批改", color: "text-emerald-600", bgColor: "bg-emerald-500/10", borderColor: "border-emerald-500/20" },
     rejected: { label: "已驳回", color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive/20" },
 } as const;
@@ -233,7 +233,7 @@ export function TaskProgressDetail() {
                             placeholder="搜索学号/姓名"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-background dark:bg-card border-border text-foreground placeholder:text-muted-foreground h-8 text-sm"
+                            className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground h-8 text-sm"
                         />
                     </div>
                 </div>

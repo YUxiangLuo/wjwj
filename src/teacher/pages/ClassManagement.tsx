@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Users, School, CalendarDays, Search } from "lucide-react";
 import { teacherApi, type TeacherClass } from "../api-client";
@@ -105,20 +105,22 @@ export function ClassManagement() {
                                 placeholder="搜索班级名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background dark:bg-card border-border text-foreground placeholder:text-muted-foreground sm:w-64 focus:border-primary/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground sm:w-64 focus:border-primary/50"
                             />
                         </div>
                         <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-                            <SelectTrigger data-testid="teacher-class-semester-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-44">
+                            <SelectTrigger data-testid="teacher-class-semester-filter" className="bg-background border-border text-foreground sm:w-44">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all">全部学期</SelectItem>
-                                {semesters.map((semester) => (
-                                    <SelectItem key={semester} value={semester}>
-                                        {semester}
-                                    </SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all">全部学期</SelectItem>
+                                    {semesters.map((semester) => (
+                                        <SelectItem key={semester} value={semester}>
+                                            {semester}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                     </div>

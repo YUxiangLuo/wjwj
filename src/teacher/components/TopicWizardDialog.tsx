@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import type { TopicDetail, Question } from "../api-client";
 import { teacherApi } from "../api-client";
@@ -350,7 +350,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 2 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
-                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
                                         该课题已发布，总体数据文件不可更换，仅可查看当前数据。
                                     </div>
                                 )}
@@ -450,7 +450,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
-                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
                                         该课题已发布，字段映射不可修改，仅可查看当前配置。
                                     </div>
                                 )}
@@ -492,9 +492,11 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             <SelectValue placeholder="选择标识符字段" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {columns.map((c) => (
-                                                <SelectItem key={c} value={c}>{c}</SelectItem>
-                                            ))}
+                                            <SelectGroup>
+                                                {columns.map((c) => (
+                                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                ))}
+                                            </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                     <p className="text-xs text-muted-foreground">用于唯一标识每条数据的字段，如“编号”、“ID”等</p>
@@ -505,7 +507,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <div
                                             key={rule.text}
                                             className={`rounded-md border px-3 py-2 text-xs ${rule.ok
-                                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
                                                 : "border-border bg-card text-muted-foreground"
                                                 }`}
                                         >

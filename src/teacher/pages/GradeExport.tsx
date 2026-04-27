@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FileSpreadsheet, Users, CheckCircle2, Layers, Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -194,36 +194,42 @@ export function GradeExport() {
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto flex-wrap">
                         <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setClassFilter("all"); }}>
-                            <SelectTrigger data-testid="teacher-export-semester-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-semester-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all">全部学期</SelectItem>
-                                {semesters.map((s) => (
-                                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all">全部学期</SelectItem>
+                                    {semesters.map((s) => (
+                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger data-testid="teacher-export-class-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-class-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all">全部班级</SelectItem>
-                                {filteredClasses.map((cls) => (
-                                    <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all">全部班级</SelectItem>
+                                    {filteredClasses.map((cls) => (
+                                        <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Select value={topicFilter} onValueChange={setTopicFilter}>
-                            <SelectTrigger data-testid="teacher-export-topic-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-topic-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部课题" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all">全部课题</SelectItem>
-                                {topics.map((t) => (
-                                    <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all">全部课题</SelectItem>
+                                    {topics.map((t) => (
+                                        <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Button

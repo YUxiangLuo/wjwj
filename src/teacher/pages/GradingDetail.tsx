@@ -278,9 +278,9 @@ export function GradingDetail() {
             return (
                 <div className="space-y-2 border border-amber-500/30 bg-amber-500/5 px-4 py-3">
                     <div className="font-medium text-foreground">{label}</div>
-                    <div className="text-sm text-amber-700 dark:text-amber-300">{DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE}</div>
+                    <div className="text-sm text-amber-700">{DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE}</div>
                     {previewState.reason !== DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE && (
-                        <div className="text-xs text-amber-700/80 dark:text-amber-300/80">{previewState.reason}</div>
+                        <div className="text-xs text-amber-700/80">{previewState.reason}</div>
                     )}
                 </div>
             );
@@ -365,7 +365,7 @@ export function GradingDetail() {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-background dark:bg-card">
+        <div className="flex flex-col h-full overflow-hidden bg-background">
             {/* Header */}
             <div className="flex items-center gap-4 px-6 h-16 bg-card border-b border-border shrink-0">
                 <Button variant="ghost" size="sm" onClick={() => navigate("/grading")}>
@@ -400,7 +400,7 @@ export function GradingDetail() {
                 </div>
             )}
             {data.status === 3 && !isReadOnly && (
-                <div data-testid="teacher-grading-rejected-no-edit-banner" className="px-6 py-2 text-sm text-amber-800 dark:text-amber-200 bg-amber-500/10 border-b border-amber-500/20 text-center">
+                <div data-testid="teacher-grading-rejected-no-edit-banner" className="px-6 py-2 text-sm text-amber-700 bg-amber-500/10 border-b border-amber-500/20 text-center">
                     已驳回的作业不可修改评分；学生重新提交后可在新记录上批改。
                 </div>
             )}
@@ -449,7 +449,7 @@ export function GradingDetail() {
             {/* Main Content */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Left: Submission Content */}
-                <div className="flex-1 overflow-y-auto p-6 bg-background dark:bg-card">
+                <div className="flex-1 overflow-y-auto p-6 bg-background">
                     <Tabs defaultValue="report" className="h-full flex flex-col">
                         <TabsList className="bg-card border border-border self-start mb-6">
                             <TabsTrigger value="report" className="data-[state=active]:bg-accent data-[state=active]:text-primary text-muted-foreground">
@@ -491,10 +491,10 @@ export function GradingDetail() {
                                     {data.reportContent ? (
                                         <RichTextContent
                                             html={data.reportContent}
-                                            className="text-sm text-foreground leading-relaxed bg-background/50 dark:bg-card/50 p-6 border border-border/50"
+                                            className="text-sm text-foreground leading-relaxed bg-background/50 p-6 border border-border/50"
                                         />
                                     ) : (
-                                        <div className="text-muted-foreground text-center py-20 bg-background/30 dark:bg-card/30 border border-dashed border-border">
+                                        <div className="text-muted-foreground text-center py-20 bg-muted/30 border border-dashed border-border">
                                             暂无报告内容
                                         </div>
                                     )}
@@ -526,7 +526,7 @@ export function GradingDetail() {
                                 </div>
                                 <div className="space-y-6">
                                     {questionnaire && questionnaire.title ? (
-                                        <div className="space-y-6 max-w-3xl mx-auto bg-background dark:bg-card p-8 border border-border shadow-inner">
+                                        <div className="space-y-6 max-w-3xl mx-auto bg-background p-8 border border-border shadow-inner">
                                             <div className="text-center space-y-2 border-b border-border pb-6 mb-6">
                                                 <div className="font-bold text-xl text-foreground">{questionnaire.title}</div>
                                                 {questionnaire.welcomeText && (
@@ -551,7 +551,7 @@ export function GradingDetail() {
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="text-muted-foreground text-center py-20 bg-background/30 dark:bg-card/30 border border-dashed border-border">
+                                        <div className="text-muted-foreground text-center py-20 bg-muted/30 border border-dashed border-border">
                                             未设计问卷
                                         </div>
                                     )}
@@ -594,7 +594,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.questionnaire}
                                         onChange={(e) => setScores({ ...scores, questionnaire: e.target.value })}
-                                        className="text-left bg-background dark:bg-card border-border text-foreground h-10 text-lg font-mono focus:border-primary"
+                                        className="text-left bg-background border-border text-foreground h-10 text-lg font-mono focus:border-primary"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -613,7 +613,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.process}
                                         onChange={(e) => setScores({ ...scores, process: e.target.value })}
-                                        className="text-left bg-background dark:bg-card border-border text-foreground h-10 text-lg font-mono focus:border-primary"
+                                        className="text-left bg-background border-border text-foreground h-10 text-lg font-mono focus:border-primary"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -632,7 +632,7 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.report}
                                         onChange={(e) => setScores({ ...scores, report: e.target.value })}
-                                        className="text-left bg-background dark:bg-card border-border text-foreground h-10 text-lg font-mono focus:border-primary"
+                                        className="text-left bg-background border-border text-foreground h-10 text-lg font-mono focus:border-primary"
                                         disabled={saving || gradingLocked}
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
@@ -662,7 +662,7 @@ export function GradingDetail() {
                                     </Button>
                                 </Label>
                                 {showTemplates && (
-                                    <div className="flex flex-wrap gap-1.5 p-3 bg-background dark:bg-card border border-border rounded-lg">
+                                    <div className="flex flex-wrap gap-1.5 p-3 bg-background border border-border rounded-lg">
                                         {COMMENT_TEMPLATES.map((tpl, idx) => (
                                             <button
                                                 key={idx}
@@ -692,7 +692,7 @@ export function GradingDetail() {
                                     placeholder="请输入评语..."
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
-                                    className="bg-background dark:bg-card border-border text-foreground resize-none focus:border-primary"
+                                    className="bg-background border-border text-foreground resize-none focus:border-primary"
                                     disabled={saving || gradingLocked}
                                 />
                                 <div className="text-xs text-muted-foreground text-right">{comment.length}/2000</div>
@@ -743,7 +743,7 @@ export function GradingDetail() {
                             rows={4}
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
-                            className="bg-background dark:bg-card border-border text-foreground"
+                            className="bg-background border-border text-foreground"
                             placeholder="请详细说明驳回原因..."
                         />
                     </div>

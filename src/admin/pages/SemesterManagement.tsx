@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { semesterApi, type Semester } from "../api-client";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { toast } from "sonner";
@@ -234,7 +234,7 @@ export function SemesterManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">With Classes</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.withClasses}</p>
                         </div>
-                        <div className="w-10 h-10 bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 bg-chart-4/10 text-chart-4 flex items-center justify-center border border-chart-4/20">
                             <School className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -259,9 +259,11 @@ export function SemesterManagement() {
                                 <SelectValue placeholder="状态筛选" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">全部状态</SelectItem>
-                                <SelectItem value="current">当前学期</SelectItem>
-                                <SelectItem value="history">历史学期</SelectItem>
+                                <SelectGroup>
+                                    <SelectItem value="all">全部状态</SelectItem>
+                                    <SelectItem value="current">当前学期</SelectItem>
+                                    <SelectItem value="history">历史学期</SelectItem>
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                     </div>

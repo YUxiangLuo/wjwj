@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { classApi, semesterApi, teacherApi, type Class, type Semester, type Teacher } from "../api-client";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { useNavigate } from "react-router-dom";
@@ -261,7 +261,7 @@ export function ClassManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Teachers</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
-                        <div className="w-10 h-10 bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                        <div className="w-10 h-10 bg-chart-4/10 text-chart-4 flex items-center justify-center border border-chart-4/20">
                             <UserCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -287,10 +287,12 @@ export function ClassManagement() {
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">全部学期</SelectItem>
-                                {semesters.map((s) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all">全部学期</SelectItem>
+                                    {semesters.map((s) => (
+                                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
@@ -298,10 +300,12 @@ export function ClassManagement() {
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">全部教师</SelectItem>
-                                {teachers.map((t) => (
-                                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all">全部教师</SelectItem>
+                                    {teachers.map((t) => (
+                                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                     </div>
@@ -410,9 +414,11 @@ export function ClassManagement() {
                                     <SelectValue placeholder="选择学期" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {semesters.map((s) => (
-                                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                                    ))}
+                                    <SelectGroup>
+                                        {semesters.map((s) => (
+                                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -423,9 +429,11 @@ export function ClassManagement() {
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {teachers.map((t) => (
-                                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                                    ))}
+                                    <SelectGroup>
+                                        {teachers.map((t) => (
+                                            <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -475,9 +483,11 @@ export function ClassManagement() {
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {teachers.map((t) => (
-                                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                                    ))}
+                                    <SelectGroup>
+                                        {teachers.map((t) => (
+                                            <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                        ))}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </div>

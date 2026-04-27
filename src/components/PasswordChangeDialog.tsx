@@ -27,7 +27,7 @@ interface PasswordChangeDialogProps {
 }
 
 function getStrengthToneClassName(score: number) {
-    if (score <= 2) return "text-rose-600";
+    if (score <= 2) return "text-destructive";
     if (score <= 4) return "text-amber-600";
     return "text-emerald-600";
 }
@@ -58,14 +58,14 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
             if (!allowClose && !nextOpen) return;
             onOpenChange(nextOpen);
         }}>
-            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" showCloseButton={allowClose}>
+            <DialogContent showCloseButton={allowClose}>
                 <DialogHeader>
-                    <DialogTitle className="text-slate-900 dark:text-slate-100">{title}</DialogTitle>
-                    <DialogDescription className="text-slate-600 dark:text-slate-400">{description}</DialogDescription>
+                    <DialogTitle>{title}</DialogTitle>
+                    <DialogDescription>{description}</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-2">
-                    <div className="space-y-2">
-                        <Label htmlFor="currentPassword" className="text-slate-700 dark:text-slate-300">当前密码</Label>
+                <div className="flex flex-col gap-4 py-2">
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="currentPassword">当前密码</Label>
                         <Input
                             id="currentPassword"
                             type="password"
@@ -73,11 +73,10 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             onChange={(event) => onFieldChange("currentPassword", event.target.value)}
                             autoComplete="current-password"
                             data-testid={fieldTestIds?.currentPassword}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="newPassword" className="text-slate-700 dark:text-slate-300">新密码</Label>
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="newPassword">新密码</Label>
                         <Input
                             id="newPassword"
                             type="password"
@@ -85,11 +84,10 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             onChange={(event) => onFieldChange("newPassword", event.target.value)}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.newPassword}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                         />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="text-slate-700 dark:text-slate-300">确认新密码</Label>
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="confirmPassword">确认新密码</Label>
                         <Input
                             id="confirmPassword"
                             type="password"
@@ -97,33 +95,32 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             onChange={(event) => onFieldChange("confirmPassword", event.target.value)}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.confirmPassword}
-                            className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
                         />
                     </div>
                     {showPolicyHints && rules ? (
-                        <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-950/60 p-3 text-xs space-y-1.5">
-                            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                        <div className="flex flex-col gap-1.5 border border-border bg-muted/50 p-3 text-xs">
+                            <div className="flex items-center justify-between text-muted-foreground">
                                 <span>密码强度</span>
                                 <span className={getStrengthToneClassName(rules.score)}>{rules.strengthLabel}</span>
                             </div>
-                            <div className={rules.minLength ? "text-emerald-600" : "text-slate-500"}>{rules.minLength ? "✓" : "✗"} 至少{policyMinLength}个字符</div>
-                            <div className={rules.hasLetter ? "text-emerald-600" : "text-slate-500"}>{rules.hasLetter ? "✓" : "✗"} 包含字母</div>
-                            <div className={rules.hasNumber ? "text-emerald-600" : "text-slate-500"}>{rules.hasNumber ? "✓" : "✗"} 包含数字</div>
-                            <div className={rules.hasSpecial ? "text-emerald-600" : "text-slate-500"}>{rules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
-                            <div className={rules.noForbiddenSubstring ? "text-emerald-600" : "text-slate-500"}>{rules.noForbiddenSubstring ? "✓" : "✗"} 不包含{forbiddenHintLabel ?? "账号信息"}</div>
-                            <div className={rules.matched ? "text-emerald-600" : "text-slate-500"}>{rules.matched ? "✓" : "✗"} 两次密码一致</div>
+                            <div className={rules.minLength ? "text-emerald-600" : "text-muted-foreground"}>{rules.minLength ? "✓" : "✗"} 至少{policyMinLength}个字符</div>
+                            <div className={rules.hasLetter ? "text-emerald-600" : "text-muted-foreground"}>{rules.hasLetter ? "✓" : "✗"} 包含字母</div>
+                            <div className={rules.hasNumber ? "text-emerald-600" : "text-muted-foreground"}>{rules.hasNumber ? "✓" : "✗"} 包含数字</div>
+                            <div className={rules.hasSpecial ? "text-emerald-600" : "text-muted-foreground"}>{rules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
+                            <div className={rules.noForbiddenSubstring ? "text-emerald-600" : "text-muted-foreground"}>{rules.noForbiddenSubstring ? "✓" : "✗"} 不包含{forbiddenHintLabel ?? "账号信息"}</div>
+                            <div className={rules.matched ? "text-emerald-600" : "text-muted-foreground"}>{rules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
                     ) : null}
-                    {error ? <div className="text-sm text-rose-600 bg-rose-900/20 p-2 rounded">{error}</div> : null}
+                    {error ? <div className="bg-destructive/10 p-2 text-sm text-destructive">{error}</div> : null}
                 </div>
                 <DialogFooter>
                     {allowClose ? (
-                        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
+                        <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
                             取消
                         </Button>
                     ) : null}
-                    <Button onClick={onSubmit} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 text-white" data-testid={submitTestId}>
-                        {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    <Button onClick={onSubmit} disabled={saving} data-testid={submitTestId}>
+                        {saving ? <Loader2 data-icon="inline-start" className="animate-spin" /> : null}
                         {submitLabel}
                     </Button>
                 </DialogFooter>

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -139,40 +139,46 @@ export function GradingManagement() {
                                 placeholder="搜索学生/课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background dark:bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                             />
                         </div>
                         <Select value={filterClass} onValueChange={setFilterClass}>
-                            <SelectTrigger data-testid="teacher-grading-class-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-grading-class-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all-class">全部班级</SelectItem>
-                                {classOptions.map((name) => (
-                                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all-class">全部班级</SelectItem>
+                                    {classOptions.map((name) => (
+                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Select value={filterTopic} onValueChange={setFilterTopic}>
-                            <SelectTrigger data-testid="teacher-grading-topic-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-40">
+                            <SelectTrigger data-testid="teacher-grading-topic-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部课题" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all-topic">全部课题</SelectItem>
-                                {topicOptions.map((name) => (
-                                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="all-topic">全部课题</SelectItem>
+                                    {topicOptions.map((name) => (
+                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger data-testid="teacher-grading-status-filter" className="bg-background dark:bg-card border-border text-foreground sm:w-28">
+                            <SelectTrigger data-testid="teacher-grading-status-filter" className="bg-background border-border text-foreground sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
-                                <SelectItem value="all-status">全部状态</SelectItem>
-                                <SelectItem value="pending">待批改</SelectItem>
-                                <SelectItem value="graded">已批改</SelectItem>
-                                <SelectItem value="rejected">被驳回</SelectItem>
+                                <SelectGroup>
+                                    <SelectItem value="all-status">全部状态</SelectItem>
+                                    <SelectItem value="pending">待批改</SelectItem>
+                                    <SelectItem value="graded">已批改</SelectItem>
+                                    <SelectItem value="rejected">被驳回</SelectItem>
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                     </div>
@@ -188,7 +194,7 @@ export function GradingManagement() {
                             </div>
                             :
                             items.map((sub) => (
-                                <div data-testid={`teacher-grading-card-${sub.id}`} key={sub.id} className="border border-border bg-background dark:bg-card hover:bg-accent transition-all p-5">
+                                <div data-testid={`teacher-grading-card-${sub.id}`} key={sub.id} className="border border-border bg-background hover:bg-accent transition-all p-5">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="flex items-center gap-4">
                                             <Avatar className="w-10 h-10 border border-border">
