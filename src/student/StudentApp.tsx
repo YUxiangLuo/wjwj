@@ -166,8 +166,8 @@ function StudentAppContent() {
     // 显示加载状态
     if (isLoading || isRecoveringLogin) {
         return (
-            <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            <div className="flex min-h-screen items-center justify-center bg-background">
+                <Loader2 className="size-8 animate-spin text-primary" />
             </div>
         );
     }
@@ -198,20 +198,20 @@ function StudentAppContent() {
 
     if (currentUser.isFirstLogin) {
         return (
-            <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-8 shadow-2xl shadow-slate-300/40 dark:shadow-slate-950/40">
+            <div className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+                <div className="w-full max-w-2xl rounded-lg border border-border bg-card/60 p-8 text-card-foreground shadow-2xl shadow-foreground/10">
                     <div className="space-y-3 text-center">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-xl font-bold text-white shadow-lg shadow-indigo-500/20">
+                        <div className="mx-auto flex size-12 items-center justify-center rounded-lg bg-primary text-xl font-bold text-primary-foreground shadow-lg shadow-primary/20">
                             L
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">首次登录需完成密码更新</h1>
-                        <p className="text-sm leading-6 text-slate-600 dark:text-slate-400">
+                        <h1 className="text-2xl font-bold text-foreground">首次登录需完成密码更新</h1>
+                        <p className="text-sm leading-6 text-muted-foreground">
                             为保护账号安全，修改密码前暂不开放任务、通知和实验操作。
                         </p>
                     </div>
 
-                    <div className="mt-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-950/50 p-4 text-sm text-slate-600 dark:text-slate-400">
-                        当前账号：<span className="font-mono text-slate-800 dark:text-slate-200">{currentUser.studentId}</span>
+                    <div className="mt-6 rounded-lg border border-border bg-background/50 p-4 text-sm text-muted-foreground">
+                        当前账号：<span className="font-mono text-foreground">{currentUser.studentId}</span>
                     </div>
                 </div>
 
@@ -258,25 +258,25 @@ function StudentAppContent() {
     };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 font-sans selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary/30">
             {/* Header */}
-            <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur supports-[backdrop-filter]:bg-slate-50/60 dark:supports-[backdrop-filter]:bg-slate-900/60">
+            <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         {!isTaskHall && (
                             <Link to="/">
-                                <Button variant="ghost" size="icon" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
-                                    <ArrowLeft className="w-5 h-5" />
+                                <Button variant="ghost" size="icon">
+                                    <ArrowLeft className="size-5" />
                                 </Button>
                             </Link>
                         )}
                         <Link to="/" className="flex items-center gap-3 group">
-                            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/20 flex items-center justify-center text-white font-bold text-lg">
+                            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-lg shadow-primary/20">
                                 L
                             </div>
                             <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">统计学虚拟仿真实验室</h1>
-                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">Learning Lab</p>
+                                <h1 className="text-lg font-bold text-foreground transition-colors group-hover:text-foreground/80">统计学虚拟仿真实验室</h1>
+                                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Learning Lab</p>
                             </div>
                         </Link>
                     </div>
@@ -284,16 +284,16 @@ function StudentAppContent() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="relative text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800"
+                            className="relative"
                             data-testid="student-open-notifications"
                             onClick={() => {
                                 setShowNotifications(true);
                                 refreshNotifications();
                             }}
                         >
-                            <Bell className="w-5 h-5" />
+                            <Bell className="size-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold leading-5 text-center ring-2 ring-slate-50 dark:ring-slate-900">
+                                <span className="absolute -right-1 -top-1 h-5 min-w-5 rounded-full bg-destructive px-1 text-center text-[10px] font-semibold leading-5 text-white ring-2 ring-background">
                                     {unreadCount > 99 ? "99+" : unreadCount}
                                 </span>
                             )}
@@ -302,12 +302,11 @@ function StudentAppContent() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800"
                             onClick={toggleTheme}
                             title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                             aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                         >
-                            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                            {theme === "light" ? <Moon className="size-5" /> : <Sun className="size-5" />}
                         </Button>
 
                         <Popover open={showAccountMenu} onOpenChange={setShowAccountMenu}>
