@@ -148,29 +148,14 @@ const announcementReadRoutes: RouteDefinition = {
             return error("无效的公告ID", "INVALID_ID");
         }
 
-        const [existing] = await db
-            .select()
-            .from(announcementRead)
-            .where(
-                and(
-                    eq(announcementRead.announcementId, announcementId),
-                    eq(announcementRead.userType, 4),
-                    eq(announcementRead.userId, currentStudent.id)
-                )
-            );
-
-        if (!existing) {
-            try {
-                await db.insert(announcementRead).values({
-                    announcementId,
-                    userType: 4,
-                    userId: currentStudent.id,
-                });
-            } catch (e: unknown) {
-                const isDuplicate = e instanceof Error && "code" in e && (e as { code: string }).code === "ER_DUP_ENTRY";
-                if (!isDuplicate) throw e;
-            }
-        }
+        await db
+            .insert(announcementRead)
+            .values({
+                announcementId,
+                userType: 4,
+                userId: currentStudent.id,
+            })
+            .onConflictDoNothing();
 
         return json({ success: true });
     },
