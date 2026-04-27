@@ -23,6 +23,7 @@ import {
 } from "../api-client";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
 import { clearLegacyTaskReportDraft, clearReportDraft } from "../draft-sync";
+import { cn } from "@/lib/utils";
 
 // Stage components
 import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
@@ -37,6 +38,12 @@ const stages = [
     { name: "抽样执行", description: "第三步：在确定的样本量基础上，分别使用简单随机抽样、系统抽样、PPS抽样和分层抽样四种方法从总体中抽取样本", icon: Play },
     { name: "分析与报告", description: "第四步：对比各抽样方法的结果差异，分析样本代表性，撰写调查研究报告", icon: BarChart3 },
 ] as const;
+
+function getDeadlineClass(level: "urgent" | "warning" | "expired" | "normal") {
+    if (level === "urgent") return "text-destructive";
+    if (level === "expired") return "text-muted-foreground";
+    return "text-primary";
+}
 
 // Context for experiment data
 interface ExperimentContextValue {
@@ -248,7 +255,7 @@ export function ExperimentLayout() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+                <Loader2 className="size-10 animate-spin text-primary" />
             </div>
         );
     }
@@ -299,52 +306,45 @@ export function ExperimentLayout() {
     return (
         <ExperimentContext.Provider value={contextValue}>
             <div className="pb-12" data-testid="student-experiment-layout">
-                {/* Sticky header: top bar + compact stage navigation */}
-                <div className="sticky top-[4rem] z-40 bg-white/90 dark:bg-slate-950/90 backdrop-blur -mt-2 border-b border-slate-200/50 dark:border-slate-800/50">
-                    {/* Row 1: Title + actions */}
-                    <div className="flex justify-between items-center pt-2 pb-2 px-0">
+                <div className="sticky top-[4rem] z-40 -mt-2 border-b border-border bg-background/90 backdrop-blur">
+                    <div className="flex items-center justify-between px-0 py-2">
                         <div className="flex items-center gap-2">
-                            <Link to="/">
-                                <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800" title="返回首页">
-                                    <Home className="w-4 h-4" />
-                                </Button>
-                            </Link>
-                            <Link to={`/task/${taskId}`}>
-                                <Button variant="ghost" className="gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800 hidden sm:flex">
-                                    <ArrowLeft className="w-4 h-4" />
+                            <Button variant="ghost" size="icon" title="返回首页" asChild>
+                                <Link to="/">
+                                    <Home />
+                                </Link>
+                            </Button>
+                            <Button variant="ghost" className="hidden sm:flex" asChild>
+                                <Link to={`/task/${taskId}`}>
+                                    <ArrowLeft data-icon="inline-start" />
                                     退出实验
-                                </Button>
-                            </Link>
-                            <h1 className="text-sm font-semibold text-slate-800 dark:text-slate-200 border-l border-slate-300 dark:border-slate-700 pl-4 ml-2 line-clamp-1 max-w-[200px] sm:max-w-md">
+                                </Link>
+                            </Button>
+                            <h1 className="ml-2 line-clamp-1 max-w-[200px] border-l border-border pl-4 text-sm font-semibold text-foreground sm:max-w-md">
                                 {taskName || `Experiment #${experiment.taskId}`}
                             </h1>
                         </div>
                         <div className="flex items-center gap-4">
                             {deadlineInfo && (
-                                <span className={`text-xs font-medium flex items-center gap-1 hidden sm:flex ${
-                                    deadlineInfo.level === "urgent" ? "text-rose-600" :
-                                    deadlineInfo.level === "warning" ? "text-amber-600" :
-                                    deadlineInfo.level === "expired" ? "text-slate-500" :
-                                    "text-slate-600 dark:text-slate-400"
-                                }`}>
+                                <span className={cn("hidden items-center gap-1 text-xs font-medium sm:flex", getDeadlineClass(deadlineInfo.level))}>
                                     {deadlineInfo.level === "urgent" ? (
-                                        <AlertCircle className="w-3.5 h-3.5" />
+                                        <AlertCircle className="size-3.5" />
                                     ) : (
-                                        <Clock className="w-3.5 h-3.5" />
+                                        <Clock className="size-3.5" />
                                     )}
                                     {deadlineInfo.text}
                                 </span>
                             )}
                             {lastSavedAt && (
-                                <span className="text-xs text-slate-500 font-mono hidden sm:inline-block">
+                                <span className="hidden font-mono text-xs text-muted-foreground sm:inline-block">
                                     已保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai" })}
                                 </span>
                             )}
-                            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} data-testid="student-experiment-save" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
+                            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} data-testid="student-experiment-save">
                                 {isSaving ? (
-                                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                    <Loader2 data-icon="inline-start" className="animate-spin" />
                                 ) : (
-                                    <Save className="w-3.5 h-3.5 mr-1.5" />
+                                    <Save data-icon="inline-start" />
                                 )}
                                 保存
                             </Button>
@@ -353,15 +353,14 @@ export function ExperimentLayout() {
 
                     {saveError && (
                         <div
-                            className="mb-2 rounded-lg border border-rose-900/30 bg-rose-900/20 px-3 py-2 text-sm text-rose-500"
+                            className="mb-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
                             data-testid="student-experiment-save-error"
                         >
                             {saveError}
                         </div>
                     )}
 
-                    {/* Row 2: Compact stage progress (always visible) */}
-                    <div className="flex items-center gap-3 pb-2.5 px-1 overflow-x-auto scrollbar-hide" data-testid="student-experiment-stages">
+                    <div className="scrollbar-hide flex items-center gap-3 overflow-x-auto px-1 pb-2.5" data-testid="student-experiment-stages">
                         {stages.map((stage, index) => {
                             const stageNum = index + 1;
                             const isCompleted = stageNum < currentStage;
@@ -371,7 +370,7 @@ export function ExperimentLayout() {
                             return (
                                 <div key={stage.name} className="flex items-center gap-2">
                                     {index > 0 && (
-                                        <ChevronRight className={`w-3 h-3 flex-shrink-0 ${isCompleted || isCurrent ? "text-slate-500" : "text-slate-300 dark:text-slate-700"}`} />
+                                        <ChevronRight className={cn("size-3 shrink-0", isCompleted || isCurrent ? "text-muted-foreground" : "text-muted-foreground/50")} />
                                     )}
                                     <button
                                         onClick={() => {
@@ -383,19 +382,20 @@ export function ExperimentLayout() {
                                         disabled={stageNum >= currentStage}
                                         data-testid={`student-experiment-stage-${stageNum}`}
                                         aria-label={`阶段 ${stageNum}: ${stage.name}`}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 disabled:cursor-default ${
+                                        className={cn(
+                                            "flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-200 disabled:cursor-default",
                                             isCurrent
-                                                ? "bg-indigo-600/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30"
+                                                ? "border border-primary/30 bg-primary/10 text-primary"
                                                 : isCompleted
-                                                    ? "text-emerald-600/80 hover:bg-emerald-500/10 cursor-pointer"
-                                                    : "text-slate-500"
-                                        }`}
+                                                    ? "cursor-pointer text-primary hover:bg-primary/10"
+                                                    : "text-muted-foreground"
+                                        )}
                                     >
-                                        <span className="relative flex-shrink-0">
+                                        <span className="relative shrink-0">
                                             {isCompleted ? (
-                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                                <CheckCircle2 className="size-3.5 text-primary" />
                                             ) : (
-                                                <Icon className={`w-3.5 h-3.5 ${isCurrent ? "text-indigo-500" : "text-slate-500"}`} />
+                                                <Icon className={cn("size-3.5", isCurrent ? "text-primary" : "text-muted-foreground")} />
                                             )}
                                         </span>
                                         <span className="hidden sm:inline">{stage.name}</span>
@@ -404,27 +404,26 @@ export function ExperimentLayout() {
                                 </div>
                             );
                         })}
-                        <div className="ml-auto text-xs font-bold text-indigo-500 font-mono flex-shrink-0">
+                        <div className="ml-auto shrink-0 font-mono text-xs font-bold text-primary">
                             {Math.round((currentStage / stages.length) * 100)}%
                         </div>
                     </div>
                 </div>
 
-                {/* Stage description card */}
                 <div className="mt-6 mb-6">
                     {(() => {
                         const currentStageConfig = stages[currentStage - 1] ?? stages[0];
                         const StageIcon = currentStageConfig.icon;
                         return (
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-600/15 border border-indigo-500/20 flex-shrink-0">
-                                    <StageIcon className="w-4 h-4 text-indigo-500" />
+                            <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+                                    <StageIcon className="size-4 text-primary" />
                                 </div>
                                 <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                    <div className="text-sm font-semibold text-foreground">
                                         阶段 {currentStage}: {currentStageConfig.name}
                                     </div>
-                                    <div className="text-xs text-slate-500 mt-0.5">
+                                    <div className="mt-0.5 text-xs text-muted-foreground">
                                         {currentStageConfig.description}
                                     </div>
                                 </div>
@@ -433,33 +432,32 @@ export function ExperimentLayout() {
                     })()}
                 </div>
 
-                {/* Stage Content */}
                 <div className="min-h-[500px] animate-in slide-in-from-bottom-4 duration-500">
                     {renderStage()}
                 </div>
             </div>
 
             <AlertDialog open={confirmRollbackOpen} onOpenChange={setConfirmRollbackOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-experiment-rollback-dialog">
+                <AlertDialogContent data-testid="student-experiment-rollback-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认返回阶段</AlertDialogTitle>
+                        <AlertDialogTitle>确认返回阶段</AlertDialogTitle>
                         <AlertDialogDescription asChild>
-                            <div className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
-                                返回到“<span className="text-indigo-500 font-medium">{targetStage ? stages[targetStage - 1]!.name : ""}</span>”将导致以下后续阶段的数据被<strong className="text-rose-600">永久清空</strong>：
-                                <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                            <div className="text-base leading-relaxed text-muted-foreground">
+                                返回到“<span className="font-medium text-primary">{targetStage ? stages[targetStage - 1]!.name : ""}</span>”将导致以下后续阶段的数据被<strong className="text-destructive">永久清空</strong>：
+                                <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
                                     {targetStage !== null && targetStage <= 1 && <li>样本量规划数据</li>}
                                     {targetStage !== null && targetStage <= 2 && <li>抽样执行结果</li>}
                                     {targetStage !== null && targetStage <= 3 && <li>分析报告内容</li>}
                                 </ul>
-                                <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-700 dark:text-amber-300 text-xs">
-                                    ⚠️ 警告：此操作不可撤销。
+                                <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
+                                    警告：此操作不可撤销。
                                 </div>
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={applyRollback} data-testid="student-experiment-rollback-confirm" className="bg-rose-600 hover:bg-rose-700 text-white">确认返回</AlertDialogAction>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={applyRollback} data-testid="student-experiment-rollback-confirm" variant="destructive">确认返回</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
