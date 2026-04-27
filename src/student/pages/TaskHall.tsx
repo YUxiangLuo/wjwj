@@ -24,6 +24,7 @@ import { getRichTextPlainText } from "@/utils/rich-text";
 import { announcementsApi, experimentApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
 import { clearReportDraft } from "../draft-sync";
 import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
+import { cn } from "@/lib/utils";
 
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
@@ -255,19 +256,19 @@ function TaskCard({ task }: TaskCardProps) {
             </Card>
 
             <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认重新开始实验</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
-                            重新开始将<strong className="text-rose-600">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
+                        <AlertDialogTitle>确认重新开始实验</AlertDialogTitle>
+                        <AlertDialogDescription className="text-base leading-relaxed">
+                            重新开始将<strong className="text-destructive">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
                             <br />
                             确定继续吗？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-rose-600 hover:bg-rose-700 text-white"
+                            variant="destructive"
                             onClick={async () => {
                                 const res = await experimentApi.reset(task.id, {
                                     resetToStage: 1,
@@ -496,33 +497,44 @@ export function TaskHall() {
             </div>
 
             <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>
-                <DialogContent className="max-w-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100 text-xl font-bold flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5 text-indigo-500" />
+                        <DialogTitle className="flex items-center gap-2 text-xl font-bold normal-case tracking-normal">
+                            <AlertCircle className="size-5 text-primary" />
                             系统公告
                         </DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">查看实验室最新通知与动态</DialogDescription>
+                        <DialogDescription>查看实验室最新通知与动态</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 min-h-[400px]">
+                    <div className="mt-4 grid min-h-[400px] grid-cols-1 gap-6 md:grid-cols-2">
                         {/* List */}
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar border-r border-slate-200 dark:border-slate-800 md:pr-4">
+                        <div className="custom-scrollbar flex max-h-[400px] flex-col gap-2 overflow-y-auto border-r border-border pr-2 md:pr-4">
                             {announcements.length === 0 && (
-                                <div className="text-sm text-slate-500 text-center py-12 italic">暂无公告</div>
+                                <div className="py-12 text-center text-sm italic text-muted-foreground">暂无公告</div>
                             )}
                             {announcements.map((announcement) => (
                                 <button
                                     key={announcement.id}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all duration-200 group ${selectedAnnouncement?.id === announcement.id ? "bg-indigo-900/20 border-indigo-500/30 ring-1 ring-indigo-500/20" : "bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700"}`}
+                                    type="button"
+                                    className={cn(
+                                        "group w-full rounded-lg border p-4 text-left transition-all duration-200",
+                                        selectedAnnouncement?.id === announcement.id
+                                            ? "border-primary/30 bg-primary/10 ring-1 ring-primary/20"
+                                            : "border-border bg-background/50 hover:bg-muted"
+                                    )}
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-indigo-600 transition-colors ${!announcement.isRead ? "text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"}`}>
+                                        <div
+                                            className={cn(
+                                                "line-clamp-1 text-sm font-medium transition-colors group-hover:text-primary",
+                                                !announcement.isRead ? "text-foreground" : "text-muted-foreground"
+                                            )}
+                                        >
                                             {announcement.title}
                                         </div>
-                                        {!announcement.isRead && <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0"></span>}
+                                        {!announcement.isRead && <span className="mt-1 size-2 shrink-0 rounded-full bg-destructive"></span>}
                                     </div>
-                                    <div className="text-xs text-slate-500 mt-2 font-mono opacity-70">
+                                    <div className="mt-2 font-mono text-xs text-muted-foreground opacity-70">
                                         {new Date(announcement.createdAt).toLocaleString("zh-CN", {
                                             timeZone: "Asia/Shanghai",
                                             month: "2-digit",
@@ -535,25 +547,25 @@ export function TaskHall() {
                             ))}
                         </div>
                         {/* Detail */}
-                        <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar pl-2">
+                        <div className="custom-scrollbar max-h-[400px] overflow-y-auto pl-2 pr-2">
                             {selectedAnnouncement ? (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">{selectedAnnouncement.title}</h3>
-                                        <div className="flex items-center gap-2 mt-2 text-xs text-slate-500 font-mono bg-white/50 dark:bg-slate-950/50 inline-flex px-2 py-1 rounded">
-                                            <Clock className="w-3 h-3" />
+                                        <h3 className="text-lg font-bold leading-tight text-foreground">{selectedAnnouncement.title}</h3>
+                                        <div className="mt-2 inline-flex items-center gap-2 rounded bg-background/50 px-2 py-1 font-mono text-xs text-muted-foreground">
+                                            <Clock className="size-3" />
                                             {new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
                                         </div>
                                     </div>
-                                    <div className="w-full h-px bg-slate-200 dark:bg-slate-800" />
+                                    <div className="h-px w-full bg-border" />
                                     <RichTextContent
                                         html={selectedAnnouncement.content}
-                                        className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"
+                                        className="text-sm leading-relaxed text-foreground/80"
                                     />
                                 </div>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-3 opacity-50">
-                                    <FileText className="w-12 h-12 stroke-1" />
+                                <div className="flex h-full flex-col items-center justify-center space-y-3 text-muted-foreground opacity-50">
+                                    <FileText className="size-12 stroke-1" />
                                     <p className="text-sm">请选择左侧公告查看详情</p>
                                 </div>
                             )}
