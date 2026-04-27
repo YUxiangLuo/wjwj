@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef, useId } from "react";
+import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef, useId } from "react";
 import { X, ChevronLeft, ChevronRight, Check, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -187,15 +187,12 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
         }
     }, [totalQuestions, page]);
 
-    // 切页后将焦点移入对话框容器本身，避免空格误触发首个可点击控件
-    useEffect(() => {
+    // 切页后立即将焦点移入对话框容器本身，避免空格误触发首个可点击控件
+    useLayoutEffect(() => {
         if (exitConfirmOpen) return;
         const root = overlayRef.current;
         if (!root) return;
-        const t = window.setTimeout(() => {
-            root.focus();
-        }, 0);
-        return () => window.clearTimeout(t);
+        root.focus();
     }, [pageKey, exitConfirmOpen]);
 
     // Escape：有进度则确认关闭
