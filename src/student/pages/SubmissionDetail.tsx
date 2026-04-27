@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Loader2, FileText, CheckCircle2, AlertCircle, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Separator } from "@/components/ui/separator";
 import { submissionsApi, type SubmissionDetail } from "../api-client";
 import { cn } from "@/lib/utils";
@@ -127,7 +129,17 @@ export function SubmissionDetailPage() {
     }
 
     if (!detail) {
-        return <div className="mt-20 text-center text-muted-foreground">未找到提交记录</div>;
+        return (
+            <Empty className="mt-20">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <FileText />
+                    </EmptyMedia>
+                    <EmptyTitle>未找到提交记录</EmptyTitle>
+                    <EmptyDescription>该提交可能已被删除或你没有访问权限。</EmptyDescription>
+                </EmptyHeader>
+            </Empty>
+        );
     }
 
     const status = statusConfig[detail.status] ?? statusConfig[1]!;
@@ -208,15 +220,13 @@ export function SubmissionDetailPage() {
                     )}
 
                     {detail.rejectReason && (
-                        <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-5">
-                            <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-destructive">
-                                <AlertCircle className="size-4" />
-                                驳回理由
-                            </h4>
-                            <p className="whitespace-pre-line border-l-2 border-destructive/30 pl-6 text-sm leading-relaxed text-destructive">
+                        <Alert variant="destructive">
+                            <AlertCircle />
+                            <AlertTitle>驳回理由</AlertTitle>
+                            <AlertDescription className="whitespace-pre-line">
                                 {detail.rejectReason}
-                            </p>
-                        </div>
+                            </AlertDescription>
+                        </Alert>
                     )}
 
                     <Separator />
@@ -241,15 +251,13 @@ export function SubmissionDetailPage() {
                     </div>
 
                     {detail.pdfStatus !== "ready" && detail.pdfStatusMessage && (
-                        <div className={cn(
-                            "flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm",
-                            detail.pdfStatus === "failed"
-                                ? "border-destructive/30 bg-destructive/10 text-destructive"
-                                : "border-primary/20 bg-primary/10 text-primary"
-                        )}>
-                            <span>{detail.pdfStatusMessage}</span>
+                        <Alert
+                            variant={detail.pdfStatus === "failed" ? "destructive" : "info"}
+                            className="flex items-center justify-between gap-3"
+                        >
+                            <AlertDescription>{detail.pdfStatusMessage}</AlertDescription>
                             {refreshingPdf && <Loader2 className="size-4 shrink-0 animate-spin" />}
-                        </div>
+                        </Alert>
                     )}
                 </CardContent>
             </Card>

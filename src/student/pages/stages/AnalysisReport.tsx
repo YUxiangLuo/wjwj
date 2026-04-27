@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -595,14 +596,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </CardHeader>
                         <CardContent className="pt-6">
                             {analysisMetricsError && (
-                                <div
-                                    className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+                                <Alert
+                                    variant="destructive"
+                                    className="mb-4"
                                     data-testid="student-analysis-metrics-error"
-                                    role="alert"
                                 >
-                                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                                    <span>{analysisMetricsError}</span>
-                                </div>
+                                    <AlertCircle />
+                                    <AlertDescription>{analysisMetricsError}</AlertDescription>
+                                </Alert>
                             )}
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList

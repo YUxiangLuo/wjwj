@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-r
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
@@ -438,7 +439,11 @@ function StudentAppContent() {
                     </DialogHeader>
                     <div className="custom-scrollbar flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-2">
                         {!notifications || notifications.notifications.length === 0 ? (
-                            <div className="py-8 text-center text-sm text-muted-foreground">暂无通知</div>
+                            <Empty className="py-8">
+                                <EmptyHeader>
+                                    <EmptyTitle>暂无通知</EmptyTitle>
+                                </EmptyHeader>
+                            </Empty>
                         ) : (
                             notifications.notifications.map((notice) => (
                                 <div

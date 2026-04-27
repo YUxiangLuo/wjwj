@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, User, Key, Shield, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -138,12 +139,12 @@ export function Profile() {
                             ))}
                         </div>
 
-                        <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/10 p-4">
-                            <Shield className="mt-0.5 size-5 text-primary" />
-                            <div className="text-sm leading-relaxed text-primary">
+                        <Alert variant="info">
+                            <Shield />
+                            <AlertDescription>
                                 如需修改基础信息，请联系管理员或任课教师。
-                            </div>
-                        </div>
+                            </AlertDescription>
+                        </Alert>
                     </CardContent>
                 </Card>
 
@@ -218,12 +219,18 @@ export function Profile() {
                                 <div className={getRuleClass(passwordRules.noStudentId)}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
                                 <div className={getRuleClass(passwordRules.matched)}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
                             </div>
-                            {error && <div className="rounded border border-destructive/20 bg-destructive/10 p-2 text-sm text-destructive">{error}</div>}
+                            {error && (
+                                <Alert variant="destructive">
+                                    <AlertDescription>{error}</AlertDescription>
+                                </Alert>
+                            )}
                             {success && (
-                                <div className="flex items-center gap-2 rounded border border-primary/20 bg-primary/10 p-2 text-sm text-primary">
-                                    <CheckCircle2 className="size-4" />
-                                    密码已更新
-                                </div>
+                                <Alert variant="success">
+                                    <CheckCircle2 />
+                                    <AlertDescription>
+                                        密码已更新
+                                    </AlertDescription>
+                                </Alert>
                             )}
                             <Button
                                 type="submit"

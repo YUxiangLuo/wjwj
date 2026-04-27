@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, FileText, Loader2, Clock, CheckCircle2, XCircle, AlertCircle, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { submissionsApi, type SubmissionSummary } from "../api-client";
 import { cn } from "@/lib/utils";
 import { TopicDeletedState } from "../components/TopicDeletedState";
@@ -82,17 +84,17 @@ export function SubmissionHistory() {
 
             <div className="flex flex-col gap-4">
                 {submissions.length === 0 ? (
-                    <Card size="sm" className="border-dashed bg-muted/40">
-                        <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-muted">
-                                <FileText className="size-6 text-muted-foreground" />
-                            </div>
-                            <h3 className="text-lg font-medium text-foreground">暂无提交记录</h3>
-                            <p className="mt-2 max-w-sm text-muted-foreground">
+                    <Empty className="border border-dashed border-border bg-muted/40 py-16">
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                                <FileText />
+                            </EmptyMedia>
+                            <EmptyTitle>暂无提交记录</EmptyTitle>
+                            <EmptyDescription>
                                 当你完成实验并提交报告后，这里将显示你的提交历史和老师的反馈。
-                            </p>
-                        </CardContent>
-                    </Card>
+                            </EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
                 ) : (
                     submissions.map((sub) => {
                         const status = statusConfig[sub.status] ?? statusConfig[1]!;
@@ -142,10 +144,10 @@ export function SubmissionHistory() {
                                                 </div>
 
                                                 {sub.rejectReason && (
-                                                    <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                                                        <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                                                        <span>驳回原因：{sub.rejectReason}</span>
-                                                    </div>
+                                                    <Alert variant="destructive" className="mt-2">
+                                                        <AlertCircle />
+                                                        <AlertDescription>驳回原因：{sub.rejectReason}</AlertDescription>
+                                                    </Alert>
                                                 )}
                                             </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { ArrowLeft, FileText, Send, Loader2, CheckCircle2, AlertCircle, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -391,15 +392,15 @@ export function SubmissionPreview() {
 
             <div className="flex flex-col items-end gap-4 pb-12">
                 {!canSubmit && (
-                    <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
-                        <AlertCircle className="size-4" />
-                        {submitBlocker}
-                    </div>
+                    <Alert variant="destructive" className="w-full md:w-auto">
+                        <AlertCircle />
+                        <AlertDescription>{submitBlocker}</AlertDescription>
+                    </Alert>
                 )}
                 {error && (
-                    <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
-                        {error}
-                    </div>
+                    <Alert variant="destructive" className="w-full md:w-auto">
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
                 )}
 
                 <Button

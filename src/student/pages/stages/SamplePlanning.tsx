@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -208,10 +209,12 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     </div>
 
                     {!isValidFinalSize && (
-                        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
-                            <Info className="size-4 shrink-0" />
-                            最终样本量需在 {minSampleSize}～{maxSampleSize.toLocaleString()} 人之间，请重新规划样本量。
-                        </div>
+                        <Alert variant="destructive">
+                            <Info />
+                            <AlertDescription>
+                                最终样本量需在 {minSampleSize}～{maxSampleSize.toLocaleString()} 人之间，请重新规划样本量。
+                            </AlertDescription>
+                        </Alert>
                     )}
                 </>
             ) : (

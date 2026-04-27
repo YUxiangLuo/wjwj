@@ -5,8 +5,10 @@ import {
     ChevronRight, Clock, AlertCircle, Loader2, Trophy, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -209,12 +211,11 @@ function TaskCard({ task }: TaskCardProps) {
 
                     {/* Reject reason */}
                     {task.status === "rejected" && task.rejectReason && (
-                        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-                            <div className="mb-1 flex items-center gap-2 font-semibold">
-                                <AlertCircle className="size-3" /> 驳回理由
-                            </div>
-                            <div className="text-xs leading-relaxed opacity-90">{task.rejectReason}</div>
-                        </div>
+                        <Alert variant="destructive">
+                            <AlertCircle />
+                            <AlertTitle>驳回理由</AlertTitle>
+                            <AlertDescription>{task.rejectReason}</AlertDescription>
+                        </Alert>
                     )}
 
                     <div className="mt-auto flex flex-col gap-4">
@@ -466,28 +467,34 @@ export function TaskHall() {
             {/* Task Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
                 {taskError ? (
-                    <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed border-destructive/30 bg-destructive/10 py-20">
-                        <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-destructive/30 bg-destructive/10 text-destructive">
-                            <AlertCircle className="size-8" />
-                        </div>
-                        <p className="text-lg font-medium text-foreground">任务加载失败</p>
-                        <p className="mt-1 text-sm text-muted-foreground">请检查网络连接后重试</p>
-                        <Button variant="outline" size="sm" className="mt-4" onClick={() => loadTasks()}>
-                            重试
-                        </Button>
-                    </div>
+                    <Empty className="col-span-full border border-dashed border-destructive/30 bg-destructive/10 py-20">
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon" className="border border-destructive/30 bg-destructive/10 text-destructive">
+                                <AlertCircle />
+                            </EmptyMedia>
+                            <EmptyTitle>任务加载失败</EmptyTitle>
+                            <EmptyDescription>请检查网络连接后重试</EmptyDescription>
+                        </EmptyHeader>
+                        <EmptyContent>
+                            <Button variant="outline" size="sm" onClick={() => loadTasks()}>
+                                重试
+                            </Button>
+                        </EmptyContent>
+                    </Empty>
                 ) : filteredTasks.length > 0 ? (
                     filteredTasks.map(task => (
                         <TaskCard key={task.id} task={task} />
                     ))
                 ) : (
-                    <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 py-20">
-                        <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
-                            <BookOpen className="size-8" />
-                        </div>
-                        <p className="text-lg font-medium text-foreground">暂无相关任务</p>
-                        <p className="mt-1 text-sm text-muted-foreground">当有新任务发布或状态变更时将出现在这里</p>
-                    </div>
+                    <Empty className="col-span-full border border-dashed border-border bg-muted/30 py-20">
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                                <BookOpen />
+                            </EmptyMedia>
+                            <EmptyTitle>暂无相关任务</EmptyTitle>
+                            <EmptyDescription>当有新任务发布或状态变更时将出现在这里</EmptyDescription>
+                        </EmptyHeader>
+                    </Empty>
                 )}
             </div>
 

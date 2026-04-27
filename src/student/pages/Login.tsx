@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,10 +156,9 @@ export function Login() {
                         </div>
 
                         {error && (
-                            <div className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive animate-in slide-in-from-top-2">
-                                <div className="size-2 rounded-full bg-destructive" />
-                                {error}
-                            </div>
+                            <Alert variant="destructive" className="animate-in slide-in-from-top-2">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
                         )}
 
                         <div className="flex flex-col gap-4 pt-2">

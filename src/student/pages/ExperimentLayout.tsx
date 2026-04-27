@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, createContext, useContext, useMemo, useRef } from "react";
 import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2, ChevronRight, Home, Clock, AlertCircle } from "lucide-react";
 import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -352,12 +353,9 @@ export function ExperimentLayout() {
                     </div>
 
                     {saveError && (
-                        <div
-                            className="mb-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                            data-testid="student-experiment-save-error"
-                        >
-                            {saveError}
-                        </div>
+                        <Alert variant="destructive" className="mb-2" data-testid="student-experiment-save-error">
+                            <AlertDescription>{saveError}</AlertDescription>
+                        </Alert>
                     )}
 
                     <div className="scrollbar-hide flex items-center gap-3 overflow-x-auto px-1 pb-2.5" data-testid="student-experiment-stages">
@@ -449,9 +447,9 @@ export function ExperimentLayout() {
                                     {targetStage !== null && targetStage <= 2 && <li>抽样执行结果</li>}
                                     {targetStage !== null && targetStage <= 3 && <li>分析报告内容</li>}
                                 </ul>
-                                <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
-                                    警告：此操作不可撤销。
-                                </div>
+                                <Alert variant="destructive" className="mt-4">
+                                    <AlertDescription>警告：此操作不可撤销。</AlertDescription>
+                                </Alert>
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>

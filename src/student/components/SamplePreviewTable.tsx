@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -83,7 +84,14 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
     }, [syncHorizontalScroll]);
 
     if (samples.length === 0) {
-        return <div className="flex h-full items-center justify-center text-sm italic text-muted-foreground">暂无抽样数据</div>;
+        return (
+            <Empty className="h-full p-6">
+                <EmptyHeader>
+                    <EmptyTitle>暂无抽样数据</EmptyTitle>
+                    <EmptyDescription>完成抽样后将在这里预览样本记录。</EmptyDescription>
+                </EmptyHeader>
+            </Empty>
+        );
     }
 
     const keys = Object.keys(samples[0] ?? {});
