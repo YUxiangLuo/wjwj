@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
     AlertDialog,
     AlertDialogCancel,
@@ -117,7 +118,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
+        <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
             {immersiveOpen && (
                 <ImmersiveSamplePlanning
                     populationSize={N}
@@ -136,17 +137,17 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             )}
 
             {/* Population info */}
-            <Card className="gap-2 py-4 rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                <CardHeader className="border-b border-slate-200 dark:border-slate-800 px-4 pb-3 pt-0 [.border-b]:pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base text-slate-900 dark:text-slate-100">
-                        <Users className="w-4 h-4 shrink-0 text-indigo-500" />
+            <Card size="sm" className="gap-2 py-4">
+                <CardHeader className="border-b border-border px-4 pb-3 pt-0 [.border-b]:pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                        <Users className="size-4 shrink-0 text-primary" />
                         总体信息
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-1 pt-3">
-                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950/50">
-                        <span className="text-slate-600 dark:text-slate-400">总体规模 (N)</span>
-                        <span className="text-xl font-bold tabular-nums text-indigo-500">{N.toLocaleString()} <span className="text-sm font-normal text-slate-500">人</span></span>
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+                        <span className="text-muted-foreground">总体规模 (N)</span>
+                        <span className="text-xl font-bold tabular-nums text-primary">{N.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">人</span></span>
                     </div>
                 </CardContent>
             </Card>
@@ -154,10 +155,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             {displayData ? (
                 <>
                     {/* Parameter summary (read-only) */}
-                    <Card className="gap-2 py-4 rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 px-4 pb-3 pt-0 [.border-b]:pb-3">
-                            <CardTitle className="flex items-center gap-2 text-base text-slate-900 dark:text-slate-100">
-                                <ClipboardList className="w-4 h-4 shrink-0 text-slate-500" />
+                    <Card size="sm" className="gap-2 py-4">
+                        <CardHeader className="border-b border-border px-4 pb-3 pt-0 [.border-b]:pb-3">
+                            <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                                <ClipboardList className="size-4 shrink-0 text-muted-foreground" />
                                 参数摘要
                             </CardTitle>
                         </CardHeader>
@@ -181,14 +182,14 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                                 <SummaryRow label="设计效应" value={displayData.designEffect.toFixed(1)} />
                                 <SummaryRow label="无回答率" value={`${Math.round(displayData.nonResponseRate * 100)}%`} />
                             </div>
-                            <div className="mt-2 grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-white/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/50">
+                            <div className="mt-2 grid grid-cols-2 gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
                                 <div>
-                                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">建议样本量</p>
-                                    <p className="text-base font-bold font-mono tabular-nums text-teal-600 dark:text-teal-400">{displayData.recommendedSize.toLocaleString()}</p>
+                                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">建议样本量</p>
+                                    <p className="font-mono text-base font-bold tabular-nums text-foreground">{displayData.recommendedSize.toLocaleString()}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">最终设定</p>
-                                    <p className="text-lg font-bold font-mono tabular-nums text-indigo-500">{displayData.finalSampleSize.toLocaleString()}</p>
+                                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">最终设定</p>
+                                    <p className="font-mono text-lg font-bold tabular-nums text-primary">{displayData.finalSampleSize.toLocaleString()}</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -200,30 +201,29 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             variant="outline"
                             onClick={() => setImmersiveOpen(true)}
-                            className="border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
                         >
-                            <Sparkles className="w-4 h-4 mr-1.5" />
+                            <Sparkles data-icon="inline-start" />
                             重新规划样本量
                         </Button>
                     </div>
 
                     {!isValidFinalSize && (
-                        <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-600 dark:text-rose-400">
-                            <Info className="h-4 w-4 shrink-0" />
+                        <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+                            <Info className="size-4 shrink-0" />
                             最终样本量需在 {minSampleSize}～{maxSampleSize.toLocaleString()} 人之间，请重新规划样本量。
                         </div>
                     )}
                 </>
             ) : (
                 /* First visit — prompt to start sample planning */
-                <Card className="gap-2 py-8 rounded-2xl border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-sm">
-                    <CardContent className="flex flex-col items-center text-center space-y-4 px-6">
-                        <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                            <Sparkles className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+                <Card className="gap-2 py-8 border-primary/20 bg-primary/5">
+                    <CardContent className="flex flex-col items-center gap-4 px-6 text-center">
+                        <div className="flex size-14 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+                            <Sparkles className="size-7 text-primary" />
                         </div>
-                        <div className="space-y-1">
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">开始样本量规划</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+                        <div className="flex flex-col gap-1">
+                            <h3 className="text-lg font-semibold text-foreground">开始样本量规划</h3>
+                            <p className="max-w-sm text-sm text-muted-foreground">
                                 通过分步引导，逐步理解样本量计算原理并确定最终样本量。
                             </p>
                         </div>
@@ -231,9 +231,9 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             onClick={() => setImmersiveOpen(true)}
                             data-testid="student-sample-plan-start"
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 shadow-lg shadow-indigo-500/20"
+                            className="px-8"
                         >
-                            <Sparkles className="w-4 h-4 mr-1.5" />
+                            <Sparkles data-icon="inline-start" />
                             开始规划样本量
                         </Button>
                     </CardContent>
@@ -241,35 +241,36 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             )}
 
             {/* Bottom navigation */}
-            <div className="flex justify-between items-center gap-3 pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
-                <Button
-                    variant="outline"
-                    onClick={onPrev}
-                    data-testid="student-sample-plan-prev"
-                    className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100"
-                >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    上一阶段
-                </Button>
-                {displayData && (
+            <div className="flex flex-col gap-6">
+                <Separator />
+                <div className="flex items-center justify-between gap-3">
                     <Button
-                        type="button"
-                        onClick={() => setConfirmNextOpen(true)}
-                        disabled={!isValidFinalSize}
-                        data-testid="student-sample-plan-next"
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 disabled:opacity-40 disabled:shadow-none"
+                        variant="outline"
+                        onClick={onPrev}
+                        data-testid="student-sample-plan-prev"
                     >
-                        确认并进入下一阶段
-                        <ChevronRight className="w-4 h-4 ml-1" />
+                        <ChevronLeft data-icon="inline-start" />
+                        上一阶段
                     </Button>
-                )}
+                    {displayData && (
+                        <Button
+                            type="button"
+                            onClick={() => setConfirmNextOpen(true)}
+                            disabled={!isValidFinalSize}
+                            data-testid="student-sample-plan-next"
+                        >
+                            确认并进入下一阶段
+                            <ChevronRight data-icon="inline-end" />
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <AlertDialog open={confirmNextOpen} onOpenChange={handleConfirmNextDialogOpenChange}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>进入抽样执行？</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-300">
+                        <AlertDialogDescription>
                             将保存当前样本量规划并进入「抽样执行」阶段。若之后返回修改本阶段，后续阶段已填数据可能被清空。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -281,11 +282,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             onClick={() => void handleConfirmNext()}
                             disabled={confirmNextSaving}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                         >
                             {confirmNextSaving ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    <Loader2 data-icon="inline-start" className="animate-spin" />
                                     保存中…
                                 </>
                             ) : (
@@ -303,9 +303,9 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex justify-between gap-2 border-b border-slate-200/50 py-1.5 text-sm dark:border-slate-800/50">
-            <span className="text-slate-500">{label}</span>
-            <span className="font-mono text-slate-800 dark:text-slate-200 tabular-nums">{value}</span>
+        <div className="flex justify-between gap-2 border-b border-border/50 py-1.5 text-sm">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-mono tabular-nums text-foreground">{value}</span>
         </div>
     );
 }
