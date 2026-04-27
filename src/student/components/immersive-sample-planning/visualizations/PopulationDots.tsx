@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
 
 interface Props {
     total: number;
@@ -8,7 +9,7 @@ interface Props {
 
 /**
  * Canvas-based dot grid visualizing a population.
- * Highlighted dots (the sample) are rendered in indigo, the rest in light gray.
+ * Highlighted dots (the sample) use the primary accent, the rest use a muted tone.
  * Automatically scales the dot count to a visually comfortable range.
  */
 export function PopulationDots({ total, highlighted, className }: Props) {
@@ -88,7 +89,7 @@ export function PopulationDots({ total, highlighted, className }: Props) {
     return (
         <canvas
             ref={canvasRef}
-            className={`w-full h-28 sm:h-36 ${className ?? ""}`}
+            className={cn("h-28 w-full sm:h-36", className)}
             aria-label={`总体 ${total.toLocaleString()} 人中高亮 ${highlighted.toLocaleString()} 人`}
         />
     );
