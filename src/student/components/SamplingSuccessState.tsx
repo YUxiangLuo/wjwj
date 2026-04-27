@@ -10,24 +10,25 @@ interface SamplingSuccessStateProps {
 
 export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }: SamplingSuccessStateProps) {
     return (
-        <div className="space-y-4">
-            <div className="flex items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
-                <div className="rounded-full bg-emerald-500/20 p-3">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+        <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-4 rounded-lg border border-primary/20 bg-primary/10 p-5">
+                <div className="rounded-full bg-primary/15 p-3">
+                    <CheckCircle2 className="size-6 text-primary" />
                 </div>
                 <div>
-                    <p className="text-lg font-medium text-emerald-600">抽样完成</p>
-                    <p className="mt-1 text-sm text-emerald-800/70 dark:text-emerald-200/70">{summary}</p>
+                    <p className="text-lg font-medium text-foreground">抽样完成</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{summary}</p>
                 </div>
                 <Button
-                    variant="ghost"
-                    size="sm"
+                    variant="outline"
+                    size="icon-sm"
                     onClick={onRerun}
                     disabled={disabled}
                     data-testid={rerunTestId}
-                    className="ml-auto rounded-full text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-500/15 dark:hover:text-emerald-200"
+                    className="ml-auto"
+                    aria-label="重新执行抽样"
                 >
-                    <RefreshCw className="w-4 h-4" />
+                    <RefreshCw />
                 </Button>
             </div>
         </div>
