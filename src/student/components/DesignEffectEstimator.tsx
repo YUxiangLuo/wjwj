@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { 
-    Layers, 
     Calculator, 
     Info, 
     CheckCircle2,
@@ -104,36 +104,36 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
     };
 
     return (
-        <Card className="rounded-2xl border-indigo-200/90 bg-indigo-50/90 shadow-sm dark:border-indigo-900/45 dark:bg-slate-950">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Calculator className="w-5 h-5 text-indigo-500" />
-                        <CardTitle className="text-base text-indigo-900 dark:text-indigo-200">
+                        <Calculator className="size-5 text-primary" />
+                        <CardTitle className="text-base text-foreground">
                             设计效应与回答率参考
                         </CardTitle>
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-indigo-100/50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30 dark:text-indigo-300"
+                        className="bg-background text-xs text-primary"
                     >
                         deff = {currentDeff.toFixed(1)}
                     </Badge>
                 </div>
-                <CardDescription className="text-slate-700 dark:text-slate-300">
+                <CardDescription className="text-muted-foreground">
                     根据抽样方法和调查方式估算设计效应与回答率
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-col gap-4">
                 {/* 抽样方法选择 */}
-                <div className="space-y-2">
-                    <label className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">抽样方法</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-primary">抽样方法</label>
                     <Select value={selectedMethod} onValueChange={handleMethodChange}>
-                        <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
+                        <SelectTrigger className="bg-background text-foreground">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
+                        <SelectContent>
                             <SelectGroup>
                                 {SAMPLING_METHODS.map(method => (
                                     <SelectItem key={method.key} value={method.key}>
@@ -147,43 +147,47 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
 
                 {/* 抽样方法详情 */}
                 {method && (
-                    <div className="rounded-xl border border-indigo-200 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950 space-y-3">
+                    <div className="flex flex-col gap-3 rounded-xl border bg-background p-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
+                            <span className="text-sm font-medium text-foreground">
                                 {method.name}
                             </span>
-                            <Badge className={`${
-                                method.deff < 1 
-                                    ? "bg-emerald-500" 
-                                    : method.deff === 1 
-                                        ? "bg-indigo-500" 
-                                        : "bg-amber-500"
-                            } text-white`}>
+                            <Badge
+                                className={cn(
+                                    "text-primary-foreground",
+                                    method.deff < 1
+                                        ? "bg-chart-3"
+                                        : method.deff === 1
+                                            ? "bg-primary"
+                                            : "bg-chart-4",
+                                )}
+                            >
                                 deff = {method.deff.toFixed(1)}
                             </Badge>
                         </div>
 
-                        <p className="text-xs text-indigo-900 dark:text-indigo-100">
+                        <p className="text-xs text-foreground">
                             {method.description}
                         </p>
 
                         {/* 特征标签 */}
                         <div className="flex flex-wrap gap-1.5">
                             {method.characteristics.map((char, idx) => (
-                                <span 
+                                <Badge
                                     key={idx}
-                                    className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
+                                    variant="secondary"
+                                    className="rounded-full text-xs"
                                 >
                                     {char}
-                                </span>
+                                </Badge>
                             ))}
                         </div>
 
                         {/* deff 解释 */}
-                        <div className="rounded-lg bg-indigo-50/90 p-2 border border-indigo-200/80 dark:border-indigo-800/40 dark:bg-slate-900/80">
+                        <div className="rounded-lg border bg-muted/60 p-2">
                             <div className="flex items-center gap-2 text-xs">
-                                <Info className="w-3.5 h-3.5 text-indigo-500" />
-                                <span className="text-indigo-900 dark:text-indigo-100">
+                                <Info className="size-3.5 text-primary" />
+                                <span className="text-foreground">
                                     {method.deff < 1 
                                         ? "deff < 1 表示比简单随机抽样更高效，所需样本量可减少"
                                         : method.deff > 1 
@@ -197,13 +201,13 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                 )}
 
                 {/* 调查方式选择 */}
-                <div className="space-y-2">
-                    <label className="text-xs text-indigo-700 dark:text-indigo-300 font-medium">调查方式</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-primary">调查方式</label>
                     <Select value={selectedMode} onValueChange={setSelectedMode}>
-                        <SelectTrigger className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100">
+                        <SelectTrigger className="bg-background text-foreground">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
+                        <SelectContent>
                             <SelectGroup>
                                 {SURVEY_MODES.map(mode => (
                                     <SelectItem key={mode.key} value={mode.key}>
@@ -217,24 +221,24 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
 
                 {/* 调查方式详情 */}
                 {mode && (
-                    <div className="rounded-xl border border-indigo-200 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950 space-y-2">
+                    <div className="flex flex-col gap-2 rounded-xl border bg-background p-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
+                            <span className="text-sm font-medium text-foreground">
                                 {mode.name}
                             </span>
-                            <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-700 dark:border-indigo-600 dark:text-indigo-300">
+                            <Badge variant="outline" className="text-xs text-primary">
                                 回答率 {mode.responseRateRange}
                             </Badge>
                         </div>
 
-                        <p className="text-xs text-indigo-900 dark:text-indigo-100">
+                        <p className="text-xs text-foreground">
                             {mode.description}
                         </p>
 
                         {/* 样本量补偿计算 */}
-                        <div className="rounded-lg bg-amber-50/50 p-2 dark:bg-amber-900/20 border border-amber-200/50 dark:border-amber-700/30">
-                            <div className="flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200">
-                                <Calculator className="w-3.5 h-3.5 text-amber-500" />
+                        <div className="rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                            <div className="flex items-center gap-2 text-xs text-foreground">
+                                <Calculator className="size-3.5 text-chart-4" />
                                 <span>
                                     为补偿 {(100 - mode.responseRate * 100).toFixed(0)}% 不回答，
                                     样本量需扩大至基准的 {(1 / mode.responseRate).toFixed(1)} 倍
@@ -245,22 +249,22 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                 )}
 
                 {/* 综合建议 */}
-                <div className="rounded-xl border-2 border-teal-200/90 bg-teal-50/60 p-3 shadow-sm dark:border-teal-800/45 dark:bg-teal-950/25">
+                <div className="rounded-xl border-2 border-chart-3/30 bg-chart-3/10 p-3 shadow-sm">
                     <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-                        <div className="space-y-2">
-                            <p className="font-medium text-teal-950 dark:text-teal-50 text-sm">
+                        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-chart-3" />
+                        <div className="flex flex-col gap-2">
+                            <p className="text-sm font-medium text-foreground">
                                 参数建议
                             </p>
-                            <div className="space-y-1 text-xs text-teal-900 dark:text-teal-100">
+                            <div className="flex flex-col gap-1 text-xs text-foreground">
                                 <div className="flex items-center gap-2">
-                                    <ArrowRight className="w-3 h-3" />
+                                    <ArrowRight className="size-3" />
                                     <span>
                                         设计效应 (deff)：建议设置为 <strong>{method?.deff.toFixed(1)}</strong>
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <ArrowRight className="w-3 h-3" />
+                                    <ArrowRight className="size-3" />
                                     <span>
                                         无回答率：建议设置为 <strong>{((1 - (mode?.responseRate || 0.6)) * 100).toFixed(0)}%</strong>
                                     </span>
