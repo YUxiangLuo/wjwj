@@ -147,17 +147,17 @@ function StudentAppContent() {
 
     const authStatusDialog = authDialogCode && showAuthStatusDialog ? (
         <Dialog open={showAuthStatusDialog} onOpenChange={setShowAuthStatusDialog}>
-            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+            <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-slate-900 dark:text-slate-100">登录状态已变更</DialogTitle>
-                    <DialogDescription className="text-slate-600 dark:text-slate-400">
+                    <DialogTitle>登录状态已变更</DialogTitle>
+                    <DialogDescription>
                         {authDialogCode === "AUTH_005"
                             ? "您的账号已在其他设备登录。"
                             : "会话已过期，请重新登录。"}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button onClick={handleReLogin} className="bg-indigo-600 hover:bg-indigo-700 text-white">重新登录</Button>
+                    <Button onClick={handleReLogin}>重新登录</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -496,20 +496,19 @@ function StudentAppContent() {
             </Dialog>
 
             <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">会话即将过期</DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">会话将在 5 分钟内过期，是否继续？</DialogDescription>
+                        <DialogTitle>会话即将过期</DialogTitle>
+                        <DialogDescription>会话将在 5 分钟内过期，是否继续？</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowSessionWarning(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">稍后</Button>
+                        <Button variant="ghost" onClick={() => setShowSessionWarning(false)}>稍后</Button>
                         <Button
                             onClick={async () => {
                                 await refreshUser();
                                 await refreshSession();
                                 setShowSessionWarning(false);
                             }}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
                         >
                             继续使用
                         </Button>
@@ -518,21 +517,21 @@ function StudentAppContent() {
             </Dialog>
 
             <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认退出登录？</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                        <AlertDialogTitle>确认退出登录？</AlertDialogTitle>
+                        <AlertDialogDescription>
                             退出后需要重新登录才能继续使用实验系统。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
                         <AlertDialogAction
+                            variant="destructive"
                             onClick={async () => {
                                 setShowLogoutConfirm(false);
                                 await handleLogout();
                             }}
-                            className="bg-rose-600 hover:bg-rose-700 text-white"
                         >
                             退出登录
                         </AlertDialogAction>
