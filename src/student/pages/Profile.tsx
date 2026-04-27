@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, User, Key, Shield } from "lucide-react";
+import { ArrowLeft, CheckCircle2, User, Key, Shield, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,17 @@ import { Label } from "@/components/ui/label";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
 import { authApi } from "../api-client";
 import { useStudent } from "../contexts/StudentContext";
+import { cn } from "@/lib/utils";
+
+function getRuleClass(passed: boolean) {
+    return passed ? "text-primary" : "text-muted-foreground";
+}
+
+function getStrengthClass(score: number) {
+    if (score <= 2) return "text-destructive";
+    if (score <= 4) return "text-muted-foreground";
+    return "text-primary";
+}
 
 export function Profile() {
     const navigate = useNavigate();
@@ -36,6 +47,11 @@ export function Profile() {
     };
     const strengthScore = passwordPolicy.score;
     const passwordStrengthLabel = passwordPolicy.strengthLabel;
+    const profileFields = [
+        { label: "姓名", value: currentUser?.name ?? "-", testId: "student-profile-name" },
+        { label: "学号", value: currentUser?.studentId ?? "-", testId: "student-profile-id", className: "font-mono" },
+        { label: "班级", value: currentUser?.className ?? "-", testId: "student-profile-class" },
+    ];
 
     const handleChangePassword = async () => {
         setError(null);
@@ -86,135 +102,139 @@ export function Profile() {
     };
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
+        <div className="mx-auto flex max-w-5xl flex-col gap-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 dark:from-white to-slate-600 dark:to-slate-400">
-                        个人信息
-                    </h2>
-                    <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">查看你的账号资料与安全设置</p>
+                    <h2 className="text-2xl font-bold text-foreground">个人信息</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">查看你的账号资料与安全设置</p>
                 </div>
-                <Button variant="outline" onClick={() => navigate("/")} className="border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
+                <Button variant="outline" onClick={() => navigate("/")}>
+                    <ArrowLeft data-icon="inline-start" />
                     返回首页
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 border-indigo-500/20 bg-slate-50/40 dark:bg-slate-900/40 backdrop-blur-xl shadow-2xl overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-400 opacity-20" />
-                    <CardHeader className="border-b border-slate-300/30 dark:border-slate-700/30 pb-4">
-                        <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                            <User className="w-5 h-5 text-indigo-500" />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <Card size="sm" className="overflow-hidden bg-muted/30 lg:col-span-2">
+                    <CardHeader className="border-b border-border">
+                        <CardTitle className="flex items-center gap-2 text-base normal-case tracking-normal">
+                            <User className="size-5 text-primary" />
                             基础资料
                         </CardTitle>
-                        <CardDescription className="text-slate-600 dark:text-slate-400">这些信息来自教务系统，无法直接修改。</CardDescription>
+                        <CardDescription>这些信息来自教务系统，无法直接修改。</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-6 pt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-slate-600 dark:text-slate-400">姓名</Label>
-                                <div className="px-3 py-2 rounded-md bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300/50 dark:border-slate-700/50 text-slate-800 dark:text-slate-200" data-testid="student-profile-name">
-                                    {currentUser?.name ?? "-"}
+                    <CardContent className="flex flex-col gap-6">
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                            {profileFields.map((field) => (
+                                <div key={field.label} className="flex flex-col gap-2">
+                                    <Label className="text-muted-foreground">{field.label}</Label>
+                                    <div
+                                        className={cn("rounded-md border border-border bg-background/60 px-3 py-2 text-foreground", field.className)}
+                                        data-testid={field.testId}
+                                    >
+                                        {field.value}
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-slate-600 dark:text-slate-400">学号</Label>
-                                <div className="px-3 py-2 rounded-md bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300/50 dark:border-slate-700/50 text-slate-800 dark:text-slate-200 font-mono" data-testid="student-profile-id">
-                                    {currentUser?.studentId ?? "-"}
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-slate-600 dark:text-slate-400">班级</Label>
-                                <div className="px-3 py-2 rounded-md bg-slate-200/50 dark:bg-slate-800/50 border border-slate-300/50 dark:border-slate-700/50 text-slate-800 dark:text-slate-200" data-testid="student-profile-class">
-                                    {currentUser?.className ?? "-"}
-                                </div>
-                            </div>
+                            ))}
                         </div>
 
-                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex items-start gap-3">
-                            <Shield className="w-5 h-5 text-amber-500 mt-0.5" />
-                            <div className="text-sm text-amber-800/80 dark:text-amber-200/80 leading-relaxed">
+                        <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/10 p-4">
+                            <Shield className="mt-0.5 size-5 text-primary" />
+                            <div className="text-sm leading-relaxed text-primary">
                                 如需修改基础信息，请联系管理员或任课教师。
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-indigo-500/20 bg-slate-50/40 dark:bg-slate-900/40 backdrop-blur-xl shadow-2xl">
-                    <CardHeader className="border-b border-slate-300/30 dark:border-slate-700/30 pb-4">
-                        <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                            <Key className="w-5 h-5 text-indigo-500" />
+                <Card size="sm" className="bg-muted/30">
+                    <CardHeader className="border-b border-border">
+                        <CardTitle className="flex items-center gap-2 text-base normal-case tracking-normal">
+                            <Key className="size-5 text-primary" />
                             修改密码
                         </CardTitle>
-                        <CardDescription className="text-slate-600 dark:text-slate-400">建议定期更新密码以保护账号安全。</CardDescription>
+                        <CardDescription>建议定期更新密码以保护账号安全。</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4 pt-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="currentPassword" className="text-slate-700 dark:text-slate-300">当前密码</Label>
-                            <Input
-                                id="currentPassword"
-                                type="password"
-                                value={passwordForm.currentPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                                autoComplete="current-password"
-                                data-testid="student-profile-password-current"
-                                className="bg-white/50 dark:bg-slate-950/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="newPassword" className="text-slate-700 dark:text-slate-300">新密码</Label>
-                            <Input
-                                id="newPassword"
-                                type="password"
-                                value={passwordForm.newPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                autoComplete="new-password"
-                                data-testid="student-profile-password-new"
-                                className="bg-white/50 dark:bg-slate-950/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="confirmPassword" className="text-slate-700 dark:text-slate-300">确认新密码</Label>
-                            <Input
-                                id="confirmPassword"
-                                type="password"
-                                value={passwordForm.confirmPassword}
-                                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                autoComplete="new-password"
-                                data-testid="student-profile-password-confirm"
-                                className="bg-white/50 dark:bg-slate-950/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-indigo-500/20"
-                            />
-                        </div>
-                        <div className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white/60 dark:bg-slate-950/60 p-3 text-xs space-y-1.5">
-                            <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
-                                <span>密码强度</span>
-                                <span className={strengthScore <= 2 ? "text-rose-600" : strengthScore <= 4 ? "text-amber-600" : "text-emerald-600"}>
-                                    {passwordStrengthLabel}
-                                </span>
-                            </div>
-                            <div className={passwordRules.minLength ? "text-emerald-600" : "text-slate-500"}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
-                            <div className={passwordRules.hasLetter ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
-                            <div className={passwordRules.hasNumber ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
-                            <div className={passwordRules.hasSpecial ? "text-emerald-600" : "text-slate-500"}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
-                            <div className={passwordRules.noStudentId ? "text-emerald-600" : "text-slate-500"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
-                            <div className={passwordRules.matched ? "text-emerald-600" : "text-slate-500"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
-                        </div>
-                        {error && <div className="text-sm text-red-600 bg-red-500/10 p-2 rounded border border-red-500/20">{error}</div>}
-                        {success && (
-                            <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
-                                <CheckCircle2 className="w-4 h-4" />
-                                密码已更新
-                            </div>
-                        )}
-                        <Button
-                            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 mt-2"
-                            onClick={handleChangePassword}
-                            disabled={saving}
-                            data-testid="student-profile-password-save"
+                    <CardContent>
+                        <form
+                            className="flex flex-col gap-4"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                void handleChangePassword();
+                            }}
                         >
-                            {saving ? "保存中..." : "保存新密码"}
-                        </Button>
+                            <input
+                                type="text"
+                                name="username"
+                                autoComplete="username"
+                                value={currentUser?.studentId ?? ""}
+                                readOnly
+                                hidden
+                            />
+                            <div className="flex flex-col gap-2">
+                                <Label htmlFor="currentPassword">当前密码</Label>
+                                <Input
+                                    id="currentPassword"
+                                    type="password"
+                                    value={passwordForm.currentPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                    autoComplete="current-password"
+                                    data-testid="student-profile-password-current"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <Label htmlFor="newPassword">新密码</Label>
+                                <Input
+                                    id="newPassword"
+                                    type="password"
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                    autoComplete="new-password"
+                                    data-testid="student-profile-password-new"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <Label htmlFor="confirmPassword">确认新密码</Label>
+                                <Input
+                                    id="confirmPassword"
+                                    type="password"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                    autoComplete="new-password"
+                                    data-testid="student-profile-password-confirm"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-background/60 p-3 text-xs">
+                                <div className="flex items-center justify-between text-muted-foreground">
+                                    <span>密码强度</span>
+                                    <span className={getStrengthClass(strengthScore)}>
+                                        {passwordStrengthLabel}
+                                    </span>
+                                </div>
+                                <div className={getRuleClass(passwordRules.minLength)}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
+                                <div className={getRuleClass(passwordRules.hasLetter)}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
+                                <div className={getRuleClass(passwordRules.hasNumber)}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
+                                <div className={getRuleClass(passwordRules.hasSpecial)}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
+                                <div className={getRuleClass(passwordRules.noStudentId)}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
+                                <div className={getRuleClass(passwordRules.matched)}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
+                            </div>
+                            {error && <div className="rounded border border-destructive/20 bg-destructive/10 p-2 text-sm text-destructive">{error}</div>}
+                            {success && (
+                                <div className="flex items-center gap-2 rounded border border-primary/20 bg-primary/10 p-2 text-sm text-primary">
+                                    <CheckCircle2 className="size-4" />
+                                    密码已更新
+                                </div>
+                            )}
+                            <Button
+                                type="submit"
+                                className="mt-2 w-full"
+                                disabled={saving}
+                                data-testid="student-profile-password-save"
+                            >
+                                {saving && <Loader2 data-icon="inline-start" className="animate-spin" />}
+                                {saving ? "保存中..." : "保存新密码"}
+                            </Button>
+                        </form>
                     </CardContent>
                 </Card>
             </div>
