@@ -1,6 +1,7 @@
 
 Default to using Bun instead of Node.js.
 
+- If `bun` or `bunx` is not on PATH, use `/home/alice/.bun/bin/bun` or `/home/alice/.bun/bin/bunx` as the fallback executable path.
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
 - Use `bun test` instead of `jest` or `vitest`
 - Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`

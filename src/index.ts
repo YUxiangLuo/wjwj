@@ -13,8 +13,18 @@ import { kickSubmissionPdfProcessing } from "./student/experiment/submission-pdf
 
 type RouteRequest = Request & { params: Record<string, string> };
 
+const faviconResponse = () => new Response(Bun.file("public/favicon.svg"), {
+  headers: {
+    "Content-Type": "image/svg+xml",
+    "Cache-Control": "public, max-age=31536000, immutable",
+  },
+});
+
 const routes = {
   "/": redirect("/student"),
+  "/favicon.ico": faviconResponse,
+  "/favicon.svg": faviconResponse,
+
   "/student": studentPage,
   "/student/*": studentPage,
 

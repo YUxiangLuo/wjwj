@@ -190,12 +190,12 @@ export function Login() {
                     </form>
 
                     <div className="flex justify-center gap-8 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer">
-                            <HelpCircle className="w-4 h-4" />
+                        <span className="flex items-center gap-1.5">
+                            <HelpCircle className="w-4 h-4" aria-hidden="true" />
                             使用指南
                         </span>
-                        <span className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer">
-                            <Lock className="w-4 h-4" />
+                        <span className="flex items-center gap-1.5">
+                            <Lock className="w-4 h-4" aria-hidden="true" />
                             隐私政策
                         </span>
                     </div>

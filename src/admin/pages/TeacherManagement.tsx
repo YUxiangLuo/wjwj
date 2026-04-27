@@ -13,6 +13,9 @@ import { teacherApi, classApi, type Teacher, type Class } from "../api-client";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { toast } from "sonner";
 
+const actionColumnClass = "sticky right-0 z-10 border-l border-border bg-card text-right shadow-sm";
+const actionHeaderClass = "sticky right-0 z-20 border-l border-border bg-card text-right shadow-sm";
+
 export function TeacherManagement() {
     const { confirm, dialog } = useConfirmDialog();
     const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -319,7 +322,7 @@ export function TeacherManagement() {
                                     <TableHead>班级数</TableHead>
                                     <TableHead>最后登录</TableHead>
                                     <TableHead>创建时间</TableHead>
-                                    <TableHead className="text-right">操作</TableHead>
+                                    <TableHead className={actionHeaderClass}>操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -345,7 +348,7 @@ export function TeacherManagement() {
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-xs">{formatDate(teacher.lastLogin)}</TableCell>
                                         <TableCell className="text-muted-foreground text-xs">{formatDate(teacher.createdAt)}</TableCell>
-                                        <TableCell className="text-right">
+                                        <TableCell className={actionColumnClass}>
                                             <div className="flex items-center justify-end gap-2">
                                                 {teacher.isLocked && (
                                                     <Button data-testid={`teacher-unlock-${teacher.employeeId}`} variant="warning" size="xs" onClick={() => handleUnlock(teacher)}>

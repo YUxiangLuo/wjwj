@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-    Users, Activity, TrendingUp, ShieldCheck, ArrowUpRight, ArrowDownRight, GraduationCap, School, UserCheck, Calendar, LogOut, Briefcase
+    Users, Activity, TrendingUp, ShieldCheck, ArrowUpRight, ArrowDownRight, GraduationCap, School, UserCheck, Calendar, LogIn, Briefcase
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -166,7 +166,7 @@ export function Dashboard() {
                     loading={loading}
                 />
                 <KpiCard
-                    icon={LogOut}
+                    icon={LogIn}
                     value={loading ? "-" : stats?.todayLogins ?? 0}
                     label="今日登录次数"
                     loading={loading}

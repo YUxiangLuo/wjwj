@@ -228,6 +228,7 @@ export function SystemSettings() {
                                             <FieldDescription className="text-xs">开启后仅管理员可访问系统，其他用户将看到维护提示</FieldDescription>
                                         </FieldContent>
                                         <Switch
+                                            aria-label="维护模式"
                                             checked={settings.maintenanceMode}
                                             onCheckedChange={(checked) => setSettings({ ...settings, maintenanceMode: checked })}
                                         />
@@ -238,6 +239,7 @@ export function SystemSettings() {
                                             <FieldDescription className="text-xs">允许新用户自行注册账号，关闭后仅管理员可添加</FieldDescription>
                                         </FieldContent>
                                         <Switch
+                                            aria-label="开放注册"
                                             checked={settings.allowRegistration}
                                             onCheckedChange={(checked) => setSettings({ ...settings, allowRegistration: checked })}
                                         />
@@ -273,6 +275,7 @@ export function SystemSettings() {
                                             <FieldDescription className="text-xs">学生提交实验报告后需要教师审批才能获得成绩</FieldDescription>
                                         </FieldContent>
                                         <Switch
+                                            aria-label="提交需审批"
                                             checked={settings.requireApproval}
                                             onCheckedChange={(checked) => setSettings({ ...settings, requireApproval: checked })}
                                         />

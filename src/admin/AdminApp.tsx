@@ -10,7 +10,6 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     Sidebar,
@@ -374,8 +373,6 @@ export function AdminApp() {
                     </div>
 
                     <div className="flex items-center gap-4 flex-1 justify-end">
-                        <SearchInput className="hidden md:flex w-64" placeholder="搜索功能或数据..." />
-
                         <div className="flex items-center gap-2">
                             <Button
                                 data-testid="admin-notifications-trigger"
@@ -495,23 +492,24 @@ export function AdminApp() {
             </Dialog>
 
             <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent showCloseButton={false} className="sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center justify-between">
-                            通知
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader className="pr-12">
+                        <DialogTitle>通知</DialogTitle>
+                        <div className="flex items-center justify-between gap-3">
+                            <DialogDescription>
+                                查看系统通知与操作提醒（未读 {unreadCount} 条）
+                            </DialogDescription>
                             <Button
                                 data-testid="admin-notifications-mark-all-read"
                                 variant="ghost"
                                 size="xs"
+                                className="shrink-0"
                                 onClick={() => { void handleMarkAllRead(); }}
                                 disabled={unreadCount === 0}
                             >
                                 全部已读
                             </Button>
-                        </DialogTitle>
-                        <DialogDescription>
-                            查看系统通知与操作提醒（未读 {unreadCount} 条）
-                        </DialogDescription>
+                        </div>
                     </DialogHeader>
                     <ScrollArea className="-mx-2 h-[60vh] max-h-[420px] px-2">
                         <div className="flex flex-col gap-2 pr-2">

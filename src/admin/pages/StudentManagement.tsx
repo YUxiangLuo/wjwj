@@ -24,6 +24,9 @@ import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
+const actionColumnClass = "sticky right-0 z-10 w-44 min-w-44 max-w-44 border-l border-border bg-card text-right shadow-sm sm:w-auto sm:min-w-0 sm:max-w-none";
+const actionHeaderClass = "sticky right-0 z-20 w-44 min-w-44 max-w-44 border-l border-border bg-card text-right shadow-sm sm:w-auto sm:min-w-0 sm:max-w-none";
+
 export function StudentManagement() {
     const location = useLocation();
     const { confirm, dialog } = useConfirmDialog();
@@ -357,7 +360,7 @@ export function StudentManagement() {
                                         <TableHead>状态</TableHead>
                                         <TableHead>实验进度</TableHead>
                                         <TableHead>最后活跃</TableHead>
-                                        <TableHead className="text-right">操作</TableHead>
+                                        <TableHead className={actionHeaderClass}>操作</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -382,8 +385,8 @@ export function StudentManagement() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-muted-foreground text-xs">{formatDateTime(student.lastActive)}</TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-2">
+                                            <TableCell className={actionColumnClass}>
+                                                <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
                                                     {student.isLocked && (
                                                         <Button data-testid={`student-unlock-${student.studentId}`} variant="warning" size="xs" onClick={() => handleUnlock(student)}>
                                                             <Unlock data-icon="inline-start" />
