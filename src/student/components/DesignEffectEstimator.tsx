@@ -8,7 +8,7 @@ import {
     CheckCircle2,
     ArrowRight
 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DesignEffectEstimatorProps {
     currentDeff: number;
@@ -134,11 +134,13 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
-                            {SAMPLING_METHODS.map(method => (
-                                <SelectItem key={method.key} value={method.key}>
-                                    {method.name}
-                                </SelectItem>
-                            ))}
+                            <SelectGroup>
+                                {SAMPLING_METHODS.map(method => (
+                                    <SelectItem key={method.key} value={method.key}>
+                                        {method.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
                         </SelectContent>
                     </Select>
                 </div>
@@ -202,11 +204,13 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
-                            {SURVEY_MODES.map(mode => (
-                                <SelectItem key={mode.key} value={mode.key}>
-                                    {mode.name}
-                                </SelectItem>
-                            ))}
+                            <SelectGroup>
+                                {SURVEY_MODES.map(mode => (
+                                    <SelectItem key={mode.key} value={mode.key}>
+                                        {mode.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectGroup>
                         </SelectContent>
                     </Select>
                 </div>

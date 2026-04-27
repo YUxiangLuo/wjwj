@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
     Plus, 
     Trash2, 
@@ -368,8 +368,10 @@ export function MultiVariableSamplePlan({
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
-                                                    <SelectItem value="proportion">比例（如知晓率、满意度）</SelectItem>
-                                                    <SelectItem value="mean">均值（如消费金额、年龄）</SelectItem>
+                                                    <SelectGroup>
+                                                        <SelectItem value="proportion">比例（如知晓率、满意度）</SelectItem>
+                                                        <SelectItem value="mean">均值（如消费金额、年龄）</SelectItem>
+                                                    </SelectGroup>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -431,24 +433,26 @@ export function MultiVariableSamplePlan({
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
-                                                    <SelectItem value="primary">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full bg-rose-500" />
-                                                            主要变量（必须满足）
-                                                        </div>
-                                                    </SelectItem>
-                                                    <SelectItem value="secondary">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                                            次要变量（尽量满足）
-                                                        </div>
-                                                    </SelectItem>
-                                                    <SelectItem value="tertiary">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-2 h-2 rounded-full bg-slate-400" />
-                                                            参考变量（参考性）
-                                                        </div>
-                                                    </SelectItem>
+                                                    <SelectGroup>
+                                                        <SelectItem value="primary">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full bg-rose-500" />
+                                                                主要变量（必须满足）
+                                                            </div>
+                                                        </SelectItem>
+                                                        <SelectItem value="secondary">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                                                次要变量（尽量满足）
+                                                            </div>
+                                                        </SelectItem>
+                                                        <SelectItem value="tertiary">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                                                参考变量（参考性）
+                                                            </div>
+                                                        </SelectItem>
+                                                    </SelectGroup>
                                                 </SelectContent>
                                             </Select>
                                             <p className="text-xs text-indigo-800 dark:text-indigo-200">
@@ -468,9 +472,11 @@ export function MultiVariableSamplePlan({
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
-                                                        <SelectItem value="90">90%</SelectItem>
-                                                        <SelectItem value="95">95%</SelectItem>
-                                                        <SelectItem value="99">99%</SelectItem>
+                                                        <SelectGroup>
+                                                            <SelectItem value="90">90%</SelectItem>
+                                                            <SelectItem value="95">95%</SelectItem>
+                                                            <SelectItem value="99">99%</SelectItem>
+                                                        </SelectGroup>
                                                     </SelectContent>
                                                 </Select>
                                             </div>

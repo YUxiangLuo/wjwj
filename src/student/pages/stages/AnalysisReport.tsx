@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
     SelectTrigger,
     SelectValue,
@@ -171,9 +172,11 @@ function FieldSelect({
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                {fields.map((field) => (
-                    <SelectItem key={field} value={field}>{field}</SelectItem>
-                ))}
+                <SelectGroup>
+                    {fields.map((field) => (
+                        <SelectItem key={field} value={field}>{field}</SelectItem>
+                    ))}
+                </SelectGroup>
             </SelectContent>
         </Select>
     );
@@ -739,11 +742,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                    <SelectItem value="all">全部抽样数据</SelectItem>
-                                    <SelectItem value="simple">{METHOD_META.simple.label}结果</SelectItem>
-                                    <SelectItem value="systematic">{METHOD_META.systematic.label}结果</SelectItem>
-                                    <SelectItem value="pps">{METHOD_META.pps.label}结果</SelectItem>
-                                    <SelectItem value="stratified">{METHOD_META.stratified.label}结果</SelectItem>
+                                    <SelectGroup>
+                                        <SelectItem value="all">全部抽样数据</SelectItem>
+                                        <SelectItem value="simple">{METHOD_META.simple.label}结果</SelectItem>
+                                        <SelectItem value="systematic">{METHOD_META.systematic.label}结果</SelectItem>
+                                        <SelectItem value="pps">{METHOD_META.pps.label}结果</SelectItem>
+                                        <SelectItem value="stratified">{METHOD_META.stratified.label}结果</SelectItem>
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                             <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" onClick={() => handleExport(exportType)}>

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
     SelectTrigger,
     SelectValue,
@@ -154,12 +155,14 @@ export function StratifiedAllocationComparison({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="__none__">使用层规模近似（默认）</SelectItem>
-                                {numericFields.map(field => (
-                                    <SelectItem key={field} value={field}>
-                                        {FIELD_LABELS[field] ?? field}
-                                    </SelectItem>
-                                ))}
+                                <SelectGroup>
+                                    <SelectItem value="__none__">使用层规模近似（默认）</SelectItem>
+                                    {numericFields.map(field => (
+                                        <SelectItem key={field} value={field}>
+                                            {FIELD_LABELS[field] ?? field}
+                                        </SelectItem>
+                                    ))}
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                         {targetVariable && layerStdDevs && (

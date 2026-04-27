@@ -63,6 +63,7 @@ mock.module("@/components/ui/tabs", () => ({
 mock.module("@/components/ui/select", () => ({
     Select: ({ children }: { children: ReactNode }) => <div>{children}</div>,
     SelectContent: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    SelectGroup: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
     SelectItem: ({ children, value, ...props }: ComponentProps<"div"> & { value: string }) => <div data-value={value} {...props}>{children}</div>,
     SelectTrigger: ({ children, ...props }: ComponentProps<"button">) => <button {...props}>{children}</button>,
     SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder ?? ""}</span>,

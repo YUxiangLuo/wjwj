@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { ChevronRight } from "lucide-react";
@@ -130,15 +130,17 @@ export function FormulaPhase({
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="90">
-                                <span className="flex items-center gap-2">90 次 (Z = 1.645) — 要求较宽松</span>
-                            </SelectItem>
-                            <SelectItem value="95">
-                                <span className="flex items-center gap-2">95 次 (Z = 1.96) — 最常用 ✓</span>
-                            </SelectItem>
-                            <SelectItem value="99">
-                                <span className="flex items-center gap-2">99 次 (Z = 2.576) — 要求更严格</span>
-                            </SelectItem>
+                            <SelectGroup>
+                                <SelectItem value="90">
+                                    <span className="flex items-center gap-2">90 次 (Z = 1.645) — 要求较宽松</span>
+                                </SelectItem>
+                                <SelectItem value="95">
+                                    <span className="flex items-center gap-2">95 次 (Z = 1.96) — 最常用 ✓</span>
+                                </SelectItem>
+                                <SelectItem value="99">
+                                    <span className="flex items-center gap-2">99 次 (Z = 2.576) — 要求更严格</span>
+                                </SelectItem>
+                            </SelectGroup>
                         </SelectContent>
                     </Select>
 

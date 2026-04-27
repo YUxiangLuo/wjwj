@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Plus, 
     Trash2, 
@@ -21,6 +21,8 @@ import {
     calculateMeanEstimationSampleSize,
 } from "../experiment/sample-plan";
 import { formatMarginOfError } from "../experiment/sample-plan-display";
+
+const NO_STRATIFIED_VARIABLE_VALUE = "__none__";
 
 export interface Domain {
     id: string;
@@ -336,9 +338,9 @@ export function DomainEstimationManager({
                                         <div className="space-y-2">
                                             <Label className="text-xs text-indigo-700 dark:text-indigo-300">关联分层变量（可选）</Label>
                                             <Select 
-                                                value={domain.stratifiedVariable || ""} 
+                                                value={domain.stratifiedVariable || NO_STRATIFIED_VARIABLE_VALUE}
                                                 onValueChange={(value) => updateDomain(domain.id, { 
-                                                    stratifiedVariable: value || undefined,
+                                                    stratifiedVariable: value === NO_STRATIFIED_VARIABLE_VALUE ? undefined : value,
                                                     stratifiedValue: undefined 
                                                 })}
                                             >
@@ -346,10 +348,12 @@ export function DomainEstimationManager({
                                                     <SelectValue placeholder="选择分层变量" />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
-                                                    <SelectItem value="">无</SelectItem>
-                                                    {stratifiedFields.map(field => (
-                                                        <SelectItem key={field} value={field}>{field}</SelectItem>
-                                                    ))}
+                                                    <SelectGroup>
+                                                        <SelectItem value={NO_STRATIFIED_VARIABLE_VALUE}>无</SelectItem>
+                                                        {stratifiedFields.map(field => (
+                                                            <SelectItem key={field} value={field}>{field}</SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -367,9 +371,11 @@ export function DomainEstimationManager({
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700">
-                                                    <SelectItem value="90">90%</SelectItem>
-                                                    <SelectItem value="95">95%</SelectItem>
-                                                    <SelectItem value="99">99%</SelectItem>
+                                                    <SelectGroup>
+                                                        <SelectItem value="90">90%</SelectItem>
+                                                        <SelectItem value="95">95%</SelectItem>
+                                                        <SelectItem value="99">99%</SelectItem>
+                                                    </SelectGroup>
                                                 </SelectContent>
                                             </Select>
                                         </div>

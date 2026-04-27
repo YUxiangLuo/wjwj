@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import {
     Dialog,
@@ -291,9 +291,11 @@ export function DecisionPhase({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="90">90% (Z=1.645)</SelectItem>
-                                <SelectItem value="95">95% (Z=1.96)</SelectItem>
-                                <SelectItem value="99">99% (Z=2.576)</SelectItem>
+                                <SelectGroup>
+                                    <SelectItem value="90">90% (Z=1.645)</SelectItem>
+                                    <SelectItem value="95">95% (Z=1.96)</SelectItem>
+                                    <SelectItem value="99">99% (Z=2.576)</SelectItem>
+                                </SelectGroup>
                             </SelectContent>
                         </Select>
                     </div>

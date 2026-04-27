@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
     SelectTrigger,
     SelectValue,
@@ -282,18 +283,20 @@ export function StratifiedSamplingTab({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                    {Object.keys(populationStats).length > 0 ? (
-                                        Object.keys(populationStats).map(key => (
-                                            <SelectItem key={key} value={key}>
-                                                {FIELD_LABELS[key] || key}
-                                            </SelectItem>
-                                        ))
-                                    ) : (
-                                        <>
-                                            <SelectItem value="gender">性别</SelectItem>
-                                            <SelectItem value="education">学历</SelectItem>
-                                        </>
-                                    )}
+                                    <SelectGroup>
+                                        {Object.keys(populationStats).length > 0 ? (
+                                            Object.keys(populationStats).map(key => (
+                                                <SelectItem key={key} value={key}>
+                                                    {FIELD_LABELS[key] || key}
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            <>
+                                                <SelectItem value="gender">性别</SelectItem>
+                                                <SelectItem value="education">学历</SelectItem>
+                                            </>
+                                        )}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                             <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">

@@ -19,6 +19,7 @@ import {
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
     SelectTrigger,
     SelectValue,
@@ -683,11 +684,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                         <SelectValue placeholder="选择数值变量" />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                                                        {ppsEligibleFields.map(key => (
-                                                            <SelectItem key={key} value={key}>
-                                                                {FIELD_LABELS[key] || key}
-                                                            </SelectItem>
-                                                        ))}
+                                                        <SelectGroup>
+                                                            {ppsEligibleFields.map(key => (
+                                                                <SelectItem key={key} value={key}>
+                                                                    {FIELD_LABELS[key] || key}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
                                                     </SelectContent>
                                                 </Select>
                                             ) : (
