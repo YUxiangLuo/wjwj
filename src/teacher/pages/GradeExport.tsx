@@ -141,7 +141,7 @@ export function GradeExport() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">任务数量</p>
@@ -152,29 +152,29 @@ export function GradeExport() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已完成任务</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.completedTasks}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">提交总数</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalSubmissions}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已批改</p>
@@ -187,7 +187,7 @@ export function GradeExport() {
                 </Card>
             </div>
 
-            <Card className="border-border bg-card">
+            <Card>
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                     <div>
                         <CardTitle className="text-base text-foreground">导出列表</CardTitle>
@@ -235,12 +235,11 @@ export function GradeExport() {
                         </Select>
                         <Button
                             data-testid="teacher-export-batch"
-                            variant="outline"
+                            variant="default"
                             disabled={selectedCount === 0 || exporting}
                             onClick={() => exportExcel()}
-                            className="border-primary bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <FileSpreadsheet className="w-4 h-4 mr-2" />
+                            <FileSpreadsheet data-icon="inline-start" />
                             批量导出 ({selectedCount})
                         </Button>
                     </div>
@@ -298,10 +297,10 @@ export function GradeExport() {
                                     <TableCell className="text-foreground">{task.className}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <Progress value={task.total > 0 ? (task.graded / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-emerald-500" />
+                                            <Progress value={task.total > 0 ? (task.graded / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
                                             <span className="text-xs text-muted-foreground">{task.graded}/{task.total}</span>
                                             {task.graded === task.total && task.total > 0 && (
-                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 text-[10px] h-5">已完成</Badge>
+                                                <Badge variant="success">已完成</Badge>
                                             )}
                                         </div>
                                     </TableCell>
@@ -310,12 +309,11 @@ export function GradeExport() {
                                         <Button
                                             data-testid={`teacher-export-single-${task.taskId}`}
                                             variant="ghost"
-                                            size="sm"
+                                            size="xs"
                                             disabled={exporting}
-                                            className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                             onClick={() => exportExcel(task.taskId)}
                                         >
-                                            <Download className="w-3.5 h-3.5 mr-1" />
+                                            <Download data-icon="inline-start" />
                                             {exporting ? "导出中…" : "导出"}
                                         </Button>
                                     </TableCell>

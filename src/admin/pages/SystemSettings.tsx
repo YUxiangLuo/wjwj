@@ -182,15 +182,12 @@ export function SystemSettings() {
                                 return (
                                     <Button
                                         key={section.id}
-                                        variant="ghost"
+                                        variant={isActive ? "secondary" : "ghost"}
                                         data-testid={`settings-section-${section.id}`}
                                         onClick={() => setActiveSection(section.id)}
-                                        className={`w-full justify-start gap-3 transition-all duration-200 ${isActive
-                                            ? "bg-primary/10 text-primary font-medium border border-primary/10"
-                                            : ""
-                                            }`}
+                                        className="w-full justify-start"
                                     >
-                                        <Icon className="w-4 h-4" />
+                                        <Icon data-icon="inline-start" />
                                         <span>{section.title}</span>
                                     </Button>
                                 );
@@ -363,7 +360,7 @@ export function SystemSettings() {
                                             passwordChange.clearError();
                                             setShowPasswordModal(true);
                                         }} data-testid="settings-change-password-open" className="w-full sm:w-auto">
-                                            <Lock className="w-4 h-4 mr-2" />
+                                            <Lock data-icon="inline-start" />
                                             修改管理员密码
                                         </Button>
                                     </div>
@@ -446,7 +443,7 @@ export function SystemSettings() {
 
                         <div className="pt-6 mt-6 border-t border-border flex justify-end">
                             <Button data-testid="settings-save" onClick={handleSave} disabled={saving}>
-                                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                                {saving ? <Loader2 data-icon="inline-start" className="animate-spin" /> : <Save data-icon="inline-start" />}
                                 保存设置
                             </Button>
                         </div>

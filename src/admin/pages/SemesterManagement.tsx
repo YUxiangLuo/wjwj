@@ -190,7 +190,7 @@ export function SemesterManagement() {
                     <p className="text-sm text-muted-foreground mt-1">维护学期信息并标记当前学期。</p>
                 </div>
                 <Button data-testid="semester-create-open" onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
+                    <Plus data-icon="inline-start" />
                     创建学期
                 </Button>
             </div>
@@ -213,7 +213,7 @@ export function SemesterManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Current Semester</p>
                             <p className="text-sm font-bold mt-2">{loading ? "-" : summary.currentName}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <Star className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -291,7 +291,7 @@ export function SemesterManagement() {
                                         <TableCell className="font-medium">{semester.name}</TableCell>
                                         <TableCell>
                                             {semester.isCurrent ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">当前学期</Badge>
+                                                <Badge variant="success">当前学期</Badge>
                                             ) : (
                                                 <Badge variant="secondary">历史学期</Badge>
                                             )}
@@ -306,24 +306,23 @@ export function SemesterManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {!semester.isCurrent && (
-                                                    <Button data-testid={`semester-set-current-${semester.id}`} variant="ghost" size="sm" onClick={() => handleSetCurrent(semester.id)} className="hover:text-emerald-600 hover:bg-emerald-500/10 h-8">
-                                                        <Star className="w-3.5 h-3.5 mr-1.5" />
+                                                    <Button data-testid={`semester-set-current-${semester.id}`} variant="success" size="xs" onClick={() => handleSetCurrent(semester.id)}>
+                                                        <Star data-icon="inline-start" />
                                                         设为当前
                                                     </Button>
                                                 )}
-                                                <Button data-testid={`semester-edit-open-${semester.id}`} variant="ghost" size="sm" onClick={() => openEdit(semester)} className="h-8">
-                                                    <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                                                <Button data-testid={`semester-edit-open-${semester.id}`} variant="ghost" size="xs" onClick={() => openEdit(semester)}>
+                                                    <Pencil data-icon="inline-start" />
                                                     编辑
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                    variant="destructive"
+                                                    size="xs"
                                                     data-testid={`semester-delete-${semester.id}`}
                                                     onClick={() => handleDelete(semester)}
-                                                    className="hover:text-destructive hover:bg-destructive/10 h-8"
                                                     disabled={semester.classCount > 0}
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                                    <Trash2 data-icon="inline-start" />
                                                     删除
                                                 </Button>
                                             </div>
@@ -383,7 +382,7 @@ export function SemesterManagement() {
                             取消
                         </Button>
                         <Button data-testid="semester-create-submit" onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()}>
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
                             确认创建
                         </Button>
                     </DialogFooter>
@@ -413,7 +412,7 @@ export function SemesterManagement() {
                             取消
                         </Button>
                         <Button data-testid="semester-edit-submit" onClick={handleEditSemester} disabled={submitting || !editName.trim()}>
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
                             保存
                         </Button>
                     </DialogFooter>

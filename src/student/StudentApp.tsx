@@ -333,21 +333,23 @@ function StudentAppContent() {
                                         {currentUser.studentId}
                                     </PopoverDescription>
                                 </PopoverHeader>
-                                <button
+                                <Button
                                     type="button"
-                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-popover-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                                    variant="ghost"
+                                    className="h-auto w-full justify-start px-3 py-2.5 text-left font-normal normal-case tracking-normal"
                                     data-testid="student-nav-profile"
                                     onClick={() => {
                                         setShowAccountMenu(false);
                                         navigate("/profile");
                                     }}
                                 >
-                                    <User className="size-4 text-muted-foreground" />
+                                    <User data-icon="inline-start" />
                                     个人信息
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="button"
-                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-popover-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                                    variant="ghost"
+                                    className="h-auto w-full justify-start px-3 py-2.5 text-left font-normal normal-case tracking-normal"
                                     data-testid="student-open-password-modal"
                                     onClick={() => {
                                         setShowAccountMenu(false);
@@ -355,21 +357,22 @@ function StudentAppContent() {
                                         setShowPasswordModal(true);
                                     }}
                                 >
-                                    <KeyRound className="size-4 text-muted-foreground" />
+                                    <KeyRound data-icon="inline-start" />
                                     修改密码
-                                </button>
-                                <button
+                                </Button>
+                                <Button
                                     type="button"
-                                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-destructive transition-colors hover:bg-destructive/10 focus-visible:bg-destructive/10 focus-visible:outline-none"
+                                    variant="destructive"
+                                    className="h-auto w-full justify-start px-3 py-2.5 text-left font-normal normal-case tracking-normal"
                                     data-testid="student-logout-trigger"
                                     onClick={() => {
                                         setShowAccountMenu(false);
                                         setShowLogoutConfirm(true);
                                     }}
                                 >
-                                    <LogOut className="size-4" />
+                                    <LogOut data-icon="inline-start" />
                                     退出登录
-                                </button>
+                                </Button>
                             </PopoverContent>
                         </Popover>
                     </div>
@@ -448,9 +451,10 @@ function StudentAppContent() {
                                     )}
                                 >
                                     <div className="flex items-start justify-between gap-2">
-                                        <button
+                                        <Button
                                             type="button"
-                                            className="flex-1 text-left"
+                                            variant="ghost"
+                                            className="h-auto flex-1 justify-start whitespace-normal p-0 text-left font-normal normal-case tracking-normal"
                                             onClick={() => {
                                                 if (!notice.isRead) {
                                                     markNotificationAsRead(notice.id);
@@ -466,16 +470,17 @@ function StudentAppContent() {
                                                     {notice.content}
                                                 </div>
                                             </div>
-                                        </button>
+                                        </Button>
                                         <div className="flex items-start gap-1">
-                                            <button
+                                            <Button
                                                 type="button"
-                                                className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                variant="ghost"
+                                                size="icon-xs"
                                                 onClick={() => deleteNotification(notice.id)}
                                                 title="删除通知"
                                             >
-                                                <Trash2 className="size-3.5" />
-                                            </button>
+                                                <Trash2 />
+                                            </Button>
                                             <div className="whitespace-nowrap pt-1 text-[10px] text-muted-foreground">
                                                 {new Date(notice.createdAt).toLocaleString("zh-CN", {
                                                     timeZone: "Asia/Shanghai",

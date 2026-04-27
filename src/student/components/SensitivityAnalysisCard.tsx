@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { Activity, Info } from "lucide-react";
 
@@ -80,49 +81,48 @@ export function SensitivityAnalysisCard({
             <CardContent className="flex flex-col gap-4">
                 {/* 热力图表格 */}
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b bg-muted/70">
-                                <th className="px-2 py-2 text-left font-medium text-foreground">置信水平 \ 允许误差</th>
-                                <th className="px-2 py-2 text-center font-medium text-foreground">±1%</th>
-                                <th className="px-2 py-2 text-center font-medium text-foreground">±2%</th>
-                                <th className="px-2 py-2 text-center font-medium text-foreground">±3%</th>
-                                <th className="px-2 py-2 text-center font-medium text-foreground">±5%</th>
-                                <th className="px-2 py-2 text-center font-medium text-foreground">±7%</th>
-                                <th className="px-2 py-2 text-center font-medium text-foreground">±10%</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/70">
+                                <TableHead className="h-auto py-2 normal-case tracking-normal text-foreground">置信水平 \ 允许误差</TableHead>
+                                <TableHead className="h-auto py-2 text-center normal-case tracking-normal text-foreground">±1%</TableHead>
+                                <TableHead className="h-auto py-2 text-center normal-case tracking-normal text-foreground">±2%</TableHead>
+                                <TableHead className="h-auto py-2 text-center normal-case tracking-normal text-foreground">±3%</TableHead>
+                                <TableHead className="h-auto py-2 text-center normal-case tracking-normal text-foreground">±5%</TableHead>
+                                <TableHead className="h-auto py-2 text-center normal-case tracking-normal text-foreground">±7%</TableHead>
+                                <TableHead className="h-auto py-2 text-center normal-case tracking-normal text-foreground">±10%</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {Object.entries(groupedByConfidence).map(([confidenceLevel, items]) => {
                                 const isCurrentConfidence = confidenceLevel === currentConfidenceLevel;
                                 
                                 return (
-                                    <tr 
+                                    <TableRow
                                         key={confidenceLevel}
                                         className={cn(
-                                            "border-b",
                                             isCurrentConfidence && "bg-background/60",
                                         )}
                                     >
-                                        <td className="px-2 py-2">
+                                        <TableCell className="py-2">
                                             <div className="flex items-center gap-2">
                                                 <div className={cn("size-2 rounded-full", confidenceDotClasses[confidenceLevel] ?? "bg-muted-foreground")} />
                                                 <span className={cn("font-medium", isCurrentConfidence ? "text-foreground" : "text-muted-foreground")}>
                                                     {confidenceLevel}%
                                                 </span>
                                                 {isCurrentConfidence && (
-                                                    <Badge variant="outline" className="border-primary/30 bg-primary/10 text-xs text-primary">
+                                                    <Badge variant="info">
                                                         当前
                                                     </Badge>
                                                 )}
                                             </div>
-                                        </td>
+                                        </TableCell>
                                         {items.map((item, idx) => {
                                             const isCurrentCell = isCurrentConfidence && item.marginOfError === currentMarginOfError;
                                             const intensity = getIntensity(item.sampleSize);
                                             
                                             return (
-                                                <td key={idx} className="px-1 py-1">
+                                                <TableCell key={idx} className="px-1 py-1">
                                                     <div
                                                         className={cn(
                                                             "rounded-lg px-2 py-2 text-center font-mono text-xs",
@@ -134,14 +134,14 @@ export function SensitivityAnalysisCard({
                                                             {item.sampleSize.toLocaleString()}
                                                         </span>
                                                     </div>
-                                                </td>
+                                                </TableCell>
                                             );
                                         })}
-                                    </tr>
+                                    </TableRow>
                                 );
                             })}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
 
                 {/* 说明 */}

@@ -206,10 +206,10 @@ export function TeacherManagement() {
 
     const getStatusBadge = (teacher: Teacher) => {
         if (teacher.isLocked) {
-            return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">已锁定</Badge>;
+            return <Badge variant="destructive">已锁定</Badge>;
         }
         if (teacher.status === 1) {
-            return <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">正常</Badge>;
+            return <Badge variant="success">正常</Badge>;
         }
         return <Badge variant="secondary">已停用</Badge>;
     };
@@ -230,7 +230,7 @@ export function TeacherManagement() {
                     <p className="text-sm text-muted-foreground mt-1">管理教师账号、锁定状态与登录安全。</p>
                 </div>
                 <Button data-testid="teacher-create-open" onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
+                    <Plus data-icon="inline-start" />
                     添加教师
                 </Button>
             </div>
@@ -253,7 +253,7 @@ export function TeacherManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -264,7 +264,7 @@ export function TeacherManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Disabled</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -298,7 +298,7 @@ export function TeacherManagement() {
                             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                         />
                         <Button data-testid="teacher-search-submit" variant="outline" onClick={handleSearch} disabled={loading}>
-                            <Search className="w-4 h-4 mr-2" />
+                            <Search data-icon="inline-start" />
                             搜索
                         </Button>
                     </div>
@@ -328,41 +328,43 @@ export function TeacherManagement() {
                                         <TableCell className="font-medium">{teacher.name}</TableCell>
                                         <TableCell>{getStatusBadge(teacher)}</TableCell>
                                         <TableCell>
-                                            <button
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="xs"
                                                 data-testid={`teacher-view-classes-${teacher.employeeId}`}
                                                 onClick={() => handleViewClasses(teacher)}
-                                                className="flex items-center gap-1 hover:text-primary transition-colors cursor-pointer"
+                                                className="px-1 normal-case tracking-normal"
                                                 title="查看关联班级"
                                             >
-                                                <GraduationCap className="w-3.5 h-3.5 text-muted-foreground" />
+                                                <GraduationCap data-icon="inline-start" />
                                                 {teacher.classCount}
-                                                <Eye className="w-3 h-3 text-muted-foreground ml-0.5" />
-                                            </button>
+                                                <Eye data-icon="inline-end" />
+                                            </Button>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-xs">{formatDate(teacher.lastLogin)}</TableCell>
                                         <TableCell className="text-muted-foreground text-xs">{formatDate(teacher.createdAt)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {teacher.isLocked && (
-                                                    <Button data-testid={`teacher-unlock-${teacher.employeeId}`} variant="ghost" size="sm" onClick={() => handleUnlock(teacher)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
-                                                        <Unlock className="w-3.5 h-3.5 mr-1" />
+                                                    <Button data-testid={`teacher-unlock-${teacher.employeeId}`} variant="warning" size="xs" onClick={() => handleUnlock(teacher)}>
+                                                        <Unlock data-icon="inline-start" />
                                                         解锁
                                                     </Button>
                                                 )}
-                                                <Button data-testid={`teacher-edit-open-${teacher.employeeId}`} variant="ghost" size="sm" onClick={() => openEditModal(teacher)} className="h-8">
-                                                    <Pencil className="w-3.5 h-3.5 mr-1" />
+                                                <Button data-testid={`teacher-edit-open-${teacher.employeeId}`} variant="ghost" size="xs" onClick={() => openEditModal(teacher)}>
+                                                    <Pencil data-icon="inline-start" />
                                                     编辑
                                                 </Button>
-                                                <Button data-testid={`teacher-reset-${teacher.employeeId}`} variant="ghost" size="sm" onClick={() => handleResetPassword(teacher)} className="h-8">
-                                                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                                <Button data-testid={`teacher-reset-${teacher.employeeId}`} variant="ghost" size="xs" onClick={() => handleResetPassword(teacher)}>
+                                                    <RotateCcw data-icon="inline-start" />
                                                     重置
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                    variant={teacher.status === 1 ? "destructive" : "success"}
+                                                    size="xs"
                                                     data-testid={`teacher-toggle-status-${teacher.employeeId}`}
                                                     onClick={() => handleToggleStatus(teacher)}
-                                                    className={`h-8 ${teacher.status === 1 ? "text-destructive hover:text-destructive hover:bg-destructive/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                                 >
                                                     {teacher.status === 1 ? "停用" : "启用"}
                                                 </Button>
@@ -428,7 +430,7 @@ export function TeacherManagement() {
                             onClick={handleAddTeacher}
                             disabled={submitting || !newTeacher.employeeId.trim() || !newTeacher.name.trim()}
                         >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
                             确认添加
                         </Button>
                     </DialogFooter>
@@ -469,7 +471,7 @@ export function TeacherManagement() {
                             onClick={handleEditTeacher}
                             disabled={submitting || !editName.trim()}
                         >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
                             确认修改
                         </Button>
                     </DialogFooter>

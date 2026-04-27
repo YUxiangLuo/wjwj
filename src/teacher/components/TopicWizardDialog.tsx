@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Sparkles, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import type { TopicDetail, Question } from "../api-client";
 import { teacherApi } from "../api-client";
 import { QuestionEditor } from "@/components/questionnaire/QuestionEditor";
-import { questionTypeLabels, questionTypeBadgeColors } from "@/lib/questionnaire-labels";
+import { questionTypeLabels } from "@/lib/questionnaire-labels";
 import type { QuestionType } from "@/lib/questionnaire-types";
 
 interface FieldMappingState {
@@ -276,6 +278,24 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
         (column) => isLikelyIdentifier(column) || isLikelyHighCardinality(column)
     );
     const canProceedMapping = mappingRules.every((item) => item.ok);
+    const isFormControlClick = (target: EventTarget | null) =>
+        target instanceof HTMLElement && Boolean(target.closest("[data-slot='checkbox'], [data-slot='label']"));
+
+    const toggleStratifiedField = (column: string, checked: boolean) => {
+        setFieldMapping(prev => ({
+            ...prev,
+            stratified: checked ? [...prev.stratified, column] : prev.stratified.filter(x => x !== column),
+            numeric: checked ? prev.numeric.filter(x => x !== column) : prev.numeric,
+        }));
+    };
+
+    const toggleNumericField = (column: string, checked: boolean) => {
+        setFieldMapping(prev => ({
+            ...prev,
+            numeric: checked ? [...prev.numeric, column] : prev.numeric.filter(x => x !== column),
+            stratified: checked ? prev.stratified.filter(x => x !== column) : prev.stratified,
+        }));
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -302,13 +322,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${isCurrent
                                             ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
                                             : isCompleted
-                                                ? "bg-emerald-600/20 text-emerald-600 border border-emerald-500/30"
+                                                ? "bg-success/20 text-success border border-success/30"
                                                 : "bg-muted text-muted-foreground border border-border"
                                         }`}
                                     >
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                                     </div>
-                                    <span className={`text-xs ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-emerald-600/80" : "text-muted-foreground"}`}>{step}</span>
+                                    <span className={`text-xs ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success/80" : "text-muted-foreground"}`}>{step}</span>
                                     {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground/30" />}
                                 </div>
                             );
@@ -351,7 +371,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 2 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
-                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
+                                    <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
                                         该课题已发布，总体数据文件不可更换，仅可查看当前数据。
                                     </div>
                                 )}
@@ -370,7 +390,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <a
                                             href="/templates/数据模板.csv"
                                             download
-                                            className="text-xs text-emerald-600 hover:text-emerald-500 flex items-center gap-1"
+                                            className="text-xs text-success hover:text-success/80 flex items-center gap-1"
                                         >
                                             <Download className="w-3 h-3" />
                                             下载模板
@@ -410,7 +430,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 {excelInfo && (
                                     <div className="space-y-3">
                                         <div className="bg-background border border-border rounded-lg p-4 text-sm text-foreground">
-                                            <div className={`flex items-center gap-2 mb-2 ${isPublishedTopic ? "text-muted-foreground" : "text-emerald-600"}`}>
+                                            <div className={`flex items-center gap-2 mb-2 ${isPublishedTopic ? "text-muted-foreground" : "text-success"}`}>
                                                 <CheckCircle2 className="w-4 h-4" />
                                                 {isPublishedTopic ? "当前总体数据" : "上传成功"}
                                             </div>
@@ -419,27 +439,27 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         {excelInfo.preview && excelInfo.preview.length > 0 && (
                                             <div className="space-y-2">
                                                 <div className="text-xs text-muted-foreground font-medium">数据预览（前 {Math.min(excelInfo.preview.length, 5)} 行）</div>
-                                                <div className="overflow-x-auto border border-border rounded-lg">
-                                                    <table className="w-full text-xs">
-                                                        <thead>
-                                                            <tr className="bg-muted/50 border-b border-border">
+                                                <div className="border border-border rounded-lg">
+                                                    <Table className="text-xs">
+                                                        <TableHeader>
+                                                            <TableRow className="bg-muted/50">
                                                                 {excelInfo.columns.map((col) => (
-                                                                    <th key={col} className="text-left px-3 py-2 text-muted-foreground font-medium whitespace-nowrap">{col}</th>
+                                                                    <TableHead key={col} className="h-auto py-2 normal-case tracking-normal">{col}</TableHead>
                                                                 ))}
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody>
                                                             {excelInfo.preview.slice(0, 5).map((row, idx) => (
-                                                                <tr key={idx} className="border-b border-muted/50 hover:bg-muted/30">
+                                                                <TableRow key={idx} className="hover:bg-muted/30">
                                                                     {excelInfo!.columns.map((col) => (
-                                                                        <td key={col} className="px-3 py-1.5 text-foreground whitespace-nowrap max-w-[200px] truncate">
+                                                                        <TableCell key={col} className="max-w-[200px] truncate py-1.5 text-foreground">
                                                                             {row?.[col] != null ? String(row[col]) : <span className="text-muted-foreground">-</span>}
-                                                                        </td>
+                                                                        </TableCell>
                                                                     ))}
-                                                                </tr>
+                                                                </TableRow>
                                                             ))}
-                                                        </tbody>
-                                                    </table>
+                                                        </TableBody>
+                                                    </Table>
                                                 </div>
                                             </div>
                                         )}
@@ -451,7 +471,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
-                                    <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
+                                    <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
                                         该课题已发布，字段映射不可修改，仅可查看当前配置。
                                     </div>
                                 )}
@@ -465,12 +485,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                         <Button
                                             type="button"
-                                            variant="outline"
+                                            variant="secondary"
                                             disabled={isPublishedTopic}
                                             onClick={applyRecommendedMapping}
-                                            className="shrink-0 border-primary/40 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                                            className="shrink-0"
                                         >
-                                            <Sparkles className="mr-2 h-4 w-4" />
+                                            <Sparkles data-icon="inline-start" />
                                             智能推荐映射
                                         </Button>
                                     </div>
@@ -489,7 +509,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             }))}
                                         disabled={isPublishedTopic}
                                     >
-                                        <SelectTrigger data-testid="teacher-topic-mapping-identifier" className="disabled:opacity-60">
+                                        <SelectTrigger data-testid="teacher-topic-mapping-identifier">
                                             <SelectValue placeholder="选择标识符字段" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -508,7 +528,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <div
                                             key={rule.text}
                                             className={`rounded-md border px-3 py-2 text-xs ${rule.ok
-                                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                                                ? "border-success/30 bg-success/10 text-success"
                                                 : "border-border bg-card text-muted-foreground"
                                                 }`}
                                         >
@@ -522,7 +542,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <Label className="text-foreground">分层变量（已选 {fieldMapping.stratified.length}）</Label>
                                         <p className="text-xs text-muted-foreground">用于按类别分组对比，建议 1-3 个，且每个字段唯一值不超过 20（如性别、学历、地区）。</p>
                                         {riskyStratifiedFields.length > 0 && (
-                                            <p className="text-xs text-amber-600">
+                                            <p className="text-xs text-warning">
                                                 当前分层变量包含高基数或 ID 类字段（{riskyStratifiedFields.join("、")}），保存时可能失败，建议替换。
                                             </p>
                                         )}
@@ -536,29 +556,36 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     : blockedAsIdentifier
                                                         ? "ID 类字段不建议作为分层变量"
                                                         : undefined;
+                                                const checkboxId = `teacher-topic-mapping-stratified-${encodeURIComponent(c)}`;
                                                 return (
-                                                    <label
+                                                    <div
                                                         key={c}
                                                         title={reason}
-                                                        className={`flex items-center gap-2 text-sm p-1.5 rounded ${disabled
+                                                        className={`flex items-center gap-2 rounded p-1.5 text-sm font-normal normal-case tracking-normal ${disabled
                                                             ? "text-muted-foreground cursor-not-allowed"
                                                             : "text-foreground hover:bg-card cursor-pointer"
                                                             }`}
+                                                        onClick={(event) => {
+                                                            if (disabled || isFormControlClick(event.target)) return;
+                                                            toggleStratifiedField(c, !checked);
+                                                        }}
                                                     >
                                                         <Checkbox
+                                                            id={checkboxId}
                                                             data-testid={`teacher-topic-mapping-stratified-${c}`}
                                                             disabled={disabled}
                                                             checked={checked}
                                                             onCheckedChange={(nextChecked) => {
-                                                                setFieldMapping(prev => ({
-                                                                    ...prev,
-                                                                    stratified: nextChecked === true ? [...prev.stratified, c] : prev.stratified.filter(x => x !== c),
-                                                                    numeric: nextChecked === true ? prev.numeric.filter(x => x !== c) : prev.numeric,
-                                                                }));
+                                                                toggleStratifiedField(c, nextChecked === true);
                                                             }}
                                                         />
-                                                        {c}
-                                                    </label>
+                                                        <Label
+                                                            htmlFor={checkboxId}
+                                                            className={`text-sm font-normal normal-case tracking-normal ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                                        >
+                                                            {c}
+                                                        </Label>
+                                                    </div>
                                                 );
                                             })}
                                         </div>
@@ -576,29 +603,36 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     : blockedAsIdentifier
                                                         ? "ID 类字段不建议作为数值变量"
                                                         : undefined;
+                                                const checkboxId = `teacher-topic-mapping-numeric-${encodeURIComponent(c)}`;
                                                 return (
-                                                    <label
+                                                    <div
                                                         key={c}
                                                         title={reason}
-                                                        className={`flex items-center gap-2 text-sm p-1.5 rounded ${disabled
+                                                        className={`flex items-center gap-2 rounded p-1.5 text-sm font-normal normal-case tracking-normal ${disabled
                                                             ? "text-muted-foreground cursor-not-allowed"
                                                             : "text-foreground hover:bg-card cursor-pointer"
                                                             }`}
+                                                        onClick={(event) => {
+                                                            if (disabled || isFormControlClick(event.target)) return;
+                                                            toggleNumericField(c, !checked);
+                                                        }}
                                                     >
                                                         <Checkbox
+                                                            id={checkboxId}
                                                             data-testid={`teacher-topic-mapping-numeric-${c}`}
                                                             disabled={disabled}
                                                             checked={checked}
                                                             onCheckedChange={(nextChecked) => {
-                                                                setFieldMapping(prev => ({
-                                                                    ...prev,
-                                                                    numeric: nextChecked === true ? [...prev.numeric, c] : prev.numeric.filter(x => x !== c),
-                                                                    stratified: nextChecked === true ? prev.stratified.filter(x => x !== c) : prev.stratified,
-                                                                }));
+                                                                toggleNumericField(c, nextChecked === true);
                                                             }}
                                                         />
-                                                        {c}
-                                                    </label>
+                                                        <Label
+                                                            htmlFor={checkboxId}
+                                                            className={`text-sm font-normal normal-case tracking-normal ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                                        >
+                                                            {c}
+                                                        </Label>
+                                                    </div>
                                                 );
                                             })}
                                         </div>
@@ -628,12 +662,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 <span className="text-foreground">{a.fileName}</span>
                                             </div>
                                             <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                variant="destructive"
+                                                size="icon-xs"
+                                                className="opacity-0 group-hover:opacity-100"
                                                 onClick={() => teacherApi.deleteAttachment(editingTopicId!, a.id).then(() => onRefreshTopicDetail(editingTopicId!))}
                                             >
-                                                <X className="w-4 h-4" />
+                                                <X />
                                             </Button>
                                         </div>
                                     ))}
@@ -646,14 +680,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-foreground">推荐题目</Label>
-                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-primary hover:bg-primary/90">
+                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion}>
                                         + 添加题目
                                     </Button>
                                 </div>
                                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                                     {recommendQuestions.map((q, idx) => {
                                         const qt = q.type as QuestionType;
-                                        const badge = questionTypeBadgeColors[qt] ?? "bg-muted/10 text-muted-foreground border-muted/20";
                                         const optionsArr = q.options ?? [];
                                         return (
                                             <div key={q.id} className="border border-border bg-background p-4 relative group hover:border-border transition-colors">
@@ -661,30 +694,30 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     <div className="flex flex-col gap-0.5 pt-0.5">
                                                         <Button
                                                             variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                                            size="icon-xs"
+                                                            className="disabled:opacity-30"
                                                             disabled={idx === 0}
                                                             onClick={() => handleMoveQuestion(idx, "up")}
                                                         >
-                                                            <ArrowUp className="w-3.5 h-3.5" />
+                                                            <ArrowUp />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                                                            size="icon-xs"
+                                                            className="disabled:opacity-30"
                                                             disabled={idx === recommendQuestions.length - 1}
                                                             onClick={() => handleMoveQuestion(idx, "down")}
                                                         >
-                                                            <ArrowDown className="w-3.5 h-3.5" />
+                                                            <ArrowDown />
                                                         </Button>
                                                     </div>
 
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2 mb-1.5">
                                                             <span className="text-muted-foreground text-xs font-mono">{idx + 1}.</span>
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full border ${badge}`}>
+                                                            <Badge variant="muted">
                                                                 {questionTypeLabels[qt] ?? "未知"}
-                                                            </span>
+                                                            </Badge>
                                                         </div>
                                                         <p data-testid={`teacher-topic-question-content-${idx}`} className="text-sm text-foreground leading-relaxed">
                                                             {q.content || <span className="text-muted-foreground italic">未填写题目内容</span>}
@@ -692,9 +725,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         {(q.type === "single" || q.type === "multiple") && optionsArr.length > 0 && (
                                                             <div className="flex flex-wrap gap-1.5 mt-2">
                                                                 {optionsArr.map((opt, i) => (
-                                                                    <span key={i} className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded border border-border/50">
+                                                                    <Badge key={i} variant="muted">
                                                                         {String.fromCharCode(65 + i)}. {opt}
-                                                                    </span>
+                                                                    </Badge>
                                                                 ))}
                                                             </div>
                                                         )}
@@ -714,19 +747,17 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                     <div className="flex items-center gap-1 shrink-0">
                                                         <Button
                                                             variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                            size="icon-xs"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
-                                                            <Pencil className="w-4 h-4" />
+                                                            <Pencil />
                                                         </Button>
                                                         <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                                            variant="destructive"
+                                                            size="icon-xs"
                                                             onClick={() => handleDeleteQuestion(idx)}
                                                         >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <Trash2 />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -797,7 +828,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </div>
                                 <div className="bg-background/50 p-4 flex justify-between items-center border border-border">
                                     <span className="text-muted-foreground">当前总权重</span>
-                                    <span className={`text-2xl font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-emerald-600" : "text-destructive"}`}>
+                                    <span className={`text-2xl font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
                                         {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
                                     </span>
                                 </div>
@@ -814,14 +845,13 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)}>上一步</Button>
                             )}
                             {currentStep === 1 && (
-                                <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-primary hover:bg-primary/90 text-primary-foreground">{editingTopicId ? "保存并继续" : "下一步"}</Button>
+                                <Button data-testid="teacher-topic-next" onClick={onSubmitTopic}>{editingTopicId ? "保存并继续" : "下一步"}</Button>
                             )}
                             {!loadingDetail && currentStep === 2 && (
                                 <Button
                                     data-testid="teacher-topic-next"
                                     onClick={() => setCurrentStep(3)}
                                     disabled={!isPublishedTopic && !excelInfo}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                 >
                                     下一步
                                 </Button>
@@ -831,19 +861,18 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     data-testid="teacher-topic-next"
                                     onClick={onSaveFieldMapping}
                                     disabled={!isPublishedTopic && !canProceedMapping}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                 >
                                     {isPublishedTopic ? "下一步" : "保存并继续"}
                                 </Button>
                             )}
                             {!loadingDetail && currentStep === 4 && (
-                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-primary hover:bg-primary/90 text-primary-foreground">下一步</Button>
+                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)}>下一步</Button>
                             )}
                             {!loadingDetail && currentStep === 5 && (
-                                <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-primary hover:bg-primary/90 text-primary-foreground">保存并继续</Button>
+                                <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions}>保存并继续</Button>
                             )}
                             {!loadingDetail && currentStep === 6 && (
-                                <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-primary hover:bg-primary/90 text-primary-foreground">完成</Button>
+                                <Button data-testid="teacher-topic-finish" onClick={onSaveWeights}>完成</Button>
                             )}
                         </div>
                     </div>

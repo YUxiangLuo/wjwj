@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ComponentType, type SVGProps } from "react";
 import { BookOpen, FileText, Layers, ListChecks, PieChart, Table2, ExternalLink, CheckCircle2, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RichTextContent } from "@/components/RichTextContent";
 import { teacherApi, type TopicDetail, type Topic } from "../api-client";
 import { questionTypeLabels } from "@/lib/questionnaire-labels";
@@ -11,7 +13,7 @@ import type { QuestionType } from "@/lib/questionnaire-types";
 
 type TabKey = "basic" | "data" | "mapping" | "attachments" | "questions" | "weights";
 
-const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+const TABS: { key: TabKey; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
     { key: "basic", label: "基本信息", icon: BookOpen },
     { key: "data", label: "数据概览", icon: Table2 },
     { key: "mapping", label: "字段映射", icon: Layers },
@@ -99,9 +101,9 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             </DialogDescription>
                             <div className="flex items-center gap-2 mt-1">
                                 {topic.status === 1 ? (
-                                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs">已发布</Badge>
+                                    <Badge variant="success">已发布</Badge>
                                 ) : (
-                                    <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">草稿</Badge>
+                                    <Badge variant="warning">草稿</Badge>
                                 )}
                                 <span className="text-xs text-muted-foreground">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
                             </div>
@@ -109,26 +111,25 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                     </div>
                 </DialogHeader>
 
-                {/* Tab navigation */}
-                <div className="flex gap-1 border-b border-border pb-0 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20">
-                    {TABS.map(({ key, label, icon: Icon }) => (
-                        <button
-                            key={key}
-                            onClick={() => setActiveTab(key)}
-                            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-t-md transition-colors border-b-2 whitespace-nowrap ${
-                                activeTab === key
-                                    ? "text-primary border-primary bg-primary/5"
-                                    : "text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50"
-                            }`}
-                        >
-                            <Icon className="w-3.5 h-3.5" />
-                            {label}
-                        </button>
-                    ))}
-                </div>
+                <Tabs
+                    value={activeTab}
+                    onValueChange={(value) => setActiveTab(value as TabKey)}
+                    className="min-h-0 flex-1 gap-0"
+                >
+                    <TabsList
+                        variant="line"
+                        className="h-auto w-full justify-start overflow-x-auto border-b border-border p-0 scrollbar-thin scrollbar-thumb-muted-foreground/20"
+                    >
+                        {TABS.map(({ key, label, icon: Icon }) => (
+                            <TabsTrigger key={key} value={key} className="flex-none">
+                                <Icon data-icon="inline-start" />
+                                {label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
 
-                {/* Tab content */}
-                <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+                    {/* Tab content */}
+                    <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
                     {loading ? (
                         <div className="flex items-center justify-center py-20 text-muted-foreground">加载中...</div>
                     ) : (
@@ -168,7 +169,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         <div className="bg-background border border-border p-4 text-center">
                                             <div className="text-2xl font-bold text-foreground">
                                                 {detail?.topic?.excelFilePath ? (
-                                                    <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
+                                                    <CheckCircle2 className="w-6 h-6 text-success mx-auto" />
                                                 ) : (
                                                     <span className="text-muted-foreground">—</span>
                                                 )}
@@ -179,27 +180,27 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                     {detail?.excelInfo?.preview && detail.excelInfo.preview.length > 0 && (
                                         <div className="space-y-2">
                                             <div className="text-xs text-muted-foreground font-medium">数据预览（前 {Math.min(detail.excelInfo.preview.length, 10)} 行）</div>
-                                            <div className="overflow-x-auto border border-border">
-                                                <table className="w-full text-xs">
-                                                    <thead>
-                                                        <tr className="bg-muted/50 border-b border-border">
+                                            <div className="border border-border">
+                                                <Table className="text-xs">
+                                                    <TableHeader>
+                                                        <TableRow className="bg-muted/50">
                                                             {detail.excelInfo.columns.map((col) => (
-                                                                <th key={col} className="text-left px-3 py-2 text-muted-foreground font-medium whitespace-nowrap">{col}</th>
+                                                                <TableHead key={col} className="h-auto py-2 normal-case tracking-normal">{col}</TableHead>
                                                             ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody>
                                                         {detail.excelInfo.preview.slice(0, 10).map((row, idx) => (
-                                                            <tr key={idx} className="border-b border-muted/50 hover:bg-muted/30">
+                                                            <TableRow key={idx} className="hover:bg-muted/30">
                                                                 {detail.excelInfo!.columns.map((col) => (
-                                                                    <td key={col} className="px-3 py-1.5 text-foreground whitespace-nowrap max-w-[200px] truncate">
+                                                                    <TableCell key={col} className="max-w-[200px] truncate py-1.5 text-foreground">
                                                                         {row?.[col] != null ? String(row[col]) : <span className="text-muted-foreground">-</span>}
-                                                                    </td>
+                                                                    </TableCell>
                                                                 ))}
-                                                            </tr>
+                                                            </TableRow>
                                                         ))}
-                                                    </tbody>
-                                                </table>
+                                                    </TableBody>
+                                                </Table>
                                             </div>
                                         </div>
                                     )}
@@ -220,20 +221,20 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">标识符</div>
                                                 </div>
                                                 {fieldMapping.identifier ? (
-                                                    <Badge className="bg-primary/10 text-primary border-primary/20">{fieldMapping.identifier}</Badge>
+                                                    <Badge variant="info">{fieldMapping.identifier}</Badge>
                                                 ) : (
                                                     <span className="text-sm text-muted-foreground">未设置</span>
                                                 )}
                                             </div>
                                             <div className="bg-background border border-border p-4 space-y-3">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-2 h-2 rounded-full bg-amber-400" />
+                                                    <div className="w-2 h-2 rounded-full bg-warning" />
                                                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">分层变量（{fieldMapping.stratified.length}）</div>
                                                 </div>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {fieldMapping.stratified.length > 0
                                                         ? fieldMapping.stratified.map((f) => (
-                                                            <Badge key={f} className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs">{f}</Badge>
+                                                            <Badge key={f} variant="warning">{f}</Badge>
                                                         ))
                                                         : <span className="text-sm text-muted-foreground">未设置</span>
                                                     }
@@ -241,13 +242,13 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                             </div>
                                             <div className="bg-background border border-border p-4 space-y-3">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                                                    <div className="w-2 h-2 rounded-full bg-success" />
                                                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">数值变量（{fieldMapping.numeric.length}）</div>
                                                 </div>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {fieldMapping.numeric.length > 0
                                                         ? fieldMapping.numeric.map((f) => (
-                                                            <Badge key={f} className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-xs">{f}</Badge>
+                                                            <Badge key={f} variant="success">{f}</Badge>
                                                         ))
                                                         : <span className="text-sm text-muted-foreground">未设置</span>
                                                     }
@@ -303,7 +304,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                             <div key={q.id} className="flex gap-3 bg-background border border-border p-4">
                                                 <span className="text-xs text-muted-foreground font-mono w-6 shrink-0">{idx + 1}.</span>
                                                 <div className="min-w-0 flex-1 space-y-2">
-                                                    <Badge variant="secondary" className="bg-muted text-muted-foreground border-border text-xs">
+                                                    <Badge variant="muted">
                                                         {questionTypeLabels[q.type as QuestionType] ?? "未知"}
                                                     </Badge>
                                                     <div className="text-sm text-foreground">{q.content || "（无内容）"}</div>
@@ -341,12 +342,12 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         </div>
                                         <div className="bg-background border border-border p-6 text-center space-y-2">
                                             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">实验报告</div>
-                                            <div className="text-3xl font-bold text-amber-600">{weightConfig.report}%</div>
+                                            <div className="text-3xl font-bold text-warning">{weightConfig.report}%</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-center gap-2">
                                         <span className="text-sm text-muted-foreground">总权重：</span>
-                                        <span className={`text-lg font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-emerald-600" : "text-destructive"}`}>
+                                        <span className={`text-lg font-bold ${(weightConfig.questionnaire + weightConfig.process + weightConfig.report) === 100 ? "text-success" : "text-destructive"}`}>
                                             {weightConfig.questionnaire + weightConfig.process + weightConfig.report}%
                                         </span>
                                     </div>
@@ -354,18 +355,19 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                     <div className="h-3 rounded-full overflow-hidden flex bg-muted">
                                         <div className="bg-primary transition-all" style={{ width: `${weightConfig.questionnaire}%` }} title={`问卷设计 ${weightConfig.questionnaire}%`} />
                                         <div className="bg-cyan-500 transition-all" style={{ width: `${weightConfig.process}%` }} title={`实验过程 ${weightConfig.process}%`} />
-                                        <div className="bg-amber-500 transition-all" style={{ width: `${weightConfig.report}%` }} title={`实验报告 ${weightConfig.report}%`} />
+                                        <div className="bg-warning transition-all" style={{ width: `${weightConfig.report}%` }} title={`实验报告 ${weightConfig.report}%`} />
                                     </div>
                                     <div className="flex justify-center gap-6 text-xs text-muted-foreground">
                                         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />问卷设计</span>
                                         <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-cyan-500" />实验过程</span>
-                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" />实验报告</span>
+                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-warning" />实验报告</span>
                                     </div>
                                 </div>
                             )}
                         </>
                     )}
-                </div>
+                    </div>
+                </Tabs>
 
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
                     <Button onClick={() => onOpenChange(false)}>关闭</Button>

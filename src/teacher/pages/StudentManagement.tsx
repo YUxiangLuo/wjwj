@@ -164,12 +164,12 @@ export function StudentManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center gap-3">
-                <Link to="/class">
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-accent">
-                        <ArrowLeft className="w-4 h-4 mr-1" />
+                <Button variant="ghost" size="sm" asChild>
+                    <Link to="/class">
+                        <ArrowLeft data-icon="inline-start" />
                         返回
-                    </Button>
-                </Link>
+                    </Link>
+                </Button>
                 <span className="text-muted-foreground">/</span>
                 <span className="text-sm text-muted-foreground">班级</span>
                 <span className="text-sm font-medium text-foreground">{classInfo?.name}</span>
@@ -181,7 +181,7 @@ export function StudentManagement() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
@@ -192,31 +192,31 @@ export function StudentManagement() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已禁用</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-border bg-card">
+            <Card>
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                     <div>
                         <CardTitle className="text-base text-foreground">学生列表</CardTitle>
@@ -231,11 +231,11 @@ export function StudentManagement() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                         <Button data-testid="teacher-student-import-open" variant="outline" onClick={() => setShowImportModal(true)}>
-                            <Upload className="w-4 h-4 mr-2" />
+                            <Upload data-icon="inline-start" />
                             批量导入
                         </Button>
-                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                            <UserPlus className="w-4 h-4 mr-2" />
+                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)}>
+                            <UserPlus data-icon="inline-start" />
                             添加学生
                         </Button>
                     </div>
@@ -272,14 +272,14 @@ export function StudentManagement() {
                                     <TableCell className="text-muted-foreground">{student.email || "-"}</TableCell>
                                     <TableCell>
                                         {student.status === 1 ? (
-                                            <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">正常</Badge>
+                                            <Badge variant="success">正常</Badge>
                                         ) : (
-                                            <Badge variant="destructive" className="bg-muted text-muted-foreground hover:bg-accent">已禁用</Badge>
+                                            <Badge variant="muted">已禁用</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell>
                                         {student.isFirstLogin === 1 ? (
-                                            <Badge variant="outline" className="text-amber-600 border-amber-500/30 bg-amber-500/10">是</Badge>
+                                            <Badge variant="warning">是</Badge>
                                         ) : (
                                             <span className="text-muted-foreground text-xs">否</span>
                                         )}
@@ -287,14 +287,14 @@ export function StudentManagement() {
                                     <TableCell className="text-muted-foreground text-xs">{student.lastLogin ? new Date(student.lastLogin).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10">
-                                                <RotateCcw className="w-4 h-4" />
+                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="icon-xs" title="重置密码" onClick={() => handleResetPassword(student)}>
+                                                <RotateCcw />
                                             </Button>
-                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10" : "text-muted-foreground hover:text-foreground"}`}>
-                                                <UserX className={`w-4 h-4 ${student.status === 0 ? "text-muted-foreground" : ""}`} />
+                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant={student.status === 1 ? "warning" : "success"} size="icon-xs" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)}>
+                                                <UserX />
                                             </Button>
-                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="删除" onClick={() => handleDelete(student)}>
-                                                <Trash2 className="w-4 h-4" />
+                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="destructive" size="icon-xs" title="删除" onClick={() => handleDelete(student)}>
+                                                <Trash2 />
                                             </Button>
                                         </div>
                                     </TableCell>

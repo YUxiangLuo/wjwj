@@ -9,14 +9,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { teacherApi, type TaskProgressData } from "../api-client";
 
 const STATUS_CONFIG = {
-    not_started: { label: "未开始", color: "text-muted-foreground", bgColor: "bg-muted/10", borderColor: "border-muted/20" },
-    stage1: { label: "问卷设计", color: "text-primary", bgColor: "bg-primary/10", borderColor: "border-primary/20" },
-    stage2: { label: "样本规划", color: "text-cyan-600", bgColor: "bg-cyan-500/10", borderColor: "border-cyan-500/20" },
-    stage3: { label: "抽样执行", color: "text-chart-3", bgColor: "bg-chart-3/10", borderColor: "border-chart-3/20" },
-    stage4: { label: "分析报告", color: "text-amber-600", bgColor: "bg-amber-500/10", borderColor: "border-amber-500/20" },
-    submitted: { label: "已提交", color: "text-yellow-600", bgColor: "bg-yellow-500/10", borderColor: "border-yellow-500/20" },
-    graded: { label: "已批改", color: "text-emerald-600", bgColor: "bg-emerald-500/10", borderColor: "border-emerald-500/20" },
-    rejected: { label: "已驳回", color: "text-destructive", bgColor: "bg-destructive/10", borderColor: "border-destructive/20" },
+    not_started: { label: "未开始", color: "text-muted-foreground", badgeVariant: "muted" },
+    stage1: { label: "问卷设计", color: "text-primary", badgeVariant: "info" },
+    stage2: { label: "样本规划", color: "text-cyan-600", badgeVariant: "info" },
+    stage3: { label: "抽样执行", color: "text-chart-3", badgeVariant: "info" },
+    stage4: { label: "分析报告", color: "text-warning", badgeVariant: "warning" },
+    submitted: { label: "已提交", color: "text-warning", badgeVariant: "warning" },
+    graded: { label: "已批改", color: "text-success", badgeVariant: "success" },
+    rejected: { label: "已驳回", color: "text-destructive", badgeVariant: "destructive" },
 } as const;
 
 type StatusKey = keyof typeof STATUS_CONFIG;
@@ -27,9 +27,9 @@ const PROGRESS_COLORS: Record<StatusKey, string> = {
     stage1: "bg-primary",
     stage2: "bg-cyan-500",
     stage3: "bg-chart-3",
-    stage4: "bg-amber-500",
+    stage4: "bg-warning",
     submitted: "bg-yellow-500",
-    graded: "bg-emerald-500",
+    graded: "bg-success",
     rejected: "bg-destructive",
 };
 
@@ -38,9 +38,9 @@ const RING_COLORS: Record<StatusKey, string> = {
     stage1: "var(--primary)",
     stage2: "var(--color-cyan-500)",
     stage3: "var(--chart-3)",
-    stage4: "var(--color-amber-500)",
+    stage4: "var(--warning)",
     submitted: "var(--color-yellow-500)",
-    graded: "var(--color-emerald-500)",
+    graded: "var(--success)",
     rejected: "var(--destructive)",
 };
 
@@ -89,8 +89,8 @@ export function TaskProgressDetail() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-accent" onClick={() => navigate("/task")}>
-                    <ArrowLeft className="w-4 h-4 mr-1" />
+                <Button variant="ghost" size="sm" onClick={() => navigate("/task")}>
+                    <ArrowLeft data-icon="inline-start" />
                     返回列表
                 </Button>
                 <div className="h-6 w-px bg-border"></div>
@@ -127,7 +127,7 @@ export function TaskProgressDetail() {
             {total > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Ring chart */}
-                    <Card className="border-border bg-card">
+                    <Card>
                         <CardContent className="p-6 flex flex-col items-center">
                             <svg width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-4">
                                 {(() => {
@@ -186,7 +186,7 @@ export function TaskProgressDetail() {
                     </Card>
 
                     {/* Distribution bar (now wider, takes 2 cols) */}
-                    <Card className="border-border bg-card lg:col-span-2">
+                    <Card className="lg:col-span-2">
                         <CardContent className="p-6 flex flex-col justify-center h-full gap-4">
                             <span className="text-sm font-medium text-foreground">各阶段分布</span>
                             <div className="flex h-4 rounded-full overflow-hidden bg-muted">
@@ -224,7 +224,7 @@ export function TaskProgressDetail() {
             )}
 
             {/* Student list */}
-            <Card className="border-border bg-card">
+            <Card>
                 <div className="p-4 border-b border-border flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">学生列表</span>
                     <SearchInput
@@ -254,7 +254,7 @@ export function TaskProgressDetail() {
                                         <TableCell className="font-mono text-foreground text-sm">{s.studentId}</TableCell>
                                         <TableCell className="text-foreground">{s.name}</TableCell>
                                         <TableCell>
-                                            <Badge className={`${cfg.bgColor} ${cfg.color} ${cfg.borderColor}`}>
+                                            <Badge variant={cfg.badgeVariant}>
                                                 {cfg.label}
                                             </Badge>
                                         </TableCell>
@@ -268,14 +268,13 @@ export function TaskProgressDetail() {
                                             {STATUSES_WITH_SUBMISSION.includes(s.status as StatusKey) && s.submissionId ? (
                                                 <Button
                                                     variant="ghost"
-                                                    size="sm"
-                                                    className="h-7 text-xs text-primary hover:text-primary hover:bg-primary/10"
+                                                    size="xs"
                                                     onClick={() => navigate(`/grading/${s.submissionId}`)}
                                                 >
                                                     {s.status === "submitted" ? (
-                                                        <><FileEdit className="w-3 h-3 mr-1" />进入批改</>
+                                                        <><FileEdit data-icon="inline-start" />进入批改</>
                                                     ) : (
-                                                        <><Eye className="w-3 h-3 mr-1" />查看详情</>
+                                                        <><Eye data-icon="inline-start" />查看详情</>
                                                     )}
                                                 </Button>
                                             ) : (

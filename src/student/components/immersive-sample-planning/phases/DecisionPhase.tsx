@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
     Dialog,
     DialogContent,
@@ -765,42 +766,42 @@ function SensitivityGrid({
 
     return (
         <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-                <thead>
-                    <tr>
-                        <th className="pb-2 pr-2 text-left font-normal text-muted-foreground">置信↓ / 误差→</th>
+            <Table className="text-xs">
+                <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead className="h-auto pb-2 pr-2 text-left font-normal normal-case tracking-normal">置信↓ / 误差→</TableHead>
                         {meValues.map((me) => (
-                            <th
+                            <TableHead
                                 key={me}
                                 className={cn(
-                                    "px-1 pb-2 text-center font-normal tabular-nums text-muted-foreground",
+                                    "h-auto px-1 pb-2 text-center font-normal normal-case tracking-normal tabular-nums",
                                     me === currentME && "font-bold text-chart-2",
                                 )}
                             >
                                 &plusmn;{me}%
-                            </th>
+                            </TableHead>
                         ))}
-                    </tr>
-                </thead>
-                <tbody>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
                     {clLabels.map((cl) => {
                         const clDisplay = data.find((d) => d.confidenceLevel === cl)?.confidenceLabel ?? cl;
                         return (
-                            <tr key={cl}>
-                                <td
+                            <TableRow key={cl} className="hover:bg-transparent">
+                                <TableCell
                                     className={cn(
-                                        "whitespace-nowrap py-1 pr-2 text-muted-foreground",
+                                        "py-1 pr-2 text-muted-foreground",
                                         cl === currentCL && "font-bold text-primary",
                                     )}
                                 >
                                     {clDisplay}
-                                </td>
+                                </TableCell>
                                 {meValues.map((me) => {
                                     const n = lookup.get(`${cl}-${me}`) ?? 0;
                                     const isCurrent = cl === currentCL && me === currentME;
                                     const intensity = Math.round((n / maxSample) * 100);
                                     return (
-                                        <td key={me} className="px-1 py-1">
+                                        <TableCell key={me} className="px-1 py-1">
                                             <div
                                                 className={cn(
                                                     "rounded px-1.5 py-1 text-center tabular-nums transition-colors",
@@ -816,14 +817,14 @@ function SensitivityGrid({
                                             >
                                                 {n.toLocaleString()}
                                             </div>
-                                        </td>
+                                        </TableCell>
                                     );
                                 })}
-                            </tr>
+                            </TableRow>
                         );
                     })}
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
         </div>
     );
 }

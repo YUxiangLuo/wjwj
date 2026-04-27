@@ -89,7 +89,7 @@ export function Login() {
                             <span className="text-sm font-medium">动态交互</span>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <div className="w-12 h-12 flex items-center justify-center text-emerald-600 bg-emerald-500/10 border border-emerald-500/20">
+                            <div className="w-12 h-12 flex items-center justify-center text-success bg-success/10 border border-success/20">
                                 <ShieldCheck className="w-6 h-6" />
                             </div>
                             <span className="text-sm font-medium">精准评估</span>
@@ -163,10 +163,10 @@ export function Login() {
                         )}
 
                         <div className="space-y-4 pt-2">
-                            <Button type="submit" data-testid="admin-login-submit" className="w-full h-12 text-base font-medium hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
+                            <Button type="submit" data-testid="admin-login-submit" size="lg" className="w-full" disabled={loading}>
                                 {loading ? (
                                     <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        <Loader2 data-icon="inline-start" className="animate-spin" />
                                         登录中...
                                     </>
                                 ) : (
@@ -178,18 +178,12 @@ export function Login() {
                                     其他端入口
                                 </p>
                                 <div className="grid grid-cols-2 gap-3">
-                                    <a
-                                        href="/teacher/login"
-                                        className="inline-flex h-11 items-center justify-center border border-border bg-background text-sm font-medium transition-all hover:border-primary hover:text-primary"
-                                    >
-                                        教师登录
-                                    </a>
-                                    <a
-                                        href="/student/login"
-                                        className="inline-flex h-11 items-center justify-center border border-border bg-background text-sm font-medium transition-all hover:border-primary hover:text-primary"
-                                    >
-                                        学生登录
-                                    </a>
+                                    <Button variant="outline" size="lg" className="w-full" asChild>
+                                        <a href="/teacher/login">教师登录</a>
+                                    </Button>
+                                    <Button variant="outline" size="lg" className="w-full" asChild>
+                                        <a href="/student/login">学生登录</a>
+                                    </Button>
                                 </div>
                             </div>
                         </div>

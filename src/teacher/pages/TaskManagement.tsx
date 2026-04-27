@@ -175,7 +175,7 @@ export function TaskManagement() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">任务总数</p>
@@ -186,7 +186,7 @@ export function TaskManagement() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">待批改</p>
@@ -197,31 +197,31 @@ export function TaskManagement() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已完成</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.completedTotal}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">总提交数</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.totalSubmissions}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <CalendarDays className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-border bg-card">
+            <Card>
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                     <div>
                         <CardTitle className="text-base text-foreground">任务列表</CardTitle>
@@ -248,8 +248,8 @@ export function TaskManagement() {
                                 </SelectGroup>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                            <Plus className="w-4 h-4 mr-1" /> 发布任务
+                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)}>
+                            <Plus data-icon="inline-start" /> 发布任务
                         </Button>
                     </div>
                 </CardHeader>
@@ -276,13 +276,13 @@ export function TaskManagement() {
                                         <TableCell className="text-muted-foreground text-xs">{task.deadline ? new Date(task.deadline).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "无"}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-emerald-500" />
+                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
                                                 <span className="text-xs text-muted-foreground">{task.completed}/{task.total}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             {task.pending && task.pending > 0 ? (
-                                                <Badge variant="secondary" className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20">
+                                                <Badge variant="destructive">
                                                     {task.pending}
                                                 </Badge>
                                             ) : (
@@ -291,39 +291,37 @@ export function TaskManagement() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10">
+                                                <Button variant="success" size="xs" asChild>
                                                     <Link to={`/task/${task.id}/progress`}>
-                                                        <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                                                        <BarChart3 data-icon="inline-start" />
                                                         进度
                                                     </Link>
                                                 </Button>
                                                 <Button
                                                     data-testid={`teacher-task-extend-open-${task.id}`}
                                                     variant="ghost"
-                                                    size="sm"
+                                                    size="xs"
                                                     onClick={() => {
                                                         setSelectedTask(task);
                                                         setExtendDeadline("");
                                                         setShowExtendModal(true);
                                                     }}
-                                                    className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                 >
-                                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                                    <Clock data-icon="inline-start" />
                                                     延时
                                                 </Button>
-                                                <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                                                <Button variant="ghost" size="xs" asChild>
                                                     <Link to="/grading">批改</Link>
                                                 </Button>
                                                 <Button
                                                     data-testid={`teacher-task-delete-open-${task.id}`}
-                                                    variant="ghost"
-                                                    size="sm"
+                                                    variant="destructive"
+                                                    size="icon-xs"
                                                     type="button"
                                                     onClick={() => setTaskToDelete(task)}
-                                                    className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                     title="删除任务"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                    <Trash2 />
                                                 </Button>
                                             </div>
                                         </TableCell>

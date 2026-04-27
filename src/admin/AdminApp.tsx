@@ -293,9 +293,9 @@ export function AdminApp() {
                             统计学虚拟仿真实验平台
                         </span>
                     </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-muted-foreground hover:text-foreground">
-                        <X className="w-5 h-5" />
-                    </button>
+                    <Button type="button" variant="ghost" size="icon-sm" className="lg:hidden" onClick={() => setIsSidebarOpen(false)}>
+                        <X />
+                    </Button>
                 </div>
 
                 <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
@@ -349,12 +349,15 @@ export function AdminApp() {
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
                 <header className="h-16 px-6 border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
-                        <button
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
                             onClick={() => setIsSidebarOpen(true)}
-                            className="lg:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-muted"
+                            className="-ml-2 lg:hidden"
                         >
-                            <Menu className="w-5 h-5" />
-                        </button>
+                            <Menu />
+                        </Button>
                         <div>
                             <h2 className="text-lg font-semibold font-heading uppercase tracking-wider">{pageTitle}</h2>
                             <p className="hidden md:block text-xs text-muted-foreground">
@@ -375,7 +378,7 @@ export function AdminApp() {
                                 onClick={() => { void openNotifications(); }}
                                 aria-label="打开通知中心"
                             >
-                                <Bell className="w-5 h-5" />
+                                <Bell />
                                 {unreadCount > 0 && (
                                     <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive ring-2 ring-background rounded-full animate-pulse"></span>
                                 )}
@@ -388,7 +391,7 @@ export function AdminApp() {
                                 title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                                 aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                             >
-                                {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                                {theme === "light" ? <Moon /> : <Sun />}
                             </Button>
 
                             <Separator orientation="vertical" className="h-6" />
@@ -396,7 +399,7 @@ export function AdminApp() {
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button data-testid="admin-logout-trigger" variant="ghost" size="icon" title="退出登录">
-                                        <LogOut className="w-5 h-5" />
+                                        <LogOut />
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
@@ -492,10 +495,9 @@ export function AdminApp() {
                             <Button
                                 data-testid="admin-notifications-mark-all-read"
                                 variant="ghost"
-                                size="sm"
+                                size="xs"
                                 onClick={() => { void handleMarkAllRead(); }}
                                 disabled={unreadCount === 0}
-                                className="text-xs"
                             >
                                 全部已读
                             </Button>
@@ -511,12 +513,13 @@ export function AdminApp() {
                             </div>
                         ) : notifications.length > 0 ? (
                             notifications.map(item => (
-                                <button
+                                <Button
                                     key={item.id}
                                     type="button"
+                                    variant="ghost"
                                     data-testid={`admin-notification-item-${item.id}`}
                                     onClick={() => item.isRead ? null : void handleMarkNotificationRead(item.id)}
-                                    className={`w-full text-left p-4 border transition-all duration-200 ${item.isRead ? "bg-card/50 border-transparent opacity-70" : "bg-muted border-border"
+                                    className={`h-auto w-full justify-start whitespace-normal border p-4 text-left font-normal normal-case tracking-normal transition-all duration-200 ${item.isRead ? "bg-card/50 border-transparent opacity-70" : "bg-muted border-border"
                                         }`}
                                 >
                                     <div className="flex items-center justify-between mb-1">
@@ -529,7 +532,7 @@ export function AdminApp() {
                                         </span>
                                     </div>
                                     <div className="text-sm text-muted-foreground line-clamp-2 pl-4 border-l-2 border-border">{item.content}</div>
-                                </button>
+                                </Button>
                             ))
                         ) : (
                             <div className="text-center py-12 text-muted-foreground bg-card/30 border border-dashed border-border">

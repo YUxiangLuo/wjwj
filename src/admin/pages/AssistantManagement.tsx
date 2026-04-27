@@ -221,7 +221,7 @@ export function AssistantManagement() {
                     <p className="text-sm text-muted-foreground mt-1">维护助教账号与所绑定教师信息。</p>
                 </div>
                 <Button data-testid="assistant-create-open" onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
+                    <Plus data-icon="inline-start" />
                     添加助教
                 </Button>
             </div>
@@ -244,7 +244,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -255,7 +255,7 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Disabled</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -340,9 +340,9 @@ export function AssistantManagement() {
                                         <TableCell>{assistant.teacherName}</TableCell>
                                         <TableCell>
                                             {assistant.isLocked ? (
-                                                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">已锁定</Badge>
+                                                <Badge variant="destructive">已锁定</Badge>
                                             ) : assistant.status === 1 ? (
-                                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">正常</Badge>
+                                                <Badge variant="success">正常</Badge>
                                             ) : (
                                                 <Badge variant="secondary">已停用</Badge>
                                             )}
@@ -353,32 +353,30 @@ export function AssistantManagement() {
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 {assistant.isLocked && (
-                                                    <Button data-testid={`assistant-unlock-${assistant.account}`} variant="ghost" size="sm" onClick={() => handleUnlock(assistant)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
-                                                        <Unlock className="w-3.5 h-3.5 mr-1" />
+                                                    <Button data-testid={`assistant-unlock-${assistant.account}`} variant="warning" size="xs" onClick={() => handleUnlock(assistant)}>
+                                                        <Unlock data-icon="inline-start" />
                                                         解锁
                                                     </Button>
                                                 )}
-                                                <Button data-testid={`assistant-reset-${assistant.account}`} variant="ghost" size="sm" onClick={() => handleResetPassword(assistant)} className="h-8">
-                                                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                                <Button data-testid={`assistant-reset-${assistant.account}`} variant="ghost" size="xs" onClick={() => handleResetPassword(assistant)}>
+                                                    <RotateCcw data-icon="inline-start" />
                                                     重置
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                    variant={assistant.status === 1 ? "destructive" : "success"}
+                                                    size="xs"
                                                     data-testid={`assistant-toggle-status-${assistant.account}`}
                                                     onClick={() => handleToggleStatus(assistant)}
-                                                    className={`h-8 ${assistant.status === 1 ? "text-destructive hover:text-destructive hover:bg-destructive/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                                 >
                                                     {assistant.status === 1 ? "停用" : "启用"}
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                    variant="destructive"
+                                                    size="xs"
                                                     data-testid={`assistant-delete-${assistant.account}`}
                                                     onClick={() => handleDelete(assistant)}
-                                                    className="h-8 hover:text-destructive hover:bg-destructive/10"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                                    <Trash2 data-icon="inline-start" />
                                                     删除
                                                 </Button>
                                             </div>
@@ -458,7 +456,7 @@ export function AssistantManagement() {
                             onClick={handleAddAssistant}
                             disabled={submitting || !newAssistant.account.trim() || !newAssistant.name.trim() || !newAssistant.teacherId}
                         >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
                             确认添加
                         </Button>
                     </DialogFooter>

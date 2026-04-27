@@ -159,9 +159,9 @@ export function SystemMonitor() {
     const getLevelBadge = (level: string) => {
         switch (level) {
             case "ERROR":
-                return <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">{level}</Badge>;
+                return <Badge variant="destructive">{level}</Badge>;
             case "WARN":
-                return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">{level}</Badge>;
+                return <Badge variant="warning">{level}</Badge>;
             default:
                 return <Badge variant="secondary">{level}</Badge>;
         }
@@ -169,8 +169,8 @@ export function SystemMonitor() {
 
     const getMetricColor = (value: number, thresholds: [number, number]) => {
         if (value > thresholds[1]) return "text-destructive";
-        if (value > thresholds[0]) return "text-amber-600";
-        return "text-emerald-600";
+        if (value > thresholds[0]) return "text-warning";
+        return "text-success";
     };
 
     return (
@@ -182,15 +182,15 @@ export function SystemMonitor() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground px-3 py-1.5 rounded-md bg-card border border-border">
-                        <span className={`w-2 h-2 rounded-full ${isLive ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"}`} />
+                        <span className={`w-2 h-2 rounded-full ${isLive ? "bg-success animate-pulse" : "bg-muted-foreground"}`} />
                         {isLive ? "实时监控中" : "监控已暂停"}
                     </div>
                     <Button data-testid="monitor-export-report" variant="outline" onClick={handleExportReport}>
-                        <Download className="w-4 h-4 mr-2" />
+                        <Download data-icon="inline-start" />
                         导出报告
                     </Button>
                     <Button data-testid="monitor-refresh" variant="outline" onClick={fetchData} disabled={loading}>
-                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                        <RefreshCw data-icon="inline-start" className={loading ? "animate-spin" : undefined} />
                         刷新
                     </Button>
                     <Button
@@ -200,12 +200,12 @@ export function SystemMonitor() {
                     >
                         {isLive ? (
                             <>
-                                <Pause className="w-4 h-4 mr-2" />
+                                <Pause data-icon="inline-start" />
                                 暂停
                             </>
                         ) : (
                             <>
-                                <Play className="w-4 h-4 mr-2" />
+                                <Play data-icon="inline-start" />
                                 恢复
                             </>
                         )}
@@ -278,9 +278,9 @@ export function SystemMonitor() {
             {alerts.length > 0 && (
                 <Card>
                     <CardHeader className="flex flex-row items-center gap-2 border-b border-border pb-4">
-                        <AlertTriangle className="w-5 h-5 text-amber-600" />
+                        <AlertTriangle className="w-5 h-5 text-warning" />
                         <CardTitle className="text-base">系统告警</CardTitle>
-                        <Badge variant="outline" className="ml-auto bg-amber-500/10 text-amber-600 border-amber-500/20">{alerts.length} 条</Badge>
+                        <Badge variant="warning" className="ml-auto">{alerts.length} 条</Badge>
                     </CardHeader>
                     <CardContent className="space-y-2 pt-4">
                         {alerts.map((alert, i) => (
@@ -289,17 +289,13 @@ export function SystemMonitor() {
                                 className={`flex items-center gap-3 p-3 border ${
                                     alert.level === "critical"
                                         ? "border-destructive/30 bg-destructive/5"
-                                        : "border-amber-500/30 bg-amber-500/5"
+                                        : "border-warning/30 bg-warning/5"
                                 }`}
                             >
                                 <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                    alert.level === "critical" ? "bg-destructive" : "bg-amber-500"
+                                    alert.level === "critical" ? "bg-destructive" : "bg-warning"
                                 }`} />
-                                <Badge variant="outline" className={
-                                    alert.level === "critical"
-                                        ? "bg-destructive/10 text-destructive border-destructive/20"
-                                        : "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                                }>
+                                <Badge variant={alert.level === "critical" ? "destructive" : "warning"}>
                                     {alert.level === "critical" ? "严重" : "警告"}
                                 </Badge>
                                 <span className="text-sm">{alert.message}</span>
@@ -327,7 +323,7 @@ export function SystemMonitor() {
                                 {getLevelBadge(log.level)}
                             </div>
                             <span className="flex-1 font-mono text-xs sm:text-sm py-0.5">{log.message}</span>
-                            <span className="text-xs text-muted-foreground italic px-2 py-0.5 bg-muted border border-border">{log.source}</span>
+                            <Badge variant="muted">{log.source}</Badge>
                         </div>
                     ))}
                     {logs.length === 0 && (

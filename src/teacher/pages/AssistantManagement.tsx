@@ -123,7 +123,7 @@ export function AssistantManagement() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">助教总数</p>
@@ -134,29 +134,29 @@ export function AssistantManagement() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <CheckCircle2 className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已停用</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <PauseCircle className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">覆盖班级</p>
@@ -169,7 +169,7 @@ export function AssistantManagement() {
                 </Card>
             </div>
 
-            <Card className="border-border bg-card">
+            <Card>
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                     <div>
                         <CardTitle className="text-base text-foreground">助教列表</CardTitle>
@@ -195,8 +195,8 @@ export function AssistantManagement() {
                                 </SelectGroup>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-assistant-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                            <UserPlus className="w-4 h-4 mr-2" />
+                        <Button data-testid="teacher-assistant-add-open" onClick={() => setShowAddModal(true)}>
+                            <UserPlus data-icon="inline-start" />
                             添加助教
                         </Button>
                     </div>
@@ -233,28 +233,27 @@ export function AssistantManagement() {
                                     <TableCell>
                                         <div className="flex gap-1 flex-wrap">
                                             {ta.assignedClasses.map((cls) => (
-                                                <Badge key={cls} variant="secondary" className="text-xs bg-muted text-muted-foreground border-border hover:bg-accent">{cls}</Badge>
+                                                <Badge key={cls} variant="muted">{cls}</Badge>
                                             ))}
                                             {ta.assignedClasses.length === 0 && <span className="text-muted-foreground text-xs">-</span>}
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         {ta.status === 1 ? (
-                                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">正常</Badge>
+                                            <Badge variant="success">正常</Badge>
                                         ) : (
-                                            <Badge variant="secondary" className="bg-muted text-muted-foreground border-border">已停用</Badge>
+                                            <Badge variant="muted">已停用</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex flex-wrap justify-end gap-2">
-                                            <Button data-testid={`teacher-assistant-assign-open-${ta.id}`} variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openAssignModal(ta)}>
-                                                <UserCog className="w-3.5 h-3.5 mr-1" />分配班级
+                                            <Button data-testid={`teacher-assistant-assign-open-${ta.id}`} variant="ghost" size="xs" onClick={() => openAssignModal(ta)}>
+                                                <UserCog data-icon="inline-start" />分配班级
                                             </Button>
                                             <Button
                                                 data-testid={`teacher-assistant-reset-${ta.id}`}
                                                 variant="ghost"
-                                                size="sm"
-                                                className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                size="xs"
                                                 onClick={async () => {
                                                     const res = await teacherApi.updateAssistant(ta.id, { action: "reset_password" });
                                                     if (res.success) {
@@ -264,13 +263,12 @@ export function AssistantManagement() {
                                                     }
                                                 }}
                                             >
-                                                <KeyRound className="w-3.5 h-3.5 mr-1" />重置密码
+                                                <KeyRound data-icon="inline-start" />重置密码
                                             </Button>
                                             <Button
                                                 data-testid={`teacher-assistant-toggle-${ta.id}`}
-                                                variant="ghost"
-                                                size="sm"
-                                                className={`h-8 ${ta.status === 1 ? "text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10" : "text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"}`}
+                                                variant={ta.status === 1 ? "warning" : "success"}
+                                                size="xs"
                                                 onClick={async () => {
                                                     const res = await teacherApi.updateAssistant(ta.id, { action: "toggle_status" });
                                                     if (res.success) {
@@ -280,10 +278,10 @@ export function AssistantManagement() {
                                                     }
                                                 }}
                                             >
-                                                {ta.status === 1 ? <><PauseCircle className="w-3.5 h-3.5 mr-1" />停用</> : <><CheckCircle2 className="w-3.5 h-3.5 mr-1" />启用</>}
+                                                {ta.status === 1 ? <><PauseCircle data-icon="inline-start" />停用</> : <><CheckCircle2 data-icon="inline-start" />启用</>}
                                             </Button>
-                                            <Button data-testid={`teacher-assistant-delete-${ta.id}`} variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(ta.id)}>
-                                                <Trash2 className="w-3.5 h-3.5 mr-1" />移除
+                                            <Button data-testid={`teacher-assistant-delete-${ta.id}`} variant="destructive" size="xs" onClick={() => setDeleteId(ta.id)}>
+                                                <Trash2 data-icon="inline-start" />移除
                                             </Button>
                                         </div>
                                     </TableCell>

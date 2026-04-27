@@ -315,7 +315,7 @@ export function TopicManagement() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">课题总数</p>
@@ -326,29 +326,29 @@ export function TopicManagement() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <Layers className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <FileText className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">数据行数</p>
@@ -361,7 +361,7 @@ export function TopicManagement() {
                 </Card>
             </div>
 
-            <Card className="border-border bg-card">
+            <Card>
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                     <div>
                         <CardTitle className="text-base text-foreground">课题列表</CardTitle>
@@ -387,7 +387,7 @@ export function TopicManagement() {
                                 </SelectGroup>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal}>
                             + 创建课题
                         </Button>
                     </div>
@@ -404,9 +404,9 @@ export function TopicManagement() {
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-semibold text-foreground text-lg">{topic.name}</h4>
                                             {topic.status === 1 ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">已发布</Badge>
+                                                <Badge variant="success">已发布</Badge>
                                             ) : (
-                                                <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20">草稿</Badge>
+                                                <Badge variant="warning">草稿</Badge>
                                             )}
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
@@ -424,21 +424,20 @@ export function TopicManagement() {
                                 <div className="flex flex-wrap gap-2">
                                     {topic.status === 0 ? (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEditModal(topic)}>编辑</Button>
-                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="success" size="sm" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
+                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="destructive" size="sm" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     ) : (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button
                                                 data-testid={`teacher-topic-copy-${topic.id}`}
                                                 variant="ghost"
                                                 size="sm"
                                                 disabled={copyingTopicId !== null}
-                                                className="text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                 onClick={async () => {
                                                     setCopyingTopicId(topic.id);
                                                     try {
@@ -455,7 +454,7 @@ export function TopicManagement() {
                                             >
                                                 复制
                                             </Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="destructive" size="sm" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     )}
                                 </div>
@@ -534,7 +533,10 @@ export function TopicManagement() {
                         <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })}>
                             取消
                         </AlertDialogCancel>
-                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : "bg-primary hover:bg-primary/90 text-primary-foreground"}>
+                        <AlertDialogAction
+                            onClick={executeConfirmAction}
+                            variant={confirmDialog.type === "delete" ? "destructive" : "default"}
+                        >
                             确认
                         </AlertDialogAction>
                     </AlertDialogFooter>

@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { statsApi, announcementApi, systemApi, type Stats, type Announcement, type SystemMetrics } from "../api-client";
 
@@ -24,7 +25,7 @@ function KpiCard({ icon: Icon, value, label, trend, trendUp, loading }: {
                     </div>
                     {trend ? (
                         <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${trendUp
-                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                ? "bg-success/10 text-success border-success/20"
                                 : "bg-destructive/10 text-destructive border-destructive/20"
                             }`}>
                             {trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
@@ -131,14 +132,14 @@ export function Dashboard() {
 
     function getStatusColor(value: number, warnThreshold: number, criticalThreshold: number) {
         if (value > criticalThreshold) return "bg-destructive";
-        if (value > warnThreshold) return "bg-amber-500";
-        return "bg-emerald-500";
+        if (value > warnThreshold) return "bg-warning";
+        return "bg-success";
     }
 
     function getStatusIndicator(value: number, warnThreshold: number, criticalThreshold: number) {
         if (value > criticalThreshold) return "text-destructive";
-        if (value > warnThreshold) return "text-amber-600";
-        return "text-emerald-600";
+        if (value > warnThreshold) return "text-warning";
+        return "text-success";
     }
 
     const hasAlert = metrics.cpu > 70 || metrics.memory > 75 || metrics.disk > 80;
@@ -220,7 +221,7 @@ export function Dashboard() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
                         <CardTitle className="text-lg">系统状态</CardTitle>
-                        <ShieldCheck className={`w-5 h-5 ${hasAlert ? "text-amber-500" : "text-emerald-500"}`} />
+                        <ShieldCheck className={`w-5 h-5 ${hasAlert ? "text-warning/80" : "text-success/80"}`} />
                     </CardHeader>
                     <CardContent className="space-y-6 pt-6">
                         <div className="space-y-2">
@@ -281,7 +282,7 @@ export function Dashboard() {
                                         <div className="text-sm font-medium transition-colors">{item.title}</div>
                                         <div className="text-xs text-muted-foreground mt-1">发布于 {formatDate(item.createdAt)}</div>
                                     </div>
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border border-border px-2 py-0.5 bg-muted">公告</span>
+                                    <Badge variant="muted">公告</Badge>
                                 </div>
                             ))
                         ) : (
@@ -297,10 +298,10 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent className="space-y-3 pt-6">
                         {quickActions.map((action) => (
-                            <Button key={action.to} variant="outline" className="w-full justify-between h-12" asChild>
+                            <Button key={action.to} variant="outline" size="lg" className="w-full justify-between" asChild>
                                 <Link to={action.to}>
                                     {action.label}
-                                    <ArrowUpRight className="w-4 h-4 opacity-50" />
+                                    <ArrowUpRight data-icon="inline-end" className="opacity-50" />
                                 </Link>
                             </Button>
                         ))}

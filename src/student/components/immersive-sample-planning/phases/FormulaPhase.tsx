@@ -1,6 +1,7 @@
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Z_VALUES, type EstimationType, type FormulaStep, type SampleParams } from "../types";
 import { calculateSampleSizeStepDetails } from "../../../experiment/sample-plan";
@@ -215,7 +216,7 @@ export function FormulaPhase({
                 <div className="mx-auto flex max-w-sm flex-col gap-4">
                     {!isProportion && (
                         <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-foreground">总体方差 σ²</label>
+                            <Label>总体方差 σ²</Label>
                             <Input
                                 type="number"
                                 min={0.01}
@@ -252,7 +253,7 @@ export function FormulaPhase({
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-foreground">绝对误差限 e</label>
+                            <Label>绝对误差限 e</Label>
                             <Input
                                 type="number"
                                 min={0.01}

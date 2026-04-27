@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/search-input";
+import { Badge } from "@/components/ui/badge";
 import { Users, School, CalendarDays, Search } from "lucide-react";
 import { teacherApi, type TeacherClass } from "../api-client";
 
@@ -56,7 +57,7 @@ export function ClassManagement() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
@@ -67,31 +68,31 @@ export function ClassManagement() {
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.studentTotal}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="border-border bg-card hover:border-border transition-colors">
+                <Card>
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学期数量</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.semesterCount}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <CalendarDays className="w-5 h-5" />
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-border bg-card">
+            <Card>
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                     <div>
                         <CardTitle className="text-base text-foreground">班级列表</CardTitle>
@@ -142,18 +143,18 @@ export function ClassManagement() {
                                         <TableCell className="font-medium text-foreground">{cls.name}</TableCell>
                                         <TableCell className="text-foreground">{cls.semester || "-"}</TableCell>
                                         <TableCell>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
+                                            <Badge variant="muted">
                                                 {cls.studentCount} 人
-                                            </span>
+                                            </Badge>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-xs">{new Date(cls.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</TableCell>
                                         <TableCell className="text-right">
-                                            <Link to={`/class/${cls.id}/students`}>
-                                                <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
-                                                    <Users className="w-3.5 h-3.5 mr-1" />
+                                            <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="xs" asChild>
+                                                <Link to={`/class/${cls.id}/students`}>
+                                                    <Users data-icon="inline-start" />
                                                     管理学生
-                                                </Button>
-                                            </Link>
+                                                </Link>
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}

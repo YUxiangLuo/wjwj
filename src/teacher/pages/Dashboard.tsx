@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Megaphone, ChevronRight, Circle, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
@@ -19,9 +20,9 @@ function StatCard({ icon: Icon, label, value, color, loading, to }: {
     // Map colors to class names
     const colorStyles: Record<string, { bg: string, text: string, border: string }> = {
         blue: { bg: "bg-primary/10", text: "text-primary", border: "border-primary/20" },
-        emerald: { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/20" },
+        success: { bg: "bg-success/10", text: "text-success", border: "border-success/20" },
         rose: { bg: "bg-destructive/10", text: "text-destructive", border: "border-destructive/20" },
-        amber: { bg: "bg-amber-500/10", text: "text-amber-600", border: "border-amber-500/20" },
+        warning: { bg: "bg-warning/10", text: "text-warning", border: "border-warning/20" },
         slate: { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" },
     };
 
@@ -96,9 +97,9 @@ export function Dashboard() {
     const getIconAndColor = (label: string) => {
         switch (label) {
             case "我的班级": return { icon: School, color: "blue", to: "/class" };
-            case "我的课题": return { icon: BookOpen, color: "emerald", to: "/topic" };
+            case "我的课题": return { icon: BookOpen, color: "success", to: "/topic" };
             case "待批改作业": return { icon: PenLine, color: "rose", to: "/grading" };
-            case "进行中任务": return { icon: ClipboardList, color: "amber", to: "/task" };
+            case "进行中任务": return { icon: ClipboardList, color: "warning", to: "/task" };
             default: return { icon: LayoutDashboard, color: "slate", to: undefined };
         }
     };
@@ -116,20 +117,20 @@ export function Dashboard() {
                 if (unread.length === 0) return null;
                 const latest = unread[0]!;
                 return (
-                    <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/20">
-                        <Megaphone className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div className="flex items-center gap-3 px-4 py-3 bg-warning/10 border border-warning/20">
+                        <Megaphone className="w-5 h-5 text-warning shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <span className="text-sm text-amber-700 font-medium truncate block">{latest.title}</span>
+                            <span className="text-sm text-warning font-medium truncate block">{latest.title}</span>
                         </div>
-                        <span className="text-xs text-amber-600/70 shrink-0">{unread.length} 条未读</span>
+                        <span className="text-xs text-warning/70 shrink-0">{unread.length} 条未读</span>
                         <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-amber-600 hover:text-amber-500 hover:bg-amber-500/10 h-7 text-xs px-2 shrink-0"
+                            variant="warning"
+                            size="xs"
+                            className="shrink-0"
                             onClick={() => setShowAnnouncements(true)}
                         >
                             查看详情
-                            <ChevronRight className="w-3 h-3 ml-1" />
+                            <ChevronRight data-icon="inline-end" />
                         </Button>
                     </div>
                 );
@@ -159,7 +160,7 @@ export function Dashboard() {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {/* Recent Submissions */}
-                <Card className="border-border bg-card">
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
                         <CardTitle className="text-lg text-foreground">最近提交</CardTitle>
                         <Button variant="outline" size="sm" asChild>
@@ -181,7 +182,7 @@ export function Dashboard() {
                                         <div>
                                             <div className="text-sm font-medium text-foreground">{item.student}</div>
                                             <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-                                                <span className="bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{item.class}</span>
+                                                <Badge variant="muted">{item.class}</Badge>
                                                 <span>·</span>
                                                 <span className="text-primary">{item.topic}</span>
                                             </div>
@@ -195,7 +196,7 @@ export function Dashboard() {
                 </Card>
 
                 {/* Recent Gradings */}
-                <Card className="border-border bg-card">
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
                         <CardTitle className="text-lg text-foreground">最近批改</CardTitle>
                         <Button variant="outline" size="sm" asChild>
@@ -212,12 +213,12 @@ export function Dashboard() {
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border bg-card/30 hover:bg-accent transition-all gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar className="w-10 h-10 border border-border">
-                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-destructive/10 text-destructive" : "bg-emerald-500/10 text-emerald-600"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
+                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <div className="text-sm font-medium text-foreground">{item.student}</div>
                                             <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-                                                <span className="bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{item.class}</span>
+                                                <Badge variant="muted">{item.class}</Badge>
                                                 <span>·</span>
                                                 <span className="text-primary">{item.topic}</span>
                                             </div>
@@ -230,7 +231,7 @@ export function Dashboard() {
                                                 已驳回
                                             </span>
                                         ) : (
-                                            <span className="flex items-center gap-1 text-xs text-emerald-600">
+                                            <span className="flex items-center gap-1 text-xs text-success">
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                 {item.score ?? "-"} 分
                                             </span>
@@ -249,7 +250,7 @@ export function Dashboard() {
                 <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="text-foreground flex items-center gap-2">
-                            <Megaphone className="w-5 h-5 text-amber-600" />
+                            <Megaphone className="w-5 h-5 text-warning" />
                             系统公告
                         </DialogTitle>
                         <DialogDescription className="sr-only">
@@ -261,13 +262,15 @@ export function Dashboard() {
                             <div className="text-center text-sm text-muted-foreground py-8">暂无公告</div>
                         ) : (
                             announcements.map(item => (
-                                <button
+                                <Button
                                     key={item.id}
-                                    className="w-full text-left p-3 border border-border hover:bg-accent transition-colors"
+                                    type="button"
+                                    variant="ghost"
+                                    className="h-auto w-full justify-start whitespace-normal border border-border p-3 text-left font-normal normal-case tracking-normal transition-colors"
                                     onClick={() => handleAnnouncementClick(item)}
                                 >
                                     <div className="flex items-start gap-2">
-                                        {item.isRead === 0 && <Circle className="w-2 h-2 mt-1.5 text-amber-600 fill-amber-400 shrink-0" />}
+                                        {item.isRead === 0 && <Circle className="w-2 h-2 mt-1.5 text-warning fill-warning shrink-0" />}
                                         <div className="flex-1 min-w-0">
                                             <div className={`text-sm font-medium truncate ${item.isRead === 0 ? "text-foreground" : "text-muted-foreground"}`}>
                                                 {item.title}
@@ -278,7 +281,7 @@ export function Dashboard() {
                                         </div>
                                         <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                                     </div>
-                                </button>
+                                </Button>
                             ))
                         )}
                     </div>

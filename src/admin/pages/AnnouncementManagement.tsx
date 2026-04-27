@@ -237,7 +237,7 @@ export function AnnouncementManagement() {
                     <p className="text-sm text-muted-foreground mt-1">统一发布系统通知，支持草稿与阅读统计。</p>
                 </div>
                 <Button data-testid="announcement-create-open" onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
+                    <Plus data-icon="inline-start" />
                     发布公告
                 </Button>
             </div>
@@ -260,7 +260,7 @@ export function AnnouncementManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Published</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <Send className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -271,7 +271,7 @@ export function AnnouncementManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Drafts</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <Archive className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -335,9 +335,9 @@ export function AnnouncementManagement() {
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-medium">{announcement.title}</h4>
                                             {announcement.status === 1 ? (
-                                                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">已发布</Badge>
+                                                <Badge variant="success">已发布</Badge>
                                             ) : (
-                                                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">草稿</Badge>
+                                                <Badge variant="warning">草稿</Badge>
                                             )}
                                             <Badge variant="outline">
                                                 {targetScopeLabels[announcement.targetScope] ?? "全体用户"}
@@ -349,48 +349,45 @@ export function AnnouncementManagement() {
                                         <RichTextContent html={announcement.content} />
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        <Button data-testid={`announcement-edit-open-${announcement.id}`} variant="ghost" size="sm" onClick={() => openEditModal(announcement)} className="h-8">
-                                            <Pencil className="w-3.5 h-3.5 mr-1" />
+                                        <Button data-testid={`announcement-edit-open-${announcement.id}`} variant="ghost" size="xs" onClick={() => openEditModal(announcement)}>
+                                            <Pencil data-icon="inline-start" />
                                             编辑
                                         </Button>
                                         <Button
-                                            variant="ghost"
-                                            size="sm"
+                                            variant={announcement.status === 1 ? "warning" : "success"}
+                                            size="xs"
                                             data-testid={`announcement-toggle-publish-${announcement.id}`}
                                             onClick={() => handleTogglePublish(announcement)}
-                                            className={`h-8 ${announcement.status === 1 ? "text-amber-600 hover:text-amber-500 hover:bg-amber-500/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                         >
                                             {announcement.status === 1 ? (
                                                 <>
-                                                    <Archive className="w-3.5 h-3.5 mr-1" />
+                                                    <Archive data-icon="inline-start" />
                                                     撤回
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Send className="w-3.5 h-3.5 mr-1" />
+                                                    <Send data-icon="inline-start" />
                                                     发布
                                                 </>
                                             )}
                                         </Button>
                                         <Button
                                             variant="ghost"
-                                            size="sm"
+                                            size="xs"
                                             data-testid={`announcement-stats-${announcement.id}`}
                                             onClick={() => handleViewStats(announcement)}
                                             disabled={announcement.status !== 1}
-                                            className="h-8"
                                         >
-                                            <BarChart3 className="w-3.5 h-3.5 mr-1" />
+                                            <BarChart3 data-icon="inline-start" />
                                             统计
                                         </Button>
                                         <Button
-                                            variant="ghost"
-                                            size="sm"
+                                            variant="destructive"
+                                            size="xs"
                                             data-testid={`announcement-delete-${announcement.id}`}
                                             onClick={() => handleDelete(announcement)}
-                                            className="h-8 hover:text-destructive hover:bg-destructive/10"
                                         >
-                                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                            <Trash2 data-icon="inline-start" />
                                             删除
                                         </Button>
                                     </div>
@@ -463,8 +460,8 @@ export function AnnouncementManagement() {
                             onClick={() => handleAddAnnouncement(false)}
                             disabled={submitting || !newAnnouncement.title.trim() || !newAnnouncement.content.trim()}
                         >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            <Archive className="w-4 h-4 mr-1" />
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
+                            <Archive data-icon="inline-start" />
                             保存草稿
                         </Button>
                         <Button
@@ -472,8 +469,8 @@ export function AnnouncementManagement() {
                             onClick={() => handleAddAnnouncement(true)}
                             disabled={submitting || !newAnnouncement.title.trim() || !newAnnouncement.content.trim()}
                         >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            <Send className="w-4 h-4 mr-1" />
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
+                            <Send data-icon="inline-start" />
                             立即发布
                         </Button>
                     </DialogFooter>
@@ -518,7 +515,7 @@ export function AnnouncementManagement() {
                             onClick={handleEditAnnouncement}
                             disabled={submitting || !editForm.title.trim()}
                         >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
                             保存
                         </Button>
                     </DialogFooter>
@@ -546,7 +543,7 @@ export function AnnouncementManagement() {
                                     </div>
                                     <div className="bg-card p-4 flex flex-col items-center border border-border">
                                         <Eye className="w-5 h-5 text-muted-foreground mb-2" />
-                                        <span className="text-2xl font-bold text-emerald-600">{currentStats.readCount}</span>
+                                        <span className="text-2xl font-bold text-success">{currentStats.readCount}</span>
                                         <span className="text-xs text-muted-foreground">已阅读</span>
                                     </div>
                                 </div>
@@ -555,7 +552,7 @@ export function AnnouncementManagement() {
                                         <span className="text-muted-foreground">阅读率</span>
                                         <span className="font-bold">{currentStats.readRate}%</span>
                                     </div>
-                                    <Progress value={currentStats.readRate} className="h-3 [&>div]:bg-emerald-500" />
+                                    <Progress value={currentStats.readRate} className="h-3 [&>div]:bg-success" />
                                 </div>
                                 {currentStats.byRole && currentStats.byRole.length > 0 && (
                                     <div className="space-y-3">

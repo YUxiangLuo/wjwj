@@ -443,7 +443,7 @@ export function TeacherApp() {
                             className="lg:hidden"
                             onClick={() => setIsSidebarOpen(true)}
                         >
-                            <Menu className="w-5 h-5" />
+                            <Menu />
                         </Button>
                         <div>
                             <h2 className="text-lg font-semibold font-heading uppercase tracking-wider">{pageTitle}</h2>
@@ -451,9 +451,9 @@ export function TeacherApp() {
                     </div>
 
                     <div className="flex items-center gap-2 sm:gap-4">
-                        <span className="hidden sm:block text-xs text-muted-foreground font-mono bg-muted px-2 py-1 border border-border">
+                        <Badge variant="muted" className="hidden sm:inline-flex">
                             {new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric" })}
-                        </span>
+                        </Badge>
 
                         <div className="h-4 w-px bg-border hidden sm:block"></div>
 
@@ -464,7 +464,7 @@ export function TeacherApp() {
                             className="relative"
                             onClick={() => { void openNotifications(); }}
                         >
-                            <Bell className="w-5 h-5" />
+                            <Bell />
                             {unreadCount > 0 && (
                                 <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full ring-2 ring-background"></span>
                             )}
@@ -477,7 +477,7 @@ export function TeacherApp() {
                             title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                             aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
                         >
-                            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                            {theme === "light" ? <Moon /> : <Sun />}
                         </Button>
 
                         <div className="flex items-center gap-1">
@@ -500,7 +500,7 @@ export function TeacherApp() {
                                         data-testid="teacher-logout"
                                         title="退出登录"
                                     >
-                                        <LogOut className="w-5 h-5" />
+                                        <LogOut />
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
@@ -597,8 +597,8 @@ export function TeacherApp() {
                                     {!item.isRead && (
                                         <Button
                                             variant="ghost"
-                                            size="sm"
-                                            className="mt-3 h-7 text-xs"
+                                            size="xs"
+                                            className="mt-3"
                                             onClick={async () => {
                                                 await markNotificationAsRead(item.id);
                                             }}
@@ -617,7 +617,7 @@ export function TeacherApp() {
             <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-amber-500">
+                        <DialogTitle className="flex items-center gap-2 text-warning/80">
                             <Clock className="w-5 h-5" />
                             会话即将过期
                         </DialogTitle>

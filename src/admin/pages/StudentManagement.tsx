@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
     Dialog,
     DialogContent,
@@ -209,8 +210,8 @@ export function StudentManagement() {
     }
 
     const getProgressColor = (progress: number) => {
-        if (progress >= 80) return "[&>div]:bg-emerald-500";
-        if (progress >= 50) return "[&>div]:bg-amber-500";
+        if (progress >= 80) return "[&>div]:bg-success";
+        if (progress >= 50) return "[&>div]:bg-warning";
         return "[&>div]:bg-destructive";
     };
 
@@ -245,7 +246,7 @@ export function StudentManagement() {
                         <p className="text-sm text-muted-foreground mt-1">查看学生档案、实验进度与班级调整。</p>
                     </div>
                     <Button data-testid="student-search-refresh" variant="outline" onClick={handleSearch} disabled={loading}>
-                        <Search className="w-4 h-4 mr-2" />
+                        <Search data-icon="inline-start" />
                         刷新结果
                     </Button>
                 </div>
@@ -268,7 +269,7 @@ export function StudentManagement() {
                                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active</p>
                                 <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.active}</p>
                             </div>
-                            <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                            <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                                 <CheckCircle2 className="w-5 h-5" />
                             </div>
                         </CardContent>
@@ -279,7 +280,7 @@ export function StudentManagement() {
                                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Disabled</p>
                                 <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.disabled}</p>
                             </div>
-                            <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                            <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                                 <PauseCircle className="w-5 h-5" />
                             </div>
                         </CardContent>
@@ -365,9 +366,9 @@ export function StudentManagement() {
                                             <TableCell>{student.className}</TableCell>
                                             <TableCell>
                                                 {student.isLocked ? (
-                                                    <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">已锁定</Badge>
+                                                    <Badge variant="destructive">已锁定</Badge>
                                                 ) : student.status === 1 ? (
-                                                    <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20">正常</Badge>
+                                                    <Badge variant="success">正常</Badge>
                                                 ) : (
                                                     <Badge variant="secondary">已停用</Badge>
                                                 )}
@@ -382,41 +383,38 @@ export function StudentManagement() {
                                             <TableCell className="text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {student.isLocked && (
-                                                        <Button data-testid={`student-unlock-${student.studentId}`} variant="ghost" size="sm" onClick={() => handleUnlock(student)} className="h-8 text-amber-600 hover:text-amber-500 hover:bg-amber-500/10">
-                                                            <Unlock className="w-3.5 h-3.5 mr-1" />
+                                                        <Button data-testid={`student-unlock-${student.studentId}`} variant="warning" size="xs" onClick={() => handleUnlock(student)}>
+                                                            <Unlock data-icon="inline-start" />
                                                             解锁
                                                         </Button>
                                                     )}
                                                     <Button
                                                         variant="ghost"
-                                                        size="sm"
+                                                        size="xs"
                                                         data-testid={`student-open-experiments-${student.studentId}`}
                                                         onClick={() => openExperimentsModal(student)}
-                                                        className="h-8"
                                                     >
-                                                        <Search className="w-3.5 h-3.5 mr-1" />
+                                                        <Search data-icon="inline-start" />
                                                         实验
                                                     </Button>
-                                                    <Button data-testid={`student-reset-${student.studentId}`} variant="ghost" size="sm" onClick={() => handleResetPassword(student)} className="h-8">
-                                                        <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                                    <Button data-testid={`student-reset-${student.studentId}`} variant="ghost" size="xs" onClick={() => handleResetPassword(student)}>
+                                                        <RotateCcw data-icon="inline-start" />
                                                         重置
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
-                                                        size="sm"
+                                                        size="xs"
                                                         data-testid={`student-open-transfer-${student.studentId}`}
                                                         onClick={() => openTransferModal(student)}
-                                                        className="h-8 hover:text-primary hover:bg-primary/10"
                                                     >
-                                                        <ArrowRight className="w-3.5 h-3.5 mr-1" />
+                                                        <ArrowRight data-icon="inline-start" />
                                                         转班
                                                     </Button>
                                                     <Button
-                                                        variant="ghost"
-                                                        size="sm"
+                                                        variant={student.status === 1 ? "destructive" : "success"}
+                                                        size="xs"
                                                         data-testid={`student-toggle-status-${student.studentId}`}
                                                         onClick={() => handleToggleStatus(student)}
-                                                        className={`h-8 ${student.status === 1 ? "text-destructive hover:text-destructive hover:bg-destructive/10" : "text-emerald-600 hover:text-emerald-500 hover:bg-emerald-500/10"}`}
                                                     >
                                                         {student.status === 1 ? "停用" : "启用"}
                                                     </Button>
@@ -448,12 +446,12 @@ export function StudentManagement() {
                     <DialogHeader>
                         <DialogTitle>学生转班</DialogTitle>
                         <DialogDescription>
-                            将学生 <span className="text-primary font-mono">{transferStudent?.studentId}</span> <span className="font-medium text-foreground">{transferStudent?.name}</span> 从 <span className="text-amber-600">{transferStudent?.className}</span> 转至新班级。
+                            将学生 <span className="text-primary font-mono">{transferStudent?.studentId}</span> <span className="font-medium text-foreground">{transferStudent?.name}</span> 从 <span className="text-warning">{transferStudent?.className}</span> 转至新班级。
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">目标班级</label>
+                            <Label>目标班级</Label>
                             <Select value={targetClassId} onValueChange={setTargetClassId}>
                                 <SelectTrigger data-testid="student-transfer-target-class">
                                     <SelectValue placeholder="选择新班级" />
@@ -472,15 +470,16 @@ export function StudentManagement() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">转班原因 (可选)</label>
+                            <Label htmlFor="student-transfer-reason">转班原因 (可选)</Label>
                             <Input
+                                id="student-transfer-reason"
                                 data-testid="student-transfer-reason"
                                 value={transferReason}
                                 onChange={(e) => setTransferReason(e.target.value)}
                                 placeholder="例如：行政调班"
                             />
                         </div>
-                        <div className="bg-amber-500/10 text-amber-600 p-3 rounded-md text-sm border border-amber-500/20">
+                        <div className="bg-warning/10 text-warning p-3 rounded-md text-sm border border-warning/20">
                             <p className="font-semibold mb-1 flex items-center gap-1.5"><PauseCircle className="w-3.5 h-3.5" /> 注意事项：</p>
                             <ul className="list-disc pl-4 space-y-1 opacity-90">
                                 <li>学生在原班级的实验数据将被存档保留。</li>
@@ -504,9 +503,9 @@ export function StudentManagement() {
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             实验记录
-                            <span className="text-sm font-normal text-muted-foreground px-2 py-0.5 rounded-full bg-muted border border-border">
+                            <Badge variant="muted">
                                 {selectedStudentForExp?.name} ({selectedStudentForExp?.studentId})
-                            </span>
+                            </Badge>
                         </DialogTitle>
                         <DialogDescription>
                             查看该学生在各个实验任务中的阶段进度、提交状态和成绩记录。
@@ -535,7 +534,7 @@ export function StudentManagement() {
                                         <TableCell>{exp.taskName || "未命名任务"}</TableCell>
                                         <TableCell className="text-muted-foreground">第 {exp.currentStage} 阶段</TableCell>
                                         <TableCell>
-                                            <Badge variant={exp.status >= 1 ? "default" : "secondary"} className={exp.status >= 1 ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20" : ""}>
+                                            <Badge variant={exp.status >= 1 ? "success" : "secondary"}>
                                                 {exp.statusText}
                                             </Badge>
                                         </TableCell>

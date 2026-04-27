@@ -54,17 +54,17 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             onChange={(e) => onImportFileChange(e.target.files?.[0] ?? null)}
                         />
                         {importFile && (
-                            <div className="text-xs text-emerald-600 mt-3 font-mono">已选择：{importFile.name}</div>
+                            <div className="text-xs text-success mt-3 font-mono">已选择：{importFile.name}</div>
                         )}
                     </div>
-                    <Button data-testid="teacher-student-template-download" variant="link" className="text-primary hover:text-primary p-0 h-auto" onClick={onDownloadTemplate}>
-                        <Download className="w-4 h-4 mr-1" />
+                    <Button data-testid="teacher-student-template-download" variant="link" size="xs" onClick={onDownloadTemplate}>
+                        <Download data-icon="inline-start" />
                         下载导入模板
                     </Button>
                     {importResult && (
                         <div className="bg-background border border-border p-3 text-sm text-muted-foreground space-y-2">
                             <div className="flex gap-4">
-                                <span className="text-emerald-600">成功：{importResult.successCount} 条</span>
+                                <span className="text-success">成功：{importResult.successCount} 条</span>
                                 <span className={importResult.failureCount > 0 ? "text-destructive" : ""}>失败：{importResult.failureCount} 条</span>
                             </div>
                             {importResult.errors.length > 0 && (
@@ -79,8 +79,8 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
-                    <Button data-testid="teacher-student-import-submit" onClick={onImport} disabled={importing || !importFile} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                        {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : "开始导入"}
+                    <Button data-testid="teacher-student-import-submit" onClick={onImport} disabled={importing || !importFile}>
+                        {importing ? <Loader2 className="animate-spin" /> : "开始导入"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

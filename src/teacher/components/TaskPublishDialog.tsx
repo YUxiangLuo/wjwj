@@ -70,31 +70,47 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                         <div className="space-y-2 border border-border bg-background rounded-md p-3 max-h-40 overflow-y-auto">
                             {availableClasses.length === 0 ? <div className="text-sm text-muted-foreground">无班级</div> : availableClasses.map((cls) => {
                                 const disabled = disabledClassIds.has(cls.id);
+                                const checkboxId = `teacher-task-class-check-${cls.id}`;
+                                const checked = !disabled && selectedClassIds.includes(cls.id);
+                                const toggleClass = () => {
+                                    if (!disabled) {
+                                        onToggleClass(cls.id);
+                                    }
+                                };
                                 return (
-                                    <label
+                                    <div
                                         key={cls.id}
                                         title={disabled ? "该课题已向此班级发布过任务" : undefined}
-                                        className={`flex items-center gap-2 text-sm p-1.5 rounded ${
+                                        className={`flex items-center gap-2 rounded p-1.5 text-sm font-normal normal-case tracking-normal ${
                                             disabled
                                                 ? "text-muted-foreground cursor-not-allowed opacity-80"
                                                 : "text-foreground cursor-pointer hover:bg-accent"
                                         }`}
+                                        onClick={(event) => {
+                                            if (disabled) return;
+                                            if ((event.target as HTMLElement).closest("[data-slot='checkbox'], [data-slot='label']")) return;
+                                            toggleClass();
+                                        }}
                                     >
                                         <Checkbox
+                                            id={checkboxId}
                                             data-testid={`teacher-task-class-check-${cls.id}`}
                                             disabled={disabled}
-                                            checked={!disabled && selectedClassIds.includes(cls.id)}
+                                            checked={checked}
                                             onCheckedChange={() => {
-                                                if (!disabled) {
-                                                    onToggleClass(cls.id);
-                                                }
+                                                toggleClass();
                                             }}
                                         />
-                                        <span className="flex-1">{cls.name}</span>
+                                        <Label
+                                            htmlFor={checkboxId}
+                                            className={`flex-1 text-sm font-normal normal-case tracking-normal ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                        >
+                                            {cls.name}
+                                        </Label>
                                         {disabled ? (
                                             <span className="text-xs text-muted-foreground shrink-0">已发布</span>
                                         ) : null}
-                                    </label>
+                                    </div>
                                 );
                             })}
                         </div>
@@ -112,7 +128,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
-                    <Button data-testid="teacher-task-publish-submit" onClick={onPublish} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认发布</Button>
+                    <Button data-testid="teacher-task-publish-submit" onClick={onPublish}>确认发布</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

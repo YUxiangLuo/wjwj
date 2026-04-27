@@ -59,7 +59,7 @@ export function AssistantAddDialog(props: AssistantAddDialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
-                    <Button data-testid="teacher-assistant-add-submit" onClick={onSubmit} disabled={!canSubmit} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认添加</Button>
+                    <Button data-testid="teacher-assistant-add-submit" onClick={onSubmit} disabled={!canSubmit}>确认添加</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

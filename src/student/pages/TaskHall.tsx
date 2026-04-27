@@ -447,20 +447,16 @@ export function TaskHall() {
                             { key: "submitted", label: "已提交", testId: "student-filter-submitted" },
                             { key: "graded", label: "已批改", testId: "student-filter-graded" },
                         ].map((item) => (
-                            <button
+                            <Button
                                 key={item.key}
                                 type="button"
+                                variant={filter === item.key ? "secondary" : "ghost"}
+                                size="sm"
                                 onClick={() => setFilter(item.key as typeof filter)}
                                 data-testid={item.testId}
-                                className={cn(
-                                    "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
-                                    filter === item.key
-                                        ? "bg-muted text-foreground shadow-sm"
-                                        : "text-muted-foreground hover:text-foreground"
-                                )}
                             >
                                 {item.label}
-                            </button>
+                            </Button>
                         ))}
                     </div>
                 </div>
@@ -511,11 +507,12 @@ export function TaskHall() {
                                 <div className="py-12 text-center text-sm italic text-muted-foreground">暂无公告</div>
                             )}
                             {announcements.map((announcement) => (
-                                <button
+                                <Button
                                     key={announcement.id}
                                     type="button"
+                                    variant="ghost"
                                     className={cn(
-                                        "group w-full rounded-lg border p-4 text-left transition-all duration-200",
+                                        "group h-auto w-full justify-start whitespace-normal border p-4 text-left font-normal normal-case tracking-normal transition-all duration-200",
                                         selectedAnnouncement?.id === announcement.id
                                             ? "border-primary/30 bg-primary/10 ring-1 ring-primary/20"
                                             : "border-border bg-background/50 hover:bg-muted"
@@ -542,7 +539,7 @@ export function TaskHall() {
                                             minute: "2-digit",
                                         })}
                                     </div>
-                                </button>
+                                </Button>
                             ))}
                         </div>
                         {/* Detail */}

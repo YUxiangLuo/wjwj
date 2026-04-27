@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, memo } from "react";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { MethodKey as SamplingMethod } from "../api-client";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
@@ -684,30 +685,30 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
     return (
         <div className="flex h-full min-h-0 flex-col gap-2">
             <div className="min-h-0 flex-1 overflow-auto rounded-xl border">
-                <table className="min-w-max w-full text-left">
-                    <thead className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
-                        <tr>
-                            <th className="whitespace-nowrap border-b px-3 py-2 text-xs font-medium text-muted-foreground">#</th>
+                <Table className="min-w-max">
+                    <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
+                        <TableRow>
+                            <TableHead className="h-auto py-2 normal-case tracking-normal">#</TableHead>
                             {keys.map((key) => (
-                                <th key={key} className="whitespace-nowrap border-b px-3 py-2 text-xs font-medium text-muted-foreground">
+                                <TableHead key={key} className="h-auto py-2 normal-case tracking-normal">
                                     {FIELD_LABELS[key] || key}
-                                </th>
+                                </TableHead>
                             ))}
-                        </tr>
-                    </thead>
-                    <tbody>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
                         {rows.map((row, rowIndex) => (
-                            <tr key={start + rowIndex} className="border-b hover:bg-muted/60">
-                                <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs text-muted-foreground">{start + rowIndex + 1}</td>
+                            <TableRow key={start + rowIndex} className="hover:bg-muted/60">
+                                <TableCell className="py-1.5 font-mono text-xs text-muted-foreground">{start + rowIndex + 1}</TableCell>
                                 {keys.map((key) => (
-                                    <td key={key} className="whitespace-nowrap px-3 py-1.5 text-xs text-foreground">
+                                    <TableCell key={key} className="py-1.5 text-xs text-foreground">
                                         {String(row[key] ?? "")}
-                                    </td>
+                                    </TableCell>
                                 ))}
-                            </tr>
+                            </TableRow>
                         ))}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
             </div>
             <div className="flex shrink-0 items-center justify-between px-1">
                 <p className="text-xs text-muted-foreground">

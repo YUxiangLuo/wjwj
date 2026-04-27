@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import type { Assistant, TeacherClass } from "../api-client";
 
 interface AssistantAssignDialogProps {
@@ -35,30 +36,45 @@ export function AssistantAssignDialog(props: AssistantAssignDialogProps) {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                        {classes.map((cls) => (
-                            <label key={cls.id} className="flex items-center gap-3 p-3 border border-border cursor-pointer hover:bg-muted transition-colors bg-background">
-                                <Checkbox
-                                    data-testid={`teacher-assistant-assign-check-${cls.id}`}
-                                    checked={selectedClassIds.includes(cls.id)}
-                                    onCheckedChange={(checked) => {
-                                        if (checked === true) {
-                                            onSelectedClassIdsChange([...selectedClassIds, cls.id]);
-                                        } else {
-                                            onSelectedClassIdsChange(selectedClassIds.filter((id) => id !== cls.id));
-                                        }
+                        {classes.map((cls) => {
+                            const checkboxId = `teacher-assistant-assign-check-${cls.id}`;
+                            const selected = selectedClassIds.includes(cls.id);
+                            const toggleClass = (checked = !selected) => {
+                                if (checked) {
+                                    onSelectedClassIdsChange([...selectedClassIds, cls.id]);
+                                } else {
+                                    onSelectedClassIdsChange(selectedClassIds.filter((id) => id !== cls.id));
+                                }
+                            };
+                            return (
+                                <div
+                                    key={cls.id}
+                                    className="flex cursor-pointer items-center gap-3 border border-border bg-background p-3 transition-colors hover:bg-muted"
+                                    onClick={(event) => {
+                                        if ((event.target as HTMLElement).closest("[data-slot='checkbox'], [data-slot='label']")) return;
+                                        toggleClass();
                                     }}
-                                />
-                                <div>
-                                    <div className="font-medium text-foreground">{cls.name}</div>
-                                    <div className="text-xs text-muted-foreground">{cls.studentCount}人 · {cls.semester}</div>
+                                >
+                                    <Checkbox
+                                        id={checkboxId}
+                                        data-testid={`teacher-assistant-assign-check-${cls.id}`}
+                                        checked={selected}
+                                        onCheckedChange={(checked) => {
+                                            toggleClass(checked === true);
+                                        }}
+                                    />
+                                    <Label htmlFor={checkboxId} className="flex-1 cursor-pointer text-sm font-normal normal-case tracking-normal">
+                                        <div className="font-medium text-foreground">{cls.name}</div>
+                                        <div className="text-xs text-muted-foreground">{cls.studentCount}人 · {cls.semester}</div>
+                                    </Label>
                                 </div>
-                            </label>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
-                    <Button data-testid="teacher-assistant-assign-submit" onClick={onSubmit} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认分配</Button>
+                    <Button data-testid="teacher-assistant-assign-submit" onClick={onSubmit}>确认分配</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

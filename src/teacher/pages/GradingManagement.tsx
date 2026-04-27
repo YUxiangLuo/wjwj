@@ -95,10 +95,10 @@ export function GradingManagement() {
     const getStatusBadge = (status: number, score?: number | null) => {
         switch (status) {
             case 0:
-            case 1: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"><Clock className="w-3 h-3 mr-1" /> 待批改</Badge>;
-            case 2: return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</Badge>;
-            case 3: return <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20"><XCircle className="w-3 h-3 mr-1" /> 已驳回</Badge>;
-            default: return <Badge variant="outline" className="text-muted-foreground border-border">未知状态</Badge>;
+            case 1: return <Badge variant="warning"><Clock data-icon="inline-start" /> 待批改</Badge>;
+            case 2: return <Badge variant="success"><CheckCircle2 data-icon="inline-start" /> 已批改 ({score ?? 0}分)</Badge>;
+            case 3: return <Badge variant="destructive"><XCircle data-icon="inline-start" /> 已驳回</Badge>;
+            default: return <Badge variant="muted">未知状态</Badge>;
         }
     };
 
@@ -109,10 +109,9 @@ export function GradingManagement() {
         const isTeacher = item.gradedByType === 2;
         return (
             <Badge
-                variant="outline"
-                className={`text-xs ${isTeacher ? 'text-primary border-primary/20 bg-primary/10' : 'text-secondary-foreground border-secondary bg-secondary'}`}
+                variant={isTeacher ? "info" : "secondary"}
             >
-                <UserCheck className="w-3 h-3 mr-1" />
+                <UserCheck data-icon="inline-start" />
                 {isTeacher ? '教师' : '助教'}: {item.gradedByName}
             </Badge>
         );
@@ -125,7 +124,7 @@ export function GradingManagement() {
                 <p className="text-sm text-muted-foreground mt-1">查看待批改列表并快速进入评分。</p>
             </div>
 
-            <Card className="border-border bg-card">
+            <Card>
                 <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
                     <div>
                         <CardTitle className="text-base text-foreground">批改列表</CardTitle>
@@ -194,7 +193,7 @@ export function GradingManagement() {
                                 <div data-testid={`teacher-grading-card-${sub.id}`} key={sub.id} className="border border-border bg-background hover:bg-accent transition-all p-5">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="flex items-center gap-4">
-                                            <Avatar className="w-10 h-10 border border-border">
+                                            <Avatar className="size-10 border border-border">
                                                 <AvatarFallback className="bg-muted text-muted-foreground">{sub.studentName?.[0] ?? "?"}</AvatarFallback>
                                             </Avatar>
                                             <div>
@@ -213,24 +212,24 @@ export function GradingManagement() {
                                     </div>
                                     <div className="flex justify-end mt-4 pt-3 border-t border-border/50">
                                         {sub.status === 1 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                                                <FileEdit className="w-3.5 h-3.5 mr-2" />
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)}>
+                                                <FileEdit data-icon="inline-start" />
                                                 开始批改
                                             </Button>
                                         )}
                                         {sub.status === 0 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                                                <FileEdit className="w-3.5 h-3.5 mr-2" />
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="secondary" size="sm" onClick={() => navigate(`/grading/${sub.id}`)}>
+                                                <FileEdit data-icon="inline-start" />
                                                 继续批改
                                             </Button>
                                         )}
                                         {sub.status === 2 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-muted-foreground hover:text-foreground hover:bg-accent">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)}>
                                                 查看详情
                                             </Button>
                                         )}
                                         {sub.status === 3 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="destructive" size="sm" onClick={() => navigate(`/grading/${sub.id}`)}>
                                                 查看原因
                                             </Button>
                                         )}
@@ -248,12 +247,11 @@ export function GradingManagement() {
                             <div className="flex items-center gap-1">
                                 <Button
                                     variant="outline"
-                                    size="sm"
+                                    size="icon-xs"
                                     disabled={page <= 1}
                                     onClick={() => goToPage(page - 1)}
-                                    className="h-8 w-8 p-0 border-border"
                                 >
-                                    <ChevronLeft className="w-4 h-4" />
+                                    <ChevronLeft />
                                 </Button>
                                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                                     .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
@@ -269,13 +267,8 @@ export function GradingManagement() {
                                             <Button
                                                 key={item}
                                                 variant={item === page ? "default" : "outline"}
-                                                size="sm"
+                                                size="icon-xs"
                                                 onClick={() => goToPage(item)}
-                                                className={`h-8 w-8 p-0 text-xs ${
-                                                    item === page
-                                                        ? ""
-                                                        : "border-border text-muted-foreground"
-                                                }`}
                                             >
                                                 {item}
                                             </Button>
@@ -283,12 +276,11 @@ export function GradingManagement() {
                                     )}
                                 <Button
                                     variant="outline"
-                                    size="sm"
+                                    size="icon-xs"
                                     disabled={page >= totalPages}
                                     onClick={() => goToPage(page + 1)}
-                                    className="h-8 w-8 p-0 border-border"
                                 >
-                                    <ChevronRight className="w-4 h-4" />
+                                    <ChevronRight />
                                 </Button>
                             </div>
                         </div>

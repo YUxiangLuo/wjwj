@@ -9,6 +9,7 @@ import {
     ArrowRight
 } from "lucide-react";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface DesignEffectEstimatorProps {
     currentDeff: number;
@@ -128,7 +129,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
             <CardContent className="flex flex-col gap-4">
                 {/* 抽样方法选择 */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-primary">抽样方法</label>
+                    <Label className="text-primary">抽样方法</Label>
                     <Select value={selectedMethod} onValueChange={handleMethodChange}>
                         <SelectTrigger>
                             <SelectValue />
@@ -202,7 +203,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
 
                 {/* 调查方式选择 */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-primary">调查方式</label>
+                    <Label className="text-primary">调查方式</Label>
                     <Select value={selectedMode} onValueChange={setSelectedMode}>
                         <SelectTrigger>
                             <SelectValue />

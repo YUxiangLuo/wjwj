@@ -217,7 +217,7 @@ export function ClassManagement() {
                     <p className="text-sm text-muted-foreground mt-1">管理班级、授课教师与学生规模。</p>
                 </div>
                 <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)}>
-                    <Plus className="w-4 h-4 mr-1" />
+                    <Plus data-icon="inline-start" />
                     创建班级
                 </Button>
             </div>
@@ -240,7 +240,7 @@ export function ClassManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Students</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.studentTotal}</p>
                         </div>
-                        <div className="w-10 h-10 bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
                             <Users className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -251,7 +251,7 @@ export function ClassManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Current Term</p>
                             <p className="text-sm font-bold mt-2">{loading ? "-" : summary.currentSemesterName}</p>
                         </div>
-                        <div className="w-10 h-10 bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
                             <CalendarDays className="w-5 h-5" />
                         </div>
                     </CardContent>
@@ -333,40 +333,38 @@ export function ClassManagement() {
                                     <TableRow key={cls.id} data-testid={`class-row-${cls.id}`}>
                                         <TableCell className="font-medium">{cls.name}</TableCell>
                                         <TableCell>
-                                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                            <Badge variant="info">
                                                 {cls.semesterName}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>{cls.teacherName}</TableCell>
                                         <TableCell>
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground">
+                                            <Badge variant="muted">
                                                 {cls.studentCount}
-                                            </span>
+                                            </Badge>
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-xs">{formatDate(cls.createdAt)}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                    variant="success"
+                                                    size="xs"
                                                     onClick={() => navigate(`/student?classId=${cls.id}`)}
-                                                    className="h-8 hover:text-emerald-600 hover:bg-emerald-500/10"
                                                 >
-                                                    <Users className="w-3.5 h-3.5 mr-1" />
+                                                    <Users data-icon="inline-start" />
                                                     学生
                                                 </Button>
-                                                <Button data-testid={`class-edit-open-${cls.id}`} variant="ghost" size="sm" onClick={() => openEditModal(cls)} className="h-8">
-                                                    <Pencil className="w-3.5 h-3.5 mr-1" />
+                                                <Button data-testid={`class-edit-open-${cls.id}`} variant="ghost" size="xs" onClick={() => openEditModal(cls)}>
+                                                    <Pencil data-icon="inline-start" />
                                                     编辑
                                                 </Button>
                                                 <Button
-                                                    variant="ghost"
-                                                    size="sm"
+                                                    variant="destructive"
+                                                    size="xs"
                                                     data-testid={`class-delete-${cls.id}`}
                                                     onClick={() => handleDelete(cls)}
-                                                    className="h-8 hover:text-destructive hover:bg-destructive/10"
                                                 >
-                                                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                                    <Trash2 data-icon="inline-start" />
                                                     删除
                                                 </Button>
                                             </div>
@@ -448,7 +446,7 @@ export function ClassManagement() {
                             onClick={handleAddClass}
                             disabled={submitting || !newClass.name.trim() || !newClass.semesterId || !newClass.teacherId}
                         >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
                             确认创建
                         </Button>
                     </DialogFooter>
@@ -502,7 +500,7 @@ export function ClassManagement() {
                             onClick={handleEditClass}
                             disabled={submitting || !editForm.name.trim()}
                         >
-                            {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {submitting && <Loader2 data-icon="inline-start" className="animate-spin" />}
                             保存
                         </Button>
                     </DialogFooter>
