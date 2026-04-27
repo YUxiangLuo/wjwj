@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -31,13 +32,13 @@ export type { TaskStatus, StudentTask };
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ["not_started", "in_progress", "rejected"];
-const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
-    not_started: { label: "未开始", color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20" },
-    in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
-    submitted: { label: "已提交", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
-    grading: { label: "批改中", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" },
-    graded: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-    rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
+const statusConfig: Record<TaskStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    not_started: { label: "未开始", variant: "secondary" },
+    in_progress: { label: "进行中", variant: "default" },
+    submitted: { label: "已提交", variant: "outline" },
+    grading: { label: "批改中", variant: "outline" },
+    graded: { label: "已批改", variant: "default" },
+    rejected: { label: "被驳回", variant: "destructive" },
 };
 
 function formatDateTime(value: string | null) {
@@ -97,8 +98,8 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
         const hours = Math.floor(remainingMs / hourMs);
         const minutes = Math.floor((remainingMs % hourMs) / minuteMs);
         return (
-            <span className="text-sm text-rose-600 font-medium flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1 text-sm font-medium text-destructive">
+                <AlertCircle className="size-3.5" />
                 还剩 {hours} 小时 {minutes} 分钟
             </span>
         );
@@ -108,15 +109,15 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
         const days = Math.floor(remainingMs / dayMs);
         const hours = Math.floor((remainingMs % dayMs) / hourMs);
         return (
-            <span className="text-sm text-amber-600 font-medium flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1 text-sm font-medium text-primary">
+                <Clock className="size-3.5" />
                 还剩 {days} 天 {hours} 小时
             </span>
         );
     }
 
     const days = Math.ceil(remainingMs / dayMs);
-    return <span className="text-sm text-slate-500">还剩 {days} 天</span>;
+    return <span className="text-sm text-muted-foreground">还剩 {days} 天</span>;
 }
 
 interface TaskCardProps {
@@ -165,29 +166,28 @@ function TaskCard({ task }: TaskCardProps) {
 
     return (
         <>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur-sm shadow-lg hover:shadow-indigo-500/10 transition-all hover:-translate-y-1" data-testid={`student-task-card-${task.id}`}>
-                <CardHeader className="pb-3 text-slate-800 dark:text-slate-200">
-                <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-lg line-clamp-1 text-slate-900 dark:text-slate-100">{task.name}</CardTitle>
-                    <Badge variant="outline" className={`${status.color} border whitespace-nowrap`}>{status.label}</Badge>
-                </div>
-                <CardDescription className="line-clamp-2 text-slate-600 dark:text-slate-400">
-                    {task.description ? getRichTextPlainText(task.description) : null}
-                </CardDescription>
+            <Card size="sm" className="transition-all hover:-translate-y-1 hover:shadow-md" data-testid={`student-task-card-${task.id}`}>
+                <CardHeader>
+                    <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="line-clamp-1 text-lg normal-case tracking-normal">{task.name}</CardTitle>
+                        <Badge variant={status.variant} className="whitespace-nowrap">{status.label}</Badge>
+                    </div>
+                    <CardDescription className="line-clamp-2">
+                        {task.description ? getRichTextPlainText(task.description) : null}
+                    </CardDescription>
                 </CardHeader>
-                <CardContent>
-                <div className="space-y-4">
+                <CardContent className="flex flex-1 flex-col gap-4">
                     {/* Progress */}
                     {task.status !== "graded" && task.status !== "rejected" && (
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">实验进度</span>
-                                <span className="text-slate-700 dark:text-slate-300 font-medium">{task.progress}%</span>
+                                <span className="text-muted-foreground">实验进度</span>
+                                <span className="font-medium text-foreground">{task.progress}%</span>
                             </div>
-                            <Progress value={task.progress} className="h-2 bg-slate-200 dark:bg-slate-800 [&>div]:bg-indigo-500" />
+                            <Progress value={task.progress} className="h-2" />
                             {task.currentStage > 0 && task.currentStage < 4 && (
-                                <p className="text-xs text-slate-500 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <span className="size-1.5 rounded-full bg-primary"></span>
                                     当前阶段：{stageNames[task.currentStage - 1]}
                                 </p>
                             )}
@@ -196,62 +196,65 @@ function TaskCard({ task }: TaskCardProps) {
 
                     {/* Score display */}
                     {task.status === "graded" && task.score !== undefined && (
-                        <div className="flex items-center gap-3 py-3 px-4 bg-emerald-500/10 rounded-lg border border-emerald-500/10">
-                            <div className="p-2 bg-emerald-500/20 rounded-full">
-                                <Trophy className="w-5 h-5 text-emerald-600" />
+                        <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/10 px-4 py-3">
+                            <div className="rounded-full bg-primary/20 p-2 text-primary">
+                                <Trophy className="size-5" />
                             </div>
                             <div>
-                                <div className="text-xs text-emerald-600/80 uppercase font-bold tracking-wider">最终得分</div>
-                                <span className="font-bold text-2xl text-emerald-600">{task.score}</span>
+                                <div className="text-xs font-bold uppercase tracking-wider text-primary/80">最终得分</div>
+                                <span className="text-2xl font-bold text-primary">{task.score}</span>
                             </div>
                         </div>
                     )}
 
                     {/* Reject reason */}
                     {task.status === "rejected" && task.rejectReason && (
-                        <div className="p-3 bg-rose-500/10 rounded-lg border border-rose-500/20 text-sm text-rose-500">
-                            <div className="font-semibold mb-1 flex items-center gap-2">
-                                <AlertCircle className="w-3 h-3" /> 驳回理由
+                        <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                            <div className="mb-1 flex items-center gap-2 font-semibold">
+                                <AlertCircle className="size-3" /> 驳回理由
                             </div>
-                            <div className="opacity-90 leading-relaxed text-xs">{task.rejectReason}</div>
+                            <div className="text-xs leading-relaxed opacity-90">{task.rejectReason}</div>
                         </div>
                     )}
 
-                    {/* Footer */}
-                    <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
-                        <div className="text-xs text-slate-500 space-y-0.5">
-                            <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
-                            <div>截止：{formatDateTime(task.deadline)}</div>
-                        </div>
-                        <DeadlineDisplay deadline={task.deadline} status={task.status} notOpenYet={notOpenYet} />
-                    </div>
+                    <div className="mt-auto flex flex-col gap-4">
+                        <Separator />
 
-                    {/* Action button */}
-                    <div className="flex gap-2">
-                        <Button
-                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-indigo-600 hover:bg-indigo-700 text-white hover:text-white shadow-lg shadow-indigo-500/20' : ''} ${action.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700 text-white hover:text-white' : ''} ${action.variant === 'outline' ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' : ''}`}
-                            variant="ghost"
-                            disabled={disabled}
-                            onClick={() => { void handlePrimaryAction(); }}
-                            data-testid={`student-task-primary-${task.id}`}
-                        >
-                            {action.text}
-                            <ChevronRight className="w-4 h-4 ml-1 opacity-70" />
-                        </Button>
-                        {showHistory && (
-                            <Link to={`/task/${task.id}/history`}>
-                                <Button variant="outline" size="icon" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100" title="历史记录">
-                                    <Clock className="w-4 h-4" />
-                                </Button>
-                            </Link>
+                        {/* Footer */}
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                                <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
+                                <div>截止：{formatDateTime(task.deadline)}</div>
+                            </div>
+                            <DeadlineDisplay deadline={task.deadline} status={task.status} notOpenYet={notOpenYet} />
+                        </div>
+
+                        {/* Action button */}
+                        <div className="flex gap-2">
+                            <Button
+                                className="w-full flex-1"
+                                variant={action.variant}
+                                disabled={disabled}
+                                onClick={() => { void handlePrimaryAction(); }}
+                                data-testid={`student-task-primary-${task.id}`}
+                            >
+                                {action.text}
+                                <ChevronRight data-icon="inline-end" />
+                            </Button>
+                            {showHistory && (
+                                <Link to={`/task/${task.id}/history`}>
+                                    <Button variant="outline" size="icon" title="历史记录">
+                                        <Clock />
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
+                        {disabled && (
+                            <div className="rounded-md bg-muted/50 px-4 py-2 text-center text-xs text-muted-foreground">
+                                {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
+                            </div>
                         )}
                     </div>
-                    {disabled && (
-                        <div className="px-4 py-2 text-xs text-slate-500 text-center bg-slate-200/50 dark:bg-slate-800/50 rounded-md">
-                            {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
-                        </div>
-                    )}
-                </div>
                 </CardContent>
             </Card>
 
