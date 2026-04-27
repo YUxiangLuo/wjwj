@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
+import { insertReturningId } from "../../db/insert-id";
 import { task, topic } from "../../db/schema";
 import { createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
@@ -35,14 +36,14 @@ export async function createTeacherTopic(params: {
         return fail("课题需先上传总体数据后才能发布");
     }
 
-    const [result] = await db.insert(topic).values({
+    const id = await insertReturningId(db, topic, {
         teacherId: params.teacherId,
         name: params.name.trim(),
         description: params.description ?? "",
         status: params.status ?? 0,
     });
 
-    return { ok: true as const, id: result.insertId };
+    return { ok: true as const, id };
 }
 
 export async function updateTeacherTopicBasics(params: {

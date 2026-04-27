@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
+import { SQL } from "bun";
+import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
 
 function requireEnv(name: string) {
@@ -10,16 +10,26 @@ function requireEnv(name: string) {
     return value;
 }
 
-// Create the connection pool
-const poolConnection = mysql.createPool({
-    host: requireEnv("DB_HOST"),
-    user: requireEnv("DB_USER"),
+function envNumber(name: string, fallback: number) {
+    const value = process.env[name]?.trim();
+    if (!value) return fallback;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+        throw new Error(`Invalid numeric environment variable: ${name}`);
+    }
+    return parsed;
+}
+
+// Create the PostgreSQL connection pool using Bun's native SQL client.
+const sqlClient = new SQL({
+    adapter: "postgres",
+    hostname: requireEnv("DB_HOST"),
+    port: envNumber("DB_PORT", 5432),
+    username: requireEnv("DB_USER"),
     password: requireEnv("DB_PASSWORD"),
     database: requireEnv("DB_NAME"),
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    // 未设 timezone：datetime 与 JS Date 的转换随部署环境；应用层对截止时间统一用 UTC ISO 传输与解析
+    max: 10,
 });
 
-export const db = drizzle(poolConnection, { schema, mode: "default" });
+export const db = drizzle(sqlClient, { schema });
+export { sqlClient };

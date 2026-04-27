@@ -19,38 +19,36 @@ let notificationCleanupRunning = false;
 let deadlineReminderRunning = false;
 let submissionPdfRunning = false;
 
-function getResultHeader(result: unknown) {
-    if (Array.isArray(result) && result.length > 0 && result[0] && typeof result[0] === "object") {
-        return result[0] as { affectedRows?: number };
-    }
-
-    if (result && typeof result === "object") {
-        return result as { affectedRows?: number };
-    }
-
-    return null;
-}
-
 async function tryAcquireJobLease(jobName: string, leaseMs: number) {
     const leaseKey = `scheduler.${jobName}.lease`;
+    const now = Date.now();
     const leaseUntil = Date.now() + leaseMs;
     const leaseValue = `${schedulerOwnerId}:${leaseUntil}`;
 
-    const result = await db.execute(sql`
-        INSERT INTO system_config (config_key, config_value, value_type, description)
-        VALUES (${leaseKey}, ${leaseValue}, 'string', ${`scheduler lease for ${jobName}`})
-        ON DUPLICATE KEY UPDATE
-            config_value = IF(
-                CAST(SUBSTRING_INDEX(config_value, ':', -1) AS UNSIGNED) < ${Date.now()}
-                OR SUBSTRING_INDEX(config_value, ':', 1) = ${schedulerOwnerId},
-                ${leaseValue},
-                config_value
-            ),
-            value_type = 'string',
-            description = ${`scheduler lease for ${jobName}`}
-    `);
+    const [row] = await db
+        .insert(systemConfig)
+        .values({
+            configKey: leaseKey,
+            configValue: leaseValue,
+            valueType: "string",
+            description: `scheduler lease for ${jobName}`,
+        })
+        .onConflictDoUpdate({
+            target: systemConfig.configKey,
+            set: {
+                configValue: sql`CASE
+                    WHEN CAST(split_part(${systemConfig.configValue}, ':', 2) AS bigint) < ${now}
+                      OR split_part(${systemConfig.configValue}, ':', 1) = ${schedulerOwnerId}
+                    THEN ${leaseValue}
+                    ELSE ${systemConfig.configValue}
+                END`,
+                valueType: "string",
+                description: `scheduler lease for ${jobName}`,
+            },
+        })
+        .returning({ value: systemConfig.configValue });
 
-    return (getResultHeader(result)?.affectedRows ?? 0) > 0;
+    return row?.value === leaseValue;
 }
 
 async function releaseJobLease(jobName: string) {
@@ -59,7 +57,7 @@ async function releaseJobLease(jobName: string) {
         UPDATE system_config
         SET config_value = ${`${schedulerOwnerId}:0`}, value_type = 'string'
         WHERE config_key = ${leaseKey}
-          AND SUBSTRING_INDEX(config_value, ':', 1) = ${schedulerOwnerId}
+          AND split_part(config_value, ':', 1) = ${schedulerOwnerId}
     `);
 }
 

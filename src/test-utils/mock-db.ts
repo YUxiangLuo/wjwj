@@ -84,7 +84,13 @@ function createBuilder(kind: QueryKind, operation: MockDbOperation, queues: Requ
             operation.set = values;
             return builder;
         },
-        onDuplicateKeyUpdate() {
+        returning() {
+            return builder;
+        },
+        onConflictDoUpdate() {
+            return builder;
+        },
+        onConflictDoNothing() {
             return builder;
         },
         then(resolve: (value: unknown) => unknown, reject?: (error: unknown) => unknown) {

@@ -8,7 +8,7 @@ const sql = Object.assign(
     }
 );
 
-// Pre-load the real drizzle-orm so internal deps (mysql-core) resolve correctly
+// Pre-load the real drizzle-orm so mocked helpers can extend the real module.
 const realDrizzle = await import("drizzle-orm");
 
 async function loadGradingRoutes(options: {

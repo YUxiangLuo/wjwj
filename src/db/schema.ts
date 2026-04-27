@@ -1,53 +1,53 @@
 import {
-    mysqlTable,
+    pgTable,
     bigint,
+    bigserial,
     varchar,
-    tinyint,
-    datetime,
-    text,
-    json,
-    decimal,
-    int,
-    uniqueIndex,
+    smallint,
+    timestamp,
+    jsonb,
+    integer,
     index,
-    boolean,
-} from "drizzle-orm/mysql-core";
+    numeric,
+    text,
+    uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
 // ============================================================
 // 1. User Domain
 // ============================================================
 
-export const admin = mysqlTable(
+export const admin = pgTable(
     "admin",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         username: varchar("username", { length: 50 }).notNull().unique(),
         password: varchar("password", { length: 255 }).notNull(),
-        isFirstLogin: tinyint("is_first_login").notNull().default(1),
-        loginFailCount: tinyint("login_fail_count", { unsigned: true }).notNull().default(0),
-        lockedUntil: datetime("locked_until", { mode: "date" }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        isFirstLogin: smallint("is_first_login").notNull().default(1),
+        loginFailCount: smallint("login_fail_count").notNull().default(0),
+        lockedUntil: timestamp("locked_until", { mode: "date" }),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     }
 );
 
-export const teacher = mysqlTable(
+export const teacher = pgTable(
     "teacher",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         employeeId: varchar("employee_id", { length: 50 }).notNull().unique(),
         name: varchar("name", { length: 100 }).notNull(),
         password: varchar("password", { length: 255 }).notNull(),
-        isFirstLogin: tinyint("is_first_login").notNull().default(1),
-        status: tinyint("status").notNull().default(1), // 1-Normal, 0-Suspended
-        loginFailCount: tinyint("login_fail_count", { unsigned: true }).notNull().default(0),
-        lockedUntil: datetime("locked_until", { mode: "date" }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        isFirstLogin: smallint("is_first_login").notNull().default(1),
+        status: smallint("status").notNull().default(1), // 1-Normal, 0-Suspended
+        loginFailCount: smallint("login_fail_count").notNull().default(0),
+        lockedUntil: timestamp("locked_until", { mode: "date" }),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
-        statusIdx: index("idx_status").on(t.status),
+        statusIdx: index("idx_teacher_status").on(t.status),
     })
 );
 
@@ -57,24 +57,24 @@ export const teacherRelations = relations(teacher, ({ many }) => ({
     assistants: many(assistant),
 }));
 
-export const assistant = mysqlTable(
+export const assistant = pgTable(
     "assistant",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         account: varchar("account", { length: 50 }).notNull().unique(),
         name: varchar("name", { length: 100 }).notNull(),
         password: varchar("password", { length: 255 }).notNull(),
-        creatorTeacherId: bigint("creator_teacher_id", { mode: "number", unsigned: true }).notNull(),
-        isFirstLogin: tinyint("is_first_login").notNull().default(1),
-        status: tinyint("status").notNull().default(1),
-        loginFailCount: tinyint("login_fail_count", { unsigned: true }).notNull().default(0),
-        lockedUntil: datetime("locked_until", { mode: "date" }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        creatorTeacherId: bigint("creator_teacher_id", { mode: "number" }).notNull(),
+        isFirstLogin: smallint("is_first_login").notNull().default(1),
+        status: smallint("status").notNull().default(1),
+        loginFailCount: smallint("login_fail_count").notNull().default(0),
+        lockedUntil: timestamp("locked_until", { mode: "date" }),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
-        statusIdx: index("idx_status").on(t.status),
-        creatorTeacherIdIdx: index("idx_creator_teacher_id").on(t.creatorTeacherId),
+        statusIdx: index("idx_assistant_status").on(t.status),
+        creatorTeacherIdIdx: index("idx_assistant_creator_teacher_id").on(t.creatorTeacherId),
     })
 );
 
@@ -86,27 +86,27 @@ export const assistantRelations = relations(assistant, ({ one, many }) => ({
     assistantClasses: many(assistantClass),
 }));
 
-export const student = mysqlTable(
+export const student = pgTable(
     "student",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         studentId: varchar("student_id", { length: 50 }).notNull().unique(),
         name: varchar("name", { length: 100 }).notNull(),
         email: varchar("email", { length: 120 }),
         password: varchar("password", { length: 255 }).notNull(),
-        classId: bigint("class_id", { mode: "number", unsigned: true }).notNull(),
-        isFirstLogin: tinyint("is_first_login").notNull().default(1),
-        status: tinyint("status").notNull().default(1),
-        loginFailCount: tinyint("login_fail_count", { unsigned: true }).notNull().default(0),
-        lockedUntil: datetime("locked_until", { mode: "date" }),
-        deletedAt: datetime("deleted_at", { mode: "date" }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        classId: bigint("class_id", { mode: "number" }).notNull(),
+        isFirstLogin: smallint("is_first_login").notNull().default(1),
+        status: smallint("status").notNull().default(1),
+        loginFailCount: smallint("login_fail_count").notNull().default(0),
+        lockedUntil: timestamp("locked_until", { mode: "date" }),
+        deletedAt: timestamp("deleted_at", { mode: "date" }),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
-        classIdIdx: index("idx_class_id").on(t.classId),
-        statusIdx: index("idx_status").on(t.status),
-        deletedIdx: index("idx_deleted").on(t.deletedAt),
+        classIdIdx: index("idx_student_class_id").on(t.classId),
+        statusIdx: index("idx_student_status").on(t.status),
+        deletedIdx: index("idx_student_deleted").on(t.deletedAt),
     })
 );
 
@@ -122,31 +122,31 @@ export const studentRelations = relations(student, ({ one, many }) => ({
 // 2. Organization Domain
 // ============================================================
 
-export const semester = mysqlTable("semester", {
-    id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+export const semester = pgTable("semester", {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
     name: varchar("name", { length: 20 }).notNull().unique(),
-    isCurrent: tinyint("is_current").notNull().default(0),
-    createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+    isCurrent: smallint("is_current").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
 });
 
 export const semesterRelations = relations(semester, ({ many }) => ({
     classes: many(class_),
 }));
 
-export const class_ = mysqlTable(
+export const class_ = pgTable(
     "class",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         name: varchar("name", { length: 100 }).notNull(),
-        semesterId: bigint("semester_id", { mode: "number", unsigned: true }).notNull(),
-        teacherId: bigint("teacher_id", { mode: "number", unsigned: true }).notNull(),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        semesterId: bigint("semester_id", { mode: "number" }).notNull(),
+        teacherId: bigint("teacher_id", { mode: "number" }).notNull(),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
-        semesterIdIdx: index("idx_semester_id").on(t.semesterId),
-        teacherIdIdx: index("idx_teacher_id").on(t.teacherId),
+        semesterIdIdx: index("idx_class_semester_id").on(t.semesterId),
+        teacherIdIdx: index("idx_class_teacher_id").on(t.teacherId),
     })
 );
 
@@ -164,17 +164,17 @@ export const classRelations = relations(class_, ({ one, many }) => ({
     tasks: many(task),
 }));
 
-export const assistantClass = mysqlTable(
+export const assistantClass = pgTable(
     "assistant_class",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        assistantId: bigint("assistant_id", { mode: "number", unsigned: true }).notNull(),
-        classId: bigint("class_id", { mode: "number", unsigned: true }).notNull(),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        assistantId: bigint("assistant_id", { mode: "number" }).notNull(),
+        classId: bigint("class_id", { mode: "number" }).notNull(),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         uniqueAssistantClass: uniqueIndex("uk_assistant_class").on(t.assistantId, t.classId),
-        classIdIdx: index("idx_class_id").on(t.classId),
+        classIdIdx: index("idx_assistant_class_class_id").on(t.classId),
     })
 );
 
@@ -189,21 +189,21 @@ export const assistantClassRelations = relations(assistantClass, ({ one }) => ({
     }),
 }));
 
-export const studentTransfer = mysqlTable(
+export const studentTransfer = pgTable(
     "student_transfer",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        studentId: bigint("student_id", { mode: "number", unsigned: true }).notNull(),
-        fromClassId: bigint("from_class_id", { mode: "number", unsigned: true }).notNull(),
-        toClassId: bigint("to_class_id", { mode: "number", unsigned: true }).notNull(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        studentId: bigint("student_id", { mode: "number" }).notNull(),
+        fromClassId: bigint("from_class_id", { mode: "number" }).notNull(),
+        toClassId: bigint("to_class_id", { mode: "number" }).notNull(),
         reason: varchar("reason", { length: 500 }),
-        operatedBy: bigint("operated_by", { mode: "number", unsigned: true }).notNull(), // Admin ID
-        transferredAt: datetime("transferred_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        operatedBy: bigint("operated_by", { mode: "number" }).notNull(), // Admin ID
+        transferredAt: timestamp("transferred_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
-        studentIdx: index("idx_student").on(t.studentId),
-        fromClassIdx: index("idx_from_class").on(t.fromClassId),
-        toClassIdx: index("idx_to_class").on(t.toClassId),
+        studentIdx: index("idx_student_transfer_student").on(t.studentId),
+        fromClassIdx: index("idx_student_transfer_from_class").on(t.fromClassId),
+        toClassIdx: index("idx_student_transfer_to_class").on(t.toClassId),
     })
 );
 
@@ -211,30 +211,30 @@ export const studentTransfer = mysqlTable(
 // 3. Teaching Domain
 // ============================================================
 
-export const topic = mysqlTable(
+export const topic = pgTable(
     "topic",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        teacherId: bigint("teacher_id", { mode: "number", unsigned: true }).notNull(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        teacherId: bigint("teacher_id", { mode: "number" }).notNull(),
         name: varchar("name", { length: 200 }).notNull(),
         description: text("description"),
         excelFilePath: varchar("excel_file_path", { length: 500 }),
-        excelRowCount: int("excel_row_count", { unsigned: true }).default(0),
-        fieldMapping: json("field_mapping"),
-        weightConfig: json("weight_config"),
-        recommendQuestions: json("recommend_questions"),
-        status: tinyint("status").notNull().default(0), // 0-Draft, 1-Published
-        isDeleted: tinyint("is_deleted").notNull().default(0), // Compatible V2
-        lockedBy: bigint("locked_by", { mode: "number", unsigned: true }),
-        lockedAt: datetime("locked_at", { mode: "date" }),
-        deletedAt: datetime("deleted_at", { mode: "date" }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        excelRowCount: integer("excel_row_count").default(0),
+        fieldMapping: jsonb("field_mapping"),
+        weightConfig: jsonb("weight_config"),
+        recommendQuestions: jsonb("recommend_questions"),
+        status: smallint("status").notNull().default(0), // 0-Draft, 1-Published
+        isDeleted: smallint("is_deleted").notNull().default(0), // Compatible V2
+        lockedBy: bigint("locked_by", { mode: "number" }),
+        lockedAt: timestamp("locked_at", { mode: "date" }),
+        deletedAt: timestamp("deleted_at", { mode: "date" }),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
-        teacherIdIdx: index("idx_teacher_id").on(t.teacherId),
-        statusIdx: index("idx_status").on(t.status),
-        deletedIdx: index("idx_deleted").on(t.deletedAt),
+        teacherIdIdx: index("idx_topic_teacher_id").on(t.teacherId),
+        statusIdx: index("idx_topic_status").on(t.status),
+        deletedIdx: index("idx_topic_deleted").on(t.deletedAt),
     })
 );
 
@@ -247,19 +247,19 @@ export const topicRelations = relations(topic, ({ one, many }) => ({
     tasks: many(task),
 }));
 
-export const topicAttachment = mysqlTable(
+export const topicAttachment = pgTable(
     "topic_attachment",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        topicId: bigint("topic_id", { mode: "number", unsigned: true }).notNull(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        topicId: bigint("topic_id", { mode: "number" }).notNull(),
         fileName: varchar("file_name", { length: 255 }).notNull(),
         filePath: varchar("file_path", { length: 500 }).notNull(),
         fileType: varchar("file_type", { length: 50 }).notNull(),
-        fileSize: bigint("file_size", { mode: "number", unsigned: true }).notNull().default(0),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        fileSize: bigint("file_size", { mode: "number" }).notNull().default(0),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
-        topicIdIdx: index("idx_topic_id").on(t.topicId),
+        topicIdIdx: index("idx_topic_attachment_topic_id").on(t.topicId),
     })
 );
 
@@ -270,22 +270,22 @@ export const topicAttachmentRelations = relations(topicAttachment, ({ one }) => 
     }),
 }));
 
-export const task = mysqlTable(
+export const task = pgTable(
     "task",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        topicId: bigint("topic_id", { mode: "number", unsigned: true }).notNull(),
-        classId: bigint("class_id", { mode: "number", unsigned: true }).notNull(),
-        openTime: datetime("open_time", { mode: "date" }),
-        deadline: datetime("deadline", { mode: "date" }),
-        deletedAt: datetime("deleted_at", { mode: "date" }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        topicId: bigint("topic_id", { mode: "number" }).notNull(),
+        classId: bigint("class_id", { mode: "number" }).notNull(),
+        openTime: timestamp("open_time", { mode: "date" }),
+        deadline: timestamp("deadline", { mode: "date" }),
+        deletedAt: timestamp("deleted_at", { mode: "date" }),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         uniqueTopicClass: uniqueIndex("uk_topic_class").on(t.topicId, t.classId),
-        classIdIdx: index("idx_class_id").on(t.classId),
-        deletedIdx: index("idx_deleted").on(t.deletedAt),
+        classIdIdx: index("idx_task_class_id").on(t.classId),
+        deletedIdx: index("idx_task_deleted").on(t.deletedAt),
     })
 );
 
@@ -305,32 +305,32 @@ export const taskRelations = relations(task, ({ one, many }) => ({
 // 4. Experiment Domain
 // ============================================================
 
-export const experiment = mysqlTable(
+export const experiment = pgTable(
     "experiment",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        studentId: bigint("student_id", { mode: "number", unsigned: true }).notNull(),
-        taskId: bigint("task_id", { mode: "number", unsigned: true }).notNull(),
-        currentStage: tinyint("current_stage").notNull().default(0), // 0-4
-        status: tinyint("status").notNull().default(0), // 0-Progress, 1-Submitted, ...
-        questionnaire: json("questionnaire"),
-        samplePlan: json("sample_plan"),
-        samplingResults: json("sampling_results"),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        studentId: bigint("student_id", { mode: "number" }).notNull(),
+        taskId: bigint("task_id", { mode: "number" }).notNull(),
+        currentStage: smallint("current_stage").notNull().default(0), // 0-4
+        status: smallint("status").notNull().default(0), // 0-Progress, 1-Submitted, ...
+        questionnaire: jsonb("questionnaire"),
+        samplePlan: jsonb("sample_plan"),
+        samplingResults: jsonb("sampling_results"),
         samplingDataPath: varchar("sampling_data_path", { length: 500 }),
         reportContent: text("report_content"),
-        stage1CompletedAt: datetime("stage1_completed_at", { mode: "date" }),
-        stage2CompletedAt: datetime("stage2_completed_at", { mode: "date" }),
-        stage3CompletedAt: datetime("stage3_completed_at", { mode: "date" }),
-        stage4CompletedAt: datetime("stage4_completed_at", { mode: "date" }),
-        lastSavedAt: datetime("last_saved_at", { mode: "date" }),
-        version: int("version", { unsigned: true }).notNull().default(1),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        stage1CompletedAt: timestamp("stage1_completed_at", { mode: "date" }),
+        stage2CompletedAt: timestamp("stage2_completed_at", { mode: "date" }),
+        stage3CompletedAt: timestamp("stage3_completed_at", { mode: "date" }),
+        stage4CompletedAt: timestamp("stage4_completed_at", { mode: "date" }),
+        lastSavedAt: timestamp("last_saved_at", { mode: "date" }),
+        version: integer("version").notNull().default(1),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         uniqueStudentTask: uniqueIndex("uk_student_task").on(t.studentId, t.taskId),
-        taskIdIdx: index("idx_task_id").on(t.taskId),
-        statusIdx: index("idx_status").on(t.status),
+        taskIdIdx: index("idx_experiment_task_id").on(t.taskId),
+        statusIdx: index("idx_experiment_status").on(t.status),
     })
 );
 
@@ -346,46 +346,46 @@ export const experimentRelations = relations(experiment, ({ one, many }) => ({
     submissions: many(submission),
 }));
 
-export const submission = mysqlTable(
+export const submission = pgTable(
     "submission",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        experimentId: bigint("experiment_id", { mode: "number", unsigned: true }).notNull(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        experimentId: bigint("experiment_id", { mode: "number" }).notNull(),
         questionnairePdfPath: varchar("questionnaire_pdf_path", { length: 500 }),
         reportPdfPath: varchar("report_pdf_path", { length: 500 }),
-        pdfSnapshotQuestionnaire: json("pdf_snapshot_questionnaire"),
-        pdfSnapshotSamplingResults: json("pdf_snapshot_sampling_results"),
-        pdfSnapshotSamplePlan: json("pdf_snapshot_sample_plan"),
-        pdfSnapshotPopulationSize: int("pdf_snapshot_population_size", { unsigned: true }),
+        pdfSnapshotQuestionnaire: jsonb("pdf_snapshot_questionnaire"),
+        pdfSnapshotSamplingResults: jsonb("pdf_snapshot_sampling_results"),
+        pdfSnapshotSamplePlan: jsonb("pdf_snapshot_sample_plan"),
+        pdfSnapshotPopulationSize: integer("pdf_snapshot_population_size"),
         pdfSnapshotReportContent: text("pdf_snapshot_report_content"),
         pdfSnapshotTopicName: varchar("pdf_snapshot_topic_name", { length: 200 }),
         pdfSnapshotStudentName: varchar("pdf_snapshot_student_name", { length: 100 }),
-        pdfStatus: tinyint("pdf_status").notNull().default(0), // 0-Pending, 1-Generating, 2-Ready, 3-Failed
-        pdfGenerationAttempts: int("pdf_generation_attempts", { unsigned: true }).notNull().default(0),
-        pdfLastAttemptAt: datetime("pdf_last_attempt_at", { mode: "date" }),
-        pdfGeneratedAt: datetime("pdf_generated_at", { mode: "date" }),
+        pdfStatus: smallint("pdf_status").notNull().default(0), // 0-Pending, 1-Generating, 2-Ready, 3-Failed
+        pdfGenerationAttempts: integer("pdf_generation_attempts").notNull().default(0),
+        pdfLastAttemptAt: timestamp("pdf_last_attempt_at", { mode: "date" }),
+        pdfGeneratedAt: timestamp("pdf_generated_at", { mode: "date" }),
         pdfError: varchar("pdf_error", { length: 500 }),
-        scoreQuestionnaire: decimal("score_questionnaire", { precision: 5, scale: 2 }),
-        scoreProcess: decimal("score_process", { precision: 5, scale: 2 }),
-        scoreReport: decimal("score_report", { precision: 5, scale: 2 }),
-        totalScore: decimal("total_score", { precision: 5, scale: 2 }),
+        scoreQuestionnaire: numeric("score_questionnaire", { precision: 5, scale: 2 }),
+        scoreProcess: numeric("score_process", { precision: 5, scale: 2 }),
+        scoreReport: numeric("score_report", { precision: 5, scale: 2 }),
+        totalScore: numeric("total_score", { precision: 5, scale: 2 }),
         teacherComment: text("teacher_comment"),
         rejectReason: text("reject_reason"),
-        status: tinyint("status").notNull().default(1), // 0-Draft, 1-Pending, ...
-        gradedByType: tinyint("graded_by_type"),
-        gradedById: bigint("graded_by_id", { mode: "number", unsigned: true }),
-        lockedByType: tinyint("locked_by_type"),
-        lockedById: bigint("locked_by_id", { mode: "number", unsigned: true }),
-        lockedAt: datetime("locked_at", { mode: "date" }),
-        submittedAt: datetime("submitted_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        gradedAt: datetime("graded_at", { mode: "date" }),
+        status: smallint("status").notNull().default(1), // 0-Draft, 1-Pending, ...
+        gradedByType: smallint("graded_by_type"),
+        gradedById: bigint("graded_by_id", { mode: "number" }),
+        lockedByType: smallint("locked_by_type"),
+        lockedById: bigint("locked_by_id", { mode: "number" }),
+        lockedAt: timestamp("locked_at", { mode: "date" }),
+        submittedAt: timestamp("submitted_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        gradedAt: timestamp("graded_at", { mode: "date" }),
     },
     (t) => ({
-        experimentIdIdx: index("idx_experiment_id").on(t.experimentId),
-        experimentSubmittedIdIdx: index("idx_experiment_submitted_id").on(t.experimentId, t.submittedAt, t.id),
-        statusIdx: index("idx_status").on(t.status),
-        pdfStatusAttemptIdx: index("idx_pdf_status_attempt").on(t.pdfStatus, t.pdfLastAttemptAt, t.id),
-        lockedIdx: index("idx_locked").on(t.lockedAt),
+        experimentIdIdx: index("idx_submission_experiment_id").on(t.experimentId),
+        experimentSubmittedIdIdx: index("idx_submission_experiment_submitted_id").on(t.experimentId, t.submittedAt, t.id),
+        statusIdx: index("idx_submission_status").on(t.status),
+        pdfStatusAttemptIdx: index("idx_submission_pdf_status_attempt").on(t.pdfStatus, t.pdfLastAttemptAt, t.id),
+        lockedIdx: index("idx_submission_locked").on(t.lockedAt),
     })
 );
 
@@ -400,134 +400,134 @@ export const submissionRelations = relations(submission, ({ one }) => ({
 // 5. System Domain
 // ============================================================
 
-export const announcement = mysqlTable(
+export const announcement = pgTable(
     "announcement",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         title: varchar("title", { length: 100 }).notNull(),
         content: text("content").notNull(),
         targetScope: varchar("target_scope", { length: 20 }).notNull().default("all"),
-        status: tinyint("status").notNull().default(1),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        status: smallint("status").notNull().default(1),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
-        statusIdx: index("idx_status").on(t.status),
+        statusIdx: index("idx_announcement_status").on(t.status),
     })
 );
 
-export const announcementRead = mysqlTable(
+export const announcementRead = pgTable(
     "announcement_read",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        announcementId: bigint("announcement_id", { mode: "number", unsigned: true }).notNull(),
-        userType: tinyint("user_type").notNull(),
-        userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
-        readAt: datetime("read_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        announcementId: bigint("announcement_id", { mode: "number" }).notNull(),
+        userType: smallint("user_type").notNull(),
+        userId: bigint("user_id", { mode: "number" }).notNull(),
+        readAt: timestamp("read_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         uniqueAnnouncementUser: uniqueIndex("uk_announcement_user").on(t.announcementId, t.userType, t.userId),
-        userIdx: index("idx_user").on(t.userType, t.userId),
+        userIdx: index("idx_announcement_read_user").on(t.userType, t.userId),
     })
 );
 
-export const loginLog = mysqlTable(
+export const loginLog = pgTable(
     "login_log",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        userType: tinyint("user_type").notNull(),
-        userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
-        loginAt: datetime("login_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        userType: smallint("user_type").notNull(),
+        userId: bigint("user_id", { mode: "number" }).notNull(),
+        loginAt: timestamp("login_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
         ipAddress: varchar("ip_address", { length: 45 }),
         userAgent: varchar("user_agent", { length: 500 }),
     },
     (t) => ({
-        userIdx: index("idx_user").on(t.userType, t.userId),
-        loginAtIdx: index("idx_login_at").on(t.loginAt),
+        userIdx: index("idx_login_log_user").on(t.userType, t.userId),
+        loginAtIdx: index("idx_login_log_login_at").on(t.loginAt),
     })
 );
 
-export const systemMetrics = mysqlTable(
+export const systemMetrics = pgTable(
     "system_metrics",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         metricType: varchar("metric_type", { length: 50 }).notNull(),
-        metricValue: decimal("metric_value", { precision: 10, scale: 2 }).notNull(),
-        recordedAt: datetime("recorded_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        metricValue: numeric("metric_value", { precision: 10, scale: 2 }).notNull(),
+        recordedAt: timestamp("recorded_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
-        typeTimeIdx: index("idx_type_time").on(t.metricType, t.recordedAt),
+        typeTimeIdx: index("idx_system_metrics_type_time").on(t.metricType, t.recordedAt),
     })
 );
 
-export const operationLog = mysqlTable(
+export const operationLog = pgTable(
     "operation_log",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        userType: tinyint("user_type").notNull(),
-        userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        userType: smallint("user_type").notNull(),
+        userId: bigint("user_id", { mode: "number" }).notNull(),
         action: varchar("action", { length: 100 }).notNull(),
         targetType: varchar("target_type", { length: 50 }),
-        targetId: bigint("target_id", { mode: "number", unsigned: true }),
-        detail: json("detail"),
+        targetId: bigint("target_id", { mode: "number" }),
+        detail: jsonb("detail"),
         ipAddress: varchar("ip_address", { length: 45 }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
-        userIdx: index("idx_user").on(t.userType, t.userId),
-        actionIdx: index("idx_action").on(t.action),
-        createdAtIdx: index("idx_created_at").on(t.createdAt),
+        userIdx: index("idx_operation_log_user").on(t.userType, t.userId),
+        actionIdx: index("idx_operation_log_action").on(t.action),
+        createdAtIdx: index("idx_operation_log_created_at").on(t.createdAt),
     })
 );
 
-export const userSession = mysqlTable(
+export const userSession = pgTable(
     "user_session",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         sessionToken: varchar("session_token", { length: 128 }).notNull().unique(),
-        userType: tinyint("user_type").notNull(),
-        userId: bigint("user_id", { mode: "number", unsigned: true }).notNull(),
+        userType: smallint("user_type").notNull(),
+        userId: bigint("user_id", { mode: "number" }).notNull(),
         deviceInfo: varchar("device_info", { length: 500 }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        expiresAt: datetime("expires_at", { mode: "date" }).notNull(),
-        lastActiveAt: datetime("last_active_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+        lastActiveAt: timestamp("last_active_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
-        userIdx: index("idx_user").on(t.userType, t.userId),
-        expiresIdx: index("idx_expires").on(t.expiresAt),
+        userIdx: index("idx_user_session_user").on(t.userType, t.userId),
+        expiresIdx: index("idx_user_session_expires").on(t.expiresAt),
     })
 );
 
-export const notification = mysqlTable(
+export const notification = pgTable(
     "notification",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
-        receiverType: tinyint("receiver_type").notNull(),
-        receiverId: bigint("receiver_id", { mode: "number", unsigned: true }).notNull(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        receiverType: smallint("receiver_type").notNull(),
+        receiverId: bigint("receiver_id", { mode: "number" }).notNull(),
         type: varchar("type", { length: 50 }).notNull(),
         title: varchar("title", { length: 200 }).notNull(),
         content: text("content").notNull(),
         relatedType: varchar("related_type", { length: 50 }),
-        relatedId: bigint("related_id", { mode: "number", unsigned: true }),
-        isRead: tinyint("is_read").notNull().default(0),
-        readAt: datetime("read_at", { mode: "date" }),
-        createdAt: datetime("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        relatedId: bigint("related_id", { mode: "number" }),
+        isRead: smallint("is_read").notNull().default(0),
+        readAt: timestamp("read_at", { mode: "date" }),
+        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
-        receiverIdx: index("idx_receiver").on(t.receiverType, t.receiverId, t.isRead),
-        typeIdx: index("idx_type").on(t.type),
-        createdAtIdx: index("idx_created").on(t.createdAt),
+        receiverIdx: index("idx_notification_receiver").on(t.receiverType, t.receiverId, t.isRead),
+        typeIdx: index("idx_notification_type").on(t.type),
+        createdAtIdx: index("idx_notification_created").on(t.createdAt),
     })
 );
 
-export const systemConfig = mysqlTable(
+export const systemConfig = pgTable(
     "system_config",
     {
-        id: bigint("id", { mode: "number", unsigned: true }).autoincrement().primaryKey(),
+        id: bigserial("id", { mode: "number" }).primaryKey(),
         configKey: varchar("config_key", { length: 100 }).notNull().unique(),
         configValue: text("config_value").notNull(),
         valueType: varchar("value_type", { length: 20 }).notNull().default("string"),
         description: varchar("description", { length: 500 }),
-        updatedAt: datetime("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     }
 );

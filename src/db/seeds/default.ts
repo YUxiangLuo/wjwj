@@ -11,6 +11,7 @@
  */
 
 import { db } from "../index";
+import { insertReturningId } from "../insert-id";
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import PDFDocument from "pdfkit";
@@ -147,8 +148,7 @@ async function insertOrGet<T extends { id: number }>(
         }
         return (exist as T).id;
     }
-    const [res] = await db.insert(table).values(values);
-    return res.insertId;
+    return insertReturningId(db, table, values);
 }
 
 async function deleteRowsNotInIds(table: any, keepIds: number[]) {
@@ -234,7 +234,10 @@ async function seed() {
         await db
             .insert(systemConfig)
             .values({ configKey: c.key, configValue: c.value, valueType: c.valueType, description: c.desc })
-            .onDuplicateKeyUpdate({ set: { configValue: c.value, valueType: c.valueType } });
+            .onConflictDoUpdate({
+                target: systemConfig.configKey,
+                set: { configValue: c.value, valueType: c.valueType },
+            });
     }
 
     const adminsData = [
@@ -252,7 +255,8 @@ async function seed() {
                 loginFailCount: 0,
                 lockedUntil: null,
             })
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+                target: admin.username,
                 set: {
                     username: adm.username,
                     password: hashedPassword,
@@ -661,8 +665,7 @@ async function seed() {
             continue;
         }
 
-        const [res] = await db.insert(topic).values(topicSeed);
-        topicIds.push(res.insertId);
+        topicIds.push(await insertReturningId(db, topic, topicSeed));
     }
 
     const existingTopicRows = await db
@@ -779,7 +782,8 @@ async function seed() {
         };
         await db.insert(task).values({
             ...taskSeed,
-        }).onDuplicateKeyUpdate({
+        }).onConflictDoUpdate({
+            target: [task.topicId, task.classId],
             set: {
                 openTime: taskSeed.openTime,
                 deadline: taskSeed.deadline,
@@ -1011,7 +1015,8 @@ async function seed() {
         await db
             .insert(experiment)
             .values(experimentSeed)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+                target: [experiment.studentId, experiment.taskId],
                 set: {
                     currentStage: experimentSeed.currentStage,
                     status: experimentSeed.status,
@@ -1244,8 +1249,7 @@ async function seed() {
     await db.delete(announcement);
     const announcementIds: number[] = [];
     for (const a of announcementsDefs) {
-        const [res] = await db.insert(announcement).values(a);
-        announcementIds.push(res.insertId);
+        announcementIds.push(await insertReturningId(db, announcement, a));
     }
 
     // 已读记录
