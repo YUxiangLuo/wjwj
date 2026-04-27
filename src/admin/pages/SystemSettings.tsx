@@ -3,7 +3,7 @@ import { Settings, FlaskConical, Shield, Save, Loader2, Lock, FileText, Bell } f
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -199,8 +199,8 @@ export function SystemSettings() {
                 <Card className="flex-1 relative">
                     <CardContent className="pt-6 space-y-6">
                         <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                                <SectionIcon className="w-6 h-6" />
+                            <div className="flex size-12 items-center justify-center border border-primary/20 bg-primary/10 text-primary">
+                                <SectionIcon className="size-6" />
                             </div>
                             <div>
                                 <h3 className="text-xl font-semibold">{activeMeta.title}</h3>
@@ -211,85 +211,80 @@ export function SystemSettings() {
                         <Separator />
 
                         {activeSection === "general" && (
-                            <div className="space-y-6">
-                                <div className="grid gap-6 max-w-2xl">
-                                    <div className="space-y-3">
-                                        <Label htmlFor="systemName">系统名称</Label>
+                            <FieldGroup className="max-w-2xl gap-6">
+                                    <Field>
+                                        <FieldLabel htmlFor="systemName">系统名称</FieldLabel>
                                         <Input
                                             id="systemName"
                                             data-testid="settings-system-name"
                                             value={settings.systemName}
                                             onChange={(e) => setSettings({ ...settings, systemName: e.target.value })}
                                         />
-                                        <p className="text-xs text-muted-foreground">显示在浏览器标题栏和登录页</p>
-                                    </div>
-                                    <div className="flex items-center justify-between p-4 bg-muted border border-border">
-                                        <div className="space-y-0.5">
-                                            <div className="text-sm font-medium">维护模式</div>
-                                            <div className="text-xs text-muted-foreground">开启后仅管理员可访问系统，其他用户将看到维护提示</div>
-                                        </div>
+                                        <FieldDescription className="text-xs">显示在浏览器标题栏和登录页</FieldDescription>
+                                    </Field>
+                                    <Field orientation="horizontal" className="border border-border bg-muted p-4">
+                                        <FieldContent>
+                                            <FieldLabel className="text-sm normal-case">维护模式</FieldLabel>
+                                            <FieldDescription className="text-xs">开启后仅管理员可访问系统，其他用户将看到维护提示</FieldDescription>
+                                        </FieldContent>
                                         <Switch
                                             checked={settings.maintenanceMode}
                                             onCheckedChange={(checked) => setSettings({ ...settings, maintenanceMode: checked })}
                                         />
-                                    </div>
-                                    <div className="flex items-center justify-between p-4 bg-muted border border-border">
-                                        <div className="space-y-0.5">
-                                            <div className="text-sm font-medium">开放注册</div>
-                                            <div className="text-xs text-muted-foreground">允许新用户自行注册账号，关闭后仅管理员可添加</div>
-                                        </div>
+                                    </Field>
+                                    <Field orientation="horizontal" className="border border-border bg-muted p-4">
+                                        <FieldContent>
+                                            <FieldLabel className="text-sm normal-case">开放注册</FieldLabel>
+                                            <FieldDescription className="text-xs">允许新用户自行注册账号，关闭后仅管理员可添加</FieldDescription>
+                                        </FieldContent>
                                         <Switch
                                             checked={settings.allowRegistration}
                                             onCheckedChange={(checked) => setSettings({ ...settings, allowRegistration: checked })}
                                         />
-                                    </div>
-                                </div>
-                            </div>
+                                    </Field>
+                            </FieldGroup>
                         )}
 
                         {activeSection === "experiment" && (
-                            <div className="space-y-6">
-                                <div className="grid gap-6 max-w-2xl">
+                            <FieldGroup className="max-w-2xl gap-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <Label htmlFor="experimentTimeLimit">实验时间限制 (分钟)</Label>
+                                        <Field>
+                                            <FieldLabel htmlFor="experimentTimeLimit">实验时间限制 (分钟)</FieldLabel>
                                             <Input
                                                 id="experimentTimeLimit"
                                                 type="number"
                                                 value={settings.experimentTimeLimit}
                                                 onChange={(e) => setSettings({ ...settings, experimentTimeLimit: parseInt(e.target.value) || 0 })}
                                             />
-                                        </div>
-                                        <div className="space-y-3">
-                                            <Label htmlFor="autoSaveInterval">自动保存间隔 (分钟)</Label>
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor="autoSaveInterval">自动保存间隔 (分钟)</FieldLabel>
                                             <Input
                                                 id="autoSaveInterval"
                                                 type="number"
                                                 value={settings.autoSaveInterval}
                                                 onChange={(e) => setSettings({ ...settings, autoSaveInterval: parseInt(e.target.value) || 0 })}
                                             />
-                                        </div>
+                                        </Field>
                                     </div>
-                                    <div className="flex items-center justify-between p-4 bg-muted border border-border">
-                                        <div className="space-y-0.5">
-                                            <div className="text-sm font-medium">提交需审批</div>
-                                            <div className="text-xs text-muted-foreground">学生提交实验报告后需要教师审批才能获得成绩</div>
-                                        </div>
+                                    <Field orientation="horizontal" className="border border-border bg-muted p-4">
+                                        <FieldContent>
+                                            <FieldLabel className="text-sm normal-case">提交需审批</FieldLabel>
+                                            <FieldDescription className="text-xs">学生提交实验报告后需要教师审批才能获得成绩</FieldDescription>
+                                        </FieldContent>
                                         <Switch
                                             checked={settings.requireApproval}
                                             onCheckedChange={(checked) => setSettings({ ...settings, requireApproval: checked })}
                                         />
-                                    </div>
-                                </div>
-                            </div>
+                                    </Field>
+                            </FieldGroup>
                         )}
 
                         {activeSection === "security" && (
-                            <div className="space-y-6">
-                                <div className="grid gap-6 max-w-2xl">
+                            <FieldGroup className="max-w-2xl gap-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <Label htmlFor="maxLoginAttempts">最大登录尝试次数</Label>
+                                        <Field>
+                                            <FieldLabel htmlFor="maxLoginAttempts">最大登录尝试次数</FieldLabel>
                                             <Input
                                                 id="maxLoginAttempts"
                                                 data-testid="settings-max-login-attempts"
@@ -299,10 +294,10 @@ export function SystemSettings() {
                                                 value={settings.maxLoginAttempts}
                                                 onChange={(e) => setSettings({ ...settings, maxLoginAttempts: parseInt(e.target.value) || 0 })}
                                             />
-                                            <p className="text-xs text-muted-foreground">连续失败后账号将被临时锁定（3 - 10）</p>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <Label htmlFor="lockDurationMinutes">锁定自动解锁 (分钟)</Label>
+                                            <FieldDescription className="text-xs">连续失败后账号将被临时锁定（3 - 10）</FieldDescription>
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor="lockDurationMinutes">锁定自动解锁 (分钟)</FieldLabel>
                                             <Input
                                                 id="lockDurationMinutes"
                                                 data-testid="settings-lock-duration"
@@ -312,15 +307,15 @@ export function SystemSettings() {
                                                 value={settings.lockDurationMinutes}
                                                 onChange={(e) => setSettings({ ...settings, lockDurationMinutes: parseInt(e.target.value) || 0 })}
                                             />
-                                            <p className="text-xs text-muted-foreground">锁定后自动解锁时间（10 - 60 分钟）</p>
-                                        </div>
+                                            <FieldDescription className="text-xs">锁定后自动解锁时间（10 - 60 分钟）</FieldDescription>
+                                        </Field>
                                     </div>
 
                                     <div className="space-y-4 pt-2">
                                         <h4 className="text-sm font-medium text-muted-foreground border-b border-border pb-2">会话超时设置</h4>
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="adminSessionTimeout" className="text-xs">管理员 (15-60 分钟)</Label>
+                                            <Field className="gap-2">
+                                                <FieldLabel htmlFor="adminSessionTimeout" className="text-xs">管理员 (15-60 分钟)</FieldLabel>
                                                 <Input
                                                     id="adminSessionTimeout"
                                                     type="number"
@@ -329,9 +324,9 @@ export function SystemSettings() {
                                                     value={settings.adminSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, adminSessionTimeout: parseInt(e.target.value) || 0 })}
                                                 />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="teacherSessionTimeout" className="text-xs">教师 (60-240 分钟)</Label>
+                                            </Field>
+                                            <Field className="gap-2">
+                                                <FieldLabel htmlFor="teacherSessionTimeout" className="text-xs">教师 (60-240 分钟)</FieldLabel>
                                                 <Input
                                                     id="teacherSessionTimeout"
                                                     type="number"
@@ -340,9 +335,9 @@ export function SystemSettings() {
                                                     value={settings.teacherSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, teacherSessionTimeout: parseInt(e.target.value) || 0 })}
                                                 />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="studentSessionTimeout" className="text-xs">学生 (120-480 分钟)</Label>
+                                            </Field>
+                                            <Field className="gap-2">
+                                                <FieldLabel htmlFor="studentSessionTimeout" className="text-xs">学生 (120-480 分钟)</FieldLabel>
                                                 <Input
                                                     id="studentSessionTimeout"
                                                     type="number"
@@ -351,7 +346,7 @@ export function SystemSettings() {
                                                     value={settings.studentSessionTimeout}
                                                     onChange={(e) => setSettings({ ...settings, studentSessionTimeout: parseInt(e.target.value) || 0 })}
                                                 />
-                                            </div>
+                                            </Field>
                                         </div>
                                     </div>
 
@@ -364,16 +359,14 @@ export function SystemSettings() {
                                             修改管理员密码
                                         </Button>
                                     </div>
-                                </div>
-                            </div>
+                            </FieldGroup>
                         )}
 
                         {activeSection === "file-limits" && (
-                            <div className="space-y-6">
-                                <div className="grid gap-6 max-w-2xl">
+                            <FieldGroup className="max-w-2xl gap-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <Label htmlFor="excelMaxRows">Excel 最大行数</Label>
+                                        <Field>
+                                            <FieldLabel htmlFor="excelMaxRows">Excel 最大行数</FieldLabel>
                                             <Input
                                                 id="excelMaxRows"
                                                 type="number"
@@ -382,21 +375,21 @@ export function SystemSettings() {
                                                 value={settings.excelMaxRows}
                                                 onChange={(e) => setSettings({ ...settings, excelMaxRows: parseInt(e.target.value) || 0 })}
                                             />
-                                            <p className="text-xs text-muted-foreground">允许上传的 Excel 文件最大行数（10,000 - 500,000）</p>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <Label htmlFor="maxAttachmentSizeMb">单个附件最大 (MB)</Label>
+                                            <FieldDescription className="text-xs">允许上传的 Excel 文件最大行数（10,000 - 500,000）</FieldDescription>
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor="maxAttachmentSizeMb">单个附件最大 (MB)</FieldLabel>
                                             <Input
                                                 id="maxAttachmentSizeMb"
                                                 type="number"
                                                 value={settings.maxAttachmentSizeMb}
                                                 onChange={(e) => setSettings({ ...settings, maxAttachmentSizeMb: parseInt(e.target.value) || 0 })}
                                             />
-                                            <p className="text-xs text-muted-foreground">单个上传附件的最大文件大小</p>
-                                        </div>
+                                            <FieldDescription className="text-xs">单个上传附件的最大文件大小</FieldDescription>
+                                        </Field>
                                     </div>
-                                    <div className="space-y-3">
-                                        <Label htmlFor="batchImportMaxRows">批量导入最大行数</Label>
+                                    <Field>
+                                        <FieldLabel htmlFor="batchImportMaxRows">批量导入最大行数</FieldLabel>
                                         <Input
                                             id="batchImportMaxRows"
                                             type="number"
@@ -406,39 +399,36 @@ export function SystemSettings() {
                                             onChange={(e) => setSettings({ ...settings, batchImportMaxRows: parseInt(e.target.value) || 0 })}
                                             className="max-w-xs"
                                         />
-                                        <p className="text-xs text-muted-foreground">批量导入学生/数据时允许的最大行数（100 - 1,000）</p>
-                                    </div>
-                                </div>
-                            </div>
+                                        <FieldDescription className="text-xs">批量导入学生/数据时允许的最大行数（100 - 1,000）</FieldDescription>
+                                    </Field>
+                            </FieldGroup>
                         )}
 
                         {activeSection === "notifications" && (
-                            <div className="space-y-6">
-                                <div className="grid gap-6 max-w-2xl">
+                            <FieldGroup className="max-w-2xl gap-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-3">
-                                            <Label htmlFor="deadlineReminderHours">截止提醒提前时间 (小时)</Label>
+                                        <Field>
+                                            <FieldLabel htmlFor="deadlineReminderHours">截止提醒提前时间 (小时)</FieldLabel>
                                             <Input
                                                 id="deadlineReminderHours"
                                                 type="number"
                                                 value={settings.deadlineReminderHours}
                                                 onChange={(e) => setSettings({ ...settings, deadlineReminderHours: parseInt(e.target.value) || 0 })}
                                             />
-                                            <p className="text-xs text-muted-foreground">在任务截止前多少小时发送提醒通知</p>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <Label htmlFor="notificationRetentionDays">通知保留天数</Label>
+                                            <FieldDescription className="text-xs">在任务截止前多少小时发送提醒通知</FieldDescription>
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor="notificationRetentionDays">通知保留天数</FieldLabel>
                                             <Input
                                                 id="notificationRetentionDays"
                                                 type="number"
                                                 value={settings.notificationRetentionDays}
                                                 onChange={(e) => setSettings({ ...settings, notificationRetentionDays: parseInt(e.target.value) || 0 })}
                                             />
-                                            <p className="text-xs text-muted-foreground">系统通知的保留天数，过期自动清理</p>
-                                        </div>
+                                            <FieldDescription className="text-xs">系统通知的保留天数，过期自动清理</FieldDescription>
+                                        </Field>
                                     </div>
-                                </div>
-                            </div>
+                            </FieldGroup>
                         )}
 
                         <div className="pt-6 mt-6 border-t border-border flex justify-end">

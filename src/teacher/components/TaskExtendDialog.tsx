@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DatetimePicker24 } from "@/components/ui/datetime-picker";
-import { Label } from "@/components/ui/label";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import type { Task } from "../api-client";
 
 interface TaskExtendDialogProps {
@@ -32,12 +32,14 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                         为所选任务设置新的截止时间。
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="text-sm text-muted-foreground">
-                        {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="extendDeadline" className="text-foreground">新截止时间</Label>
+                <FieldGroup className="gap-4 py-4">
+                    <Field>
+                        <FieldLabel htmlFor="extendDeadline">新截止时间</FieldLabel>
+                        {selectedTask && (
+                            <FieldDescription>
+                                {selectedTask.topic} · {selectedTask.className}
+                            </FieldDescription>
+                        )}
                         <DatetimePicker24
                             id="extendDeadline"
                             data-testid="teacher-task-extend-deadline"
@@ -46,8 +48,8 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                             placeholder="选择日期与时间（24 小时制）"
                             allowClear={false}
                         />
-                    </div>
-                </div>
+                    </Field>
+                </FieldGroup>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
                     <Button data-testid="teacher-task-extend-submit" onClick={onConfirm}>确认延长</Button>

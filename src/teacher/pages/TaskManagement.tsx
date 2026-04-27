@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -330,12 +331,14 @@ export function TaskManagement() {
                                 {filteredTasks.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-muted-foreground" />
-                                                </div>
-                                                <p>暂无符合条件的数据</p>
-                                            </div>
+                                            <Empty className="py-0">
+                                                <EmptyHeader>
+                                                    <EmptyMedia variant="icon">
+                                                        <Search />
+                                                    </EmptyMedia>
+                                                    <EmptyTitle>暂无符合条件的数据</EmptyTitle>
+                                                </EmptyHeader>
+                                            </Empty>
                                         </TableCell>
                                     </TableRow>
                                 )}

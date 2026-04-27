@@ -5,8 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
-import { CheckCircle2, AlertTriangle, ClipboardList, XCircle, Clock, UserCheck, FileEdit, ChevronLeft, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CheckCircle2, AlertTriangle, ClipboardList, XCircle, Clock, UserCheck, FileEdit } from "lucide-react";
 import { teacherApi, type GradingItem, type GradingListParams } from "../api-client";
 
 const PAGE_SIZE = 20;
@@ -179,15 +190,21 @@ export function GradingManagement() {
                         </Select>
                     </div>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-4">
-                    {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : (
+                <CardContent className="flex flex-col gap-3 pt-4">
+                    {loading ? <div className="flex flex-col gap-3 py-2">
+                        <Skeleton className="h-28 w-full" />
+                        <Skeleton className="h-28 w-full" />
+                        <Skeleton className="h-28 w-full" />
+                    </div> : (
                         items.length === 0 ?
-                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center mb-3">
-                                    <ClipboardList className="w-6 h-6 text-muted-foreground" />
-                                </div>
-                                <p>暂无待批改作业</p>
-                            </div>
+                            <Empty className="border border-dashed border-border py-12">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <ClipboardList />
+                                    </EmptyMedia>
+                                    <EmptyTitle>暂无待批改作业</EmptyTitle>
+                                </EmptyHeader>
+                            </Empty>
                             :
                             items.map((sub) => (
                                 <div data-testid={`teacher-grading-card-${sub.id}`} key={sub.id} className="border border-border bg-background hover:bg-accent transition-all p-5">
@@ -244,15 +261,20 @@ export function GradingManagement() {
                             <p className="text-xs text-muted-foreground">
                                 第 {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, total)} 条，共 {total} 条
                             </p>
-                            <div className="flex items-center gap-1">
-                                <Button
-                                    variant="outline"
-                                    size="icon-xs"
-                                    disabled={page <= 1}
-                                    onClick={() => goToPage(page - 1)}
-                                >
-                                    <ChevronLeft />
-                                </Button>
+                            <Pagination className="mx-0 w-auto">
+                                <PaginationContent>
+                                    <PaginationItem>
+                                        <PaginationPrevious
+                                            href="#"
+                                            text="上一页"
+                                            aria-disabled={page <= 1}
+                                            className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                if (page > 1) goToPage(page - 1);
+                                            }}
+                                        />
+                                    </PaginationItem>
                                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                                     .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
                                     .reduce<(number | "ellipsis")[]>((acc, p, idx, arr) => {
@@ -262,27 +284,39 @@ export function GradingManagement() {
                                     }, [])
                                     .map((item, idx) =>
                                         item === "ellipsis" ? (
-                                            <span key={`e-${idx}`} className="px-1 text-muted-foreground text-sm">…</span>
+                                            <PaginationItem key={`e-${idx}`}>
+                                                <PaginationEllipsis />
+                                            </PaginationItem>
                                         ) : (
-                                            <Button
-                                                key={item}
-                                                variant={item === page ? "default" : "outline"}
+                                            <PaginationItem key={item}>
+                                                <PaginationLink
+                                                href="#"
+                                                isActive={item === page}
                                                 size="icon-xs"
-                                                onClick={() => goToPage(item)}
+                                                onClick={(event) => {
+                                                    event.preventDefault();
+                                                    goToPage(item);
+                                                }}
                                             >
                                                 {item}
-                                            </Button>
+                                                </PaginationLink>
+                                            </PaginationItem>
                                         )
                                     )}
-                                <Button
-                                    variant="outline"
-                                    size="icon-xs"
-                                    disabled={page >= totalPages}
-                                    onClick={() => goToPage(page + 1)}
-                                >
-                                    <ChevronRight />
-                                </Button>
-                            </div>
+                                    <PaginationItem>
+                                        <PaginationNext
+                                            href="#"
+                                            text="下一页"
+                                            aria-disabled={page >= totalPages}
+                                            className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                if (page < totalPages) goToPage(page + 1);
+                                            }}
+                                        />
+                                    </PaginationItem>
+                                </PaginationContent>
+                            </Pagination>
                         </div>
                     )}
                 </CardContent>

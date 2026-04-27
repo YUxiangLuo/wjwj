@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, CheckCircle2, ChevronRight, Download, FileText, HelpCircle, Loader2, Pencil, Sparkles, Trash2, Upload, X } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -279,7 +280,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     );
     const canProceedMapping = mappingRules.every((item) => item.ok);
     const isFormControlClick = (target: EventTarget | null) =>
-        target instanceof HTMLElement && Boolean(target.closest("[data-slot='checkbox'], [data-slot='label']"));
+        target instanceof HTMLElement && Boolean(target.closest("[data-slot='checkbox'], [data-slot='field-label']"));
 
     const toggleStratifiedField = (column: string, checked: boolean) => {
         setFieldMapping(prev => ({
@@ -345,7 +346,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {currentStep === 1 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="space-y-2">
-                                    <Label htmlFor="topicName" className="text-foreground">课题名称</Label>
+                                    <FieldLabel htmlFor="topicName" className="text-foreground">课题名称</FieldLabel>
                                     <Input
                                         id="topicName"
                                         data-testid="teacher-topic-name"
@@ -356,7 +357,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-foreground">背景描述</Label>
+                                    <FieldLabel className="text-foreground">背景描述</FieldLabel>
                                     <RichTextEditor
                                         dataTestId="teacher-topic-desc"
                                         value={newTopicDesc}
@@ -371,12 +372,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 2 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
-                                    <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
-                                        该课题已发布，总体数据文件不可更换，仅可查看当前数据。
-                                    </div>
+                                    <Alert variant="warning">
+                                        <AlertDescription>该课题已发布，总体数据文件不可更换，仅可查看当前数据。</AlertDescription>
+                                    </Alert>
                                 )}
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-foreground">上传总体数据（Excel）</Label>
+                                    <FieldLabel className="text-foreground">上传总体数据（Excel）</FieldLabel>
                                     <div className="flex items-center gap-3">
                                         <a
                                             href="/templates/数据上传规范.pdf"
@@ -471,9 +472,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 3 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 {isPublishedTopic && (
-                                    <div className="rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
-                                        该课题已发布，字段映射不可修改，仅可查看当前配置。
-                                    </div>
+                                    <Alert variant="warning">
+                                        <AlertDescription>该课题已发布，字段映射不可修改，仅可查看当前配置。</AlertDescription>
+                                    </Alert>
                                 )}
                                 <div className={`rounded-lg border border-border bg-background/60 p-4 ${isPublishedTopic ? "opacity-70" : ""}`}>
                                     <div className="flex items-start justify-between gap-3">
@@ -497,7 +498,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-foreground">标识符（必选 1 个）</Label>
+                                    <FieldLabel className="text-foreground">标识符（必选 1 个）</FieldLabel>
                                     <Select
                                         value={fieldMapping.identifier ?? ""}
                                         onValueChange={(v) =>
@@ -539,7 +540,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-2">
-                                        <Label className="text-foreground">分层变量（已选 {fieldMapping.stratified.length}）</Label>
+                                        <FieldLabel className="text-foreground">分层变量（已选 {fieldMapping.stratified.length}）</FieldLabel>
                                         <p className="text-xs text-muted-foreground">用于按类别分组对比，建议 1-3 个，且每个字段唯一值不超过 20（如性别、学历、地区）。</p>
                                         {riskyStratifiedFields.length > 0 && (
                                             <p className="text-xs text-warning">
@@ -579,19 +580,19 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                 toggleStratifiedField(c, nextChecked === true);
                                                             }}
                                                         />
-                                                        <Label
+                                                        <FieldLabel
                                                             htmlFor={checkboxId}
                                                             className={`text-sm font-normal normal-case tracking-normal ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
                                                         >
                                                             {c}
-                                                        </Label>
+                                                        </FieldLabel>
                                                     </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-foreground">数值变量（已选 {fieldMapping.numeric.length}）</Label>
+                                        <FieldLabel className="text-foreground">数值变量（已选 {fieldMapping.numeric.length}）</FieldLabel>
                                         <p className="text-xs text-muted-foreground">用于统计计算，建议选择连续值/可比较大小的字段。</p>
                                         <div className="bg-background border border-border p-3 max-h-60 overflow-y-auto space-y-2">
                                             {columns.map((c) => {
@@ -626,12 +627,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                                 toggleNumericField(c, nextChecked === true);
                                                             }}
                                                         />
-                                                        <Label
+                                                        <FieldLabel
                                                             htmlFor={checkboxId}
                                                             className={`text-sm font-normal normal-case tracking-normal ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
                                                         >
                                                             {c}
-                                                        </Label>
+                                                        </FieldLabel>
                                                     </div>
                                                 );
                                             })}
@@ -643,7 +644,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 4 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <Label className="text-foreground">附件上传</Label>
+                                <FieldLabel className="text-foreground">附件上传</FieldLabel>
                                 <Input
                                     data-testid="teacher-topic-attachment-file"
                                     type="file"
@@ -679,7 +680,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                         {!loadingDetail && currentStep === 5 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center">
-                                    <Label className="text-foreground">推荐题目</Label>
+                                    <FieldLabel className="text-foreground">推荐题目</FieldLabel>
                                     <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion}>
                                         + 添加题目
                                     </Button>
@@ -781,7 +782,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="bg-background border border-border p-6 space-y-4">
-                                        <Label className="text-foreground text-lg">问卷设计权重</Label>
+                                        <FieldLabel className="text-foreground text-lg">问卷设计权重</FieldLabel>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 data-testid="teacher-topic-weight-questionnaire"
@@ -796,7 +797,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                     </div>
                                     <div className="bg-background border border-border p-6 space-y-4">
-                                        <Label className="text-foreground text-lg">实验过程权重</Label>
+                                        <FieldLabel className="text-foreground text-lg">实验过程权重</FieldLabel>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 data-testid="teacher-topic-weight-process"
@@ -811,7 +812,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                     </div>
                                     <div className="bg-background border border-border p-6 space-y-4">
-                                        <Label className="text-foreground text-lg">实验报告权重</Label>
+                                        <FieldLabel className="text-foreground text-lg">实验报告权重</FieldLabel>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 data-testid="teacher-topic-weight-report"

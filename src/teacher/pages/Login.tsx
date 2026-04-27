@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { markLoginSuccess, useLoginRedirectReason } from "@/hooks/useAuthRecovery";
 import { authApi } from "../api-client";
 import { TEACHER_LOGIN_REDIRECT_REASON_KEY, TEACHER_LOGIN_SUCCESS_KEY } from "../auth-keys";
@@ -130,10 +131,10 @@ export function Login() {
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-5">
-                            <div className="space-y-2.5">
-                                <Label htmlFor="username" className="text-sm font-medium ml-1">工号/助教账号</Label>
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                        <FieldGroup className="gap-5">
+                            <Field className="gap-2.5">
+                                <FieldLabel htmlFor="username">工号/助教账号</FieldLabel>
                                 <Input
                                     id="username"
                                     data-testid="teacher-login-username"
@@ -143,13 +144,13 @@ export function Login() {
                                     autoComplete="username"
                                     className="h-12"
                                 />
-                            </div>
-                            <div className="space-y-2.5">
-                                <div className="flex items-center justify-between ml-1">
-                                    <Label htmlFor="password" className="text-sm font-medium">密码</Label>
-                                    <span className="text-xs font-medium text-muted-foreground">
+                            </Field>
+                            <Field className="gap-2.5">
+                                <div className="flex items-center justify-between gap-3">
+                                    <FieldLabel htmlFor="password">密码</FieldLabel>
+                                    <FieldDescription className="text-xs font-medium">
                                         忘记密码？请联系系统管理员重置
-                                    </span>
+                                    </FieldDescription>
                                 </div>
                                 <Input
                                     id="password"
@@ -161,17 +162,16 @@ export function Login() {
                                     autoComplete="current-password"
                                     className="h-12"
                                 />
-                            </div>
-                        </div>
+                            </Field>
+                        </FieldGroup>
 
                         {error && (
-                            <div className="p-4 text-sm text-destructive bg-destructive/10 border border-destructive/20 flex items-center gap-3 animate-in slide-in-from-top-2">
-                                <div className="w-2 h-2 rounded-full bg-destructive" />
-                                {error}
-                            </div>
+                            <Alert variant="destructive" className="animate-in slide-in-from-top-2">
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
                         )}
 
-                        <div className="space-y-4 pt-2">
+                        <div className="flex flex-col gap-4 pt-2">
                             <Button type="submit" data-testid="teacher-login-submit" size="lg" className="w-full" disabled={loading}>
                                 {loading ? (
                                     <>
@@ -182,7 +182,7 @@ export function Login() {
                                     <>安全登录</>
                                 )}
                             </Button>
-                            <div className="border border-border bg-muted p-4 space-y-3">
+                            <div className="flex flex-col gap-3 border border-border bg-muted p-4">
                                 <p className="text-xs font-medium tracking-[0.2em] text-muted-foreground text-center font-heading uppercase">
                                     其他端入口
                                 </p>

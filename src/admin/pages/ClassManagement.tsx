@@ -3,8 +3,9 @@ import { Plus, Trash2, Users, Pencil, Loader2, School, CalendarDays, UserCircle2
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -374,12 +375,14 @@ export function ClassManagement() {
                                 {filteredClasses.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-center py-16 text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-muted-foreground" />
-                                                </div>
-                                                <p>暂无符合条件的数据</p>
-                                            </div>
+                                            <Empty className="py-0">
+                                                <EmptyHeader>
+                                                    <EmptyMedia variant="icon">
+                                                        <Search />
+                                                    </EmptyMedia>
+                                                    <EmptyTitle>暂无符合条件的数据</EmptyTitle>
+                                                </EmptyHeader>
+                                            </Empty>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -395,9 +398,9 @@ export function ClassManagement() {
                         <DialogTitle>创建班级</DialogTitle>
                         <DialogDescription>为指定学期和教师创建一个新的教学班级。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="className">班级名称</Label>
+                    <FieldGroup className="gap-4 py-4">
+                        <Field>
+                            <FieldLabel htmlFor="className">班级名称</FieldLabel>
                             <Input
                                 id="className"
                                 data-testid="class-create-name"
@@ -405,9 +408,9 @@ export function ClassManagement() {
                                 value={newClass.name}
                                 onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>所属学期</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel>所属学期</FieldLabel>
                             <Select value={newClass.semesterId} onValueChange={(v) => setNewClass({ ...newClass, semesterId: v })}>
                                 <SelectTrigger data-testid="class-create-semester">
                                     <SelectValue placeholder="选择学期" />
@@ -420,9 +423,9 @@ export function ClassManagement() {
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>授课教师</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel>授课教师</FieldLabel>
                             <Select value={newClass.teacherId} onValueChange={(v) => setNewClass({ ...newClass, teacherId: v })}>
                                 <SelectTrigger data-testid="class-create-teacher">
                                     <SelectValue placeholder="选择教师" />
@@ -435,8 +438,8 @@ export function ClassManagement() {
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                        </div>
-                    </div>
+                        </Field>
+                    </FieldGroup>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting}>
                             取消
@@ -459,9 +462,9 @@ export function ClassManagement() {
                         <DialogTitle>编辑班级</DialogTitle>
                         <DialogDescription>更新班级名称或重新分配授课教师。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="editClassName">班级名称</Label>
+                    <FieldGroup className="gap-4 py-4">
+                        <Field>
+                            <FieldLabel htmlFor="editClassName">班级名称</FieldLabel>
                             <Input
                                 id="editClassName"
                                 data-testid="class-edit-name"
@@ -469,14 +472,14 @@ export function ClassManagement() {
                                 value={editForm.name}
                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>所属学期</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel>所属学期</FieldLabel>
                             <Input value={editingClass?.semesterName ?? ""} disabled />
-                            <p className="text-xs text-muted-foreground">学期不可更改</p>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>授课教师</Label>
+                            <FieldDescription>学期不可更改</FieldDescription>
+                        </Field>
+                        <Field>
+                            <FieldLabel>授课教师</FieldLabel>
                             <Select value={editForm.teacherId} onValueChange={(v) => setEditForm({ ...editForm, teacherId: v })}>
                                 <SelectTrigger data-testid="class-edit-teacher">
                                     <SelectValue placeholder="选择教师" />
@@ -489,8 +492,8 @@ export function ClassManagement() {
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                        </div>
-                    </div>
+                        </Field>
+                    </FieldGroup>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting}>
                             取消

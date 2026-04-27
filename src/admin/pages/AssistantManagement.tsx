@@ -3,8 +3,9 @@ import { Plus, Trash2, RotateCcw, Loader2, Users, CheckCircle2, PauseCircle, Use
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -386,12 +387,14 @@ export function AssistantManagement() {
                                 {filteredAssistants.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={8} className="text-center py-16 text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-muted-foreground" />
-                                                </div>
-                                                <p>暂无符合条件的数据</p>
-                                            </div>
+                                            <Empty className="py-0">
+                                                <EmptyHeader>
+                                                    <EmptyMedia variant="icon">
+                                                        <Search />
+                                                    </EmptyMedia>
+                                                    <EmptyTitle>暂无符合条件的数据</EmptyTitle>
+                                                </EmptyHeader>
+                                            </Empty>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -407,9 +410,9 @@ export function AssistantManagement() {
                         <DialogTitle>添加助教</DialogTitle>
                         <DialogDescription>创建助教账号并绑定到指定教师名下。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="account">账号</Label>
+                    <FieldGroup className="gap-4 py-4">
+                        <Field>
+                            <FieldLabel htmlFor="account">账号</FieldLabel>
                             <Input
                                 id="account"
                                 data-testid="assistant-create-account"
@@ -417,9 +420,9 @@ export function AssistantManagement() {
                                 value={newAssistant.account}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, account: e.target.value })}
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="assistantName">姓名</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="assistantName">姓名</FieldLabel>
                             <Input
                                 id="assistantName"
                                 data-testid="assistant-create-name"
@@ -427,9 +430,9 @@ export function AssistantManagement() {
                                 value={newAssistant.name}
                                 onChange={(e) => setNewAssistant({ ...newAssistant, name: e.target.value })}
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>所属教师</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel>所属教师</FieldLabel>
                             <Select value={newAssistant.teacherId} onValueChange={(v) => setNewAssistant({ ...newAssistant, teacherId: v })}>
                                 <SelectTrigger data-testid="assistant-create-teacher">
                                     <SelectValue placeholder="选择教师" />
@@ -442,11 +445,11 @@ export function AssistantManagement() {
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                        </div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                            <ShieldAlert className="w-3 h-3" /> 初始密码默认为账号
-                        </p>
-                    </div>
+                        </Field>
+                        <FieldDescription className="flex items-center gap-1.5 text-xs">
+                            <ShieldAlert className="size-3" /> 初始密码默认为账号
+                        </FieldDescription>
+                    </FieldGroup>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting}>
                             取消

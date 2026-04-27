@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface NewAssistantForm {
     name: string;
@@ -35,9 +35,9 @@ export function AssistantAddDialog(props: AssistantAddDialogProps) {
                         填写工号和姓名以创建新的助教账号。
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="assistantStudentId" className="text-foreground">工号</Label>
+                <FieldGroup className="gap-4 py-4">
+                    <Field>
+                        <FieldLabel htmlFor="assistantStudentId">工号</FieldLabel>
                         <Input
                             id="assistantStudentId"
                             data-testid="teacher-assistant-add-account"
@@ -45,9 +45,9 @@ export function AssistantAddDialog(props: AssistantAddDialogProps) {
                             value={form.studentId}
                             onChange={(e) => onFormChange({ ...form, studentId: e.target.value })}
                         />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="assistantName" className="text-foreground">姓名</Label>
+                    </Field>
+                    <Field>
+                        <FieldLabel htmlFor="assistantName">姓名</FieldLabel>
                         <Input
                             id="assistantName"
                             data-testid="teacher-assistant-add-name"
@@ -55,8 +55,8 @@ export function AssistantAddDialog(props: AssistantAddDialogProps) {
                             value={form.name}
                             onChange={(e) => onFormChange({ ...form, name: e.target.value })}
                         />
-                    </div>
-                </div>
+                    </Field>
+                </FieldGroup>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
                     <Button data-testid="teacher-assistant-add-submit" onClick={onSubmit} disabled={!canSubmit}>确认添加</Button>

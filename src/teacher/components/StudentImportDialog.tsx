@@ -1,7 +1,10 @@
 import { Download, Loader2, Upload } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldDescription, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface StudentImportResult {
     successCount: number;
@@ -41,11 +44,11 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                         上传学生名单文件并查看导入结果。
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="border-2 border-dashed border-border bg-background/50 p-8 text-center hover:border-primary/50 transition-colors">
-                        <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <FieldGroup className="gap-4 py-4">
+                    <Field className="border-2 border-dashed border-border bg-background/50 p-8 text-center transition-colors hover:border-primary/50">
+                        <Upload className="mx-auto mb-4 size-12 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground mb-2">选择文件上传</p>
-                        <p className="text-xs text-muted-foreground">支持 .xlsx, .xls, .csv 格式</p>
+                        <FieldDescription className="text-center text-xs">支持 .xlsx, .xls, .csv 格式</FieldDescription>
                         <Input
                             type="file"
                             data-testid="teacher-student-import-file"
@@ -56,27 +59,31 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                         {importFile && (
                             <div className="text-xs text-success mt-3 font-mono">已选择：{importFile.name}</div>
                         )}
-                    </div>
+                    </Field>
                     <Button data-testid="teacher-student-template-download" variant="link" size="xs" onClick={onDownloadTemplate}>
                         <Download data-icon="inline-start" />
                         下载导入模板
                     </Button>
                     {importResult && (
-                        <div className="bg-background border border-border p-3 text-sm text-muted-foreground space-y-2">
-                            <div className="flex gap-4">
+                        <Alert variant={importResult.failureCount > 0 ? "warning" : "success"}>
+                            <AlertDescription className="flex flex-col gap-2">
+                                <div className="flex gap-4">
                                 <span className="text-success">成功：{importResult.successCount} 条</span>
                                 <span className={importResult.failureCount > 0 ? "text-destructive" : ""}>失败：{importResult.failureCount} 条</span>
-                            </div>
-                            {importResult.errors.length > 0 && (
-                                <div className="max-h-32 overflow-y-auto text-xs space-y-1 bg-card p-2 rounded border border-border">
-                                    {importResult.errors.map((err, idx) => (
-                                        <div key={idx} className="text-destructive">行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
-                                    ))}
                                 </div>
-                            )}
-                        </div>
+                                {importResult.errors.length > 0 && (
+                                    <ScrollArea className="h-32 max-h-32 overflow-hidden border border-border bg-card p-2">
+                                        <div className="flex flex-col gap-1 text-xs">
+                                            {importResult.errors.map((err, idx) => (
+                                                <div key={idx} className="text-destructive">行 {err.row === -1 ? "-" : err.row}：{err.reason}</div>
+                                            ))}
+                                        </div>
+                                    </ScrollArea>
+                                )}
+                            </AlertDescription>
+                        </Alert>
                     )}
-                </div>
+                </FieldGroup>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
                     <Button data-testid="teacher-student-import-submit" onClick={onImport} disabled={importing || !importFile}>

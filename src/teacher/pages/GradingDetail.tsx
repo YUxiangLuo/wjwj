@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Download, CheckCircle, XCircle, FileText, BarChart3, ListChecks, UserCheck, ShieldAlert, MessageSquarePlus, ChevronDown, ChevronUp, ChevronRight, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -395,36 +396,45 @@ export function GradingDetail() {
                 </div>
             </div>
             {isReadOnly && (
-                <div data-testid="teacher-grading-readonly-banner" className="px-6 py-2 text-sm text-destructive bg-destructive/20 border-b border-destructive/30 flex items-center justify-center">
-                    <XCircle className="w-4 h-4 mr-2" />
-                    该作业正在被他人批改中，当前为只读模式。
-                </div>
+                <Alert data-testid="teacher-grading-readonly-banner" variant="destructive" className="border-x-0 border-t-0 px-6 py-2">
+                    <AlertDescription className="flex items-center justify-center gap-2">
+                        <XCircle />
+                        该作业正在被他人批改中，当前为只读模式。
+                    </AlertDescription>
+                </Alert>
             )}
             {data.status === 3 && !isReadOnly && (
-                <div data-testid="teacher-grading-rejected-no-edit-banner" className="px-6 py-2 text-sm text-warning bg-warning/10 border-b border-warning/20 text-center">
-                    已驳回的作业不可修改评分；学生重新提交后可在新记录上批改。
-                </div>
+                <Alert data-testid="teacher-grading-rejected-no-edit-banner" variant="warning" className="border-x-0 border-t-0 px-6 py-2">
+                    <AlertDescription className="text-center">
+                        已驳回的作业不可修改评分；学生重新提交后可在新记录上批改。
+                    </AlertDescription>
+                </Alert>
             )}
             {(data.status === 2 || data.status === 3) && data.gradedByName && (
-                <div className="px-6 py-2 text-sm text-primary bg-primary/10 border-b border-primary/20 flex items-center justify-center">
-                    <UserCheck className="w-4 h-4 mr-2" />
-                    由 {data.gradedByType === 2 ? '教师' : '助教'} <span className="font-medium mx-1">{data.gradedByName}</span> 
-                    于 {data.gradedAt ? new Date(data.gradedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : '-'} 批改
-                </div>
+                <Alert variant="info" className="border-x-0 border-t-0 px-6 py-2">
+                    <AlertDescription className="flex items-center justify-center gap-2">
+                        <UserCheck />
+                        <span>
+                            由 {data.gradedByType === 2 ? '教师' : '助教'} <span className="font-medium">{data.gradedByName}</span>
+                            于 {data.gradedAt ? new Date(data.gradedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : '-'} 批改
+                        </span>
+                    </AlertDescription>
+                </Alert>
             )}
             {data.status === 3 && data.rejectReason && (
-                <div
+                <Alert
                     data-testid="teacher-grading-reject-reason-banner"
-                    className="px-6 py-3 text-sm text-destructive bg-destructive/10 border-b border-destructive/20"
+                    variant="destructive"
+                    className="border-x-0 border-t-0 px-6 py-3"
                 >
                     <div className="mx-auto flex max-w-5xl items-start gap-2">
-                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                        <div className="space-y-1">
-                            <div className="font-medium text-destructive">驳回原因</div>
-                            <div className="leading-6 text-destructive/80">{data.rejectReason}</div>
+                        <XCircle className="mt-0.5 shrink-0" />
+                        <div className="flex flex-col gap-1">
+                            <AlertTitle>驳回原因</AlertTitle>
+                            <AlertDescription className="leading-6">{data.rejectReason}</AlertDescription>
                         </div>
                     </div>
-                </div>
+                </Alert>
             )}
 
             {data.pdfStatus !== "ready" && data.pdfStatusMessage && (
@@ -582,12 +592,12 @@ export function GradingDetail() {
                         <div className="text-xs text-muted-foreground">权重总和: {weights.questionnaire + weights.process + weights.report}%</div>
                     </div>
                     <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-                        <div className="p-6 space-y-8 pb-4">
-                            <div className="space-y-3">
-                                <Label className="text-foreground flex justify-between">
+                        <FieldGroup className="gap-8 p-6 pb-4">
+                            <Field>
+                                <FieldLabel className="w-full justify-between">
                                     <span>问卷设计</span>
                                     <Badge variant="info">{weights.questionnaire}%</Badge>
-                                </Label>
+                                </FieldLabel>
                                 <div className="flex items-center gap-3">
                                     <Input
                                         data-testid="teacher-grading-score-questionnaire"
@@ -600,13 +610,13 @@ export function GradingDetail() {
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
                                 </div>
-                            </div>
+                            </Field>
 
-                            <div className="space-y-3">
-                                <Label className="text-foreground flex justify-between">
+                            <Field>
+                                <FieldLabel className="w-full justify-between">
                                     <span>实施过程</span>
                                     <Badge variant="info">{weights.process}%</Badge>
-                                </Label>
+                                </FieldLabel>
                                 <div className="flex items-center gap-3">
                                     <Input
                                         data-testid="teacher-grading-score-process"
@@ -619,13 +629,13 @@ export function GradingDetail() {
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
                                 </div>
-                            </div>
+                            </Field>
 
-                            <div className="space-y-3">
-                                <Label className="text-foreground flex justify-between">
+                            <Field>
+                                <FieldLabel className="w-full justify-between">
                                     <span>分析报告</span>
                                     <Badge variant="info">{weights.report}%</Badge>
-                                </Label>
+                                </FieldLabel>
                                 <div className="flex items-center gap-3">
                                     <Input
                                         data-testid="teacher-grading-score-report"
@@ -638,7 +648,7 @@ export function GradingDetail() {
                                     />
                                     <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
                                 </div>
-                            </div>
+                            </Field>
 
                             <Separator className="bg-border" />
 
@@ -647,9 +657,9 @@ export function GradingDetail() {
                                 <span className="text-3xl font-bold text-primary font-mono">{totalScore.toFixed(1)}</span>
                             </div>
 
-                            <div className="space-y-3">
-                                <Label className="text-foreground flex items-center justify-between">
-                                    <span>{data.isAssistant ? '助教评语' : '教师评语'}</span>
+                            <Field>
+                                <div className="flex items-center justify-between">
+                                    <FieldLabel>{data.isAssistant ? '助教评语' : '教师评语'}</FieldLabel>
                                     <Button
                                         variant="ghost"
                                         size="xs"
@@ -660,7 +670,7 @@ export function GradingDetail() {
                                         常用评语
                                         {showTemplates ? <ChevronUp data-icon="inline-end" /> : <ChevronDown data-icon="inline-end" />}
                                     </Button>
-                                </Label>
+                                </div>
                                 {showTemplates && (
                                     <div className="flex flex-wrap gap-1.5 p-3 bg-background border border-border rounded-lg">
                                         {COMMENT_TEMPLATES.map((tpl, idx) => (
@@ -698,8 +708,8 @@ export function GradingDetail() {
                                     disabled={saving || gradingLocked}
                                 />
                                 <div className="text-xs text-muted-foreground text-right">{comment.length}/2000</div>
-                            </div>
-                        </div>
+                            </Field>
+                        </FieldGroup>
 
                         <div className="px-6 pb-6 pt-4 border-t border-b border-border space-y-3 bg-card/50">
                             {!gradingLocked && data.status === 2 && (
@@ -739,8 +749,9 @@ export function GradingDetail() {
                             输入驳回原因，学生将看到这段说明。
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-3 py-4">
-                        <Label className="text-foreground">驳回理由（学生可见，至少10字）</Label>
+                    <FieldGroup className="gap-3 py-4">
+                        <Field>
+                        <FieldLabel>驳回理由（学生可见，至少10字）</FieldLabel>
                         <Textarea
                             data-testid="teacher-grading-reject-reason"
                             rows={4}
@@ -748,7 +759,8 @@ export function GradingDetail() {
                             onChange={(e) => setRejectReason(e.target.value)}
                             placeholder="请详细说明驳回原因..."
                         />
-                    </div>
+                        </Field>
+                    </FieldGroup>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowRejectModal(false)}>取消</Button>
                         <Button

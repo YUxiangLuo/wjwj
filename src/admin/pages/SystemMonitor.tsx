@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Cpu, HardDrive, Activity, Wifi, Users, Pause, Play, RefreshCw, TerminalSquare, AlertTriangle, Download, LogIn } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { systemApi, type SystemMetrics, type SystemLog } from "../api-client";
 import { toast } from "sonner";
 import { createSingleFlight } from "../single-flight";
@@ -282,24 +285,18 @@ export function SystemMonitor() {
                         <CardTitle className="text-base">系统告警</CardTitle>
                         <Badge variant="warning" className="ml-auto">{alerts.length} 条</Badge>
                     </CardHeader>
-                    <CardContent className="space-y-2 pt-4">
+                    <CardContent className="flex flex-col gap-2 pt-4">
                         {alerts.map((alert, i) => (
-                            <div
+                            <Alert
                                 key={i}
-                                className={`flex items-center gap-3 p-3 border ${
-                                    alert.level === "critical"
-                                        ? "border-destructive/30 bg-destructive/5"
-                                        : "border-warning/30 bg-warning/5"
-                                }`}
+                                variant={alert.level === "critical" ? "destructive" : "warning"}
+                                className="grid-cols-[auto_auto_1fr]"
                             >
-                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                    alert.level === "critical" ? "bg-destructive" : "bg-warning"
-                                }`} />
                                 <Badge variant={alert.level === "critical" ? "destructive" : "warning"}>
                                     {alert.level === "critical" ? "严重" : "警告"}
                                 </Badge>
-                                <span className="text-sm">{alert.message}</span>
-                            </div>
+                                <AlertDescription>{alert.message}</AlertDescription>
+                            </Alert>
                         ))}
                     </CardContent>
                 </Card>
@@ -313,22 +310,33 @@ export function SystemMonitor() {
                     </div>
                     <span className="text-xs text-muted-foreground font-mono">Total {logs.length} logs</span>
                 </CardHeader>
-                <CardContent className="space-y-2 pt-4 max-h-[400px] overflow-y-auto custom-scrollbar">
-                    {logs.map((log) => (
-                        <div key={log.id} className="flex flex-col gap-3 border border-border bg-card p-3 text-sm sm:flex-row sm:items-start group hover:bg-muted transition-colors">
-                            <div className="text-xs text-muted-foreground font-mono sm:w-20 pt-1">
-                                {new Date(log.time).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai" })}
-                            </div>
-                            <div className="min-w-[70px]">
-                                {getLevelBadge(log.level)}
-                            </div>
-                            <span className="flex-1 font-mono text-xs sm:text-sm py-0.5">{log.message}</span>
-                            <Badge variant="muted">{log.source}</Badge>
+                <CardContent className="pt-4">
+                    <ScrollArea className="h-[400px]">
+                        <div className="flex flex-col gap-2 pr-3">
+                            {logs.map((log) => (
+                                <div key={log.id} className="flex flex-col gap-3 border border-border bg-card p-3 text-sm sm:flex-row sm:items-start group hover:bg-muted transition-colors">
+                                    <div className="text-xs text-muted-foreground font-mono sm:w-20 pt-1">
+                                        {new Date(log.time).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai" })}
+                                    </div>
+                                    <div className="min-w-[70px]">
+                                        {getLevelBadge(log.level)}
+                                    </div>
+                                    <span className="flex-1 font-mono text-xs sm:text-sm py-0.5">{log.message}</span>
+                                    <Badge variant="muted">{log.source}</Badge>
+                                </div>
+                            ))}
+                            {logs.length === 0 && (
+                                <Empty className="border border-dashed border-border py-12">
+                                    <EmptyHeader>
+                                        <EmptyMedia variant="icon">
+                                            <TerminalSquare />
+                                        </EmptyMedia>
+                                        <EmptyTitle>暂无日志记录</EmptyTitle>
+                                    </EmptyHeader>
+                                </Empty>
+                            )}
                         </div>
-                    ))}
-                    {logs.length === 0 && (
-                        <div className="text-center py-8 text-muted-foreground text-sm">暂无日志记录</div>
-                    )}
+                    </ScrollArea>
                 </CardContent>
             </Card>
         </div>

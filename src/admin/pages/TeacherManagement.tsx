@@ -3,7 +3,8 @@ import { Plus, Search, RotateCcw, Loader2, Unlock, Users, CheckCircle2, PauseCir
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
-import { Label } from "@/components/ui/label";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -375,12 +376,14 @@ export function TeacherManagement() {
                                 {teachers.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-muted-foreground" />
-                                                </div>
-                                                <p>暂无数据</p>
-                                            </div>
+                                            <Empty className="py-0">
+                                                <EmptyHeader>
+                                                    <EmptyMedia variant="icon">
+                                                        <Search />
+                                                    </EmptyMedia>
+                                                    <EmptyTitle>暂无数据</EmptyTitle>
+                                                </EmptyHeader>
+                                            </Empty>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -396,9 +399,9 @@ export function TeacherManagement() {
                         <DialogTitle>添加教师</DialogTitle>
                         <DialogDescription>创建教师账号，初始密码将设置为工号。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="employeeId">工号</Label>
+                    <FieldGroup className="gap-4 py-4">
+                        <Field>
+                            <FieldLabel htmlFor="employeeId">工号</FieldLabel>
                             <Input
                                 id="employeeId"
                                 data-testid="teacher-create-employee-id"
@@ -406,9 +409,9 @@ export function TeacherManagement() {
                                 value={newTeacher.employeeId}
                                 onChange={(e) => setNewTeacher({ ...newTeacher, employeeId: e.target.value })}
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="name">姓名</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="name">姓名</FieldLabel>
                             <Input
                                 id="name"
                                 data-testid="teacher-create-name"
@@ -416,11 +419,11 @@ export function TeacherManagement() {
                                 value={newTeacher.name}
                                 onChange={(e) => setNewTeacher({ ...newTeacher, name: e.target.value })}
                             />
-                        </div>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                            <Lock className="w-3 h-3" /> 初始密码默认为工号
-                        </p>
-                    </div>
+                        </Field>
+                        <FieldDescription className="flex items-center gap-1.5 text-xs">
+                            <Lock className="size-3" /> 初始密码默认为工号
+                        </FieldDescription>
+                    </FieldGroup>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting}>
                             取消
@@ -443,26 +446,26 @@ export function TeacherManagement() {
                         <DialogTitle>编辑教师</DialogTitle>
                         <DialogDescription>修改教师显示姓名，工号保持不变。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="editEmployeeId">工号</Label>
+                    <FieldGroup className="gap-4 py-4">
+                        <Field>
+                            <FieldLabel htmlFor="editEmployeeId">工号</FieldLabel>
                             <Input
                                 id="editEmployeeId"
                                 value={editingTeacher?.employeeId ?? ""}
                                 disabled
                                 className="text-muted-foreground"
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="editName">姓名</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="editName">姓名</FieldLabel>
                             <Input
                                 id="editName"
                                 placeholder="请输入姓名"
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
                             />
-                        </div>
-                    </div>
+                        </Field>
+                    </FieldGroup>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting}>
                             取消
@@ -511,7 +514,14 @@ export function TeacherManagement() {
                                 </TableBody>
                             </Table>
                         ) : (
-                            <div className="text-center py-8 text-muted-foreground">该教师暂无关联班级</div>
+                            <Empty className="border border-dashed border-border py-8">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <GraduationCap />
+                                    </EmptyMedia>
+                                    <EmptyTitle>该教师暂无关联班级</EmptyTitle>
+                                </EmptyHeader>
+                            </Empty>
                         )}
                     </div>
                     <DialogFooter>

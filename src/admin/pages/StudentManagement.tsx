@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
 import { Search, RotateCcw, Loader2, ArrowRight, Users, CheckCircle2, PauseCircle, GraduationCap, Unlock } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
     Dialog,
     DialogContent,
@@ -425,12 +427,14 @@ export function StudentManagement() {
                                     {filteredStudents.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
-                                                        <Search className="w-5 h-5 text-muted-foreground" />
-                                                    </div>
-                                                    <p>暂无符合条件的数据</p>
-                                                </div>
+                                                <Empty className="py-0">
+                                                    <EmptyHeader>
+                                                        <EmptyMedia variant="icon">
+                                                            <Search />
+                                                        </EmptyMedia>
+                                                        <EmptyTitle>暂无符合条件的数据</EmptyTitle>
+                                                    </EmptyHeader>
+                                                </Empty>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -449,9 +453,9 @@ export function StudentManagement() {
                             将学生 <span className="text-primary font-mono">{transferStudent?.studentId}</span> <span className="font-medium text-foreground">{transferStudent?.name}</span> 从 <span className="text-warning">{transferStudent?.className}</span> 转至新班级。
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label>目标班级</Label>
+                    <FieldGroup className="gap-4 py-4">
+                        <Field>
+                            <FieldLabel>目标班级</FieldLabel>
                             <Select value={targetClassId} onValueChange={setTargetClassId}>
                                 <SelectTrigger data-testid="student-transfer-target-class">
                                     <SelectValue placeholder="选择新班级" />
@@ -468,9 +472,9 @@ export function StudentManagement() {
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="student-transfer-reason">转班原因 (可选)</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="student-transfer-reason">转班原因 (可选)</FieldLabel>
                             <Input
                                 id="student-transfer-reason"
                                 data-testid="student-transfer-reason"
@@ -478,15 +482,18 @@ export function StudentManagement() {
                                 onChange={(e) => setTransferReason(e.target.value)}
                                 placeholder="例如：行政调班"
                             />
-                        </div>
-                        <div className="bg-warning/10 text-warning p-3 rounded-md text-sm border border-warning/20">
-                            <p className="font-semibold mb-1 flex items-center gap-1.5"><PauseCircle className="w-3.5 h-3.5" /> 注意事项：</p>
-                            <ul className="list-disc pl-4 space-y-1 opacity-90">
+                        </Field>
+                        <Alert variant="warning">
+                            <PauseCircle />
+                            <AlertTitle>注意事项</AlertTitle>
+                            <AlertDescription>
+                                <ul className="flex list-disc flex-col gap-1 pl-4">
                                 <li>学生在原班级的实验数据将被存档保留。</li>
                                 <li>学生需要在新班级重新开始实验（如适用）。</li>
-                            </ul>
-                        </div>
-                    </div>
+                                </ul>
+                            </AlertDescription>
+                        </Alert>
+                    </FieldGroup>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setTransferStudent(null)}>
                             取消

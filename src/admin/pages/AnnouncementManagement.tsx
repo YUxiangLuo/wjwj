@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Send, Archive, Loader2, BarChart3, Users, Eye, Me
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -411,9 +411,9 @@ export function AnnouncementManagement() {
                         <DialogTitle>发布公告</DialogTitle>
                         <DialogDescription>创建公告草稿或立即发布给指定目标用户。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="title">标题</Label>
+                    <FieldGroup className="gap-4 py-4">
+                        <Field>
+                            <FieldLabel htmlFor="title">标题</FieldLabel>
                             <Input
                                 id="title"
                                 data-testid="announcement-create-title"
@@ -421,9 +421,9 @@ export function AnnouncementManagement() {
                                 value={newAnnouncement.title}
                                 onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="content">内容</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="content">内容</FieldLabel>
                             <div data-testid="announcement-create-content">
                                 <RichTextEditor
                                     id="content"
@@ -432,9 +432,9 @@ export function AnnouncementManagement() {
                                     onChange={(value) => setNewAnnouncement({ ...newAnnouncement, content: value })}
                                 />
                             </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>发布范围</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel>发布范围</FieldLabel>
                             <Select value={newAnnouncement.targetScope} onValueChange={(v) => setNewAnnouncement({ ...newAnnouncement, targetScope: v })}>
                                 <SelectTrigger data-testid="announcement-create-target-scope">
                                     <SelectValue placeholder="选择发布范围" />
@@ -448,8 +448,8 @@ export function AnnouncementManagement() {
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
-                        </div>
-                    </div>
+                        </Field>
+                    </FieldGroup>
                     <DialogFooter className="gap-2">
                         <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting}>
                             取消
@@ -483,9 +483,9 @@ export function AnnouncementManagement() {
                         <DialogTitle>编辑公告</DialogTitle>
                         <DialogDescription>更新公告标题和正文内容，已发布状态保持不变。</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="editTitle">标题</Label>
+                    <FieldGroup className="gap-4 py-4">
+                        <Field>
+                            <FieldLabel htmlFor="editTitle">标题</FieldLabel>
                             <Input
                                 id="editTitle"
                                 data-testid="announcement-edit-title"
@@ -493,9 +493,9 @@ export function AnnouncementManagement() {
                                 value={editForm.title}
                                 onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                             />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="editContent">内容</Label>
+                        </Field>
+                        <Field>
+                            <FieldLabel htmlFor="editContent">内容</FieldLabel>
                             <div data-testid="announcement-edit-content">
                                 <RichTextEditor
                                     id="editContent"
@@ -504,8 +504,8 @@ export function AnnouncementManagement() {
                                     onChange={(value) => setEditForm({ ...editForm, content: value })}
                                 />
                             </div>
-                        </div>
-                    </div>
+                        </Field>
+                    </FieldGroup>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting}>
                             取消

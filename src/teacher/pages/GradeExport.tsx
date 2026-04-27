@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FileSpreadsheet, Users, CheckCircle2, Layers, Search, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -276,12 +277,14 @@ export function GradeExport() {
                             ) : preview.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
-                                                <Search className="w-6 h-6 text-muted-foreground" />
-                                            </div>
-                                            <p>暂无符合条件的数据</p>
-                                        </div>
+                                        <Empty className="py-0">
+                                            <EmptyHeader>
+                                                <EmptyMedia variant="icon">
+                                                    <Search />
+                                                </EmptyMedia>
+                                                <EmptyTitle>暂无符合条件的数据</EmptyTitle>
+                                            </EmptyHeader>
+                                        </Empty>
                                     </TableCell>
                                 </TableRow>
                             ) : preview.map((task) => (

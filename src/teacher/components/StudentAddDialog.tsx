@@ -1,8 +1,8 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface StudentFormState {
     id: string;
@@ -31,9 +31,9 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                         录入学生学号、姓名和邮箱信息。
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="studentId" className="text-foreground">学号</Label>
+                <FieldGroup className="gap-4 py-4">
+                    <Field>
+                        <FieldLabel htmlFor="studentId">学号</FieldLabel>
                         <Input
                             id="studentId"
                             data-testid="teacher-student-add-id"
@@ -41,9 +41,9 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             value={form.id}
                             onChange={(e) => onFormChange({ ...form, id: e.target.value })}
                         />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="studentName" className="text-foreground">姓名</Label>
+                    </Field>
+                    <Field>
+                        <FieldLabel htmlFor="studentName">姓名</FieldLabel>
                         <Input
                             id="studentName"
                             data-testid="teacher-student-add-name"
@@ -51,9 +51,9 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             value={form.name}
                             onChange={(e) => onFormChange({ ...form, name: e.target.value })}
                         />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="studentEmail" className="text-foreground">邮箱（可选）</Label>
+                    </Field>
+                    <Field>
+                        <FieldLabel htmlFor="studentEmail">邮箱（可选）</FieldLabel>
                         <Input
                             id="studentEmail"
                             data-testid="teacher-student-add-email"
@@ -62,8 +62,8 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             value={form.email}
                             onChange={(e) => onFormChange({ ...form, email: e.target.value })}
                         />
-                    </div>
-                </div>
+                    </Field>
+                </FieldGroup>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>取消</Button>
                     <Button data-testid="teacher-student-add-submit" onClick={onSubmit} disabled={submitting}>

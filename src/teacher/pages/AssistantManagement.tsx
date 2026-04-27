@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { UserPlus, Users, CheckCircle2, PauseCircle, Trash2, KeyRound, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { SearchInput } from "@/components/ui/search-input";
@@ -217,12 +218,14 @@ export function AssistantManagement() {
                             {filteredAssistants.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
-                                                <Users className="w-6 h-6 text-muted-foreground" />
-                                            </div>
-                                            <p>暂无符合条件的助教</p>
-                                        </div>
+                                        <Empty className="py-0">
+                                            <EmptyHeader>
+                                                <EmptyMedia variant="icon">
+                                                    <Users />
+                                                </EmptyMedia>
+                                                <EmptyTitle>暂无符合条件的助教</EmptyTitle>
+                                            </EmptyHeader>
+                                        </Empty>
                                     </TableCell>
                                 </TableRow>
                             ) : filteredAssistants.map((ta) => (
@@ -320,7 +323,7 @@ export function AssistantManagement() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">确认移除</AlertDialogAction>
+                        <AlertDialogAction onClick={handleDelete} variant="destructive">确认移除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

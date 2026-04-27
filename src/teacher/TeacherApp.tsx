@@ -1,12 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock, Sun, Moon, BarChart3,
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Clock, Sun, Moon, BarChart3,
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarGroupLabel,
+    SidebarHeader,
+    SidebarInset,
+    SidebarMenu,
+    SidebarMenuBadge,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarProvider,
+    SidebarTrigger,
+    useSidebar,
+} from "@/components/ui/sidebar";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
@@ -76,6 +96,51 @@ const pageTitles: Record<string, string> = {
     "/export": "成绩导出",
 };
 
+function TeacherSidebarNav({
+    currentPath,
+    userType,
+    pendingGradingCount,
+}: {
+    currentPath: string;
+    userType: TeacherUser["type"] | undefined;
+    pendingGradingCount: number;
+}) {
+    const { setOpenMobile } = useSidebar();
+    const items = userType === "assistant" ? assistantMenuItems : teacherMenuItems;
+
+    return (
+        <SidebarGroup>
+            <SidebarGroupLabel>{userType === "assistant" ? "助教菜单" : "教师菜单"}</SidebarGroupLabel>
+            <SidebarGroupContent>
+                <SidebarMenu>
+                    {items.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
+
+                        return (
+                            <SidebarMenuItem key={item.path}>
+                                <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                                    <NavLink
+                                        to={item.path}
+                                        data-testid={`teacher-nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
+                                        onClick={() => setOpenMobile(false)}
+                                    >
+                                        <Icon />
+                                        <span>{item.label}</span>
+                                    </NavLink>
+                                </SidebarMenuButton>
+                                {item.path === "/grading" && pendingGradingCount > 0 && (
+                                    <SidebarMenuBadge>{pendingGradingCount}</SidebarMenuBadge>
+                                )}
+                            </SidebarMenuItem>
+                        );
+                    })}
+                </SidebarMenu>
+            </SidebarGroupContent>
+        </SidebarGroup>
+    );
+}
+
 export function TeacherApp() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -88,9 +153,6 @@ export function TeacherApp() {
     const segment = currentPath.split("/")[1];
     const basePath = segment ? "/" + segment : "/";
     const pageTitle = pageTitles[basePath] ?? "教师端";
-
-    // Mobile sidebar state
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const [authState, setAuthState] = useState<"checking" | "authed" | "guest">("checking");
     const [teacherUser, setTeacherUser] = useState<TeacherUser | null>(null);
@@ -173,6 +235,7 @@ export function TeacherApp() {
         unreadCount,
         isOpen: showNotifications,
         setIsOpen: setShowNotifications,
+        loading: notificationsLoading,
         load: loadNotifications,
         open: openNotifications,
         markAsRead: markNotificationAsRead,
@@ -352,59 +415,30 @@ export function TeacherApp() {
     }
 
     return (
-        <div className="flex h-screen bg-background text-foreground overflow-hidden">
+        <SidebarProvider className="h-screen bg-background text-foreground overflow-hidden">
             <Toaster richColors position="top-right" theme={theme} />
-            {/* Sidebar */}
-            <aside className={`
-                fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 flex flex-col
-                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-            `}>
-                <div className="min-h-16 px-4 sm:px-6 py-3 border-b border-sidebar-border flex items-center shrink-0">
+
+            <Sidebar collapsible="offcanvas">
+                <SidebarHeader className="min-h-16 border-b border-sidebar-border px-4 py-3 sm:px-6">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <div className="bg-primary p-1.5 shrink-0">
-                            <BarChart3 className="w-5 h-5 text-primary-foreground" />
+                            <BarChart3 className="size-5 text-primary-foreground" />
                         </div>
                         <span className="text-sm font-semibold font-heading uppercase tracking-wider text-sidebar-foreground">
                             统计学虚拟仿真实验平台
                         </span>
                     </div>
-                </div>
+                </SidebarHeader>
 
-                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-                    <div className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        {teacherUser?.type === "assistant" ? "助教菜单" : "教师菜单"}
-                    </div>
-                    {(teacherUser?.type === "assistant" ? assistantMenuItems : teacherMenuItems).map((item) => {
-                        const Icon = item.icon;
-                        const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
+                <SidebarContent className="py-4">
+                    <TeacherSidebarNav
+                        currentPath={currentPath}
+                        userType={teacherUser?.type}
+                        pendingGradingCount={pendingGradingCount}
+                    />
+                </SidebarContent>
 
-                        return (
-                            <NavLink
-                                key={item.path}
-                                to={item.path}
-                                data-testid={`teacher-nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
-                                onClick={() => setIsSidebarOpen(false)}
-                                className={`flex items-center justify-between px-3 py-2.5 text-sm transition-all duration-200 group
-                                    ${isActive
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    }`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <Icon className="w-4 h-4 transition-colors" />
-                                    <span className="font-medium">{item.label}</span>
-                                </div>
-                                {item.path === "/grading" && pendingGradingCount > 0 && (
-                                    <Badge variant="default">
-                                        {pendingGradingCount}
-                                    </Badge>
-                                )}
-                            </NavLink>
-                        );
-                    })}
-                </nav>
-
-                <div className="p-4 border-t border-sidebar-border">
+                <SidebarFooter className="border-t border-sidebar-border p-4">
                     <div className="flex items-center gap-3 p-2 border border-sidebar-border bg-sidebar-accent">
                         <Avatar size="sm">
                             <AvatarFallback>
@@ -422,29 +456,13 @@ export function TeacherApp() {
                             </div>
                         </div>
                     </div>
-                </div>
-            </aside>
+                </SidebarFooter>
+            </Sidebar>
 
-            {/* Mobile Overlay */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 bg-background relative z-0">
+            <SidebarInset className="min-w-0">
                 <header className="h-16 border-b border-border bg-background/50 backdrop-blur-xl flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
                     <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="lg:hidden"
-                            onClick={() => setIsSidebarOpen(true)}
-                        >
-                            <Menu />
-                        </Button>
+                        <SidebarTrigger className="md:hidden" />
                         <div>
                             <h2 className="text-lg font-semibold font-heading uppercase tracking-wider">{pageTitle}</h2>
                         </div>
@@ -455,7 +473,7 @@ export function TeacherApp() {
                             {new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric" })}
                         </Badge>
 
-                        <div className="h-4 w-px bg-border hidden sm:block"></div>
+                        <Separator orientation="vertical" className="hidden h-4 sm:block" />
 
                         <Button
                             variant="ghost"
@@ -544,7 +562,7 @@ export function TeacherApp() {
                         </Routes>
                     </div>
                 </div>
-            </main>
+            </SidebarInset>
 
             {/* Password Modal */}
             <PasswordChangeDialog
@@ -580,9 +598,23 @@ export function TeacherApp() {
                         </DialogTitle>
                         <DialogDescription>最近通知</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
-                        {notifications.length === 0 ? (
-                            <div className="text-sm text-muted-foreground text-center py-8">暂无通知</div>
+                    <ScrollArea className="h-[360px] pr-2">
+                        <div className="flex flex-col gap-3 pr-2">
+                        {notificationsLoading ? (
+                            <div className="flex flex-col gap-3">
+                                <Skeleton className="h-24 w-full" />
+                                <Skeleton className="h-24 w-full" />
+                                <Skeleton className="h-24 w-full" />
+                            </div>
+                        ) : notifications.length === 0 ? (
+                            <Empty className="border border-dashed border-border py-10">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Bell />
+                                    </EmptyMedia>
+                                    <EmptyTitle>暂无通知</EmptyTitle>
+                                </EmptyHeader>
+                            </Empty>
                         ) : (
                             notifications.map((item) => (
                                 <div key={item.id} className="border border-border p-4 bg-card hover:bg-muted/50 transition-colors">
@@ -609,7 +641,8 @@ export function TeacherApp() {
                                 </div>
                             ))
                         )}
-                    </div>
+                        </div>
+                    </ScrollArea>
                 </DialogContent>
             </Dialog>
 
@@ -636,6 +669,6 @@ export function TeacherApp() {
                 </DialogContent>
             </Dialog>
 
-        </div>
+        </SidebarProvider>
     );
 }

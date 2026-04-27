@@ -2,13 +2,32 @@ import { useState, useEffect } from "react";
 import {
     LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
     Activity, Megaphone, Settings, Bell, LogOut, Loader2,
-    Menu, X, Sun, Moon, BarChart3,
+    Sun, Moon, BarChart3,
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchInput } from "@/components/ui/search-input";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarGroupLabel,
+    SidebarHeader,
+    SidebarInset,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarProvider,
+    SidebarTrigger,
+    useSidebar,
+} from "@/components/ui/sidebar";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import {
@@ -67,6 +86,39 @@ const pageTitles: Record<string, string> = {
     "/settings": "系统设置",
 };
 
+function AdminSidebarNav({ currentPath }: { currentPath: string }) {
+    const { setOpenMobile } = useSidebar();
+
+    return (
+        <SidebarGroup>
+            <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+            <SidebarGroupContent>
+                <SidebarMenu>
+                    {menuItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
+
+                        return (
+                            <SidebarMenuItem key={item.path}>
+                                <SidebarMenuButton asChild isActive={isActive} tooltip={item.label}>
+                                    <NavLink
+                                        to={item.path}
+                                        data-testid={`admin-nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
+                                        onClick={() => setOpenMobile(false)}
+                                    >
+                                        <Icon />
+                                        <span>{item.label}</span>
+                                    </NavLink>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        );
+                    })}
+                </SidebarMenu>
+            </SidebarGroupContent>
+        </SidebarGroup>
+    );
+}
+
 export function AdminApp() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -79,7 +131,6 @@ export function AdminApp() {
     const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
     const [showSessionExpired, setShowSessionExpired] = useState(false);
     const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     const passwordChange = usePasswordChange({
         policy: ADMIN_PASSWORD_POLICY,
@@ -276,55 +327,28 @@ export function AdminApp() {
     }
 
     return (
-        <div className="flex min-h-screen bg-background text-foreground font-sans antialiased">
+        <SidebarProvider className="min-h-screen bg-background text-foreground font-sans antialiased">
             <Toaster richColors position="top-right" theme={theme} />
 
-            {/* Sidebar */}
-            <aside
-                className={`fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:flex lg:flex-col ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-                    }`}
-            >
-                <div className="min-h-16 px-4 sm:px-6 py-3 border-b border-sidebar-border flex items-center justify-between lg:justify-start gap-2">
+            <Sidebar collapsible="offcanvas">
+                <SidebarHeader className="min-h-16 border-b border-sidebar-border px-4 py-3 sm:px-6">
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div className="bg-primary p-1.5 shrink-0">
-                            <BarChart3 className="w-5 h-5 text-primary-foreground" />
+                            <BarChart3 className="size-5 text-primary-foreground" />
                         </div>
                         <span className="text-sm font-semibold font-heading uppercase tracking-wider leading-snug text-sidebar-foreground">
                             统计学虚拟仿真实验平台
                         </span>
                     </div>
-                    <Button type="button" variant="ghost" size="icon-sm" className="lg:hidden" onClick={() => setIsSidebarOpen(false)}>
-                        <X />
-                    </Button>
-                </div>
+                </SidebarHeader>
 
-                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-                    <div className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Main Menu</div>
-                    {menuItems.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                            <NavLink
-                                key={item.path}
-                                to={item.path}
-                                data-testid={`admin-nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
-                                className={() => `
-                                    flex items-center gap-3 px-3 py-2 text-sm transition-all duration-200 group
-                                    ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
-                                        ? "bg-primary/10 text-primary"
-                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    }
-                                `}
-                            >
-                                <Icon className="w-4 h-4 transition-colors" />
-                                <span className="font-medium">{item.label}</span>
-                            </NavLink>
-                        );
-                    })}
-                </nav>
+                <SidebarContent className="py-4">
+                    <AdminSidebarNav currentPath={currentPath} />
+                </SidebarContent>
 
-                <div className="p-4 border-t border-sidebar-border">
+                <SidebarFooter className="border-t border-sidebar-border p-4">
                     <div className="flex items-center gap-3 p-2 border border-sidebar-border bg-sidebar-accent">
-                        <Avatar className="w-9 h-9">
+                        <Avatar className="size-9">
                             <AvatarFallback className="text-sm font-medium">
                                 {adminUser?.username?.charAt(0)?.toUpperCase() ?? "A"}
                             </AvatarFallback>
@@ -334,30 +358,13 @@ export function AdminApp() {
                             <div className="text-xs text-muted-foreground truncate">Administrator</div>
                         </div>
                     </div>
-                </div>
-            </aside>
+                </SidebarFooter>
+            </Sidebar>
 
-            {/* Overlay for mobile sidebar */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
+            <SidebarInset className="min-w-0 overflow-hidden">
                 <header className="h-16 px-6 border-b border-border bg-background/50 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => setIsSidebarOpen(true)}
-                            className="-ml-2 lg:hidden"
-                        >
-                            <Menu />
-                        </Button>
+                        <SidebarTrigger className="-ml-2 md:hidden" />
                         <div>
                             <h2 className="text-lg font-semibold font-heading uppercase tracking-wider">{pageTitle}</h2>
                             <p className="hidden md:block text-xs text-muted-foreground">
@@ -436,7 +443,7 @@ export function AdminApp() {
                         </Routes>
                     </div>
                 </div>
-            </main>
+            </SidebarInset>
 
             <PasswordChangeDialog
                 open={showPasswordModal}
@@ -506,10 +513,13 @@ export function AdminApp() {
                             查看系统通知与操作提醒（未读 {unreadCount} 条）
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="max-h-[60vh] overflow-y-auto space-y-2 -mx-2 px-2 custom-scrollbar">
+                    <ScrollArea className="-mx-2 h-[60vh] max-h-[420px] px-2">
+                        <div className="flex flex-col gap-2 pr-2">
                         {notificationsLoading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                            <div className="flex flex-col gap-2 py-2">
+                                <Skeleton className="h-20 w-full" />
+                                <Skeleton className="h-20 w-full" />
+                                <Skeleton className="h-20 w-full" />
                             </div>
                         ) : notifications.length > 0 ? (
                             notifications.map(item => (
@@ -535,15 +545,20 @@ export function AdminApp() {
                                 </Button>
                             ))
                         ) : (
-                            <div className="text-center py-12 text-muted-foreground bg-card/30 border border-dashed border-border">
-                                <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                                暂无通知
-                            </div>
+                            <Empty className="border border-dashed border-border bg-card/30 py-12">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Bell />
+                                    </EmptyMedia>
+                                    <EmptyTitle>暂无通知</EmptyTitle>
+                                </EmptyHeader>
+                            </Empty>
                         )}
-                    </div>
+                        </div>
+                    </ScrollArea>
                 </DialogContent>
             </Dialog>
-        </div>
+        </SidebarProvider>
     );
 }
 
