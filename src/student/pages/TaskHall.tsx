@@ -87,7 +87,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
     const remainingMs = getRemainingMs(deadline);
     if (remainingMs === null) return null;
     if (remainingMs <= 0) {
-        return <span className="text-sm text-slate-500">已截止</span>;
+        return <span className="text-sm text-muted-foreground">已截止</span>;
     }
 
     const minuteMs = 60 * 1000;
@@ -470,12 +470,12 @@ export function TaskHall() {
             {/* Task Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
                 {taskError ? (
-                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-red-50/30 dark:bg-red-950/20 rounded-3xl border border-dashed border-red-200 dark:border-red-800/50">
-                        <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mb-4 border border-red-200 dark:border-red-800/50">
-                            <AlertCircle className="w-8 h-8 text-red-400 dark:text-red-500" />
+                    <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed border-destructive/30 bg-destructive/10 py-20">
+                        <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-destructive/30 bg-destructive/10 text-destructive">
+                            <AlertCircle className="size-8" />
                         </div>
-                        <p className="text-lg text-slate-600 dark:text-slate-400 font-medium">任务加载失败</p>
-                        <p className="text-sm text-slate-500 mt-1">请检查网络连接后重试</p>
+                        <p className="text-lg font-medium text-foreground">任务加载失败</p>
+                        <p className="mt-1 text-sm text-muted-foreground">请检查网络连接后重试</p>
                         <Button variant="outline" size="sm" className="mt-4" onClick={() => loadTasks()}>
                             重试
                         </Button>
@@ -485,12 +485,12 @@ export function TaskHall() {
                         <TaskCard key={task.id} task={task} />
                     ))
                 ) : (
-                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-slate-50/30 dark:bg-slate-900/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
-                        <div className="w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4 border border-slate-200 dark:border-slate-800">
-                            <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-700" />
+                    <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 py-20">
+                        <div className="mb-4 flex size-16 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
+                            <BookOpen className="size-8" />
                         </div>
-                        <p className="text-lg text-slate-600 dark:text-slate-400 font-medium">暂无相关任务</p>
-                        <p className="text-sm text-slate-500 mt-1">当有新任务发布或状态变更时将出现在这里</p>
+                        <p className="text-lg font-medium text-foreground">暂无相关任务</p>
+                        <p className="mt-1 text-sm text-muted-foreground">当有新任务发布或状态变更时将出现在这里</p>
                     </div>
                 )}
             </div>
@@ -548,7 +548,7 @@ export function TaskHall() {
                         {/* Detail */}
                         <div className="custom-scrollbar max-h-[400px] overflow-y-auto pl-2 pr-2">
                             {selectedAnnouncement ? (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div>
                                         <h3 className="text-lg font-bold leading-tight text-foreground">{selectedAnnouncement.title}</h3>
                                         <div className="mt-2 inline-flex items-center gap-2 rounded bg-background/50 px-2 py-1 font-mono text-xs text-muted-foreground">
@@ -563,7 +563,7 @@ export function TaskHall() {
                                     />
                                 </div>
                             ) : (
-                                <div className="flex h-full flex-col items-center justify-center space-y-3 text-muted-foreground opacity-50">
+                                <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground opacity-50">
                                     <FileText className="size-12 stroke-1" />
                                     <p className="text-sm">请选择左侧公告查看详情</p>
                                 </div>
