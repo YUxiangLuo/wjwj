@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Activity, Info } from "lucide-react";
 
 interface SensitivityAnalysisCardProps {
@@ -45,50 +46,50 @@ export function SensitivityAnalysisCard({
     };
 
     // 置信水平颜色映射
-    const confidenceColors: Record<string, string> = {
-        "90": "bg-emerald-500",
-        "95": "bg-blue-500",
-        "99": "bg-violet-500",
+    const confidenceDotClasses: Record<string, string> = {
+        "90": "bg-chart-2",
+        "95": "bg-chart-3",
+        "99": "bg-chart-4",
     };
 
     const cellHeatClasses = (intensity: number, isCurrent: boolean) => {
         if (isCurrent) {
-            return "bg-white dark:bg-slate-950 ring-2 ring-indigo-500 dark:ring-indigo-400 shadow-sm";
+            return "bg-background shadow-sm ring-2 ring-primary/40";
         }
-        if (intensity < 40) return "bg-indigo-50/95 dark:bg-indigo-950/45";
-        if (intensity < 55) return "bg-indigo-100/90 dark:bg-indigo-900/40";
-        if (intensity < 72) return "bg-indigo-200/85 dark:bg-indigo-800/35";
-        return "bg-indigo-300/80 dark:bg-indigo-700/45";
+        if (intensity < 40) return "bg-primary/5";
+        if (intensity < 55) return "bg-primary/10";
+        if (intensity < 72) return "bg-primary/15";
+        return "bg-primary/20";
     };
 
     return (
-        <Card className="rounded-2xl border border-indigo-200/90 bg-indigo-50/90 shadow-sm dark:border-indigo-900/50 dark:bg-slate-950">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-50">
+                        <Activity className="size-5 text-primary" />
+                        <CardTitle className="text-base text-foreground">
                             样本量敏感性分析
                         </CardTitle>
                     </div>
                 </div>
-                <CardDescription className="text-slate-700 dark:text-slate-300">
+                <CardDescription className="text-muted-foreground">
                     样本量随置信水平和允许误差的变化
                 </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-col gap-4">
                 {/* 热力图表格 */}
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100/90 dark:bg-slate-900/90">
-                                <th className="text-left py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">置信水平 \ 允许误差</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±1%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±2%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±3%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±5%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±7%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±10%</th>
+                            <tr className="border-b bg-muted/70">
+                                <th className="px-2 py-2 text-left font-medium text-foreground">置信水平 \ 允许误差</th>
+                                <th className="px-2 py-2 text-center font-medium text-foreground">±1%</th>
+                                <th className="px-2 py-2 text-center font-medium text-foreground">±2%</th>
+                                <th className="px-2 py-2 text-center font-medium text-foreground">±3%</th>
+                                <th className="px-2 py-2 text-center font-medium text-foreground">±5%</th>
+                                <th className="px-2 py-2 text-center font-medium text-foreground">±7%</th>
+                                <th className="px-2 py-2 text-center font-medium text-foreground">±10%</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -98,18 +99,19 @@ export function SensitivityAnalysisCard({
                                 return (
                                     <tr 
                                         key={confidenceLevel}
-                                        className={`border-b border-slate-200/80 dark:border-slate-800 ${
-                                            isCurrentConfidence ? "bg-white/60 dark:bg-slate-900/60" : ""
-                                        }`}
+                                        className={cn(
+                                            "border-b",
+                                            isCurrentConfidence && "bg-background/60",
+                                        )}
                                     >
-                                        <td className="py-2 px-2">
+                                        <td className="px-2 py-2">
                                             <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${confidenceColors[confidenceLevel] || "bg-slate-400"}`} />
-                                                <span className={`font-medium ${isCurrentConfidence ? "text-slate-900 dark:text-slate-100" : "text-slate-700 dark:text-slate-300"}`}>
+                                                <div className={cn("size-2 rounded-full", confidenceDotClasses[confidenceLevel] ?? "bg-muted-foreground")} />
+                                                <span className={cn("font-medium", isCurrentConfidence ? "text-foreground" : "text-muted-foreground")}>
                                                     {confidenceLevel}%
                                                 </span>
                                                 {isCurrentConfidence && (
-                                                    <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-800 dark:border-indigo-600 dark:text-indigo-200 bg-indigo-50 dark:bg-indigo-950/50">
+                                                    <Badge variant="outline" className="border-primary/30 bg-primary/10 text-xs text-primary">
                                                         当前
                                                     </Badge>
                                                 )}
@@ -120,15 +122,15 @@ export function SensitivityAnalysisCard({
                                             const intensity = getIntensity(item.sampleSize);
                                             
                                             return (
-                                                <td key={idx} className="py-1 px-1">
+                                                <td key={idx} className="px-1 py-1">
                                                     <div
-                                                        className={`
-                                                            rounded-lg py-2 px-2 text-center font-mono text-xs
-                                                            ${cellHeatClasses(intensity, isCurrentCell)}
-                                                            ${isCurrentCell ? "font-bold" : ""}
-                                                        `}
+                                                        className={cn(
+                                                            "rounded-lg px-2 py-2 text-center font-mono text-xs",
+                                                            cellHeatClasses(intensity, isCurrentCell),
+                                                            isCurrentCell && "font-bold",
+                                                        )}
                                                     >
-                                                        <span className="text-slate-900 dark:text-slate-100 tabular-nums">
+                                                        <span className="tabular-nums text-foreground">
                                                             {item.sampleSize.toLocaleString()}
                                                         </span>
                                                     </div>
@@ -143,9 +145,9 @@ export function SensitivityAnalysisCard({
                 </div>
 
                 {/* 说明 */}
-                <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 p-3">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-indigo-600 dark:text-indigo-400" />
-                    <div className="space-y-1">
+                <div className="flex items-start gap-2 rounded-xl border bg-background/80 p-3 text-xs text-foreground">
+                    <Info className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <div className="flex flex-col gap-1">
                         <p>
                             <span className="font-medium">颜色深浅</span>：颜色越深表示样本量越大。行/列高亮显示当前设置。
                         </p>
@@ -156,17 +158,17 @@ export function SensitivityAnalysisCard({
                 </div>
 
                 {/* 图例 */}
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-800 dark:text-slate-200">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-foreground">
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-emerald-500" />
+                        <div className="size-3 rounded bg-chart-2" />
                         <span>90% 置信度</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-blue-500" />
+                        <div className="size-3 rounded bg-chart-3" />
                         <span>95% 置信度</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-violet-500" />
+                        <div className="size-3 rounded bg-chart-4" />
                         <span>99% 置信度</span>
                     </div>
                 </div>
