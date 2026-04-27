@@ -372,25 +372,25 @@ export function TaskHall() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+                <Loader2 className="size-10 animate-spin text-primary" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-8">
+        <div className="flex flex-col gap-8">
             {latestUnread && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-primary/20 bg-primary/10 p-4">
                     <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-full bg-amber-500/20 text-amber-500 shrink-0">
-                            <AlertCircle className="w-5 h-5" />
+                        <div className="shrink-0 rounded-full bg-primary/20 p-2 text-primary">
+                            <AlertCircle className="size-5" />
                         </div>
                         <div>
-                            <div className="text-sm text-amber-500 font-medium font-mono tracking-wider uppercase text-[10px] mb-0.5">最新公告</div>
-                            <div className="text-sm text-amber-800 dark:text-amber-200 font-medium line-clamp-1">{latestUnread.title}</div>
+                            <div className="mb-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-primary">最新公告</div>
+                            <div className="line-clamp-1 text-sm font-medium text-foreground">{latestUnread.title}</div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="rounded-full text-amber-600 hover:text-amber-500 hover:bg-amber-500/10 shrink-0" onClick={() => setShowAnnouncements(true)}>
+                    <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setShowAnnouncements(true)}>
                         查看详情
                     </Button>
                 </div>
@@ -398,77 +398,73 @@ export function TaskHall() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="student-stats-section">
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors group" data-testid="student-stat-in-progress">
-                    <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-indigo-500/10 rounded-2xl text-indigo-500 group-hover:bg-indigo-500/20 group-hover:scale-110 transition-all duration-300">
-                            <FlaskConical className="w-6 h-6" />
+                <Card size="sm" className="transition-colors hover:ring-foreground/10" data-testid="student-stat-in-progress">
+                    <CardContent className="flex items-center gap-5">
+                        <div className="rounded-lg bg-primary/10 p-4 text-primary transition-all duration-300 group-hover/card:bg-primary/20 group-hover/card:scale-110">
+                            <FlaskConical className="size-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-500 transition-colors">{inProgressCount}</p>
-                            <p className="text-sm text-slate-500">进行中的实验</p>
+                            <p className="text-3xl font-bold text-foreground">{inProgressCount}</p>
+                            <p className="text-sm text-muted-foreground">进行中的实验</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors group" data-testid="student-stat-graded">
-                    <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-600 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all duration-300">
-                            <CheckCircle className="w-6 h-6" />
+                <Card size="sm" className="transition-colors hover:ring-foreground/10" data-testid="student-stat-graded">
+                    <CardContent className="flex items-center gap-5">
+                        <div className="rounded-lg bg-secondary p-4 text-secondary-foreground transition-all duration-300 group-hover/card:scale-110">
+                            <CheckCircle className="size-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 transition-colors">{gradedCount}</p>
-                            <p className="text-sm text-slate-500">已批改实验</p>
+                            <p className="text-3xl font-bold text-foreground">{gradedCount}</p>
+                            <p className="text-sm text-muted-foreground">已批改实验</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors group" data-testid="student-stat-average">
-                    <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-purple-500/10 rounded-2xl text-purple-600 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all duration-300">
-                            <Trophy className="w-6 h-6" />
+                <Card size="sm" className="transition-colors hover:ring-foreground/10" data-testid="student-stat-average">
+                    <CardContent className="flex items-center gap-5">
+                        <div className="rounded-lg bg-accent p-4 text-accent-foreground transition-all duration-300 group-hover/card:scale-110">
+                            <Trophy className="size-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-purple-600 transition-colors">{averageScore.toFixed(0) || "-"}</p>
-                            <p className="text-sm text-slate-500">平均得分</p>
+                            <p className="text-3xl font-bold text-foreground">{averageScore.toFixed(0) || "-"}</p>
+                            <p className="text-sm text-muted-foreground">平均得分</p>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Filter Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <LayoutDashboard className="w-5 h-5 text-indigo-500" />
-                    我的任务
-                </h3>
-                <div className="flex p-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg self-start sm:self-auto">
-                    <button
-                        onClick={() => setFilter("all")}
-                        data-testid="student-filter-all"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "all" ? "bg-slate-200 dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                    >
-                        全部
-                    </button>
-                    <button
-                        onClick={() => setFilter("in_progress")}
-                        data-testid="student-filter-in-progress"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "in_progress" ? "bg-slate-200 dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                    >
-                        进行中
-                    </button>
-                    <button
-                        onClick={() => setFilter("submitted")}
-                        data-testid="student-filter-submitted"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "submitted" ? "bg-slate-200 dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                    >
-                        已提交
-                    </button>
-                    <button
-                        onClick={() => setFilter("graded")}
-                        data-testid="student-filter-graded"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "graded" ? "bg-slate-200 dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
-                    >
-                        已批改
-                    </button>
+            <div className="flex flex-col gap-4">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                    <h3 className="flex items-center gap-2 text-xl font-semibold text-foreground">
+                        <LayoutDashboard className="size-5 text-primary" />
+                        我的任务
+                    </h3>
+                    <div className="flex self-start rounded-lg border border-border bg-background p-1 sm:self-auto">
+                        {[
+                            { key: "all", label: "全部", testId: "student-filter-all" },
+                            { key: "in_progress", label: "进行中", testId: "student-filter-in-progress" },
+                            { key: "submitted", label: "已提交", testId: "student-filter-submitted" },
+                            { key: "graded", label: "已批改", testId: "student-filter-graded" },
+                        ].map((item) => (
+                            <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => setFilter(item.key as typeof filter)}
+                                data-testid={item.testId}
+                                className={cn(
+                                    "rounded-md px-4 py-1.5 text-sm font-medium transition-all",
+                                    filter === item.key
+                                        ? "bg-muted text-foreground shadow-sm"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
+                <Separator />
             </div>
 
             {/* Task Grid */}
