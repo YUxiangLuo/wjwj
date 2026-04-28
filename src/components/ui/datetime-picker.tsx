@@ -1,13 +1,12 @@
 import * as React from "react";
 import { DayPicker } from "react-day-picker";
-import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { parsePickerValue, toLocalDateTimeString } from "@/lib/datetime";
+import { parsePickerValue, toLocalDateTimeString, type ChinaWallClockDateTime } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
 import "react-day-picker/style.css";
@@ -16,6 +15,14 @@ export { parseLocalDateTime } from "@/lib/datetime";
 
 const nativeTimeSelectClass =
     "flex h-9 w-full rounded-none border border-transparent border-b-input bg-transparent px-0 py-2 text-sm text-foreground outline-none transition-[color,border-color] focus-visible:border-b-ring disabled:cursor-not-allowed disabled:opacity-50";
+
+function dateCarrier(parts: Pick<ChinaWallClockDateTime, "year" | "month" | "day">) {
+    return new Date(parts.year, parts.month - 1, parts.day, 12, 0, 0, 0);
+}
+
+function formatLabel(parts: ChinaWallClockDateTime) {
+    return `${parts.year}年${parts.month}月${parts.day}日 ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`;
+}
 
 export interface DatetimePicker24Props {
     value: string;
@@ -41,21 +48,31 @@ export function DatetimePicker24({
     allowClear = true,
 }: DatetimePicker24Props) {
     const parsed = React.useMemo(() => parsePickerValue(value), [value]);
-    const hour = parsed?.getHours() ?? 12;
-    const minute = parsed?.getMinutes() ?? 0;
+    const defaultParts = React.useMemo(
+        () => {
+            const now = new Date();
+            return parsePickerValue(now.toISOString()) ?? {
+                year: now.getFullYear(),
+                month: now.getMonth() + 1,
+                day: now.getDate(),
+                hour: 12,
+                minute: 0,
+            };
+        },
+        []
+    );
+    const selectedDate = parsed ? dateCarrier(parsed) : undefined;
+    const defaultMonth = parsed ? selectedDate : dateCarrier(defaultParts);
+    const activeParts = parsed ?? { ...defaultParts, hour: 12, minute: 0 };
+    const hour = parsed?.hour ?? 12;
+    const minute = parsed?.minute ?? 0;
 
     const handleHourChange = (h: number) => {
-        const base = parsed ?? new Date();
-        const n = new Date(base);
-        n.setHours(h, minute, 0, 0);
-        onChange(toLocalDateTimeString(n));
+        onChange(toLocalDateTimeString({ ...activeParts, hour: h, minute }));
     };
 
     const handleMinuteChange = (m: number) => {
-        const base = parsed ?? new Date();
-        const n = new Date(base);
-        n.setHours(hour, m, 0, 0);
-        onChange(toLocalDateTimeString(n));
+        onChange(toLocalDateTimeString({ ...activeParts, hour, minute: m }));
     };
 
     const handleDateSelect = (d: Date | undefined) => {
@@ -63,12 +80,17 @@ export function DatetimePicker24({
             if (allowClear) onChange("");
             return;
         }
-        const n = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute, 0, 0);
-        onChange(toLocalDateTimeString(n));
+        onChange(toLocalDateTimeString({
+            year: d.getFullYear(),
+            month: d.getMonth() + 1,
+            day: d.getDate(),
+            hour,
+            minute,
+        }));
     };
 
     const label = parsed
-        ? format(parsed, "yyyy年M月d日 HH:mm", { locale: zhCN })
+        ? formatLabel(parsed)
         : placeholder;
 
     return (
@@ -97,9 +119,9 @@ export function DatetimePicker24({
                             mode="single"
                             locale={zhCN}
                             className="rounded-md"
-                            selected={parsed ?? undefined}
+                            selected={selectedDate}
                             onSelect={handleDateSelect}
-                            defaultMonth={parsed ?? new Date()}
+                            defaultMonth={defaultMonth}
                         />
                     </div>
                     <div className="flex min-w-[200px] flex-col gap-3 border-t border-border pt-3 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">

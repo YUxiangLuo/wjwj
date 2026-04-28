@@ -4,8 +4,8 @@ import {
     safeParseDate, parseDeadline, formatDateTimeDisplay, formatDateDisplay, formatTimeDisplay,
 } from "./format";
 
-test("formatLocalDateStamp uses local calendar date", () => {
-    expect(formatLocalDateStamp(new Date(2026, 2, 9, 4, 25, 6))).toBe("2026-03-09");
+test("formatLocalDateStamp uses Asia/Shanghai calendar date", () => {
+    expect(formatLocalDateStamp(new Date("2026-03-09T23:00:00Z"))).toBe("2026-03-10");
 });
 
 test("formatSaveTime returns a hh:mm:ss string", () => {
@@ -95,8 +95,20 @@ test("parseDeadline appends end-of-day in Asia/Shanghai for date-only strings", 
     expect(d!.toISOString()).toBe("2026-06-15T15:59:00.000Z");
 });
 
+test("parseDeadline treats timezone-less date-times as Asia/Shanghai", () => {
+    const d = parseDeadline("2026-06-15T10:30:00");
+    expect(d).not.toBeNull();
+    expect(d!.toISOString()).toBe("2026-06-15T02:30:00.000Z");
+});
+
 test("parseDeadline returns null for invalid strings", () => {
     expect(parseDeadline("invalid")).toBeNull();
+});
+
+test("parseDeadline rejects impossible calendar dates instead of normalizing them", () => {
+    expect(parseDeadline("2026-02-30")).toBeNull();
+    expect(parseDeadline("2026-02-30T10:30:00")).toBeNull();
+    expect(parseDeadline("2026-02-30T10:30:00Z")).toBeNull();
 });
 
 // --- formatDateTimeDisplay tests ---

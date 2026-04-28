@@ -1,6 +1,6 @@
 export const APP_TIMEZONE = "Asia/Shanghai";
 /** Must match APP_TIMEZONE — used in startOfDayCN to construct an ISO-8601 timestamp. */
-const APP_TIMEZONE_OFFSET = "+08:00";
+export const APP_TIMEZONE_OFFSET = "+08:00";
 
 const SAVE_TIME_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
     timeZone: APP_TIMEZONE,
@@ -15,11 +15,7 @@ export function formatSaveTime(): string {
 }
 
 export function formatLocalDateStamp(date: Date = new Date()): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+    return formatDateStampCN(date);
 }
 
 const DATE_STAMP_CN_FORMATTER = new Intl.DateTimeFormat("en", {
@@ -96,13 +92,49 @@ export function safeParseDate(value: string | Date | null | undefined): Date | n
     return Number.isFinite(d.getTime()) ? d : null;
 }
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})?$/;
+
+function isValidCalendarDate(year: number, month: number, day: number) {
+    const d = new Date(Date.UTC(year, month - 1, day));
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
+}
+
+function isValidDateTimeMatch(match: RegExpExecArray) {
+    const [, ys, ms, ds, hs = "0", mins = "0", ss = "0"] = match;
+    const year = Number(ys);
+    const month = Number(ms);
+    const day = Number(ds);
+    const hour = Number(hs);
+    const minute = Number(mins);
+    const second = Number(ss);
+    return Number.isInteger(year)
+        && isValidCalendarDate(year, month, day)
+        && hour >= 0 && hour <= 23
+        && minute >= 0 && minute <= 59
+        && second >= 0 && second <= 59;
+}
+
 /**
  * Parse a deadline string: date-only strings (no 'T') are treated as end-of-day
  * in Asia/Shanghai by appending T23:59:00+08:00.
  */
 export function parseDeadline(deadline: string | null): Date | null {
     if (!deadline) return null;
-    const raw = deadline.includes("T") ? deadline : `${deadline}T23:59:00${APP_TIMEZONE_OFFSET}`;
+    const value = deadline.trim();
+    if (!value) return null;
+
+    const dateOnlyMatch = DATE_ONLY_PATTERN.exec(value);
+    if (dateOnlyMatch) {
+        if (!isValidDateTimeMatch(dateOnlyMatch)) return null;
+        return safeParseDate(`${value}T23:59:00${APP_TIMEZONE_OFFSET}`);
+    }
+
+    const dateTimeMatch = DATE_TIME_PATTERN.exec(value);
+    if (!dateTimeMatch || !isValidDateTimeMatch(dateTimeMatch)) return null;
+
+    const hasTimeZone = /(?:Z|[+-]\d{2}:\d{2})$/.test(value);
+    const raw = hasTimeZone ? value : `${value}${APP_TIMEZONE_OFFSET}`;
     return safeParseDate(raw);
 }
 

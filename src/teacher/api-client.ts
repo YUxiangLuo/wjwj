@@ -389,13 +389,13 @@ export const teacherApi = {
 
     // Tasks
     getTasks: () => request<Task[]>("/api/teacher/tasks"),
-    /** `deadline` 为 ISO-8601 UTC 字符串（由本地时间 `toISOString()` 得到），可选 */
+    /** `deadline` 为 ISO-8601 UTC 字符串（由中国墙钟时间转换得到），可选 */
     createTask: (data: { topicId: number; classIds: number[]; deadline?: string }) =>
         request<{ success: boolean }>("/api/teacher/tasks", {
             method: "POST",
             body: JSON.stringify(data)
         }),
-    /** `deadline` 为 ISO-8601 UTC 字符串 */
+    /** `deadline` 为 ISO-8601 UTC 字符串（必须带 Z 或显式时区偏移） */
     extendTaskDeadline: (taskId: number, deadline: string) =>
         request<{ success: boolean }>(`/api/teacher/tasks/${taskId}/extend`, {
             method: "PUT",

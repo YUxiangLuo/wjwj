@@ -88,6 +88,46 @@ test("task publish validates that both topic and classes are selected", async ()
     expect(operations).toHaveLength(0);
 });
 
+test("task publish rejects timezone-less deadline strings before database work", async () => {
+    const { module, operations } = await loadTaskRoutes();
+    const response = await module.taskRoutes.POST!(createJsonRequest(
+        "https://example.com/api/teacher/tasks",
+        "POST",
+        { topicId: 12, classIds: [101], deadline: "2999-03-23T14:30" }
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "VALIDATION_ERROR",
+            message: "截止时间无效",
+        },
+    });
+    expect(operations).toHaveLength(0);
+});
+
+test("task publish rejects impossible deadline dates before database work", async () => {
+    const { module, operations } = await loadTaskRoutes();
+    const response = await module.taskRoutes.POST!(createJsonRequest(
+        "https://example.com/api/teacher/tasks",
+        "POST",
+        { topicId: 12, classIds: [101], deadline: "2999-02-30T14:30:00Z" }
+    ));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "VALIDATION_ERROR",
+            message: "截止时间无效",
+        },
+    });
+    expect(operations).toHaveLength(0);
+});
+
 test("task publish inserts new tasks and notifies only newly assigned classes", async () => {
     const deadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const { module, operations, notifications } = await loadTaskRoutes({
@@ -240,6 +280,29 @@ test("task extend clears old deadline reminders before notifying students about 
             relatedId: 88,
         },
     });
+});
+
+test("task extend rejects timezone-less deadline strings before database work", async () => {
+    const { module, operations } = await loadTaskRoutes();
+    const request = createJsonRequest(
+        "https://example.com/api/teacher/tasks/88/extend",
+        "PUT",
+        { deadline: "2999-03-23T14:30" }
+    ) as Request & { params?: Record<string, string> };
+    request.params = { id: "88" };
+
+    const response = await module.taskExtendRoutes.PUT!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({
+        success: false,
+        error: {
+            code: "VALIDATION_ERROR",
+            message: "截止时间无效",
+        },
+    });
+    expect(operations).toHaveLength(0);
 });
 
 test("task publish revives soft-deleted tasks instead of inserting duplicates", async () => {

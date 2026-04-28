@@ -14,6 +14,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
+const timestamptz = <TName extends string>(name: TName) =>
+    timestamp(name, { mode: "date", withTimezone: true });
+
 // ============================================================
 // 1. User Domain
 // ============================================================
@@ -26,9 +29,9 @@ export const admin = pgTable(
         password: varchar("password", { length: 255 }).notNull(),
         isFirstLogin: smallint("is_first_login").notNull().default(1),
         loginFailCount: smallint("login_fail_count").notNull().default(0),
-        lockedUntil: timestamp("locked_until", { mode: "date" }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        lockedUntil: timestamptz("locked_until"),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     }
 );
 
@@ -42,9 +45,9 @@ export const teacher = pgTable(
         isFirstLogin: smallint("is_first_login").notNull().default(1),
         status: smallint("status").notNull().default(1), // 1-Normal, 0-Suspended
         loginFailCount: smallint("login_fail_count").notNull().default(0),
-        lockedUntil: timestamp("locked_until", { mode: "date" }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        lockedUntil: timestamptz("locked_until"),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         statusIdx: index("idx_teacher_status").on(t.status),
@@ -68,9 +71,9 @@ export const assistant = pgTable(
         isFirstLogin: smallint("is_first_login").notNull().default(1),
         status: smallint("status").notNull().default(1),
         loginFailCount: smallint("login_fail_count").notNull().default(0),
-        lockedUntil: timestamp("locked_until", { mode: "date" }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        lockedUntil: timestamptz("locked_until"),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         statusIdx: index("idx_assistant_status").on(t.status),
@@ -98,10 +101,10 @@ export const student = pgTable(
         isFirstLogin: smallint("is_first_login").notNull().default(1),
         status: smallint("status").notNull().default(1),
         loginFailCount: smallint("login_fail_count").notNull().default(0),
-        lockedUntil: timestamp("locked_until", { mode: "date" }),
-        deletedAt: timestamp("deleted_at", { mode: "date" }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        lockedUntil: timestamptz("locked_until"),
+        deletedAt: timestamptz("deleted_at"),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         classIdIdx: index("idx_student_class_id").on(t.classId),
@@ -126,8 +129,8 @@ export const semester = pgTable("semester", {
     id: bigserial("id", { mode: "number" }).primaryKey(),
     name: varchar("name", { length: 20 }).notNull().unique(),
     isCurrent: smallint("is_current").notNull().default(0),
-    createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+    createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
 });
 
 export const semesterRelations = relations(semester, ({ many }) => ({
@@ -141,8 +144,8 @@ export const class_ = pgTable(
         name: varchar("name", { length: 100 }).notNull(),
         semesterId: bigint("semester_id", { mode: "number" }).notNull(),
         teacherId: bigint("teacher_id", { mode: "number" }).notNull(),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         semesterIdIdx: index("idx_class_semester_id").on(t.semesterId),
@@ -170,7 +173,7 @@ export const assistantClass = pgTable(
         id: bigserial("id", { mode: "number" }).primaryKey(),
         assistantId: bigint("assistant_id", { mode: "number" }).notNull(),
         classId: bigint("class_id", { mode: "number" }).notNull(),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         uniqueAssistantClass: uniqueIndex("uk_assistant_class").on(t.assistantId, t.classId),
@@ -198,7 +201,7 @@ export const studentTransfer = pgTable(
         toClassId: bigint("to_class_id", { mode: "number" }).notNull(),
         reason: varchar("reason", { length: 500 }),
         operatedBy: bigint("operated_by", { mode: "number" }).notNull(), // Admin ID
-        transferredAt: timestamp("transferred_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        transferredAt: timestamptz("transferred_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         studentIdx: index("idx_student_transfer_student").on(t.studentId),
@@ -226,10 +229,10 @@ export const topic = pgTable(
         status: smallint("status").notNull().default(0), // 0-Draft, 1-Published
         isDeleted: smallint("is_deleted").notNull().default(0), // Compatible V2
         lockedBy: bigint("locked_by", { mode: "number" }),
-        lockedAt: timestamp("locked_at", { mode: "date" }),
-        deletedAt: timestamp("deleted_at", { mode: "date" }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        lockedAt: timestamptz("locked_at"),
+        deletedAt: timestamptz("deleted_at"),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         teacherIdIdx: index("idx_topic_teacher_id").on(t.teacherId),
@@ -256,7 +259,7 @@ export const topicAttachment = pgTable(
         filePath: varchar("file_path", { length: 500 }).notNull(),
         fileType: varchar("file_type", { length: 50 }).notNull(),
         fileSize: bigint("file_size", { mode: "number" }).notNull().default(0),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         topicIdIdx: index("idx_topic_attachment_topic_id").on(t.topicId),
@@ -276,11 +279,11 @@ export const task = pgTable(
         id: bigserial("id", { mode: "number" }).primaryKey(),
         topicId: bigint("topic_id", { mode: "number" }).notNull(),
         classId: bigint("class_id", { mode: "number" }).notNull(),
-        openTime: timestamp("open_time", { mode: "date" }),
-        deadline: timestamp("deadline", { mode: "date" }),
-        deletedAt: timestamp("deleted_at", { mode: "date" }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        openTime: timestamptz("open_time"),
+        deadline: timestamptz("deadline"),
+        deletedAt: timestamptz("deleted_at"),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         uniqueTopicClass: uniqueIndex("uk_topic_class").on(t.topicId, t.classId),
@@ -318,14 +321,14 @@ export const experiment = pgTable(
         samplingResults: jsonb("sampling_results"),
         samplingDataPath: varchar("sampling_data_path", { length: 500 }),
         reportContent: text("report_content"),
-        stage1CompletedAt: timestamp("stage1_completed_at", { mode: "date" }),
-        stage2CompletedAt: timestamp("stage2_completed_at", { mode: "date" }),
-        stage3CompletedAt: timestamp("stage3_completed_at", { mode: "date" }),
-        stage4CompletedAt: timestamp("stage4_completed_at", { mode: "date" }),
-        lastSavedAt: timestamp("last_saved_at", { mode: "date" }),
+        stage1CompletedAt: timestamptz("stage1_completed_at"),
+        stage2CompletedAt: timestamptz("stage2_completed_at"),
+        stage3CompletedAt: timestamptz("stage3_completed_at"),
+        stage4CompletedAt: timestamptz("stage4_completed_at"),
+        lastSavedAt: timestamptz("last_saved_at"),
         version: integer("version").notNull().default(1),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         uniqueStudentTask: uniqueIndex("uk_student_task").on(t.studentId, t.taskId),
@@ -362,8 +365,8 @@ export const submission = pgTable(
         pdfSnapshotStudentName: varchar("pdf_snapshot_student_name", { length: 100 }),
         pdfStatus: smallint("pdf_status").notNull().default(0), // 0-Pending, 1-Generating, 2-Ready, 3-Failed
         pdfGenerationAttempts: integer("pdf_generation_attempts").notNull().default(0),
-        pdfLastAttemptAt: timestamp("pdf_last_attempt_at", { mode: "date" }),
-        pdfGeneratedAt: timestamp("pdf_generated_at", { mode: "date" }),
+        pdfLastAttemptAt: timestamptz("pdf_last_attempt_at"),
+        pdfGeneratedAt: timestamptz("pdf_generated_at"),
         pdfError: varchar("pdf_error", { length: 500 }),
         scoreQuestionnaire: numeric("score_questionnaire", { precision: 5, scale: 2 }),
         scoreProcess: numeric("score_process", { precision: 5, scale: 2 }),
@@ -376,9 +379,9 @@ export const submission = pgTable(
         gradedById: bigint("graded_by_id", { mode: "number" }),
         lockedByType: smallint("locked_by_type"),
         lockedById: bigint("locked_by_id", { mode: "number" }),
-        lockedAt: timestamp("locked_at", { mode: "date" }),
-        submittedAt: timestamp("submitted_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        gradedAt: timestamp("graded_at", { mode: "date" }),
+        lockedAt: timestamptz("locked_at"),
+        submittedAt: timestamptz("submitted_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        gradedAt: timestamptz("graded_at"),
     },
     (t) => ({
         experimentIdIdx: index("idx_submission_experiment_id").on(t.experimentId),
@@ -408,8 +411,8 @@ export const announcement = pgTable(
         content: text("content").notNull(),
         targetScope: varchar("target_scope", { length: 20 }).notNull().default("all"),
         status: smallint("status").notNull().default(1),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     },
     (t) => ({
         statusIdx: index("idx_announcement_status").on(t.status),
@@ -423,7 +426,7 @@ export const announcementRead = pgTable(
         announcementId: bigint("announcement_id", { mode: "number" }).notNull(),
         userType: smallint("user_type").notNull(),
         userId: bigint("user_id", { mode: "number" }).notNull(),
-        readAt: timestamp("read_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        readAt: timestamptz("read_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         uniqueAnnouncementUser: uniqueIndex("uk_announcement_user").on(t.announcementId, t.userType, t.userId),
@@ -437,7 +440,7 @@ export const loginLog = pgTable(
         id: bigserial("id", { mode: "number" }).primaryKey(),
         userType: smallint("user_type").notNull(),
         userId: bigint("user_id", { mode: "number" }).notNull(),
-        loginAt: timestamp("login_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        loginAt: timestamptz("login_at").notNull().default(sql`CURRENT_TIMESTAMP`),
         ipAddress: varchar("ip_address", { length: 45 }),
         userAgent: varchar("user_agent", { length: 500 }),
     },
@@ -453,7 +456,7 @@ export const systemMetrics = pgTable(
         id: bigserial("id", { mode: "number" }).primaryKey(),
         metricType: varchar("metric_type", { length: 50 }).notNull(),
         metricValue: numeric("metric_value", { precision: 10, scale: 2 }).notNull(),
-        recordedAt: timestamp("recorded_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        recordedAt: timestamptz("recorded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         typeTimeIdx: index("idx_system_metrics_type_time").on(t.metricType, t.recordedAt),
@@ -471,7 +474,7 @@ export const operationLog = pgTable(
         targetId: bigint("target_id", { mode: "number" }),
         detail: jsonb("detail"),
         ipAddress: varchar("ip_address", { length: 45 }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         userIdx: index("idx_operation_log_user").on(t.userType, t.userId),
@@ -488,9 +491,9 @@ export const userSession = pgTable(
         userType: smallint("user_type").notNull(),
         userId: bigint("user_id", { mode: "number" }).notNull(),
         deviceInfo: varchar("device_info", { length: 500 }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
-        expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
-        lastActiveAt: timestamp("last_active_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+        expiresAt: timestamptz("expires_at").notNull(),
+        lastActiveAt: timestamptz("last_active_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         userIdx: index("idx_user_session_user").on(t.userType, t.userId),
@@ -510,8 +513,8 @@ export const notification = pgTable(
         relatedType: varchar("related_type", { length: 50 }),
         relatedId: bigint("related_id", { mode: "number" }),
         isRead: smallint("is_read").notNull().default(0),
-        readAt: timestamp("read_at", { mode: "date" }),
-        createdAt: timestamp("created_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`),
+        readAt: timestamptz("read_at"),
+        createdAt: timestamptz("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     },
     (t) => ({
         receiverIdx: index("idx_notification_receiver").on(t.receiverType, t.receiverId, t.isRead),
@@ -528,6 +531,6 @@ export const systemConfig = pgTable(
         configValue: text("config_value").notNull(),
         valueType: varchar("value_type", { length: 20 }).notNull().default("string"),
         description: varchar("description", { length: 500 }),
-        updatedAt: timestamp("updated_at", { mode: "date" }).notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
+        updatedAt: timestamptz("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()),
     }
 );

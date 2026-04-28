@@ -10,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { systemApi, type SystemMetrics, type SystemLog } from "../api-client";
 import { toast } from "sonner";
 import { createSingleFlight } from "../single-flight";
+import { formatDateStampCN } from "@/utils/format";
 
 const defaultMetrics: SystemMetrics = {
     cpu: 0,
@@ -149,7 +150,7 @@ export function SystemMonitor() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `monitor-report-${new Date().toISOString().slice(0, 10)}.txt`;
+        a.download = `monitor-report-${formatDateStampCN()}.txt`;
         document.body.appendChild(a);
         a.click();
         a.remove();

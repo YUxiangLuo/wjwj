@@ -25,6 +25,43 @@ function fail(message: string, code: string, status = 400): TaskServiceFailure {
     return { ok: false, message, code, status };
 }
 
+const ZONED_ISO_INSTANT_PATTERN =
+    /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
+
+function isValidCalendarDate(year: number, month: number, day: number) {
+    const d = new Date(Date.UTC(year, month - 1, day));
+    return d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day;
+}
+
+function parseZonedIsoInstant(value: string) {
+    const trimmed = value.trim();
+    const match = ZONED_ISO_INSTANT_PATTERN.exec(trimmed);
+    if (!match) return null;
+    const [, ys, ms, ds, hs, mins, ss = "0", zone] = match;
+    const year = Number(ys);
+    const month = Number(ms);
+    const day = Number(ds);
+    const hour = Number(hs);
+    const minute = Number(mins);
+    const second = Number(ss);
+    if (
+        !Number.isInteger(year) ||
+        !isValidCalendarDate(year, month, day) ||
+        hour < 0 || hour > 23 ||
+        minute < 0 || minute > 59 ||
+        second < 0 || second > 59
+    ) {
+        return null;
+    }
+    if (zone && zone !== "Z") {
+        const zoneHour = Number(zone.slice(1, 3));
+        const zoneMinute = Number(zone.slice(4, 6));
+        if (zoneHour > 23 || zoneMinute > 59) return null;
+    }
+    const date = new Date(trimmed);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export async function publishTopicTasks(params: {
     teacherId: number;
     topicId: number;
@@ -33,6 +70,14 @@ export async function publishTopicTasks(params: {
 }): Promise<TaskPublishSuccess | TaskServiceFailure> {
     if (!params.topicId || !params.classIds.length) {
         return fail("请选择课题和班级", "VALIDATION_ERROR");
+    }
+
+    const deadlineDate = params.deadline?.trim() ? parseZonedIsoInstant(params.deadline) : null;
+    if (params.deadline?.trim() && !deadlineDate) {
+        return fail("截止时间无效", "VALIDATION_ERROR");
+    }
+    if (deadlineDate && deadlineDate <= new Date()) {
+        return fail("截止时间必须晚于当前时间", "VALIDATION_ERROR");
     }
 
     const [topicRow] = await db
@@ -68,15 +113,6 @@ export async function publishTopicTasks(params: {
         .where(and(eq(class_.teacherId, params.teacherId), sql`${class_.id} IN (${sql.join(params.classIds, sql`, `)})`));
     if (allowedClasses.length !== params.classIds.length) {
         return fail("存在无权限的班级", "FORBIDDEN", 403);
-    }
-
-    // 教师端传 ISO-8601 UTC（如 2026-03-23T06:30:00.000Z）；与绝对时刻比较、入库一致
-    const deadlineDate = params.deadline?.trim() ? new Date(params.deadline.trim()) : null;
-    if (deadlineDate && Number.isNaN(deadlineDate.getTime())) {
-        return fail("截止时间无效", "VALIDATION_ERROR");
-    }
-    if (deadlineDate && deadlineDate <= new Date()) {
-        return fail("截止时间必须晚于当前时间", "VALIDATION_ERROR");
     }
 
     const rowsForTopic = await db
@@ -144,8 +180,8 @@ export async function extendTopicTaskDeadline(params: {
         return fail("请输入截止时间", "VALIDATION_ERROR");
     }
 
-    const newDeadline = new Date(params.deadline.trim());
-    if (Number.isNaN(newDeadline.getTime())) {
+    const newDeadline = parseZonedIsoInstant(params.deadline);
+    if (!newDeadline) {
         return fail("截止时间无效", "VALIDATION_ERROR");
     }
 
