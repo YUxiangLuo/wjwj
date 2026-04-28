@@ -1,5 +1,5 @@
 import { expect, mock, test } from "bun:test";
-import { assistant, student } from "../../db/schema";
+import { assistant, class_, semester, student } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function withParams(request: Request, params: Record<string, string>) {
@@ -33,6 +33,27 @@ async function loadClassroomRoutes(options: {
     const module = await import("./classroom");
     return { module, operations };
 }
+
+test("class list groups joined semester field for PostgreSQL", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [[{
+            id: 3,
+            name: "统计学原理 A班",
+            semester: "2026 春季",
+            studentCount: 12,
+            createdAt: new Date("2026-03-01T00:00:00.000Z"),
+        }]],
+    });
+
+    const response = await module.classRoutes.GET!(new Request("https://example.com/api/teacher/classes"));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toHaveLength(1);
+
+    const query = operations.find((operation) => operation.kind === "select");
+    expect(query?.groupBy).toEqual([class_.id, semester.id]);
+});
 
 test("student password reset also clears lock state", async () => {
     const { module, operations } = await loadClassroomRoutes({

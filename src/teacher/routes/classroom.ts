@@ -28,7 +28,7 @@ const classRoutes: RouteDefinition = {
             .leftJoin(semester, eq(class_.semesterId, semester.id))
             .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
             .where(eq(class_.teacherId, currentTeacherId))
-            .groupBy(class_.id)
+            .groupBy(class_.id, semester.id)
             .orderBy(desc(class_.createdAt));
 
         return json(rows);

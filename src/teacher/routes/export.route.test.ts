@@ -1,5 +1,5 @@
 import { expect, mock, test } from "bun:test";
-import { semester } from "../../db/schema";
+import { class_, semester, task, topic } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
 
 async function loadExportRoutes(options: {
@@ -66,6 +66,7 @@ test("grade export preview accepts semester filter and joins semester data", asy
             expect.objectContaining({ type: "innerJoin", table: semester }),
         ])
     );
+    expect(query?.groupBy).toEqual([task.id, topic.id, class_.id]);
 });
 
 test("grade export excel uses local date stamp for download filename", async () => {

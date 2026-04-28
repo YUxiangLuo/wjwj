@@ -14,14 +14,13 @@ async function loadTaskRoutes(options: {
     select?: unknown[];
     update?: unknown[];
 } = {}) {
+    mock.restore();
     const { db, operations } = createMockDb({
         select: options.select,
         update: options.update,
     });
     const notifications: Array<{ classIds: number[]; payload: Record<string, unknown> }> = [];
-
-    mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({
+    const authMock = {
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         notifyStudentsByClassIds: async (classIds: number[], payload: Record<string, unknown>) => {
@@ -32,11 +31,42 @@ async function loadTaskRoutes(options: {
         isLockExpired: () => true,
         TEACHER_USER_TYPE: 2,
         ASSISTANT_USER_TYPE: 3,
-    }));
+    };
+
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => authMock);
+    mock.module("../routes/auth", () => authMock);
+    mock.module(`${process.cwd()}/src/teacher/routes/auth.ts`, () => authMock);
 
     const module = await import("./topic-task");
     return { module, operations, notifications };
 }
+
+test("task list groups all joined non-aggregate fields for PostgreSQL", async () => {
+    const { module, operations } = await loadTaskRoutes({
+        select: [[{
+            id: 88,
+            topicId: 12,
+            classId: 101,
+            topic: "抽样方法课题",
+            className: "统计学原理 A班",
+            publishedAt: new Date("2026-03-01T00:00:00.000Z"),
+            deadline: null,
+            total: 10,
+            completed: 4,
+            pending: 2,
+        }]],
+    });
+
+    const response = await module.taskRoutes.GET!(new Request("https://example.com/api/teacher/tasks"));
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(200);
+    expect(payload.data).toHaveLength(1);
+
+    const query = operations.find((operation) => operation.kind === "select");
+    expect(query?.groupBy).toHaveLength(3);
+});
 
 test("task publish validates that both topic and classes are selected", async () => {
     const { module, operations } = await loadTaskRoutes();

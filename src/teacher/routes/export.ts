@@ -152,7 +152,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
             .innerJoin(semester, eq(class_.semesterId, semester.id))
             .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
             .where(conditions.length === 1 ? conditions[0]! : and(...conditions))
-            .groupBy(task.id);
+            .groupBy(task.id, topic.id, class_.id);
         return json(rows.map((r) => ({
             taskId: r.taskId,
             topicId: r.topicId,

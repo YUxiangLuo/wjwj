@@ -83,7 +83,7 @@ export async function listTeacherTasks(teacherId: number) {
                 isNull(topic.deletedAt)
             )
         )
-        .groupBy(task.id)
+        .groupBy(task.id, topic.name, class_.name)
         .orderBy(desc(task.createdAt));
 }
 
