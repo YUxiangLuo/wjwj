@@ -1,3 +1,4 @@
+Add /home/alice/.bun/bin to PATH before you run clis
 
 Default to using Bun instead of Node.js.
 
