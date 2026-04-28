@@ -10,6 +10,7 @@ import {
     isSecureRequest,
     json,
     parseBody,
+    rejectCrossSiteRequest,
 } from "../../server/http";
 import { getConfigNumber } from "../../server/system-config";
 import {
@@ -132,6 +133,8 @@ function wrapAdminRoute(handler?: RouteHandler): RouteHandler | undefined {
     }
 
     return async (req) => {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
         const auth = await requireAdminAuth(req);
         if (auth.error) return auth.error;
         return handler(req);
@@ -144,6 +147,8 @@ function wrapAdminRouteAllowFirstLogin(handler?: RouteHandler): RouteHandler | u
     }
 
     return async (req) => {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
         const auth = await requireAdminAuth(req, { allowFirstLogin: true });
         if (auth.error) return auth.error;
         return handler(req);
@@ -170,6 +175,9 @@ export function withAdminAuthAllowFirstLogin(routes: RouteDefinition): RouteDefi
 
 const adminLoginRoutes: RouteDefinition = {
     async POST(req) {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
+
         const body = await parseBody<{ username: string; password: string }>(req);
         const username = body.username?.trim();
         const password = body.password ?? "";
@@ -252,6 +260,9 @@ const adminMeRoutes: RouteDefinition = {
 
 const adminLogoutRoutes: RouteDefinition = {
     async POST(req) {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
+
         const token = readSessionToken(req, {
             cookieName: ADMIN_SESSION_COOKIE,
             headerName: "x-admin-session",

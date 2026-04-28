@@ -4,6 +4,7 @@
  */
 
 import { shouldDispatchSessionExpired, createSessionExpiredInterceptor } from "@/lib/session-expired";
+import { parseJsonApiResponse } from "@/lib/api-response";
 import type { Question } from "@/lib/questionnaire-types";
 import type { QuestionnaireData, SamplePlanData, SamplingResultsData } from "../student/api-client";
 
@@ -250,9 +251,7 @@ export function shouldDispatchTeacherSessionExpired(
 }
 
 async function parseApiResponse<T>(url: string, res: Response): Promise<ApiResponse<T>> {
-    const data = await res.json();
-    interceptSessionExpired(url, res.status, data as ApiResponse<unknown>);
-    return data as ApiResponse<T>;
+    return await parseJsonApiResponse<T>(url, res, interceptSessionExpired) as ApiResponse<T>;
 }
 
 async function request<T>(

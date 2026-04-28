@@ -4,6 +4,7 @@
  */
 
 import { shouldDispatchSessionExpired, createSessionExpiredInterceptor } from "@/lib/session-expired";
+import { parseJsonApiResponse } from "@/lib/api-response";
 
 // ============================================================
 // Types
@@ -141,20 +142,7 @@ async function request<T>(
             ...options,
         });
 
-        const contentType = res.headers.get("content-type") ?? "";
-        if (!contentType.includes("application/json")) {
-            return {
-                success: false,
-                error: {
-                    code: "INVALID_RESPONSE",
-                    message: `服务器返回了非预期的响应 (${res.status})`,
-                },
-            };
-        }
-
-        const data = await res.json();
-        interceptSessionExpired(url, res.status, data as ApiResponse<unknown>);
-        return data as ApiResponse<T>;
+        return await parseJsonApiResponse<T>(url, res, interceptSessionExpired) as ApiResponse<T>;
     } catch (error) {
         return {
             success: false,

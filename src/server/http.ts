@@ -6,6 +6,55 @@ export function error(message: string, code: string, status = 400): Response {
     return Response.json({ success: false, error: { code, message } }, { status });
 }
 
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+function getHeaderFirstValue(req: Request, name: string) {
+    return req.headers.get(name)?.split(",")[0]?.trim() || null;
+}
+
+function getRequestOrigin(req: Request) {
+    const url = new URL(req.url);
+    const forwardedProto = getHeaderFirstValue(req, "x-forwarded-proto");
+    const forwardedHost = getHeaderFirstValue(req, "x-forwarded-host");
+    const protocol = forwardedProto || url.protocol.replace(/:$/, "");
+    const host = forwardedHost || req.headers.get("host") || url.host;
+    return new URL(`${protocol}://${host}`).origin;
+}
+
+function parseOrigin(value: string | null) {
+    if (!value || value === "null") return null;
+    try {
+        return new URL(value).origin;
+    } catch {
+        return null;
+    }
+}
+
+export function isSameOriginWriteRequest(req: Request) {
+    if (SAFE_METHODS.has(req.method.toUpperCase())) return true;
+
+    const secFetchSite = req.headers.get("sec-fetch-site")?.trim().toLowerCase();
+    if (secFetchSite === "cross-site") return false;
+
+    const expectedOrigin = getRequestOrigin(req);
+    const origin = req.headers.get("origin");
+    if (origin !== null) {
+        return parseOrigin(origin) === expectedOrigin;
+    }
+
+    const referer = req.headers.get("referer");
+    if (referer !== null) {
+        return parseOrigin(referer) === expectedOrigin;
+    }
+
+    return true;
+}
+
+export function rejectCrossSiteRequest(req: Request): Response | null {
+    if (isSameOriginWriteRequest(req)) return null;
+    return error("跨站请求已拒绝", "CSRF_ORIGIN_MISMATCH", 403);
+}
+
 export async function parseBody<T>(req: Request): Promise<T> {
     return req.json() as Promise<T>;
 }

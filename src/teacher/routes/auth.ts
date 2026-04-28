@@ -9,6 +9,7 @@ import {
     isSecureRequest,
     json,
     parseBody,
+    rejectCrossSiteRequest,
 } from "../../server/http";
 import { getConfigNumber } from "../../server/system-config";
 import {
@@ -320,6 +321,8 @@ function wrapTeacherRoute(handler?: RouteHandler): RouteHandler | undefined {
     }
 
     return async (req) => {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
         const auth = await requireTeacherAuth(req);
         if (auth.error) return auth.error;
         return handler(req);
@@ -332,6 +335,8 @@ function wrapTeacherRouteAllowFirstLogin(handler?: RouteHandler): RouteHandler |
     }
 
     return async (req) => {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
         const auth = await requireTeacherAuth(req, { allowFirstLogin: true });
         if (auth.error) return auth.error;
         return handler(req);
@@ -344,6 +349,8 @@ function wrapPrimaryTeacherRoute(handler?: RouteHandler): RouteHandler | undefin
     }
 
     return async (req) => {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
         const auth = await requirePrimaryTeacher(req);
         if (auth.error) return auth.error;
         return handler(req);
@@ -489,6 +496,9 @@ async function handleAssistantLogin(req: Request, a: typeof assistant.$inferSele
 
 const teacherLoginRoutes: RouteDefinition = {
     async POST(req) {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
+
         const body = await parseBody<{ employeeId: string; password: string }>(req);
         const employeeId = body.employeeId?.trim();
         const password = body.password ?? "";
@@ -523,6 +533,9 @@ const teacherMeRoutes: RouteDefinition = {
 
 const teacherLogoutRoutes: RouteDefinition = {
     async POST(req) {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
+
         const token = readSessionToken(req, {
             cookieName: TEACHER_SESSION_COOKIE,
             headerName: "x-teacher-session",

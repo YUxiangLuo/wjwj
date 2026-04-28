@@ -9,6 +9,7 @@ import {
     isSecureRequest,
     json,
     parseBody,
+    rejectCrossSiteRequest,
 } from "../../server/http";
 import { getConfigNumber } from "../../server/system-config";
 import {
@@ -65,6 +66,11 @@ export async function getCurrentStudent(req: Request) {
 }
 
 export async function requireAuth(req: Request, options?: { allowFirstLogin?: boolean }) {
+    const crossSiteError = rejectCrossSiteRequest(req);
+    if (crossSiteError) {
+        return { student: null, error: crossSiteError };
+    }
+
     const current = await getCurrentStudent(req);
     if (!current.student) {
         return {
@@ -83,6 +89,9 @@ export async function requireAuth(req: Request, options?: { allowFirstLogin?: bo
 
 const loginRoutes: RouteDefinition = {
     async POST(req) {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
+
         const body = await parseBody<{ studentId: string; password: string }>(req);
         const studentId = body.studentId?.trim();
         const password = body.password ?? "";
@@ -158,6 +167,9 @@ const loginRoutes: RouteDefinition = {
 
 const logoutRoutes: RouteDefinition = {
     async POST(req) {
+        const crossSiteError = rejectCrossSiteRequest(req);
+        if (crossSiteError) return crossSiteError;
+
         const token = readSessionToken(req, {
             cookieName: STUDENT_SESSION_COOKIE,
             headerName: "x-student-session",
