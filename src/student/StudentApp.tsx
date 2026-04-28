@@ -262,26 +262,26 @@ function StudentAppContent() {
         <div className="min-h-screen bg-background font-sans text-foreground selection:bg-primary/30">
             {/* Header */}
             <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+                    <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
                         {!isTaskHall && (
-                            <Link to="/">
+                            <Link to="/" className="shrink-0">
                                 <Button variant="ghost" size="icon">
                                     <ArrowLeft className="size-5" />
                                 </Button>
                             </Link>
                         )}
-                        <Link to="/" className="flex items-center gap-3 group">
-                            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-lg shadow-primary/20">
+                        <Link to="/" className="group flex min-w-0 items-center gap-2 sm:gap-3">
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground shadow-lg shadow-primary/20">
                                 L
                             </div>
-                            <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-foreground transition-colors group-hover:text-foreground/80">统计学虚拟仿真实验室</h1>
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Learning Lab</p>
+                            <div className="flex min-w-0 flex-col">
+                                <h1 className="truncate text-sm font-bold text-foreground transition-colors group-hover:text-foreground/80 sm:text-lg">统计学虚拟仿真实验室</h1>
+                                <p className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Learning Lab</p>
                             </div>
                         </Link>
                     </div>
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex shrink-0 items-center gap-2 sm:gap-4">
                         <Button
                             variant="ghost"
                             size="icon"

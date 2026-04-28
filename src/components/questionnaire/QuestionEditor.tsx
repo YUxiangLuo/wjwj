@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -171,11 +172,14 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     <DialogTitle>
                         {isEditing ? "编辑题目" : "添加题目"}
                     </DialogTitle>
+                    <DialogDescription className="sr-only">
+                        配置题目类型、题干、选项和量表参数。
+                    </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 py-4">
+                <div className="flex flex-col gap-6 py-4">
                     {!isEditing && (
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                             <Label className="text-muted-foreground">题目类型</Label>
                             <Tabs value={type} onValueChange={(v) => setType(v as QuestionType)}>
                                 <TabsList className="grid w-full grid-cols-4 border border-border" data-testid="student-question-type-list">
@@ -197,7 +201,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         </div>
                     )}
 
-                    <div className="space-y-2">
+                    <div className="flex flex-col gap-2">
                         <Label htmlFor="content">
                             题目内容 <span className="text-destructive">*</span>
                         </Label>
@@ -225,8 +229,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     )}
 
                     {(type === "single" || type === "multiple") && (
-                        <div className="space-y-3">
-                            <div className="flex justify-between items-center">
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
                                 <Label>选项（2-10个）</Label>
                                 <Button
                                     variant="outline"
@@ -240,10 +244,10 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     添加选项
                                 </Button>
                             </div>
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                                 {options.map((option, index) => (
                                     <div key={index} className="flex items-center gap-2">
-                                        <GripVertical className="w-4 h-4 text-muted-foreground" />
+                                        <GripVertical className="size-4 text-muted-foreground" />
                                         <span className="w-6 font-mono text-sm text-muted-foreground">
                                             {String.fromCharCode(65 + index)}.
                                         </span>
@@ -273,7 +277,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
 
                     {type === "multiple" && (
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                                 <Label htmlFor="minSelect" className="text-muted-foreground">最少选择数</Label>
                                 <Input
                                     id="minSelect"
@@ -286,7 +290,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     className="bg-background/50"
                                 />
                             </div>
-                            <div className="space-y-2">
+                            <div className="flex flex-col gap-2">
                                 <Label htmlFor="maxSelect" className="text-muted-foreground">最多选择数</Label>
                                 <Input
                                     id="maxSelect"
@@ -303,8 +307,8 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     )}
 
                     {type === "scale" && (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-col gap-2">
                                 <Label className="text-muted-foreground">常用量表预设</Label>
                                 <div className="grid grid-cols-1 gap-1.5">
                                     {LIKERT_PRESETS.map((preset, idx) => (
@@ -331,7 +335,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
+                                <div className="flex flex-col gap-2">
                                     <Label htmlFor="scaleMin" className="text-muted-foreground">量表最小值</Label>
                                     <Input
                                         id="scaleMin"
@@ -344,7 +348,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         className="bg-background/50"
                                     />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col gap-2">
                                     <Label htmlFor="scaleMax" className="text-muted-foreground">量表最大值</Label>
                                     <Input
                                         id="scaleMax"
@@ -362,7 +366,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                 量表范围：{scaleMin} - {scaleMax} 分
                             </p>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
+                                <div className="flex flex-col gap-2">
                                     <Label htmlFor="scaleMinLabel" className="text-muted-foreground">左端标签 ({scaleMin}分)</Label>
                                     <Input
                                         id="scaleMinLabel"
@@ -374,7 +378,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         className="bg-background/50"
                                     />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-col gap-2">
                                     <Label htmlFor="scaleMaxLabel" className="text-muted-foreground">右端标签 ({scaleMax}分)</Label>
                                     <Input
                                         id="scaleMaxLabel"

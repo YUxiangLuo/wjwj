@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRichTextPlainLength } from "@/utils/rich-text";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 interface RichTextEditorProps {
     dataTestId?: string;
@@ -48,8 +50,10 @@ function ToolbarButton({
     children: ReactNode;
 }) {
     return (
-        <button
+        <Button
             type="button"
+            variant="ghost"
+            size="icon-xs"
             title={title}
             disabled={disabled}
             onMouseDown={(e) => {
@@ -57,19 +61,17 @@ function ToolbarButton({
                 onClick();
             }}
             className={cn(
-                "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800",
-                active && "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100",
-                disabled && "opacity-40 pointer-events-none",
+                "rounded-md text-muted-foreground hover:text-foreground",
+                active && "bg-muted text-foreground",
             )}
         >
             {children}
-        </button>
+        </Button>
     );
 }
 
 function ToolbarDivider() {
-    return <div className="mx-0.5 h-5 w-px bg-slate-300 dark:bg-slate-700" />;
+    return <Separator orientation="vertical" className="mx-0.5 h-5" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,12 +106,12 @@ export function RichTextEditor({
                 "data-testid": editorTestId ?? "",
                 ...(id ? { id } : {}),
                 class: cn(
-                    "min-h-[180px] p-4 text-sm text-slate-800 dark:text-slate-200 leading-relaxed outline-none rich-text-content",
+                    "min-h-[180px] p-4 text-sm leading-relaxed text-foreground outline-none rich-text-content",
                     "[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1",
                     "[&_p]:mb-2 [&_p:last-child]:mb-0",
                     "[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:mb-1",
-                    "[&_blockquote]:border-l-3 [&_blockquote]:border-slate-300 dark:[&_blockquote]:border-slate-600 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-600 dark:[&_blockquote]:text-slate-400 [&_blockquote]:my-2",
-                    "[&_hr]:border-slate-200 dark:[&_hr]:border-slate-700 [&_hr]:my-3",
+                    "[&_blockquote]:my-2 [&_blockquote]:border-l-3 [&_blockquote]:border-border [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground",
+                    "[&_hr]:my-3 [&_hr]:border-border",
                     editorClassName,
                 ),
             },
@@ -142,26 +144,26 @@ export function RichTextEditor({
     return (
         <div
             className={cn(
-                "rounded-xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40 overflow-hidden",
+                "overflow-hidden rounded-xl border border-border bg-background/50",
                 className,
             )}
             data-testid={dataTestId}
         >
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 dark:border-slate-800 px-2 py-1.5">
+            <div className="flex flex-wrap items-center gap-0.5 border-b border-border bg-muted/30 px-2 py-1.5">
                 <ToolbarButton
                     title="标题 2"
                     active={editor.isActive("heading", { level: 2 })}
                     onClick={() => run(() => editor.chain().focus().toggleHeading({ level: 2 }).run())}
                 >
-                    <Heading2 className="h-4 w-4" />
+                    <Heading2 />
                 </ToolbarButton>
                 <ToolbarButton
                     title="标题 3"
                     active={editor.isActive("heading", { level: 3 })}
                     onClick={() => run(() => editor.chain().focus().toggleHeading({ level: 3 }).run())}
                 >
-                    <Heading3 className="h-4 w-4" />
+                    <Heading3 />
                 </ToolbarButton>
 
                 <ToolbarDivider />
@@ -171,28 +173,28 @@ export function RichTextEditor({
                     active={editor.isActive("bold")}
                     onClick={() => run(() => editor.chain().focus().toggleBold().run())}
                 >
-                    <Bold className="h-4 w-4" />
+                    <Bold />
                 </ToolbarButton>
                 <ToolbarButton
                     title="斜体"
                     active={editor.isActive("italic")}
                     onClick={() => run(() => editor.chain().focus().toggleItalic().run())}
                 >
-                    <Italic className="h-4 w-4" />
+                    <Italic />
                 </ToolbarButton>
                 <ToolbarButton
                     title="下划线"
                     active={editor.isActive("underline")}
                     onClick={() => run(() => editor.chain().focus().toggleUnderline().run())}
                 >
-                    <Underline className="h-4 w-4" />
+                    <Underline />
                 </ToolbarButton>
                 <ToolbarButton
                     title="删除线"
                     active={editor.isActive("strike")}
                     onClick={() => run(() => editor.chain().focus().toggleStrike().run())}
                 >
-                    <Strikethrough className="h-4 w-4" />
+                    <Strikethrough />
                 </ToolbarButton>
 
                 <ToolbarDivider />
@@ -202,27 +204,27 @@ export function RichTextEditor({
                     active={editor.isActive("bulletList")}
                     onClick={() => run(() => editor.chain().focus().toggleBulletList().run())}
                 >
-                    <List className="h-4 w-4" />
+                    <List />
                 </ToolbarButton>
                 <ToolbarButton
                     title="有序列表"
                     active={editor.isActive("orderedList")}
                     onClick={() => run(() => editor.chain().focus().toggleOrderedList().run())}
                 >
-                    <ListOrdered className="h-4 w-4" />
+                    <ListOrdered />
                 </ToolbarButton>
                 <ToolbarButton
                     title="引用"
                     active={editor.isActive("blockquote")}
                     onClick={() => run(() => editor.chain().focus().toggleBlockquote().run())}
                 >
-                    <Quote className="h-4 w-4" />
+                    <Quote />
                 </ToolbarButton>
                 <ToolbarButton
                     title="分隔线"
                     onClick={() => run(() => editor.chain().focus().setHorizontalRule().run())}
                 >
-                    <Minus className="h-4 w-4" />
+                    <Minus />
                 </ToolbarButton>
 
                 <ToolbarDivider />
@@ -232,17 +234,17 @@ export function RichTextEditor({
                     disabled={!editor.can().undo()}
                     onClick={() => run(() => editor.chain().focus().undo().run())}
                 >
-                    <Undo2 className="h-4 w-4" />
+                    <Undo2 />
                 </ToolbarButton>
                 <ToolbarButton
                     title="重做"
                     disabled={!editor.can().redo()}
                     onClick={() => run(() => editor.chain().focus().redo().run())}
                 >
-                    <Redo2 className="h-4 w-4" />
+                    <Redo2 />
                 </ToolbarButton>
 
-                <div className="ml-auto text-xs text-slate-500 tabular-nums">
+                <div className="ml-auto text-xs tabular-nums text-muted-foreground">
                     {plainLength} 字
                 </div>
             </div>

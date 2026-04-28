@@ -9,6 +9,7 @@ mock.module("@/components/ui/dialog", () => ({
     Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) => (open ? <div data-testid="mock-dialog">{children}</div> : null),
     DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
     DialogDescription: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+    DialogFooter: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
     DialogHeader: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
     DialogTitle: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
 }));

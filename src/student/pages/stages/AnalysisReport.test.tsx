@@ -72,6 +72,8 @@ mock.module("@/components/ui/select", () => ({
 mock.module("@/components/ui/dialog", () => ({
     Dialog: ({ children, open }: { children: ReactNode; open?: boolean }) => (open ? <div>{children}</div> : null),
     DialogContent: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    DialogDescription: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    DialogFooter: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
     DialogHeader: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
     DialogTitle: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
 }));
