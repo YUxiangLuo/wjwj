@@ -1,6 +1,7 @@
 import { and, count, eq } from "drizzle-orm";
 import { basename } from "node:path";
 import { db } from "../../db";
+import { insertReturningId } from "../../db/insert-id";
 import { topic, topicAttachment } from "../../db/schema";
 import { copyStorageFile, createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
 import { getAttachmentType, sanitizeUploadFileName } from "./file-utils";
@@ -53,7 +54,7 @@ export async function uploadTopicAttachment(params: {
 
     try {
         await writeStorageFile(filePath, buffer);
-        const [result] = await db.insert(topicAttachment).values({
+        const id = await insertReturningId(db, topicAttachment, {
             topicId: params.topicId,
             fileName: params.file.name,
             filePath,
@@ -61,7 +62,7 @@ export async function uploadTopicAttachment(params: {
             fileSize: params.file.size,
         });
 
-        return { ok: true as const, id: result.insertId, filePath };
+        return { ok: true as const, id, filePath };
     } catch (error) {
         await deleteStorageFileIfExists(filePath).catch(() => undefined);
         throw error;
@@ -163,7 +164,7 @@ export async function copyTopicWithResources(params: {
                 | null;
 
         const newTopicId = await db.transaction(async (tx) => {
-            const [result] = await tx.insert(topic).values({
+            const insertedTopicId = await insertReturningId(tx, topic, {
                 teacherId: params.teacherId,
                 name: `${sourceTopic.name} (副本)`,
                 description: sourceTopic.description ?? "",
@@ -174,8 +175,6 @@ export async function copyTopicWithResources(params: {
                 recommendQuestions: recommendQuestions ?? null,
                 status: 0,
             });
-
-            const insertedTopicId = Number(result.insertId);
 
             if (copiedAttachments.length) {
                 await tx.insert(topicAttachment).values(

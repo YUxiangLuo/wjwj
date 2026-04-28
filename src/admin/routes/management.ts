@@ -1,5 +1,6 @@
 import { and, count, desc, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { db } from "../../db";
+import { insertReturningId } from "../../db/insert-id";
 import {
     announcement,
     announcementRead,
@@ -122,12 +123,10 @@ const semesterRoutes: RouteDefinition = {
         if (body.setAsCurrent) {
             insertId = await db.transaction(async (tx) => {
                 await tx.update(semester).set({ isCurrent: 0 });
-                const [result] = await tx.insert(semester).values({ name: body.name.trim(), isCurrent: 1 });
-                return result.insertId;
+                return insertReturningId(tx, semester, { name: body.name.trim(), isCurrent: 1 });
             });
         } else {
-            const [result] = await db.insert(semester).values({ name: body.name.trim(), isCurrent: 0 });
-            insertId = result.insertId;
+            insertId = await insertReturningId(db, semester, { name: body.name.trim(), isCurrent: 0 });
         }
         return json({ id: insertId }, 201);
     },
@@ -225,8 +224,8 @@ const teacherRoutes: RouteDefinition = {
         if (existing) return error("工号已存在", "DUPLICATE_EMPLOYEE_ID");
 
         const hashedPassword = await Bun.password.hash(body.employeeId.trim());
-        const [result] = await db.insert(teacher).values({ employeeId: body.employeeId.trim(), name: body.name.trim(), password: hashedPassword, isFirstLogin: 1, status: 1 });
-        return json({ id: result.insertId }, 201);
+        const id = await insertReturningId(db, teacher, { employeeId: body.employeeId.trim(), name: body.name.trim(), password: hashedPassword, isFirstLogin: 1, status: 1 });
+        return json({ id }, 201);
     },
 };
 
@@ -349,7 +348,7 @@ const assistantRoutes: RouteDefinition = {
         if (existing) return error("账号已存在", "DUPLICATE_ACCOUNT");
 
         const hashedPassword = await Bun.password.hash(body.account.trim());
-        const [result] = await db.insert(assistant).values({
+        const id = await insertReturningId(db, assistant, {
             account: body.account.trim(),
             name: body.name.trim(),
             password: hashedPassword,
@@ -358,7 +357,7 @@ const assistantRoutes: RouteDefinition = {
             status: 1,
         });
 
-        return json({ id: result.insertId }, 201);
+        return json({ id }, 201);
     },
 };
 
@@ -474,8 +473,8 @@ const classRoutes: RouteDefinition = {
         const [t] = await db.select({ id: teacher.id }).from(teacher).where(eq(teacher.id, body.teacherId));
         if (!t) return error("教师不存在", "NOT_FOUND", 404);
 
-        const [result] = await db.insert(class_).values({ name: body.name.trim(), semesterId: body.semesterId, teacherId: body.teacherId });
-        return json({ id: result.insertId }, 201);
+        const id = await insertReturningId(db, class_, { name: body.name.trim(), semesterId: body.semesterId, teacherId: body.teacherId });
+        return json({ id }, 201);
     },
 };
 
@@ -693,13 +692,13 @@ const announcementRoutes: RouteDefinition = {
         const validScopes = ["all", "teacher", "student", "assistant"];
         const scope = body.targetScope && validScopes.includes(body.targetScope) ? body.targetScope : "all";
 
-        const [result] = await db.insert(announcement).values({
+        const id = await insertReturningId(db, announcement, {
             title: body.title.trim(),
             content: body.content.trim(),
             targetScope: scope,
             status: body.publish ? 1 : 0,
         });
-        return json({ id: result.insertId }, 201);
+        return json({ id }, 201);
     },
 };
 

@@ -10,6 +10,7 @@ import { startBackgroundJobs } from "./server/background-jobs";
 import { registerLongRunningProcessSignals } from "./server/process-signals";
 import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./server/template-files";
 import { kickSubmissionPdfProcessing } from "./student/experiment/submission-pdf";
+import { sqlClient } from "./db";
 
 type RouteRequest = Request & { params: Record<string, string> };
 
@@ -100,6 +101,10 @@ registerLongRunningProcessSignals({
         // Graceful drain with a 5s timeout to avoid hanging on long-lived connections.
         const drain = server.stop();
         const timeout = new Promise<void>((resolve) => setTimeout(resolve, 5000));
-        await Promise.race([drain, timeout]);
+        try {
+            await Promise.race([drain, timeout]);
+        } finally {
+            await sqlClient.close({ timeout: 5 });
+        }
     },
 });

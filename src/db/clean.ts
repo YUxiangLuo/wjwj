@@ -5,7 +5,7 @@
  * Only use in development environment!
  */
 
-import { db } from "./index";
+import { db, sqlClient } from "./index";
 import { sql } from "drizzle-orm";
 
 async function reset() {
@@ -22,30 +22,29 @@ async function reset() {
 
     console.log("🗑️  Dropping all tables...\n");
 
-    // Disable foreign key checks temporarily
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
-
     // Get all table names
     const tables = await db.execute(sql`
         SELECT table_name 
         FROM information_schema.tables 
-        WHERE table_schema = DATABASE() 
-        AND table_type = 'BASE TABLE'
+        WHERE table_schema = 'public'
+          AND table_type = 'BASE TABLE'
     `);
 
     // Drop each table
-    const result = (tables as unknown as [Array<{ table_name?: string; TABLE_NAME?: string }>])[0];
-    for (const row of result) {
-        const tableName = row.table_name || row.TABLE_NAME;
+    const rows = Array.isArray(tables)
+        ? tables as Array<{ table_name?: string }>
+        : [];
+    for (const row of rows) {
+        const tableName = row.table_name;
         if (!tableName) continue;
         console.log(`  Dropping table: ${tableName}`);
-        await db.execute(sql.raw(`DROP TABLE IF EXISTS \`${tableName}\``));
+        await db.execute(sql.raw(`DROP TABLE IF EXISTS "${tableName.replace(/"/g, '""')}" CASCADE`));
     }
 
-    // Re-enable foreign key checks
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
+    await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
 
     console.log("\n✅ All tables dropped.");
+    await sqlClient.close();
     process.exit(0);
 }
 

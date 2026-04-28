@@ -387,7 +387,7 @@ async function claimSubmissionPdfJobs(limit: number) {
                 isNull(submission.pdfLastAttemptAt)
             );
 
-        const [result] = await db
+        const result = await db
             .update(submission)
             .set({
                 pdfStatus: SubmissionPdfStatus.GENERATING,
@@ -395,7 +395,8 @@ async function claimSubmissionPdfJobs(limit: number) {
                 pdfLastAttemptAt: claimTime,
                 pdfError: null,
             })
-            .where(where);
+            .where(where)
+            .returning({ id: submission.id });
 
         if (getAffectedRows(result) === 0) {
             continue;

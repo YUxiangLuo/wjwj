@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
+import { insertReturningId } from "../../db/insert-id";
 import { assistantClass, experiment, notification } from "../../db/schema";
 import { ExperimentStatus } from "./status";
 
@@ -33,16 +34,21 @@ export async function getOrCreateStudentExperiment(studentId: number, taskId: nu
     }
 
     try {
-        const [result] = await db.insert(experiment).values({
+        const experimentId = await insertReturningId(db, experiment, {
             studentId,
             taskId,
             currentStage: 0,
             status: ExperimentStatus.IN_PROGRESS,
         });
 
-        [record] = await db.select().from(experiment).where(eq(experiment.id, result.insertId));
+        [record] = await db.select().from(experiment).where(eq(experiment.id, experimentId));
     } catch (error: unknown) {
-        if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") {
+        if (
+            error
+            && typeof error === "object"
+            && "code" in error
+            && (error.code === "ER_DUP_ENTRY" || error.code === "23505")
+        ) {
             [record] = await db
                 .select()
                 .from(experiment)

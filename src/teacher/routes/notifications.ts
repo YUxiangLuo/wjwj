@@ -124,10 +124,10 @@ const teacherAnnouncementReadRoutes: RouteDefinition = {
 
         const userType = currentUser.type === "teacher" ? 2 : 3;
 
-        // Idempotent insert using INSERT IGNORE (unique index will prevent duplicates)
-        await db.execute(
-            sql`INSERT IGNORE INTO announcement_read (announcement_id, user_type, user_id) VALUES (${id}, ${userType}, ${currentUser.id})`
-        );
+        await db
+            .insert(announcementRead)
+            .values({ announcementId: id, userType, userId: currentUser.id })
+            .onConflictDoNothing();
 
         return json({ success: true });
     }

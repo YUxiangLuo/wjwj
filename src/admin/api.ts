@@ -16,7 +16,7 @@ import {
     systemConfig,
     userSession,
 } from "../db/schema";
-import { eq, desc, sql, and, count, inArray, isNull } from "drizzle-orm";
+import { eq, desc, sql, and, count, inArray, isNull, gt } from "drizzle-orm";
 import {
     error,
     getClientIp,
@@ -106,7 +106,7 @@ const statsRoutes = {
         // Using sql within select to ensure correct return type integration
         const [activeUserStat] = await db
             .select({
-                count: sql<number>`count(distinct ${loginLog.userType}, ${loginLog.userId})`
+                count: sql<number>`count(distinct (${loginLog.userType}, ${loginLog.userId}))`
             })
             .from(loginLog)
             .where(sql`${loginLog.loginAt} >= ${startOfDay}`);
@@ -205,13 +205,14 @@ const systemMetricsRoutes = {
         // For now, let's use a simple query on loginLog for the last 1 day as a rough "active today" proxy, 
         // OR better, checking 'user_session' table if we are using it (schema has userSession).
         // Let's use userSession table for active connections (valid sessions).
+        const activeSince = new Date(Date.now() - 30 * 60 * 1000);
         const [sessionCount] = await db
             .select({ count: count() })
             .from(userSession)
             .where(
                 and(
-                    sql`${userSession.expiresAt} > NOW()`,
-                    sql`${userSession.lastActiveAt} > DATE_SUB(NOW(), INTERVAL 30 MINUTE)` // Active in last 30 mins
+                    gt(userSession.expiresAt, new Date()),
+                    gt(userSession.lastActiveAt, activeSince) // Active in last 30 mins
                 )
             );
 
@@ -236,8 +237,8 @@ const systemMetricsRoutes = {
             .from(userSession)
             .where(
                 and(
-                    sql`${userSession.expiresAt} > NOW()`,
-                    sql`${userSession.lastActiveAt} > DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
+                    gt(userSession.expiresAt, new Date()),
+                    gt(userSession.lastActiveAt, activeSince)
                 )
             )
             .groupBy(userSession.userType);
@@ -316,7 +317,8 @@ const systemSettingsRoutes = {
                 configKey: key,
                 configValue: valStr,
                 valueType: valType,
-            }).onDuplicateKeyUpdate({
+            }).onConflictDoUpdate({
+                target: systemConfig.configKey,
                 set: {
                     configValue: valStr,
                     valueType: valType,
