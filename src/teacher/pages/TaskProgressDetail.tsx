@@ -8,10 +8,10 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { teacherApi, type TaskProgressData } from "../api-client";
 
-const STATUS_CONFIG = {
+export const STATUS_CONFIG = {
     not_started: { label: "未开始", color: "text-muted-foreground", badgeVariant: "muted" },
     stage1: { label: "问卷设计", color: "text-primary", badgeVariant: "info" },
-    stage2: { label: "样本规划", color: "text-cyan-600", badgeVariant: "info" },
+    stage2: { label: "样本规划", color: "text-primary", badgeVariant: "info" },
     stage3: { label: "抽样执行", color: "text-chart-3", badgeVariant: "info" },
     stage4: { label: "分析报告", color: "text-warning", badgeVariant: "warning" },
     submitted: { label: "已提交", color: "text-warning", badgeVariant: "warning" },
@@ -20,28 +20,17 @@ const STATUS_CONFIG = {
 } as const;
 
 type StatusKey = keyof typeof STATUS_CONFIG;
-const STATUS_KEYS = Object.keys(STATUS_CONFIG) as StatusKey[];
+export const STATUS_KEYS = Object.keys(STATUS_CONFIG) as StatusKey[];
 
-const PROGRESS_COLORS: Record<StatusKey, string> = {
-    not_started: "bg-muted-foreground/50",
-    stage1: "bg-primary",
-    stage2: "bg-cyan-500",
-    stage3: "bg-chart-3",
-    stage4: "bg-warning",
-    submitted: "bg-yellow-500",
-    graded: "bg-success",
-    rejected: "bg-destructive",
-};
-
-const RING_COLORS: Record<StatusKey, string> = {
-    not_started: "var(--muted-foreground)",
-    stage1: "var(--primary)",
-    stage2: "var(--color-cyan-500)",
-    stage3: "var(--chart-3)",
-    stage4: "var(--warning)",
-    submitted: "var(--color-yellow-500)",
-    graded: "var(--success)",
-    rejected: "var(--destructive)",
+export const STATUS_VISUALS: Record<StatusKey, { barClass: string; ringColor: string }> = {
+    not_started: { barClass: "bg-muted-foreground/50", ringColor: "var(--muted-foreground)" },
+    stage1: { barClass: "bg-primary", ringColor: "var(--primary)" },
+    stage2: { barClass: "bg-chart-2", ringColor: "var(--chart-2)" },
+    stage3: { barClass: "bg-chart-3", ringColor: "var(--chart-3)" },
+    stage4: { barClass: "bg-warning", ringColor: "var(--warning)" },
+    submitted: { barClass: "bg-chart-4", ringColor: "var(--chart-4)" },
+    graded: { barClass: "bg-success", ringColor: "var(--success)" },
+    rejected: { barClass: "bg-destructive", ringColor: "var(--destructive)" },
 };
 
 const CHART_SIZE = 160;
@@ -147,7 +136,7 @@ export function TaskProgressDetail() {
                                                 cy={CHART_CENTER}
                                                 r={RING_RADIUS}
                                                 fill="none"
-                                                stroke={RING_COLORS[key]}
+                                                stroke={STATUS_VISUALS[key].ringColor}
                                                 strokeWidth={RING_STROKE}
                                                 strokeDasharray={`${length} ${circumference - length}`}
                                                 strokeDashoffset={-offset}
@@ -175,9 +164,9 @@ export function TaskProgressDetail() {
                                     if (count === 0) return null;
                                     return (
                                         <div key={key} className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RING_COLORS[key] }} />
+                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_VISUALS[key].ringColor }} />
                                             <span className="text-muted-foreground">{cfg.label}</span>
-                                            <span className={`font-medium ${cfg.color}`}>{count}</span>
+                                            <span className="font-medium text-foreground">{count}</span>
                                         </div>
                                     );
                                 })}
@@ -197,7 +186,7 @@ export function TaskProgressDetail() {
                                     return (
                                         <div
                                             key={key}
-                                            className={`${PROGRESS_COLORS[key]} transition-all duration-500`}
+                                            className={`${STATUS_VISUALS[key].barClass} transition-all duration-500`}
                                             style={{ width: `${pct}%` }}
                                             title={`${STATUS_CONFIG[key].label}: ${count}`}
                                         />
@@ -210,9 +199,9 @@ export function TaskProgressDetail() {
                                     const count = data.counts[key];
                                     return (
                                         <div key={key} className="flex items-center gap-2 text-xs">
-                                            <span className={`w-2 h-2 rounded-full ${PROGRESS_COLORS[key]}`} />
+                                            <span className={`w-2 h-2 rounded-full ${STATUS_VISUALS[key].barClass}`} />
                                             <span className="text-muted-foreground">{cfg.label}</span>
-                                            <span className={`font-medium ${cfg.color}`}>{count}</span>
+                                            <span className="font-medium text-foreground">{count}</span>
                                             <span className="text-muted-foreground">({total > 0 ? Math.round((count / total) * 100) : 0}%)</span>
                                         </div>
                                     );

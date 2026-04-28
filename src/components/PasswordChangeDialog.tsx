@@ -28,8 +28,8 @@ interface PasswordChangeDialogProps {
 
 function getStrengthToneClassName(score: number) {
     if (score <= 2) return "text-destructive";
-    if (score <= 4) return "text-amber-600";
-    return "text-emerald-600";
+    if (score <= 4) return "text-warning";
+    return "text-success";
 }
 
 export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
@@ -103,12 +103,12 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                                 <span>密码强度</span>
                                 <span className={getStrengthToneClassName(rules.score)}>{rules.strengthLabel}</span>
                             </div>
-                            <div className={rules.minLength ? "text-emerald-600" : "text-muted-foreground"}>{rules.minLength ? "✓" : "✗"} 至少{policyMinLength}个字符</div>
-                            <div className={rules.hasLetter ? "text-emerald-600" : "text-muted-foreground"}>{rules.hasLetter ? "✓" : "✗"} 包含字母</div>
-                            <div className={rules.hasNumber ? "text-emerald-600" : "text-muted-foreground"}>{rules.hasNumber ? "✓" : "✗"} 包含数字</div>
-                            <div className={rules.hasSpecial ? "text-emerald-600" : "text-muted-foreground"}>{rules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
-                            <div className={rules.noForbiddenSubstring ? "text-emerald-600" : "text-muted-foreground"}>{rules.noForbiddenSubstring ? "✓" : "✗"} 不包含{forbiddenHintLabel ?? "账号信息"}</div>
-                            <div className={rules.matched ? "text-emerald-600" : "text-muted-foreground"}>{rules.matched ? "✓" : "✗"} 两次密码一致</div>
+                            <div className={rules.minLength ? "text-success" : "text-muted-foreground"}>{rules.minLength ? "✓" : "✗"} 至少{policyMinLength}个字符</div>
+                            <div className={rules.hasLetter ? "text-success" : "text-muted-foreground"}>{rules.hasLetter ? "✓" : "✗"} 包含字母</div>
+                            <div className={rules.hasNumber ? "text-success" : "text-muted-foreground"}>{rules.hasNumber ? "✓" : "✗"} 包含数字</div>
+                            <div className={rules.hasSpecial ? "text-success" : "text-muted-foreground"}>{rules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
+                            <div className={rules.noForbiddenSubstring ? "text-success" : "text-muted-foreground"}>{rules.noForbiddenSubstring ? "✓" : "✗"} 不包含{forbiddenHintLabel ?? "账号信息"}</div>
+                            <div className={rules.matched ? "text-success" : "text-muted-foreground"}>{rules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
                     ) : null}
                     {error ? <div className="bg-destructive/10 p-2 text-sm text-destructive">{error}</div> : null}

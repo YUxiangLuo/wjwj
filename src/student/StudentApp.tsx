@@ -294,7 +294,7 @@ function StudentAppContent() {
                         >
                             <Bell className="size-5" />
                             {unreadCount > 0 && (
-                                <span className="absolute -right-1 -top-1 h-5 min-w-5 rounded-full bg-destructive px-1 text-center text-[10px] font-semibold leading-5 text-white ring-2 ring-background">
+                                <span className="absolute -right-1 -top-1 h-5 min-w-5 rounded-full bg-destructive px-1 text-center text-[10px] font-semibold leading-5 text-destructive-foreground ring-2 ring-background">
                                     {unreadCount > 99 ? "99+" : unreadCount}
                                 </span>
                             )}

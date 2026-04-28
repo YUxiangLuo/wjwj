@@ -12,6 +12,7 @@ import { questionTypeLabels } from "@/lib/questionnaire-labels";
 import type { QuestionType } from "@/lib/questionnaire-types";
 
 type TabKey = "basic" | "data" | "mapping" | "attachments" | "questions" | "weights";
+type WeightSegmentKey = "questionnaire" | "process" | "report";
 
 const TABS: { key: TabKey; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
     { key: "basic", label: "基本信息", icon: BookOpen },
@@ -20,6 +21,12 @@ const TABS: { key: TabKey; label: string; icon: ComponentType<SVGProps<SVGSVGEle
     { key: "attachments", label: "辅助资料", icon: FileText },
     { key: "questions", label: "推荐题目", icon: ListChecks },
     { key: "weights", label: "评分权重", icon: PieChart },
+];
+
+export const WEIGHT_SEGMENTS: { key: WeightSegmentKey; label: string; barClass: string; textClass: string }[] = [
+    { key: "questionnaire", label: "问卷设计", barClass: "bg-primary", textClass: "text-primary" },
+    { key: "process", label: "实验过程", barClass: "bg-success", textClass: "text-success" },
+    { key: "report", label: "实验报告", barClass: "bg-warning", textClass: "text-warning" },
 ];
 
 interface TopicViewDialogProps {
@@ -332,18 +339,12 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {activeTab === "weights" && (
                                 <div className="space-y-6 py-4 animate-in fade-in duration-300">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="bg-background border border-border p-6 text-center space-y-2">
-                                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">问卷设计</div>
-                                            <div className="text-3xl font-bold text-primary">{weightConfig.questionnaire}%</div>
-                                        </div>
-                                        <div className="bg-background border border-border p-6 text-center space-y-2">
-                                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">实验过程</div>
-                                            <div className="text-3xl font-bold text-cyan-600">{weightConfig.process}%</div>
-                                        </div>
-                                        <div className="bg-background border border-border p-6 text-center space-y-2">
-                                            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">实验报告</div>
-                                            <div className="text-3xl font-bold text-warning">{weightConfig.report}%</div>
-                                        </div>
+                                        {WEIGHT_SEGMENTS.map((segment) => (
+                                            <div key={segment.key} className="flex flex-col gap-2 bg-background border border-border p-6 text-center">
+                                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{segment.label}</div>
+                                                <div className={`text-3xl font-bold ${segment.textClass}`}>{weightConfig[segment.key]}%</div>
+                                            </div>
+                                        ))}
                                     </div>
                                     <div className="flex items-center justify-center gap-2">
                                         <span className="text-sm text-muted-foreground">总权重：</span>
@@ -353,14 +354,22 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                     </div>
                                     {/* Weight bar visualization */}
                                     <div className="h-3 rounded-full overflow-hidden flex bg-muted">
-                                        <div className="bg-primary transition-all" style={{ width: `${weightConfig.questionnaire}%` }} title={`问卷设计 ${weightConfig.questionnaire}%`} />
-                                        <div className="bg-cyan-500 transition-all" style={{ width: `${weightConfig.process}%` }} title={`实验过程 ${weightConfig.process}%`} />
-                                        <div className="bg-warning transition-all" style={{ width: `${weightConfig.report}%` }} title={`实验报告 ${weightConfig.report}%`} />
+                                        {WEIGHT_SEGMENTS.map((segment) => (
+                                            <div
+                                                key={segment.key}
+                                                className={`${segment.barClass} transition-all`}
+                                                style={{ width: `${weightConfig[segment.key]}%` }}
+                                                title={`${segment.label} ${weightConfig[segment.key]}%`}
+                                            />
+                                        ))}
                                     </div>
                                     <div className="flex justify-center gap-6 text-xs text-muted-foreground">
-                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-primary" />问卷设计</span>
-                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-cyan-500" />实验过程</span>
-                                        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-warning" />实验报告</span>
+                                        {WEIGHT_SEGMENTS.map((segment) => (
+                                            <span key={segment.key} className="flex items-center gap-1.5">
+                                                <span className={`w-2 h-2 rounded-full ${segment.barClass}`} />
+                                                {segment.label}
+                                            </span>
+                                        ))}
                                     </div>
                                 </div>
                             )}
