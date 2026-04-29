@@ -148,8 +148,8 @@ export function GradeExport() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">任务数量</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalTasks}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <Layers className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <Layers className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -159,8 +159,8 @@ export function GradeExport() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已完成任务</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.completedTasks}</p>
                         </div>
-                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
-                            <CheckCircle2 className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-success">
+                            <CheckCircle2 className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -170,8 +170,8 @@ export function GradeExport() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">提交总数</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalSubmissions}</p>
                         </div>
-                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
-                            <Users className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-warning">
+                            <Users className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -181,8 +181,8 @@ export function GradeExport() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已批改</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalGraded}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <FileSpreadsheet className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <FileSpreadsheet className="size-5" />
                         </div>
                     </CardContent>
                 </Card>

@@ -230,8 +230,8 @@ export function ClassManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Classes</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <School className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <School className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -241,8 +241,8 @@ export function ClassManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Students</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.studentTotal}</p>
                         </div>
-                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
-                            <Users className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-success">
+                            <Users className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -252,8 +252,8 @@ export function ClassManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Current Term</p>
                             <p className="text-sm font-bold mt-2">{loading ? "-" : summary.currentSemesterName}</p>
                         </div>
-                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
-                            <CalendarDays className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-warning">
+                            <CalendarDays className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -263,8 +263,8 @@ export function ClassManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Teachers</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
-                        <div className="w-10 h-10 bg-chart-4/10 text-chart-4 flex items-center justify-center border border-chart-4/20">
-                            <UserCircle2 className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-info">
+                            <UserCircle2 className="size-5" />
                         </div>
                     </CardContent>
                 </Card>

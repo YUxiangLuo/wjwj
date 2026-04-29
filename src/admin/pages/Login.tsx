@@ -49,8 +49,8 @@ export function Login() {
             <div className="hidden lg:flex flex-col justify-between bg-card relative overflow-hidden p-12 border-r border-border">
                 <div className="absolute inset-0 z-0 opacity-40">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-card to-background z-10" />
-                    <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-card/5 to-transparent" />
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:24px_24px]" />
+                    <div className="app-radial-highlight absolute inset-0" />
+                    <div className="app-grid-pattern absolute inset-0" />
                 </div>
 
                 <div className="relative z-20 flex items-center gap-3 text-xl font-semibold tracking-tight">

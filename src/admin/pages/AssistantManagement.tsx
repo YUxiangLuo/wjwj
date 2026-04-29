@@ -234,8 +234,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Assistants</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <Users className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <Users className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -245,8 +245,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
-                            <CheckCircle2 className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-success">
+                            <CheckCircle2 className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -256,8 +256,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Disabled</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
-                            <PauseCircle className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-warning">
+                            <PauseCircle className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -267,8 +267,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Locked</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.locked}</p>
                         </div>
-                        <div className="w-10 h-10 bg-destructive/10 text-destructive flex items-center justify-center border border-destructive/20">
-                            <Unlock className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-danger">
+                            <Unlock className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -278,8 +278,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Linked Teachers</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
-                        <div className="w-10 h-10 bg-chart-4/10 text-chart-4 flex items-center justify-center border border-chart-4/20">
-                            <UserRound className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-info">
+                            <UserRound className="size-5" />
                         </div>
                     </CardContent>
                 </Card>

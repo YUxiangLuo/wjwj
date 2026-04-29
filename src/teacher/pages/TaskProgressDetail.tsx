@@ -10,11 +10,11 @@ import { teacherApi, type TaskProgressData } from "../api-client";
 
 export const STATUS_CONFIG = {
     not_started: { label: "未开始", color: "text-muted-foreground", badgeVariant: "muted" },
-    stage1: { label: "问卷设计", color: "text-primary", badgeVariant: "info" },
-    stage2: { label: "样本规划", color: "text-primary", badgeVariant: "info" },
-    stage3: { label: "抽样执行", color: "text-chart-3", badgeVariant: "info" },
-    stage4: { label: "分析报告", color: "text-warning", badgeVariant: "warning" },
-    submitted: { label: "已提交", color: "text-warning", badgeVariant: "warning" },
+    stage1: { label: "问卷设计", color: "text-workflow-stage-questionnaire", badgeVariant: "info" },
+    stage2: { label: "样本规划", color: "text-workflow-stage-planning", badgeVariant: "info" },
+    stage3: { label: "抽样执行", color: "text-workflow-stage-sampling", badgeVariant: "info" },
+    stage4: { label: "分析报告", color: "text-workflow-stage-analysis", badgeVariant: "warning" },
+    submitted: { label: "已提交", color: "text-workflow-status-submitted", badgeVariant: "warning" },
     graded: { label: "已批改", color: "text-success", badgeVariant: "success" },
     rejected: { label: "已驳回", color: "text-destructive", badgeVariant: "destructive" },
 } as const;
@@ -24,11 +24,11 @@ export const STATUS_KEYS = Object.keys(STATUS_CONFIG) as StatusKey[];
 
 export const STATUS_VISUALS: Record<StatusKey, { barClass: string; ringColor: string }> = {
     not_started: { barClass: "bg-muted-foreground/50", ringColor: "var(--muted-foreground)" },
-    stage1: { barClass: "bg-primary", ringColor: "var(--primary)" },
-    stage2: { barClass: "bg-chart-2", ringColor: "var(--chart-2)" },
-    stage3: { barClass: "bg-chart-3", ringColor: "var(--chart-3)" },
-    stage4: { barClass: "bg-warning", ringColor: "var(--warning)" },
-    submitted: { barClass: "bg-chart-4", ringColor: "var(--chart-4)" },
+    stage1: { barClass: "bg-workflow-stage-questionnaire", ringColor: "var(--workflow-stage-questionnaire)" },
+    stage2: { barClass: "bg-workflow-stage-planning", ringColor: "var(--workflow-stage-planning)" },
+    stage3: { barClass: "bg-workflow-stage-sampling", ringColor: "var(--workflow-stage-sampling)" },
+    stage4: { barClass: "bg-workflow-stage-analysis", ringColor: "var(--workflow-stage-analysis)" },
+    submitted: { barClass: "bg-workflow-status-submitted", ringColor: "var(--workflow-status-submitted)" },
     graded: { barClass: "bg-success", ringColor: "var(--success)" },
     rejected: { barClass: "bg-destructive", ringColor: "var(--destructive)" },
 };

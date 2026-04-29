@@ -42,6 +42,11 @@
     --metric-se: var(--method-systematic);
     --metric-cv: var(--success);
     --metric-me: var(--warning);
+    --workflow-stage-questionnaire: var(--primary);
+    --workflow-stage-planning: var(--method-simple);
+    --workflow-stage-sampling: var(--method-systematic);
+    --workflow-stage-analysis: var(--method-stratified);
+    --workflow-status-submitted: var(--method-pps);
     --border: oklch(0.922 0.005 325.62);
     --input: oklch(0.922 0.005 325.62);
     --ring: oklch(0.711 0.019 323.02);
@@ -97,6 +102,11 @@
     --metric-se: var(--method-systematic);
     --metric-cv: var(--success);
     --metric-me: var(--warning);
+    --workflow-stage-questionnaire: var(--primary);
+    --workflow-stage-planning: var(--method-simple);
+    --workflow-stage-sampling: var(--method-systematic);
+    --workflow-stage-analysis: var(--method-stratified);
+    --workflow-status-submitted: var(--method-pps);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.542 0.034 322.5);
@@ -153,6 +163,11 @@
     --color-metric-se: var(--metric-se);
     --color-metric-cv: var(--metric-cv);
     --color-metric-me: var(--metric-me);
+    --color-workflow-stage-questionnaire: var(--workflow-stage-questionnaire);
+    --color-workflow-stage-planning: var(--workflow-stage-planning);
+    --color-workflow-stage-sampling: var(--workflow-stage-sampling);
+    --color-workflow-stage-analysis: var(--workflow-stage-analysis);
+    --color-workflow-status-submitted: var(--workflow-status-submitted);
     --color-destructive-foreground: var(--destructive-foreground);
     --color-destructive: var(--destructive);
     --color-accent-foreground: var(--accent-foreground);
@@ -191,6 +206,51 @@
 }
 
 @layer components {
+    .app-grid-pattern,
+    .student-grid-pattern {
+        background-image:
+            linear-gradient(to right, color-mix(in oklch, var(--foreground) 7%, transparent) 1px, transparent 1px),
+            linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 7%, transparent) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    .app-radial-highlight {
+        background-image: radial-gradient(
+            ellipse at top right,
+            color-mix(in oklch, var(--primary) 10%, transparent),
+            color-mix(in oklch, var(--card) 5%, transparent),
+            transparent
+        );
+    }
+
+    .app-stat-icon {
+        @apply flex size-10 items-center justify-center border;
+    }
+
+    .app-stat-icon-info {
+        @apply border-info/20 bg-info/10 text-info;
+    }
+
+    .app-stat-icon-primary {
+        @apply border-primary/20 bg-primary/10 text-primary;
+    }
+
+    .app-stat-icon-success {
+        @apply border-success/20 bg-success/10 text-success;
+    }
+
+    .app-stat-icon-warning {
+        @apply border-warning/20 bg-warning/10 text-warning;
+    }
+
+    .app-stat-icon-danger {
+        @apply border-destructive/20 bg-destructive/10 text-destructive;
+    }
+
+    .app-stat-icon-muted {
+        @apply border-border bg-muted text-muted-foreground;
+    }
+
     .student-card-shell {
         @apply rounded-2xl border bg-card text-card-foreground shadow-sm;
     }
@@ -275,10 +335,4 @@
         @apply border-metric-me/20 bg-metric-me/10 text-metric-me;
     }
 
-    .student-grid-pattern {
-        background-image:
-            linear-gradient(to right, color-mix(in oklch, var(--foreground) 7%, transparent) 1px, transparent 1px),
-            linear-gradient(to bottom, color-mix(in oklch, var(--foreground) 7%, transparent) 1px, transparent 1px);
-        background-size: 24px 24px;
-    }
 }

@@ -130,8 +130,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">助教总数</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <Users className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <Users className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -141,8 +141,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
-                            <CheckCircle2 className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-success">
+                            <CheckCircle2 className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -152,8 +152,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已停用</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
-                            <PauseCircle className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-warning">
+                            <PauseCircle className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -163,8 +163,8 @@ export function AssistantManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">覆盖班级</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{summary.classCount}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <Users className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <Users className="size-5" />
                         </div>
                     </CardContent>
                 </Card>

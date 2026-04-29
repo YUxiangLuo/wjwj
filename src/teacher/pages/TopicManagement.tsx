@@ -321,8 +321,8 @@ export function TopicManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">课题总数</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <BookOpen className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <BookOpen className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -332,8 +332,8 @@ export function TopicManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
-                            <Layers className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-success">
+                            <Layers className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -343,8 +343,8 @@ export function TopicManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
-                            <FileText className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-warning">
+                            <FileText className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -354,8 +354,8 @@ export function TopicManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">数据行数</p>
                             <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <Layers className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <Layers className="size-5" />
                         </div>
                     </CardContent>
                 </Card>

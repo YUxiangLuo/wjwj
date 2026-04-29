@@ -249,8 +249,8 @@ export function AnnouncementManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <Megaphone className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary">
+                            <Megaphone className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -260,8 +260,8 @@ export function AnnouncementManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Published</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 bg-success/10 text-success flex items-center justify-center border border-success/20">
-                            <Send className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-success">
+                            <Send className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -271,8 +271,8 @@ export function AnnouncementManagement() {
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Drafts</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 bg-warning/10 text-warning flex items-center justify-center border border-warning/20">
-                            <Archive className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-warning">
+                            <Archive className="size-5" />
                         </div>
                     </CardContent>
                 </Card>
@@ -288,8 +288,8 @@ export function AnnouncementManagement() {
                                         : "暂无"}
                             </p>
                         </div>
-                        <div className="w-10 h-10 bg-chart-4/10 text-chart-4 flex items-center justify-center border border-chart-4/20">
-                            <Send className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-info">
+                            <Send className="size-5" />
                         </div>
                     </CardContent>
                 </Card>

@@ -41,8 +41,8 @@ function MetricCard({ label, value, unit, icon: Icon, color }: {
             <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-medium text-muted-foreground">{label}</span>
-                    <div className="w-10 h-10 bg-muted text-muted-foreground flex items-center justify-center border border-border">
-                        <Icon className="w-5 h-5" />
+                    <div className="app-stat-icon app-stat-icon-muted">
+                        <Icon className="size-5" />
                     </div>
                 </div>
                 <div className="flex items-end gap-1.5 mb-4">

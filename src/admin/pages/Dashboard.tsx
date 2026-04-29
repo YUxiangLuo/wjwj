@@ -48,8 +48,8 @@ function RoleCountCard({ icon: Icon, label, value }: { icon: React.ComponentType
     return (
         <div className="flex items-center justify-between border border-border bg-card px-5 py-4 hover:bg-muted transition-all">
             <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-muted flex items-center justify-center text-muted-foreground border border-border">
-                    <Icon className="w-5 h-5" />
+                <div className="app-stat-icon app-stat-icon-muted">
+                    <Icon className="size-5" />
                 </div>
                 <div className="text-sm font-medium text-muted-foreground">{label}</div>
             </div>

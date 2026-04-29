@@ -98,8 +98,8 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
             >
                 <DialogHeader>
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
-                            <Eye className="w-5 h-5" />
+                        <div className="app-stat-icon app-stat-icon-primary rounded-lg">
+                            <Eye className="size-5" />
                         </div>
                         <div>
                             <DialogTitle>{topic.name}</DialogTitle>
