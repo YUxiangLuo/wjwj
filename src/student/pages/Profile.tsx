@@ -5,7 +5,14 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+    Field,
+    FieldContent,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    FieldTitle,
+} from "@/components/ui/field";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "@/lib/password-policy";
 import { authApi } from "../api-client";
 import { useStudent } from "../contexts/StudentContext";
@@ -125,19 +132,19 @@ export function Profile() {
                         <CardDescription>这些信息来自教务系统，无法直接修改。</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-6">
-                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <FieldGroup className="grid grid-cols-1 gap-6 md:grid-cols-2">
                             {profileFields.map((field) => (
-                                <div key={field.label} className="flex flex-col gap-2">
-                                    <Label className="text-muted-foreground">{field.label}</Label>
+                                <Field key={field.label}>
+                                    <FieldLabel className="text-muted-foreground">{field.label}</FieldLabel>
                                     <div
                                         className={cn("rounded-md border border-border bg-background/60 px-3 py-2 text-foreground", field.className)}
                                         data-testid={field.testId}
                                     >
                                         {field.value}
                                     </div>
-                                </div>
+                                </Field>
                             ))}
-                        </div>
+                        </FieldGroup>
 
                         <Alert variant="info">
                             <Shield />
@@ -172,53 +179,57 @@ export function Profile() {
                                 readOnly
                                 hidden
                             />
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="currentPassword">当前密码</Label>
-                                <Input
-                                    id="currentPassword"
-                                    type="password"
-                                    value={passwordForm.currentPassword}
-                                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                                    autoComplete="current-password"
-                                    data-testid="student-profile-password-current"
-                                />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="newPassword">新密码</Label>
-                                <Input
-                                    id="newPassword"
-                                    type="password"
-                                    value={passwordForm.newPassword}
-                                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                                    autoComplete="new-password"
-                                    data-testid="student-profile-password-new"
-                                />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="confirmPassword">确认新密码</Label>
-                                <Input
-                                    id="confirmPassword"
-                                    type="password"
-                                    value={passwordForm.confirmPassword}
-                                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                                    autoComplete="new-password"
-                                    data-testid="student-profile-password-confirm"
-                                />
-                            </div>
-                            <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-background/60 p-3 text-xs">
-                                <div className="flex items-center justify-between text-muted-foreground">
-                                    <span>密码强度</span>
-                                    <span className={getStrengthClass(strengthScore)}>
-                                        {passwordStrengthLabel}
-                                    </span>
-                                </div>
-                                <div className={getRuleClass(passwordRules.minLength)}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</div>
-                                <div className={getRuleClass(passwordRules.hasLetter)}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</div>
-                                <div className={getRuleClass(passwordRules.hasNumber)}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</div>
-                                <div className={getRuleClass(passwordRules.hasSpecial)}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</div>
-                                <div className={getRuleClass(passwordRules.noStudentId)}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
-                                <div className={getRuleClass(passwordRules.matched)}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
-                            </div>
+                            <FieldGroup className="gap-4">
+                                <Field>
+                                    <FieldLabel htmlFor="currentPassword">当前密码</FieldLabel>
+                                    <Input
+                                        id="currentPassword"
+                                        type="password"
+                                        value={passwordForm.currentPassword}
+                                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                        autoComplete="current-password"
+                                        data-testid="student-profile-password-current"
+                                    />
+                                </Field>
+                                <Field>
+                                    <FieldLabel htmlFor="newPassword">新密码</FieldLabel>
+                                    <Input
+                                        id="newPassword"
+                                        type="password"
+                                        value={passwordForm.newPassword}
+                                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                        autoComplete="new-password"
+                                        data-testid="student-profile-password-new"
+                                    />
+                                </Field>
+                                <Field>
+                                    <FieldLabel htmlFor="confirmPassword">确认新密码</FieldLabel>
+                                    <Input
+                                        id="confirmPassword"
+                                        type="password"
+                                        value={passwordForm.confirmPassword}
+                                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                        autoComplete="new-password"
+                                        data-testid="student-profile-password-confirm"
+                                    />
+                                </Field>
+                                <Field className="rounded-lg border border-border bg-background/60 p-3">
+                                    <FieldContent className="gap-1.5">
+                                        <div className="flex items-center justify-between text-muted-foreground">
+                                            <FieldTitle>密码强度</FieldTitle>
+                                            <span className={getStrengthClass(strengthScore)}>
+                                                {passwordStrengthLabel}
+                                            </span>
+                                        </div>
+                                        <FieldDescription className={cn("text-xs", getRuleClass(passwordRules.minLength))}>{passwordRules.minLength ? "✓" : "✗"} 至少8个字符</FieldDescription>
+                                        <FieldDescription className={cn("text-xs", getRuleClass(passwordRules.hasLetter))}>{passwordRules.hasLetter ? "✓" : "✗"} 包含字母</FieldDescription>
+                                        <FieldDescription className={cn("text-xs", getRuleClass(passwordRules.hasNumber))}>{passwordRules.hasNumber ? "✓" : "✗"} 包含数字</FieldDescription>
+                                        <FieldDescription className={cn("text-xs", getRuleClass(passwordRules.hasSpecial))}>{passwordRules.hasSpecial ? "✓" : "✗"} 包含特殊字符</FieldDescription>
+                                        <FieldDescription className={cn("text-xs", getRuleClass(passwordRules.noStudentId))}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</FieldDescription>
+                                        <FieldDescription className={cn("text-xs", getRuleClass(passwordRules.matched))}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</FieldDescription>
+                                    </FieldContent>
+                                </Field>
+                            </FieldGroup>
                             {error && (
                                 <Alert variant="destructive">
                                     <AlertDescription>{error}</AlertDescription>

@@ -9,9 +9,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+    Field,
+    FieldDescription,
+    FieldGroup,
+    FieldLabel,
+    FieldSet,
+    FieldLegend,
+} from "@/components/ui/field";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 import type { Question, QuestionType } from "@/lib/questionnaire-types";
 import { cn } from "@/lib/utils";
@@ -162,6 +170,23 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
         onOpenChange(false);
     };
 
+    const activeLikertPresetIndex = LIKERT_PRESETS.findIndex((preset) =>
+        scaleMin === preset.scaleMin
+        && scaleMax === preset.scaleMax
+        && scaleMinLabel === preset.scaleMinLabel
+        && scaleMaxLabel === preset.scaleMaxLabel
+    );
+    const activeLikertPresetValue = activeLikertPresetIndex >= 0 ? String(activeLikertPresetIndex) : undefined;
+    const applyLikertPreset = (value: string) => {
+        if (!value) return;
+        const preset = LIKERT_PRESETS[Number(value)];
+        if (!preset) return;
+        setScaleMin(preset.scaleMin);
+        setScaleMax(preset.scaleMax);
+        setScaleMinLabel(preset.scaleMinLabel);
+        setScaleMaxLabel(preset.scaleMaxLabel);
+    };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
@@ -177,10 +202,10 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex flex-col gap-6 py-4">
+                <FieldGroup className="gap-6 py-4">
                     {!isEditing && (
-                        <div className="flex flex-col gap-2">
-                            <Label className="text-muted-foreground">题目类型</Label>
+                        <Field>
+                            <FieldLabel className="text-muted-foreground">题目类型</FieldLabel>
                             <Tabs value={type} onValueChange={(v) => setType(v as QuestionType)}>
                                 <TabsList className="grid w-full grid-cols-4 border border-border" data-testid="student-question-type-list">
                                     {(Object.keys(questionTypeLabels) as QuestionType[]).map((t) => (
@@ -195,16 +220,16 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     ))}
                                 </TabsList>
                             </Tabs>
-                            <p className="pl-1 text-xs text-muted-foreground">
+                            <FieldDescription className="pl-1 text-xs">
                                 {questionTypeDescriptions[type]}
-                            </p>
-                        </div>
+                            </FieldDescription>
+                        </Field>
                     )}
 
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="content">
+                    <Field>
+                        <FieldLabel htmlFor="content">
                             题目内容 <span className="text-destructive">*</span>
-                        </Label>
+                        </FieldLabel>
                         <Textarea
                             id="content"
                             placeholder="请输入题目内容"
@@ -215,10 +240,10 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             data-testid="student-question-content"
                             className="bg-background/50"
                         />
-                        <p className="text-right text-xs text-muted-foreground">
+                        <FieldDescription className="text-right text-xs">
                             {content.length}/500
-                        </p>
-                    </div>
+                        </FieldDescription>
+                    </Field>
 
                     {type === "boolean" && (
                         <div className="rounded-lg border border-border bg-muted/50 p-4">
@@ -229,24 +254,22 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     )}
 
                     {(type === "single" || type === "multiple") && (
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                                <Label>选项（2-10个）</Label>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addOption}
-                                    disabled={options.length >= 10}
-                                    data-testid="student-question-add-option"
-                                    className="border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
-                                >
-                                    <Plus data-icon="inline-start" />
-                                    添加选项
-                                </Button>
-                            </div>
-                            <div className="flex flex-col gap-2">
+                        <FieldSet className="gap-3">
+                            <FieldLegend variant="label" className="mb-0">选项（2-10个）</FieldLegend>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={addOption}
+                                disabled={options.length >= 10}
+                                data-testid="student-question-add-option"
+                                className="self-start border-primary/30 text-primary hover:bg-primary/10 hover:text-primary"
+                            >
+                                <Plus data-icon="inline-start" />
+                                添加选项
+                            </Button>
+                            <FieldGroup className="gap-2">
                                 {options.map((option, index) => (
-                                    <div key={index} className="flex items-center gap-2">
+                                    <Field key={index} orientation="horizontal" className="items-center">
                                         <GripVertical className="size-4 text-muted-foreground" />
                                         <span className="w-6 font-mono text-sm text-muted-foreground">
                                             {String.fromCharCode(65 + index)}.
@@ -269,16 +292,16 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         >
                                             <Trash2 />
                                         </Button>
-                                    </div>
+                                    </Field>
                                 ))}
-                            </div>
-                        </div>
+                            </FieldGroup>
+                        </FieldSet>
                     )}
 
                     {type === "multiple" && (
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="minSelect" className="text-muted-foreground">最少选择数</Label>
+                            <Field>
+                                <FieldLabel htmlFor="minSelect" className="text-muted-foreground">最少选择数</FieldLabel>
                                 <Input
                                     id="minSelect"
                                     type="number"
@@ -289,9 +312,9 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     data-testid="student-question-min-select"
                                     className="bg-background/50"
                                 />
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                <Label htmlFor="maxSelect" className="text-muted-foreground">最多选择数</Label>
+                            </Field>
+                            <Field>
+                                <FieldLabel htmlFor="maxSelect" className="text-muted-foreground">最多选择数</FieldLabel>
                                 <Input
                                     id="maxSelect"
                                     type="number"
@@ -302,41 +325,38 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     data-testid="student-question-max-select"
                                     className="bg-background/50"
                                 />
-                            </div>
+                            </Field>
                         </div>
                     )}
 
                     {type === "scale" && (
                         <div className="flex flex-col gap-4">
-                            <div className="flex flex-col gap-2">
-                                <Label className="text-muted-foreground">常用量表预设</Label>
-                                <div className="grid grid-cols-1 gap-1.5">
+                            <FieldSet className="gap-2">
+                                <FieldLegend variant="label" className="mb-0 text-muted-foreground">常用量表预设</FieldLegend>
+                                <ToggleGroup
+                                    type="single"
+                                    value={activeLikertPresetValue}
+                                    onValueChange={applyLikertPreset}
+                                    variant="outline"
+                                    spacing={1}
+                                    className="grid w-full grid-cols-1 gap-1.5"
+                                    aria-label="常用量表预设"
+                                >
                                     {LIKERT_PRESETS.map((preset, idx) => (
-                                        <button
+                                        <ToggleGroupItem
                                             key={idx}
-                                            type="button"
-                                            onClick={() => {
-                                                setScaleMin(preset.scaleMin);
-                                                setScaleMax(preset.scaleMax);
-                                                setScaleMinLabel(preset.scaleMinLabel);
-                                                setScaleMaxLabel(preset.scaleMaxLabel);
-                                            }}
+                                            value={String(idx)}
                                             data-testid={`student-question-scale-preset-${idx}`}
-                                            className={cn(
-                                                "rounded-lg border px-3 py-2 text-left text-xs transition-colors",
-                                                scaleMin === preset.scaleMin && scaleMax === preset.scaleMax && scaleMinLabel === preset.scaleMinLabel && scaleMaxLabel === preset.scaleMaxLabel
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-border text-muted-foreground hover:border-foreground/30"
-                                            )}
+                                            className="h-auto w-full justify-start whitespace-normal rounded-lg px-3 py-2 text-left text-xs font-medium normal-case tracking-normal text-muted-foreground data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
                                         >
                                             {preset.label}
-                                        </button>
+                                        </ToggleGroupItem>
                                     ))}
-                                </div>
-                            </div>
+                                </ToggleGroup>
+                            </FieldSet>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="scaleMin" className="text-muted-foreground">量表最小值</Label>
+                                <Field>
+                                    <FieldLabel htmlFor="scaleMin" className="text-muted-foreground">量表最小值</FieldLabel>
                                     <Input
                                         id="scaleMin"
                                         type="number"
@@ -347,9 +367,9 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         data-testid="student-question-scale-min"
                                         className="bg-background/50"
                                     />
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="scaleMax" className="text-muted-foreground">量表最大值</Label>
+                                </Field>
+                                <Field>
+                                    <FieldLabel htmlFor="scaleMax" className="text-muted-foreground">量表最大值</FieldLabel>
                                     <Input
                                         id="scaleMax"
                                         type="number"
@@ -360,14 +380,14 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         data-testid="student-question-scale-max"
                                         className="bg-background/50"
                                     />
-                                </div>
+                                </Field>
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            <FieldDescription>
                                 量表范围：{scaleMin} - {scaleMax} 分
-                            </p>
+                            </FieldDescription>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="scaleMinLabel" className="text-muted-foreground">左端标签 ({scaleMin}分)</Label>
+                                <Field>
+                                    <FieldLabel htmlFor="scaleMinLabel" className="text-muted-foreground">左端标签 ({scaleMin}分)</FieldLabel>
                                     <Input
                                         id="scaleMinLabel"
                                         placeholder="例如：非常不同意"
@@ -377,9 +397,9 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         data-testid="student-question-scale-min-label"
                                         className="bg-background/50"
                                     />
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <Label htmlFor="scaleMaxLabel" className="text-muted-foreground">右端标签 ({scaleMax}分)</Label>
+                                </Field>
+                                <Field>
+                                    <FieldLabel htmlFor="scaleMaxLabel" className="text-muted-foreground">右端标签 ({scaleMax}分)</FieldLabel>
                                     <Input
                                         id="scaleMaxLabel"
                                         placeholder="例如：非常同意"
@@ -389,11 +409,11 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         data-testid="student-question-scale-max-label"
                                         className="bg-background/50"
                                     />
-                                </div>
+                                </Field>
                             </div>
                         </div>
                     )}
-                </div>
+                </FieldGroup>
 
                 <DialogFooter className="gap-3 sm:gap-2">
                     <Button

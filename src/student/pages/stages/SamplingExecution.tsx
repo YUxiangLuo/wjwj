@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -510,8 +510,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex flex-col gap-6 pt-4">
-                                    <div className="rounded-lg border border-border bg-muted/30 p-4">
-                                        <Label htmlFor="simpleSeed" className="text-xs">随机种子（可选）</Label>
+                                    <Field className="rounded-lg border border-border bg-muted/30 p-4">
+                                        <FieldLabel htmlFor="simpleSeed" className="text-xs">随机种子（可选）</FieldLabel>
                                         <Input
                                             id="simpleSeed"
                                             type="number"
@@ -519,10 +519,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             onChange={(e) => setSimpleSeed(e.target.value)}
                                             placeholder="留空则每次随机"
                                             data-testid="student-sampling-simple-seed"
-                                            className="mt-2"
                                         />
-                                        <p className="mt-2 text-xs text-muted-foreground">设置后可复现同一组抽样结果。</p>
-                                    </div>
+                                        <FieldDescription className="text-xs">设置后可复现同一组抽样结果。</FieldDescription>
+                                    </Field>
                                     {!simpleResult?.completed ? (
                                         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center">
                                             <div className="mb-4 text-muted-foreground">尚未执行抽样</div>
@@ -584,9 +583,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex flex-col gap-6 pt-4">
-                                    <div className="grid grid-cols-1 gap-6 rounded-lg border border-border bg-muted/30 p-4 md:grid-cols-3">
-                                        <div className="flex flex-col gap-3">
-                                            <Label htmlFor="kValue">间隔 K 值 (步长)</Label>
+                                    <FieldGroup className="grid grid-cols-1 gap-6 rounded-lg border border-border bg-muted/30 p-4 md:grid-cols-3">
+                                        <Field>
+                                            <FieldLabel htmlFor="kValue">间隔 K 值 (步长)</FieldLabel>
                                             <div className="relative">
                                                 <Input
                                                     id="kValue"
@@ -600,9 +599,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 />
                                                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">Steps</span>
                                             </div>
-                                        </div>
-                                        <div className="flex flex-col gap-3">
-                                            <Label>预计抽取数量</Label>
+                                        </Field>
+                                        <Field data-invalid={!isKValid || undefined}>
+                                            <FieldLabel>预计抽取数量</FieldLabel>
                                             <div className={cn(
                                                 "flex items-center justify-between rounded-md border p-2.5",
                                                 isKValid ? "border-border bg-background" : "border-destructive/50 bg-destructive/10",
@@ -611,23 +610,23 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 <span className="text-xs text-muted-foreground">允许范围: {formatSystematicRange(systematicAcceptedRange)}</span>
                                             </div>
                                             {systematicSampleCountRange.min !== systematicSampleCountRange.max && (
-                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                <FieldDescription className="text-xs">
                                                     随机起点不同，实际抽取数量会在 {formatSystematicRange(systematicSampleCountRange)} 之间波动。
-                                                </p>
+                                                </FieldDescription>
                                             )}
                                             {!hasAnyValidSystematicK && (
-                                                <p className="mt-1 text-xs text-destructive">
+                                                <FieldDescription className="text-xs text-destructive">
                                                     当前总体规模与目标样本量下，没有任何 K 值能满足允许范围，请返回上一阶段调整样本量规划。
-                                                </p>
+                                                </FieldDescription>
                                             )}
                                             {hasAnyValidSystematicK && !isKValid && (
-                                                <p className="mt-1 text-xs text-destructive">
+                                                <FieldDescription className="text-xs text-destructive">
                                                     当前 K 值的实际样本量可能超出允许范围，请调整 K 值
-                                                </p>
+                                                </FieldDescription>
                                             )}
-                                        </div>
-                                        <div className="flex flex-col gap-3">
-                                            <Label htmlFor="systematicSeed">随机种子（可选）</Label>
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor="systematicSeed">随机种子（可选）</FieldLabel>
                                             <Input
                                                 id="systematicSeed"
                                                 type="number"
@@ -636,11 +635,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 placeholder="留空则每次随机"
                                                 data-testid="student-sampling-systematic-seed"
                                             />
-                                            <p className="text-xs text-muted-foreground">
+                                            <FieldDescription className="text-xs">
                                                 设置后可复现系统抽样结果。
-                                            </p>
-                                        </div>
-                                    </div>
+                                            </FieldDescription>
+                                        </Field>
+                                    </FieldGroup>
 
                                     {!systematicResult?.completed ? (
                                         <div className="flex justify-end">
@@ -702,9 +701,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex flex-col gap-6 pt-4">
-                                    <div className="grid grid-cols-1 gap-6 rounded-lg border border-border bg-muted/30 p-4 md:grid-cols-3">
-                                        <div className="flex flex-col gap-3">
-                                            <Label>选择规模变量</Label>
+                                    <FieldGroup className="grid grid-cols-1 gap-6 rounded-lg border border-border bg-muted/30 p-4 md:grid-cols-3">
+                                        <Field data-invalid={!hasPpsNumericField || undefined}>
+                                            <FieldLabel>选择规模变量</FieldLabel>
                                             {hasPpsNumericField ? (
                                                 <Select value={ppsSizeField} onValueChange={setPpsSizeField}>
                                                     <SelectTrigger data-testid="student-sampling-pps-size-field" className="w-full">
@@ -725,14 +724,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                     {PPS_UNAVAILABLE_STATUS_MESSAGE}
                                                 </div>
                                             )}
-                                            <p className={cn("text-xs leading-relaxed", hasPpsNumericField ? "text-muted-foreground" : "text-destructive")}>
+                                            <FieldDescription className={cn("text-xs leading-relaxed", !hasPpsNumericField && "text-destructive")}>
                                                 {hasPpsNumericField
                                                     ? "选择一个规模变量（如收入、人口等），该字段必须在总体中对每个单位都为正数。"
                                                     : PPS_UNAVAILABLE_REASON}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-col gap-3">
-                                            <Label htmlFor="ppsSampleSize">抽样数量</Label>
+                                            </FieldDescription>
+                                        </Field>
+                                        <Field data-invalid={!isPpsSizeValid || undefined}>
+                                            <FieldLabel htmlFor="ppsSampleSize">抽样数量</FieldLabel>
                                             <Input
                                                 id="ppsSampleSize"
                                                 type="number"
@@ -741,14 +740,15 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 min={ppsMinSize}
                                                 max={ppsMaxSize}
                                                 data-testid="student-sampling-pps-sample-size"
+                                                aria-invalid={!isPpsSizeValid || undefined}
                                                 className={cn(!isPpsSizeValid && "border-destructive")}
                                             />
-                                            <p className="text-xs leading-relaxed text-muted-foreground">
+                                            <FieldDescription className="text-xs leading-relaxed">
                                                 允许范围: {ppsMinSize}-{ppsMaxSize}（目标值 {n} 的 80%-120%）
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-col gap-3">
-                                            <Label htmlFor="ppsSeed">随机种子（可选）</Label>
+                                            </FieldDescription>
+                                        </Field>
+                                        <Field>
+                                            <FieldLabel htmlFor="ppsSeed">随机种子（可选）</FieldLabel>
                                             <Input
                                                 id="ppsSeed"
                                                 type="number"
@@ -757,11 +757,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 placeholder="留空则每次随机"
                                                 data-testid="student-sampling-pps-seed"
                                             />
-                                            <p className="text-xs leading-relaxed text-muted-foreground">
+                                            <FieldDescription className="text-xs leading-relaxed">
                                                 设置后可复现同一组PPS抽样结果。
-                                            </p>
-                                        </div>
-                                    </div>
+                                            </FieldDescription>
+                                        </Field>
+                                    </FieldGroup>
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">

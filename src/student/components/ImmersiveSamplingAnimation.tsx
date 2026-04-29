@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, memo } from "react";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { MethodKey as SamplingMethod } from "../api-client";
@@ -49,11 +50,12 @@ const METHOD_META: Record<SamplingMethod, {
     label: string; icon: typeof Shuffle;
     accentBg: string; accentBgLight: string; accentText: string;
     accentRing: string; accentBorder: string;
+    progressIndicator: string;
 }> = {
-    simple: { label: "简单随机抽样", icon: Shuffle, accentBg: "bg-primary", accentBgLight: "bg-primary/10", accentText: "text-primary", accentRing: "ring-primary/40", accentBorder: "border-primary/30" },
-    systematic: { label: "系统抽样", icon: Target, accentBg: "bg-chart-3", accentBgLight: "bg-chart-3/10", accentText: "text-chart-3", accentRing: "ring-chart-3/40", accentBorder: "border-chart-3/30" },
-    pps: { label: "PPS抽样", icon: Target, accentBg: "bg-chart-5", accentBgLight: "bg-chart-5/10", accentText: "text-chart-5", accentRing: "ring-chart-5/40", accentBorder: "border-chart-5/30" },
-    stratified: { label: "分层抽样", icon: Layers, accentBg: "bg-chart-4", accentBgLight: "bg-chart-4/10", accentText: "text-chart-4", accentRing: "ring-chart-4/40", accentBorder: "border-chart-4/30" },
+    simple: { label: "简单随机抽样", icon: Shuffle, accentBg: "bg-primary", accentBgLight: "bg-primary/10", accentText: "text-primary", accentRing: "ring-primary/40", accentBorder: "border-primary/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-primary" },
+    systematic: { label: "系统抽样", icon: Target, accentBg: "bg-chart-3", accentBgLight: "bg-chart-3/10", accentText: "text-chart-3", accentRing: "ring-chart-3/40", accentBorder: "border-chart-3/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-chart-3" },
+    pps: { label: "PPS抽样", icon: Target, accentBg: "bg-chart-5", accentBgLight: "bg-chart-5/10", accentText: "text-chart-5", accentRing: "ring-chart-5/40", accentBorder: "border-chart-5/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-chart-5" },
+    stratified: { label: "分层抽样", icon: Layers, accentBg: "bg-chart-4", accentBgLight: "bg-chart-4/10", accentText: "text-chart-4", accentRing: "ring-chart-4/40", accentBorder: "border-chart-4/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-chart-4" },
 };
 
 const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; sampling: string; complete: string }> = {
@@ -471,12 +473,7 @@ export function ImmersiveSamplingAnimation({
     return (
         <div className="fixed inset-0 z-50 flex flex-col bg-background" data-testid="immersive-sampling-animation">
             {/* Progress bar */}
-            <div className="absolute left-0 right-0 top-0 z-10 h-1 bg-muted">
-                <div
-                    className={cn("h-full transition-all duration-300 ease-out", meta.accentBg)}
-                    style={{ width: `${progress}%` }}
-                />
-            </div>
+            <Progress value={progress} className={cn("absolute left-0 right-0 top-0 z-10 h-1", meta.progressIndicator)} />
 
             {/* Header */}
             <div className="z-10 flex items-center justify-between px-6 pb-3 pt-5">
@@ -504,13 +501,16 @@ export function ImmersiveSamplingAnimation({
                         <X data-icon="inline-end" />
                     </Button>
                 ) : (
-                    <button
+                    <Button
+                        type="button"
                         onClick={onClose}
-                        className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full"
                         aria-label="关闭"
                     >
-                        <X className="size-5" />
-                    </button>
+                        <X />
+                    </Button>
                 )}
             </div>
 

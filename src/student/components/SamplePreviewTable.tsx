@@ -1,6 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useRef, useCallback, type MouseEvent } from "react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -100,6 +106,10 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
     const start = (currentPage - 1) * pageSize;
     const end = Math.min(start + pageSize, samples.length);
     const rows = samples.slice(start, end);
+    const goToPage = (nextPage: number) => (event: MouseEvent<HTMLAnchorElement>) => {
+        event.preventDefault();
+        setPage(Math.min(totalPages, Math.max(1, nextPage)));
+    };
 
     return (
         <div className="flex h-full min-h-0 w-full flex-col">
@@ -146,25 +156,33 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
                 <p className="text-xs text-muted-foreground">
                     显示第 {start + 1}-{end} 条，共 {Math.max(total, samples.length)} 条
                 </p>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                        disabled={currentPage <= 1}
-                    >
-                        上一页
-                    </Button>
-                    <span className="text-xs text-muted-foreground">{currentPage}/{totalPages}</span>
-                    <Button
-                        variant="outline"
-                        size="xs"
-                        onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage >= totalPages}
-                    >
-                        下一页
-                    </Button>
-                </div>
+                <Pagination className="mx-0 w-auto justify-end">
+                    <PaginationContent>
+                        <PaginationItem>
+                            <PaginationPrevious
+                                href="#"
+                                text="上一页"
+                                aria-disabled={currentPage <= 1}
+                                className={currentPage <= 1 ? "pointer-events-none opacity-50" : undefined}
+                                onClick={goToPage(currentPage - 1)}
+                            />
+                        </PaginationItem>
+                        <PaginationItem>
+                            <span className="flex h-7 items-center px-2 text-xs text-muted-foreground">
+                                {currentPage}/{totalPages}
+                            </span>
+                        </PaginationItem>
+                        <PaginationItem>
+                            <PaginationNext
+                                href="#"
+                                text="下一页"
+                                aria-disabled={currentPage >= totalPages}
+                                className={currentPage >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                                onClick={goToPage(currentPage + 1)}
+                            />
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
             </div>
         </div>
     );

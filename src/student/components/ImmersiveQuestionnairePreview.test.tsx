@@ -50,6 +50,13 @@ mock.module("@/components/ui/alert-dialog", () => ({
     ),
 }));
 
+mock.module("@/components/ui/tooltip", () => ({
+    Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
+    TooltipTrigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+    TooltipContent: () => null,
+    TooltipProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 const { ImmersiveQuestionnairePreview } = await import("./ImmersiveQuestionnairePreview");
 
 function baseQuestionnaire(overrides: Partial<QuestionnaireData> = {}): QuestionnaireData {

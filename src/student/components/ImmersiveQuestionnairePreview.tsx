@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback, useEffect, useLayoutEffect, useRef, useId } from "react";
 import { X, ChevronLeft, ChevronRight, Check, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
     AlertDialog,
@@ -492,12 +494,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 )}
 
                 {/* Progress bar */}
-                <div className="absolute top-0 left-0 right-0 z-10 h-1 bg-muted">
-                    <div
-                        className="h-full bg-primary transition-all duration-500 ease-out"
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
+                <Progress value={progress} className="absolute left-0 right-0 top-0 z-10 h-1" />
 
                 {/* Header */}
                 <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-4 sm:px-6">
@@ -505,15 +502,22 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {page.type === "question" && totalQuestions > 0 && `${page.index + 1} / ${totalQuestions}`}
                     </div>
                     {page.type !== "complete" && (
-                        <button
-                            type="button"
-                            onClick={requestClose}
-                            className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            aria-label="关闭预览"
-                            data-testid="immersive-preview-close"
-                        >
-                            <X className="size-5" />
-                        </button>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={requestClose}
+                                    aria-label="关闭预览"
+                                    data-testid="immersive-preview-close"
+                                    className="rounded-full text-muted-foreground"
+                                >
+                                    <X />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>关闭预览</TooltipContent>
+                        </Tooltip>
                     )}
                 </div>
 

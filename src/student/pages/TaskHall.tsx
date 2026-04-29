@@ -12,6 +12,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -441,25 +442,33 @@ export function TaskHall() {
                         <LayoutDashboard className="size-5 text-primary" />
                         我的任务
                     </h3>
-                    <div className="flex self-start rounded-lg border border-border bg-background p-1 sm:self-auto">
+                    <ToggleGroup
+                        type="single"
+                        value={filter}
+                        onValueChange={(value) => {
+                            if (value) setFilter(value as FilterType);
+                        }}
+                        className="self-start rounded-lg border border-border bg-background p-1 sm:self-auto"
+                        spacing={1}
+                        aria-label="任务状态筛选"
+                    >
                         {[
                             { key: "all", label: "全部", testId: "student-filter-all" },
                             { key: "in_progress", label: "进行中", testId: "student-filter-in-progress" },
                             { key: "submitted", label: "已提交", testId: "student-filter-submitted" },
                             { key: "graded", label: "已批改", testId: "student-filter-graded" },
                         ].map((item) => (
-                            <Button
+                            <ToggleGroupItem
                                 key={item.key}
-                                type="button"
-                                variant={filter === item.key ? "secondary" : "ghost"}
+                                value={item.key}
                                 size="sm"
-                                onClick={() => setFilter(item.key as typeof filter)}
+                                className="rounded-md px-3 text-sm font-medium normal-case tracking-normal"
                                 data-testid={item.testId}
                             >
                                 {item.label}
-                            </Button>
+                            </ToggleGroupItem>
                         ))}
-                    </div>
+                    </ToggleGroup>
                 </div>
                 <Separator />
             </div>

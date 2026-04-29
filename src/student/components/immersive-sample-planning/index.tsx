@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef, useId } from "react";
 import { X, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
     AlertDialog,
@@ -549,12 +551,7 @@ export function ImmersiveSamplePlanning({
                 tabIndex={-1}
             >
                 {/* Progress bar */}
-                <div className="absolute left-0 right-0 top-0 z-10 h-1 bg-muted">
-                    <div
-                        className="h-full bg-primary transition-all duration-500 ease-out"
-                        style={{ width: `${progress}%` }}
-                    />
-                </div>
+                <Progress value={progress} className="absolute left-0 right-0 top-0 z-10 h-1" />
 
                 {/* Header */}
                 <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-between px-4 pt-4 sm:px-6">
@@ -579,15 +576,22 @@ export function ImmersiveSamplePlanning({
                             ))}
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        onClick={requestClose}
-                        className="flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        aria-label="关闭"
-                        data-testid="immersive-sp-close"
-                    >
-                        <X className="size-5" />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={requestClose}
+                                className="rounded-full text-muted-foreground"
+                                aria-label="关闭"
+                                data-testid="immersive-sp-close"
+                            >
+                                <X />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>关闭规划</TooltipContent>
+                    </Tooltip>
                 </div>
 
                 {/* Content */}
@@ -615,25 +619,38 @@ export function ImmersiveSamplePlanning({
 
                 {/* Side navigation arrows on desktop */}
                 {showNav && canGoPrev && (
-                    <button
-                        type="button"
-                        onClick={goPrev}
-                        className="fixed left-4 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-muted hover:text-foreground lg:flex"
-                        aria-label="上一步"
-                    >
-                        <ChevronLeft className="size-5" />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon-lg"
+                                onClick={goPrev}
+                                className="fixed left-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-background/90 text-muted-foreground shadow-sm backdrop-blur-sm lg:inline-flex"
+                                aria-label="上一步"
+                            >
+                                <ChevronLeft />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">上一步</TooltipContent>
+                    </Tooltip>
                 )}
                 {showNav && canGoNext && (
-                    <button
-                        type="button"
-                        onClick={goNext}
-                        data-testid="immersive-sp-next"
-                        className="fixed right-4 top-1/2 z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/20 transition-colors hover:bg-primary/90 lg:flex"
-                        aria-label="下一步"
-                    >
-                        <ChevronRight className="size-5" />
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                type="button"
+                                size="icon-lg"
+                                onClick={goNext}
+                                data-testid="immersive-sp-next"
+                                className="fixed right-4 top-1/2 z-10 hidden -translate-y-1/2 rounded-full shadow-lg shadow-primary/20 lg:inline-flex"
+                                aria-label="下一步"
+                            >
+                                <ChevronRight />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">下一步</TooltipContent>
+                    </Tooltip>
                 )}
             </div>
 
