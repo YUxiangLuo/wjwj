@@ -56,7 +56,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                     <div className="flex flex-col gap-2">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">1.0 (简单随机)</span>
-                            <span className="text-lg font-bold tabular-nums text-chart-4">
+                            <span className="text-lg font-bold tabular-nums text-warning">
                                 deff = {params.designEffect.toFixed(1)}
                             </span>
                             <span className="text-muted-foreground">5.0</span>
@@ -78,12 +78,12 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                         afterLabel={`当前 (deff=${params.designEffect.toFixed(1)})`}
                         afterValue={withDeff}
                         max={Math.max(baseN * 5, withDeff)}
-                        beforeColor="bg-chart-3"
-                        afterColor="bg-chart-4"
+                        beforeColor="bg-success"
+                        afterColor="bg-warning"
                     />
 
                     {params.designEffect > 1 && (
-                        <p className="animate-in fade-in text-center text-sm text-chart-4 duration-300">
+                        <p className="animate-in fade-in text-center text-sm text-warning duration-300">
                             需要多抽 <strong className="tabular-nums">{(withDeff - baseN).toLocaleString()}</strong> 人来弥补群内相似性
                         </p>
                     )}
@@ -143,11 +143,11 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                         <div className="flex flex-col gap-1">
                             <div className="flex justify-between text-xs text-muted-foreground">
                                 <span>收回有效</span>
-                                <span className="font-medium tabular-nums text-chart-3">{withDeff.toLocaleString()} 份</span>
+                                <span className="font-medium tabular-nums text-success">{withDeff.toLocaleString()} 份</span>
                             </div>
                             <div className="h-5 overflow-hidden rounded-full bg-muted">
                                 <div
-                                    className="h-full rounded-full bg-chart-3 transition-all duration-300"
+                                    className="h-full rounded-full bg-success transition-all duration-300"
                                     style={{ width: `${withBoth > 0 ? (withDeff / withBoth) * 100 : 100}%` }}
                                 />
                             </div>
@@ -231,11 +231,11 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
             <div className="mx-auto flex max-w-md flex-col gap-3 rounded-2xl border bg-card p-5 text-card-foreground shadow-sm">
                 <StepRow step={1} label="初始样本量 n₀" formula={step1Formula} value={n0} color="text-primary" />
                 <StepArrow />
-                <StepRow step={2} label="有限总体校正 n₁" formula="n₀/(1+(n₀-1)/N)" value={n1} color="text-chart-4" />
+                <StepRow step={2} label="有限总体校正 n₁" formula="n₀/(1+(n₀-1)/N)" value={n1} color="text-warning" />
                 <StepArrow />
-                <StepRow step={3} label="设计效应调整 n₂" formula={`n₁×deff (${params.designEffect.toFixed(1)})`} value={n2} color="text-chart-4" />
+                <StepRow step={3} label="设计效应调整 n₂" formula={`n₁×deff (${params.designEffect.toFixed(1)})`} value={n2} color="text-warning" />
                 <StepArrow />
-                <StepRow step={4} label="无回答率调整 n" formula={`n₂/(1-NRR) (${(params.nonResponseRate * 100).toFixed(0)}%)`} value={n3} color="text-chart-3" highlight />
+                <StepRow step={4} label="无回答率调整 n" formula={`n₂/(1-NRR) (${(params.nonResponseRate * 100).toFixed(0)}%)`} value={n3} color="text-success" highlight />
             </div>
 
             <div className="mx-auto flex max-w-md flex-col gap-3 rounded-2xl border bg-muted/50 p-5">
@@ -262,7 +262,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                         </div>
                     ))}
                 </div>
-                <p className="text-center text-xs text-chart-4">
+                <p className="text-center text-xs text-warning">
                     当三个层互不重叠且都要单独达标时，总样本量约增加 {plan1n > 0 ? (plan2n / plan1n).toFixed(1) : "—"} 倍
                 </p>
             </div>
@@ -284,9 +284,9 @@ function ScenarioHeader({ icon: Icon, tag, title, description }: { icon: LucideI
     return (
         <div className="flex flex-col gap-3 text-center">
             <div className="flex justify-center">
-                <Icon className="size-8 text-chart-4" aria-hidden="true" />
+                <Icon className="size-8 text-warning" aria-hidden="true" />
             </div>
-            <span className="inline-flex items-center gap-2 self-center rounded-full bg-chart-4/10 px-3 py-1 text-xs font-medium text-chart-4">
+            <span className="inline-flex items-center gap-2 self-center rounded-full bg-warning/10 px-3 py-1 text-xs font-medium text-warning">
                 {tag}
             </span>
             <h2 className="text-2xl font-bold text-foreground">{title}</h2>
@@ -299,7 +299,7 @@ function StepRow({ step, label, formula, value, color, highlight }: {
     step: number; label: string; formula: string; value: number; color: string; highlight?: boolean;
 }) {
     return (
-        <div className={cn("flex items-center justify-between gap-3", highlight && "-mx-1 rounded-xl bg-chart-3/10 p-3")}>
+        <div className={cn("flex items-center justify-between gap-3", highlight && "-mx-1 rounded-xl bg-success/10 p-3")}>
             <div className="flex items-center gap-2 min-w-0">
                 <span className="flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">{step}</span>
                 <div className="min-w-0">

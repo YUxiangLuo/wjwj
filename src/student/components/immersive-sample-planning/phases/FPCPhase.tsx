@@ -106,7 +106,7 @@ export function FPCPhase({ params, onNext }: Props) {
                             <div className="flex-1">
                                 <div className="h-4 overflow-hidden rounded-full bg-muted">
                                     <div
-                                        className={cn("h-full rounded-full transition-all duration-500", row.isUser ? "bg-primary" : "bg-chart-4")}
+                                        className={cn("h-full rounded-full transition-all duration-500", row.isUser ? "bg-primary" : "bg-warning")}
                                         style={{ width: `${Math.max(3, (row.n1 / Math.max(n0Raw, 1)) * 100)}%` }}
                                     />
                                 </div>

@@ -33,12 +33,12 @@ export function EnhancedMetricsCard({
     const formatCI = (value: number) => (value * 100).toFixed(1) + "%";
 
     const sizeDeviation = finalSampleSize !== undefined && finalSampleSize !== metrics.n;
-    const metricTileClass = "rounded-xl border bg-background p-3";
+    const metricTileClass = "student-metric-tile";
     const metricLabelClass = "text-xs text-muted-foreground";
     const metricValueClass = "text-lg font-bold text-foreground";
 
     return (
-        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
+        <Card className="student-card-shell border-info/20 bg-info/10">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -55,7 +55,7 @@ export function EnhancedMetricsCard({
                     基于简单随机抽样等效样本量 (n₁={Math.ceil(metrics.n1)}) 的精度估计
                 </CardDescription>
                 {sizeDeviation && (
-                    <p className="mt-1 text-xs text-chart-4">
+                    <p className="mt-1 text-xs text-warning">
                         您选择的最终样本量 ({finalSampleSize}) 与公式推荐值 ({metrics.n}) 不同，实际精度可能有偏差
                     </p>
                 )}
@@ -147,7 +147,7 @@ export function EnhancedMetricsCard({
                         <div className="flex flex-wrap items-stretch justify-between gap-x-3 gap-y-4 sm:flex-nowrap sm:gap-x-4">
                             <div className="min-w-[5.5rem] flex-1 text-center">
                                 <div className="mb-1 text-xs text-muted-foreground">下限</div>
-                                <div className="flex items-center justify-center gap-1 text-chart-3">
+                                <div className="flex items-center justify-center gap-1 text-analysis-estimate">
                                     <Minus className="size-3 shrink-0" />
                                     <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval.lower)}</span>
                                 </div>
@@ -160,7 +160,7 @@ export function EnhancedMetricsCard({
                             <div className="hidden min-h-[2.5rem] w-px shrink-0 self-center bg-border sm:block" aria-hidden />
                             <div className="min-w-[5.5rem] flex-1 text-center">
                                 <div className="mb-1 text-xs text-muted-foreground">上限</div>
-                                <div className="flex items-center justify-center gap-1 text-chart-3">
+                                <div className="flex items-center justify-center gap-1 text-analysis-estimate">
                                     <Plus className="size-3 shrink-0" />
                                     <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval.upper)}</span>
                                 </div>

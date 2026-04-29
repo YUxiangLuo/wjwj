@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { 
     Calculator, 
     Info, 
@@ -153,16 +152,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                             <span className="text-sm font-medium text-foreground">
                                 {method.name}
                             </span>
-                            <Badge
-                                className={cn(
-                                    "text-primary-foreground",
-                                    method.deff < 1
-                                        ? "bg-chart-3"
-                                        : method.deff === 1
-                                            ? "bg-primary"
-                                            : "bg-chart-4",
-                                )}
-                            >
+                            <Badge variant={method.deff < 1 ? "success" : method.deff === 1 ? "info" : "warning"}>
                                 deff = {method.deff.toFixed(1)}
                             </Badge>
                         </div>
@@ -237,9 +227,9 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                         </p>
 
                         {/* 样本量补偿计算 */}
-                        <div className="rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                        <div className="student-callout student-callout-warning p-2">
                             <div className="flex items-center gap-2 text-xs text-foreground">
-                                <Calculator className="size-3.5 text-chart-4" />
+                                <Calculator className="size-3.5 text-current" />
                                 <span>
                                     为补偿 {(100 - mode.responseRate * 100).toFixed(0)}% 不回答，
                                     样本量需扩大至基准的 {(1 / mode.responseRate).toFixed(1)} 倍
@@ -250,9 +240,9 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                 )}
 
                 {/* 综合建议 */}
-                <div className="rounded-xl border-2 border-chart-3/30 bg-chart-3/10 p-3 shadow-sm">
+                <div className="student-callout student-callout-success rounded-xl border-2 p-3 shadow-sm">
                     <div className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-chart-3" />
+                        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-current" />
                         <div className="flex flex-col gap-2">
                             <p className="text-sm font-medium text-foreground">
                                 参数建议

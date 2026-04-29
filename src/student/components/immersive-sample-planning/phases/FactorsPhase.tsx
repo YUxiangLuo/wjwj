@@ -55,10 +55,10 @@ function buildMeanErrorChoices(current: number) {
     return [...new Set(base)].sort((a, b) => a - b);
 }
 
-const panelClass = "mx-auto max-w-lg overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm";
+const panelClass = "student-card-shell mx-auto max-w-lg overflow-hidden";
 const panelHeaderClass = "border-b bg-muted/50 px-4 py-2.5";
 const sectionTextClass = "text-center text-sm text-muted-foreground";
-const calloutClass = "mx-auto max-w-lg rounded-xl border border-primary/20 bg-primary/10 p-4";
+const calloutClass = "student-callout student-callout-info mx-auto max-w-lg p-4";
 
 export function FactorsPhase({ step, params, onNext }: Props) {
     const meta = STEP_META[step];
@@ -259,9 +259,9 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
                     </p>
                 </div>
                 <div className="divide-y divide-border">
-                    <div className="flex items-center justify-between bg-chart-2/10 px-4 py-3">
-                        <span className="text-sm font-medium text-chart-2">方案1: 仅做整体估计</span>
-                        <span className="text-sm font-bold tabular-nums text-chart-2">n = {nOverall.toLocaleString()}</span>
+                    <div className="flex items-center justify-between bg-info/10 px-4 py-3">
+                        <span className="text-sm font-medium text-info">方案1: 仅做整体估计</span>
+                        <span className="text-sm font-bold tabular-nums text-info">n = {nOverall.toLocaleString()}</span>
                     </div>
                     <div className="flex flex-col gap-2 px-4 py-3">
                         <div className="flex items-center justify-between">
@@ -393,7 +393,7 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
                                 <div
                                     className={cn(
                                         "h-full rounded-full transition-all duration-300",
-                                        d.e === params.marginOfError ? "bg-primary" : "bg-chart-3",
+                                        d.e === params.marginOfError ? "bg-primary" : "bg-success",
                                     )}
                                     style={{ width: `${Math.max(2, (d.n / maxN) * 100)}%` }}
                                 />

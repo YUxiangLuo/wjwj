@@ -43,7 +43,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
         : Math.sqrt(0.25 / demoN * fpc);
     const me = z * se;
     const cv = !isMeanEstimation ? se / 0.5 : null;
-    const metricCardClass = "flex flex-col gap-2 rounded-2xl border bg-card p-4 text-card-foreground shadow-sm";
+    const metricCardClass = "student-card-shell flex flex-col gap-2 p-4";
 
     return (
         <div className="flex flex-col gap-8">
@@ -126,18 +126,18 @@ export function PrecisionPhase({ params, onNext }: Props) {
                     </div>
 
                     <div className={cn("grid gap-3 text-center", isMeanEstimation ? "grid-cols-2" : "grid-cols-3")}>
-                        <div className="rounded-xl bg-chart-2/10 p-3">
-                            <p className="text-[10px] font-medium uppercase tracking-wider text-chart-2">SE</p>
-                            <p className="text-lg font-bold tabular-nums text-chart-2">{fmt(se)}</p>
+                        <div className="student-metric-se rounded-xl p-3">
+                            <p className="text-[10px] font-medium uppercase tracking-wider">SE</p>
+                            <p className="text-lg font-bold tabular-nums">{fmt(se)}</p>
                         </div>
-                        <div className="rounded-xl bg-chart-4/10 p-3">
-                            <p className="text-[10px] font-medium uppercase tracking-wider text-chart-4">ME</p>
-                            <p className="text-lg font-bold tabular-nums text-chart-4">{fmt(me)}</p>
+                        <div className="student-metric-me rounded-xl p-3">
+                            <p className="text-[10px] font-medium uppercase tracking-wider">ME</p>
+                            <p className="text-lg font-bold tabular-nums">{fmt(me)}</p>
                         </div>
                         {!isMeanEstimation && cv != null && (
-                            <div className="rounded-xl bg-chart-3/10 p-3">
-                                <p className="text-[10px] font-medium uppercase tracking-wider text-chart-3">CV</p>
-                                <p className="text-lg font-bold tabular-nums text-chart-3">{(cv * 100).toFixed(1)}%</p>
+                            <div className="student-metric-cv rounded-xl p-3">
+                                <p className="text-[10px] font-medium uppercase tracking-wider">CV</p>
+                                <p className="text-lg font-bold tabular-nums">{(cv * 100).toFixed(1)}%</p>
                             </div>
                         )}
                     </div>

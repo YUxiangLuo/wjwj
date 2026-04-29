@@ -45,9 +45,9 @@ interface QuestionnaireStepValidation {
 type ValidationTone = "pass" | "warning" | "fail";
 
 const validationToneClasses: Record<ValidationTone, string> = {
-    pass: "border-primary/20 bg-primary/10 text-primary",
-    warning: "border-border bg-muted/40 text-muted-foreground",
-    fail: "border-destructive/20 bg-destructive/10 text-destructive",
+    pass: "student-callout-success",
+    warning: "student-callout-muted",
+    fail: "student-callout-danger",
 };
 
 function getValidationTone(isValid: boolean, warning = false): ValidationTone {

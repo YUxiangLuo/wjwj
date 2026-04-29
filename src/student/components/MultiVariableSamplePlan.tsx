@@ -60,7 +60,7 @@ const IMPORTANCE_LABELS: Record<string, { label: string; color: string; descript
     },
     secondary: { 
         label: "次要变量", 
-        color: "bg-chart-4",
+        color: "bg-warning",
         description: "重要但可接受稍低精度"
     },
     tertiary: { 
@@ -249,9 +249,9 @@ export function MultiVariableSamplePlan({
             <CardContent className="flex flex-col gap-4">
                 {/* 说明卡片 */}
                 {showExplanation && (
-                    <div className="rounded-xl border border-chart-4/20 bg-chart-4/10 p-3">
+                    <div className="student-callout student-callout-info p-3">
                         <div className="flex gap-2">
-                            <Info className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                            <Info className="mt-0.5 size-4 shrink-0 text-current" />
                             <div className="flex flex-col gap-1 text-xs text-foreground">
                                 <p className="font-medium">为什么需要多变量规划？</p>
                                 <p>
@@ -442,7 +442,7 @@ export function MultiVariableSamplePlan({
                                                         </SelectItem>
                                                         <SelectItem value="secondary">
                                                             <div className="flex items-center gap-2">
-                                                                <div className="size-2 rounded-full bg-chart-4" />
+                                                                <div className="size-2 rounded-full bg-warning" />
                                                                 次要变量（尽量满足）
                                                             </div>
                                                         </SelectItem>
@@ -509,7 +509,7 @@ export function MultiVariableSamplePlan({
                                         <div className="rounded-lg border bg-background p-3">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-xs text-muted-foreground">所需样本量</span>
-                                                <span className="text-lg font-bold tabular-nums text-chart-3">
+                                                <span className="text-lg font-bold tabular-nums text-success">
                                                     {variable.requiredSampleSize.toLocaleString()}
                                                 </span>
                                             </div>
@@ -572,7 +572,7 @@ export function MultiVariableSamplePlan({
 
                         <div className="flex items-center justify-between">
                             <span className="font-bold text-foreground">建议总样本量</span>
-                            <span className="text-2xl font-bold tabular-nums text-chart-3">
+                            <span className="text-2xl font-bold tabular-nums text-success">
                                 {recommendedSampleSize.toLocaleString()}
                             </span>
                         </div>
@@ -642,9 +642,9 @@ export function MultiVariableSamplePlan({
 
                 {/* 提示信息 */}
                 {variables.some(v => v.importance !== "primary") && (
-                    <div className="rounded-xl border border-chart-4/20 bg-chart-4/10 p-3">
+                    <div className="student-callout student-callout-warning p-3">
                         <div className="flex items-start gap-2">
-                            <AlertCircle className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                            <AlertCircle className="mt-0.5 size-4 shrink-0 text-current" />
                             <div className="text-xs text-foreground">
                                 <p className="mb-1 font-medium">精度权衡提示</p>
                                 <p>

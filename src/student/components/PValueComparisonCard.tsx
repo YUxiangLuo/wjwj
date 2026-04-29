@@ -20,11 +20,11 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
     const maxSampleSize = Math.max(...comparison.map(c => c.sampleSize), currentSampleSize);
 
     return (
-        <Card className="rounded-2xl border-chart-2/20 bg-chart-2/10 shadow-sm">
+        <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <PieChart className="size-5 text-chart-2" />
+                        <PieChart className="size-5 text-info" />
                         <CardTitle className="text-base text-foreground">
                             不同比例估计的样本量对比
                         </CardTitle>
@@ -46,7 +46,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                                 key={index}
                                 className={cn(
                                     "rounded-xl border bg-background p-3 transition-all",
-                                    isSelected && "border-chart-2/50 shadow-sm ring-1 ring-chart-2/40",
+                                    isSelected && "border-info/50 shadow-sm ring-1 ring-info/40",
                                 )}
                             >
                                 <div className="mb-2 flex items-center justify-between">
@@ -55,12 +55,12 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                                             p = {item.pLabel}
                                         </span>
                                         {isSelected && (
-                                            <Badge className="bg-chart-2 text-primary-foreground text-xs">
+                                            <Badge variant="info">
                                                 当前使用
                                             </Badge>
                                         )}
                                     </div>
-                                    <span className="text-lg font-bold text-chart-2">
+                                    <span className="text-lg font-bold text-info">
                                         {item.sampleSize.toLocaleString()}
                                     </span>
                                 </div>
@@ -68,7 +68,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                                 {/* 进度条 */}
                                 <div className="mb-2 h-2 overflow-hidden rounded-full bg-muted">
                                     <div 
-                                        className="h-full rounded-full bg-chart-2 transition-all"
+                                        className="h-full rounded-full bg-info transition-all"
                                         style={{ width: `${percentage}%` }}
                                     />
                                 </div>
@@ -82,9 +82,9 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                 </div>
 
                 {/* 解释说明 */}
-                <div className="rounded-xl border border-chart-4/20 bg-chart-4/10 p-3">
+                <div className="student-callout student-callout-info p-3">
                     <div className="flex gap-2">
-                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-current" />
                         <div className="flex flex-col gap-1 text-xs text-foreground">
                             <p className="font-medium">为什么使用 p=0.5？</p>
                             <p>
@@ -105,7 +105,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                                 <div className="flex items-center gap-2">
                                     <div className="h-1.5 w-16 rounded-full bg-muted">
                                         <div 
-                                            className="h-full rounded-full bg-chart-2"
+                                            className="h-full rounded-full bg-info"
                                             style={{ width: `${(item.p * (1 - item.p) / 0.25) * 100}%` }}
                                         />
                                     </div>

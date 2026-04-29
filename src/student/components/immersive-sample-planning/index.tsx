@@ -458,8 +458,8 @@ export function ImmersiveSamplePlanning({
                 return (
                     <div className="flex flex-col gap-8">
                         <div className="flex flex-col gap-3 text-center">
-                            <div className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-chart-3/20 bg-chart-3/10">
-                                <CheckCircle2 className="size-8 text-chart-3" />
+                            <div className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-success/20 bg-success/10">
+                                <CheckCircle2 className="size-8 text-success" />
                             </div>
                             <h2 className="text-2xl font-bold text-foreground">确认样本量规划</h2>
                             <p className="text-muted-foreground">

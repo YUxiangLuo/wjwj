@@ -94,9 +94,9 @@ export function ClusterSamplingCalculator({
 
             <CardContent className="flex flex-col gap-4">
                 {/* 说明 */}
-                <div className="rounded-xl border border-chart-3/20 bg-chart-3/10 p-3">
+                <div className="student-callout student-callout-info p-3">
                     <div className="flex gap-2">
-                        <Info className="mt-0.5 size-4 shrink-0 text-chart-3" />
+                        <Info className="mt-0.5 size-4 shrink-0 text-current" />
                         <div className="flex flex-col gap-1 text-xs text-foreground">
                             <p className="font-medium">什么是整群抽样？</p>
                             <p>
@@ -177,7 +177,7 @@ export function ClusterSamplingCalculator({
                         <div className="flex flex-col gap-1.5">
                             <div className="flex justify-between">
                                 <Label className="text-xs text-primary">允许误差</Label>
-                                <span className="text-xs font-bold tabular-nums text-chart-3">
+                                <span className="text-xs font-bold tabular-nums text-metric-me">
                                     ±{marginOfErrorLocal}%
                                 </span>
                             </div>
@@ -226,7 +226,7 @@ export function ClusterSamplingCalculator({
                                 </div>
                                 <div className="rounded-lg border bg-background p-3 text-center">
                                     <div className="mb-1 text-xs text-muted-foreground">总样本量</div>
-                                    <div className="text-2xl font-bold tabular-nums text-chart-3">
+                                    <div className="text-2xl font-bold tabular-nums text-success">
                                         {result.requiredSampleSize.toLocaleString()}
                                     </div>
                                     <div className="text-xs text-muted-foreground">人</div>
@@ -252,9 +252,9 @@ export function ClusterSamplingCalculator({
                             </div>
 
                             {/* 公式解释 */}
-                            <div className="rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                            <div className="student-callout student-callout-warning p-2">
                                 <div className="flex items-start gap-2">
-                                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-current" />
                                     <p className="text-xs text-foreground">
                                         {result.explanation} 群内相关系数 ρ = (deff-1)/(M-1)，
                                         其中 M={clusterSize} 为群规模。ρ 越大说明群内同质性越高，
@@ -292,11 +292,11 @@ export function ClusterSamplingCalculator({
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">分层抽样（层内同质）</span>
-                            <span className="font-bold text-chart-3">0.7-0.9</span>
+                            <span className="font-bold text-success">0.7-0.9</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">整群抽样（中等聚集）</span>
-                            <span className="font-bold text-chart-4">1.5-2.5</span>
+                            <span className="font-bold text-warning">1.5-2.5</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">整群抽样（高度聚集）</span>

@@ -84,14 +84,14 @@ export function ImmersiveExperimentLaunch({
     }, [handleClose]);
 
     const params = [
-        { icon: Target, label: "总体规模", value: populationSize.toLocaleString(), tone: "border-chart-2/20 bg-chart-2/10 text-chart-2" },
-        { icon: Hash, label: "样本量", value: sampleSize.toLocaleString(), tone: "border-chart-3/20 bg-chart-3/10 text-chart-3" },
-        { icon: Shield, label: "置信水平", value: CONFIDENCE_LABELS[confidenceLevel] ?? `${confidenceLevel}%`, tone: "border-chart-4/20 bg-chart-4/10 text-chart-4" },
+        { icon: Target, label: "总体规模", value: populationSize.toLocaleString(), tone: "student-method-simple" },
+        { icon: Hash, label: "样本量", value: sampleSize.toLocaleString(), tone: "student-method-systematic" },
+        { icon: Shield, label: "置信水平", value: CONFIDENCE_LABELS[confidenceLevel] ?? `${confidenceLevel}%`, tone: "student-method-stratified" },
         {
             icon: Target,
             label: getMarginOfErrorLabel(estimationType),
             value: formatMarginOfError(marginOfError, estimationType),
-            tone: "border-chart-5/20 bg-chart-5/10 text-chart-5",
+            tone: "student-method-pps",
         },
     ];
 
@@ -173,7 +173,7 @@ export function ImmersiveExperimentLaunch({
                         <div className="mb-4">
                             <Rocket className="mx-auto size-16 animate-bounce text-primary" />
                         </div>
-                        <h1 className="mb-2 bg-gradient-to-r from-chart-2 via-chart-3 to-chart-2 bg-clip-text text-4xl font-black text-transparent">
+                        <h1 className="mb-2 bg-gradient-to-r from-primary via-success to-primary bg-clip-text text-4xl font-black text-transparent">
                             启动实验!
                         </h1>
                         <p className="text-lg text-muted-foreground">正在初始化抽样环境...</p>

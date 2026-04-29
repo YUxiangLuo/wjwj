@@ -48,9 +48,9 @@ export function SensitivityAnalysisCard({
 
     // 置信水平颜色映射
     const confidenceDotClasses: Record<string, string> = {
-        "90": "bg-chart-2",
-        "95": "bg-chart-3",
-        "99": "bg-chart-4",
+        "90": "bg-confidence-90",
+        "95": "bg-confidence-95",
+        "99": "bg-confidence-99",
     };
 
     const cellHeatClasses = (intensity: number, isCurrent: boolean) => {
@@ -160,15 +160,15 @@ export function SensitivityAnalysisCard({
                 {/* 图例 */}
                 <div className="flex flex-wrap items-center gap-4 text-xs text-foreground">
                     <div className="flex items-center gap-1.5">
-                        <div className="size-3 rounded bg-chart-2" />
+                        <div className="size-3 rounded bg-confidence-90" />
                         <span>90% 置信度</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="size-3 rounded bg-chart-3" />
+                        <div className="size-3 rounded bg-confidence-95" />
                         <span>95% 置信度</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="size-3 rounded bg-chart-4" />
+                        <div className="size-3 rounded bg-confidence-99" />
                         <span>99% 置信度</span>
                     </div>
                 </div>

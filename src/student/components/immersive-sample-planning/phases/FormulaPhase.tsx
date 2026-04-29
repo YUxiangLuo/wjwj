@@ -235,7 +235,7 @@ export function FormulaPhase({
                         <div className="flex flex-col gap-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">1% (精确)</span>
-                                <span className="text-lg font-bold tabular-nums text-chart-2">
+                                <span className="text-lg font-bold tabular-nums text-metric-me">
                                     ±{params.marginOfError}%
                                 </span>
                                 <span className="text-muted-foreground">10% (粗略)</span>
@@ -270,14 +270,14 @@ export function FormulaPhase({
 
                     {isProportion && <ErrorRangeVisual margin={params.marginOfError} />}
 
-                    <div className="rounded-xl border border-chart-2/20 bg-chart-2/10 p-4 text-center">
-                        <p className="mb-1 text-sm text-chart-2">
+                    <div className="student-metric-se rounded-xl border p-4 text-center">
+                        <p className="mb-1 text-sm">
                             {isProportion
                                 ? `E = ${params.marginOfError}%　→　当前 n₀ =`
                                 : `σ²=${populationVariance}, e=${params.marginOfError}　→　n₀ =`
                             }
                         </p>
-                        <p className="text-3xl font-bold tabular-nums text-chart-2">
+                        <p className="text-3xl font-bold tabular-nums">
                             {Number.isFinite(n0) && n0 > 0 ? Math.ceil(n0).toLocaleString() : "—"}
                         </p>
                     </div>
@@ -367,7 +367,7 @@ export function FormulaPhase({
                 <p className="text-lg text-foreground">
                     在无限大总体下先算得 <strong className="tabular-nums text-primary">{n0RawDisplay}</strong>，
                     规划时向上取整为 <strong className="tabular-nums text-primary">{n0Rounded.toLocaleString()}</strong> 人；
-                    再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，约为 <strong className="tabular-nums text-chart-3">{n1RawDisplay}</strong>，规划时取 <strong className="tabular-nums text-chart-3">{n1Rounded.toLocaleString()}</strong> 人。
+                    再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，约为 <strong className="tabular-nums text-success">{n1RawDisplay}</strong>，规划时取 <strong className="tabular-nums text-success">{n1Rounded.toLocaleString()}</strong> 人。
                 </p>
                 <p className="text-sm text-muted-foreground">
                     接下来单独看看“有限总体校正”为何会起作用。
@@ -399,8 +399,8 @@ function FormulaDisplay({ parts }: { parts: Array<{ text: string; dim?: boolean;
                     key={i}
                     className={cn(
                         p.highlight === "indigo" && "text-primary",
-                        p.highlight === "teal" && "text-chart-2",
-                        p.highlight === "violet" && "text-chart-4",
+                        p.highlight === "teal" && "text-metric-se",
+                        p.highlight === "violet" && "text-metric-me",
                         p.dim && "text-muted-foreground",
                         !p.highlight && !p.dim && "text-foreground",
                     )}
@@ -452,7 +452,7 @@ function ErrorRangeVisual({ margin }: { margin: number }) {
             <p className="text-center text-xs text-muted-foreground">误差范围可视化</p>
             <div className="relative h-6 overflow-hidden rounded-full bg-muted">
                 <div
-                    className="absolute bottom-0 top-0 bg-chart-2/30 transition-all duration-300"
+                    className="absolute bottom-0 top-0 bg-metric-me/30 transition-all duration-300"
                     style={{ left: `${loP}%`, width: `${hiP - loP}%` }}
                 />
                 <div

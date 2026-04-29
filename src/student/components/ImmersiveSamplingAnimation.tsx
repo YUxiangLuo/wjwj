@@ -52,10 +52,10 @@ const METHOD_META: Record<SamplingMethod, {
     accentRing: string; accentBorder: string;
     progressIndicator: string;
 }> = {
-    simple: { label: "简单随机抽样", icon: Shuffle, accentBg: "bg-primary", accentBgLight: "bg-primary/10", accentText: "text-primary", accentRing: "ring-primary/40", accentBorder: "border-primary/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-primary" },
-    systematic: { label: "系统抽样", icon: Target, accentBg: "bg-chart-3", accentBgLight: "bg-chart-3/10", accentText: "text-chart-3", accentRing: "ring-chart-3/40", accentBorder: "border-chart-3/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-chart-3" },
-    pps: { label: "PPS抽样", icon: Target, accentBg: "bg-chart-5", accentBgLight: "bg-chart-5/10", accentText: "text-chart-5", accentRing: "ring-chart-5/40", accentBorder: "border-chart-5/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-chart-5" },
-    stratified: { label: "分层抽样", icon: Layers, accentBg: "bg-chart-4", accentBgLight: "bg-chart-4/10", accentText: "text-chart-4", accentRing: "ring-chart-4/40", accentBorder: "border-chart-4/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-chart-4" },
+    simple: { label: "简单随机抽样", icon: Shuffle, accentBg: "bg-method-simple", accentBgLight: "bg-method-simple/10", accentText: "text-method-simple", accentRing: "ring-method-simple/40", accentBorder: "border-method-simple/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-method-simple" },
+    systematic: { label: "系统抽样", icon: Target, accentBg: "bg-method-systematic", accentBgLight: "bg-method-systematic/10", accentText: "text-method-systematic", accentRing: "ring-method-systematic/40", accentBorder: "border-method-systematic/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-method-systematic" },
+    pps: { label: "PPS抽样", icon: Target, accentBg: "bg-method-pps", accentBgLight: "bg-method-pps/10", accentText: "text-method-pps", accentRing: "ring-method-pps/40", accentBorder: "border-method-pps/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-method-pps" },
+    stratified: { label: "分层抽样", icon: Layers, accentBg: "bg-method-stratified", accentBgLight: "bg-method-stratified/10", accentText: "text-method-stratified", accentRing: "ring-method-stratified/40", accentBorder: "border-method-stratified/30", progressIndicator: "[&_[data-slot=progress-indicator]]:bg-method-stratified" },
 };
 
 const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; sampling: string; complete: string }> = {
@@ -83,10 +83,10 @@ const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; samplin
 
 const LAYER_COLORS = [
     { bg: "bg-destructive", ring: "ring-destructive/40" },
-    { bg: "bg-chart-2", ring: "ring-chart-2/40" },
-    { bg: "bg-chart-3", ring: "ring-chart-3/40" },
-    { bg: "bg-chart-4", ring: "ring-chart-4/40" },
-    { bg: "bg-chart-5", ring: "ring-chart-5/40" },
+    { bg: "bg-method-simple", ring: "ring-method-simple/40" },
+    { bg: "bg-method-systematic", ring: "ring-method-systematic/40" },
+    { bg: "bg-method-pps", ring: "ring-method-pps/40" },
+    { bg: "bg-method-stratified", ring: "ring-method-stratified/40" },
     { bg: "bg-primary", ring: "ring-primary/40" },
 ] as const;
 
@@ -557,7 +557,7 @@ export function ImmersiveSamplingAnimation({
                         {phase.type !== "complete" && (
                             <div className="relative overflow-hidden rounded-2xl border bg-muted/30 p-4">
                                 {method === "stratified" && phase.type === "populating" && (
-                                    <div className="mb-3 flex items-center justify-center gap-2 text-xs text-chart-4">
+                                    <div className="mb-3 flex items-center justify-center gap-2 text-xs text-method-stratified">
                                         <Layers className="size-3.5" />
                                         <span>先按 {fieldLabel} 分层，再在各层内抽样</span>
                                     </div>
@@ -585,12 +585,12 @@ export function ImmersiveSamplingAnimation({
                                             <div className="pointer-events-none absolute inset-4">
                                                 {/* Horizontal scan line showing current row */}
                                                 <div
-                                                    className="absolute inset-x-0 h-px bg-chart-3/50 transition-all duration-[80ms]"
+                                                    className="absolute inset-x-0 h-px bg-method-systematic/50 transition-all duration-[80ms]"
                                                     style={{ top: systematicIndicator.top }}
                                                 />
                                                 {/* Scan cursor */}
                                                 <div
-                                                    className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-chart-3 bg-background shadow-md transition-all duration-[80ms]"
+                                                    className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-method-systematic bg-background shadow-md transition-all duration-[80ms]"
                                                     style={{ left: systematicIndicator.left, top: systematicIndicator.top }}
                                                 />
                                             </div>

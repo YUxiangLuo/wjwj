@@ -101,9 +101,9 @@ export function CVBasedSampleSizeCalculator({
 
             <CardContent className="flex flex-col gap-4">
                 {/* 说明 */}
-                <div className="rounded-xl border border-chart-3/20 bg-chart-3/10 p-3">
+                <div className="student-callout student-callout-info p-3">
                     <div className="flex gap-2">
-                        <Info className="mt-0.5 size-4 shrink-0 text-chart-3" />
+                        <Info className="mt-0.5 size-4 shrink-0 text-current" />
                         <div className="flex flex-col gap-1.5 text-xs text-foreground">
                             <p className="font-medium">什么时候使用CV计算？</p>
                             <p>
@@ -146,7 +146,7 @@ export function CVBasedSampleSizeCalculator({
                             <Label className="text-xs text-primary">
                                 目标变异系数 (CV)
                             </Label>
-                            <span className="text-sm font-bold tabular-nums text-chart-3">
+                            <span className="text-sm font-bold tabular-nums text-metric-cv">
                                 {targetCV}%
                             </span>
                         </div>
@@ -230,7 +230,7 @@ export function CVBasedSampleSizeCalculator({
                             {/* 主要结果 */}
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-muted-foreground">所需样本量</span>
-                                <span className="text-2xl font-bold tabular-nums text-chart-3">
+                                <span className="text-2xl font-bold tabular-nums text-success">
                                     {result.requiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
@@ -238,10 +238,10 @@ export function CVBasedSampleSizeCalculator({
                             {/* 能达到的CV */}
                             <div className="flex items-center justify-between text-sm">
                                 <span className="flex items-center gap-1 text-muted-foreground">
-                                    <TrendingDown className="size-4 text-chart-3" />
+                                    <TrendingDown className="size-4 text-metric-cv" />
                                     实际能达到的CV
                                 </span>
-                                <span className="font-mono font-bold tabular-nums text-chart-3">
+                                <span className="font-mono font-bold tabular-nums text-metric-cv">
                                     {(result.achievedCV * 100).toFixed(2)}%
                                 </span>
                             </div>
@@ -273,9 +273,9 @@ export function CVBasedSampleSizeCalculator({
                             </div>
 
                             {/* 对比误差限方法 */}
-                            <div className="rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                            <div className="student-callout student-callout-info p-2">
                                 <div className="flex items-start gap-2 text-xs">
-                                    <BarChart3 className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                                    <BarChart3 className="mt-0.5 size-4 shrink-0 text-current" />
                                     <div className="text-foreground">
                                         <span className="font-medium">CV vs 误差限：</span>
                                         CV是相对指标（变异系数 = SE/均值），适合比较不同规模总体的精度；
@@ -304,9 +304,9 @@ export function CVBasedSampleSizeCalculator({
                 )}
 
                 {/* 分层抽样中的 CV 准则（课件第24页） */}
-                <div className="rounded-xl border border-chart-5/20 bg-chart-5/10 p-3">
+                <div className="student-callout student-callout-muted p-3">
                     <div className="flex items-start gap-2">
-                        <Info className="mt-0.5 size-4 shrink-0 text-chart-5" />
+                        <Info className="mt-0.5 size-4 shrink-0 text-current" />
                         <div className="flex flex-col gap-1.5 text-xs text-foreground">
                             <p className="font-medium">给定变异系数确定分层抽样样本量（课件第24页）</p>
                             <p className="leading-relaxed text-muted-foreground">

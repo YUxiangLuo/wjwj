@@ -270,7 +270,7 @@ export function DomainEstimationManager({
                                         </div>
                                         <div className="text-xs text-muted-foreground">
                                             N = {domain.populationSize.toLocaleString()} | 需 n ≥{" "}
-                                            <span className="font-semibold tabular-nums text-chart-3">
+                                            <span className="font-semibold tabular-nums text-success">
                                                 {domain.requiredSampleSize.toLocaleString()}
                                             </span>
                                         </div>
@@ -396,7 +396,7 @@ export function DomainEstimationManager({
                                     <div className="rounded-lg border bg-background p-3">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs text-muted-foreground">所需样本量</span>
-                                            <span className="text-lg font-bold tabular-nums text-chart-3">
+                                            <span className="text-lg font-bold tabular-nums text-success">
                                                 {domain.requiredSampleSize.toLocaleString()}
                                             </span>
                                         </div>
@@ -453,15 +453,15 @@ export function DomainEstimationManager({
 
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-foreground">建议总样本量</span>
-                                <span className="text-2xl font-bold tabular-nums text-chart-3">
+                                <span className="text-2xl font-bold tabular-nums text-success">
                                     {totalRequiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
 
                             {sampleSizeIncrease > 0 && (
-                                <div className="rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                                <div className="rounded-lg border border-warning/20 bg-warning/10 p-2">
                                     <div className="flex items-center gap-2 text-xs text-foreground">
-                                        <AlertCircle className="size-4 text-chart-4" />
+                                        <AlertCircle className="size-4 text-warning" />
                                         <span>
                                             相比仅估计总体，样本量需增加 {sampleSizeIncrease.toLocaleString()} 
                                             ({(increaseRatio * 100).toFixed(0)}%)
@@ -540,9 +540,9 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                 </div>
 
                 {ratio > 1 && (
-                    <div className="rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                    <div className="rounded-lg border border-warning/20 bg-warning/10 p-2">
                         <div className="flex items-start gap-2 text-xs text-foreground">
-                            <AlertCircle className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                            <AlertCircle className="mt-0.5 size-4 shrink-0 text-warning" />
                             <div>
                                 <p>
                                     <span className="font-medium">方案二是方案一的 {ratio.toFixed(1)} 倍</span>

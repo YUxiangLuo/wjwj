@@ -384,7 +384,7 @@ export function PrecisionCostTradeoff({
                             <>
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-muted-foreground">可达到的最佳精度</span>
-                                    <span className="text-lg font-bold tabular-nums text-chart-3">
+                                    <span className="text-lg font-bold tabular-nums text-success">
                                         ±{achievablePrecision.marginOfError.toFixed(1)}%
                                     </span>
                                 </div>
@@ -399,9 +399,9 @@ export function PrecisionCostTradeoff({
                     </div>
 
                     {achievablePrecision && achievablePrecision.totalCost > currentScenario.totalBudget * 0.9 && (
-                        <div className="mt-3 rounded-lg border border-chart-4/20 bg-chart-4/10 p-2">
+                        <div className="student-callout student-callout-warning mt-3 p-2">
                             <div className="flex items-center gap-2 text-xs text-foreground">
-                                <AlertCircle className="size-4 shrink-0 text-chart-4" />
+                                <AlertCircle className="size-4 shrink-0 text-current" />
                                 <span>预算已接近上限，无法进一步提高精度</span>
                             </div>
                         </div>
@@ -447,7 +447,7 @@ export function PrecisionCostTradeoff({
 
                             {targetAnalysis.isFeasible ? (
                                 <div className="flex items-center gap-2 text-sm text-foreground">
-                                    <Badge className="border-0 bg-chart-3 text-primary-foreground hover:bg-chart-3">可行</Badge>
+                                    <Badge variant="success">可行</Badge>
                                     <span>预算充足，可实现目标精度</span>
                                 </div>
                             ) : (
@@ -541,9 +541,9 @@ export function PrecisionCostTradeoff({
                 </div>
 
                 {/* 决策建议（与比例对比卡片的说明区一致：浅青绿提示框） */}
-                <div className="rounded-xl border border-chart-3/20 bg-chart-3/10 p-3">
+                <div className="student-callout student-callout-info p-3">
                     <div className="flex items-start gap-2">
-                        <Info className="mt-0.5 size-4 shrink-0 text-chart-3" />
+                        <Info className="mt-0.5 size-4 shrink-0 text-current" />
                         <div className="flex flex-col gap-1 text-xs text-foreground">
                             <p className="font-medium">决策建议</p>
                             <ul className="flex list-inside list-disc flex-col gap-1 text-muted-foreground">

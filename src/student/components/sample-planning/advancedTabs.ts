@@ -14,7 +14,7 @@ export type AdvancedNonStandardSampleSource = Extract<
 >;
 
 export const ADVANCED_TAB_ACTIVE_CLASS =
-    "border-primary/30 bg-primary/10 text-primary";
+    "student-callout-info";
 
 export const ADVANCED_TAB_CONFIG: Array<{
     key: AdvancedTab;

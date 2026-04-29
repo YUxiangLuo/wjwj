@@ -126,15 +126,15 @@ export function ChallengePhase({
                             label="你的猜测"
                             value={guess ?? 0}
                             max={populationSize}
-                            barClassName="bg-chart-4"
-                            valueClassName="text-chart-4"
+                            barClassName="bg-warning"
+                            valueClassName="text-warning"
                         />
                         <ComparisonBar
                             label={`统计学建议 (${confidenceLevel}% 置信, ${formatMarginOfError(marginOfError, estimationType)})`}
                             value={recommendedSize}
                             max={populationSize}
-                            barClassName="bg-chart-3"
-                            valueClassName="text-chart-3"
+                            barClassName="bg-success"
+                            valueClassName="text-success"
                         />
                     </div>
 

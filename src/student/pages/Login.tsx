@@ -52,7 +52,7 @@ export function Login() {
         <div className="grid min-h-screen bg-background font-sans text-foreground lg:grid-cols-2">
             <div className="relative hidden flex-col justify-between overflow-hidden border-r border-border bg-muted/30 p-12 lg:flex">
                 <div className="absolute inset-0 z-0 opacity-40">
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+                    <div className="student-grid-pattern absolute inset-0" />
                 </div>
 
                 <div className="relative z-20 flex items-center gap-3 text-xl font-semibold tracking-tight text-foreground">

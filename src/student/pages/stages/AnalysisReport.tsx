@@ -38,6 +38,7 @@ import {
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
+import { STUDENT_VISUAL_COLORS } from "../../visual-tokens";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -389,11 +390,19 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     []);
 
     const meanSeries = useMemo<ChartSeries[]>(() => [
-        { key: "value", label: selectedNumericField ? `${selectedNumericField} 估计均值` : "估计均值", color: "#60a5fa" },
+        {
+            key: "value",
+            label: selectedNumericField ? `${selectedNumericField} 估计均值` : "估计均值",
+            color: STUDENT_VISUAL_COLORS.analysis.estimate,
+        },
     ], [selectedNumericField]);
 
     const errorSeries = useMemo<ChartSeries[]>(() => [
-        { key: "value", label: `${selectedNumericField || "字段"} 设计标准误`, color: "#f59e0b" },
+        {
+            key: "value",
+            label: `${selectedNumericField || "字段"} 设计标准误`,
+            color: STUDENT_VISUAL_COLORS.analysis.standardError,
+        },
     ], [selectedNumericField]);
 
     const distributionSeries = useMemo<ChartSeries[]>(() =>

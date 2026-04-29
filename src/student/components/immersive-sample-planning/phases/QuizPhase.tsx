@@ -128,7 +128,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                 {q.options.map((option, i) => {
                     let optionClass = "border-border bg-card text-card-foreground hover:bg-muted";
                     if (submitted && i === q.correctIndex) {
-                        optionClass = "border-chart-3 bg-chart-3/10 shadow-sm";
+                        optionClass = "border-success bg-success/10 shadow-sm";
                     } else if (submitted && i === selected && !isCorrect) {
                         optionClass = "border-destructive bg-destructive/10";
                     } else if (!submitted && i === selected) {
@@ -147,7 +147,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                                 className={cn(
                                     "flex size-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
                                     submitted && i === q.correctIndex
-                                        ? "bg-chart-3 text-primary-foreground"
+                                        ? "bg-success text-success-foreground"
                                         : submitted && i === selected && !isCorrect
                                             ? "bg-destructive text-destructive-foreground"
                                             : !submitted && i === selected
@@ -172,10 +172,10 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                 <div
                     className={cn(
                         "animate-in fade-in slide-in-from-bottom-2 mx-auto max-w-md rounded-xl border p-4 duration-300",
-                        isCorrect ? "border-chart-3/20 bg-chart-3/10" : "border-chart-4/20 bg-chart-4/10",
+                        isCorrect ? "border-success/20 bg-success/10" : "border-warning/20 bg-warning/10",
                     )}
                 >
-                    <p className={cn("mb-1 text-sm font-medium", isCorrect ? "text-chart-3" : "text-chart-4")}>
+                    <p className={cn("mb-1 text-sm font-medium", isCorrect ? "text-success" : "text-warning")}>
                         {isCorrect ? "正确！" : "不太对 —"}
                     </p>
                     <p className="text-sm text-foreground">{q.explanation}</p>

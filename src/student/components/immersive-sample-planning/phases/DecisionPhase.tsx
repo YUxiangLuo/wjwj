@@ -258,9 +258,9 @@ export function DecisionPhase({
             </div>
 
             {hasAdvancedSource && (
-                <div className="flex flex-col gap-3 rounded-xl border border-chart-4/20 bg-chart-4/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="student-callout student-callout-warning flex flex-col gap-3 rounded-xl px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-start gap-2 text-sm text-foreground">
-                        <Info className="mt-0.5 size-4 shrink-0 text-chart-4" />
+                        <Info className="mt-0.5 size-4 shrink-0 text-current" />
                         <span>
                             当前最终样本量正在使用高级工具「<span className="font-semibold">{sourceLabel}</span>」的结果；左侧继续显示常规公式建议值。若继续修改参数或最终样本量，将自动切回常规规划；解释当前 n 时请以该工具内推演为准。
                         </span>
@@ -304,7 +304,7 @@ export function DecisionPhase({
                     <div className="flex flex-col gap-1.5">
                         <div className="flex justify-between">
                             <Label className="text-xs text-muted-foreground">{currentMarginLabel}</Label>
-                            <span className="text-xs font-bold tabular-nums text-chart-2">
+                            <span className="text-xs font-bold tabular-nums text-metric-me">
                                 {currentMarginValue}
                             </span>
                         </div>
@@ -335,7 +335,7 @@ export function DecisionPhase({
                     <div className="flex flex-col gap-1.5">
                         <div className="flex justify-between">
                             <Label className="text-xs text-muted-foreground">设计效应</Label>
-                            <span className="text-xs font-bold tabular-nums text-chart-4">{params.designEffect.toFixed(1)}</span>
+                            <span className="text-xs font-bold tabular-nums text-warning">{params.designEffect.toFixed(1)}</span>
                         </div>
                         <Slider
                             value={[params.designEffect * 10]}
@@ -371,7 +371,7 @@ export function DecisionPhase({
                         ))}
                     </div>
                     {hasAdvancedSource && (
-                        <p className="text-center text-[11px] text-chart-4">
+                        <p className="text-center text-[11px] text-warning">
                             当前最终样本量来自「{sourceLabel}」，这里仍展示常规公式建议值。
                         </p>
                     )}
@@ -668,7 +668,7 @@ export function DecisionPhase({
                     <div className="flex flex-1 flex-col gap-1">
                         <div className="flex justify-between text-xs">
                             <span className="text-muted-foreground">这里实际准备调查多少人</span>
-                            <span className="font-medium text-chart-3">
+                            <span className="font-medium text-success">
                                 建议值 {recommendedSize.toLocaleString()}
                             </span>
                         </div>
@@ -708,7 +708,7 @@ export function DecisionPhase({
                     这里确认的 n 会作为下一阶段抽样执行的目标样本量。
                 </p>
                 {hasAdvancedSource && (
-                    <p className="text-xs text-chart-4">
+                    <p className="text-xs text-warning">
                         当前最终样本量保留了「{sourceLabel}」的结果。手动修改或重置后，将自动切回常规规划。
                     </p>
                 )}
@@ -775,7 +775,7 @@ function SensitivityGrid({
                                 key={me}
                                 className={cn(
                                     "h-auto px-1 pb-2 text-center font-normal normal-case tracking-normal tabular-nums",
-                                    me === currentME && "font-bold text-chart-2",
+                                    me === currentME && "font-bold text-metric-me",
                                 )}
                             >
                                 &plusmn;{me}%

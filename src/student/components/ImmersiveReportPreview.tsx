@@ -251,7 +251,7 @@ function OverviewSection({
                     {methods.map((m) => (
                         <div key={m.label} className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">{m.label}</span>
-                            <span className={cn("text-sm font-medium", m.done ? "text-chart-3" : "text-muted-foreground")}>
+                            <span className={cn("text-sm font-medium", m.done ? "text-success" : "text-muted-foreground")}>
                                 {m.done ? `已完成 (${m.count} 样本)` : "未完成"}
                             </span>
                         </div>
@@ -260,7 +260,7 @@ function OverviewSection({
             </div>
 
             {advancedSourceLabel && (
-                <div className="rounded-xl border border-chart-4/20 bg-chart-4/10 p-4 text-sm text-foreground">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm text-foreground">
                     最终样本量来源：{advancedSourceLabel}。报告解读当前 n 时，应以该高级工具的推演结论为准；上方“推荐样本量 n”仅表示常规公式的基线建议。
                 </div>
             )}
@@ -387,7 +387,7 @@ function SamplingSection({
                     规划样本量: {samplePlan?.finalSampleSize?.toLocaleString() ?? "—"}
                 </p>
                 {advancedSourceLabel && (
-                    <p className="mt-1 text-xs text-chart-4">
+                    <p className="mt-1 text-xs text-warning">
                         当前最终样本量来自「{advancedSourceLabel}」。
                     </p>
                 )}
@@ -401,7 +401,7 @@ function SamplingSection({
                         <div key={m.key} className="rounded-xl border bg-muted/30 p-5">
                             <div className="mb-3 flex items-center justify-between">
                                 <h3 className="text-base font-semibold text-foreground">{m.label}</h3>
-                                <span className={cn("rounded-full px-2 py-1 text-xs", completed ? "bg-chart-3/10 text-chart-3" : "bg-muted text-muted-foreground")}>
+                                <span className={cn("rounded-full px-2 py-1 text-xs", completed ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>
                                     {completed ? "已完成" : "未完成"}
                                 </span>
                             </div>
