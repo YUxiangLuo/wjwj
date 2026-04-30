@@ -24,8 +24,10 @@ import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 
-const actionColumnClass = "sticky right-0 z-10 w-44 min-w-44 max-w-44 border-l border-border bg-card text-right shadow-sm sm:w-auto sm:min-w-0 sm:max-w-none";
-const actionHeaderClass = "sticky right-0 z-20 w-44 min-w-44 max-w-44 border-l border-border bg-card text-right shadow-sm sm:w-auto sm:min-w-0 sm:max-w-none";
+const mobileCellClass = "flex items-start justify-between gap-4 whitespace-normal px-4 py-2 text-right md:table-cell md:p-3 md:text-left md:whitespace-nowrap";
+const mobileCellLabelClass = "shrink-0 text-xs font-medium tracking-wider text-muted-foreground md:hidden";
+const actionColumnClass = "block border-t border-border bg-card px-4 py-3 text-left md:sticky md:right-0 md:z-10 md:table-cell md:w-44 md:min-w-44 md:max-w-44 md:border-l md:border-t-0 md:p-3 md:text-right md:shadow-sm";
+const actionHeaderClass = "sticky right-0 z-20 w-44 min-w-44 max-w-44 border-l border-border bg-card text-right shadow-sm";
 
 export function StudentManagement() {
     const location = useLocation();
@@ -260,7 +262,7 @@ export function StudentManagement() {
                     <Card className="hover:border-primary/30 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Students</p>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
                                 <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.total}</p>
                             </div>
                             <div className="app-stat-icon app-stat-icon-primary">
@@ -271,7 +273,7 @@ export function StudentManagement() {
                     <Card className="hover:border-primary/30 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active</p>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">正常</p>
                                 <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.active}</p>
                             </div>
                             <div className="app-stat-icon app-stat-icon-success">
@@ -282,7 +284,7 @@ export function StudentManagement() {
                     <Card className="hover:border-primary/30 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Disabled</p>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">停用</p>
                                 <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.disabled}</p>
                             </div>
                             <div className="app-stat-icon app-stat-icon-warning">
@@ -293,7 +295,7 @@ export function StudentManagement() {
                     <Card className="hover:border-primary/30 transition-colors">
                         <CardContent className="p-4 flex items-center justify-between">
                             <div>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Avg Progress</p>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">平均进度</p>
                                 <p className="text-2xl font-bold mt-1">{loading ? "-" : `${summary.avgProgress}%`}</p>
                             </div>
                             <div className="app-stat-icon app-stat-icon-info">
@@ -351,8 +353,8 @@ export function StudentManagement() {
                                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                             </div>
                         ) : (
-                            <Table>
-                                <TableHeader>
+                            <Table className="md:table">
+                                <TableHeader className="hidden md:table-header-group">
                                     <TableRow>
                                         <TableHead>学号</TableHead>
                                         <TableHead>姓名</TableHead>
@@ -363,30 +365,47 @@ export function StudentManagement() {
                                         <TableHead className={actionHeaderClass}>操作</TableHead>
                                     </TableRow>
                                 </TableHeader>
-                                <TableBody>
+                                <TableBody className="block divide-y divide-border md:table-row-group md:divide-y-0">
                                     {filteredStudents.map((student) => (
-                                        <TableRow key={student.id} data-testid={`student-row-${student.studentId}`}>
-                                            <TableCell className="font-mono text-primary">{student.studentId}</TableCell>
-                                            <TableCell className="font-medium">{student.name}</TableCell>
-                                            <TableCell>{student.className}</TableCell>
-                                            <TableCell>
-                                                {student.isLocked ? (
-                                                    <Badge variant="destructive">已锁定</Badge>
-                                                ) : student.status === 1 ? (
-                                                    <Badge variant="success">正常</Badge>
-                                                ) : (
-                                                    <Badge variant="secondary">已停用</Badge>
-                                                )}
+                                        <TableRow key={student.id} data-testid={`student-row-${student.studentId}`} className="block border-b-0 py-3 hover:bg-muted/30 md:table-row md:border-b md:py-0">
+                                            <TableCell className={`${mobileCellClass} font-mono text-primary`}>
+                                                <span className={mobileCellLabelClass}>学号</span>
+                                                <span className="min-w-0 break-all">{student.studentId}</span>
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
+                                            <TableCell className={`${mobileCellClass} font-medium`}>
+                                                <span className={mobileCellLabelClass}>姓名</span>
+                                                <span>{student.name}</span>
+                                            </TableCell>
+                                            <TableCell className={mobileCellClass}>
+                                                <span className={mobileCellLabelClass}>班级</span>
+                                                <span className="min-w-0 break-words">{student.className}</span>
+                                            </TableCell>
+                                            <TableCell className={mobileCellClass}>
+                                                <span className={mobileCellLabelClass}>状态</span>
+                                                <span>
+                                                    {student.isLocked ? (
+                                                        <Badge variant="destructive">已锁定</Badge>
+                                                    ) : student.status === 1 ? (
+                                                        <Badge variant="success">正常</Badge>
+                                                    ) : (
+                                                        <Badge variant="secondary">已停用</Badge>
+                                                    )}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className={mobileCellClass}>
+                                                <span className={mobileCellLabelClass}>实验进度</span>
+                                                <div className="flex min-w-36 items-center justify-end gap-3 md:justify-start">
                                                     <Progress value={student.progress} className={`w-24 h-1.5 ${getProgressColor(student.progress)}`} />
                                                     <span className="text-xs text-muted-foreground w-8">{student.progress}%</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-muted-foreground text-xs">{formatDateTime(student.lastActive)}</TableCell>
+                                            <TableCell className={`${mobileCellClass} text-xs text-muted-foreground`}>
+                                                <span className={mobileCellLabelClass}>最后活跃</span>
+                                                <span>{formatDateTime(student.lastActive)}</span>
+                                            </TableCell>
                                             <TableCell className={actionColumnClass}>
-                                                <div className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap">
+                                                <div className="mb-2 text-xs font-medium tracking-wider text-muted-foreground md:hidden">操作</div>
+                                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end md:flex-nowrap">
                                                     {student.isLocked && (
                                                         <Button data-testid={`student-unlock-${student.studentId}`} variant="warning" size="xs" onClick={() => handleUnlock(student)}>
                                                             <Unlock data-icon="inline-start" />

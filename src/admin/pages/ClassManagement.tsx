@@ -227,7 +227,7 @@ export function ClassManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Classes</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-primary">
@@ -238,7 +238,7 @@ export function ClassManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Students</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.studentTotal}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-success">
@@ -249,7 +249,7 @@ export function ClassManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Current Term</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
                             <p className="text-sm font-bold mt-2">{loading ? "-" : summary.currentSemesterName}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-warning">
@@ -260,7 +260,7 @@ export function ClassManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Teachers</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">教师数</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-info">

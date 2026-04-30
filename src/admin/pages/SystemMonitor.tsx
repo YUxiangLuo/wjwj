@@ -309,7 +309,7 @@ export function SystemMonitor() {
                         <TerminalSquare className="w-5 h-5 text-muted-foreground" />
                         <CardTitle className="text-base">系统日志</CardTitle>
                     </div>
-                    <span className="text-xs text-muted-foreground font-mono">Total {logs.length} logs</span>
+                    <span className="text-xs text-muted-foreground font-mono">共 {logs.length} 条日志</span>
                 </CardHeader>
                 <CardContent className="pt-4">
                     <ScrollArea className="h-[400px]">

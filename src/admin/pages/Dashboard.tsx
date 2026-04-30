@@ -8,20 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { statsApi, announcementApi, systemApi, type Stats, type Announcement, type SystemMetrics } from "../api-client";
 
-function KpiCard({ icon: Icon, value, label, trend, trendUp, loading }: {
+function KpiCard({ icon: Icon, value, label, trend, trendUp, loading, valueClassName = "text-2xl sm:text-3xl" }: {
     icon: React.ComponentType<{ className?: string }>;
     value: string | number;
     label: string;
     trend?: string;
     trendUp?: boolean;
     loading?: boolean;
+    valueClassName?: string;
 }) {
     return (
         <Card className="hover:border-primary/30 transition-all duration-300 group">
             <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 bg-muted text-primary flex items-center justify-center border border-border group-hover:bg-primary/10 transition-colors">
-                        <Icon className="w-6 h-6" />
+                    <div className="flex size-12 items-center justify-center border border-border bg-muted text-primary transition-colors group-hover:bg-primary/10">
+                        <Icon className="size-6" />
                     </div>
                     {trend ? (
                         <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${trendUp
@@ -34,8 +35,8 @@ function KpiCard({ icon: Icon, value, label, trend, trendUp, loading }: {
                     ) : null}
                 </div>
                 <div className="mt-5">
-                    <div className="text-3xl font-bold font-heading tracking-tight">
-                        {loading ? <div className="h-8 w-16 bg-muted rounded animate-pulse" /> : value}
+                    <div className={`break-words font-bold leading-tight tracking-normal ${valueClassName}`}>
+                        {loading ? <div className="h-8 w-16 animate-pulse rounded bg-muted" /> : value}
                     </div>
                     <div className="text-sm text-muted-foreground mt-1 font-medium">{label}</div>
                 </div>
@@ -152,6 +153,7 @@ export function Dashboard() {
                     value={loading ? "-" : stats?.currentSemester ?? "-"}
                     label="当前学期"
                     loading={loading}
+                    valueClassName="text-xl sm:text-2xl"
                 />
                 <KpiCard
                     icon={Briefcase}
@@ -208,7 +210,7 @@ export function Dashboard() {
                             <p className="text-xs text-muted-foreground mt-1">管理员可直接查看人数分布</p>
                         </div>
                         <div className="text-sm font-mono text-muted-foreground bg-muted px-3 py-1 rounded-full border border-border">
-                            Total: <span className="text-primary font-bold">{totalUsers}</span>
+                            合计：<span className="text-primary font-bold">{totalUsers}</span>
                         </div>
                     </CardHeader>
                     <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">

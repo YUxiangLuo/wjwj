@@ -228,23 +228,33 @@
     }
 
     .app-stat-icon-info {
-        @apply border-info/20 bg-info/10 text-info;
+        color: var(--info);
+        border-color: color-mix(in oklch, var(--info) 22%, var(--card));
+        background-color: var(--card);
     }
 
     .app-stat-icon-primary {
-        @apply border-primary/20 bg-primary/10 text-primary;
+        color: var(--primary);
+        border-color: color-mix(in oklch, var(--primary) 22%, var(--card));
+        background-color: var(--card);
     }
 
     .app-stat-icon-success {
-        @apply border-success/20 bg-success/10 text-success;
+        color: var(--success);
+        border-color: color-mix(in oklch, var(--success) 22%, var(--card));
+        background-color: var(--card);
     }
 
     .app-stat-icon-warning {
-        @apply border-warning/20 bg-warning/10 text-warning;
+        color: var(--warning);
+        border-color: color-mix(in oklch, var(--warning) 22%, var(--card));
+        background-color: var(--card);
     }
 
     .app-stat-icon-danger {
-        @apply border-destructive/20 bg-destructive/10 text-destructive;
+        color: var(--destructive);
+        border-color: color-mix(in oklch, var(--destructive) 22%, var(--card));
+        background-color: var(--card);
     }
 
     .app-stat-icon-muted {

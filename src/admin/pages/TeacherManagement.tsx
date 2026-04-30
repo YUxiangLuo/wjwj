@@ -243,7 +243,7 @@ export function TeacherManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">总数</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-primary">
@@ -254,7 +254,7 @@ export function TeacherManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Active</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">正常</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.active}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-success">
@@ -265,7 +265,7 @@ export function TeacherManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Disabled</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">停用</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.disabled}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-warning">
@@ -276,7 +276,7 @@ export function TeacherManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Locked</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">锁定</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.locked}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-danger">

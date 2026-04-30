@@ -90,7 +90,7 @@ function AdminSidebarNav({ currentPath }: { currentPath: string }) {
 
     return (
         <SidebarGroup>
-            <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+            <SidebarGroupLabel>管理菜单</SidebarGroupLabel>
             <SidebarGroupContent>
                 <SidebarMenu>
                     {menuItems.map((item) => {
@@ -354,7 +354,7 @@ export function AdminApp() {
                         </Avatar>
                         <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{adminUser?.username ?? "管理员"}</div>
-                            <div className="text-xs text-muted-foreground truncate">Administrator</div>
+                            <div className="text-xs text-muted-foreground truncate">系统管理员</div>
                         </div>
                     </div>
                 </SidebarFooter>
@@ -527,19 +527,19 @@ export function AdminApp() {
                                     variant="ghost"
                                     data-testid={`admin-notification-item-${item.id}`}
                                     onClick={() => item.isRead ? null : void handleMarkNotificationRead(item.id)}
-                                    className={`h-auto w-full justify-start whitespace-normal border p-4 text-left font-normal normal-case tracking-normal transition-all duration-200 ${item.isRead ? "bg-card/50 border-transparent opacity-70" : "bg-muted border-border"
+                                    className={`flex-col items-stretch h-auto w-full justify-start whitespace-normal border p-4 text-left font-normal normal-case tracking-normal transition-all duration-200 ${item.isRead ? "bg-card/50 border-transparent opacity-70" : "bg-muted border-border"
                                         }`}
                                 >
-                                    <div className="flex items-center justify-between mb-1">
-                                        <div className="flex items-center gap-2">
+                                    <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="flex min-w-0 items-start gap-2">
                                             {!item.isRead && <span className="flex-shrink-0 w-2 h-2 rounded-full bg-primary ring-2 ring-primary/20" />}
-                                            <span className={`text-sm font-medium ${item.isRead ? "text-muted-foreground" : "text-foreground"}`}>{item.title}</span>
+                                            <span className={`min-w-0 break-words text-sm font-medium leading-5 ${item.isRead ? "text-muted-foreground" : "text-foreground"}`}>{item.title}</span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground font-mono">
+                                        <span className="shrink-0 pl-4 text-xs font-mono text-muted-foreground sm:pl-0">
                                             {new Date(item.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
-                                    <div className="text-sm text-muted-foreground line-clamp-2 pl-4 border-l-2 border-border">{item.content}</div>
+                                    <div className="border-l-2 border-border pl-4 text-sm leading-6 text-muted-foreground">{item.content}</div>
                                 </Button>
                             ))
                         ) : (

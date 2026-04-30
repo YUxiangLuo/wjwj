@@ -246,7 +246,7 @@ export function AnnouncementManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">总数</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-primary">
@@ -257,7 +257,7 @@ export function AnnouncementManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Published</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.published}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-success">
@@ -268,7 +268,7 @@ export function AnnouncementManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Drafts</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
                             <p className="text-2xl font-bold mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
                         <div className="app-stat-icon app-stat-icon-warning">
@@ -279,7 +279,7 @@ export function AnnouncementManagement() {
                 <Card className="hover:border-primary/30 transition-colors">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Latest</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">最近发布</p>
                             <p className="text-sm font-bold mt-2">
                                 {loading
                                     ? "-"
