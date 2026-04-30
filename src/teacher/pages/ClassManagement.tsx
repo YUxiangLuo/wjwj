@@ -9,6 +9,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Users, School, CalendarDays, Search } from "lucide-react";
 import { teacherApi, type TeacherClass } from "../api-client";
+import { mobileTableActionCellClass, mobileTableCellClass, mobileTableLabelClass } from "./responsive-table";
 
 export function ClassManagement() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -124,12 +125,12 @@ export function ClassManagement() {
                         </Select>
                     </div>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="px-0 pt-0">
                     {loading ? (
                         <div className="flex items-center justify-center py-12 text-muted-foreground">加载中...</div>
                     ) : (
-                        <Table>
-                            <TableHeader>
+                        <Table className="md:table">
+                            <TableHeader className="hidden md:table-header-group">
                                 <TableRow className="border-border hover:bg-muted/50">
                                     <TableHead className="text-muted-foreground">班级名称</TableHead>
                                     <TableHead className="text-muted-foreground">学期</TableHead>
@@ -138,29 +139,42 @@ export function ClassManagement() {
                                     <TableHead className="text-muted-foreground text-right">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
-                            <TableBody>
+                            <TableBody className="block divide-y divide-border md:table-row-group md:divide-y-0">
                                 {filteredClasses.map((cls) => (
-                                    <TableRow data-testid={`teacher-class-row-${cls.id}`} key={cls.id} className="border-border hover:bg-accent transition-colors">
-                                        <TableCell className="font-medium text-foreground">{cls.name}</TableCell>
-                                        <TableCell className="text-foreground">{cls.semester || "-"}</TableCell>
-                                        <TableCell>
+                                    <TableRow data-testid={`teacher-class-row-${cls.id}`} key={cls.id} className="block border-b-0 py-3 hover:bg-muted/30 md:table-row md:border-b md:py-0">
+                                        <TableCell className={`${mobileTableCellClass} font-medium text-foreground`}>
+                                            <span className={mobileTableLabelClass}>班级名称</span>
+                                            <span className="min-w-0 break-words">{cls.name}</span>
+                                        </TableCell>
+                                        <TableCell className={mobileTableCellClass}>
+                                            <span className={mobileTableLabelClass}>学期</span>
+                                            <span className="min-w-0 break-words text-foreground">{cls.semester || "-"}</span>
+                                        </TableCell>
+                                        <TableCell className={mobileTableCellClass}>
+                                            <span className={mobileTableLabelClass}>学生人数</span>
                                             <Badge variant="muted">
                                                 {cls.studentCount} 人
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">{new Date(cls.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="xs" asChild>
-                                                <Link to={`/class/${cls.id}/students`}>
-                                                    <Users data-icon="inline-start" />
-                                                    管理学生
-                                                </Link>
-                                            </Button>
+                                        <TableCell className={`${mobileTableCellClass} text-xs text-muted-foreground`}>
+                                            <span className={mobileTableLabelClass}>创建时间</span>
+                                            <span>{new Date(cls.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</span>
+                                        </TableCell>
+                                        <TableCell className={mobileTableActionCellClass}>
+                                            <div className="mb-2 text-xs font-medium tracking-wider text-muted-foreground md:hidden">操作</div>
+                                            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                                                <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="xs" asChild>
+                                                    <Link to={`/class/${cls.id}/students`}>
+                                                        <Users data-icon="inline-start" />
+                                                        管理学生
+                                                    </Link>
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
                                 {filteredClasses.length === 0 && (
-                                    <TableRow>
+                                    <TableRow className="block md:table-row">
                                         <TableCell colSpan={5} className="text-center py-16 text-muted-foreground">
                                             <Empty className="py-0">
                                                 <EmptyHeader>

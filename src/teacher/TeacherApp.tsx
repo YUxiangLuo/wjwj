@@ -460,15 +460,15 @@ export function TeacherApp() {
             </Sidebar>
 
             <SidebarInset className="min-w-0">
-                <header className="h-16 border-b border-border bg-background/50 backdrop-blur-xl flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
-                    <div className="flex items-center gap-4">
+                <header className="h-16 border-b border-border bg-background/50 backdrop-blur-xl flex items-center justify-between gap-3 px-4 lg:px-8 sticky top-0 z-30">
+                    <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
                         <SidebarTrigger className="md:hidden" />
-                        <div>
-                            <h2 className="text-lg font-semibold font-heading uppercase tracking-wider">{pageTitle}</h2>
+                        <div className="min-w-0">
+                            <h2 className="truncate whitespace-nowrap text-base font-semibold font-heading uppercase tracking-wider sm:text-lg">{pageTitle}</h2>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex shrink-0 items-center gap-1 sm:gap-3">
                         <Badge variant="muted" className="hidden sm:inline-flex">
                             {new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric" })}
                         </Badge>
@@ -480,6 +480,8 @@ export function TeacherApp() {
                             size="icon"
                             data-testid="teacher-open-notifications"
                             className="relative"
+                            title="通知"
+                            aria-label="通知"
                             onClick={() => { void openNotifications(); }}
                         >
                             <Bell />
@@ -507,9 +509,10 @@ export function TeacherApp() {
                                     passwordChange.clearError();
                                     setShowPasswordModal(true);
                                 }}
+                                aria-label="修改密码"
                             >
                                 <KeyRound data-icon="inline-start" />
-                                修改密码
+                                <span className="hidden sm:inline">修改密码</span>
                             </Button>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>

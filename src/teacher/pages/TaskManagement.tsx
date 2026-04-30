@@ -23,6 +23,12 @@ import { TaskPublishDialog } from "../components/TaskPublishDialog";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { localWallClockToUtcIso } from "@/lib/datetime";
+import { mobileTableActionCellClass, mobileTableCellClass, mobileTableLabelClass } from "./responsive-table";
+
+const toNumber = (value: number | string | null | undefined) => {
+    const numberValue = Number(value ?? 0);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+};
 
 export function TaskManagement() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -153,9 +159,9 @@ export function TaskManagement() {
 
     const summary = useMemo(() => {
         const total = tasks.length;
-        const pendingTotal = tasks.reduce((sum, task) => sum + (task.pending ?? 0), 0);
-        const completedTotal = tasks.reduce((sum, task) => sum + task.completed, 0);
-        const totalSubmissions = tasks.reduce((sum, task) => sum + task.total, 0);
+        const pendingTotal = tasks.reduce((sum, task) => sum + toNumber(task.pending), 0);
+        const completedTotal = tasks.reduce((sum, task) => sum + toNumber(task.completed), 0);
+        const totalSubmissions = tasks.reduce((sum, task) => sum + toNumber(task.total), 0);
         return { total, pendingTotal, completedTotal, totalSubmissions };
     }, [tasks]);
 
@@ -259,8 +265,8 @@ export function TaskManagement() {
                 </CardHeader>
                 <CardContent className="px-0 pt-0">
                     {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : (
-                        <Table className="min-w-[860px]">
-                            <TableHeader>
+                        <Table className="md:table">
+                            <TableHeader className="hidden md:table-header-group">
                                 <TableRow className="border-border hover:bg-muted/50">
                                     <TableHead className="w-[260px] pl-8 text-muted-foreground">课题</TableHead>
                                     <TableHead className="w-[150px] text-muted-foreground">班级</TableHead>
@@ -270,77 +276,92 @@ export function TaskManagement() {
                                     <TableHead className="w-[210px] pr-8 text-right text-muted-foreground">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
-                            <TableBody>
-                                {filteredTasks.map((task) => (
-                                    <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="border-border hover:bg-accent transition-colors">
-                                        <TableCell className="pl-8 text-foreground">
-                                            <div className="flex max-w-[240px] flex-col gap-1">
-                                                <span className="truncate font-medium">{task.topic}</span>
-                                                <span className="text-xs text-muted-foreground">发布于 {formatTaskDate(task.publishedAt)}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-foreground">
-                                            <span className="block max-w-[140px] truncate">{task.className}</span>
-                                        </TableCell>
-                                        <TableCell className="text-xs text-muted-foreground">{formatTaskDate(task.deadline, "无")}</TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="h-1.5 w-24 bg-muted [&>div]:bg-success" />
-                                                <span className="text-xs text-muted-foreground">{task.completed}/{task.total}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {task.pending && task.pending > 0 ? (
-                                                <Badge variant="destructive">
-                                                    {task.pending}
-                                                </Badge>
-                                            ) : (
-                                                <span className="text-muted-foreground text-xs">-</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="pr-8 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Button variant="success" size="xs" asChild>
-                                                    <Link to={`/task/${task.id}/progress`}>
-                                                        <BarChart3 data-icon="inline-start" />
-                                                        进度
-                                                    </Link>
-                                                </Button>
-                                                <Button
-                                                    data-testid={`teacher-task-extend-open-${task.id}`}
-                                                    variant="ghost"
-                                                    size="xs"
-                                                    onClick={() => {
-                                                        setSelectedTask(task);
-                                                        setExtendDeadline("");
-                                                        setShowExtendModal(true);
-                                                    }}
-                                                >
-                                                    <Clock data-icon="inline-start" />
-                                                    延时
-                                                </Button>
-                                                <Button variant="ghost" size="xs" asChild>
-                                                    <Link to="/grading">
-                                                        <PenLine data-icon="inline-start" />
-                                                        批改
-                                                    </Link>
-                                                </Button>
-                                                <Button
-                                                    data-testid={`teacher-task-delete-open-${task.id}`}
-                                                    variant="destructive"
-                                                    size="icon-xs"
-                                                    type="button"
-                                                    onClick={() => setTaskToDelete(task)}
-                                                    title="删除任务"
-                                                >
-                                                    <Trash2 />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                            <TableBody className="block divide-y divide-border md:table-row-group md:divide-y-0">
+                                {filteredTasks.map((task) => {
+                                    const totalCount = toNumber(task.total);
+                                    const completedCount = toNumber(task.completed);
+                                    const pendingCount = toNumber(task.pending);
+
+                                    return (
+                                        <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="block border-b-0 py-3 hover:bg-muted/30 md:table-row md:border-b md:py-0">
+                                            <TableCell className={`${mobileTableCellClass} text-foreground md:pl-8`}>
+                                                <span className={mobileTableLabelClass}>课题</span>
+                                                <div className="flex min-w-0 flex-col gap-1">
+                                                    <span className="break-words font-medium md:max-w-[240px] md:truncate">{task.topic}</span>
+                                                    <span className="text-xs text-muted-foreground">发布于 {formatTaskDate(task.publishedAt)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className={mobileTableCellClass}>
+                                                <span className={mobileTableLabelClass}>班级</span>
+                                                <span className="min-w-0 break-words text-foreground md:block md:max-w-[140px] md:truncate">{task.className}</span>
+                                            </TableCell>
+                                            <TableCell className={`${mobileTableCellClass} text-xs text-muted-foreground`}>
+                                                <span className={mobileTableLabelClass}>截止时间</span>
+                                                <span>{formatTaskDate(task.deadline, "无")}</span>
+                                            </TableCell>
+                                            <TableCell className={mobileTableCellClass}>
+                                                <span className={mobileTableLabelClass}>完成进度</span>
+                                                <div className="flex min-w-36 items-center justify-end gap-2 md:justify-start">
+                                                    <Progress value={totalCount > 0 ? (completedCount / totalCount) * 100 : 0} className="h-1.5 w-24 bg-muted [&>div]:bg-success" />
+                                                    <span className="text-xs text-muted-foreground">{completedCount}/{totalCount}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className={mobileTableCellClass}>
+                                                <span className={mobileTableLabelClass}>待批改</span>
+                                                {pendingCount > 0 ? (
+                                                    <Badge variant="destructive">
+                                                        {pendingCount}
+                                                    </Badge>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">-</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className={`${mobileTableActionCellClass} md:pr-8`}>
+                                                <div className="mb-2 text-xs font-medium tracking-wider text-muted-foreground md:hidden">操作</div>
+                                                <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end md:flex-nowrap">
+                                                    <Button variant="success" size="xs" asChild>
+                                                        <Link to={`/task/${task.id}/progress`}>
+                                                            <BarChart3 data-icon="inline-start" />
+                                                            进度
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        data-testid={`teacher-task-extend-open-${task.id}`}
+                                                        variant="ghost"
+                                                        size="xs"
+                                                        onClick={() => {
+                                                            setSelectedTask(task);
+                                                            setExtendDeadline("");
+                                                            setShowExtendModal(true);
+                                                        }}
+                                                    >
+                                                        <Clock data-icon="inline-start" />
+                                                        延时
+                                                    </Button>
+                                                    <Button variant="ghost" size="xs" asChild>
+                                                        <Link to="/grading">
+                                                            <PenLine data-icon="inline-start" />
+                                                            批改
+                                                        </Link>
+                                                    </Button>
+                                                    <Button
+                                                        data-testid={`teacher-task-delete-open-${task.id}`}
+                                                        variant="destructive"
+                                                        size="xs"
+                                                        type="button"
+                                                        onClick={() => setTaskToDelete(task)}
+                                                        title="删除任务"
+                                                    >
+                                                        <Trash2 data-icon="inline-start" />
+                                                        <span className="md:hidden">删除</span>
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                                 {filteredTasks.length === 0 && (
-                                    <TableRow>
+                                    <TableRow className="block md:table-row">
                                         <TableCell colSpan={6} className="text-center py-16 text-muted-foreground">
                                             <Empty className="py-0">
                                                 <EmptyHeader>

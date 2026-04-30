@@ -11,6 +11,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { teacherApi, type GradeExportPreviewItem, type TeacherClass, type Topic } from "../api-client";
 import { toast } from "sonner";
 import { formatLocalDateStamp } from "@/utils/format";
+import { mobileTableActionCellClass, mobileTableCellClass, mobileTableLabelClass } from "./responsive-table";
+
+const toNumber = (value: number | string | null | undefined) => {
+    const numberValue = Number(value ?? 0);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+};
 
 export function GradeExport() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -45,9 +51,12 @@ export function GradeExport() {
 
     const summary = useMemo(() => {
         const totalTasks = preview.length;
-        const completedTasks = preview.filter((task) => task.total > 0 && task.graded === task.total).length;
-        const totalSubmissions = preview.reduce((sum, task) => sum + task.total, 0);
-        const totalGraded = preview.reduce((sum, task) => sum + task.graded, 0);
+        const completedTasks = preview.filter((task) => {
+            const total = toNumber(task.total);
+            return total > 0 && toNumber(task.graded) === total;
+        }).length;
+        const totalSubmissions = preview.reduce((sum, task) => sum + toNumber(task.total), 0);
+        const totalGraded = preview.reduce((sum, task) => sum + toNumber(task.graded), 0);
         return { totalTasks, completedTasks, totalSubmissions, totalGraded };
     }, [preview]);
 
@@ -245,9 +254,9 @@ export function GradeExport() {
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="pt-0">
-                    <Table>
-                        <TableHeader>
+                <CardContent className="px-0 pt-0">
+                    <Table className="md:table">
+                        <TableHeader className="hidden md:table-header-group">
                             <TableRow className="border-border hover:bg-muted/50">
                                 <TableHead className="w-12 text-center text-muted-foreground">
                                     <Checkbox
@@ -269,13 +278,13 @@ export function GradeExport() {
                                 <TableHead className="text-muted-foreground text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="block divide-y divide-border md:table-row-group md:divide-y-0">
                             {loading ? (
-                                <TableRow>
+                                <TableRow className="block md:table-row">
                                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">加载中...</TableCell>
                                 </TableRow>
                             ) : preview.length === 0 ? (
-                                <TableRow>
+                                <TableRow className="block md:table-row">
                                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                         <Empty className="py-0">
                                             <EmptyHeader>
@@ -287,41 +296,61 @@ export function GradeExport() {
                                         </Empty>
                                     </TableCell>
                                 </TableRow>
-                            ) : preview.map((task) => (
-                                <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-border hover:bg-accent transition-colors">
-                                    <TableCell className="text-center">
-                                        <Checkbox
-                                            data-testid={`teacher-export-check-${task.taskId}`}
-                                            checked={selectedTaskIds.includes(task.taskId)}
-                                            onCheckedChange={() => toggleTask(task.taskId)}
-                                        />
-                                    </TableCell>
-                                    <TableCell className="font-medium text-foreground">{task.topic}</TableCell>
-                                    <TableCell className="text-foreground">{task.className}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Progress value={task.total > 0 ? (task.graded / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
-                                            <span className="text-xs text-muted-foreground">{task.graded}/{task.total}</span>
-                                            {task.graded === task.total && task.total > 0 && (
-                                                <Badge variant="success">已完成</Badge>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="font-medium font-mono text-foreground">{task.avgScore ? task.avgScore.toFixed(1) : "-"}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button
-                                            data-testid={`teacher-export-single-${task.taskId}`}
-                                            variant="ghost"
-                                            size="xs"
-                                            disabled={exporting}
-                                            onClick={() => exportExcel(task.taskId)}
-                                        >
-                                            <Download data-icon="inline-start" />
-                                            {exporting ? "导出中…" : "导出"}
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            ) : preview.map((task) => {
+                                const gradedCount = toNumber(task.graded);
+                                const totalCount = toNumber(task.total);
+                                const avgScore = toNumber(task.avgScore);
+
+                                return (
+                                    <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="block border-b-0 py-3 hover:bg-muted/30 md:table-row md:border-b md:py-0">
+                                        <TableCell className={`${mobileTableCellClass} md:text-center`}>
+                                            <span className={mobileTableLabelClass}>选择</span>
+                                            <Checkbox
+                                                data-testid={`teacher-export-check-${task.taskId}`}
+                                                checked={selectedTaskIds.includes(task.taskId)}
+                                                onCheckedChange={() => toggleTask(task.taskId)}
+                                            />
+                                        </TableCell>
+                                        <TableCell className={`${mobileTableCellClass} font-medium text-foreground`}>
+                                            <span className={mobileTableLabelClass}>课题</span>
+                                            <span className="min-w-0 break-words">{task.topic}</span>
+                                        </TableCell>
+                                        <TableCell className={mobileTableCellClass}>
+                                            <span className={mobileTableLabelClass}>班级</span>
+                                            <span className="min-w-0 break-words text-foreground">{task.className}</span>
+                                        </TableCell>
+                                        <TableCell className={mobileTableCellClass}>
+                                            <span className={mobileTableLabelClass}>批改进度</span>
+                                            <div className="flex min-w-36 items-center justify-end gap-2 md:justify-start">
+                                                <Progress value={totalCount > 0 ? (gradedCount / totalCount) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
+                                                <span className="text-xs text-muted-foreground">{gradedCount}/{totalCount}</span>
+                                                {gradedCount === totalCount && totalCount > 0 && (
+                                                    <Badge variant="success">已完成</Badge>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className={`${mobileTableCellClass} font-medium font-mono text-foreground`}>
+                                            <span className={mobileTableLabelClass}>平均分</span>
+                                            <span>{avgScore > 0 ? avgScore.toFixed(1) : "-"}</span>
+                                        </TableCell>
+                                        <TableCell className={mobileTableActionCellClass}>
+                                            <div className="mb-2 text-xs font-medium tracking-wider text-muted-foreground md:hidden">操作</div>
+                                            <div className="grid grid-cols-1 gap-2 sm:flex sm:justify-end">
+                                                <Button
+                                                    data-testid={`teacher-export-single-${task.taskId}`}
+                                                    variant="ghost"
+                                                    size="xs"
+                                                    disabled={exporting}
+                                                    onClick={() => exportExcel(task.taskId)}
+                                                >
+                                                    <Download data-icon="inline-start" />
+                                                    {exporting ? "导出中…" : "导出"}
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </CardContent>

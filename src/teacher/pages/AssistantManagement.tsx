@@ -21,6 +21,7 @@ import { AssistantAddDialog } from "../components/AssistantAddDialog";
 import { AssistantAssignDialog } from "../components/AssistantAssignDialog";
 import { teacherApi, type Assistant, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
+import { mobileTableActionCellClass, mobileTableCellClass, mobileTableLabelClass } from "./responsive-table";
 
 export function AssistantManagement() {
     const [assistants, setAssistants] = useState<Assistant[]>([]);
@@ -202,9 +203,9 @@ export function AssistantManagement() {
                         </Button>
                     </div>
                 </CardHeader>
-                <CardContent className="pt-0">
-                    <Table>
-                        <TableHeader>
+                <CardContent className="px-0 pt-0">
+                    <Table className="md:table">
+                        <TableHeader className="hidden md:table-header-group">
                             <TableRow className="border-border hover:bg-muted/50">
                                 <TableHead className="text-muted-foreground">姓名</TableHead>
                                 <TableHead className="text-muted-foreground">工号</TableHead>
@@ -214,9 +215,9 @@ export function AssistantManagement() {
                                 <TableHead className="text-muted-foreground text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        <TableBody className="block divide-y divide-border md:table-row-group md:divide-y-0">
                             {filteredAssistants.length === 0 ? (
-                                <TableRow>
+                                <TableRow className="block md:table-row">
                                     <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                         <Empty className="py-0">
                                             <EmptyHeader>
@@ -229,27 +230,39 @@ export function AssistantManagement() {
                                     </TableCell>
                                 </TableRow>
                             ) : filteredAssistants.map((ta) => (
-                                <TableRow data-testid={`teacher-assistant-row-${ta.id}`} key={ta.id} className="border-border hover:bg-accent transition-colors">
-                                    <TableCell className="font-medium text-foreground">{ta.name}</TableCell>
-                                    <TableCell className="font-mono text-foreground">{ta.studentId}</TableCell>
-                                    <TableCell className="text-muted-foreground">{ta.email || "-"}</TableCell>
-                                    <TableCell>
-                                        <div className="flex gap-1 flex-wrap">
+                                <TableRow data-testid={`teacher-assistant-row-${ta.id}`} key={ta.id} className="block border-b-0 py-3 hover:bg-muted/30 md:table-row md:border-b md:py-0">
+                                    <TableCell className={`${mobileTableCellClass} font-medium text-foreground`}>
+                                        <span className={mobileTableLabelClass}>姓名</span>
+                                        <span className="min-w-0 break-words">{ta.name}</span>
+                                    </TableCell>
+                                    <TableCell className={`${mobileTableCellClass} font-mono text-foreground`}>
+                                        <span className={mobileTableLabelClass}>工号</span>
+                                        <span className="min-w-0 break-all">{ta.studentId}</span>
+                                    </TableCell>
+                                    <TableCell className={`${mobileTableCellClass} text-muted-foreground`}>
+                                        <span className={mobileTableLabelClass}>邮箱</span>
+                                        <span className="min-w-0 break-all">{ta.email || "-"}</span>
+                                    </TableCell>
+                                    <TableCell className={mobileTableCellClass}>
+                                        <span className={mobileTableLabelClass}>负责班级</span>
+                                        <div className="flex min-w-0 flex-wrap justify-end gap-1 md:justify-start">
                                             {ta.assignedClasses.map((cls) => (
                                                 <Badge key={cls} variant="muted">{cls}</Badge>
                                             ))}
                                             {ta.assignedClasses.length === 0 && <span className="text-muted-foreground text-xs">-</span>}
                                         </div>
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell className={mobileTableCellClass}>
+                                        <span className={mobileTableLabelClass}>状态</span>
                                         {ta.status === 1 ? (
                                             <Badge variant="success">正常</Badge>
                                         ) : (
                                             <Badge variant="muted">已停用</Badge>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex flex-wrap justify-end gap-2">
+                                    <TableCell className={mobileTableActionCellClass}>
+                                        <div className="mb-2 text-xs font-medium tracking-wider text-muted-foreground md:hidden">操作</div>
+                                        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                                             <Button data-testid={`teacher-assistant-assign-open-${ta.id}`} variant="ghost" size="xs" onClick={() => openAssignModal(ta)}>
                                                 <UserCog data-icon="inline-start" />分配班级
                                             </Button>
