@@ -43,6 +43,7 @@ import type { Question, QuestionType } from "../../lib/questionnaire-types";
 import { SubmissionPdfStatus } from "../../student/experiment/pdf-status";
 import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
 import { parseStoredJson } from "../../student/experiment/serialization";
+import { writeTopicSeedFiles } from "../../../scripts/generate_topic_seed_files";
 
 function buildSeedRecommendQuestion(r: {
     topicIdx: number;
@@ -210,6 +211,9 @@ async function seed() {
 
     const defaultPassword = "123456";
     const hashedPassword = await Bun.password.hash(defaultPassword);
+
+    console.log("📁 课题文件资源…");
+    await writeTopicSeedFiles();
 
     const USER = { admin: 1, teacher: 2, assistant: 3, student: 4 } as const;
 

@@ -1,6 +1,6 @@
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { createWriteStream } from "node:fs";
-import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { deflateSync } from "node:zlib";
@@ -148,22 +148,92 @@ function buildDocxParagraphs(lines: string[]) {
         .join("");
 }
 
-async function runZip(tempDir: string, outputPath: string) {
-    await new Promise<void>((resolve, reject) => {
-        const child = spawn("zip", ["-q", "-r", outputPath, "."], {
-            cwd: tempDir,
-            stdio: "ignore",
-        });
+async function listZipEntries(rootDir: string, currentDir = rootDir): Promise<Array<{ name: string; data: Buffer }>> {
+    const entries = await readdir(currentDir, { withFileTypes: true });
+    const files: Array<{ name: string; data: Buffer }> = [];
 
-        child.on("error", reject);
-        child.on("close", (code) => {
-            if (code === 0) {
-                resolve();
-                return;
-            }
-            reject(new Error(`zip exited with code ${code ?? -1}`));
-        });
-    });
+    for (const entry of entries) {
+        const absolutePath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+            files.push(...await listZipEntries(rootDir, absolutePath));
+            continue;
+        }
+        if (!entry.isFile()) continue;
+
+        const relativeName = path.relative(rootDir, absolutePath).split(path.sep).join("/");
+        files.push({ name: relativeName, data: await readFile(absolutePath) });
+    }
+
+    return files;
+}
+
+function createZipArchive(entries: Array<{ name: string; data: Buffer }>) {
+    const localParts: Buffer[] = [];
+    const centralParts: Buffer[] = [];
+    let offset = 0;
+
+    const dosTime = 0;
+    const dosDate = 33; // 1980-01-01
+
+    for (const entry of entries) {
+        const name = Buffer.from(entry.name, "utf8");
+        const crc = crc32(entry.data);
+
+        const localHeader = Buffer.alloc(30);
+        localHeader.writeUInt32LE(0x04034b50, 0);
+        localHeader.writeUInt16LE(20, 4);
+        localHeader.writeUInt16LE(0, 6);
+        localHeader.writeUInt16LE(0, 8);
+        localHeader.writeUInt16LE(dosTime, 10);
+        localHeader.writeUInt16LE(dosDate, 12);
+        localHeader.writeUInt32LE(crc, 14);
+        localHeader.writeUInt32LE(entry.data.length, 18);
+        localHeader.writeUInt32LE(entry.data.length, 22);
+        localHeader.writeUInt16LE(name.length, 26);
+        localHeader.writeUInt16LE(0, 28);
+
+        localParts.push(localHeader, name, entry.data);
+
+        const centralHeader = Buffer.alloc(46);
+        centralHeader.writeUInt32LE(0x02014b50, 0);
+        centralHeader.writeUInt16LE(20, 4);
+        centralHeader.writeUInt16LE(20, 6);
+        centralHeader.writeUInt16LE(0, 8);
+        centralHeader.writeUInt16LE(0, 10);
+        centralHeader.writeUInt16LE(dosTime, 12);
+        centralHeader.writeUInt16LE(dosDate, 14);
+        centralHeader.writeUInt32LE(crc, 16);
+        centralHeader.writeUInt32LE(entry.data.length, 20);
+        centralHeader.writeUInt32LE(entry.data.length, 24);
+        centralHeader.writeUInt16LE(name.length, 28);
+        centralHeader.writeUInt16LE(0, 30);
+        centralHeader.writeUInt16LE(0, 32);
+        centralHeader.writeUInt16LE(0, 34);
+        centralHeader.writeUInt16LE(0, 36);
+        centralHeader.writeUInt32LE(0, 38);
+        centralHeader.writeUInt32LE(offset, 42);
+        centralParts.push(centralHeader, name);
+
+        offset += localHeader.length + name.length + entry.data.length;
+    }
+
+    const centralDirectory = Buffer.concat(centralParts);
+    const endRecord = Buffer.alloc(22);
+    endRecord.writeUInt32LE(0x06054b50, 0);
+    endRecord.writeUInt16LE(0, 4);
+    endRecord.writeUInt16LE(0, 6);
+    endRecord.writeUInt16LE(entries.length, 8);
+    endRecord.writeUInt16LE(entries.length, 10);
+    endRecord.writeUInt32LE(centralDirectory.length, 12);
+    endRecord.writeUInt32LE(offset, 16);
+    endRecord.writeUInt16LE(0, 20);
+
+    return Buffer.concat([...localParts, centralDirectory, endRecord]);
+}
+
+async function runZip(tempDir: string, outputPath: string) {
+    const entries = await listZipEntries(tempDir);
+    await writeFile(outputPath, createZipArchive(entries));
 }
 
 async function writeDocx(fileName: string, lines: string[]) {
@@ -726,7 +796,7 @@ function buildPdfs(): PdfSpec[] {
     ];
 }
 
-async function writeAllFiles() {
+export async function writeTopicSeedFiles() {
     await ensureOutputDir();
 
     console.log(`Writing topic seed files into ${OUTPUT_DIR}`);
@@ -770,4 +840,6 @@ async function writeAllFiles() {
     }
 }
 
-await writeAllFiles();
+if (import.meta.main) {
+    await writeTopicSeedFiles();
+}
