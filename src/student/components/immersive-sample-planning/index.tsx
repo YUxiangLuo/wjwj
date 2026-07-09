@@ -503,7 +503,7 @@ export function ImmersiveSamplePlanning({
                                 onClick={handleConfirm}
                                 disabled={saving}
                                 data-testid="immersive-sp-confirm"
-                                className="bg-primary hover:bg-primary text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-60"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-60"
                             >
                                 {saving ? "保存中..." : "确认并保存"}
                                 {!saving && <ChevronRight className="w-5 h-5 ml-2" />}
@@ -627,7 +627,7 @@ export function ImmersiveSamplePlanning({
                         type="button"
                         onClick={goNext}
                         data-testid="immersive-sp-next"
-                        className="hidden lg:flex fixed top-1/2 -translate-y-1/2 right-4 z-10 w-11 h-11 rounded-full bg-primary shadow-lg shadow-primary/20 items-center justify-center text-primary-foreground hover:bg-primary transition-colors"
+                        className="hidden lg:flex fixed top-1/2 -translate-y-1/2 right-4 z-10 w-11 h-11 rounded-full bg-primary shadow-lg shadow-primary/20 items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
                         aria-label="下一步"
                     >
                         <ChevronRight className="w-5 h-5" />
@@ -645,7 +645,7 @@ export function ImmersiveSamplePlanning({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel type="button">取消</AlertDialogCancel>
-                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive">
+                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive/90">
                             确定退出
                         </AlertDialogAction>
                     </AlertDialogFooter>

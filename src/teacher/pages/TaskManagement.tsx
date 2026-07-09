@@ -252,7 +252,7 @@ export function TaskManagement() {
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                             <Plus className="w-4 h-4 mr-1" /> 发布任务
                         </Button>
                     </div>

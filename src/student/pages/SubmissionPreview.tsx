@@ -403,7 +403,7 @@ export function SubmissionPreview() {
                     onClick={() => setConfirmOpen(true)}
                     disabled={!canSubmit || submitting}
                     data-testid="student-preview-submit"
-                    className="w-full md:w-auto h-12 px-8 text-lg bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                    className="w-full md:w-auto h-12 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                 >
                     {submitting ? (
                         <>
@@ -430,7 +430,7 @@ export function SubmissionPreview() {
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                             onClick={handleSubmit}
                             disabled={submitting}
                             data-testid="student-preview-submit-confirm"

@@ -200,7 +200,7 @@ export function SystemMonitor() {
                         data-testid={isLive ? "monitor-pause" : "monitor-resume"}
                         variant={isLive ? "secondary" : "default"}
                         onClick={() => setIsLive(!isLive)}
-                        className={isLive ? "bg-muted text-foreground/90 hover:bg-muted" : "bg-primary hover:bg-primary text-primary-foreground"}
+                        className={isLive ? "bg-muted text-foreground/90 hover:bg-muted" : "bg-primary hover:bg-primary/90 text-primary-foreground"}
                     >
                         {isLive ? (
                             <>

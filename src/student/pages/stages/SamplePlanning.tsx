@@ -231,7 +231,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             onClick={() => setImmersiveOpen(true)}
                             data-testid="student-sample-plan-start"
-                            className="bg-primary hover:bg-primary text-primary-foreground px-8 shadow-lg shadow-primary/20"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 shadow-lg shadow-primary/20"
                         >
                             <Sparkles className="w-4 h-4 mr-1.5" />
                             开始规划样本量
@@ -257,7 +257,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         onClick={() => setConfirmNextOpen(true)}
                         disabled={!isValidFinalSize}
                         data-testid="student-sample-plan-next"
-                        className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none"
                     >
                         确认并进入下一阶段
                         <ChevronRight className="w-4 h-4 ml-1" />
@@ -281,7 +281,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             onClick={() => void handleConfirmNext()}
                             disabled={confirmNextSaving}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {confirmNextSaving ? (
                                 <>

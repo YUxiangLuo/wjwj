@@ -234,7 +234,7 @@ export function GradeExport() {
                             variant="outline"
                             disabled={selectedCount === 0 || exporting}
                             onClick={() => exportExcel()}
-                            className="border-primary bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="border-primary bg-primary/10 text-primary hover:bg-primary/90 hover:text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <FileSpreadsheet className="w-4 h-4 mr-2" />
                             批量导出 ({selectedCount})

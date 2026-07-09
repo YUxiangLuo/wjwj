@@ -159,7 +159,7 @@ function StudentAppContent() {
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                    <Button onClick={handleReLogin} className="bg-primary hover:bg-primary text-primary-foreground">重新登录</Button>
+                    <Button onClick={handleReLogin} className="bg-primary hover:bg-primary/90 text-primary-foreground">重新登录</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -487,7 +487,7 @@ function StudentAppContent() {
                                 await refreshSession();
                                 setShowSessionWarning(false);
                             }}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             继续使用
                         </Button>
@@ -510,7 +510,7 @@ function StudentAppContent() {
                                 setShowLogoutConfirm(false);
                                 await handleLogout();
                             }}
-                            className="bg-destructive hover:bg-destructive text-destructive-foreground"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                         >
                             退出登录
                         </AlertDialogAction>

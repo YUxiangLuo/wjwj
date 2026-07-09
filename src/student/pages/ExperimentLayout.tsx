@@ -459,7 +459,7 @@ export function ExperimentLayout() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={applyRollback} data-testid="student-experiment-rollback-confirm" className="bg-destructive hover:bg-destructive text-destructive-foreground">确认返回</AlertDialogAction>
+                        <AlertDialogAction onClick={applyRollback} data-testid="student-experiment-rollback-confirm" className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">确认返回</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

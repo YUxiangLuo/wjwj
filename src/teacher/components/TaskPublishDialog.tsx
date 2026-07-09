@@ -109,7 +109,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
-                    <Button data-testid="teacher-task-publish-submit" onClick={onPublish} className="bg-primary hover:bg-primary text-primary-foreground">确认发布</Button>
+                    <Button data-testid="teacher-task-publish-submit" onClick={onPublish} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认发布</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

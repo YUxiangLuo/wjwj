@@ -270,7 +270,7 @@ export function ClusterSamplingCalculator({
                                     </p>
                                     <Button
                                         onClick={() => onApplyResult(result.requiredClusters, result.requiredSampleSize)}
-                                        className="w-full bg-primary text-primary-foreground hover:bg-primary"
+                                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                                     >
                                         应用整群抽样方案
                                         <ArrowRight className="w-4 h-4 ml-2" />

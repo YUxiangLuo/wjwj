@@ -418,7 +418,7 @@ export function QuestionnaireDesign() {
                                         onClick={handleAddQuestion}
                                         disabled={questions.length >= 50}
                                         data-testid="student-questionnaire-add-question"
-                                        className="bg-primary hover:bg-primary text-primary-foreground"
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                     >
                                         <Plus className="w-4 h-4 mr-1" />
                                         添加题目
@@ -662,7 +662,7 @@ export function QuestionnaireDesign() {
                                                 disabled={!basicValidationPassed}
                                                 size="lg"
                                                 data-testid="student-questionnaire-start-preview"
-                                                className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20 px-8"
+                                                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 px-8"
                                             >
                                                 <Play className="w-5 h-5 mr-2" />
                                                 开始模拟填写
@@ -882,7 +882,7 @@ export function QuestionnaireDesign() {
                         onClick={() => setStep((step + 1) as 1 | 2 | 3 | 4)}
                         disabled={!canAdvanceToNextStep}
                         data-testid="student-questionnaire-next"
-                        className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                     >
                         下一步
                     </Button>
@@ -891,7 +891,7 @@ export function QuestionnaireDesign() {
                         onClick={() => setConfirmNextOpen(true)}
                         disabled={!canProceed}
                         data-testid="student-questionnaire-complete"
-                        className="bg-success hover:bg-success text-success-foreground shadow-lg shadow-success/20"
+                        className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/20"
                     >
                         <CheckCircle className="w-4 h-4 mr-2" />
                         确认完成，进入下一阶段
@@ -918,7 +918,7 @@ export function QuestionnaireDesign() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} data-testid="student-questionnaire-delete-confirm" className="bg-destructive hover:bg-destructive text-destructive-foreground">删除</AlertDialogAction>
+                        <AlertDialogAction onClick={confirmDelete} data-testid="student-questionnaire-delete-confirm" className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">删除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -936,7 +936,7 @@ export function QuestionnaireDesign() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmComplete} data-testid="student-questionnaire-complete-confirm" className="bg-success hover:bg-success text-success-foreground">确认完成</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmComplete} data-testid="student-questionnaire-complete-confirm" className="bg-success hover:bg-success/90 text-success-foreground">确认完成</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

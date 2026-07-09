@@ -218,7 +218,7 @@ export function ClassManagement() {
                     <h2 className="text-lg font-semibold text-foreground">班级管理</h2>
                     <p className="text-sm text-muted-foreground mt-1">管理班级、授课教师与学生规模。</p>
                 </div>
-                <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <Button data-testid="class-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4 mr-1" />
                     创建班级
                 </Button>
@@ -443,7 +443,7 @@ export function ClassManagement() {
                             data-testid="class-create-submit"
                             onClick={handleAddClass}
                             disabled={submitting || !newClass.name.trim() || !newClass.semesterId || !newClass.teacherId}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认创建
@@ -498,7 +498,7 @@ export function ClassManagement() {
                             data-testid="class-edit-submit"
                             onClick={handleEditClass}
                             disabled={submitting || !editForm.name.trim()}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存

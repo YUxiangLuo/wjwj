@@ -551,7 +551,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     onClick={goNext}
                                     size="lg"
                                     data-testid="immersive-preview-start"
-                                    className="bg-primary hover:bg-primary text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
                                 >
                                     {totalQuestions === 0 ? "继续" : "开始填写"}
                                     <ChevronRight className="w-5 h-5 ml-2" />
@@ -585,7 +585,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                                 disabled={!isCurrentAnswered}
                                                 size="lg"
                                                 data-testid="immersive-preview-multiple-next"
-                                                className="bg-primary hover:bg-primary text-primary-foreground text-base px-8 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none"
+                                                className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-8 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none"
                                             >
                                                 下一题
                                                 <ChevronRight className="w-5 h-5 ml-2" />
@@ -628,7 +628,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     onClick={goNext}
                                     size="lg"
                                     data-testid="immersive-preview-submit"
-                                    className="bg-primary hover:bg-primary text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
                                 >
                                     提交问卷
                                 </Button>
@@ -660,7 +660,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     onClick={onClose}
                                     size="lg"
                                     data-testid="immersive-preview-return"
-                                    className="bg-primary hover:bg-primary text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
                                 >
                                     返回问卷设计
                                 </Button>
@@ -734,7 +734,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel type="button">取消</AlertDialogCancel>
-                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive">
+                        <AlertDialogAction type="button" onClick={confirmExit} className="bg-destructive hover:bg-destructive/90">
                             确定退出
                         </AlertDialogAction>
                     </AlertDialogFooter>

@@ -402,7 +402,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                         onClick={handleSave}
                         disabled={!isValid()}
                         data-testid="student-question-save"
-                        className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                     >
                         保存
                     </Button>

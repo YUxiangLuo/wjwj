@@ -230,7 +230,7 @@ export function PrecisionCostTradeoff({
                                 }}
                                 className={`text-xs h-auto py-2 ${
                                     !useCustom && selectedScenario.id === scenario.id
-                                        ? "bg-primary text-primary-foreground hover:bg-primary shadow-sm"
+                                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                                         : "border-primary bg-background text-primary hover:bg-primary/10"
                                 }`}
                             >
@@ -244,7 +244,7 @@ export function PrecisionCostTradeoff({
                         onClick={() => setUseCustom(true)}
                         className={`w-full text-xs ${
                             useCustom
-                                ? "bg-primary text-primary-foreground hover:bg-primary"
+                                ? "bg-primary text-primary-foreground hover:bg-primary/90"
                                 : "border-primary bg-background text-primary hover:bg-primary/10"
                         }`}
                     >
@@ -450,7 +450,7 @@ export function PrecisionCostTradeoff({
 
                             {targetAnalysis.isFeasible ? (
                                 <div className="flex items-center gap-2 text-sm text-info">
-                                    <Badge className="border-0 bg-info text-info-foreground hover:bg-info">可行</Badge>
+                                    <Badge className="border-0 bg-info text-info-foreground hover:bg-info/90">可行</Badge>
                                     <span>预算充足，可实现目标精度</span>
                                 </div>
                             ) : (
@@ -474,7 +474,7 @@ export function PrecisionCostTradeoff({
                                 </p>
                                 <Button
                                     onClick={() => onApplyBudget(currentScenario.totalBudget, targetAnalysis.requiredSampleSize)}
-                                    className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary"
+                                    className="w-full mt-2 bg-primary text-primary-foreground hover:bg-primary/90"
                                     size="sm"
                                 >
                                     应用此样本量

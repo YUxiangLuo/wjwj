@@ -391,7 +391,7 @@ export function TopicManagement() {
                                 <SelectItem value="published">已发布</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary text-primary-foreground">
+                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             + 创建课题
                         </Button>
                     </div>
@@ -538,7 +538,7 @@ export function TopicManagement() {
                         <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">
                             取消
                         </AlertDialogCancel>
-                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-destructive hover:bg-destructive text-destructive-foreground" : "bg-primary hover:bg-primary text-primary-foreground"}>
+                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground" : "bg-primary hover:bg-primary/90 text-primary-foreground"}>
                             确认
                         </AlertDialogAction>
                     </AlertDialogFooter>

@@ -175,7 +175,7 @@ export function Login() {
                         )}
 
                         <div className="space-y-4 pt-2">
-                            <Button type="submit" data-testid="teacher-login-submit" className="w-full h-12 text-base font-medium bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/25 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
+                            <Button type="submit" data-testid="teacher-login-submit" className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
                                 {loading ? (
                                     <>
                                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />

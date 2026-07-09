@@ -122,7 +122,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             取消
                         </Button>
                     ) : null}
-                    <Button onClick={onSubmit} disabled={saving} className="bg-primary hover:bg-primary text-primary-foreground" data-testid={submitTestId}>
+                    <Button onClick={onSubmit} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground" data-testid={submitTestId}>
                         {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                         {submitLabel}
                     </Button>

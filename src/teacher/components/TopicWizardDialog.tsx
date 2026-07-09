@@ -647,7 +647,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-foreground/90">推荐题目</Label>
-                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-primary hover:bg-primary">
+                                    <Button data-testid="teacher-topic-question-add" size="sm" onClick={handleAddQuestion} className="bg-primary hover:bg-primary/90">
                                         + 添加题目
                                     </Button>
                                 </div>
@@ -815,14 +815,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <Button data-testid="teacher-topic-prev" variant="outline" onClick={() => setCurrentStep(prev => prev - 1)} className="border-input bg-muted text-foreground/90 hover:text-foreground hover:bg-muted">上一步</Button>
                             )}
                             {currentStep === 1 && (
-                                <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-primary hover:bg-primary text-primary-foreground">{editingTopicId ? "保存并继续" : "下一步"}</Button>
+                                <Button data-testid="teacher-topic-next" onClick={onSubmitTopic} className="bg-primary hover:bg-primary/90 text-primary-foreground">{editingTopicId ? "保存并继续" : "下一步"}</Button>
                             )}
                             {!loadingDetail && currentStep === 2 && (
                                 <Button
                                     data-testid="teacher-topic-next"
                                     onClick={() => setCurrentStep(3)}
                                     disabled={!isPublishedTopic && !excelInfo}
-                                    className="bg-primary hover:bg-primary text-primary-foreground"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                 >
                                     下一步
                                 </Button>
@@ -832,19 +832,19 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     data-testid="teacher-topic-next"
                                     onClick={onSaveFieldMapping}
                                     disabled={!isPublishedTopic && !canProceedMapping}
-                                    className="bg-primary hover:bg-primary text-primary-foreground"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                 >
                                     {isPublishedTopic ? "下一步" : "保存并继续"}
                                 </Button>
                             )}
                             {!loadingDetail && currentStep === 4 && (
-                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-primary hover:bg-primary text-primary-foreground">下一步</Button>
+                                <Button data-testid="teacher-topic-next" onClick={() => setCurrentStep(5)} className="bg-primary hover:bg-primary/90 text-primary-foreground">下一步</Button>
                             )}
                             {!loadingDetail && currentStep === 5 && (
-                                <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-primary hover:bg-primary text-primary-foreground">保存并继续</Button>
+                                <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-primary hover:bg-primary/90 text-primary-foreground">保存并继续</Button>
                             )}
                             {!loadingDetail && currentStep === 6 && (
-                                <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-primary hover:bg-primary text-primary-foreground">完成</Button>
+                                <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-primary hover:bg-primary/90 text-primary-foreground">完成</Button>
                             )}
                         </div>
                     </div>

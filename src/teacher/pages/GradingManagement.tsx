@@ -212,7 +212,7 @@ export function GradingManagement() {
                                     </div>
                                     <div className="flex justify-end mt-4 pt-3 border-t border-border/50">
                                         {sub.status === 1 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                                                 <FileEdit className="w-3.5 h-3.5 mr-2" />
                                                 开始批改
                                             </Button>
@@ -272,7 +272,7 @@ export function GradingManagement() {
                                                 onClick={() => goToPage(item)}
                                                 className={`h-8 w-8 p-0 text-xs ${
                                                     item === page
-                                                        ? "bg-primary text-primary-foreground hover:bg-primary"
+                                                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
                                                         : "border-border text-muted-foreground"
                                                 }`}
                                             >

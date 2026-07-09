@@ -463,7 +463,7 @@ export function SystemSettings() {
                         )}
 
                         <div className="pt-6 mt-6 border-t border-border flex justify-end">
-                            <Button data-testid="settings-save" onClick={handleSave} disabled={saving} className="bg-success hover:bg-success text-success-foreground shadow-lg shadow-success/20">
+                            <Button data-testid="settings-save" onClick={handleSave} disabled={saving} className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/20">
                                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                                 保存设置
                             </Button>

@@ -500,7 +500,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     {!simpleResult?.completed ? (
                                         <div className="bg-background/50 rounded-xl p-8 text-center border border-border border-dashed">
                                             <div className="mb-4 text-muted-foreground">尚未执行抽样</div>
-                                            <Button onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                                            <Button onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                                                 {executing === "simple" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -616,7 +616,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                                     {!systematicResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("systematic")} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-info hover:bg-info text-info-foreground shadow-lg shadow-info/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("systematic")} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-info hover:bg-info/90 text-info-foreground shadow-lg shadow-info/20 w-auto px-8">
                                                 {executing === "systematic" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -821,7 +821,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"}>
+                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"}>
                     {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${completedMethodCount}/4)`}
                     <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -854,7 +854,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sampling-confirm" className="bg-primary hover:bg-primary text-primary-foreground">确认</AlertDialogAction>
+                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sampling-confirm" className="bg-primary hover:bg-primary/90 text-primary-foreground">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

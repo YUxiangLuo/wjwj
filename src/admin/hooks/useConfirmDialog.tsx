@@ -21,8 +21,8 @@ interface ConfirmDialogOptions {
 }
 
 const toneClasses: Record<ConfirmTone, string> = {
-    primary: "bg-primary hover:bg-primary text-primary-foreground border-none",
-    destructive: "bg-destructive hover:bg-destructive text-destructive-foreground border-none",
+    primary: "bg-primary hover:bg-primary/90 text-primary-foreground border-none",
+    destructive: "bg-destructive hover:bg-destructive/90 text-destructive-foreground border-none",
 };
 
 export function useConfirmDialog() {

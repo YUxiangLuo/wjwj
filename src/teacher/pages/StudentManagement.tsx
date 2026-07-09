@@ -240,7 +240,7 @@ export function StudentManagement() {
                             <Upload className="w-4 h-4 mr-2" />
                             批量导入
                         </Button>
-                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary text-primary-foreground">
+                        <Button data-testid="teacher-student-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             <UserPlus className="w-4 h-4 mr-2" />
                             添加学生
                         </Button>

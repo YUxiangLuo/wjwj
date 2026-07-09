@@ -208,7 +208,7 @@ export function Profile() {
                             </div>
                         )}
                         <Button
-                            className="w-full bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20 mt-2"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 mt-2"
                             onClick={handleChangePassword}
                             disabled={saving}
                             data-testid="student-profile-password-save"

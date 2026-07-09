@@ -149,7 +149,7 @@ export function SubmissionHistory() {
 
                                             <div className="w-full md:w-auto flex flex-row md:flex-col gap-2">
                                                 <Link to={`/submissions/${sub.id}`} className="w-full md:w-auto">
-                                                    <Button variant="outline" size="sm" className="w-full gap-2 border-input bg-muted/50 text-foreground/90 hover:text-primary-foreground hover:bg-primary hover:border-primary transition-all">
+                                                    <Button variant="outline" size="sm" className="w-full gap-2 border-input bg-muted/50 text-foreground/90 hover:text-primary-foreground hover:bg-primary/90 hover:border-primary transition-all">
                                                         <FileText className="w-4 h-4" />
                                                         查看详情
                                                     </Button>

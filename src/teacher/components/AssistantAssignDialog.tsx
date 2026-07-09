@@ -59,7 +59,7 @@ export function AssistantAssignDialog(props: AssistantAssignDialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
-                    <Button data-testid="teacher-assistant-assign-submit" onClick={onSubmit} className="bg-primary hover:bg-primary text-primary-foreground">确认分配</Button>
+                    <Button data-testid="teacher-assistant-assign-submit" onClick={onSubmit} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认分配</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

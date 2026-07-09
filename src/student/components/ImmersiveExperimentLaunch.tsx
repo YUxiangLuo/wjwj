@@ -192,7 +192,7 @@ export function ImmersiveExperimentLaunch({
                         </p>
                         <button
                             onClick={handleProceed}
-                            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-primary hover:bg-primary text-primary-foreground font-semibold transition-colors shadow-lg shadow-primary/30"
+                            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold transition-colors shadow-lg shadow-primary/30"
                         >
                             进入抽样执行
                             <ChevronRight className="w-5 h-5" />

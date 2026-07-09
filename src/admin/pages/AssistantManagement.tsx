@@ -222,7 +222,7 @@ export function AssistantManagement() {
                     <h2 className="text-lg font-semibold text-foreground">助教管理</h2>
                     <p className="text-sm text-muted-foreground mt-1">维护助教账号与所绑定教师信息。</p>
                 </div>
-                <Button data-testid="assistant-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <Button data-testid="assistant-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4 mr-1" />
                     添加助教
                 </Button>
@@ -457,7 +457,7 @@ export function AssistantManagement() {
                             data-testid="assistant-create-submit"
                             onClick={handleAddAssistant}
                             disabled={submitting || !newAssistant.account.trim() || !newAssistant.name.trim() || !newAssistant.teacherId}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认添加

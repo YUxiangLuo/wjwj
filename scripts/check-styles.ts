@@ -45,6 +45,7 @@ const SEMANTIC_INTENT_COLORS = ["primary", "success", "warning", "info", "destru
 const MAX_HARDCODED_COLOR_CLASSES = 0;
 const MAX_DARK_CLASSES = 0;
 const MAX_SAME_INTENT_FILLED_CLASSES = 0;
+const MAX_SAME_INTENT_SOLID_HOVER_CLASSES = 0;
 const MAX_SEMANTIC_ALPHA_TEXT_CLASSES = 0;
 
 const palettePattern = PALETTE_COLORS.join("|");
@@ -61,6 +62,10 @@ const sameIntentFilledClassPattern = new RegExp(
     `bg-(${semanticIntentPattern})(?![-/\\w])(?=[^\"\`\\n]*text-\\1(?!-foreground))`,
     "g"
 );
+const sameIntentSolidHoverClassPattern = new RegExp(
+    `bg-(${semanticIntentPattern})(?![-/\\w])(?=[^\"\`\\n]*hover:bg-\\1(?![-/\\w]))`,
+    "g"
+);
 const semanticAlphaTextClassPattern = new RegExp(`text-(?:${semanticIntentPattern})/[0-9]+`, "g");
 
 type FileStats = {
@@ -68,6 +73,7 @@ type FileStats = {
     hardcodedColorClasses: number;
     darkClasses: number;
     sameIntentFilledClasses: number;
+    sameIntentSolidHoverClasses: number;
     semanticAlphaTextClasses: number;
 };
 
@@ -94,6 +100,7 @@ async function collectStats() {
             hardcodedColorClasses: countMatches(text, hardcodedColorClassPattern),
             darkClasses: countMatches(text, darkClassPattern),
             sameIntentFilledClasses: countMatches(text, sameIntentFilledClassPattern),
+            sameIntentSolidHoverClasses: countMatches(text, sameIntentSolidHoverClassPattern),
             semanticAlphaTextClasses: countMatches(text, semanticAlphaTextClassPattern),
         });
     }
@@ -114,12 +121,20 @@ const stats = await collectStats();
 const hardcodedColorClasses = stats.reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
 const darkClasses = stats.reduce((sum, item) => sum + item.darkClasses, 0);
 const sameIntentFilledClasses = stats.reduce((sum, item) => sum + item.sameIntentFilledClasses, 0);
+const sameIntentSolidHoverClasses = stats.reduce((sum, item) => sum + item.sameIntentSolidHoverClasses, 0);
 const semanticAlphaTextClasses = stats.reduce((sum, item) => sum + item.semanticAlphaTextClasses, 0);
 const uiHardcodedColorClasses = stats
     .filter((item) => item.path.startsWith("src/components/ui/"))
     .reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
 
+const themeCss = await Bun.file("styles/theme.css").text();
 const failures: string[] = [];
+
+if (!themeCss.includes('@import "tailwindcss" source(none);') || !themeCss.includes('@source "../src";')) {
+    failures.push(
+        'styles/theme.css must disable automatic Tailwind source detection and explicitly source ../src so docs/examples cannot generate forbidden utilities.'
+    );
+}
 
 if (uiHardcodedColorClasses > 0) {
     failures.push(`src/components/ui/** contains ${uiHardcodedColorClasses} hardcoded palette color classes.`);
@@ -143,6 +158,12 @@ if (sameIntentFilledClasses > MAX_SAME_INTENT_FILLED_CLASSES) {
     );
 }
 
+if (sameIntentSolidHoverClasses > MAX_SAME_INTENT_SOLID_HOVER_CLASSES) {
+    failures.push(
+        `Solid semantic hover backgrounds increased to ${sameIntentSolidHoverClasses}; maximum is ${MAX_SAME_INTENT_SOLID_HOVER_CLASSES}. Use hover:bg-*/90 (or another visible state) instead of hover:bg-* matching the base filled background.`
+    );
+}
+
 if (semanticAlphaTextClasses > MAX_SEMANTIC_ALPHA_TEXT_CLASSES) {
     failures.push(
         `Alpha semantic text classes increased to ${semanticAlphaTextClasses}; maximum is ${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}. Use the full semantic text token, or move opacity to a safe background/border.`
@@ -153,6 +174,7 @@ console.log("Style usage:");
 console.log(`  hardcoded palette classes: ${hardcodedColorClasses}/${MAX_HARDCODED_COLOR_CLASSES}`);
 console.log(`  dark: variant classes:     ${darkClasses}/${MAX_DARK_CLASSES}`);
 console.log(`  same-intent filled pairs:  ${sameIntentFilledClasses}/${MAX_SAME_INTENT_FILLED_CLASSES}`);
+console.log(`  solid same-intent hovers:  ${sameIntentSolidHoverClasses}/${MAX_SAME_INTENT_SOLID_HOVER_CLASSES}`);
 console.log(`  semantic alpha text:       ${semanticAlphaTextClasses}/${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}`);
 console.log(`  ui palette classes:        ${uiHardcodedColorClasses}`);
 
@@ -178,6 +200,12 @@ if (failures.length > 0) {
     if (sameIntentTop) {
         console.error("\nTop same-intent filled semantic color files:");
         console.error(sameIntentTop);
+    }
+
+    const solidHoverTop = topFiles(stats, "sameIntentSolidHoverClasses");
+    if (solidHoverTop) {
+        console.error("\nTop solid same-intent hover files:");
+        console.error(solidHoverTop);
     }
 
     const semanticAlphaTextTop = topFiles(stats, "semanticAlphaTextClasses");

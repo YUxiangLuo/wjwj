@@ -384,7 +384,7 @@ export function TopicDetails() {
                             {task.status === "rejected" ? (
                                 <Button
                                     size="lg"
-                                    className="w-full bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                                     disabled={action.disabled}
                                     onClick={() => setShowRestartConfirm(true)}
                                 >
@@ -394,7 +394,7 @@ export function TopicDetails() {
                                 <Link to={action.link} className="w-full block">
                                     <Button
                                         size="lg"
-                                        className="w-full bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20 h-11 text-base font-medium"
+                                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-11 text-base font-medium"
                                         disabled={action.disabled}
                                     >
                                         {action.text} <ChevronRight className="w-4 h-4 ml-1" />
@@ -466,7 +466,7 @@ export function TopicDetails() {
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-destructive hover:bg-destructive text-destructive-foreground"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             onClick={async () => {
                                 if (!taskId) return;
                                 const res = await experimentApi.reset(Number(taskId), {

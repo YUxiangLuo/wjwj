@@ -580,7 +580,7 @@ export function MultiVariableSamplePlan({
                             <Button
                                 type="button"
                                 onClick={() => onApplyToPlan({ variables, recommendedSampleSize })}
-                                className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary"
+                                className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
                             >
                                 应用到样本量规划
                                 <ArrowRight className="w-4 h-4 ml-2" />

@@ -404,7 +404,7 @@ export function AdminApp() {
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel className="bg-muted border-input text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive text-destructive-foreground border-none">退出</AlertDialogAction>
+                                        <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-none">退出</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
@@ -461,7 +461,7 @@ export function AdminApp() {
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant="outline" onClick={handleLogout} className="border-input hover:bg-muted text-foreground/90">退出登录</Button>
-                        <Button onClick={handleExtendSession} className="bg-primary hover:bg-primary">继续</Button>
+                        <Button onClick={handleExtendSession} className="bg-primary hover:bg-primary/90">继续</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -475,7 +475,7 @@ export function AdminApp() {
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                        <Button onClick={() => navigate("/login", { replace: true })} className="bg-primary hover:bg-primary">重新登录</Button>
+                        <Button onClick={() => navigate("/login", { replace: true })} className="bg-primary hover:bg-primary/90">重新登录</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

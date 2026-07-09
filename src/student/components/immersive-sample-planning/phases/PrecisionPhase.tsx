@@ -162,7 +162,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                 <Button
                     type="button"
                     onClick={onNext}
-                    className="bg-primary hover:bg-primary text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
                 >
                     继续：判断哪些条件会影响样本量
                     <ChevronRight className="w-5 h-5 ml-2" />

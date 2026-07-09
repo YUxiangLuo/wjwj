@@ -231,7 +231,7 @@ export function TeacherManagement() {
                     <h2 className="text-lg font-semibold text-foreground">教师管理</h2>
                     <p className="text-sm text-muted-foreground mt-1">管理教师账号、锁定状态与登录安全。</p>
                 </div>
-                <Button data-testid="teacher-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <Button data-testid="teacher-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4 mr-1" />
                     添加教师
                 </Button>
@@ -434,7 +434,7 @@ export function TeacherManagement() {
                             data-testid="teacher-create-submit"
                             onClick={handleAddTeacher}
                             disabled={submitting || !newTeacher.employeeId.trim() || !newTeacher.name.trim()}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认添加
@@ -477,7 +477,7 @@ export function TeacherManagement() {
                         <Button
                             onClick={handleEditTeacher}
                             disabled={submitting || !editName.trim()}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认修改

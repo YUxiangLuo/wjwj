@@ -746,7 +746,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <SelectItem value="stratified">{METHOD_META.stratified.label}结果</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button className="w-full bg-info hover:bg-info text-info-foreground shadow-lg shadow-info/20" onClick={() => handleExport(exportType)}>
+                            <Button className="w-full bg-info hover:bg-info/90 text-info-foreground shadow-lg shadow-info/20" onClick={() => handleExport(exportType)}>
                                 <Download className="w-4 h-4 mr-2" />
                                 导出 CSV
                             </Button>
@@ -823,7 +823,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev" className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground">
                     上一阶段
                 </Button>
-                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting} data-testid="student-analysis-preview" className="bg-success hover:bg-success text-success-foreground shadow-lg shadow-success/20">
+                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting} data-testid="student-analysis-preview" className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/20">
                     {isSubmitting ? (
                         <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

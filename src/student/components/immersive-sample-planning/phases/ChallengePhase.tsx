@@ -104,7 +104,7 @@ export function ChallengePhase({
                             onClick={handleSubmitGuess}
                             disabled={!canSubmitGuess}
                             data-testid="immersive-sp-guess-submit"
-                            className="w-full bg-primary hover:bg-primary text-primary-foreground text-base py-6 rounded-xl shadow-lg shadow-primary/20"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-base py-6 rounded-xl shadow-lg shadow-primary/20"
                         >
                             提交我的直觉判断
                         </Button>
@@ -149,7 +149,7 @@ export function ChallengePhase({
                             type="button"
                             onClick={onNext}
                             data-testid="immersive-sp-challenge-next"
-                            className="bg-primary hover:bg-primary text-primary-foreground text-base px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
                         >
                             开始拆解样本量规划
                             <ChevronRight className="w-5 h-5 ml-2" />

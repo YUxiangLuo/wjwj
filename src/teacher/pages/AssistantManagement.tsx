@@ -199,7 +199,7 @@ export function AssistantManagement() {
                                 <SelectItem value="disabled">已停用</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-assistant-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                        <Button data-testid="teacher-assistant-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                             <UserPlus className="w-4 h-4 mr-2" />
                             添加助教
                         </Button>
@@ -326,7 +326,7 @@ export function AssistantManagement() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive text-destructive-foreground">确认移除</AlertDialogAction>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">确认移除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

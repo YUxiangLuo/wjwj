@@ -228,7 +228,7 @@ function TaskCard({ task }: TaskCardProps) {
                     {/* Action button */}
                     <div className="flex gap-2">
                         <Button
-                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-primary hover:bg-primary text-primary-foreground hover:text-primary-foreground shadow-lg shadow-primary/20' : ''} ${action.variant === 'destructive' ? 'bg-destructive hover:bg-destructive text-destructive-foreground hover:text-primary-foreground' : ''} ${action.variant === 'outline' ? 'border-input text-foreground/90 hover:bg-muted hover:text-foreground' : ''}`}
+                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground shadow-lg shadow-primary/20' : ''} ${action.variant === 'destructive' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground hover:text-primary-foreground' : ''} ${action.variant === 'outline' ? 'border-input text-foreground/90 hover:bg-muted hover:text-foreground' : ''}`}
                             variant="ghost"
                             disabled={disabled}
                             onClick={() => { void handlePrimaryAction(); }}
@@ -267,7 +267,7 @@ function TaskCard({ task }: TaskCardProps) {
                     <AlertDialogFooter>
                         <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-destructive hover:bg-destructive text-destructive-foreground"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             onClick={async () => {
                                 const res = await experimentApi.reset(task.id, {
                                     resetToStage: 1,

@@ -239,7 +239,7 @@ export function AnnouncementManagement() {
                     <h2 className="text-lg font-semibold text-foreground">公告管理</h2>
                     <p className="text-sm text-muted-foreground mt-1">统一发布系统通知，支持草稿与阅读统计。</p>
                 </div>
-                <Button data-testid="announcement-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <Button data-testid="announcement-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4 mr-1" />
                     发布公告
                 </Button>
@@ -473,7 +473,7 @@ export function AnnouncementManagement() {
                             data-testid="announcement-create-publish"
                             onClick={() => handleAddAnnouncement(true)}
                             disabled={submitting || !newAnnouncement.title.trim() || !newAnnouncement.content.trim()}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             <Send className="w-4 h-4 mr-1" />
@@ -522,7 +522,7 @@ export function AnnouncementManagement() {
                             data-testid="announcement-edit-submit"
                             onClick={handleEditAnnouncement}
                             disabled={submitting || !editForm.title.trim()}
-                            className="bg-primary hover:bg-primary text-primary-foreground"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存

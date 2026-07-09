@@ -494,7 +494,7 @@ export function StudentManagement() {
                         <Button variant="ghost" onClick={() => setTransferStudent(null)} className="text-muted-foreground hover:text-foreground hover:bg-muted">
                             取消
                         </Button>
-                        <Button data-testid="student-transfer-submit" onClick={handleTransfer} disabled={!targetClassId} className="bg-primary hover:bg-primary text-primary-foreground">
+                        <Button data-testid="student-transfer-submit" onClick={handleTransfer} disabled={!targetClassId} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             确认转班
                         </Button>
                     </DialogFooter>

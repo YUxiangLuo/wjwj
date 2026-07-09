@@ -393,7 +393,7 @@ export function TeacherApp() {
                                     <span className="font-medium">{item.label}</span>
                                 </div>
                                 {item.path === "/grading" && pendingGradingCount > 0 && (
-                                    <Badge className="bg-destructive text-destructive-foreground border-none hover:bg-destructive">
+                                    <Badge className="bg-destructive text-destructive-foreground border-none hover:bg-destructive/90">
                                         {pendingGradingCount}
                                     </Badge>
                                 )}
@@ -504,7 +504,7 @@ export function TeacherApp() {
                                         <AlertDialogAction
                                             data-testid="teacher-logout-confirm"
                                             onClick={() => { void handleLogout(); }}
-                                            className="bg-destructive hover:bg-destructive text-destructive-foreground border-none"
+                                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-none"
                                         >
                                             退出
                                         </AlertDialogAction>
@@ -619,7 +619,7 @@ export function TeacherApp() {
                         <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-foreground hover:bg-muted">
                             退出登录
                         </Button>
-                        <Button onClick={handleExtendSession} className="bg-primary hover:bg-primary text-primary-foreground">
+                        <Button onClick={handleExtendSession} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             继续使用
                         </Button>
                     </DialogFooter>

@@ -79,7 +79,7 @@ export function FactorsPhase({ step, params, onNext }: Props) {
                 <Button
                     type="button"
                     onClick={onNext}
-                    className="bg-primary hover:bg-primary text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
                 >
                     {step === "summary" ? "继续：进入样本量公式" : "继续：看下一个因素"}
                     <ChevronRight className="w-5 h-5 ml-2" />

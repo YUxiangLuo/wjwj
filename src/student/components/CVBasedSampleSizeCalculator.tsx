@@ -290,7 +290,7 @@ export function CVBasedSampleSizeCalculator({
                                     </p>
                                     <Button
                                         onClick={() => onApplySampleSize(result.requiredSampleSize)}
-                                        className="w-full bg-primary text-primary-foreground hover:bg-primary"
+                                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                                     >
                                         应用此样本量
                                         <ArrowRight className="w-4 h-4 ml-2" />

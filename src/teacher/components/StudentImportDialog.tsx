@@ -79,7 +79,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
-                    <Button data-testid="teacher-student-import-submit" onClick={onImport} disabled={importing || !importFile} className="bg-primary hover:bg-primary text-primary-foreground">
+                    <Button data-testid="teacher-student-import-submit" onClick={onImport} disabled={importing || !importFile} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : "开始导入"}
                     </Button>
                 </DialogFooter>

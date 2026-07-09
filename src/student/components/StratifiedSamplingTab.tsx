@@ -441,7 +441,7 @@ export function StratifiedSamplingTab({
                                         onClick={handleAnimateAndExecute}
                                         disabled={executing !== null || !isStratifiedValid || layers.length === 0}
                                         data-testid="student-sampling-stratified-run"
-                                        className="bg-warning hover:bg-warning text-warning-foreground shadow-lg shadow-warning/20 w-full"
+                                        className="bg-warning hover:bg-warning/90 text-warning-foreground shadow-lg shadow-warning/20 w-full"
                                     >
                                         {executing === "stratified" ? (
                                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />

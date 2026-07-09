@@ -480,7 +480,7 @@ export function DecisionPhase({
                                         toast.success("已应用子总体设置");
                                         closeAdvancedDialog();
                                     }}
-                                    className="bg-primary hover:bg-primary text-primary-foreground disabled:opacity-50"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
                                 >
                                     应用到样本量规划
                                 </Button>
@@ -529,7 +529,7 @@ export function DecisionPhase({
                                         toast.success(`已应用设计效应 deff = ${deffDraft.toFixed(1)}`);
                                         closeAdvancedDialog();
                                     }}
-                                    className="bg-primary hover:bg-primary text-primary-foreground"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                 >
                                     应用到样本量规划
                                 </Button>
@@ -628,7 +628,7 @@ export function DecisionPhase({
                                 <Button
                                     type="button"
                                     onClick={closeAdvancedDialog}
-                                    className="bg-primary hover:bg-primary text-primary-foreground"
+                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
                                 >
                                     完成
                                 </Button>
@@ -727,7 +727,7 @@ export function DecisionPhase({
                     onClick={onNext}
                     disabled={!isValidSize}
                     data-testid="immersive-sp-decision-next"
-                    className="bg-primary hover:bg-primary text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-40"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-40"
                 >
                     继续：完成理解自检
                     <ChevronRight className="w-5 h-5 ml-2" />

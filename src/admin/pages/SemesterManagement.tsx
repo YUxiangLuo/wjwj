@@ -192,7 +192,7 @@ export function SemesterManagement() {
                     <h2 className="text-lg font-semibold text-foreground">学期管理</h2>
                     <p className="text-sm text-muted-foreground mt-1">维护学期信息并标记当前学期。</p>
                 </div>
-                <Button data-testid="semester-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                <Button data-testid="semester-create-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4 mr-1" />
                     创建学期
                 </Button>
@@ -385,7 +385,7 @@ export function SemesterManagement() {
                         <Button variant="ghost" onClick={() => setShowAddModal(false)} disabled={submitting} className="text-muted-foreground hover:text-foreground hover:bg-muted">
                             取消
                         </Button>
-                        <Button data-testid="semester-create-submit" onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()} className="bg-primary hover:bg-primary text-primary-foreground">
+                        <Button data-testid="semester-create-submit" onClick={handleAddSemester} disabled={submitting || !newSemesterName.trim()} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             确认创建
                         </Button>
@@ -416,7 +416,7 @@ export function SemesterManagement() {
                         <Button variant="ghost" onClick={() => setShowEditModal(false)} disabled={submitting} className="text-muted-foreground hover:text-foreground hover:bg-muted">
                             取消
                         </Button>
-                        <Button data-testid="semester-edit-submit" onClick={handleEditSemester} disabled={submitting || !editName.trim()} className="bg-primary hover:bg-primary text-primary-foreground">
+                        <Button data-testid="semester-edit-submit" onClick={handleEditSemester} disabled={submitting || !editName.trim()} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             保存
                         </Button>

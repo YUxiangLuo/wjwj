@@ -201,7 +201,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                             type="button"
                             onClick={handleSubmit}
                             disabled={selected == null}
-                            className="bg-primary hover:bg-primary text-primary-foreground px-6 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-40"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-40"
                         >
                             提交答案
                         </Button>
@@ -211,7 +211,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                         type="button"
                         onClick={handleNext}
                         data-testid="immersive-sp-quiz-next"
-                        className="bg-primary hover:bg-primary text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
                     >
                         {isLast ? "完成自检，去确认" : "下一题"}
                         <ChevronRight className="w-5 h-5 ml-2" />

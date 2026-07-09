@@ -704,7 +704,7 @@ export function GradingDetail() {
                             {!gradingLocked && data.status === 2 && (
                                 <Button
                                     data-testid="teacher-grading-update"
-                                    className="w-full bg-primary hover:bg-primary text-primary-foreground h-11"
+                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11"
                                     onClick={() => { void handleSubmit(2); }}
                                     disabled={saving}
                                 >
@@ -714,7 +714,7 @@ export function GradingDetail() {
                             )}
                             {(data.status === 0 || data.status === 1) && !isReadOnly && (
                                 <>
-                                    <Button data-testid="teacher-grading-submit" className="w-full bg-primary hover:bg-primary text-primary-foreground h-11" onClick={() => { void handleSubmit(2); }} disabled={saving}>
+                                    <Button data-testid="teacher-grading-submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11" onClick={() => { void handleSubmit(2); }} disabled={saving}>
                                         <CheckCircle className="w-4 h-4 mr-2" />
                                         {saving ? "提交中..." : "确认评分"}
                                     </Button>
@@ -752,7 +752,7 @@ export function GradingDetail() {
                         <Button variant="ghost" onClick={() => setShowRejectModal(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
                         <Button
                             data-testid="teacher-grading-reject-submit"
-                            className="bg-destructive hover:bg-destructive text-destructive-foreground"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             onClick={() => {
                                 if (rejectReason.trim().length < 10) {
                                     toast.error("驳回理由至少10字");
