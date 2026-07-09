@@ -41,7 +41,7 @@ export function CVBasedSampleSizeCalculator({
     onApplySampleSize,
 }: CVBasedSampleSizeCalculatorProps) {
     const sliderIndigo =
-        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary dark:[&_[data-slot=slider-track]]:!bg-primary/80 [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background dark:[&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
+        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
 
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
 
@@ -78,7 +78,7 @@ export function CVBasedSampleSizeCalculator({
     }, [targetCV, estimatedCV, confidenceLevelLocal, populationSize, designEffect, nonResponseRate]);
 
     return (
-        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ export function CVBasedSampleSizeCalculator({
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary"
+                        className="text-xs bg-primary/10 border-primary/20 text-primary"
                     >
                         高级方法
                     </Badge>
@@ -101,7 +101,7 @@ export function CVBasedSampleSizeCalculator({
 
             <CardContent className="space-y-4">
                 {/* 说明 */}
-                <div className="rounded-xl border border-info/20 bg-info/10 p-3 dark:border-info/40 dark:bg-info/25">
+                <div className="rounded-xl border border-info/20 bg-info/10 p-3">
                     <div className="flex gap-2">
                         <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
                         <div className="text-xs text-info space-y-1.5">
@@ -218,7 +218,7 @@ export function CVBasedSampleSizeCalculator({
 
                 {/* 计算结果 */}
                 {result && (
-                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm dark:border-primary/50 dark:bg-background">
+                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                             <Calculator className="w-5 h-5 text-primary" />
                             <span className="font-bold text-primary">计算结果</span>
@@ -258,7 +258,7 @@ export function CVBasedSampleSizeCalculator({
                             </p>
 
                             {/* 公式展示 */}
-                            <div className="rounded-lg border border-primary bg-background p-2 dark:border-primary/50 dark:bg-background">
+                            <div className="rounded-lg border border-primary bg-background p-2">
                                 <p className="text-xs font-mono text-primary">
                                     {result.formula}
                                 </p>
@@ -271,7 +271,7 @@ export function CVBasedSampleSizeCalculator({
                             </div>
 
                             {/* 对比误差限方法 */}
-                            <div className="rounded-lg border border-warning/20 bg-warning/10 p-2 dark:border-warning/40 dark:bg-background">
+                            <div className="rounded-lg border border-warning/20 bg-warning/10 p-2">
                                 <div className="flex items-start gap-2 text-xs">
                                     <BarChart3 className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                                     <div className="text-warning">
@@ -302,7 +302,7 @@ export function CVBasedSampleSizeCalculator({
                 )}
 
                 {/* 分层抽样中的 CV 准则（课件第24页） */}
-                <div className="rounded-xl border border-auxiliary-border/90 bg-auxiliary-muted/50 p-3 dark:border-auxiliary-border/40 dark:bg-auxiliary-muted/20">
+                <div className="rounded-xl border border-auxiliary-border/90 bg-auxiliary-muted/50 p-3">
                     <div className="flex items-start gap-2">
                         <Info className="w-4 h-4 text-auxiliary shrink-0 mt-0.5" />
                         <div className="text-xs text-auxiliary-strong space-y-1.5">
@@ -310,7 +310,7 @@ export function CVBasedSampleSizeCalculator({
                             <p className="text-auxiliary-strong/90 leading-relaxed">
                                 在分层抽样中，可先给定总体估计值的变异系数 <em>C</em>，再由各层方差与分配系数推导所需样本量：
                             </p>
-                            <div className="font-mono text-[11px] bg-background/60 rounded p-2 border border-auxiliary-border/50 dark:border-auxiliary-border/40 leading-relaxed">
+                            <div className="font-mono text-[11px] bg-background/60 rounded p-2 border border-auxiliary-border/50 leading-relaxed">
                                 n = Σ(N<sub>h</sub>²S<sub>h</sub>²/a<sub>h</sub>) / (N²C²Ȳ² + ΣN<sub>h</sub>S<sub>h</sub>²)
                                 <br />
                                 其中 a<sub>h</sub> 为分配系数，各层样本量 n<sub>h</sub> = n × a<sub>h</sub>
@@ -323,7 +323,7 @@ export function CVBasedSampleSizeCalculator({
                 </div>
 
                 {/* 参考值 */}
-                <div className="rounded-xl border border-border bg-background p-3 dark:border-input dark:bg-background">
+                <div className="rounded-xl border border-border bg-background p-3">
                     <p className="text-xs font-medium text-foreground mb-2">常见变异系数参考</p>
                     <div className="space-y-1.5 text-xs">
                         <div className="flex justify-between">

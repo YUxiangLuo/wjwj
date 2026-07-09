@@ -19,7 +19,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
     const maxSampleSize = Math.max(...comparison.map(c => c.sampleSize), currentSampleSize);
 
     return (
-        <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm dark:border-info/45 dark:bg-background">
+        <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -45,8 +45,8 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                                 key={index}
                                 className={`rounded-xl border p-3 transition-all ${
                                     isSelected
-                                        ? "border-info bg-background shadow-sm dark:border-info/50 dark:bg-background ring-1 ring-info/60"
-                                        : "border-info/80 bg-background dark:border-info/40 dark:bg-background"
+                                        ? "border-info bg-background shadow-sm ring-1 ring-info/60"
+                                        : "border-info/80 bg-background"
                                 }`}
                             >
                                 <div className="flex items-center justify-between mb-2">
@@ -82,7 +82,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                 </div>
 
                 {/* 解释说明 */}
-                <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/45 dark:bg-background">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
                     <div className="flex gap-2">
                         <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                         <div className="text-xs text-warning space-y-1">
@@ -96,7 +96,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                 </div>
 
                 {/* 方差对比 */}
-                <div className="rounded-xl border border-border bg-background p-3 dark:border-input dark:bg-background">
+                <div className="rounded-xl border border-border bg-background p-3">
                     <div className="text-xs font-medium text-foreground mb-2">方差 p×(1-p) 对比</div>
                     <div className="space-y-1.5 text-xs">
                         {comparison.map((item, index) => (

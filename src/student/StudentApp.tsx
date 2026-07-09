@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyRound, Sun, Moon } from "lucide-react";
+import { Bell, ArrowLeft, Loader2, ChevronDown, LogOut, User, Menu, Trash2, KeyRound } from "lucide-react";
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,6 @@ import { Login } from "./pages/Login";
 import { clearLoginSuccess, setLoginRedirectReason, useLoginSuccessRecovery } from "@/hooks/useAuthRecovery";
 import { STUDENT_LOGIN_REDIRECT_REASON_KEY, STUDENT_LOGIN_SUCCESS_KEY } from "./auth-keys";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
-import { useTheme } from "@/components/ThemeProvider";
 import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
 import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import "./student.css";
@@ -38,7 +37,6 @@ import "./student.css";
 function StudentAppContent() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { theme, toggleTheme } = useTheme();
     const authMenuRef = useRef<HTMLDivElement | null>(null);
     const isTaskHall = location.pathname === "/";
     const isLoginPage = location.pathname === "/login";
@@ -203,7 +201,7 @@ function StudentAppContent() {
     if (currentUser.isFirstLogin) {
         return (
             <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-border bg-card/60 p-8 shadow-2xl shadow-border/40 dark:shadow-background/40">
+                <div className="w-full max-w-2xl rounded-3xl border border-border bg-card/60 p-8 shadow-2xl shadow-border/40">
                     <div className="space-y-3 text-center">
                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground shadow-lg shadow-primary/20">
                             L
@@ -243,7 +241,7 @@ function StudentAppContent() {
                     forbiddenHintLabel="学号"
                 />
 
-                <Toaster richColors position="top-right" theme={theme} />
+                <Toaster richColors position="top-right" />
             </div>
         );
     }
@@ -264,7 +262,7 @@ function StudentAppContent() {
     return (
         <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30">
             {/* Header */}
-            <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60 dark:supports-[backdrop-filter]:bg-card/60">
+            <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         {!isTaskHall && (
@@ -279,7 +277,7 @@ function StudentAppContent() {
                                 L
                             </div>
                             <div className="flex flex-col">
-                                <h1 className="text-lg font-bold text-foreground group-hover:text-foreground dark:group-hover:text-foreground transition-colors">统计学虚拟仿真实验室</h1>
+                                <h1 className="text-lg font-bold text-foreground group-hover:text-foreground transition-colors">统计学虚拟仿真实验室</h1>
                                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Learning Lab</p>
                             </div>
                         </Link>
@@ -302,18 +300,6 @@ function StudentAppContent() {
                                 </span>
                             )}
                         </Button>
-
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-foreground hover:bg-muted"
-                            onClick={toggleTheme}
-                            title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
-                            aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
-                        >
-                            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                        </Button>
-
                         <div ref={authMenuRef} className="relative">
                             <Button
                                 variant="ghost"
@@ -439,7 +425,7 @@ function StudentAppContent() {
                             notifications.notifications.map((notice) => (
                                 <div
                                     key={notice.id}
-                                    className={`p-3 rounded-lg border transition-all ${notice.isRead ? "bg-background border-border/50 opacity-70" : "bg-muted border-input shadow-sm hover:bg-muted/80 dark:hover:bg-muted/80"}`}
+                                    className={`p-3 rounded-lg border transition-all ${notice.isRead ? "bg-background border-border/50 opacity-70" : "bg-muted border-input shadow-sm hover:bg-muted/80"}`}
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <button
@@ -532,7 +518,7 @@ function StudentAppContent() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <Toaster richColors position="top-right" theme={theme} />
+            <Toaster richColors position="top-right" />
         </div>
     );
 }

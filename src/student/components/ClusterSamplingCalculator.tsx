@@ -35,7 +35,7 @@ export function ClusterSamplingCalculator({
     onApplyResult
 }: ClusterSamplingCalculatorProps) {
     const sliderIndigo =
-        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary dark:[&_[data-slot=slider-track]]:!bg-primary/80 [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background dark:[&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
+        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
 
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
     const [marginOfErrorLocal, setMarginOfErrorLocal] = useState(() => marginOfError);
@@ -72,7 +72,7 @@ export function ClusterSamplingCalculator({
     }, [populationSize, confidenceLevelLocal, marginOfErrorLocal, clusterSize, deff, nonResponseRate]);
 
     return (
-        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export function ClusterSamplingCalculator({
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary"
+                        className="text-xs bg-primary/10 border-primary/20 text-primary"
                     >
                         设计效应应用
                     </Badge>
@@ -95,7 +95,7 @@ export function ClusterSamplingCalculator({
 
             <CardContent className="space-y-4">
                 {/* 说明 */}
-                <div className="rounded-xl border border-info/20 bg-info/10 p-3 dark:border-info/40 dark:bg-info/25">
+                <div className="rounded-xl border border-info/20 bg-info/10 p-3">
                     <div className="flex gap-2">
                         <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
                         <div className="text-xs text-info space-y-1">
@@ -207,7 +207,7 @@ export function ClusterSamplingCalculator({
 
                 {/* 计算结果 */}
                 {result && (
-                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm dark:border-primary/50 dark:bg-background">
+                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                             <Calculator className="w-5 h-5 text-primary" />
                             <span className="font-bold text-primary">计算结果</span>
@@ -216,14 +216,14 @@ export function ClusterSamplingCalculator({
                         <div className="space-y-4">
                             {/* 主要结果 */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="text-center p-3 rounded-lg bg-background border border-primary/80 dark:bg-background">
+                                <div className="text-center p-3 rounded-lg bg-background border border-primary/80">
                                     <div className="text-xs text-primary mb-1">所需群数</div>
                                     <div className="text-2xl font-bold tabular-nums text-primary">
                                         {result.requiredClusters}
                                     </div>
                                     <div className="text-xs text-primary">个群</div>
                                 </div>
-                                <div className="text-center p-3 rounded-lg bg-background border border-primary/80 dark:bg-background">
+                                <div className="text-center p-3 rounded-lg bg-background border border-primary/80">
                                     <div className="text-xs text-primary mb-1">总样本量</div>
                                     <div className="text-2xl font-bold tabular-nums text-info">
                                         {result.requiredSampleSize.toLocaleString()}
@@ -233,7 +233,7 @@ export function ClusterSamplingCalculator({
                             </div>
 
                             {/* 设计效应说明 */}
-                            <div className="rounded-lg border border-primary bg-background p-3 dark:border-primary/50 dark:bg-background">
+                            <div className="rounded-lg border border-primary bg-background p-3">
                                 <div className="space-y-2 text-sm">
                                     <div className="flex items-center justify-between">
                                         <span className="text-primary">设计效应 (deff)</span>
@@ -251,7 +251,7 @@ export function ClusterSamplingCalculator({
                             </div>
 
                             {/* 公式解释 */}
-                            <div className="rounded-lg border border-warning/20 bg-warning/10 p-2 dark:border-warning/40 dark:bg-background">
+                            <div className="rounded-lg border border-warning/20 bg-warning/10 p-2">
                                 <div className="flex items-start gap-2">
                                     <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                                     <p className="text-xs text-warning">
@@ -282,7 +282,7 @@ export function ClusterSamplingCalculator({
                 )}
 
                 {/* 参考值 */}
-                <div className="rounded-xl border border-border bg-background p-3 dark:border-input dark:bg-background">
+                <div className="rounded-xl border border-border bg-background p-3">
                     <p className="text-xs font-medium text-foreground mb-2">设计效应参考</p>
                     <div className="space-y-1.5 text-xs">
                         <div className="flex justify-between">

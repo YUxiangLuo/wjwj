@@ -218,7 +218,7 @@ export function GradingManagement() {
                                             </Button>
                                         )}
                                         {sub.status === 0 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-muted-foreground/20 dark:bg-muted-foreground/50 hover:bg-muted-foreground/20 text-foreground">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-muted-foreground/20 hover:bg-muted-foreground/20 text-foreground">
                                                 <FileEdit className="w-3.5 h-3.5 mr-2" />
                                                 继续批改
                                             </Button>

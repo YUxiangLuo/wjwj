@@ -49,10 +49,8 @@ export function PopulationDots({ total, highlighted, className }: Props) {
         const gapX = (displayW - cols * dotSize) / 2;
         const gapY = (displayH - rows * dotSize) / 2;
 
-        // Determine dark mode
-        const isDark = document.documentElement.classList.contains("dark");
-        const baseColor = isDark ? "rgba(100, 116, 139, 0.25)" : "rgba(203, 213, 225, 0.6)";
-        const highlightColor = isDark ? "rgba(129, 140, 248, 0.8)" : "rgba(99, 102, 241, 0.7)";
+        const baseColor = "rgba(203, 213, 225, 0.6)";
+        const highlightColor = "rgba(99, 102, 241, 0.7)";
 
         ctx.clearRect(0, 0, displayW, displayH);
 

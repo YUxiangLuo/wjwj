@@ -487,7 +487,7 @@ export function TaskHall() {
                 ) : (
                     <div className="col-span-full flex flex-col items-center justify-center py-20 bg-card/30 rounded-3xl border border-dashed border-border">
                         <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 border border-border">
-                            <BookOpen className="w-8 h-8 text-muted-foreground dark:text-foreground/90" />
+                            <BookOpen className="w-8 h-8 text-muted-foreground" />
                         </div>
                         <p className="text-lg text-muted-foreground font-medium">暂无相关任务</p>
                         <p className="text-sm text-muted-foreground mt-1">当有新任务发布或状态变更时将出现在这里</p>

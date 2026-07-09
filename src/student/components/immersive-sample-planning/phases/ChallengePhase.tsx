@@ -97,7 +97,7 @@ export function ChallengePhase({
                             min={1}
                             max={populationSize}
                             data-testid="immersive-sp-guess-input"
-                            className="text-center text-xl font-bold h-14 bg-background dark:bg-card border-border dark:border-input"
+                            className="text-center text-xl font-bold h-14 bg-background border-border"
                         />
                         <Button
                             type="button"

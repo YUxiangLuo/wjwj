@@ -2,13 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export function SamplePlanningStudyGuide() {
     return (
-        <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm dark:border-info/20 dark:bg-info/10">
+        <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm">
             <CardHeader>
                 <CardTitle className="text-base text-info">学习指南</CardTitle>
                 <CardDescription className="text-info">理解公式与参数含义</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-info">
-                <div className="space-y-1 rounded-xl border border-info/20 bg-background/80 p-4 font-mono text-xs text-info shadow-sm dark:border-info/20 dark:bg-info/10 dark:text-info">
+                <div className="space-y-1 rounded-xl border border-info/20 bg-background/80 p-4 font-mono text-xs text-info shadow-sm">
                     <p className="mb-2 text-info">// 样本量计算公式</p>
                     <p>n₀ = (Z² × p × (1-p)) / E²</p>
                     <p>n₁ = n₀ / (1 + (n₀ - 1) / N)</p>
@@ -33,20 +33,20 @@ export function SamplePlanningStudyGuide() {
                         ：预期调查中不回应的比例，用于扩大样本量以弥补无效问卷。
                     </p>
                 </div>
-                <div className="rounded-xl border border-border bg-card/50 p-3 dark:border-border dark:bg-card/50">
+                <div className="rounded-xl border border-border bg-card/50 p-3">
                     <p className="mb-2 text-xs font-medium text-muted-foreground">常用 Z 值参考</p>
                     <div className="grid grid-cols-3 gap-2 text-center text-xs text-muted-foreground">
-                        <div className="rounded bg-background p-1 dark:bg-background">
+                        <div className="rounded bg-background p-1">
                             90%
                             <br />
                             <span className="text-muted-foreground">1.645</span>
                         </div>
-                        <div className="rounded bg-background p-1 font-medium text-success ring-1 ring-success/20 dark:bg-background">
+                        <div className="rounded bg-background p-1 font-medium text-success ring-1 ring-success/20">
                             95%
                             <br />
                             <span className="text-success">1.96</span>
                         </div>
-                        <div className="rounded bg-background p-1 dark:bg-background">
+                        <div className="rounded bg-background p-1">
                             99%
                             <br />
                             <span className="text-muted-foreground">2.576</span>

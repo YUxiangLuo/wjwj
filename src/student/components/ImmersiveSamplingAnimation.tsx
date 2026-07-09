@@ -161,9 +161,9 @@ const DotGrid = memo(function DotGrid({
                         inlineStyle = { opacity };
                     } else if (method === "systematic" && systematicScanIndex !== undefined && i > systematicScanIndex) {
                         // Not yet scanned — dimmer to show the scan sweeping through
-                        bgClass = "bg-muted-foreground/20 dark:bg-muted-foreground/50";
+                        bgClass = "bg-muted-foreground/20";
                     } else {
-                        bgClass = "bg-muted-foreground/20 dark:bg-muted-foreground/50";
+                        bgClass = "bg-muted-foreground/20";
                     }
                 } else {
                     bgClass = "bg-transparent";
@@ -590,13 +590,13 @@ export function ImmersiveSamplingAnimation({
                                                 />
                                                 {/* Scan cursor */}
                                                 <div
-                                                    className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-info bg-background shadow-md dark:bg-background transition-all duration-[80ms]"
+                                                    className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-info bg-background shadow-md transition-all duration-[80ms]"
                                                     style={{ left: systematicIndicator.left, top: systematicIndicator.top }}
                                                 />
                                             </div>
                                         )}
                                         <div className="absolute bottom-3 left-0 right-0 text-center">
-                                            <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs font-mono ${meta.accentText} dark:bg-card/90`}>
+                                            <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs font-mono ${meta.accentText}`}>
                                                 间隔 K = {kValue}，从总体首端至末端等距抽取
                                             </span>
                                         </div>
@@ -614,7 +614,7 @@ export function ImmersiveSamplingAnimation({
 
                                 {method === "pps" && phase.type === "sampling" && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs ${meta.accentText} dark:bg-card/90`}>
+                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs ${meta.accentText}`}>
                                             <Target className="w-3.5 h-3.5" />
                                             按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 权重系统选取，亮度越高规模越大
                                         </span>
@@ -623,7 +623,7 @@ export function ImmersiveSamplingAnimation({
 
                                 {method === "stratified" && phase.type === "sampling" && stratifiedActiveLayer !== null && layers?.[stratifiedActiveLayer] && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs ${meta.accentText} dark:bg-card/90`}>
+                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs ${meta.accentText}`}>
                                             <div className={`h-2.5 w-2.5 rounded-full ${lc(stratifiedActiveLayer).bg}`} />
                                             当前正在抽取 {layers[stratifiedActiveLayer].name} 层样本
                                         </span>
@@ -686,7 +686,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
         <div className="flex flex-col min-h-0 h-full gap-2">
             <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border">
                 <table className="w-full text-left min-w-max">
-                    <thead className="sticky top-0 bg-muted/95 dark:bg-card/95 backdrop-blur-sm z-10">
+                    <thead className="sticky top-0 bg-muted/95 backdrop-blur-sm z-10">
                         <tr>
                             <th className="px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap border-b border-border">#</th>
                             {keys.map((key) => (
@@ -698,7 +698,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                     </thead>
                     <tbody>
                         {rows.map((row, rowIndex) => (
-                            <tr key={start + rowIndex} className="border-b border-background dark:border-border/50 hover:bg-card dark:hover:bg-muted/30">
+                            <tr key={start + rowIndex} className="border-b border-background hover:bg-card">
                                 <td className="px-3 py-1.5 text-xs text-muted-foreground font-mono whitespace-nowrap">{start + rowIndex + 1}</td>
                                 {keys.map((key) => (
                                     <td key={key} className="px-3 py-1.5 text-xs text-foreground/90 whitespace-nowrap">

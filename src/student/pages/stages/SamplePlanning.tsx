@@ -144,7 +144,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-1 pt-3">
-                    <div className="flex items-center justify-between rounded-xl border border-border bg-background/50 px-3 py-2.5 dark:border-border dark:bg-background/50">
+                    <div className="flex items-center justify-between rounded-xl border border-border bg-background/50 px-3 py-2.5">
                         <span className="text-muted-foreground">总体规模 (N)</span>
                         <span className="text-xl font-bold tabular-nums text-primary">{N.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">人</span></span>
                     </div>
@@ -181,7 +181,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                                 <SummaryRow label="设计效应" value={displayData.designEffect.toFixed(1)} />
                                 <SummaryRow label="无回答率" value={`${Math.round(displayData.nonResponseRate * 100)}%`} />
                             </div>
-                            <div className="mt-2 grid grid-cols-2 gap-3 rounded-lg border border-border bg-background/50 px-3 py-2 dark:border-border dark:bg-background/50">
+                            <div className="mt-2 grid grid-cols-2 gap-3 rounded-lg border border-border bg-background/50 px-3 py-2">
                                 <div>
                                     <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">建议样本量</p>
                                     <p className="text-base font-bold font-mono tabular-nums text-info">{displayData.recommendedSize.toLocaleString()}</p>
@@ -216,7 +216,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 </>
             ) : (
                 /* First visit — prompt to start sample planning */
-                <Card className="gap-2 py-8 rounded-2xl border-primary/20 bg-primary/5 shadow-sm dark:bg-primary/5">
+                <Card className="gap-2 py-8 rounded-2xl border-primary/20 bg-primary/5 shadow-sm">
                     <CardContent className="flex flex-col items-center text-center space-y-4 px-6">
                         <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                             <Sparkles className="w-7 h-7 text-primary" />
@@ -303,7 +303,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex justify-between gap-2 border-b border-border/50 py-1.5 text-sm dark:border-border/50">
+        <div className="flex justify-between gap-2 border-b border-border/50 py-1.5 text-sm">
             <span className="text-muted-foreground">{label}</span>
             <span className="font-mono text-foreground tabular-nums">{value}</span>
         </div>

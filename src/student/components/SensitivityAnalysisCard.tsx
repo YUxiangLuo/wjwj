@@ -55,14 +55,14 @@ export function SensitivityAnalysisCard({
         if (isCurrent) {
             return "bg-background ring-2 ring-primary shadow-sm";
         }
-        if (intensity < 40) return "bg-primary/95 dark:bg-primary/45";
-        if (intensity < 55) return "bg-primary/90 dark:bg-primary/40";
-        if (intensity < 72) return "bg-primary/85 dark:bg-primary/35";
-        return "bg-primary/80 dark:bg-primary/45";
+        if (intensity < 40) return "bg-primary/95";
+        if (intensity < 55) return "bg-primary/90";
+        if (intensity < 72) return "bg-primary/85";
+        return "bg-primary/80";
     };
 
     return (
-        <Card className="rounded-2xl border border-primary/20 bg-primary/10 shadow-sm dark:border-primary/50 dark:bg-background">
+        <Card className="rounded-2xl border border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -81,7 +81,7 @@ export function SensitivityAnalysisCard({
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-border dark:border-input bg-muted/90 dark:bg-card/90">
+                            <tr className="border-b border-border bg-muted/90">
                                 <th className="text-left py-2 px-2 text-foreground font-medium">置信水平 \ 允许误差</th>
                                 <th className="text-center py-2 px-2 text-foreground font-medium">±1%</th>
                                 <th className="text-center py-2 px-2 text-foreground font-medium">±2%</th>
@@ -99,7 +99,7 @@ export function SensitivityAnalysisCard({
                                     <tr 
                                         key={confidenceLevel}
                                         className={`border-b border-border/80 ${
-                                            isCurrentConfidence ? "bg-background/60 dark:bg-card/60" : ""
+                                            isCurrentConfidence ? "bg-background/60" : ""
                                         }`}
                                     >
                                         <td className="py-2 px-2">
@@ -109,7 +109,7 @@ export function SensitivityAnalysisCard({
                                                     {confidenceLevel}%
                                                 </span>
                                                 {isCurrentConfidence && (
-                                                    <Badge variant="outline" className="text-xs border-primary/20 text-primary dark:border-primary/30 dark:text-primary bg-primary/10">
+                                                    <Badge variant="outline" className="text-xs border-primary/20 text-primary bg-primary/10">
                                                         当前
                                                     </Badge>
                                                 )}
@@ -143,7 +143,7 @@ export function SensitivityAnalysisCard({
                 </div>
 
                 {/* 说明 */}
-                <div className="flex items-start gap-2 text-xs text-foreground/90 rounded-xl border border-border dark:border-input bg-background/80 dark:bg-card/60 p-3">
+                <div className="flex items-start gap-2 text-xs text-foreground/90 rounded-xl border border-border bg-background/80 p-3">
                     <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
                     <div className="space-y-1">
                         <p>

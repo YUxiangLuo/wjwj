@@ -274,7 +274,7 @@ export function StratifiedSamplingTab({
                 </CardHeader>
                 <CardContent className="space-y-5 pt-4">
                     {/* 参数区：分层变量 + 随机种子 */}
-                    <div className="grid gap-4 rounded-2xl border border-border/70 bg-background/40 p-4 dark:border-border/70 dark:bg-background/20 md:grid-cols-2 xl:grid-cols-[220px_220px_1fr] xl:items-end">
+                    <div className="grid gap-4 rounded-2xl border border-border/70 bg-background/40 p-4 md:grid-cols-2 xl:grid-cols-[220px_220px_1fr] xl:items-end">
                         <div className="space-y-2">
                             <Label className="text-xs text-foreground/90">选择分层变量</Label>
                             <Select value={stratifyBy} onValueChange={setStratifyBy}>
@@ -330,7 +330,7 @@ export function StratifiedSamplingTab({
                             </TableHeader>
                             <TableBody>
                                 {layers.length > 0 ? layers.map((layer, index) => (
-                                    <TableRow key={layer.name} className="border-border hover:bg-muted/30 dark:hover:bg-muted/30">
+                                    <TableRow key={layer.name} className="border-border hover:bg-muted/30">
                                         <TableCell className="font-medium text-foreground/90">{layer.name}</TableCell>
                                         <TableCell className="text-muted-foreground">{layer.count.toLocaleString()}</TableCell>
                                         <TableCell className="text-muted-foreground">{layer.ratio}%</TableCell>
@@ -356,7 +356,7 @@ export function StratifiedSamplingTab({
                                         </TableCell>
                                     </TableRow>
                                 )}
-                                <TableRow className="bg-background/30 border-t border-input font-medium hover:bg-background/30 dark:hover:bg-background/30">
+                                <TableRow className="bg-background/30 border-t border-input font-medium hover:bg-background/30">
                                     <TableCell colSpan={3} className="text-right text-foreground/90 pr-4">合计 Total</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("proportional")}
-                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10 dark:border-warning dark:text-warning dark:hover:bg-warning/20"
+                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10"
                             >
                                 <Percent className="w-3 h-3 mr-1" />
                                 按比例
@@ -400,7 +400,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("equal")}
-                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10 dark:border-warning dark:text-warning dark:hover:bg-warning/20"
+                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10"
                             >
                                 <Equal className="w-3 h-3 mr-1" />
                                 等额
@@ -409,7 +409,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("neyman")}
-                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10 dark:border-warning dark:text-warning dark:hover:bg-warning/20"
+                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10"
                             >
                                 <TrendingUp className="w-3 h-3 mr-1" />
                                 奈曼
@@ -419,7 +419,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setShowAllocationComparison(true)}
-                                className="h-7 text-xs border-auxiliary-border text-auxiliary-strong hover:bg-auxiliary-muted dark:hover:bg-auxiliary-muted/30"
+                                className="h-7 text-xs border-auxiliary-border text-auxiliary-strong hover:bg-auxiliary-muted"
                             >
                                 <BarChart3 className="w-3 h-3 mr-1" />
                                 对比分析全部方法

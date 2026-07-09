@@ -224,7 +224,7 @@ export function MultiVariableSamplePlan({
     };
 
     return (
-        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export function MultiVariableSamplePlan({
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary"
+                        className="text-xs bg-primary/10 border-primary/20 text-primary"
                     >
                         {variables.length} 个变量
                     </Badge>
@@ -248,7 +248,7 @@ export function MultiVariableSamplePlan({
             <CardContent className="space-y-4">
                 {/* 说明卡片 */}
                 {showExplanation && (
-                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/20 dark:bg-warning/10">
+                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
                         <div className="flex gap-2">
                             <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                             <div className="text-xs text-warning space-y-1">
@@ -284,8 +284,8 @@ export function MultiVariableSamplePlan({
                                 key={variable.id}
                                 className={`rounded-xl border transition-all ${
                                     isExpanded
-                                        ? "border-primary bg-background shadow-sm dark:border-primary/50 dark:bg-background"
-                                        : "border-primary/80 bg-background/95 dark:border-primary/40 dark:bg-background"
+                                        ? "border-primary bg-background shadow-sm"
+                                        : "border-primary/80 bg-background/95"
                                 }`}
                             >
                                 {/* 变量头部 */}
@@ -501,7 +501,7 @@ export function MultiVariableSamplePlan({
                                         </div>
 
                                         {/* 计算结果 */}
-                                        <div className="rounded-lg border border-primary bg-background p-3 dark:border-primary/50 dark:bg-background">
+                                        <div className="rounded-lg border border-primary bg-background p-3">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-xs text-muted-foreground">所需样本量</span>
                                                 <span className="text-lg font-bold tabular-nums text-info">
@@ -520,7 +520,7 @@ export function MultiVariableSamplePlan({
                 <Button
                     variant="outline"
                     onClick={addVariable}
-                    className="w-full border-primary text-primary hover:bg-primary/10 dark:border-primary dark:text-primary dark:hover:bg-primary/20"
+                    className="w-full border-primary text-primary hover:bg-primary/10"
                 >
                     <Plus className="w-4 h-4 mr-2" />
                     添加调查变量
@@ -530,7 +530,7 @@ export function MultiVariableSamplePlan({
 
                 {/* 总样本量计算 */}
                 {variables.length > 0 && (
-                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm dark:border-primary/50 dark:bg-background">
+                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
                             <Target className="w-5 h-5 text-primary" />
                             <span className="font-bold text-primary">样本量决策</span>
@@ -591,7 +591,7 @@ export function MultiVariableSamplePlan({
 
                 {/* 各变量样本量对比 */}
                 {variables.length > 1 && (
-                    <div className="rounded-xl border border-primary bg-background p-3 dark:border-primary/50 dark:bg-background">
+                    <div className="rounded-xl border border-primary bg-background p-3">
                         <div className="text-xs font-medium text-primary mb-3">
                             各变量样本量需求对比
                         </div>
@@ -637,7 +637,7 @@ export function MultiVariableSamplePlan({
 
                 {/* 提示信息 */}
                 {variables.some(v => v.importance !== "primary") && (
-                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/20 dark:bg-warning/10">
+                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
                         <div className="flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                             <div className="text-xs text-warning">

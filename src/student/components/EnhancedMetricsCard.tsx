@@ -34,7 +34,7 @@ export function EnhancedMetricsCard({
     const sizeDeviation = finalSampleSize !== undefined && finalSampleSize !== metrics.n;
 
     return (
-        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -43,7 +43,7 @@ export function EnhancedMetricsCard({
                             精度指标分析
                         </CardTitle>
                     </div>
-                    <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary">
+                    <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20 text-primary">
                         {isMeanEstimation ? `基于 σ²=${populationVariance ?? "—"}` : `基于 p=${p}`}
                     </Badge>
                 </div>
@@ -59,7 +59,7 @@ export function EnhancedMetricsCard({
             <CardContent className="space-y-4">
                 {/* 核心指标 */}
                 <div className={`grid gap-3 ${isMeanEstimation ? "grid-cols-3" : "grid-cols-2"}`}>
-                    <div className="rounded-xl border border-primary bg-background p-3 dark:border-primary/45 dark:bg-background">
+                    <div className="rounded-xl border border-primary bg-background p-3">
                         <div className="flex items-center gap-1.5 mb-1">
                             <Sigma className="w-3.5 h-3.5 text-primary" />
                             <span className="text-xs text-primary">标准误差 (SE)</span>
@@ -74,7 +74,7 @@ export function EnhancedMetricsCard({
 
                     {isMeanEstimation ? (
                         <>
-                            <div className="rounded-xl border border-primary bg-background p-3 dark:border-primary/45 dark:bg-background">
+                            <div className="rounded-xl border border-primary bg-background p-3">
                                 <div className="flex items-center gap-1.5 mb-1">
                                     <Target className="w-3.5 h-3.5 text-primary" />
                                     <span className="text-xs text-primary">误差限 (ME)</span>
@@ -86,7 +86,7 @@ export function EnhancedMetricsCard({
                                     ME = Z × SE
                                 </div>
                             </div>
-                            <div className="rounded-xl border border-primary bg-background p-3 dark:border-primary/45 dark:bg-background">
+                            <div className="rounded-xl border border-primary bg-background p-3">
                                 <div className="flex items-center gap-1.5 mb-1">
                                     <Target className="w-3.5 h-3.5 text-primary" />
                                     <span className="text-xs text-primary">等效样本量</span>
@@ -100,7 +100,7 @@ export function EnhancedMetricsCard({
                             </div>
                         </>
                     ) : (
-                        <div className="rounded-xl border border-primary bg-background p-3 dark:border-primary/45 dark:bg-background">
+                        <div className="rounded-xl border border-primary bg-background p-3">
                             <div className="flex items-center gap-1.5 mb-1">
                                 <Target className="w-3.5 h-3.5 text-primary" />
                                 <span className="text-xs text-primary">变异系数 (CV)</span>
@@ -116,7 +116,7 @@ export function EnhancedMetricsCard({
                 </div>
 
                 {isMeanEstimation ? (
-                    <div className="rounded-xl border border-primary bg-background p-4 dark:border-primary/45 dark:bg-background">
+                    <div className="rounded-xl border border-primary bg-background p-4">
                         <div className="flex items-center gap-2 mb-3">
                             <span className="text-sm font-medium text-primary">{confidenceLevel}% 区间形式</span>
                             <Badge variant="outline" className="text-xs text-primary border-primary">
@@ -124,7 +124,7 @@ export function EnhancedMetricsCard({
                             </Badge>
                         </div>
                         <div className="space-y-2 text-sm text-primary">
-                            <div className="rounded-lg bg-primary/10 px-3 py-2 dark:bg-primary/30">
+                            <div className="rounded-lg bg-primary/10 px-3 py-2">
                                 <span className="font-mono">ȳ ± Z×SE = ȳ ± {metrics.marginOfError.toFixed(4)}</span>
                             </div>
                             <p className="text-xs leading-relaxed text-primary">
@@ -133,7 +133,7 @@ export function EnhancedMetricsCard({
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-primary bg-background p-4 dark:border-primary/45 dark:bg-background">
+                    <div className="rounded-xl border border-primary bg-background p-4">
                         <div className="flex items-center gap-2 mb-3">
                             <span className="text-sm font-medium text-primary">{confidenceLevel}% 理论误差带</span>
                             <Badge variant="outline" className="text-xs text-primary border-primary">
@@ -169,7 +169,7 @@ export function EnhancedMetricsCard({
                 )}
 
                 {/* 样本量计算过程 */}
-                <div className="rounded-xl border border-border bg-background p-3 dark:border-input dark:bg-background">
+                <div className="rounded-xl border border-border bg-background p-3">
                     <div className="text-xs font-medium text-foreground mb-2">样本量计算过程</div>
                     <div className="space-y-1.5 text-xs font-mono">
                         <div className="flex justify-between">

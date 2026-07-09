@@ -400,7 +400,7 @@ export function AnnouncementManagement() {
 
                             {filteredAnnouncements.length === 0 && (
                                 <div className="text-center py-12 text-muted-foreground flex flex-col items-center gap-2">
-                                    <Search className="w-8 h-8 text-muted-foreground dark:text-foreground/90" />
+                                    <Search className="w-8 h-8 text-muted-foreground" />
                                     <p>暂无符合条件的公告</p>
                                 </div>
                             )}

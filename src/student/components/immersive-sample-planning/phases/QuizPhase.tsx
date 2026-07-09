@@ -125,7 +125,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
 
             <div className="max-w-md mx-auto space-y-3">
                 {q.options.map((option, i) => {
-                    let borderClass = "border-border bg-background dark:bg-card/50 hover:border-input dark:hover:bg-muted";
+                    let borderClass = "border-border bg-background hover:border-input";
                     if (submitted && i === q.correctIndex) {
                         borderClass = "border-success bg-success shadow-sm";
                     } else if (submitted && i === selected && !isCorrect) {

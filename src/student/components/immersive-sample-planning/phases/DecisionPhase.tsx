@@ -257,7 +257,7 @@ export function DecisionPhase({
             </div>
 
             {hasAdvancedSource && (
-                <div className="rounded-xl border border-warning/20 bg-warning/10 dark:border-warning/60 dark:bg-warning/35 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-start gap-2 text-sm text-warning">
                         <Info className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
                         <span>
@@ -269,7 +269,7 @@ export function DecisionPhase({
                         variant="outline"
                         size="sm"
                         onClick={onClearAdvancedSource}
-                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning/10 dark:border-warning dark:bg-card dark:text-warning dark:hover:bg-warning/20"
+                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning/10"
                     >
                         按常规继续
                     </Button>
@@ -278,7 +278,7 @@ export function DecisionPhase({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Left: Parameter controls */}
-                <div className="rounded-2xl border border-border bg-background dark:bg-card p-5 space-y-5 shadow-sm transition-colors">
+                <div className="rounded-2xl border border-border bg-background p-5 space-y-5 shadow-sm transition-colors">
                     <h3 className="text-sm font-semibold text-foreground/90">常规公式参数</h3>
 
                     <div className="space-y-1.5">
@@ -287,7 +287,7 @@ export function DecisionPhase({
                             value={params.confidenceLevel}
                             onValueChange={onConfidenceLevelChange}
                         >
-                            <SelectTrigger className="h-9 text-sm bg-card dark:bg-muted border-border dark:border-input">
+                            <SelectTrigger className="h-9 text-sm bg-card border-border">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -313,7 +313,7 @@ export function DecisionPhase({
                                     onChange={(e) => onMarginOfErrorChange(Number.parseFloat(e.target.value) || 0)}
                                     min={0.01}
                                     step={0.1}
-                                    className="h-9 bg-card dark:bg-muted border-border dark:border-input"
+                                    className="h-9 bg-card border-border"
                                 />
                                 <p className="text-[11px] text-muted-foreground">
                                     均值估计使用与指标同单位的绝对误差，不使用百分比滑块。
@@ -357,7 +357,7 @@ export function DecisionPhase({
                 </div>
 
                 {/* Right: Metrics gauge */}
-                <div className="rounded-2xl border border-border bg-background dark:bg-card p-5 shadow-sm flex flex-col items-center justify-center space-y-4 transition-colors">
+                <div className="rounded-2xl border border-border bg-background p-5 shadow-sm flex flex-col items-center justify-center space-y-4 transition-colors">
                     <h3 className="text-sm font-semibold text-foreground/90">常规公式建议值</h3>
                     <div className="text-5xl font-black tabular-nums text-primary">
                         {recommendedSize.toLocaleString()}
@@ -377,7 +377,7 @@ export function DecisionPhase({
 
             {/* Sensitivity heatmap */}
             {sensitivity && (
-                <div className="rounded-2xl border border-border bg-background dark:bg-card p-5 shadow-sm space-y-3 transition-opacity">
+                <div className="rounded-2xl border border-border bg-background p-5 shadow-sm space-y-3 transition-opacity">
                     <h3 className="text-sm font-semibold text-foreground/90">常规公式权衡探索</h3>
                     <p className="text-xs text-muted-foreground">看看不同置信水平与允许误差组合下，样本量会如何变化。</p>
                     <SensitivityGrid
@@ -389,7 +389,7 @@ export function DecisionPhase({
             )}
 
             {/* Advanced tools */}
-            <div className="rounded-2xl border border-border bg-background dark:bg-card p-5 shadow-sm space-y-3">
+            <div className="rounded-2xl border border-border bg-background p-5 shadow-sm space-y-3">
                 <div className="flex items-center gap-2">
                     <Wrench className="w-4 h-4 text-muted-foreground" />
                     <h3 className="text-sm font-semibold text-foreground/90">高级工具（特殊规划场景）</h3>
@@ -417,8 +417,8 @@ export function DecisionPhase({
                                     "rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors",
                                     isDisabled && "opacity-45 cursor-not-allowed",
                                     isActiveSource
-                                        ? "ring-2 ring-primary border-primary bg-primary text-primary-foreground dark:ring-primary dark:border-primary dark:bg-primary dark:text-primary-foreground shadow-sm"
-                                        : "border-border dark:border-input bg-card dark:bg-muted text-muted-foreground hover:bg-primary/10 hover:border-primary hover:text-primary dark:hover:bg-primary/20 dark:hover:border-primary dark:hover:text-primary",
+                                        ? "ring-2 ring-primary border-primary bg-primary text-primary-foreground shadow-sm"
+                                        : "border-border bg-card text-muted-foreground hover:bg-primary/10 hover:border-primary hover:text-primary",
                                 )}
                             >
                                 {label}
@@ -431,7 +431,7 @@ export function DecisionPhase({
             {/* Advanced tool Dialog */}
             <Dialog open={activeAdvancedTab !== null} onOpenChange={(open) => { if (!open) setActiveAdvancedTab(null); }}>
                 <DialogContent
-                    className={`bg-background border-border dark:border-input text-foreground ${
+                    className={`bg-background border-border text-foreground ${
                         activeAdvancedTab === "metrics"
                             ? "w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-[min(90rem,96vw)]"
                             : "sm:max-w-3xl"
@@ -660,7 +660,7 @@ export function DecisionPhase({
                 className={cn(
                     "rounded-2xl border p-5 shadow-sm space-y-3 transition-colors",
                     isValidSize
-                        ? "border-border bg-background dark:bg-card"
+                        ? "border-border bg-background"
                         : "border-destructive bg-destructive",
                 )}
             >
@@ -685,7 +685,7 @@ export function DecisionPhase({
                                 max={maxSize}
                                 data-testid="immersive-sp-final-size"
                                 className={cn(
-                                    "pr-12 text-lg font-bold bg-background dark:bg-card border-border dark:border-input",
+                                    "pr-12 text-lg font-bold bg-background border-border",
                                     isValidSize ? "text-primary" : "text-destructive",
                                 )}
                             />
@@ -741,7 +741,7 @@ export function DecisionPhase({
 
 function MetricBadge({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-lg bg-card dark:bg-muted px-2 py-2">
+        <div className="rounded-lg bg-card px-2 py-2">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
             <p className="text-xs font-bold tabular-nums text-foreground/90 mt-0.5">{value}</p>
         </div>
@@ -801,7 +801,7 @@ function SensitivityGrid({
                                             <div
                                                 className={`rounded px-1.5 py-1 text-center tabular-nums transition-colors ${
                                                     isCurrent
-                                                        ? "bg-primary text-primary-foreground font-bold ring-2 ring-primary ring-offset-1 dark:ring-offset-background"
+                                                        ? "bg-primary text-primary-foreground font-bold ring-2 ring-primary ring-offset-1"
                                                         : `text-muted-foreground`
                                                 }`}
                                                 style={

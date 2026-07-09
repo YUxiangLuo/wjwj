@@ -25,7 +25,7 @@ export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }
                     onClick={onRerun}
                     disabled={disabled}
                     data-testid={rerunTestId}
-                    className="ml-auto rounded-full text-success hover:bg-success/10 hover:text-success dark:hover:bg-success/15 dark:hover:text-success"
+                    className="ml-auto rounded-full text-success hover:bg-success/10 hover:text-success"
                 >
                     <RefreshCw className="w-4 h-4" />
                 </Button>

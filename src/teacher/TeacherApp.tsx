@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock, Sun, Moon, BarChart3,
+    LayoutDashboard, School, BookOpen, ClipboardList, PenLine, Users, Download, Bell, LogOut, Loader2, Menu, Clock, BarChart3,
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ import {
 import "./teacher.css";
 import { authApi, teacherApi, type TeacherNotification, type TeacherUser } from "./api-client";
 import { TEACHER_LOGIN_REDIRECT_REASON_KEY, TEACHER_LOGIN_SUCCESS_KEY } from "./auth-keys";
-import { useTheme } from "@/components/ThemeProvider";
 import { TEACHER_PASSWORD_POLICY } from "@/lib/password-policy";
 import { Toaster } from "sonner";
 import {
@@ -79,7 +78,6 @@ const pageTitles: Record<string, string> = {
 export function TeacherApp() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { theme, toggleTheme } = useTheme();
     const currentPath = location.pathname;
     const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
 
@@ -315,7 +313,7 @@ export function TeacherApp() {
         const accountLabel = teacherUser.type === "assistant" ? teacherUser.account : teacherUser.employeeId;
         return (
             <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-border bg-card/60 p-8 shadow-2xl shadow-border/40 dark:shadow-background/40">
+                <div className="w-full max-w-2xl rounded-3xl border border-border bg-card/60 p-8 shadow-2xl shadow-border/40">
                     <div className="space-y-3 text-center">
                         <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold shadow-lg ${teacherUser.type === "assistant" ? "bg-auxiliary text-auxiliary-foreground shadow-auxiliary/20" : "bg-primary text-primary-foreground shadow-primary/20"}`}>
                             {teacherUser.type === "assistant" ? "助" : "师"}
@@ -346,14 +344,14 @@ export function TeacherApp() {
                     submitTestId="teacher-password-submit"
                 />
 
-                <Toaster richColors position="top-right" theme={theme} />
+                <Toaster richColors position="top-right" />
             </div>
         );
     }
 
     return (
         <div className="flex h-screen bg-background text-foreground overflow-hidden">
-            <Toaster richColors position="top-right" theme={theme} />
+            <Toaster richColors position="top-right" />
             {/* Sidebar */}
             <aside className={`
                 fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 flex flex-col
@@ -391,7 +389,7 @@ export function TeacherApp() {
                                     }`}
                             >
                                 <div className="flex items-center gap-3">
-                                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/90 dark:group-hover:text-muted-foreground"}`} />
+                                    <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground/90"}`} />
                                     <span className="font-medium">{item.label}</span>
                                 </div>
                                 {item.path === "/grading" && pendingGradingCount > 0 && (
@@ -469,18 +467,6 @@ export function TeacherApp() {
                                 <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full ring-2 ring-card"></span>
                             )}
                         </Button>
-
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-foreground hover:bg-muted"
-                            onClick={toggleTheme}
-                            title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
-                            aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
-                        >
-                            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                        </Button>
-
                         <div className="flex items-center gap-1">
                             <Button
                                 variant="ghost"
@@ -589,7 +575,7 @@ export function TeacherApp() {
                             <div className="text-sm text-muted-foreground text-center py-8">暂无通知</div>
                         ) : (
                             notifications.map((item) => (
-                                <div key={item.id} className="border border-border rounded-lg p-4 bg-background hover:bg-muted/30 dark:hover:bg-muted/30 transition-colors">
+                                <div key={item.id} className="border border-border rounded-lg p-4 bg-background hover:bg-muted/30 transition-colors">
                                     <div className="flex items-center justify-between mb-2">
                                         <div className={`text-sm font-medium ${item.isRead ? "text-muted-foreground" : "text-primary"}`}>
                                             {item.title}

@@ -1,16 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { ThemeProvider } from "@/components/ThemeProvider";
 import { StudentApp } from "./StudentApp";
 
 const elem = document.getElementById("root")!;
 const app = (
     <StrictMode>
         <BrowserRouter basename="/student">
-            <ThemeProvider>
-                <StudentApp />
-            </ThemeProvider>
+            <StudentApp />
         </BrowserRouter>
     </StrictMode>
 );

@@ -182,13 +182,13 @@ export function Login() {
                                 <div className="grid grid-cols-2 gap-3">
                                     <a
                                         href="/teacher/login"
-                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-border dark:border-input bg-background text-sm font-medium text-foreground/90 transition-all hover:border-primary hover:text-primary dark:hover:border-primary/60 dark:hover:text-primary"
+                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-background text-sm font-medium text-foreground/90 transition-all hover:border-primary hover:text-primary"
                                     >
                                         教师登录
                                     </a>
                                     <a
                                         href="/student/login"
-                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-border dark:border-input bg-background text-sm font-medium text-foreground/90 transition-all hover:border-primary hover:text-primary dark:hover:border-primary/60 dark:hover:text-primary"
+                                        className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-background text-sm font-medium text-foreground/90 transition-all hover:border-primary hover:text-primary"
                                     >
                                         学生登录
                                     </a>

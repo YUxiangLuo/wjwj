@@ -118,7 +118,7 @@ export function TaskProgressDetail() {
                         <Card key={key} className={`border-border bg-card shadow-sm ${count > 0 ? "hover:border-input" : ""} transition-colors`}>
                             <CardContent className="p-3 text-center">
                                 <p className="text-xs text-muted-foreground mb-1">{cfg.label}</p>
-                                <p className={`text-xl font-bold ${count > 0 ? cfg.color : "text-muted-foreground dark:text-foreground/90"}`}>{count}</p>
+                                <p className={`text-xl font-bold ${count > 0 ? cfg.color : "text-muted-foreground"}`}>{count}</p>
                             </CardContent>
                         </Card>
                     );

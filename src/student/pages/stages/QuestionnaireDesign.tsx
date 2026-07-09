@@ -379,7 +379,7 @@ export function QuestionnaireDesign() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="h-fit rounded-2xl border-info/20 bg-info/10 shadow-sm dark:border-info/20 dark:bg-info/10">
+                        <Card className="h-fit rounded-2xl border-info/20 bg-info/10 shadow-sm">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-base text-info">
                                     <HelpCircle className="w-4 h-4" />
@@ -390,7 +390,7 @@ export function QuestionnaireDesign() {
                             <CardContent className="space-y-4 text-sm leading-relaxed text-info">
                                 <p>建议说明调查目的、预计用时与隐私保护方式。</p>
                                 <p>保持简洁友好，最好控制在 200 字以内。</p>
-                                <div className="rounded-xl border border-info/20 bg-background/80 p-3 text-xs text-info shadow-sm dark:border-info/20 dark:bg-info/10 dark:text-info">
+                                <div className="rounded-xl border border-info/20 bg-background/80 p-3 text-xs text-info shadow-sm">
                                     <span className="font-semibold block mb-1">示例：</span>
                                     感谢参与本次调查，本问卷约 3 分钟完成，数据仅用于教学分析。
                                 </div>

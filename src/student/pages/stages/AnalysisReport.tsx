@@ -591,7 +591,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <CardContent className="pt-6">
                             {analysisMetricsError && (
                                 <div
-                                    className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/70 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:border-destructive/70 dark:bg-destructive/20 dark:text-destructive"
+                                    className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/70 bg-destructive/10 px-4 py-3 text-sm text-destructive"
                                     data-testid="student-analysis-metrics-error"
                                 >
                                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -600,13 +600,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             )}
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList
-                                    className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-border bg-background p-1 dark:border-border dark:bg-background"
+                                    className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-border bg-background p-1"
                                     data-testid="student-analysis-section-tabs"
                                 >
                                     <TabsTrigger
                                         value="charts"
                                         data-testid="student-analysis-section-tab-charts"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground dark:text-muted-foreground dark:data-[state=active]:bg-muted dark:data-[state=active]:text-foreground"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
                                             <BarChart3 className="h-3.5 w-3.5 shrink-0" />
@@ -616,7 +616,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <TabsTrigger
                                         value="plan"
                                         data-testid="student-analysis-section-tab-plan"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground dark:text-muted-foreground dark:data-[state=active]:bg-muted dark:data-[state=active]:text-foreground"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
                                             <Ruler className="h-3.5 w-3.5 shrink-0" />
@@ -626,7 +626,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <TabsTrigger
                                         value="sampling"
                                         data-testid="student-analysis-section-tab-sampling"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground dark:text-muted-foreground dark:data-[state=active]:bg-muted dark:data-[state=active]:text-foreground"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
                                             <ListTree className="h-3.5 w-3.5 shrink-0" />

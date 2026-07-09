@@ -130,8 +130,8 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                 )}
             </p>
 
-            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background dark:bg-card shadow-sm overflow-hidden">
-                <div className="bg-card dark:bg-muted/50 px-4 py-2.5 border-b border-border dark:border-input">
+            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
+                <div className="bg-card px-4 py-2.5 border-b border-border">
                     <p className="text-sm text-center text-muted-foreground">
                         {isMeanEstimation ? "不同绝对误差限下的样本量" : "不同误差限下的样本量"}
                         <span className="text-xs">
@@ -245,8 +245,8 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
                 {isMeanEstimation && ` 这里为便于比较，暂假定各层方差近似相同，统一使用 σ²=${sigma2}。`}
             </p>
 
-            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background dark:bg-card shadow-sm overflow-hidden">
-                <div className="bg-card dark:bg-muted/50 px-4 py-2.5 border-b border-border dark:border-input">
+            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
+                <div className="bg-card px-4 py-2.5 border-b border-border">
                     <p className="text-sm text-center text-muted-foreground">
                         {isMeanEstimation
                             ? `方案对比示例：按互斥年龄层分别估计均值 (±${formatAbsoluteErrorValue(params.marginOfError)}, σ²=${sigma2}, ${params.confidenceLevel}% CI)`
@@ -295,7 +295,7 @@ function VariabilityContent() {
             </p>
 
             <div className="mx-auto max-w-lg space-y-4">
-                <div className="rounded-2xl border border-border bg-background dark:bg-card p-5 shadow-sm space-y-4">
+                <div className="rounded-2xl border border-border bg-background p-5 shadow-sm space-y-4">
                     <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground/90">比例估计中的变异</p>
                         <p className="text-sm text-muted-foreground">
@@ -318,7 +318,7 @@ function VariabilityContent() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-background dark:bg-card p-5 shadow-sm space-y-3">
+                <div className="rounded-2xl border border-border bg-background p-5 shadow-sm space-y-3">
                     <p className="text-sm font-semibold text-foreground/90">多指标时的变异处理</p>
                     <p className="text-sm text-muted-foreground">
                         调查通常涉及多个指标，各指标的方差不同。原则上：
@@ -367,8 +367,8 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
                 {isMeanEstimation ? "每减少一部分绝对误差限，所需额外样本量都会更快地增加。" : "每减少一个百分点的误差限，所需额外样本量越来越多。"}
             </p>
 
-            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background dark:bg-card shadow-sm overflow-hidden">
-                <div className="bg-card dark:bg-muted/50 px-4 py-2.5 border-b border-border dark:border-input">
+            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
+                <div className="bg-card px-4 py-2.5 border-b border-border">
                     <p className="text-sm text-center text-muted-foreground">
                         {isMeanEstimation ? "绝对误差限 vs 样本量" : "误差限 vs 样本量"}
                         <span className="text-xs">
@@ -431,7 +431,7 @@ function SummaryContent() {
 
             <div className="mx-auto max-w-lg grid grid-cols-2 gap-3">
                 {factors.map(({ icon: FIcon, title, desc }) => (
-                    <div key={title} className="rounded-2xl border border-border bg-background dark:bg-card p-4 shadow-sm space-y-2">
+                    <div key={title} className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                         <div className="w-9 h-9 rounded-xl bg-info/10 flex items-center justify-center">
                             <FIcon className="w-4 h-4 text-info" />
                         </div>

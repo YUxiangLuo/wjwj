@@ -191,7 +191,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     </thead>
                                                     <tbody>
                                                         {detail.excelInfo.preview.slice(0, 10).map((row, idx) => (
-                                                            <tr key={idx} className="border-b border-border/50 hover:bg-muted/30 dark:hover:bg-muted/30">
+                                                            <tr key={idx} className="border-b border-border/50 hover:bg-muted/30">
                                                                 {detail.excelInfo!.columns.map((col) => (
                                                                     <td key={col} className="px-3 py-1.5 text-foreground/90 whitespace-nowrap max-w-[200px] truncate">
                                                                         {row?.[col] != null ? String(row[col]) : <span className="text-muted-foreground">-</span>}

@@ -130,7 +130,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                         />
                     </div>
 
-                    <div className="rounded-xl border border-border dark:border-input bg-card dark:bg-muted/50 p-4 space-y-3">
+                    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                         <div className="space-y-1">
                             <div className="flex justify-between text-xs text-muted-foreground">
                                 <span>发出</span>
@@ -229,7 +229,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
             </div>
 
             {/* Four-step pipeline */}
-            <div className="mx-auto max-w-md rounded-2xl border border-border bg-background dark:bg-card p-5 shadow-sm space-y-3">
+            <div className="mx-auto max-w-md rounded-2xl border border-border bg-background p-5 shadow-sm space-y-3">
                 <StepRow step={1} label="初始样本量 n₀" formula={step1Formula} value={n0} color="text-primary" />
                 <StepArrow />
                 <StepRow step={2} label="有限总体校正 n₁" formula="n₀/(1+(n₀-1)/N)" value={n1} color="text-auxiliary" />
@@ -240,7 +240,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
             </div>
 
             {/* Plan comparison (mutually exclusive strata) */}
-            <div className="mx-auto max-w-md rounded-2xl border border-border bg-card dark:bg-muted/30 p-5 space-y-3">
+            <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-5 space-y-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     {isProportion
                         ? "方案对比（课件例 7.2，互斥分层，N=10,000）"
@@ -338,7 +338,7 @@ function BeforeAfterBars({
     max: number; beforeColor: string; afterColor: string;
 }) {
     return (
-        <div className="space-y-3 rounded-xl border border-border dark:border-input bg-card dark:bg-muted/50 p-4">
+        <div className="space-y-3 rounded-xl border border-border bg-card p-4">
             <BarRow label={beforeLabel} value={beforeValue} max={max} color={beforeColor} />
             <BarRow label={afterLabel} value={afterValue} max={max} color={afterColor} />
         </div>

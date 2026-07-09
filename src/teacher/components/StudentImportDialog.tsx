@@ -50,7 +50,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                             type="file"
                             data-testid="teacher-student-import-file"
                             accept=".xlsx,.xls,.csv"
-                            className="mt-6 bg-card/50 border-input text-foreground/90 text-sm file:bg-muted dark:file:bg-muted file:text-foreground/90 dark:file:text-muted-foreground file:border-0 file:rounded-md file:mr-4 file:px-3 file:py-1 cursor-pointer"
+                            className="mt-6 bg-card/50 border-input text-foreground/90 text-sm file:bg-muted file:text-foreground/90 file:border-0 file:rounded-md file:mr-4 file:px-3 file:py-1 cursor-pointer"
                             onChange={(e) => onImportFileChange(e.target.files?.[0] ?? null)}
                         />
                         {importFile && (

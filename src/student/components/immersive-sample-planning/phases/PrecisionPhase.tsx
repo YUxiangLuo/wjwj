@@ -60,7 +60,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
             </div>
 
             <div className={`grid gap-4 ${isMeanEstimation ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-                <div className="rounded-2xl border border-border bg-background dark:bg-card p-4 shadow-sm space-y-2">
+                <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">标准误差 SE</p>
                     <p className="font-mono text-sm text-foreground/90">
                         {isMeanEstimation ? "SE(ȳ) = √(σ²/n × FPC)" : "SE = √(p(1−p)/n × FPC)"}
@@ -69,7 +69,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                         估计值的标准差，衡量抽样随机波动的大小。SE 越小，估计越精确。
                     </p>
                 </div>
-                <div className="rounded-2xl border border-border bg-background dark:bg-card p-4 shadow-sm space-y-2">
+                <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">误差限 ME</p>
                     <p className="font-mono text-sm text-foreground/90">
                         ME = Z × SE
@@ -81,7 +81,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                     </p>
                 </div>
                 {!isMeanEstimation && (
-                    <div className="rounded-2xl border border-border bg-background dark:bg-card p-4 shadow-sm space-y-2">
+                    <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">变异系数 CV</p>
                         <p className="font-mono text-sm text-foreground/90">
                             CV = SE / <var>p̂</var>
@@ -94,8 +94,8 @@ export function PrecisionPhase({ params, onNext }: Props) {
             </div>
 
             {/* Interactive demo */}
-            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background dark:bg-card shadow-sm overflow-hidden">
-                <div className="bg-card dark:bg-muted/50 px-4 py-2.5 border-b border-border dark:border-input">
+            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
+                <div className="bg-card px-4 py-2.5 border-b border-border">
                     <p className="text-sm text-center text-muted-foreground">
                         {isMeanEstimation ? "先直观看一眼：样本量变化时，SE 与 ME 怎么变" : "先直观看一眼：样本量变化时，三个精度指标怎么变"}
                         <span className="text-xs text-muted-foreground ml-2">

@@ -60,13 +60,13 @@ export function FormulaPhase({
                     <p className="text-center text-sm font-medium text-muted-foreground">先选择你要估计什么</p>
 
                     <div className="flex justify-center">
-                        <div className="inline-flex rounded-xl border border-border dark:border-input bg-card dark:bg-muted/50 p-1">
+                        <div className="inline-flex rounded-xl border border-border bg-card p-1">
                             <button
                                 type="button"
                                 onClick={() => onEstimationTypeChange("proportion")}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                                     isProportion
-                                        ? "bg-background dark:bg-card text-primary shadow-sm"
+                                        ? "bg-background text-primary shadow-sm"
                                         : "text-muted-foreground hover:text-foreground/90"
                                 }`}
                             >
@@ -77,7 +77,7 @@ export function FormulaPhase({
                                 onClick={() => onEstimationTypeChange("mean")}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                                     !isProportion
-                                        ? "bg-background dark:bg-card text-primary shadow-sm"
+                                        ? "bg-background text-primary shadow-sm"
                                         : "text-muted-foreground hover:text-foreground/90"
                                 }`}
                             >
@@ -126,7 +126,7 @@ export function FormulaPhase({
 
                 <div className="max-w-sm mx-auto space-y-3">
                     <Select value={params.confidenceLevel} onValueChange={onConfidenceLevelChange}>
-                        <SelectTrigger className="h-14 text-lg bg-background dark:bg-card border-border dark:border-input">
+                        <SelectTrigger className="h-14 text-lg bg-background border-border">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -223,7 +223,7 @@ export function FormulaPhase({
                                     if (Number.isFinite(v) && v > 0) onPopulationVarianceChange(v);
                                 }}
                                 placeholder="例如 100"
-                                className="h-12 text-lg bg-background dark:bg-card border-border dark:border-input"
+                                className="h-12 text-lg bg-background border-border"
                             />
                             <p className="text-xs text-muted-foreground">可从历史调查数据中估算，或使用预调查结果</p>
                         </div>
@@ -260,7 +260,7 @@ export function FormulaPhase({
                                     if (Number.isFinite(v) && v > 0) onMarginOfErrorChange(v);
                                 }}
                                 placeholder="例如 2"
-                                className="h-12 text-lg bg-background dark:bg-card border-border dark:border-input"
+                                className="h-12 text-lg bg-background border-border"
                             />
                             <p className="text-xs text-muted-foreground">与均值同单位的绝对误差</p>
                         </div>
@@ -318,7 +318,7 @@ export function FormulaPhase({
                 </p>
             </div>
 
-            <div className="mx-auto max-w-md space-y-2 rounded-2xl border border-border bg-background dark:bg-card p-6 shadow-sm">
+            <div className="mx-auto max-w-md space-y-2 rounded-2xl border border-border bg-background p-6 shadow-sm">
                 {isProportion ? (
                     <FormulaLine
                         label="无限总体"
@@ -334,7 +334,7 @@ export function FormulaPhase({
                         delay={0}
                     />
                 )}
-                <div className="border-t border-dashed border-border dark:border-input my-3" />
+                <div className="border-t border-dashed border-border my-3" />
                 <FormulaLine
                     label="有限总体校正"
                     formula={`n₁ = ${n0RawDisplay} / (1 + ${n0MinusOneRawDisplay} / ${params.populationSize.toLocaleString()})`}
@@ -344,14 +344,14 @@ export function FormulaPhase({
             </div>
 
             {/* Dual-formula comparison card */}
-            <div className="mx-auto max-w-md rounded-2xl border border-border bg-card dark:bg-muted/30 p-5 space-y-3">
+            <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-5 space-y-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">两种估计公式对比</p>
                 <div className="grid grid-cols-2 gap-3">
-                    <div className={`rounded-xl p-3 text-center ${isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background dark:bg-card"}`}>
+                    <div className={`rounded-xl p-3 text-center ${isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background"}`}>
                         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">比例估计</p>
                         <p className="font-mono text-xs text-muted-foreground">n₀ = Z²p(1−p)/E²</p>
                     </div>
-                    <div className={`rounded-xl p-3 text-center ${!isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background dark:bg-card"}`}>
+                    <div className={`rounded-xl p-3 text-center ${!isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background"}`}>
                         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">均值估计</p>
                         <p className="font-mono text-xs text-muted-foreground">n₀ = Z²σ²/e²</p>
                     </div>
@@ -430,8 +430,8 @@ function EstimationMethodCard({ active, title, description }: { active: boolean;
         <div
             className={`rounded-2xl border p-4 text-left transition-colors ${
                 active
-                    ? "border-primary/20 bg-primary/10 dark:border-primary dark:bg-primary/30"
-                    : "border-border bg-background dark:border-border dark:bg-card"
+                    ? "border-primary/20 bg-primary/10"
+                    : "border-border bg-background"
             }`}
         >
             <p className={`text-sm font-semibold ${active ? "text-primary" : "text-foreground/90"}`}>{title}</p>
@@ -447,7 +447,7 @@ function ErrorRangeVisual({ margin }: { margin: number }) {
     const loP = lo;
     const hiP = hi;
     return (
-        <div className="rounded-xl border border-border dark:border-input bg-card dark:bg-muted/50 p-3 space-y-2">
+        <div className="rounded-xl border border-border bg-card p-3 space-y-2">
             <p className="text-xs text-muted-foreground text-center">误差范围可视化</p>
             <div className="relative h-6 rounded-full bg-muted-foreground/50 overflow-hidden">
                 <div

@@ -372,7 +372,7 @@ export function StudentManagement() {
                                                 ) : student.status === 1 ? (
                                                     <StatusBadge intent="success">正常</StatusBadge>
                                                 ) : (
-                                                    <Badge variant="destructive" className="bg-muted-foreground/20 dark:bg-muted-foreground/50 text-foreground/90 hover:bg-muted-foreground/20">已停用</Badge>
+                                                    <Badge variant="destructive" className="bg-muted-foreground/20 text-foreground/90 hover:bg-muted-foreground/20">已停用</Badge>
                                                 )}
                                             </TableCell>
                                             <TableCell>

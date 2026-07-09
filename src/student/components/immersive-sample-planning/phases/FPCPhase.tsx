@@ -83,8 +83,8 @@ export function FPCPhase({ params, onNext }: Props) {
                 </p>
             </div>
 
-            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background dark:bg-card shadow-sm overflow-hidden">
-                <div className="bg-card dark:bg-muted/50 px-4 py-2.5 border-b border-border dark:border-input">
+            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
+                <div className="bg-card px-4 py-2.5 border-b border-border">
                     <div className="font-mono text-sm text-muted-foreground text-center">
                         n₁ = n₀ / (1 + (n₀ − 1) / <strong className="text-auxiliary">N</strong>)　　n₀ ≈ {n0RawDisplay}
                     </div>
@@ -96,7 +96,7 @@ export function FPCPhase({ params, onNext }: Props) {
                             key={row.N}
                             className={`flex items-center gap-4 px-4 py-3 ${
                                 row.isUser
-                                    ? "bg-primary/10 dark:bg-primary/20"
+                                    ? "bg-primary/10"
                                     : ""
                             }`}
                         >
@@ -144,14 +144,14 @@ export function FPCPhase({ params, onNext }: Props) {
                 </div>
 
                 {/* Custom N input */}
-                <div className="px-4 py-3 bg-card/50 dark:bg-muted/30 border-t border-border dark:border-input flex items-center gap-2">
+                <div className="px-4 py-3 bg-card/50 border-t border-border flex items-center gap-2">
                     <span className="text-xs text-muted-foreground whitespace-nowrap">试试其他 N：</span>
                     <Input
                         type="number"
                         placeholder="输入总体大小"
                         value={customN}
                         onChange={(e) => setCustomN(e.target.value)}
-                        className="h-8 text-sm bg-background dark:bg-card border-border dark:border-input"
+                        className="h-8 text-sm bg-background border-border"
                     />
                 </div>
             </div>

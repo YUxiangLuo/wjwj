@@ -13,7 +13,7 @@ export function SamplePlanningAdvancedFeatures({
 }: SamplePlanningAdvancedFeaturesProps) {
     return (
         <Card
-            className="rounded-2xl border-border bg-card/50 shadow-sm dark:border-border dark:bg-card/50"
+            className="rounded-2xl border-border bg-card/50 shadow-sm"
             data-testid="student-sample-plan-advanced-features"
         >
             <CardHeader className="pb-2">
@@ -30,7 +30,7 @@ export function SamplePlanningAdvancedFeatures({
                             className={`h-auto py-2 text-xs ${
                                 activeAdvancedTab === key
                                     ? activeClass
-                                    : "border-input text-foreground/90 hover:bg-card dark:border-input dark:text-muted-foreground"
+                                    : "border-input text-foreground/90 hover:bg-card"
                             }`}
                         >
                             {label}

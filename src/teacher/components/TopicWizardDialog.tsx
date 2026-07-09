@@ -308,7 +308,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                                     </div>
                                     <span className={`text-xs ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success" : "text-muted-foreground"}`}>{step}</span>
-                                    {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground dark:text-foreground/90" />}
+                                    {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground" />}
                                 </div>
                             );
                         })}
@@ -429,7 +429,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         </thead>
                                                         <tbody>
                                                             {excelInfo.preview.slice(0, 5).map((row, idx) => (
-                                                                <tr key={idx} className="border-b border-border/50 hover:bg-muted/30 dark:hover:bg-muted/30">
+                                                                <tr key={idx} className="border-b border-border/50 hover:bg-muted/30">
                                                                     {excelInfo!.columns.map((col) => (
                                                                         <td key={col} className="px-3 py-1.5 text-foreground/90 whitespace-nowrap max-w-[200px] truncate">
                                                                             {row?.[col] != null ? String(row[col]) : <span className="text-muted-foreground">-</span>}
@@ -614,7 +614,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <Input
                                     data-testid="teacher-topic-attachment-file"
                                     type="file"
-                                    className="bg-background border-border text-foreground/90 file:bg-muted dark:file:bg-muted file:text-foreground/90 dark:file:text-muted-foreground"
+                                    className="bg-background border-border text-foreground/90 file:bg-muted file:text-foreground/90"
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) onAttachmentUpload(file);

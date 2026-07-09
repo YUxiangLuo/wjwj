@@ -196,10 +196,10 @@ export function PrecisionCostTradeoff({
 
     /** 与「高级分析（SE/CV/敏感性）」一致：靛蓝主结构 + 青绿强调精度数值 + 白底内容区 */
     const sliderIndigo =
-        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary dark:[&_[data-slot=slider-track]]:!bg-primary/80 [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background dark:[&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
+        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
 
     return (
-        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/50 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export function PrecisionCostTradeoff({
                                 className={`text-xs h-auto py-2 ${
                                     !useCustom && selectedScenario.id === scenario.id
                                         ? "bg-primary text-primary-foreground hover:bg-primary shadow-sm"
-                                        : "border-primary bg-background text-primary hover:bg-primary/10 dark:border-primary dark:bg-background dark:text-primary dark:hover:bg-primary/20"
+                                        : "border-primary bg-background text-primary hover:bg-primary/10"
                                 }`}
                             >
                                 {scenario.name}
@@ -245,7 +245,7 @@ export function PrecisionCostTradeoff({
                         className={`w-full text-xs ${
                             useCustom
                                 ? "bg-primary text-primary-foreground hover:bg-primary"
-                                : "border-primary bg-background text-primary hover:bg-primary/10 dark:border-primary dark:bg-background dark:text-primary dark:hover:bg-primary/20"
+                                : "border-primary bg-background text-primary hover:bg-primary/10"
                         }`}
                     >
                         自定义成本参数
@@ -254,7 +254,7 @@ export function PrecisionCostTradeoff({
 
                 {/* 自定义参数 */}
                 {useCustom && (
-                    <div className="space-y-3 p-3 rounded-xl border border-primary/90 bg-background dark:border-primary/50 dark:bg-background">
+                    <div className="space-y-3 p-3 rounded-xl border border-primary/90 bg-background">
                         <div className="space-y-2">
                             <Label className="text-xs text-foreground">固定成本（元）</Label>
                             <Input
@@ -297,7 +297,7 @@ export function PrecisionCostTradeoff({
                 )}
 
                 {/* 当前场景摘要 */}
-                <div className="rounded-xl border border-primary/90 bg-background p-3 dark:border-primary/50 dark:bg-background space-y-2">
+                <div className="rounded-xl border border-primary/90 bg-background p-3 space-y-2">
                     <div className="flex justify-between text-sm">
                         <span className="text-foreground/90">固定成本</span>
                         <span className="font-mono text-primary">
@@ -319,7 +319,7 @@ export function PrecisionCostTradeoff({
                 </div>
 
                 {/* 抽样假设：继承决策面板初值，仅影响本工具内演算 */}
-                <div className="rounded-xl border border-primary/90 bg-background p-3 dark:border-primary/50 dark:bg-background space-y-4">
+                <div className="rounded-xl border border-primary/90 bg-background p-3 space-y-4">
                     <p className="text-xs font-medium text-foreground">抽样假设（可在此调整）</p>
                     <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">置信水平</Label>
@@ -369,7 +369,7 @@ export function PrecisionCostTradeoff({
                 </div>
 
                 {/* 预算约束分析 */}
-                <div className="rounded-xl border-2 border-primary/90 bg-background p-4 shadow-sm dark:border-primary/60 dark:bg-background">
+                <div className="rounded-xl border-2 border-primary/90 bg-background p-4 shadow-sm">
                     <div className="flex items-center gap-2 mb-3">
                         <Target className="w-5 h-5 text-primary" />
                         <span className="font-bold text-primary">预算约束分析</span>
@@ -402,7 +402,7 @@ export function PrecisionCostTradeoff({
                     </div>
 
                     {achievablePrecision && achievablePrecision.totalCost > currentScenario.totalBudget * 0.9 && (
-                        <div className="mt-3 rounded-lg border border-warning/20 bg-warning/10 p-2 dark:border-warning/50 dark:bg-warning/40">
+                        <div className="mt-3 rounded-lg border border-warning/20 bg-warning/10 p-2">
                             <div className="flex items-center gap-2 text-xs text-warning">
                                 <AlertCircle className="w-4 h-4 shrink-0 text-warning" />
                                 <span>预算已接近上限，无法进一步提高精度</span>
@@ -433,7 +433,7 @@ export function PrecisionCostTradeoff({
                         className={sliderIndigo}
                     />
 
-                    <div className="rounded-xl border border-primary/90 bg-background p-3 dark:border-primary/50 dark:bg-background">
+                    <div className="rounded-xl border border-primary/90 bg-background p-3">
                         <div className="space-y-2">
                             <div className="flex justify-between text-sm">
                                 <span className="text-foreground/90">所需样本量</span>
@@ -486,7 +486,7 @@ export function PrecisionCostTradeoff({
                 </div>
 
                 {/* 精度-成本曲线图 */}
-                <div className="rounded-xl border border-primary/90 bg-background p-3 dark:border-primary/50 dark:bg-background">
+                <div className="rounded-xl border border-primary/90 bg-background p-3">
                     <div className="flex items-center gap-2 mb-3">
                         <TrendingUp className="w-4 h-4 text-primary" />
                         <span className="font-medium text-primary text-sm">
@@ -500,7 +500,7 @@ export function PrecisionCostTradeoff({
                             <span>样本量 →</span>
                             <span>成本 →</span>
                         </div>
-                        <div className="relative h-32 rounded-lg overflow-hidden border border-primary/70 bg-primary/80 dark:border-primary/40 dark:bg-primary/30">
+                        <div className="relative h-32 rounded-lg overflow-hidden border border-primary/70 bg-primary/80">
                             {/* 网格线 */}
                             <div className="absolute inset-0 flex flex-col justify-between p-2">
                                 {[0, 1, 2, 3].map(i => (
@@ -523,7 +523,7 @@ export function PrecisionCostTradeoff({
                                             style={{ width: `${100 / 8}%` }}
                                         >
                                             <div 
-                                                className="w-2 rounded-t bg-primary transition-all dark:bg-primary"
+                                                className="w-2 rounded-t bg-primary transition-all"
                                                 style={{ height: `${heightPercent}%` }}
                                             />
                                             <span className="text-[10px] text-foreground/90">
@@ -544,7 +544,7 @@ export function PrecisionCostTradeoff({
                 </div>
 
                 {/* 决策建议（与比例对比卡片的说明区一致：浅青绿提示框） */}
-                <div className="rounded-xl border border-info/20 bg-info/10 p-3 dark:border-info/40 dark:bg-info/25">
+                <div className="rounded-xl border border-info/20 bg-info/10 p-3">
                     <div className="flex items-start gap-2">
                         <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
                         <div className="text-xs space-y-1 text-info">

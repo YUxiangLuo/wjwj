@@ -464,7 +464,7 @@ export function ImmersiveSamplePlanning({
                             </p>
                         </div>
 
-                        <div className="rounded-2xl border border-border bg-background dark:bg-card p-6 shadow-sm space-y-5">
+                        <div className="rounded-2xl border border-border bg-background p-6 shadow-sm space-y-5">
                             <div className="text-center">
                                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">最终样本量</p>
                                 <div className="text-5xl font-black tabular-nums text-primary">
@@ -543,7 +543,7 @@ export function ImmersiveSamplePlanning({
                 aria-modal="true"
                 aria-labelledby={titleId}
                 data-testid="immersive-sample-planning"
-                className="fixed inset-0 z-50 bg-gradient-to-br from-card dark:from-foreground via-background dark:via-card to-primary/40 outline-none"
+                className="fixed inset-0 z-50 bg-gradient-to-br from-card via-background to-primary/40 outline-none"
                 onKeyDown={focusTrap}
                 tabIndex={-1}
             >
@@ -598,7 +598,7 @@ export function ImmersiveSamplePlanning({
 
                 {/* Bottom bar */}
                 {canGoPrev && (
-                    <div className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-4 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-background dark:from-foreground via-background/80 dark:via-card/80 to-transparent">
+                    <div className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-4 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/80 to-transparent">
                         <Button
                             type="button"
                             variant="ghost"
@@ -616,7 +616,7 @@ export function ImmersiveSamplePlanning({
                     <button
                         type="button"
                         onClick={goPrev}
-                        className="hidden lg:flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-full border border-border bg-background/90 dark:bg-card/90 backdrop-blur-sm shadow-sm items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card hover:bg-muted transition-colors"
+                        className="hidden lg:flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card hover:bg-muted transition-colors"
                         aria-label="上一步"
                     >
                         <ChevronLeft className="w-5 h-5" />
@@ -659,7 +659,7 @@ export function ImmersiveSamplePlanning({
 
 function ParamSummaryItem({ label, value }: { label: string; value: string }) {
     return (
-        <div className="rounded-lg bg-card dark:bg-muted px-3 py-2.5">
+        <div className="rounded-lg bg-card px-3 py-2.5">
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
             <p className="text-sm font-bold tabular-nums text-foreground/90 mt-0.5">{value}</p>
         </div>

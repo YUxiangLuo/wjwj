@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
     LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
     Activity, Megaphone, Settings, Bell, LogOut, Loader2, Search,
-    Menu, X, Sun, Moon, BarChart3,
+    Menu, X, BarChart3,
 } from "lucide-react";
 import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -24,7 +24,6 @@ import {
 import { Dashboard } from "./pages/Dashboard";
 import { authApi, systemApi, type AdminUser, type AdminNotification } from "./api-client";
 import { Toaster } from "sonner";
-import { useTheme } from "@/components/ThemeProvider";
 import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
 import { useNotificationCenter } from "@/hooks/useNotificationCenter";
 import { clearLoginSuccess, useAuthBootstrap, useLoginSuccessRecovery } from "@/hooks/useAuthRecovery";
@@ -69,7 +68,6 @@ const pageTitles: Record<string, string> = {
 export function AdminApp() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { theme, toggleTheme } = useTheme();
     const currentPath = location.pathname;
     const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
     const pageTitle = pageTitles[currentPath] ?? "管理后台";
@@ -233,7 +231,7 @@ export function AdminApp() {
     if (adminUser?.isFirstLogin) {
         return (
             <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-border bg-card/60 p-8 shadow-2xl shadow-border/40 dark:shadow-background/40">
+                <div className="w-full max-w-2xl rounded-3xl border border-border bg-card/60 p-8 shadow-2xl shadow-border/40">
                     <div className="space-y-3 text-center">
                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground shadow-lg shadow-primary/20">
                             A
@@ -269,14 +267,14 @@ export function AdminApp() {
                     }}
                 />
 
-                <Toaster richColors position="top-right" theme={theme} />
+                <Toaster richColors position="top-right" />
             </div>
         );
     }
 
     return (
         <div className="flex min-h-screen bg-background text-foreground font-sans antialiased">
-            <Toaster richColors position="top-right" theme={theme} />
+            <Toaster richColors position="top-right" />
 
             {/* Sidebar */}
             <aside
@@ -317,7 +315,7 @@ export function AdminApp() {
                             >
                                 <Icon className={`w-4 h-4 transition-colors ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
                                         ? "text-primary-foreground"
-                                        : "text-muted-foreground group-hover:text-foreground/90 dark:group-hover:text-muted-foreground"
+                                        : "text-muted-foreground group-hover:text-foreground/90"
                                     }`} />
                                 <span className="font-medium">{item.label}</span>
                             </NavLink>
@@ -389,18 +387,6 @@ export function AdminApp() {
                                     <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive ring-2 ring-card rounded-full animate-pulse"></span>
                                 )}
                             </Button>
-
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-muted-foreground hover:text-foreground hover:bg-muted"
-                                onClick={toggleTheme}
-                                title={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
-                                aria-label={theme === "light" ? "切换到深色模式" : "切换到浅色模式"}
-                            >
-                                {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                            </Button>
-
                             <Separator orientation="vertical" className="h-6 bg-muted" />
 
                             <AlertDialog>

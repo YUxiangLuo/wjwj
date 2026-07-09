@@ -300,8 +300,8 @@ export function GradingDetail() {
         const columns = Object.keys(dataList[0] ?? {}).slice(0, 6);
         const isOpen = !!samplingSectionOpen[sectionKey];
         return (
-            <div className="rounded-lg border border-border bg-card/30 dark:bg-background/30 overflow-hidden">
-                <div className="flex items-stretch gap-1 border-b border-border bg-muted/60 dark:bg-card/60">
+            <div className="rounded-lg border border-border bg-card/30 overflow-hidden">
+                <div className="flex items-stretch gap-1 border-b border-border bg-muted/60">
                     <button
                         type="button"
                         className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left min-w-0 hover:bg-muted/50 transition-colors"

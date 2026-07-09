@@ -324,8 +324,8 @@ export function SystemMonitor() {
                 </CardHeader>
                 <CardContent className="space-y-2 pt-4 max-h-[400px] overflow-y-auto custom-scrollbar">
                     {logs.map((log) => (
-                        <div key={log.id} className="flex flex-col gap-3 rounded-lg border border-border bg-background/50 p-3 text-sm sm:flex-row sm:items-start group hover:bg-background dark:hover:bg-background transition-colors">
-                            <div className="text-xs text-muted-foreground font-mono sm:w-20 pt-1 group-hover:text-muted-foreground dark:group-hover:text-muted-foreground transition-colors">
+                        <div key={log.id} className="flex flex-col gap-3 rounded-lg border border-border bg-background/50 p-3 text-sm sm:flex-row sm:items-start group hover:bg-background transition-colors">
+                            <div className="text-xs text-muted-foreground font-mono sm:w-20 pt-1 group-hover:text-muted-foreground transition-colors">
                                 {new Date(log.time).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai" })}
                             </div>
                             <div className="min-w-[70px]">

@@ -32,7 +32,7 @@ function labelField(key: string) {
 
 function ParamRow({ label, value }: { label: string; value: ReactNode }) {
     return (
-        <div className="grid grid-cols-1 gap-1 border-b border-border/80 py-2.5 last:border-0 dark:border-border/80 sm:grid-cols-[minmax(140px,200px)_1fr] sm:gap-4">
+        <div className="grid grid-cols-1 gap-1 border-b border-border/80 py-2.5 last:border-0 sm:grid-cols-[minmax(140px,200px)_1fr] sm:gap-4">
             <div className="text-xs font-medium text-muted-foreground">{label}</div>
             <div className="text-sm text-foreground break-words">{value}</div>
         </div>
@@ -204,7 +204,7 @@ export function SamplePlanDecisionPanel({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/40 dark:bg-warning/20">
+            <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
                 <div className="flex gap-2">
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                     <div className="space-y-1.5 text-xs leading-relaxed text-warning">
@@ -219,11 +219,11 @@ export function SamplePlanDecisionPanel({
             </div>
 
             {!samplePlan ? (
-                <div className="rounded-2xl border border-dashed border-input bg-background/40 py-12 text-center text-sm text-muted-foreground dark:border-input dark:bg-background/30 dark:text-muted-foreground">
+                <div className="rounded-2xl border border-dashed border-input bg-background/40 py-12 text-center text-sm text-muted-foreground">
                     尚未保存样本量规划数据
                 </div>
             ) : (
-                <div className="rounded-xl border border-border/90 bg-background/50 p-4 dark:border-border dark:bg-background/40">
+                <div className="rounded-xl border border-border/90 bg-background/50 p-4">
                     <ParamRow label="总体规模 N" value={populationSize > 0 ? populationSize.toLocaleString() : "—"} />
                     <ParamRow
                         label="估计类型"
@@ -284,7 +284,7 @@ export function SamplingMethodParamsPanel({
 }) {
     if (!samplingResults) {
         return (
-            <div className="rounded-2xl border border-dashed border-input bg-background/40 py-12 text-center text-sm text-muted-foreground dark:border-input dark:bg-background/30 dark:text-muted-foreground">
+            <div className="rounded-2xl border border-dashed border-input bg-background/40 py-12 text-center text-sm text-muted-foreground">
                 暂无抽样结果数据（请先在阶段三完成抽样）
             </div>
         );
@@ -314,7 +314,7 @@ export function SamplingMethodParamsPanel({
                 return (
                     <div
                         key={key}
-                        className="rounded-xl border border-border/90 bg-background/50 p-4 dark:border-border dark:bg-background/40"
+                        className="rounded-xl border border-border/90 bg-background/50 p-4"
                         data-testid={`student-analysis-sampling-params-${key}`}
                     >
                         <div className="mb-3 flex items-center justify-between gap-2">
@@ -323,7 +323,7 @@ export function SamplingMethodParamsPanel({
                                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                                     completed
                                         ? "bg-success/15 text-success"
-                                        : "bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground"
+                                        : "bg-muted text-muted-foreground"
                                 }`}
                             >
                                 {completed ? "已完成" : "未完成"}

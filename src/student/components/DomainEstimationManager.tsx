@@ -175,7 +175,7 @@ export function DomainEstimationManager({
     const increaseRatio = baseSampleSize > 0 ? (sampleSizeIncrease / baseSampleSize) : 0;
 
     return (
-        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -186,7 +186,7 @@ export function DomainEstimationManager({
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary"
+                        className="text-xs bg-primary/10 border-primary/20 text-primary"
                     >
                         {domains.length} 个子总体
                     </Badge>
@@ -200,7 +200,7 @@ export function DomainEstimationManager({
 
             <CardContent className="space-y-4">
                 {isMeanEstimation && !(Number(populationVariance) > 0) && (
-                    <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 dark:border-destructive/40 dark:bg-destructive/25">
+                    <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3">
                         <div className="flex items-start gap-2 text-xs text-destructive">
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                             <span>
@@ -212,7 +212,7 @@ export function DomainEstimationManager({
 
                 {/* 说明卡片 */}
                 {showExplanation && (
-                    <div className="rounded-xl border border-info/20 bg-info/10 p-3 dark:border-info/40 dark:bg-info/25">
+                    <div className="rounded-xl border border-info/20 bg-info/10 p-3">
                         <div className="flex gap-2">
                             <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
                             <div className="text-xs text-info space-y-1">
@@ -232,7 +232,7 @@ export function DomainEstimationManager({
                                 )}
                                 <button 
                                     onClick={() => setShowExplanation(false)}
-                                    className="text-info hover:underline dark:text-info text-xs"
+                                    className="text-info hover:underline text-xs"
                                 >
                                     隐藏说明
                                 </button>
@@ -248,8 +248,8 @@ export function DomainEstimationManager({
                             key={domain.id}
                             className={`rounded-xl border transition-all ${
                                 expandedDomain === domain.id
-                                    ? "border-primary bg-background shadow-sm dark:border-primary/50 dark:bg-background"
-                                    : "border-primary/80 bg-background/95 dark:border-primary/40 dark:bg-background"
+                                    ? "border-primary bg-background shadow-sm"
+                                    : "border-primary/80 bg-background/95"
                             }`}
                         >
                             {/* 域头部（可点击展开） */}
@@ -276,7 +276,7 @@ export function DomainEstimationManager({
                                 <div className="flex items-center gap-2">
                                     <Badge 
                                         variant="outline" 
-                                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30"
+                                        className="text-xs bg-primary/10 border-primary/20 text-primary"
                                     >
                                         {formatMarginOfError(domain.marginOfError, estimationType)} / {domain.confidenceLevel}%
                                     </Badge>
@@ -388,7 +388,7 @@ export function DomainEstimationManager({
                                     </div>
 
                                     {/* 计算结果 */}
-                                    <div className="rounded-lg border border-primary bg-background p-3 dark:border-primary/50 dark:bg-background">
+                                    <div className="rounded-lg border border-primary bg-background p-3">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs text-primary">所需样本量</span>
                                             <span className="text-lg font-bold tabular-nums text-info">
@@ -410,7 +410,7 @@ export function DomainEstimationManager({
                 <Button
                     variant="outline"
                     onClick={addDomain}
-                    className="w-full border-primary text-primary hover:bg-primary/10 dark:border-primary dark:text-primary dark:hover:bg-primary/20"
+                    className="w-full border-primary text-primary hover:bg-primary/10"
                 >
                     <Plus className="w-4 h-4 mr-2" />
                     添加子总体
@@ -418,7 +418,7 @@ export function DomainEstimationManager({
 
                 {/* 总样本量计算 */}
                 {domains.length > 0 && (
-                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm dark:border-primary/50 dark:bg-background">
+                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm">
                         <div className="flex items-center gap-2 mb-3">
                             <Calculator className="w-5 h-5 text-primary" />
                             <span className="font-bold text-primary">总样本量计算</span>
@@ -454,7 +454,7 @@ export function DomainEstimationManager({
                             </div>
 
                             {sampleSizeIncrease > 0 && (
-                                <div className="rounded-lg bg-warning/10 border border-warning/20 p-2 dark:bg-warning/30 dark:border-warning/50">
+                                <div className="rounded-lg bg-warning/10 border border-warning/20 p-2">
                                     <div className="flex items-center gap-2 text-xs text-warning">
                                         <AlertCircle className="w-4 h-4" />
                                         <span>
@@ -466,7 +466,7 @@ export function DomainEstimationManager({
                             )}
 
                             {populationOverflow > 0 && (
-                                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2 dark:bg-destructive/30 dark:border-destructive/50">
+                                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2">
                                     <div className="flex items-start gap-2 text-xs text-destructive">
                                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                                         <span>
@@ -498,7 +498,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
     const ratio = baseSampleSize > 0 ? domainTotal / baseSampleSize : 0;
 
     return (
-        <div className="rounded-xl border border-auxiliary-border/90 bg-auxiliary-muted/50 p-4 dark:border-auxiliary-border/40 dark:bg-auxiliary-muted/20">
+        <div className="rounded-xl border border-auxiliary-border/90 bg-auxiliary-muted/50 p-4">
             <div className="flex items-center gap-2 mb-3">
                 <Info className="w-4 h-4 text-auxiliary" />
                 <span className="font-medium text-sm text-auxiliary-strong">
@@ -507,7 +507,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
             </div>
 
             <div className="space-y-2">
-                <div className="rounded-lg border border-auxiliary-border/60 bg-background p-3 dark:border-auxiliary-border/40 dark:bg-background">
+                <div className="rounded-lg border border-auxiliary-border/60 bg-background p-3">
                     <div className="flex justify-between items-center">
                         <div>
                             <span className="text-sm font-medium text-auxiliary-strong">方案一</span>
@@ -519,7 +519,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                     </div>
                 </div>
 
-                <div className="rounded-lg border border-auxiliary-border/60 bg-background p-3 dark:border-auxiliary-border/40 dark:bg-background">
+                <div className="rounded-lg border border-auxiliary-border/60 bg-background p-3">
                     <div className="flex justify-between items-center mb-2">
                         <div>
                             <span className="text-sm font-medium text-auxiliary-strong">方案二</span>
@@ -535,7 +535,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                 </div>
 
                 {ratio > 1 && (
-                    <div className="rounded-lg bg-warning/10 border border-warning/20 p-2 dark:bg-warning/30 dark:border-warning/50">
+                    <div className="rounded-lg bg-warning/10 border border-warning/20 p-2">
                         <div className="flex items-start gap-2 text-xs text-warning">
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                             <div>

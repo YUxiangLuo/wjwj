@@ -372,7 +372,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="rounded-xl border border-destructive/80 bg-background/70 px-4 py-3 text-sm text-foreground/90 dark:border-destructive/40 dark:bg-background/40 dark:text-foreground">
+                        <div className="rounded-xl border border-destructive/80 bg-background/70 px-4 py-3 text-sm text-foreground/90">
                             请返回“样本量规划”阶段，重新确认并保存最终样本量后，再进入本阶段。
                         </div>
                         <div className="flex justify-between">
@@ -691,7 +691,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                     </SelectContent>
                                                 </Select>
                                             ) : (
-                                                <div className="flex h-10 items-center rounded-md border border-destructive/70 bg-destructive/10 px-3 text-sm text-destructive dark:border-destructive/70 dark:bg-destructive/20 dark:text-destructive" data-testid="student-sampling-pps-unavailable">
+                                                <div className="flex h-10 items-center rounded-md border border-destructive/70 bg-destructive/10 px-3 text-sm text-destructive" data-testid="student-sampling-pps-unavailable">
                                                     {PPS_UNAVAILABLE_STATUS_MESSAGE}
                                                 </div>
                                             )}

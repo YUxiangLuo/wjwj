@@ -213,7 +213,7 @@ export function TeacherManagement() {
         if (teacher.status === 1) {
             return <StatusBadge intent="success">正常</StatusBadge>;
         }
-        return <Badge variant="destructive" className="bg-muted-foreground/20 dark:bg-muted-foreground/50 text-foreground/90 hover:bg-muted-foreground/20">已停用</Badge>;
+        return <Badge variant="destructive" className="bg-muted-foreground/20 text-foreground/90 hover:bg-muted-foreground/20">已停用</Badge>;
     };
 
     const summary = useMemo(() => {

@@ -371,7 +371,7 @@ export function ExperimentLayout() {
                             return (
                                 <div key={stage.name} className="flex items-center gap-2">
                                     {index > 0 && (
-                                        <ChevronRight className={`w-3 h-3 flex-shrink-0 ${isCompleted || isCurrent ? "text-muted-foreground" : "text-muted-foreground dark:text-foreground/90"}`} />
+                                        <ChevronRight className={`w-3 h-3 flex-shrink-0 ${isCompleted || isCurrent ? "text-muted-foreground" : "text-muted-foreground"}`} />
                                     )}
                                     <button
                                         onClick={() => {
