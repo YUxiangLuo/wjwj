@@ -22,6 +22,7 @@ async function loadExportRoutes(options: { select?: unknown[]; teacherId?: numbe
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 1,
+        notifyStudentsByClassIds: async () => undefined,
     }));
 
     const module = await import("./export");

@@ -19,6 +19,7 @@ async function loadExportRoutes(options: {
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
         requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
         getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
+        notifyStudentsByClassIds: async () => undefined,
         notifyStudentById: async () => undefined,
         isLockExpired: () => true,
         TEACHER_USER_TYPE: 2,

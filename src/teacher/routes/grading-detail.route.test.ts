@@ -23,6 +23,7 @@ async function loadGradingModule(options: {
         ASSISTANT_USER_TYPE: 3,
         TEACHER_USER_TYPE: 2,
         isLockExpired: () => true,
+        notifyStudentsByClassIds: async () => undefined,
         notifyStudentById: async () => undefined,
     }));
 

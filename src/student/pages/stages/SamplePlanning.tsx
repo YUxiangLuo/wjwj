@@ -216,7 +216,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 </>
             ) : (
                 /* First visit — prompt to start sample planning */
-                <Card className="gap-2 py-8 rounded-2xl border-primary bg-primary/50 shadow-sm">
+                <Card className="gap-2 py-8 rounded-2xl border-primary/20 bg-primary/5 shadow-sm dark:bg-primary/5">
                     <CardContent className="flex flex-col items-center text-center space-y-4 px-6">
                         <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                             <Sparkles className="w-7 h-7 text-primary" />

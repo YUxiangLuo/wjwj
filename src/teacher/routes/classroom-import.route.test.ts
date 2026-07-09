@@ -24,6 +24,7 @@ async function loadClassroomRoutes(options: {
         withTeacherAuth: (handler: unknown) => handler,
         withPrimaryTeacherAuth: (handler: unknown) => handler,
         getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
+        notifyStudentsByClassIds: async () => undefined,
         notifyStudentById: async () => undefined,
         isLockExpired: () => true,
         TEACHER_USER_TYPE: 2,
