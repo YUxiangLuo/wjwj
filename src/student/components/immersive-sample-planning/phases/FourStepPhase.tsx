@@ -219,7 +219,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
     return (
         <div className="space-y-8">
             <div className="text-center space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success text-xs font-medium text-success">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 text-xs font-medium text-success">
                     四步法汇总
                 </span>
                 <h2 className="text-2xl font-bold text-foreground">样本量确定四步法</h2>
@@ -297,7 +297,7 @@ function ScenarioHeader({ icon: Icon, tag, title, description }: { icon: LucideI
             <div className="flex justify-center">
                 <Icon className="w-8 h-8 text-warning" aria-hidden="true" />
             </div>
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-warning text-xs font-medium text-warning">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-warning/10 text-xs font-medium text-warning">
                 {tag}
             </span>
             <h2 className="text-2xl font-bold text-foreground">{title}</h2>

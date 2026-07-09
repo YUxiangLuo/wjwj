@@ -175,7 +175,7 @@ export function DomainEstimationManager({
     const increaseRatio = baseSampleSize > 0 ? (sampleSizeIncrease / baseSampleSize) : 0;
 
     return (
-        <Card className="rounded-2xl border-primary/90 bg-primary/90 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -186,7 +186,7 @@ export function DomainEstimationManager({
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-primary/50 border-primary text-primary dark:bg-primary/30 dark:border-primary/30 dark:text-primary"
+                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary"
                     >
                         {domains.length} 个子总体
                     </Badge>
@@ -200,7 +200,7 @@ export function DomainEstimationManager({
 
             <CardContent className="space-y-4">
                 {isMeanEstimation && !(Number(populationVariance) > 0) && (
-                    <div className="rounded-xl border border-destructive/90 bg-destructive/80 p-3 dark:border-destructive/40 dark:bg-destructive/25">
+                    <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 dark:border-destructive/40 dark:bg-destructive/25">
                         <div className="flex items-start gap-2 text-xs text-destructive">
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                             <span>
@@ -212,7 +212,7 @@ export function DomainEstimationManager({
 
                 {/* 说明卡片 */}
                 {showExplanation && (
-                    <div className="rounded-xl border border-info/90 bg-info/70 p-3 dark:border-info/40 dark:bg-info/25">
+                    <div className="rounded-xl border border-info/20 bg-info/10 p-3 dark:border-info/40 dark:bg-info/25">
                         <div className="flex gap-2">
                             <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
                             <div className="text-xs text-info space-y-1">
@@ -258,7 +258,7 @@ export function DomainEstimationManager({
                                 onClick={() => setExpandedDomain(expandedDomain === domain.id ? null : domain.id)}
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary font-bold text-sm">
+                                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
                                         {index + 1}
                                     </div>
                                     <div>
@@ -276,7 +276,7 @@ export function DomainEstimationManager({
                                 <div className="flex items-center gap-2">
                                     <Badge 
                                         variant="outline" 
-                                        className="text-xs bg-primary/50 border-primary text-primary dark:bg-primary/30 dark:border-primary/30"
+                                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30"
                                     >
                                         {formatMarginOfError(domain.marginOfError, estimationType)} / {domain.confidenceLevel}%
                                     </Badge>
@@ -292,7 +292,7 @@ export function DomainEstimationManager({
                                             e.stopPropagation();
                                             removeDomain(domain.id);
                                         }}
-                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/30"
+                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </Button>
@@ -410,7 +410,7 @@ export function DomainEstimationManager({
                 <Button
                     variant="outline"
                     onClick={addDomain}
-                    className="w-full border-primary text-primary hover:bg-primary dark:border-primary dark:text-primary dark:hover:bg-primary/30"
+                    className="w-full border-primary text-primary hover:bg-primary/10 dark:border-primary dark:text-primary dark:hover:bg-primary/20"
                 >
                     <Plus className="w-4 h-4 mr-2" />
                     添加子总体

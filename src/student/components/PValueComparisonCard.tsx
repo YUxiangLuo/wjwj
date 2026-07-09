@@ -19,7 +19,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
     const maxSampleSize = Math.max(...comparison.map(c => c.sampleSize), currentSampleSize);
 
     return (
-        <Card className="rounded-2xl border-info/90 bg-info/90 shadow-sm dark:border-info/45 dark:bg-background">
+        <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm dark:border-info/45 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                 </div>
 
                 {/* 解释说明 */}
-                <div className="rounded-xl border border-warning bg-warning/90 p-3 dark:border-warning/45 dark:bg-background">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/45 dark:bg-background">
                     <div className="flex gap-2">
                         <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                         <div className="text-xs text-warning space-y-1">

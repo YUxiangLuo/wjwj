@@ -305,10 +305,10 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     }`}>
                                         {OPTION_LETTERS[i]}
                                     </span>
-                                    <span className={`text-base ${selected ? "text-primary font-medium" : "text-foreground/90"}`}>
+                                    <span className={`text-base ${selected ? "text-primary-foreground font-medium" : "text-foreground/90"}`}>
                                         {option}
                                     </span>
-                                    {selected && <Check className="w-5 h-5 text-primary ml-auto" />}
+                                    {selected && <Check className="w-5 h-5 text-primary-foreground ml-auto" />}
                                 </button>
                             );
                         })}
@@ -319,7 +319,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 const opts = question.options ?? [];
                 if (opts.length === 0) {
                     return (
-                        <div className="space-y-4 rounded-xl border border-warning bg-warning/80 p-4 dark:border-warning dark:bg-warning/30">
+                        <div className="space-y-4 rounded-xl border border-warning/20 bg-warning/10 p-4 dark:border-warning dark:bg-warning/30">
                             <p className="text-sm text-warning">本题暂无选项，无法作答。</p>
                             <Button type="button" variant="outline" onClick={goNext} className="w-full">
                                 跳过本题
@@ -347,10 +347,10 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     }`}>
                                         {OPTION_LETTERS[i]}
                                     </span>
-                                    <span className={`text-base ${selected ? "text-primary font-medium" : "text-foreground/90"}`}>
+                                    <span className={`text-base ${selected ? "text-primary-foreground font-medium" : "text-foreground/90"}`}>
                                         {option}
                                     </span>
-                                    {selected && <Check className="w-5 h-5 text-primary ml-auto" />}
+                                    {selected && <Check className="w-5 h-5 text-primary-foreground ml-auto" />}
                                 </button>
                             );
                         })}
@@ -364,7 +364,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 const opts = question.options ?? [];
                 if (opts.length === 0) {
                     return (
-                        <div className="space-y-4 rounded-xl border border-warning bg-warning/80 p-4 dark:border-warning dark:bg-warning/30">
+                        <div className="space-y-4 rounded-xl border border-warning/20 bg-warning/10 p-4 dark:border-warning dark:bg-warning/30">
                             <p className="text-sm text-warning">本题暂无选项，无法作答。</p>
                             <Button type="button" variant="outline" onClick={goNext} className="w-full">
                                 跳过本题
@@ -399,7 +399,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     }`}>
                                         {selected ? <Check className="w-4 h-4" /> : OPTION_LETTERS[i]}
                                     </span>
-                                    <span className={`text-base ${selected ? "text-primary font-medium" : "text-foreground/90"}`}>
+                                    <span className={`text-base ${selected ? "text-primary-foreground font-medium" : "text-foreground/90"}`}>
                                         {option}
                                     </span>
                                 </button>
@@ -414,7 +414,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 const max = question.scaleMax ?? 10;
                 if (min >= max || min < 1 || max > 10) {
                     return (
-                        <div className="space-y-4 rounded-xl border border-destructive bg-destructive/80 p-4 dark:border-destructive dark:bg-destructive/30">
+                        <div className="space-y-4 rounded-xl border border-destructive/20 bg-destructive/10 p-4 dark:border-destructive dark:bg-destructive/30">
                             <p className="text-sm text-destructive">本题量表范围无效，无法作答。</p>
                             <Button type="button" variant="outline" onClick={goNext} className="w-full">
                                 跳过本题
@@ -454,7 +454,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
 
             default:
                 return (
-                    <div className="space-y-4 rounded-xl border border-destructive bg-destructive/80 p-4 dark:border-destructive dark:bg-destructive/30">
+                    <div className="space-y-4 rounded-xl border border-destructive/20 bg-destructive/10 p-4 dark:border-destructive dark:bg-destructive/30">
                         <p className="text-sm text-destructive">
                             不支持题型「{String((question as Question).type)}」，请返回修改问卷。
                         </p>
@@ -484,7 +484,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
             >
                 {duplicateIds && (
                     <div className="absolute top-12 left-0 right-0 z-20 px-4 sm:px-6">
-                        <div className="mx-auto max-w-lg rounded-lg border border-warning bg-warning px-3 py-2 text-xs text-warning dark:border-warning dark:bg-warning/80 dark:text-warning">
+                        <div className="mx-auto max-w-lg rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-xs text-warning dark:border-warning/30 dark:bg-warning/10 dark:text-warning">
                             检测到题目 ID 重复，预览按题序区分答案；提交至服务器时仍依赖唯一 ID，请在设计器中修正。
                         </div>
                     </div>
@@ -522,7 +522,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {/* Welcome Page */}
                         {page.type === "welcome" && (
                             <div className="text-center space-y-8">
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary text-sm font-medium">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium">
                                     <ClipboardList className="w-4 h-4" />
                                     模拟填写体验
                                 </div>

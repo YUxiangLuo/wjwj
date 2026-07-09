@@ -224,7 +224,7 @@ export function MultiVariableSamplePlan({
     };
 
     return (
-        <Card className="rounded-2xl border-primary/90 bg-primary/90 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export function MultiVariableSamplePlan({
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-primary/50 border-primary text-primary dark:bg-primary/30 dark:border-primary/30 dark:text-primary"
+                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary"
                     >
                         {variables.length} 个变量
                     </Badge>
@@ -248,7 +248,7 @@ export function MultiVariableSamplePlan({
             <CardContent className="space-y-4">
                 {/* 说明卡片 */}
                 {showExplanation && (
-                    <div className="rounded-xl border border-warning bg-warning/60 p-3 dark:border-warning/20 dark:bg-warning/10">
+                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/20 dark:bg-warning/10">
                         <div className="flex gap-2">
                             <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                             <div className="text-xs text-warning space-y-1">
@@ -325,7 +325,7 @@ export function MultiVariableSamplePlan({
                                                 e.stopPropagation();
                                                 removeVariable(variable.id);
                                             }}
-                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/30"
+                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
@@ -520,7 +520,7 @@ export function MultiVariableSamplePlan({
                 <Button
                     variant="outline"
                     onClick={addVariable}
-                    className="w-full border-primary text-primary hover:bg-primary dark:border-primary dark:text-primary dark:hover:bg-primary/30"
+                    className="w-full border-primary text-primary hover:bg-primary/10 dark:border-primary dark:text-primary dark:hover:bg-primary/20"
                 >
                     <Plus className="w-4 h-4 mr-2" />
                     添加调查变量
@@ -637,7 +637,7 @@ export function MultiVariableSamplePlan({
 
                 {/* 提示信息 */}
                 {variables.some(v => v.importance !== "primary") && (
-                    <div className="rounded-xl border border-warning bg-warning/60 p-3 dark:border-warning/20 dark:bg-warning/10">
+                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/20 dark:bg-warning/10">
                         <div className="flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                             <div className="text-xs text-warning">

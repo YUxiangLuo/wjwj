@@ -199,7 +199,7 @@ export function PrecisionCostTradeoff({
         "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary dark:[&_[data-slot=slider-track]]:!bg-primary/80 [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background dark:[&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
 
     return (
-        <Card className="rounded-2xl border-primary/90 bg-primary/80 shadow-sm dark:border-primary/50 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/50 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export function PrecisionCostTradeoff({
                                 className={`text-xs h-auto py-2 ${
                                     !useCustom && selectedScenario.id === scenario.id
                                         ? "bg-primary text-primary-foreground hover:bg-primary shadow-sm"
-                                        : "border-primary bg-background text-primary hover:bg-primary dark:border-primary dark:bg-background dark:text-primary dark:hover:bg-primary/50"
+                                        : "border-primary bg-background text-primary hover:bg-primary/10 dark:border-primary dark:bg-background dark:text-primary dark:hover:bg-primary/20"
                                 }`}
                             >
                                 {scenario.name}
@@ -245,7 +245,7 @@ export function PrecisionCostTradeoff({
                         className={`w-full text-xs ${
                             useCustom
                                 ? "bg-primary text-primary-foreground hover:bg-primary"
-                                : "border-primary bg-background text-primary hover:bg-primary dark:border-primary dark:bg-background dark:text-primary dark:hover:bg-primary/50"
+                                : "border-primary bg-background text-primary hover:bg-primary/10 dark:border-primary dark:bg-background dark:text-primary dark:hover:bg-primary/20"
                         }`}
                     >
                         自定义成本参数
@@ -544,7 +544,7 @@ export function PrecisionCostTradeoff({
                 </div>
 
                 {/* 决策建议（与比例对比卡片的说明区一致：浅青绿提示框） */}
-                <div className="rounded-xl border border-info/90 bg-info/70 p-3 dark:border-info/40 dark:bg-info/25">
+                <div className="rounded-xl border border-info/20 bg-info/10 p-3 dark:border-info/40 dark:bg-info/25">
                     <div className="flex items-start gap-2">
                         <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
                         <div className="text-xs space-y-1 text-info">

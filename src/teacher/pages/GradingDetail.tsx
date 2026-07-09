@@ -415,7 +415,7 @@ export function GradingDetail() {
             {data.status === 3 && data.rejectReason && (
                 <div
                     data-testid="teacher-grading-reject-reason-banner"
-                    className="px-6 py-3 text-sm text-destructive bg-destructive/40 border-b border-destructive/40"
+                    className="px-6 py-3 text-sm text-destructive bg-destructive/10 border-b border-destructive/30"
                 >
                     <div className="mx-auto flex max-w-5xl items-start gap-2">
                         <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />

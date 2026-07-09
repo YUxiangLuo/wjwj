@@ -395,7 +395,7 @@ export function TeacherApp() {
                                     <span className="font-medium">{item.label}</span>
                                 </div>
                                 {item.path === "/grading" && pendingGradingCount > 0 && (
-                                    <Badge className="bg-destructive/20 text-destructive border-none hover:bg-destructive/30">
+                                    <Badge className="bg-destructive/10 text-destructive border-none hover:bg-destructive/20">
                                         {pendingGradingCount}
                                     </Badge>
                                 )}
@@ -407,7 +407,7 @@ export function TeacherApp() {
                 <div className="p-4 border-t border-border">
                     <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/50 border border-border">
                         <Avatar className="w-9 h-9 border border-input">
-                            <AvatarFallback className={`text-xs font-semibold ${teacherUser?.type === "assistant" ? "bg-auxiliary-muted text-auxiliary" : "bg-primary text-primary"}`}>
+                            <AvatarFallback className={`text-xs font-semibold ${teacherUser?.type === "assistant" ? "bg-auxiliary-muted text-auxiliary" : "bg-primary text-primary-foreground"}`}>
                                 {teacherUser?.name?.charAt(0) ?? (teacherUser?.type === "assistant" ? "助" : "师")}
                             </AvatarFallback>
                         </Avatar>

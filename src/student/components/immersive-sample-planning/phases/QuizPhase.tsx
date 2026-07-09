@@ -112,7 +112,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
     return (
         <div className="space-y-8">
             <div className="text-center space-y-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-info text-xs font-medium text-info">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-info/10 text-xs font-medium text-info">
                     快速自检　{questionIndex + 1} / {QUESTIONS.length}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-bold text-foreground leading-snug">
@@ -156,7 +156,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                                         : String.fromCharCode(65 + i)}
                             </span>
                             <span className={`text-base ${
-                                !submitted && i === selected ? "text-primary font-medium" : "text-foreground/90"
+                                !submitted && i === selected ? "text-primary-foreground font-medium" : "text-foreground/90"
                             }`}>
                                 {option}
                             </span>

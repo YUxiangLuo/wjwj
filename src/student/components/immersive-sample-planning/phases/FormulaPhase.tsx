@@ -142,7 +142,7 @@ export function FormulaPhase({
                         </SelectContent>
                     </Select>
 
-                    <div className="rounded-xl border border-primary bg-primary/80 p-4 text-center">
+                    <div className="rounded-xl border border-primary/20 bg-primary/10 p-4 text-center">
                         <p className="text-sm text-primary mb-1">
                             Z = {z}　→　当前 n₀ =
                         </p>
@@ -268,7 +268,7 @@ export function FormulaPhase({
 
                     {isProportion && <ErrorRangeVisual margin={params.marginOfError} />}
 
-                    <div className="rounded-xl border border-info bg-info/80 p-4 text-center">
+                    <div className="rounded-xl border border-info/20 bg-info/10 p-4 text-center">
                         <p className="text-sm text-info mb-1">
                             {isProportion
                                 ? `E = ${params.marginOfError}%　→　当前 n₀ =`
@@ -430,7 +430,7 @@ function EstimationMethodCard({ active, title, description }: { active: boolean;
         <div
             className={`rounded-2xl border p-4 text-left transition-colors ${
                 active
-                    ? "border-primary bg-primary/80 dark:border-primary dark:bg-primary/30"
+                    ? "border-primary/20 bg-primary/10 dark:border-primary dark:bg-primary/30"
                     : "border-border bg-background dark:border-border dark:bg-card"
             }`}
         >

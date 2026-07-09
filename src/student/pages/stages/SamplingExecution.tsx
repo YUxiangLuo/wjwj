@@ -361,7 +361,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     if (!hasValidSamplePlan) {
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sampling-blocked">
-                <Card className="rounded-2xl border-destructive bg-destructive/70 shadow-sm">
+                <Card className="rounded-2xl border-destructive/20 bg-destructive/10 shadow-sm">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-destructive">
                             <AlertCircle className="h-5 w-5" />

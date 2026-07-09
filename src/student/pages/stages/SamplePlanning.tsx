@@ -200,7 +200,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             variant="outline"
                             onClick={() => setImmersiveOpen(true)}
-                            className="border-primary text-primary hover:bg-primary/30"
+                            className="border-primary text-primary hover:bg-primary/10"
                         >
                             <Sparkles className="w-4 h-4 mr-1.5" />
                             重新规划样本量

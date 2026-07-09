@@ -254,7 +254,7 @@ function OverviewSection({
             </div>
 
             {advancedSourceLabel && (
-                <div className="rounded-xl border border-warning bg-warning/70 p-4 text-sm text-warning">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">
                     最终样本量来源：{advancedSourceLabel}。报告解读当前 n 时，应以该高级工具的推演结论为准；上方“推荐样本量 n”仅表示常规公式的基线建议。
                 </div>
             )}

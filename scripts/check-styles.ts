@@ -40,13 +40,16 @@ const COLOR_UTILITY_PREFIXES = [
 ] as const;
 
 const STATIC_COLORS = ["white", "black"] as const;
+const SEMANTIC_INTENT_COLORS = ["primary", "success", "warning", "info", "destructive", "auxiliary"] as const;
 
 const MAX_HARDCODED_COLOR_CLASSES = 0;
 const MAX_DARK_COLOR_CLASSES = 0;
+const MAX_SAME_INTENT_FILLED_CLASSES = 0;
 
 const palettePattern = PALETTE_COLORS.join("|");
 const prefixPattern = COLOR_UTILITY_PREFIXES.join("|");
 const staticColorPattern = STATIC_COLORS.join("|");
+const semanticIntentPattern = SEMANTIC_INTENT_COLORS.join("|");
 const hardcodedColorClassPattern = new RegExp(
     `(?:${prefixPattern})-(?:(?:${palettePattern})-[0-9]+|(?:${staticColorPattern})(?:/[0-9]+)?)`,
     "g"
@@ -55,11 +58,16 @@ const darkColorClassPattern = new RegExp(
     `dark:(?:${prefixPattern})-(?:(?:${palettePattern})-[0-9]+|(?:${staticColorPattern})(?:/[0-9]+)?)`,
     "g"
 );
+const sameIntentFilledClassPattern = new RegExp(
+    `bg-(${semanticIntentPattern})(?![-/\\w])(?=[^\"\`\\n]*text-\\1(?!-foreground))`,
+    "g"
+);
 
 type FileStats = {
     path: string;
     hardcodedColorClasses: number;
     darkColorClasses: number;
+    sameIntentFilledClasses: number;
 };
 
 async function listSourceFiles() {
@@ -84,6 +92,7 @@ async function collectStats() {
             path,
             hardcodedColorClasses: countMatches(text, hardcodedColorClassPattern),
             darkColorClasses: countMatches(text, darkColorClassPattern),
+            sameIntentFilledClasses: countMatches(text, sameIntentFilledClassPattern),
         });
     }
 
@@ -102,6 +111,7 @@ function topFiles(stats: FileStats[], key: keyof Omit<FileStats, "path">, limit 
 const stats = await collectStats();
 const hardcodedColorClasses = stats.reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
 const darkColorClasses = stats.reduce((sum, item) => sum + item.darkColorClasses, 0);
+const sameIntentFilledClasses = stats.reduce((sum, item) => sum + item.sameIntentFilledClasses, 0);
 const uiHardcodedColorClasses = stats
     .filter((item) => item.path.startsWith("src/components/ui/"))
     .reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
@@ -122,9 +132,16 @@ if (darkColorClasses > MAX_DARK_COLOR_CLASSES) {
     failures.push(`dark: color classes increased to ${darkColorClasses}; ratchet maximum is ${MAX_DARK_COLOR_CLASSES}.`);
 }
 
+if (sameIntentFilledClasses > MAX_SAME_INTENT_FILLED_CLASSES) {
+    failures.push(
+        `Filled semantic backgrounds with same-color text increased to ${sameIntentFilledClasses}; maximum is ${MAX_SAME_INTENT_FILLED_CLASSES}. Use *-foreground text or a /10 background tint.`
+    );
+}
+
 console.log("Style usage:");
 console.log(`  hardcoded palette classes: ${hardcodedColorClasses}/${MAX_HARDCODED_COLOR_CLASSES}`);
 console.log(`  dark: color classes:       ${darkColorClasses}/${MAX_DARK_COLOR_CLASSES}`);
+console.log(`  same-intent filled pairs:  ${sameIntentFilledClasses}/${MAX_SAME_INTENT_FILLED_CLASSES}`);
 console.log(`  ui palette classes:        ${uiHardcodedColorClasses}`);
 
 if (failures.length > 0) {
@@ -143,6 +160,12 @@ if (failures.length > 0) {
     if (hardcodedTop) {
         console.error("\nTop hardcoded color files:");
         console.error(hardcodedTop);
+    }
+
+    const sameIntentTop = topFiles(stats, "sameIntentFilledClasses");
+    if (sameIntentTop) {
+        console.error("\nTop same-intent filled semantic color files:");
+        console.error(sameIntentTop);
     }
 
     process.exit(1);

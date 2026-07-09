@@ -176,7 +176,7 @@ export function Dashboard() {
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border bg-background/30 dark:bg-background/30 hover:bg-muted/50 hover:border-input transition-all gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar className="w-10 h-10 border border-input">
-                                            <AvatarFallback className="bg-primary text-primary text-sm font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
+                                            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <div className="text-sm font-medium text-foreground">{item.student}</div>
@@ -212,7 +212,7 @@ export function Dashboard() {
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border bg-background/30 dark:bg-background/30 hover:bg-muted/50 hover:border-input transition-all gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar className="w-10 h-10 border border-input">
-                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-destructive text-destructive" : "bg-success text-success"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
+                                            <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
                                         <div>
                                             <div className="text-sm font-medium text-foreground">{item.student}</div>

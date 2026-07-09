@@ -78,7 +78,7 @@ export function CVBasedSampleSizeCalculator({
     }, [targetCV, estimatedCV, confidenceLevelLocal, populationSize, designEffect, nonResponseRate]);
 
     return (
-        <Card className="rounded-2xl border-primary/90 bg-primary/90 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ export function CVBasedSampleSizeCalculator({
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-primary/50 border-primary text-primary dark:bg-primary/30 dark:border-primary/30 dark:text-primary"
+                        className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary"
                     >
                         高级方法
                     </Badge>
@@ -101,7 +101,7 @@ export function CVBasedSampleSizeCalculator({
 
             <CardContent className="space-y-4">
                 {/* 说明 */}
-                <div className="rounded-xl border border-info/90 bg-info/70 p-3 dark:border-info/40 dark:bg-info/25">
+                <div className="rounded-xl border border-info/20 bg-info/10 p-3 dark:border-info/40 dark:bg-info/25">
                     <div className="flex gap-2">
                         <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
                         <div className="text-xs text-info space-y-1.5">
@@ -271,7 +271,7 @@ export function CVBasedSampleSizeCalculator({
                             </div>
 
                             {/* 对比误差限方法 */}
-                            <div className="rounded-lg border border-warning bg-warning/90 p-2 dark:border-warning/40 dark:bg-background">
+                            <div className="rounded-lg border border-warning/20 bg-warning/10 p-2 dark:border-warning/40 dark:bg-background">
                                 <div className="flex items-start gap-2 text-xs">
                                     <BarChart3 className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                                     <div className="text-warning">

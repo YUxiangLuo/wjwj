@@ -391,7 +391,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("proportional")}
-                                className="h-7 text-xs border-warning text-warning hover:bg-warning dark:border-warning dark:text-warning dark:hover:bg-warning/30"
+                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10 dark:border-warning dark:text-warning dark:hover:bg-warning/20"
                             >
                                 <Percent className="w-3 h-3 mr-1" />
                                 按比例
@@ -400,7 +400,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("equal")}
-                                className="h-7 text-xs border-warning text-warning hover:bg-warning dark:border-warning dark:text-warning dark:hover:bg-warning/30"
+                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10 dark:border-warning dark:text-warning dark:hover:bg-warning/20"
                             >
                                 <Equal className="w-3 h-3 mr-1" />
                                 等额
@@ -409,7 +409,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("neyman")}
-                                className="h-7 text-xs border-warning text-warning hover:bg-warning dark:border-warning dark:text-warning dark:hover:bg-warning/30"
+                                className="h-7 text-xs border-warning text-warning hover:bg-warning/10 dark:border-warning dark:text-warning dark:hover:bg-warning/20"
                             >
                                 <TrendingUp className="w-3 h-3 mr-1" />
                                 奈曼

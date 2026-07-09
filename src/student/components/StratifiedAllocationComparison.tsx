@@ -273,7 +273,7 @@ export function StratifiedAllocationComparison({
                 </div>
 
                 {/* 效率说明 */}
-                <div className="rounded-xl border border-warning bg-warning/60 p-3 dark:border-warning/20 dark:bg-warning/10">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/20 dark:bg-warning/10">
                     <div className="flex gap-2">
                         <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                         <div className="text-xs text-warning space-y-1">
@@ -290,7 +290,7 @@ export function StratifiedAllocationComparison({
                 {hasAnyOverAllocation && (
                     <div className="space-y-3">
                         {/* 超额分配警告 - 详细版 */}
-                        <div className="rounded-xl border-2 border-destructive bg-destructive p-4 dark:border-destructive/40 dark:bg-destructive/30">
+                        <div className="rounded-xl border-2 border-destructive/20 bg-destructive/10 p-4 dark:border-destructive/40 dark:bg-destructive/30">
                             <div className="flex items-start gap-3">
                                 <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
                                 <div className="flex-1">
@@ -305,7 +305,7 @@ export function StratifiedAllocationComparison({
                                             <Badge
                                                 key={layerName}
                                                 variant="outline"
-                                                className="bg-destructive border-destructive text-destructive dark:bg-destructive/30 dark:border-destructive"
+                                                className="bg-destructive/10 border-destructive/20 text-destructive dark:bg-destructive/10 dark:border-destructive/30"
                                             >
                                                 {layerName}
                                             </Badge>
@@ -319,7 +319,7 @@ export function StratifiedAllocationComparison({
                         </div>
 
                         {/* 处理方法建议 */}
-                        <div className="rounded-xl border border-success bg-success/60 p-3 dark:border-success/30 dark:bg-success/20">
+                        <div className="rounded-xl border border-success/20 bg-success/10 p-3 dark:border-success/30 dark:bg-success/20">
                             <div className="flex items-start gap-2">
                                 <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
                                 <div className="text-xs text-success">
@@ -338,7 +338,7 @@ export function StratifiedAllocationComparison({
                             variant="outline"
                             size="sm"
                             onClick={() => setShowOverflowDetails(!showOverflowDetails)}
-                            className="w-full border-destructive text-destructive hover:bg-destructive dark:border-destructive dark:text-destructive dark:hover:bg-destructive/30"
+                            className="w-full border-destructive text-destructive hover:bg-destructive/10 dark:border-destructive dark:text-destructive dark:hover:bg-destructive/20"
                         >
                             {showOverflowDetails ? "隐藏超额分配详情" : "查看超额分配详情及处理"}
                         </Button>
@@ -403,7 +403,7 @@ export function StratifiedAllocationComparison({
                                                             sampleCount: a.isOverAllocated ? a.populationSize : a.sampleSize,
                                                         })));
                                                     }}
-                                                    className="w-full text-xs border-destructive text-destructive hover:bg-destructive dark:border-destructive dark:text-destructive"
+                                                    className="w-full text-xs border-destructive text-destructive hover:bg-destructive/10 dark:border-destructive dark:text-destructive"
                                                 >
                                                     应用此分配（自动处理超额层）
                                                     <ArrowRight className="w-3 h-3 ml-1" />

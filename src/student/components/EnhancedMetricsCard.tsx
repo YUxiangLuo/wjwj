@@ -34,7 +34,7 @@ export function EnhancedMetricsCard({
     const sizeDeviation = finalSampleSize !== undefined && finalSampleSize !== metrics.n;
 
     return (
-        <Card className="rounded-2xl border-primary/90 bg-primary/90 shadow-sm dark:border-primary/45 dark:bg-background">
+        <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm dark:border-primary/45 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -43,7 +43,7 @@ export function EnhancedMetricsCard({
                             精度指标分析
                         </CardTitle>
                     </div>
-                    <Badge variant="outline" className="text-xs bg-primary/50 border-primary text-primary dark:bg-primary/30 dark:border-primary/30 dark:text-primary">
+                    <Badge variant="outline" className="text-xs bg-primary/10 border-primary/20 text-primary dark:bg-primary/10 dark:border-primary/30 dark:text-primary">
                         {isMeanEstimation ? `基于 σ²=${populationVariance ?? "—"}` : `基于 p=${p}`}
                     </Badge>
                 </div>

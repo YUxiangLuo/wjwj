@@ -247,7 +247,7 @@ export function DecisionPhase({
     return (
         <div className="space-y-6">
             <div className="text-center space-y-2">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary text-xs font-medium text-primary">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-xs font-medium text-primary">
                     决策面板
                 </span>
                 <h2 className="text-2xl font-bold text-foreground">确认会用于抽样执行的最终样本量</h2>
@@ -257,7 +257,7 @@ export function DecisionPhase({
             </div>
 
             {hasAdvancedSource && (
-                <div className="rounded-xl border border-warning/90 bg-warning/95 dark:border-warning/60 dark:bg-warning/35 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 dark:border-warning/60 dark:bg-warning/35 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-start gap-2 text-sm text-warning">
                         <Info className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
                         <span>
@@ -269,7 +269,7 @@ export function DecisionPhase({
                         variant="outline"
                         size="sm"
                         onClick={onClearAdvancedSource}
-                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning dark:border-warning dark:bg-card dark:text-warning dark:hover:bg-warning/80"
+                        className="shrink-0 border-warning bg-background text-warning hover:bg-warning/10 dark:border-warning dark:bg-card dark:text-warning dark:hover:bg-warning/20"
                     >
                         按常规继续
                     </Button>
@@ -417,8 +417,8 @@ export function DecisionPhase({
                                     "rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors",
                                     isDisabled && "opacity-45 cursor-not-allowed",
                                     isActiveSource
-                                        ? "ring-2 ring-primary border-primary bg-primary text-primary dark:ring-primary dark:border-primary dark:bg-primary/55 dark:text-primary shadow-sm"
-                                        : "border-border dark:border-input bg-card dark:bg-muted text-muted-foreground hover:bg-primary hover:border-primary hover:text-primary dark:hover:bg-primary/40 dark:hover:border-primary dark:hover:text-primary",
+                                        ? "ring-2 ring-primary border-primary bg-primary text-primary-foreground dark:ring-primary dark:border-primary dark:bg-primary dark:text-primary-foreground shadow-sm"
+                                        : "border-border dark:border-input bg-card dark:bg-muted text-muted-foreground hover:bg-primary/10 hover:border-primary hover:text-primary dark:hover:bg-primary/20 dark:hover:border-primary dark:hover:text-primary",
                                 )}
                             >
                                 {label}

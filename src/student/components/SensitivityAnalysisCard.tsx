@@ -62,7 +62,7 @@ export function SensitivityAnalysisCard({
     };
 
     return (
-        <Card className="rounded-2xl border border-primary/90 bg-primary/90 shadow-sm dark:border-primary/50 dark:bg-background">
+        <Card className="rounded-2xl border border-primary/20 bg-primary/10 shadow-sm dark:border-primary/50 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function SensitivityAnalysisCard({
                                                     {confidenceLevel}%
                                                 </span>
                                                 {isCurrentConfidence && (
-                                                    <Badge variant="outline" className="text-xs border-primary text-primary dark:border-primary dark:text-primary bg-primary">
+                                                    <Badge variant="outline" className="text-xs border-primary/20 text-primary dark:border-primary/30 dark:text-primary bg-primary/10">
                                                         当前
                                                     </Badge>
                                                 )}

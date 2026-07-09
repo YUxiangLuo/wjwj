@@ -61,7 +61,7 @@ export function FactorsPhase({ step, params, onNext }: Props) {
     return (
         <div className="space-y-8">
             <div className="text-center space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-info text-xs font-medium text-info">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-info/10 text-xs font-medium text-info">
                     <Icon className="w-3.5 h-3.5" />
                     {meta.badge}
                 </span>
