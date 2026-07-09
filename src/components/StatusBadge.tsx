@@ -35,5 +35,5 @@ function StatusBadge({ className, intent, ...props }: StatusBadgeProps) {
     );
 }
 
-export { StatusBadge, statusBadgeVariants };
+export { StatusBadge };
 export type { StatusBadgeIntent };

@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const iconTileVariants = cva("flex shrink-0 items-center justify-center border", {
+const iconTileVariants = cva("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border", {
     variants: {
         intent: {
             success: "border-success/20 bg-success/10 text-success",
@@ -14,28 +14,22 @@ const iconTileVariants = cva("flex shrink-0 items-center justify-center border",
             auxiliary: "border-auxiliary/20 bg-auxiliary/10 text-auxiliary",
             neutral: "border-border bg-muted text-muted-foreground",
         },
-        size: {
-            sm: "h-8 w-8 rounded-md",
-            md: "h-10 w-10 rounded-lg",
-            lg: "h-12 w-12 rounded-xl",
-        },
     },
     defaultVariants: {
         intent: "neutral",
-        size: "md",
     },
 });
 
 type IconTileProps = React.HTMLAttributes<HTMLDivElement> &
     VariantProps<typeof iconTileVariants>;
 
-function IconTile({ className, intent, size, ...props }: IconTileProps) {
+function IconTile({ className, intent, ...props }: IconTileProps) {
     return (
         <div
-            className={cn(iconTileVariants({ intent, size }), className)}
+            className={cn(iconTileVariants({ intent }), className)}
             {...props}
         />
     );
 }
 
-export { IconTile, iconTileVariants };
+export { IconTile };

@@ -130,9 +130,14 @@ const uiHardcodedColorClasses = stats
 const themeCss = await Bun.file("styles/theme.css").text();
 const failures: string[] = [];
 
-if (!themeCss.includes('@import "tailwindcss" source(none);') || !themeCss.includes('@source "../src";')) {
+if (
+    themeCss.includes('source(none)')
+    || !themeCss.includes('@import "tailwindcss";')
+    || !themeCss.includes('@source not "../*.md";')
+    || !themeCss.includes('@source not "../**/*.md";')
+) {
     failures.push(
-        'styles/theme.css must disable automatic Tailwind source detection and explicitly source ../src so docs/examples cannot generate forbidden utilities.'
+        'styles/theme.css must use Bun-compatible Tailwind import and exclude markdown sources so docs/examples cannot generate forbidden utilities.'
     );
 }
 
