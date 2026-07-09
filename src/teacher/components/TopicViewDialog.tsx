@@ -369,7 +369,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 </div>
 
                 <DialogFooter className="border-t border-border pt-4 flex-shrink-0">
-                    <Button onClick={() => onOpenChange(false)} className="bg-muted hover:bg-muted text-foreground">关闭</Button>
+                    <Button onClick={() => onOpenChange(false)} className="bg-muted hover:bg-muted-foreground/20 text-foreground">关闭</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

@@ -40,6 +40,14 @@
     --color-auxiliary-strong: var(--auxiliary-strong);
     --color-auxiliary-muted: var(--auxiliary-muted);
     --color-auxiliary-border: var(--auxiliary-border);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-chart-6: var(--chart-6);
+    --color-chart-7: var(--chart-7);
+    --color-chart-8: var(--chart-8);
     --color-overlay: var(--overlay);
 
     --radius-sm: calc(var(--radius) - 4px);
@@ -108,6 +116,15 @@
     --auxiliary-strong: #4c1d95;
     --auxiliary-muted: #f5f3ff;
     --auxiliary-border: #ddd6fe;
+    /* Categorical data colors stay distinct from semantic status intents. */
+    --chart-1: #64748b;
+    --chart-2: #2563eb;
+    --chart-3: #0891b2;
+    --chart-4: #7c3aed;
+    --chart-5: #d97706;
+    --chart-6: #ca8a04;
+    --chart-7: #059669;
+    --chart-8: #e11d48;
     --overlay: #000000;
 }
 

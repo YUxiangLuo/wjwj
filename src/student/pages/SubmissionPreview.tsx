@@ -372,10 +372,10 @@ export function SubmissionPreview() {
                                             )}
                                         </div>
 
-                                        <div className="mt-6 pt-4 border-t border-background/10">
+                                        <div className="mt-6 pt-4 border-t border-border">
                                             <RichTextContent
                                                 html={questionnaire.endingText ?? ""}
-                                                className="text-sm text-muted-foreground bg-card/30 p-3 rounded-lg border border-background/5"
+                                                className="text-sm text-muted-foreground bg-card/30 p-3 rounded-lg border border-border/60"
                                             />
                                         </div>
                                     </>

@@ -19,6 +19,7 @@ import {
     initialDesignEffectFromParent,
     nonResponseDecimalToFormPercent,
 } from "./inherit-planning-params";
+import { primarySliderClassName } from "./sample-planning-styles";
 
 interface CVBasedSampleSizeCalculatorProps {
     populationSize: number;
@@ -40,9 +41,6 @@ export function CVBasedSampleSizeCalculator({
     initialNonResponseRate,
     onApplySampleSize,
 }: CVBasedSampleSizeCalculatorProps) {
-    const sliderIndigo =
-        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
-
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
 
     const [targetCV, setTargetCV] = useState(5);  // 目标变异系数 (%)
@@ -154,7 +152,7 @@ export function CVBasedSampleSizeCalculator({
                             min={1}
                             max={20}
                             step={0.5}
-                            className={sliderIndigo}
+                            className={primarySliderClassName}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
                             <span>1% (高精度)</span>

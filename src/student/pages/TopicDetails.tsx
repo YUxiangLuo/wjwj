@@ -433,7 +433,7 @@ export function TopicDetails() {
                                     <div className={`
                                         w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-4 transition-all duration-300
                                         ${isCompleted
-                                            ? "bg-success border-background text-primary-foreground shadow-lg shadow-success/30"
+                                            ? "bg-success border-background text-success-foreground shadow-lg shadow-success/30"
                                             : isCurrent
                                                 ? "bg-primary border-background text-primary-foreground ring-4 ring-primary/20 scale-110 shadow-lg shadow-primary/40"
                                                 : "bg-muted border-background text-muted-foreground"}

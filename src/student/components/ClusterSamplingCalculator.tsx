@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { calculateClusterSamplingSize, type ClusterSamplingResult } from "../experiment/sample-plan";
 import { nonResponseDecimalToFormPercent } from "./inherit-planning-params";
+import { primarySliderClassName } from "./sample-planning-styles";
 
 interface ClusterSamplingCalculatorProps {
     populationSize: number;
@@ -34,9 +35,6 @@ export function ClusterSamplingCalculator({
     initialNonResponseRate,
     onApplyResult
 }: ClusterSamplingCalculatorProps) {
-    const sliderIndigo =
-        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
-
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
     const [marginOfErrorLocal, setMarginOfErrorLocal] = useState(() => marginOfError);
 
@@ -126,7 +124,7 @@ export function ClusterSamplingCalculator({
                             min={10}
                             max={500}
                             step={10}
-                            className={sliderIndigo}
+                            className={primarySliderClassName}
                         />
                         <p className="text-xs text-muted-foreground">
                             例如：每栋楼平均50户、每班平均30名学生
@@ -149,7 +147,7 @@ export function ClusterSamplingCalculator({
                             min={1}
                             max={5}
                             step={0.1}
-                            className={sliderIndigo}
+                            className={primarySliderClassName}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
                             <span>1.0 (简单随机)</span>
@@ -186,7 +184,7 @@ export function ClusterSamplingCalculator({
                                 min={1}
                                 max={10}
                                 step={1}
-                                className={sliderIndigo}
+                                className={primarySliderClassName}
                             />
                         </div>
                     </div>

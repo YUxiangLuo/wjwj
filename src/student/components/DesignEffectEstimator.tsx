@@ -152,11 +152,11 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                             </span>
                             <Badge className={`${
                                 method.deff < 1
-                                    ? "bg-success"
+                                    ? "bg-success text-success-foreground"
                                     : method.deff === 1
-                                        ? "bg-primary"
-                                        : "bg-warning"
-                            } text-primary-foreground`}>
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-warning text-warning-foreground"
+                            }`}>
                                 deff = {method.deff.toFixed(1)}
                             </Badge>
                         </div>

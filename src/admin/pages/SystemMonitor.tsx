@@ -27,13 +27,24 @@ const requestMonitorSnapshot = createSingleFlight(async () => {
     return { metricsRes, logsRes };
 });
 
-function MetricCard({ label, value, unit, icon: Icon, color }: {
+type MetricTone = "success" | "warning" | "destructive" | "info";
+
+const METRIC_TONE_CLASSES: Record<MetricTone, { value: string; progress: string }> = {
+    success: { value: "text-success", progress: "[&>div]:bg-success" },
+    warning: { value: "text-warning", progress: "[&>div]:bg-warning" },
+    destructive: { value: "text-destructive", progress: "[&>div]:bg-destructive" },
+    info: { value: "text-info", progress: "[&>div]:bg-info" },
+};
+
+function MetricCard({ label, value, unit, icon: Icon, tone }: {
     label: string;
     value: number;
     unit: string;
     icon: React.ComponentType<{ className?: string }>;
-    color: string;
+    tone: MetricTone;
 }) {
+    const classes = METRIC_TONE_CLASSES[tone];
+
     return (
         <Card className="transition-colors hover:border-input">
             <CardContent className="p-5">
@@ -44,10 +55,10 @@ function MetricCard({ label, value, unit, icon: Icon, color }: {
                     </div>
                 </div>
                 <div className="flex items-end gap-1.5 mb-4">
-                    <span className={`text-3xl font-bold tracking-tight ${color}`}>{value}</span>
+                    <span className={`text-3xl font-bold tracking-tight ${classes.value}`}>{value}</span>
                     <span className="text-sm font-medium text-muted-foreground mb-1.5">{unit}</span>
                 </div>
-                <Progress value={Math.min(value, 100)} className={`h-2 bg-muted ${color.replace("text-", "[&>div]:bg-")}`} />
+                <Progress value={Math.min(value, 100)} className={`h-2 bg-muted ${classes.progress}`} />
             </CardContent>
         </Card>
     );
@@ -170,10 +181,10 @@ export function SystemMonitor() {
         }
     };
 
-    const getMetricColor = (value: number, thresholds: [number, number]) => {
-        if (value > thresholds[1]) return "text-destructive";
-        if (value > thresholds[0]) return "text-warning";
-        return "text-success";
+    const getMetricTone = (value: number, thresholds: [number, number]): MetricTone => {
+        if (value > thresholds[1]) return "destructive";
+        if (value > thresholds[0]) return "warning";
+        return "success";
     };
 
     return (
@@ -200,7 +211,7 @@ export function SystemMonitor() {
                         data-testid={isLive ? "monitor-pause" : "monitor-resume"}
                         variant={isLive ? "secondary" : "default"}
                         onClick={() => setIsLive(!isLive)}
-                        className={isLive ? "bg-muted text-foreground/90 hover:bg-muted" : "bg-primary hover:bg-primary/90 text-primary-foreground"}
+                        className={isLive ? "bg-muted text-foreground/90 hover:bg-muted-foreground/20" : "bg-primary hover:bg-primary/90 text-primary-foreground"}
                     >
                         {isLive ? (
                             <>
@@ -223,28 +234,28 @@ export function SystemMonitor() {
                     value={metrics.cpu}
                     unit="%"
                     icon={Cpu}
-                    color={getMetricColor(metrics.cpu, [60, 80])}
+                    tone={getMetricTone(metrics.cpu, [60, 80])}
                 />
                 <MetricCard
                     label="内存使用率"
                     value={metrics.memory}
                     unit="%"
                     icon={Activity}
-                    color={getMetricColor(metrics.memory, [70, 85])}
+                    tone={getMetricTone(metrics.memory, [70, 85])}
                 />
                 <MetricCard
                     label="磁盘使用率"
                     value={metrics.disk}
                     unit="%"
                     icon={HardDrive}
-                    color={getMetricColor(metrics.disk, [75, 90])}
+                    tone={getMetricTone(metrics.disk, [75, 90])}
                 />
                 <MetricCard
                     label="网络带宽"
                     value={metrics.network}
                     unit="Mbps"
                     icon={Wifi}
-                    color="text-info"
+                    tone="info"
                 />
             </div>
 

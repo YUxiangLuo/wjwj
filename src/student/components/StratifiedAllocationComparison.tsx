@@ -370,7 +370,7 @@ export function StratifiedAllocationComparison({
                                                     .map(layer => (
                                                         <div
                                                             key={layer.layerName}
-                                                            className="flex items-center justify-between text-xs bg-destructive p-2 rounded"
+                                                            className="flex items-center justify-between rounded border border-destructive/20 bg-destructive/10 p-2 text-xs"
                                                         >
                                                             <span className="text-destructive">
                                                                 {layer.layerName}

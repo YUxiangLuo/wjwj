@@ -78,12 +78,12 @@ const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; samplin
 };
 
 const LAYER_COLORS = [
-    { bg: "bg-destructive", ring: "ring-destructive", text: "text-destructive" },
-    { bg: "bg-info", ring: "ring-info", text: "text-info" },
-    { bg: "bg-success", ring: "ring-success", text: "text-success" },
-    { bg: "bg-warning", ring: "ring-warning", text: "text-warning" },
-    { bg: "bg-auxiliary", ring: "ring-auxiliary", text: "text-auxiliary" },
-    { bg: "bg-auxiliary", ring: "ring-auxiliary", text: "text-auxiliary" },
+    { bg: "bg-chart-8", ring: "ring-chart-8" },
+    { bg: "bg-chart-2", ring: "ring-chart-2" },
+    { bg: "bg-chart-7", ring: "ring-chart-7" },
+    { bg: "bg-chart-5", ring: "ring-chart-5" },
+    { bg: "bg-chart-4", ring: "ring-chart-4" },
+    { bg: "bg-chart-6", ring: "ring-chart-6" },
 ] as const;
 
 function lc(index: number) {
@@ -161,9 +161,10 @@ const DotGrid = memo(function DotGrid({
                         inlineStyle = { opacity };
                     } else if (method === "systematic" && systematicScanIndex !== undefined && i > systematicScanIndex) {
                         // Not yet scanned — dimmer to show the scan sweeping through
-                        bgClass = "bg-muted-foreground/20";
+                        bgClass = "bg-muted-foreground/15";
                     } else {
-                        bgClass = "bg-muted-foreground/20";
+                        // Already scanned points remain visibly stronger than the pending field.
+                        bgClass = method === "systematic" ? "bg-muted-foreground/80" : "bg-muted-foreground/20";
                     }
                 } else {
                     bgClass = "bg-transparent";
@@ -698,7 +699,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                     </thead>
                     <tbody>
                         {rows.map((row, rowIndex) => (
-                            <tr key={start + rowIndex} className="border-b border-background hover:bg-card">
+                            <tr key={start + rowIndex} className="border-b border-border hover:bg-card">
                                 <td className="px-3 py-1.5 text-xs text-muted-foreground font-mono whitespace-nowrap">{start + rowIndex + 1}</td>
                                 {keys.map((key) => (
                                     <td key={key} className="px-3 py-1.5 text-xs text-foreground/90 whitespace-nowrap">

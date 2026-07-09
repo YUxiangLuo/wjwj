@@ -55,10 +55,10 @@ export function SensitivityAnalysisCard({
         if (isCurrent) {
             return "bg-background ring-2 ring-primary shadow-sm";
         }
-        if (intensity < 40) return "bg-primary/95";
-        if (intensity < 55) return "bg-primary/90";
-        if (intensity < 72) return "bg-primary/85";
-        return "bg-primary/80";
+        if (intensity < 40) return "bg-primary/10";
+        if (intensity < 55) return "bg-primary/20";
+        if (intensity < 72) return "bg-primary/30";
+        return "bg-primary/40";
     };
 
     return (

@@ -609,7 +609,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {page.type === "ending" && (
                             <div className="text-center space-y-8">
                                 <div className="w-16 h-16 mx-auto rounded-2xl bg-primary flex items-center justify-center">
-                                    <ClipboardList className="w-8 h-8 text-primary" />
+                                    <ClipboardList className="w-8 h-8 text-primary-foreground" />
                                 </div>
                                 <div className={`${cardClass}`}>
                                     <RichTextContent
@@ -639,7 +639,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         {page.type === "complete" && (
                             <div className="text-center space-y-8">
                                 <div className="w-20 h-20 mx-auto rounded-full bg-success flex items-center justify-center animate-in zoom-in duration-500">
-                                    <Check className="w-10 h-10 text-success" />
+                                    <Check className="w-10 h-10 text-success-foreground" />
                                 </div>
                                 <div className="space-y-2">
                                     <h2 id={titleId} className="text-2xl font-bold text-foreground">模拟填写完成！</h2>

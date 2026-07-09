@@ -25,25 +25,25 @@ type StatusKey = keyof typeof STATUS_CONFIG;
 const STATUS_KEYS = Object.keys(STATUS_CONFIG) as StatusKey[];
 
 const PROGRESS_COLORS: Record<StatusKey, string> = {
-    not_started: "bg-muted-foreground/50",
-    stage1: "bg-info",
-    stage2: "bg-info",
-    stage3: "bg-auxiliary",
-    stage4: "bg-warning",
-    submitted: "bg-warning",
-    graded: "bg-success",
-    rejected: "bg-destructive",
+    not_started: "bg-chart-1",
+    stage1: "bg-chart-2",
+    stage2: "bg-chart-3",
+    stage3: "bg-chart-4",
+    stage4: "bg-chart-5",
+    submitted: "bg-chart-6",
+    graded: "bg-chart-7",
+    rejected: "bg-chart-8",
 };
 
 const RING_COLORS: Record<StatusKey, string> = {
-    not_started: "#475569",
-    stage1: "#3b82f6",
-    stage2: "#06b6d4",
-    stage3: "#8b5cf6",
-    stage4: "#f59e0b",
-    submitted: "#eab308",
-    graded: "#10b981",
-    rejected: "#f43f5e",
+    not_started: "var(--chart-1)",
+    stage1: "var(--chart-2)",
+    stage2: "var(--chart-3)",
+    stage3: "var(--chart-4)",
+    stage4: "var(--chart-5)",
+    submitted: "var(--chart-6)",
+    graded: "var(--chart-7)",
+    rejected: "var(--chart-8)",
 };
 
 const CHART_SIZE = 160;

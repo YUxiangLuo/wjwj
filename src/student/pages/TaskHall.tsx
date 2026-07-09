@@ -228,7 +228,7 @@ function TaskCard({ task }: TaskCardProps) {
                     {/* Action button */}
                     <div className="flex gap-2">
                         <Button
-                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground shadow-lg shadow-primary/20' : ''} ${action.variant === 'destructive' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground hover:text-primary-foreground' : ''} ${action.variant === 'outline' ? 'border-input text-foreground/90 hover:bg-muted hover:text-foreground' : ''}`}
+                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground shadow-lg shadow-primary/20' : ''} ${action.variant === 'destructive' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground hover:text-destructive-foreground' : ''} ${action.variant === 'outline' ? 'border-input text-foreground/90 hover:bg-muted hover:text-foreground' : ''}`}
                             variant="ghost"
                             disabled={disabled}
                             onClick={() => { void handlePrimaryAction(); }}
@@ -470,9 +470,9 @@ export function TaskHall() {
             {/* Task Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
                 {taskError ? (
-                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-destructive/30 rounded-3xl border border-dashed border-destructive">
+                    <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-destructive/40 bg-destructive/10 py-20">
                         <div className="w-16 h-16 bg-destructive rounded-full flex items-center justify-center mb-4 border border-destructive">
-                            <AlertCircle className="w-8 h-8 text-destructive" />
+                            <AlertCircle className="w-8 h-8 text-destructive-foreground" />
                         </div>
                         <p className="text-lg text-muted-foreground font-medium">任务加载失败</p>
                         <p className="text-sm text-muted-foreground mt-1">请检查网络连接后重试</p>

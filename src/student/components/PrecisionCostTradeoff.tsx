@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { zForConfidenceLevel } from "../experiment/confidence-level";
 import { calculateFinitePopulationSampleSize } from "../experiment/sample-plan";
+import { primarySliderClassName } from "./sample-planning-styles";
 
 interface CostScenario {
     id: string;
@@ -194,10 +195,6 @@ export function PrecisionCostTradeoff({
         };
     }, [targetMarginOfError, confidenceLevelLocal, populationSize, designEffectLocal, nonResponseRateLocal, currentScenario]);
 
-    /** 与「高级分析（SE/CV/敏感性）」一致：靛蓝主结构 + 青绿强调精度数值 + 白底内容区 */
-    const sliderIndigo =
-        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
-
     return (
         <Card className="rounded-2xl border-primary/20 bg-primary/10 shadow-sm">
             <CardHeader className="pb-3">
@@ -347,7 +344,7 @@ export function PrecisionCostTradeoff({
                             min={10}
                             max={50}
                             step={1}
-                            className={sliderIndigo}
+                            className={primarySliderClassName}
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -363,7 +360,7 @@ export function PrecisionCostTradeoff({
                             min={0}
                             max={50}
                             step={5}
-                            className={sliderIndigo}
+                            className={primarySliderClassName}
                         />
                     </div>
                 </div>
@@ -430,7 +427,7 @@ export function PrecisionCostTradeoff({
                         min={1}
                         max={15}
                         step={1}
-                        className={sliderIndigo}
+                        className={primarySliderClassName}
                     />
 
                     <div className="rounded-xl border border-primary/90 bg-background p-3">
@@ -500,11 +497,11 @@ export function PrecisionCostTradeoff({
                             <span>样本量 →</span>
                             <span>成本 →</span>
                         </div>
-                        <div className="relative h-32 rounded-lg overflow-hidden border border-primary/70 bg-primary/80">
+                        <div className="relative h-32 rounded-lg overflow-hidden border border-primary/20 bg-primary/5">
                             {/* 网格线 */}
                             <div className="absolute inset-0 flex flex-col justify-between p-2">
                                 {[0, 1, 2, 3].map(i => (
-                                    <div key={i} className="border-t border-primary/50" />
+                                    <div key={i} className="border-t border-muted-foreground/40" />
                                 ))}
                             </div>
 

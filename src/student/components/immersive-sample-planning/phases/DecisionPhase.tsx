@@ -661,7 +661,7 @@ export function DecisionPhase({
                     "rounded-2xl border p-5 shadow-sm space-y-3 transition-colors",
                     isValidSize
                         ? "border-border bg-background"
-                        : "border-destructive bg-destructive",
+                        : "border-destructive bg-destructive/10",
                 )}
             >
                 <h3 className="text-sm font-semibold text-foreground/90">最终样本量（将带入抽样执行）</h3>

@@ -586,7 +586,7 @@ export function AnnouncementManagement() {
                         )}
                     </div>
                     <DialogFooter>
-                        <Button data-testid="announcement-stats-close" onClick={() => setShowStatsModal(false)} className="bg-muted text-foreground/90 hover:bg-muted">关闭</Button>
+                        <Button data-testid="announcement-stats-close" onClick={() => setShowStatsModal(false)} className="bg-muted text-foreground/90 hover:bg-muted-foreground/20">关闭</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
