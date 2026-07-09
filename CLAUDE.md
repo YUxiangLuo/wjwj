@@ -104,3 +104,12 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+
+## Style System
+
+- Use the single theme source in `styles/theme.css`; do not create per-app theme copies.
+- Do not use Tailwind palette classes such as `bg-slate-50`, `text-indigo-500`, `border-emerald-500/20`, `shadow-rose-500/20`, or `dark:bg-slate-900` in TSX.
+- Use semantic tokens instead: `background`, `foreground`, `card`, `muted`, `primary`, `success`, `warning`, `info`, `destructive`, and `auxiliary`.
+- Status badges should use `StatusBadge`; repeated icon stat tiles should use `IconTile`; repeated page section headers should use `PageHeader`.
+- Prefer token-driven light/dark behavior. Do not add `dark:` color variants unless a shadcn primitive requires a non-color state adjustment.
+- Run `bun run check:styles` after style changes.

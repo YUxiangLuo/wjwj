@@ -361,22 +361,22 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     if (!hasValidSamplePlan) {
         return (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sampling-blocked">
-                <Card className="rounded-2xl border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-rose-950/20 shadow-sm">
+                <Card className="rounded-2xl border-destructive bg-destructive/70 shadow-sm">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-rose-700 dark:text-rose-300">
+                        <CardTitle className="flex items-center gap-2 text-destructive">
                             <AlertCircle className="h-5 w-5" />
                             无法开始抽样执行
                         </CardTitle>
-                        <CardDescription className="text-rose-700/80 dark:text-rose-300/80">
+                        <CardDescription className="text-destructive/80 dark:text-destructive/80">
                             当前实验缺少有效的最终样本量，抽样执行必须建立在已确认的样本量规划之上。
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="rounded-xl border border-rose-200/80 bg-white/70 px-4 py-3 text-sm text-slate-700 dark:border-rose-900/40 dark:bg-slate-950/40 dark:text-slate-200">
+                        <div className="rounded-xl border border-destructive/80 bg-background/70 px-4 py-3 text-sm text-foreground/90 dark:border-destructive/40 dark:bg-background/40 dark:text-foreground">
                             请返回“样本量规划”阶段，重新确认并保存最终样本量后，再进入本阶段。
                         </div>
                         <div className="flex justify-between">
-                            <Button variant="outline" onClick={onPrev} data-testid="student-sampling-blocked-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
+                            <Button variant="outline" onClick={onPrev} data-testid="student-sampling-blocked-prev" className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground">
                                 上一阶段
                             </Button>
                         </div>
@@ -399,40 +399,40 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     onClose={() => setShowSamplingStageIntro(false)}
                 />
             )}
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+            <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                 <CardContent className="py-6 px-6">
                     <div className="flex flex-wrap items-center justify-between gap-6">
                         <div className="flex items-center gap-3">
-                            <div className="bg-slate-200 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                                <Target className="w-5 h-5 text-indigo-500" />
+                            <div className="bg-muted p-2.5 rounded-xl border border-input">
+                                <Target className="w-5 h-5 text-primary" />
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400">规划样本量</div>
-                                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{n}</div>
+                                <div className="text-sm font-medium text-muted-foreground">规划样本量</div>
+                                <div className="text-xl font-bold text-foreground">{n}</div>
                             </div>
                         </div>
-                        <div className="w-px h-10 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+                        <div className="w-px h-10 bg-muted hidden sm:block"></div>
                         <div className="flex items-center gap-3">
-                            <div className="bg-slate-200 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                                <Database className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                            <div className="bg-muted p-2.5 rounded-xl border border-input">
+                                <Database className="w-5 h-5 text-info" />
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400">总体规模</div>
-                                <div className="text-xl font-bold text-slate-900 dark:text-slate-100">{N.toLocaleString()}</div>
+                                <div className="text-sm font-medium text-muted-foreground">总体规模</div>
+                                <div className="text-xl font-bold text-foreground">{N.toLocaleString()}</div>
                             </div>
                         </div>
-                        <div className="w-px h-10 bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
+                        <div className="w-px h-10 bg-muted hidden sm:block"></div>
                         <div className="flex items-center gap-3">
-                            <div className="bg-slate-200 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700">
-                                <Layers className="w-5 h-5 text-amber-600" />
+                            <div className="bg-muted p-2.5 rounded-xl border border-input">
+                                <Layers className="w-5 h-5 text-warning" />
                             </div>
                             <div>
-                                <div className="text-sm font-medium text-slate-600 dark:text-slate-400">完成进度</div>
+                                <div className="text-sm font-medium text-muted-foreground">完成进度</div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                    <span className="text-xl font-bold text-foreground">
                                         {[simpleResult?.completed, systematicResult?.completed, ppsResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/4
                                     </span>
-                                    <span className="text-sm text-slate-500">种方法</span>
+                                    <span className="text-sm text-muted-foreground">种方法</span>
                                 </div>
                             </div>
                         </div>
@@ -442,29 +442,29 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-6">
-                <TabsList className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-xl w-full flex h-auto" data-testid="student-sampling-tabs">
-                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">
+                <TabsList className="bg-card border border-border p-1 rounded-xl w-full flex h-auto" data-testid="student-sampling-tabs">
+                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="flex items-center gap-2">
                             <span>简单随机抽样</span>
-                            {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                            {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">
+                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="flex items-center gap-2">
                             <span>系统抽样</span>
-                            {systematicResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                            {systematicResult?.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">
+                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="flex items-center gap-2">
                             <span>PPS抽样</span>
-                            {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                            {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">
+                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="flex items-center gap-2">
                             <span>分层抽样</span>
-                            {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                            {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
                         </div>
                     </TabsTrigger>
                 </TabsList>
@@ -473,19 +473,19 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <TabsContent value="simple" className="mt-0 focus-visible:outline-none">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className="lg:col-span-2 space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                            <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
-                                    <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                        <div className="w-2 h-6 bg-indigo-500 rounded-full mr-2"></div>
+                                    <CardTitle className="text-foreground flex items-center gap-2">
+                                        <div className="w-2 h-6 bg-primary rounded-full mr-2"></div>
                                         简单随机抽样
                                     </CardTitle>
-                                    <CardDescription className="text-slate-600 dark:text-slate-400 pt-1">
+                                    <CardDescription className="text-muted-foreground pt-1">
                                         从 {N.toLocaleString()} 个总体中随机抽取 {n} 个样本，每个个体被抽中的概率相等。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="p-4 bg-white/30 dark:bg-slate-950/30 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
-                                        <Label htmlFor="simpleSeed" className="text-slate-700 dark:text-slate-300 text-xs">随机种子（可选）</Label>
+                                    <div className="p-4 bg-background/30 dark:bg-background/30 rounded-xl border border-border/50">
+                                        <Label htmlFor="simpleSeed" className="text-foreground/90 text-xs">随机种子（可选）</Label>
                                         <Input
                                             id="simpleSeed"
                                             type="number"
@@ -493,14 +493,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             onChange={(e) => setSimpleSeed(e.target.value)}
                                             placeholder="留空则每次随机"
                                             data-testid="student-sampling-simple-seed"
-                                            className="mt-2 bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:border-indigo-500"
+                                            className="mt-2 bg-card border-input text-foreground focus:border-ring"
                                         />
-                                        <p className="text-xs text-slate-500 mt-2">设置后可复现同一组抽样结果。</p>
+                                        <p className="text-xs text-muted-foreground mt-2">设置后可复现同一组抽样结果。</p>
                                     </div>
                                     {!simpleResult?.completed ? (
-                                        <div className="bg-white/50 dark:bg-slate-950/50 rounded-xl p-8 text-center border border-slate-200 dark:border-slate-800 border-dashed">
-                                            <div className="mb-4 text-slate-600 dark:text-slate-400">尚未执行抽样</div>
-                                            <Button onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                                        <div className="bg-background/50 rounded-xl p-8 text-center border border-border border-dashed">
+                                            <div className="mb-4 text-muted-foreground">尚未执行抽样</div>
+                                            <Button onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
                                                 {executing === "simple" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -521,17 +521,17 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             </Card>
                         </div>
                         <div className="space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-full">
+                            <Card className="rounded-2xl border-border bg-card/50 shadow-sm h-full">
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base text-slate-800 dark:text-slate-200">抽样预览</CardTitle>
-                                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">分页预览</Badge>
+                                        <CardTitle className="text-base text-foreground">抽样预览</CardTitle>
+                                        <Badge variant="outline" className="border-input text-muted-foreground">分页预览</Badge>
                                     </div>
-                                    <CardDescription className="text-slate-600 dark:text-slate-400">展示部分抽样结果数据</CardDescription>
+                                    <CardDescription className="text-muted-foreground">展示部分抽样结果数据</CardDescription>
                                 </CardHeader>
                                 <CardContent className="h-[300px] overflow-hidden">
                                     {!simpleResult?.completed ? (
-                                        <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">
+                                        <div className="h-full flex items-center justify-center text-sm text-muted-foreground italic">
                                             完成抽样后展示
                                         </div>
                                     ) : (
@@ -547,20 +547,20 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <TabsContent value="systematic" className="mt-0 focus-visible:outline-none">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className="lg:col-span-2 space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                            <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
-                                    <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                        <div className="w-2 h-6 bg-teal-500 rounded-full mr-2"></div>
+                                    <CardTitle className="text-foreground flex items-center gap-2">
+                                        <div className="w-2 h-6 bg-info rounded-full mr-2"></div>
                                         系统抽样
                                     </CardTitle>
-                                    <CardDescription className="text-slate-600 dark:text-slate-400 pt-1">
+                                    <CardDescription className="text-muted-foreground pt-1">
                                         按固定间隔 K 从总体中抽取样本。规划样本量为 {n}，实际样本量会随 K 值和随机起点在小范围内波动。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-white/30 dark:bg-slate-950/30 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 dark:bg-background/30 rounded-xl border border-border/50">
                                         <div className="space-y-3">
-                                            <Label htmlFor="kValue" className="text-slate-700 dark:text-slate-300">间隔 K 值 (步长)</Label>
+                                            <Label htmlFor="kValue" className="text-foreground/90">间隔 K 值 (步长)</Label>
                                             <div className="relative">
                                                 <Input
                                                     id="kValue"
@@ -570,35 +570,35 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                     min={1}
                                                     max={N}
                                                     data-testid="student-sampling-systematic-k"
-                                                    className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:border-teal-500 pr-10"
+                                                    className="bg-card border-input text-foreground focus:border-info pr-10"
                                                 />
-                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">Steps</span>
+                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">Steps</span>
                                             </div>
                                         </div>
                                         <div className="space-y-3">
-                                            <Label className="text-slate-700 dark:text-slate-300">预计抽取数量</Label>
-                                            <div className={`p-2.5 border rounded-md flex items-center justify-between ${isKValid ? "border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900" : "border-rose-500/50 bg-rose-500/10"}`}>
-                                                <span className={`font-mono font-bold ${isKValid ? "text-slate-800 dark:text-slate-200" : "text-rose-600"}`}>{formatSystematicRange(systematicSampleCountRange)}</span>
-                                                <span className="text-xs text-slate-500">允许范围: {formatSystematicRange(systematicAcceptedRange)}</span>
+                                            <Label className="text-foreground/90">预计抽取数量</Label>
+                                            <div className={`p-2.5 border rounded-md flex items-center justify-between ${isKValid ? "border-input bg-card" : "border-destructive/50 bg-destructive/10"}`}>
+                                                <span className={`font-mono font-bold ${isKValid ? "text-foreground" : "text-destructive"}`}>{formatSystematicRange(systematicSampleCountRange)}</span>
+                                                <span className="text-xs text-muted-foreground">允许范围: {formatSystematicRange(systematicAcceptedRange)}</span>
                                             </div>
                                             {systematicSampleCountRange.min !== systematicSampleCountRange.max && (
-                                                <p className="text-xs text-slate-500 mt-1">
+                                                <p className="text-xs text-muted-foreground mt-1">
                                                     随机起点不同，实际抽取数量会在 {formatSystematicRange(systematicSampleCountRange)} 之间波动。
                                                 </p>
                                             )}
                                             {!hasAnyValidSystematicK && (
-                                                <p className="text-xs text-rose-600 mt-1">
+                                                <p className="text-xs text-destructive mt-1">
                                                     当前总体规模与目标样本量下，没有任何 K 值能满足允许范围，请返回上一阶段调整样本量规划。
                                                 </p>
                                             )}
                                             {hasAnyValidSystematicK && !isKValid && (
-                                                <p className="text-xs text-rose-600 mt-1">
+                                                <p className="text-xs text-destructive mt-1">
                                                     当前 K 值的实际样本量可能超出允许范围，请调整 K 值
                                                 </p>
                                             )}
                                         </div>
                                         <div className="space-y-3">
-                                            <Label htmlFor="systematicSeed" className="text-slate-700 dark:text-slate-300">随机种子（可选）</Label>
+                                            <Label htmlFor="systematicSeed" className="text-foreground/90">随机种子（可选）</Label>
                                             <Input
                                                 id="systematicSeed"
                                                 type="number"
@@ -606,9 +606,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 onChange={(e) => setSystematicSeed(e.target.value)}
                                                 placeholder="留空则每次随机"
                                                 data-testid="student-sampling-systematic-seed"
-                                                className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:border-teal-500"
+                                                className="bg-card border-input text-foreground focus:border-info"
                                             />
-                                            <p className="text-xs text-slate-500">
+                                            <p className="text-xs text-muted-foreground">
                                                 设置后可复现系统抽样结果。
                                             </p>
                                         </div>
@@ -616,7 +616,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                                     {!systematicResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("systematic")} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("systematic")} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-info hover:bg-info text-info-foreground shadow-lg shadow-info/20 w-auto px-8">
                                                 {executing === "systematic" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -637,17 +637,17 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             </Card>
                         </div>
                         <div className="space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-full">
+                            <Card className="rounded-2xl border-border bg-card/50 shadow-sm h-full">
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base text-slate-800 dark:text-slate-200">抽样预览</CardTitle>
-                                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">分页预览</Badge>
+                                        <CardTitle className="text-base text-foreground">抽样预览</CardTitle>
+                                        <Badge variant="outline" className="border-input text-muted-foreground">分页预览</Badge>
                                     </div>
-                                    <CardDescription className="text-slate-600 dark:text-slate-400">展示部分抽样结果数据</CardDescription>
+                                    <CardDescription className="text-muted-foreground">展示部分抽样结果数据</CardDescription>
                                 </CardHeader>
                                 <CardContent className="h-[300px] overflow-hidden">
                                     {!systematicResult?.completed ? (
-                                        <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">
+                                        <div className="h-full flex items-center justify-center text-sm text-muted-foreground italic">
                                             完成抽样后展示
                                         </div>
                                     ) : (
@@ -663,26 +663,26 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <TabsContent value="pps" className="mt-0 focus-visible:outline-none">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className="lg:col-span-2 space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
+                            <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
-                                    <CardTitle className="text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                        <div className="w-2 h-6 bg-purple-500 rounded-full mr-2"></div>
+                                    <CardTitle className="text-foreground flex items-center gap-2">
+                                        <div className="w-2 h-6 bg-auxiliary rounded-full mr-2"></div>
                                         PPS抽样（概率与规模成比例抽样）
                                     </CardTitle>
-                                    <CardDescription className="text-slate-600 dark:text-slate-400 pt-1">
+                                    <CardDescription className="text-muted-foreground pt-1">
                                         每个单位被抽中的概率与其"规模"指标成正比。选择一个数值型变量作为规模度量，并指定抽样数量（允许在目标样本量的 80%-120% 范围内调整）。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-white/30 dark:bg-slate-950/30 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 dark:bg-background/30 rounded-xl border border-border/50">
                                         <div className="space-y-3">
-                                            <Label className="text-slate-700 dark:text-slate-300">选择规模变量</Label>
+                                            <Label className="text-foreground/90">选择规模变量</Label>
                                             {hasPpsNumericField ? (
                                                 <Select value={ppsSizeField} onValueChange={setPpsSizeField}>
-                                                    <SelectTrigger data-testid="student-sampling-pps-size-field" className="w-full bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                                                    <SelectTrigger data-testid="student-sampling-pps-size-field" className="w-full bg-card border-input text-foreground">
                                                         <SelectValue placeholder="选择数值变量" />
                                                     </SelectTrigger>
-                                                    <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                                    <SelectContent className="bg-card border-border text-foreground">
                                                         {ppsEligibleFields.map(key => (
                                                             <SelectItem key={key} value={key}>
                                                                 {FIELD_LABELS[key] || key}
@@ -691,18 +691,18 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                     </SelectContent>
                                                 </Select>
                                             ) : (
-                                                <div className="flex h-10 items-center rounded-md border border-rose-300/70 bg-rose-500/10 px-3 text-sm text-rose-700 dark:border-rose-800/70 dark:bg-rose-950/20 dark:text-rose-300" data-testid="student-sampling-pps-unavailable">
+                                                <div className="flex h-10 items-center rounded-md border border-destructive/70 bg-destructive/10 px-3 text-sm text-destructive dark:border-destructive/70 dark:bg-destructive/20 dark:text-destructive" data-testid="student-sampling-pps-unavailable">
                                                     {PPS_UNAVAILABLE_STATUS_MESSAGE}
                                                 </div>
                                             )}
-                                            <p className={`text-xs leading-relaxed ${hasPpsNumericField ? "text-slate-500 dark:text-slate-400" : "text-rose-600 dark:text-rose-300"}`}>
+                                            <p className={`text-xs leading-relaxed ${hasPpsNumericField ? "text-muted-foreground" : "text-destructive"}`}>
                                                 {hasPpsNumericField
                                                     ? "选择一个规模变量（如收入、人口等），该字段必须在总体中对每个单位都为正数。"
                                                     : PPS_UNAVAILABLE_REASON}
                                             </p>
                                         </div>
                                         <div className="space-y-3">
-                                            <Label htmlFor="ppsSampleSize" className="text-slate-700 dark:text-slate-300">抽样数量</Label>
+                                            <Label htmlFor="ppsSampleSize" className="text-foreground/90">抽样数量</Label>
                                             <Input
                                                 id="ppsSampleSize"
                                                 type="number"
@@ -711,14 +711,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 min={ppsMinSize}
                                                 max={ppsMaxSize}
                                                 data-testid="student-sampling-pps-sample-size"
-                                                className={`bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:border-purple-500 ${!isPpsSizeValid ? "border-rose-400 dark:border-rose-500" : ""}`}
+                                                className={`bg-card border-input text-foreground focus:border-auxiliary ${!isPpsSizeValid ? "border-destructive" : ""}`}
                                             />
-                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                                            <p className="text-xs leading-relaxed text-muted-foreground">
                                                 允许范围: {ppsMinSize}-{ppsMaxSize}（目标值 {n} 的 80%-120%）
                                             </p>
                                         </div>
                                         <div className="space-y-3">
-                                            <Label htmlFor="ppsSeed" className="text-slate-700 dark:text-slate-300">随机种子（可选）</Label>
+                                            <Label htmlFor="ppsSeed" className="text-foreground/90">随机种子（可选）</Label>
                                             <Input
                                                 id="ppsSeed"
                                                 type="number"
@@ -726,9 +726,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 onChange={(e) => setPpsSeed(e.target.value)}
                                                 placeholder="留空则每次随机"
                                                 data-testid="student-sampling-pps-seed"
-                                                className="bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:border-purple-500"
+                                                className="bg-card border-input text-foreground focus:border-auxiliary"
                                             />
-                                            <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                                            <p className="text-xs leading-relaxed text-muted-foreground">
                                                 设置后可复现同一组PPS抽样结果。
                                             </p>
                                         </div>
@@ -736,7 +736,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="bg-auxiliary hover:bg-auxiliary text-primary-foreground shadow-lg shadow-auxiliary/20 w-auto px-8">
                                                 {executing === "pps" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -757,17 +757,17 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             </Card>
                         </div>
                         <div className="space-y-4">
-                            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm h-full">
+                            <Card className="rounded-2xl border-border bg-card/50 shadow-sm h-full">
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
-                                        <CardTitle className="text-base text-slate-800 dark:text-slate-200">抽样预览</CardTitle>
-                                        <Badge variant="outline" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400">分页预览</Badge>
+                                        <CardTitle className="text-base text-foreground">抽样预览</CardTitle>
+                                        <Badge variant="outline" className="border-input text-muted-foreground">分页预览</Badge>
                                     </div>
-                                    <CardDescription className="text-slate-600 dark:text-slate-400">展示部分抽样结果数据</CardDescription>
+                                    <CardDescription className="text-muted-foreground">展示部分抽样结果数据</CardDescription>
                                 </CardHeader>
                                 <CardContent className="h-[300px] overflow-hidden">
                                     {!ppsResult?.completed ? (
-                                        <div className="h-full flex items-center justify-center text-sm text-slate-500 italic">
+                                        <div className="h-full flex items-center justify-center text-sm text-muted-foreground italic">
                                             完成抽样后展示
                                         </div>
                                     ) : (
@@ -817,11 +817,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             </Tabs>
 
             {/* Navigation */}
-            <div className="flex justify-between pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
+            <div className="flex justify-between pt-6 border-t border-border/50">
+                <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20" : "bg-slate-200 dark:bg-slate-800 text-slate-500"}>
+                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"}>
                     {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${completedMethodCount}/4)`}
                     <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -829,32 +829,32 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
             {/* Confirm Next Stage Dialog */}
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-sampling-confirm-dialog">
+                <AlertDialogContent className="bg-card border-border text-foreground" data-testid="student-sampling-confirm-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认完成抽样执行</AlertDialogTitle>
+                        <AlertDialogTitle className="text-foreground">确认完成抽样执行</AlertDialogTitle>
                         <AlertDialogDescription asChild>
-                            <div className="text-sm text-slate-600 dark:text-slate-400">
+                            <div className="text-sm text-muted-foreground">
                                 您已完成四种抽样方法的执行：
-                                <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 mt-3 mb-3 space-y-2">
-                                    <div className="flex justify-between"><span>简单随机抽样:</span> <span className="text-slate-800 dark:text-slate-200">{simpleResult?.sampleCount} 样本</span></div>
-                                    <div className="flex justify-between"><span>系统抽样:</span> <span className="text-slate-800 dark:text-slate-200">{systematicResult?.sampleCount} 样本 (K={systematicResult?.kValue})</span></div>
+                                <div className="bg-background p-4 rounded-xl border border-border mt-3 mb-3 space-y-2">
+                                    <div className="flex justify-between"><span>简单随机抽样:</span> <span className="text-foreground">{simpleResult?.sampleCount} 样本</span></div>
+                                    <div className="flex justify-between"><span>系统抽样:</span> <span className="text-foreground">{systematicResult?.sampleCount} 样本 (K={systematicResult?.kValue})</span></div>
                                     <div className="flex justify-between">
                                         <span>PPS抽样:</span>
-                                        <span className="text-slate-800 dark:text-slate-200">
+                                        <span className="text-foreground">
                                             {ppsResult?.unavailable
                                                 ? PPS_UNAVAILABLE_STATUS_MESSAGE
                                                 : `${ppsResult?.sampleCount} 样本`}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between"><span>分层抽样:</span> <span className="text-slate-800 dark:text-slate-200">{stratifiedResult?.layers?.reduce((a, l) => a + l.sampleCount, 0)} 样本</span></div>
+                                    <div className="flex justify-between"><span>分层抽样:</span> <span className="text-foreground">{stratifiedResult?.layers?.reduce((a, l) => a + l.sampleCount, 0)} 样本</span></div>
                                 </div>
                                 <p>确认后将进入分析与报告阶段。</p>
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sampling-confirm" className="bg-indigo-600 hover:bg-indigo-700 text-white">确认</AlertDialogAction>
+                        <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmNext} data-testid="student-sampling-confirm" className="bg-primary hover:bg-primary text-primary-foreground">确认</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

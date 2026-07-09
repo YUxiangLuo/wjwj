@@ -9,6 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { teacherApi, type GradeExportPreviewItem, type TeacherClass, type Topic } from "../api-client";
 import { toast } from "sonner";
 import { formatLocalDateStamp } from "@/utils/format";
+import { IconTile } from "@/components/IconTile";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 
 export function GradeExport() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -135,69 +138,69 @@ export function GradeExport() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">成绩导出</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">按任务导出成绩，支持单项与批量导出。</p>
+                <h2 className="text-lg font-semibold text-foreground">成绩导出</h2>
+                <p className="text-sm text-muted-foreground mt-1">按任务导出成绩，支持单项与批量导出。</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">任务数量</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.totalTasks}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">任务数量</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalTasks}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
+                        <IconTile intent="info">
                             <Layers className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已完成任务</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.completedTasks}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已完成任务</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.completedTasks}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">提交总数</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.totalSubmissions}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">提交总数</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalSubmissions}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <IconTile intent="warning">
                             <Users className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已批改</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.totalGraded}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已批改</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalGraded}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                        <IconTile intent="auxiliary">
                             <FileSpreadsheet className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
-                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <Card>
+                <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">导出列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {preview.length} 条数据</p>
+                        <CardTitle className="text-base text-foreground">导出列表</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">共 {preview.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto flex-wrap">
                         <Select value={semesterFilter} onValueChange={(v) => { setSemesterFilter(v); setClassFilter("all"); }}>
-                            <SelectTrigger data-testid="teacher-export-semester-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-semester-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all">全部学期</SelectItem>
                                 {semesters.map((s) => (
                                     <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -205,10 +208,10 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger data-testid="teacher-export-class-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-class-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all">全部班级</SelectItem>
                                 {filteredClasses.map((cls) => (
                                     <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
@@ -216,10 +219,10 @@ export function GradeExport() {
                             </SelectContent>
                         </Select>
                         <Select value={topicFilter} onValueChange={setTopicFilter}>
-                            <SelectTrigger data-testid="teacher-export-topic-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-export-topic-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部课题" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all">全部课题</SelectItem>
                                 {topics.map((t) => (
                                     <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
@@ -231,22 +234,22 @@ export function GradeExport() {
                             variant="outline"
                             disabled={selectedCount === 0 || exporting}
                             onClick={() => exportExcel()}
-                            className="border-indigo-600 bg-indigo-600/10 text-indigo-500 hover:bg-indigo-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="border-primary bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <FileSpreadsheet className="w-4 h-4 mr-2" />
                             批量导出 ({selectedCount})
                         </Button>
                     </div>
-                </CardHeader>
+                </PageHeader>
                 <CardContent className="pt-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                <TableHead className="w-12 text-center text-slate-600 dark:text-slate-400">
+                            <TableRow className="border-border hover:bg-card/50">
+                                <TableHead className="w-12 text-center text-muted-foreground">
                                     <input
                                         data-testid="teacher-export-check-all"
                                         type="checkbox"
-                                        className="rounded border-slate-400 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-indigo-500 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
+                                        className="rounded border-input bg-card text-primary focus:ring-ring/20 w-4 h-4 cursor-pointer"
                                         checked={selectedTaskIds.length > 0 && selectedTaskIds.length === preview.length}
                                         onChange={(e) => {
                                             if (e.target.checked) {
@@ -257,59 +260,59 @@ export function GradeExport() {
                                         }}
                                     />
                                 </TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">课题</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">班级</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">批改进度</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">平均分</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400 text-right">操作</TableHead>
+                                <TableHead className="text-muted-foreground">课题</TableHead>
+                                <TableHead className="text-muted-foreground">班级</TableHead>
+                                <TableHead className="text-muted-foreground">批改进度</TableHead>
+                                <TableHead className="text-muted-foreground">平均分</TableHead>
+                                <TableHead className="text-muted-foreground text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">加载中...</TableCell>
+                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">加载中...</TableCell>
                                 </TableRow>
                             ) : preview.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
-                                            <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center">
-                                                <Search className="w-6 h-6 text-slate-500" />
+                                            <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                                                <Search className="w-6 h-6 text-muted-foreground" />
                                             </div>
                                             <p>暂无符合条件的数据</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             ) : preview.map((task) => (
-                                <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
+                                <TableRow data-testid={`teacher-export-row-${task.taskId}`} key={task.taskId} className="border-border hover:bg-muted/50 transition-colors">
                                     <TableCell className="text-center">
                                         <input
                                             data-testid={`teacher-export-check-${task.taskId}`}
                                             type="checkbox"
-                                            className="rounded border-slate-400 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-indigo-500 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
+                                            className="rounded border-input bg-card text-primary focus:ring-ring/20 w-4 h-4 cursor-pointer"
                                             checked={selectedTaskIds.includes(task.taskId)}
                                             onChange={() => toggleTask(task.taskId)}
                                         />
                                     </TableCell>
-                                    <TableCell className="font-medium text-slate-800 dark:text-slate-200">{task.topic}</TableCell>
-                                    <TableCell className="text-slate-700 dark:text-slate-300">{task.className}</TableCell>
+                                    <TableCell className="font-medium text-foreground">{task.topic}</TableCell>
+                                    <TableCell className="text-foreground/90">{task.className}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
-                                            <Progress value={task.total > 0 ? (task.graded / task.total) * 100 : 0} className="w-20 h-1.5 bg-slate-200 dark:bg-slate-800 [&>div]:bg-emerald-500" />
-                                            <span className="text-xs text-slate-500">{task.graded}/{task.total}</span>
+                                            <Progress value={task.total > 0 ? (task.graded / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
+                                            <span className="text-xs text-muted-foreground">{task.graded}/{task.total}</span>
                                             {task.graded === task.total && task.total > 0 && (
-                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20 text-[10px] h-5">已完成</Badge>
+                                                <StatusBadge intent="success" className="text-[10px] h-5">已完成</StatusBadge>
                                             )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-medium font-mono text-slate-800 dark:text-slate-200">{task.avgScore ? task.avgScore.toFixed(1) : "-"}</TableCell>
+                                    <TableCell className="font-medium font-mono text-foreground">{task.avgScore ? task.avgScore.toFixed(1) : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <Button
                                             data-testid={`teacher-export-single-${task.taskId}`}
                                             variant="ghost"
                                             size="sm"
                                             disabled={exporting}
-                                            className="h-8 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
+                                            className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                             onClick={() => exportExcel(task.taskId)}
                                         >
                                             <Download className="w-3.5 h-3.5 mr-1" />

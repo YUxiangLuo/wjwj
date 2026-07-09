@@ -78,8 +78,8 @@ export function DatetimePicker24({
                     disabled={disabled}
                     data-testid={dataTestId}
                     className={cn(
-                        "w-full justify-start text-left font-normal bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200",
-                        !parsed && "text-slate-500 dark:text-slate-400",
+                        "w-full justify-start bg-background text-left font-normal text-foreground",
+                        !parsed && "text-muted-foreground",
                         className
                     )}
                 >
@@ -99,11 +99,11 @@ export function DatetimePicker24({
                             defaultMonth={parsed ?? new Date()}
                         />
                     </div>
-                    <div className="flex min-w-[200px] flex-col gap-3 border-t border-slate-200 pt-3 dark:border-slate-800 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+                    <div className="flex min-w-[200px] flex-col gap-3 border-t border-border pt-3 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
                         <div className="space-y-1.5">
-                            <Label className="text-xs text-slate-600 dark:text-slate-400">时（24 小时）</Label>
+                            <Label className="text-xs text-muted-foreground">时（24 小时）</Label>
                             <select
-                                className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
                                 value={hour}
                                 onChange={(e) => handleHourChange(Number(e.target.value))}
                             >
@@ -115,9 +115,9 @@ export function DatetimePicker24({
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs text-slate-600 dark:text-slate-400">分</Label>
+                            <Label className="text-xs text-muted-foreground">分</Label>
                             <select
-                                className="flex h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                                className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
                                 value={minute}
                                 onChange={(e) => handleMinuteChange(Number(e.target.value))}
                             >
@@ -133,7 +133,7 @@ export function DatetimePicker24({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="text-slate-600 dark:text-slate-400"
+                                className="text-muted-foreground"
                                 onClick={() => onChange("")}
                             >
                                 清除

@@ -35,7 +35,7 @@ export function ClusterSamplingCalculator({
     onApplyResult
 }: ClusterSamplingCalculatorProps) {
     const sliderIndigo =
-        "py-2 [&_[data-slot=slider-range]]:!bg-indigo-600 [&_[data-slot=slider-track]]:!bg-indigo-100 dark:[&_[data-slot=slider-track]]:!bg-indigo-950/80 [&_[data-slot=slider-thumb]]:!border-indigo-600 [&_[data-slot=slider-thumb]]:!bg-white dark:[&_[data-slot=slider-thumb]]:!bg-slate-950 [&_[data-slot=slider-thumb]]:!ring-indigo-500/25";
+        "py-2 [&_[data-slot=slider-range]]:!bg-primary [&_[data-slot=slider-track]]:!bg-primary dark:[&_[data-slot=slider-track]]:!bg-primary/80 [&_[data-slot=slider-thumb]]:!border-primary [&_[data-slot=slider-thumb]]:!bg-background dark:[&_[data-slot=slider-thumb]]:!bg-background [&_[data-slot=slider-thumb]]:!ring-primary/25";
 
     const [confidenceLevelLocal, setConfidenceLevelLocal] = useState(() => confidenceLevel);
     const [marginOfErrorLocal, setMarginOfErrorLocal] = useState(() => marginOfError);
@@ -72,33 +72,33 @@ export function ClusterSamplingCalculator({
     }, [populationSize, confidenceLevelLocal, marginOfErrorLocal, clusterSize, deff, nonResponseRate]);
 
     return (
-        <Card className="rounded-2xl border-indigo-200/90 bg-indigo-50/90 shadow-sm dark:border-indigo-900/45 dark:bg-slate-950">
+        <Card className="rounded-2xl border-primary/90 bg-primary/90 shadow-sm dark:border-primary/45 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Layers className="w-5 h-5 text-indigo-500" />
-                        <CardTitle className="text-base text-indigo-900 dark:text-indigo-200">
+                        <Layers className="w-5 h-5 text-primary" />
+                        <CardTitle className="text-base text-primary">
                             整群抽样样本量计算
                         </CardTitle>
                     </div>
                     <Badge 
                         variant="outline" 
-                        className="text-xs bg-indigo-100/50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500/30 dark:text-indigo-300"
+                        className="text-xs bg-primary/50 border-primary text-primary dark:bg-primary/30 dark:border-primary/30 dark:text-primary"
                     >
                         设计效应应用
                     </Badge>
                 </div>
-                <CardDescription className="text-slate-700 dark:text-slate-300">
+                <CardDescription className="text-foreground/90">
                     计算整群抽样中所需群数和总样本量
                 </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
                 {/* 说明 */}
-                <div className="rounded-xl border border-teal-200/90 bg-teal-50/70 p-3 dark:border-teal-800/40 dark:bg-teal-950/25">
+                <div className="rounded-xl border border-info/90 bg-info/70 p-3 dark:border-info/40 dark:bg-info/25">
                     <div className="flex gap-2">
-                        <Info className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-                        <div className="text-xs text-teal-950 dark:text-teal-100 space-y-1">
+                        <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
+                        <div className="text-xs text-info space-y-1">
                             <p className="font-medium">什么是整群抽样？</p>
                             <p>
                                 整群抽样以"群"为单位抽样（如整栋居民楼、整个班级），群内所有单元都调查。
@@ -113,10 +113,10 @@ export function ClusterSamplingCalculator({
                     {/* 群规模 */}
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">
+                            <Label className="text-xs text-primary">
                                 平均群规模（每群人数）
                             </Label>
-                            <span className="text-sm font-bold text-indigo-900 dark:text-indigo-100">
+                            <span className="text-sm font-bold text-primary">
                                 {clusterSize} 人
                             </span>
                         </div>
@@ -128,7 +128,7 @@ export function ClusterSamplingCalculator({
                             step={10}
                             className={sliderIndigo}
                         />
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                             例如：每栋楼平均50户、每班平均30名学生
                         </p>
                     </div>
@@ -136,10 +136,10 @@ export function ClusterSamplingCalculator({
                     {/* 设计效应 */}
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">
+                            <Label className="text-xs text-primary">
                                 设计效应 (deff)
                             </Label>
-                            <span className="text-sm font-bold text-indigo-900 dark:text-indigo-100">
+                            <span className="text-sm font-bold text-primary">
                                 {deff.toFixed(1)}
                             </span>
                         </div>
@@ -151,7 +151,7 @@ export function ClusterSamplingCalculator({
                             step={0.1}
                             className={sliderIndigo}
                         />
-                        <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
+                        <div className="flex justify-between text-xs text-muted-foreground">
                             <span>1.0 (简单随机)</span>
                             <span>2.0 (中等)</span>
                             <span>5.0 (高度聚集)</span>
@@ -161,9 +161,9 @@ export function ClusterSamplingCalculator({
                     {/* 其他参数（继承决策面板，可在本工具内调整） */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                            <Label className="text-xs text-indigo-700 dark:text-indigo-300">置信水平</Label>
+                            <Label className="text-xs text-primary">置信水平</Label>
                             <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
-                                <SelectTrigger className="h-9 text-sm bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-800">
+                                <SelectTrigger className="h-9 text-sm bg-background border-primary">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -175,8 +175,8 @@ export function ClusterSamplingCalculator({
                         </div>
                         <div className="space-y-1.5">
                             <div className="flex justify-between">
-                                <Label className="text-xs text-indigo-700 dark:text-indigo-300">允许误差</Label>
-                                <span className="text-xs font-bold text-teal-600 dark:text-teal-400 tabular-nums">
+                                <Label className="text-xs text-primary">允许误差</Label>
+                                <span className="text-xs font-bold text-info tabular-nums">
                                     ±{marginOfErrorLocal}%
                                 </span>
                             </div>
@@ -192,12 +192,12 @@ export function ClusterSamplingCalculator({
                     </div>
 
                     <div className="space-y-1">
-                        <Label className="text-xs text-indigo-700 dark:text-indigo-300">无回答率 (%)</Label>
+                        <Label className="text-xs text-primary">无回答率 (%)</Label>
                         <Input
                             type="number"
                             value={nonResponseRate}
                             onChange={(e) => setNonResponseRate(parseFloat(e.target.value) || 0)}
-                            className="bg-white dark:bg-slate-950 border-indigo-200 dark:border-indigo-700 text-slate-900 dark:text-slate-100"
+                            className="bg-background border-primary text-foreground"
                             min={0}
                             max={50}
                             step={1}
@@ -207,43 +207,43 @@ export function ClusterSamplingCalculator({
 
                 {/* 计算结果 */}
                 {result && (
-                    <div className="rounded-xl border-2 border-indigo-300 bg-white p-4 shadow-sm dark:border-indigo-700/50 dark:bg-slate-950">
+                    <div className="rounded-xl border-2 border-primary bg-background p-4 shadow-sm dark:border-primary/50 dark:bg-background">
                         <div className="flex items-center gap-2 mb-4">
-                            <Calculator className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                            <span className="font-bold text-indigo-900 dark:text-indigo-100">计算结果</span>
+                            <Calculator className="w-5 h-5 text-primary" />
+                            <span className="font-bold text-primary">计算结果</span>
                         </div>
 
                         <div className="space-y-4">
                             {/* 主要结果 */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="text-center p-3 rounded-lg bg-white border border-indigo-200/80 dark:border-indigo-800/40 dark:bg-slate-950">
-                                    <div className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">所需群数</div>
-                                    <div className="text-2xl font-bold tabular-nums text-indigo-800 dark:text-indigo-200">
+                                <div className="text-center p-3 rounded-lg bg-background border border-primary/80 dark:bg-background">
+                                    <div className="text-xs text-primary mb-1">所需群数</div>
+                                    <div className="text-2xl font-bold tabular-nums text-primary">
                                         {result.requiredClusters}
                                     </div>
-                                    <div className="text-xs text-indigo-500">个群</div>
+                                    <div className="text-xs text-primary">个群</div>
                                 </div>
-                                <div className="text-center p-3 rounded-lg bg-white border border-indigo-200/80 dark:border-indigo-800/40 dark:bg-slate-950">
-                                    <div className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">总样本量</div>
-                                    <div className="text-2xl font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                                <div className="text-center p-3 rounded-lg bg-background border border-primary/80 dark:bg-background">
+                                    <div className="text-xs text-primary mb-1">总样本量</div>
+                                    <div className="text-2xl font-bold tabular-nums text-info">
                                         {result.requiredSampleSize.toLocaleString()}
                                     </div>
-                                    <div className="text-xs text-indigo-500">人</div>
+                                    <div className="text-xs text-primary">人</div>
                                 </div>
                             </div>
 
                             {/* 设计效应说明 */}
-                            <div className="rounded-lg border border-indigo-200 bg-white p-3 dark:border-indigo-800/50 dark:bg-slate-950">
+                            <div className="rounded-lg border border-primary bg-background p-3 dark:border-primary/50 dark:bg-background">
                                 <div className="space-y-2 text-sm">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-indigo-700 dark:text-indigo-300">设计效应 (deff)</span>
-                                        <span className="font-mono font-bold text-indigo-900 dark:text-indigo-100">
+                                        <span className="text-primary">设计效应 (deff)</span>
+                                        <span className="font-mono font-bold text-primary">
                                             {result.deff.toFixed(2)}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-indigo-700 dark:text-indigo-300">估计群内相关系数 (ρ)</span>
-                                        <span className="font-mono font-bold text-indigo-900 dark:text-indigo-100">
+                                        <span className="text-primary">估计群内相关系数 (ρ)</span>
+                                        <span className="font-mono font-bold text-primary">
                                             {result.intraClassCorrelation.toFixed(3)}
                                         </span>
                                     </div>
@@ -251,10 +251,10 @@ export function ClusterSamplingCalculator({
                             </div>
 
                             {/* 公式解释 */}
-                            <div className="rounded-lg border border-amber-200 bg-amber-50/90 p-2 dark:border-amber-800/40 dark:bg-slate-950">
+                            <div className="rounded-lg border border-warning bg-warning/90 p-2 dark:border-warning/40 dark:bg-background">
                                 <div className="flex items-start gap-2">
-                                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                                    <p className="text-xs text-amber-800 dark:text-amber-200">
+                                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                                    <p className="text-xs text-warning">
                                         {result.explanation} 群内相关系数 ρ = (deff-1)/(M-1)，
                                         其中 M={clusterSize} 为群规模。ρ 越大说明群内同质性越高，
                                         需要的补偿样本量越大。
@@ -265,12 +265,12 @@ export function ClusterSamplingCalculator({
                             {/* 应用按钮 */}
                             {onApplyResult && (
                                 <>
-                                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
                                         「应用」仅将总样本量写入最终样本量。若本工具内参数与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回标准公式验算。
                                     </p>
                                     <Button
                                         onClick={() => onApplyResult(result.requiredClusters, result.requiredSampleSize)}
-                                        className="w-full bg-indigo-600 text-white hover:bg-indigo-500"
+                                        className="w-full bg-primary text-primary-foreground hover:bg-primary"
                                     >
                                         应用整群抽样方案
                                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -282,24 +282,24 @@ export function ClusterSamplingCalculator({
                 )}
 
                 {/* 参考值 */}
-                <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
-                    <p className="text-xs font-medium text-slate-800 dark:text-slate-200 mb-2">设计效应参考</p>
+                <div className="rounded-xl border border-border bg-background p-3 dark:border-input dark:bg-background">
+                    <p className="text-xs font-medium text-foreground mb-2">设计效应参考</p>
                     <div className="space-y-1.5 text-xs">
                         <div className="flex justify-between">
-                            <span className="text-slate-500">简单随机抽样 (SRS)</span>
-                            <span className="text-slate-700 dark:text-slate-300 font-bold">1.0</span>
+                            <span className="text-muted-foreground">简单随机抽样 (SRS)</span>
+                            <span className="text-foreground/90 font-bold">1.0</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-500">分层抽样（层内同质）</span>
-                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">0.7-0.9</span>
+                            <span className="text-muted-foreground">分层抽样（层内同质）</span>
+                            <span className="text-success font-bold">0.7-0.9</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-500">整群抽样（中等聚集）</span>
-                            <span className="text-amber-600 dark:text-amber-400 font-bold">1.5-2.5</span>
+                            <span className="text-muted-foreground">整群抽样（中等聚集）</span>
+                            <span className="text-warning font-bold">1.5-2.5</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-500">整群抽样（高度聚集）</span>
-                            <span className="text-rose-600 dark:text-rose-400 font-bold">3.0-5.0</span>
+                            <span className="text-muted-foreground">整群抽样（高度聚集）</span>
+                            <span className="text-destructive font-bold">3.0-5.0</span>
                         </div>
                     </div>
                 </div>

@@ -14,6 +14,7 @@ import { teacherApi, type SubmissionDetail } from "../api-client";
 import { didPendingGradingCountChange, dispatchTeacherGradingQueueUpdated } from "../grading-queue-events";
 import { DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE, getSamplingPreviewState } from "./grading-detail-utils";
 import { toast } from "sonner";
+import { StatusBadge } from "@/components/StatusBadge";
 
 const COMMENT_TEMPLATES = [
     "总体完成较好",
@@ -215,8 +216,8 @@ export function GradingDetail() {
         }
     }
 
-    if (loading) return <div className="p-12 text-center text-slate-500">加载中...</div>;
-    if (!data) return <div className="p-12 text-center text-slate-500">未找到提交记录</div>;
+    if (loading) return <div className="p-12 text-center text-muted-foreground">加载中...</div>;
+    if (!data) return <div className="p-12 text-center text-muted-foreground">未找到提交记录</div>;
 
     const isReadOnly = !!data.readonly;
     /** 他人锁定只读，或已驳回不可改分 */
@@ -229,10 +230,10 @@ export function GradingDetail() {
         let content = null;
 
         if (q.type === "boolean") {
-            content = <div className="text-sm text-slate-600 dark:text-slate-400 pl-4 border-l-2 border-slate-300 dark:border-slate-700 mt-2">是 / 否</div>;
+            content = <div className="text-sm text-muted-foreground pl-4 border-l-2 border-input mt-2">是 / 否</div>;
         } else if (q.type === "single" || q.type === "multiple") {
             content = (
-                <ul className="list-disc list-inside text-sm text-slate-600 dark:text-slate-400 pl-4 border-l-2 border-slate-300 dark:border-slate-700 mt-2 space-y-1">
+                <ul className="list-disc list-inside text-sm text-muted-foreground pl-4 border-l-2 border-input mt-2 space-y-1">
                     {(q.options ?? []).map((opt: string, i: number) => (
                         <li key={i}>{opt}</li>
                     ))}
@@ -240,7 +241,7 @@ export function GradingDetail() {
             );
         } else if (q.type === "scale") {
             content = (
-                <div className="text-sm text-slate-600 dark:text-slate-400 pl-4 border-l-2 border-slate-300 dark:border-slate-700 mt-2">
+                <div className="text-sm text-muted-foreground pl-4 border-l-2 border-input mt-2">
                     {q.scaleMinLabel ?? ""} {q.scaleMin ?? 1} - {q.scaleMax ?? 10} {q.scaleMaxLabel ?? ""}
                 </div>
             );
@@ -248,10 +249,10 @@ export function GradingDetail() {
 
         return (
             <div className="space-y-1">
-                <div className="font-medium text-slate-800 dark:text-slate-200">{title}</div>
+                <div className="font-medium text-foreground">{title}</div>
                 {content}
                 {q.type === "multiple" && (q.minSelect || q.maxSelect) && (
-                    <div className="text-xs text-slate-500 mt-1 pl-4">选择 {q.minSelect ?? 0} - {q.maxSelect ?? "不限"}</div>
+                    <div className="text-xs text-muted-foreground mt-1 pl-4">选择 {q.minSelect ?? 0} - {q.maxSelect ?? "不限"}</div>
                 )}
             </div>
         );
@@ -276,11 +277,11 @@ export function GradingDetail() {
 
         if (previewState.kind === "unavailable") {
             return (
-                <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
-                    <div className="font-medium text-slate-700 dark:text-slate-300">{label}</div>
-                    <div className="text-sm text-amber-700 dark:text-amber-300">{DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE}</div>
+                <div className="space-y-2 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+                    <div className="font-medium text-foreground/90">{label}</div>
+                    <div className="text-sm text-warning">{DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE}</div>
                     {previewState.reason !== DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE && (
-                        <div className="text-xs text-amber-700/80 dark:text-amber-300/80">{previewState.reason}</div>
+                        <div className="text-xs text-warning/80">{previewState.reason}</div>
                     )}
                 </div>
             );
@@ -289,8 +290,8 @@ export function GradingDetail() {
         if (previewState.kind === "empty") {
             return (
                 <div className="space-y-2">
-                    <div className="font-medium text-slate-700 dark:text-slate-300">{label}</div>
-                    <div className="text-sm text-slate-500 italic">暂无数据</div>
+                    <div className="font-medium text-foreground/90">{label}</div>
+                    <div className="text-sm text-muted-foreground italic">暂无数据</div>
                 </div>
             );
         }
@@ -299,28 +300,28 @@ export function GradingDetail() {
         const columns = Object.keys(dataList[0] ?? {}).slice(0, 6);
         const isOpen = !!samplingSectionOpen[sectionKey];
         return (
-            <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/30 overflow-hidden">
-                <div className="flex items-stretch gap-1 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60">
+            <div className="rounded-lg border border-border bg-card/30 dark:bg-background/30 overflow-hidden">
+                <div className="flex items-stretch gap-1 border-b border-border bg-muted/60 dark:bg-card/60">
                     <button
                         type="button"
-                        className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left min-w-0 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors"
+                        className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left min-w-0 hover:bg-muted/50 transition-colors"
                         aria-expanded={isOpen}
                         onClick={() => toggleSamplingSection(sectionKey)}
                     >
                         <ChevronRight
-                            className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                            className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`}
                             aria-hidden
                         />
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-                        <span className="font-medium text-slate-700 dark:text-slate-300 truncate">{label}</span>
-                        <span className="text-xs text-slate-500 ml-auto shrink-0">共 {dataList.length} 条</span>
+                        <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                        <span className="font-medium text-foreground/90 truncate">{label}</span>
+                        <span className="text-xs text-muted-foreground ml-auto shrink-0">共 {dataList.length} 条</span>
                     </button>
                     <div className="flex items-center pr-2 py-1">
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-8 gap-1 text-xs border-slate-300 dark:border-slate-600"
+                            className="h-8 gap-1 text-xs border-input"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 downloadSamplingCsv(sectionKey, dataList);
@@ -333,20 +334,20 @@ export function GradingDetail() {
                 </div>
                 {isOpen && (
                     <div className="p-3 space-y-2">
-                        <div className="overflow-x-auto border border-slate-300 dark:border-slate-700 rounded-md">
+                        <div className="overflow-x-auto border border-input rounded-md">
                             <table className="w-full text-sm">
-                                <thead className="bg-slate-200 dark:bg-slate-800">
+                                <thead className="bg-muted">
                                     <tr>
                                         {columns.map((c) => (
-                                            <th key={c} className="px-3 py-2 text-left font-medium text-slate-600 dark:text-slate-400 border-b border-slate-300 dark:border-slate-700">{c}</th>
+                                            <th key={c} className="px-3 py-2 text-left font-medium text-muted-foreground border-b border-input">{c}</th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="bg-slate-50 dark:bg-slate-900">
+                                <tbody className="bg-card">
                                     {dataList.slice(0, 10).map((row, i) => (
-                                        <tr key={i} className="border-b border-slate-200 dark:border-slate-800 last:border-0 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
+                                        <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/50">
                                             {columns.map((c) => (
-                                                <td key={c} className="px-3 py-2 text-slate-700 dark:text-slate-300">
+                                                <td key={c} className="px-3 py-2 text-foreground/90">
                                                     {String(row[c] ?? "")}
                                                 </td>
                                             ))}
@@ -356,7 +357,7 @@ export function GradingDetail() {
                             </table>
                         </div>
                         {dataList.length > 10 && (
-                            <div className="text-xs text-slate-500 text-right">预览仅显示前 10 条，下载 CSV 包含全部 {dataList.length} 条</div>
+                            <div className="text-xs text-muted-foreground text-right">预览仅显示前 10 条，下载 CSV 包含全部 {dataList.length} 条</div>
                         )}
                     </div>
                 )}
@@ -365,17 +366,17 @@ export function GradingDetail() {
     };
 
     return (
-        <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-slate-950">
+        <div className="flex flex-col h-full overflow-hidden bg-background">
             {/* Header */}
-            <div className="flex items-center gap-4 px-6 h-16 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0">
-                <Button variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => navigate("/grading")}>
+            <div className="flex items-center gap-4 px-6 h-16 bg-card border-b border-border shrink-0">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => navigate("/grading")}>
                     <ArrowLeft className="w-4 h-4 mr-1" />
                     返回列表
                 </Button>
-                <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-2"></div>
+                <div className="h-6 w-px bg-muted mx-2"></div>
                 <div>
-                    <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{data.topic}</h2>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <h2 className="text-base font-semibold text-foreground">{data.topic}</h2>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{data.studentName} ({data.studentId})</span>
                         <span>·</span>
                         <span>{data.className}</span>
@@ -383,29 +384,29 @@ export function GradingDetail() {
                 </div>
                 <div className="ml-auto flex items-center gap-3">
                     {data.isAssistant && (
-                        <Badge variant="outline" className="text-purple-600 border-purple-500/30 bg-purple-500/10">
+                        <StatusBadge intent="auxiliary">
                             <ShieldAlert className="w-3 h-3 mr-1" />
                             助教模式
-                        </Badge>
+                        </StatusBadge>
                     )}
-                    {(data.status === 0 || data.status === 1) && <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">待批改</Badge>}
-                    {data.status === 2 && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">已批改</Badge>}
-                    {data.status === 3 && <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20">已驳回</Badge>}
+                    {(data.status === 0 || data.status === 1) && <StatusBadge intent="warning">待批改</StatusBadge>}
+                    {data.status === 2 && <StatusBadge intent="success">已批改</StatusBadge>}
+                    {data.status === 3 && <StatusBadge intent="destructive">已驳回</StatusBadge>}
                 </div>
             </div>
             {isReadOnly && (
-                <div data-testid="teacher-grading-readonly-banner" className="px-6 py-2 text-sm text-rose-500 bg-rose-900/20 border-b border-rose-900/30 flex items-center justify-center">
+                <div data-testid="teacher-grading-readonly-banner" className="px-6 py-2 text-sm text-destructive bg-destructive/20 border-b border-destructive/30 flex items-center justify-center">
                     <XCircle className="w-4 h-4 mr-2" />
                     该作业正在被他人批改中，当前为只读模式。
                 </div>
             )}
             {data.status === 3 && !isReadOnly && (
-                <div data-testid="teacher-grading-rejected-no-edit-banner" className="px-6 py-2 text-sm text-amber-800 dark:text-amber-200 bg-amber-500/10 border-b border-amber-500/20 text-center">
+                <div data-testid="teacher-grading-rejected-no-edit-banner" className="px-6 py-2 text-sm text-warning bg-warning/10 border-b border-warning/20 text-center">
                     已驳回的作业不可修改评分；学生重新提交后可在新记录上批改。
                 </div>
             )}
             {(data.status === 2 || data.status === 3) && data.gradedByName && (
-                <div className="px-6 py-2 text-sm text-blue-700 dark:text-blue-300 bg-blue-900/20 border-b border-blue-900/30 flex items-center justify-center">
+                <div className="px-6 py-2 text-sm text-info bg-info/20 border-b border-info/30 flex items-center justify-center">
                     <UserCheck className="w-4 h-4 mr-2" />
                     由 {data.gradedByType === 2 ? '教师' : '助教'} <span className="font-medium mx-1">{data.gradedByName}</span> 
                     于 {data.gradedAt ? new Date(data.gradedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : '-'} 批改
@@ -414,13 +415,13 @@ export function GradingDetail() {
             {data.status === 3 && data.rejectReason && (
                 <div
                     data-testid="teacher-grading-reject-reason-banner"
-                    className="px-6 py-3 text-sm text-rose-800 dark:text-rose-200 bg-rose-950/40 border-b border-rose-900/40"
+                    className="px-6 py-3 text-sm text-destructive bg-destructive/40 border-b border-destructive/40"
                 >
                     <div className="mx-auto flex max-w-5xl items-start gap-2">
-                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                         <div className="space-y-1">
-                            <div className="font-medium text-rose-500">驳回原因</div>
-                            <div className="leading-6 text-rose-100/90">{data.rejectReason}</div>
+                            <div className="font-medium text-destructive">驳回原因</div>
+                            <div className="leading-6 text-destructive/90">{data.rejectReason}</div>
                         </div>
                     </div>
                 </div>
@@ -429,8 +430,8 @@ export function GradingDetail() {
             {data.pdfStatus !== "ready" && data.pdfStatusMessage && (
                 <div className={`mx-6 mt-6 rounded-xl border px-4 py-3 text-sm flex items-center justify-between gap-3 ${
                     data.pdfStatus === "failed"
-                        ? "border-red-500/30 bg-red-500/10 text-red-800 dark:text-red-200"
-                        : "border-cyan-500/20 bg-cyan-500/10 text-cyan-800 dark:text-cyan-100"
+                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                        : "border-info/20 bg-info/10 text-info"
                 }`}>
                     <span>{data.pdfStatusMessage}</span>
                     <Button
@@ -438,7 +439,7 @@ export function GradingDetail() {
                         size="sm"
                         onClick={() => { void refreshPdfState(); }}
                         disabled={refreshingPdfState}
-                        className="gap-2 border-current/20 bg-transparent text-current hover:bg-white/5"
+                        className="gap-2 border-current/20 bg-transparent text-current hover:bg-background/5"
                     >
                         <RefreshCw className={`w-4 h-4 ${refreshingPdfState ? "animate-spin" : ""}`} />
                         刷新 PDF 状态
@@ -449,37 +450,37 @@ export function GradingDetail() {
             {/* Main Content */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Left: Submission Content */}
-                <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-slate-950">
+                <div className="flex-1 overflow-y-auto p-6 bg-background">
                     <Tabs defaultValue="report" className="h-full flex flex-col">
-                        <TabsList className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 self-start mb-6">
-                            <TabsTrigger value="report" className="data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-500 text-slate-600 dark:text-slate-400">
+                        <TabsList className="bg-card border border-border self-start mb-6">
+                            <TabsTrigger value="report" className="data-[state=active]:bg-muted data-[state=active]:text-primary text-muted-foreground">
                                 <FileText className="w-4 h-4 mr-2" /> 实验报告
                             </TabsTrigger>
-                            <TabsTrigger value="questionnaire" className="data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-500 text-slate-600 dark:text-slate-400">
+                            <TabsTrigger value="questionnaire" className="data-[state=active]:bg-muted data-[state=active]:text-primary text-muted-foreground">
                                 <ListChecks className="w-4 h-4 mr-2" /> 调查问卷
                             </TabsTrigger>
-                            <TabsTrigger value="data" className="data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-indigo-500 text-slate-600 dark:text-slate-400">
+                            <TabsTrigger value="data" className="data-[state=active]:bg-muted data-[state=active]:text-primary text-muted-foreground">
                                 <BarChart3 className="w-4 h-4 mr-2" /> 样本数据
                             </TabsTrigger>
                         </TabsList>
 
                         <div className="flex-1">
-                            <TabsContent value="report" className="mt-0 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-8 min-h-[500px] shadow-sm">
-                                <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
-                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                        <FileText className="w-5 h-5 text-indigo-500" />
+                            <TabsContent value="report" className="mt-0 bg-card rounded-lg border border-border p-8 min-h-[500px] shadow-sm">
+                                <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
+                                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                                        <FileText className="w-5 h-5 text-primary" />
                                         实验报告详情
                                     </h3>
                                     {data.reportPdfPath && (
                                         <div className="flex items-center gap-2">
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/report`} target="_blank" rel="noreferrer">
-                                                <Button variant="outline" size="sm" className="gap-2 border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700">
+                                                <Button variant="outline" size="sm" className="gap-2 border-input bg-muted text-foreground/90 hover:text-foreground hover:bg-muted">
                                                     <ExternalLink className="w-4 h-4" />
                                                     预览
                                                 </Button>
                                             </a>
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/report`} download>
-                                                <Button variant="outline" size="sm" className="gap-2 border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700">
+                                                <Button variant="outline" size="sm" className="gap-2 border-input bg-muted text-foreground/90 hover:text-foreground hover:bg-muted">
                                                     <Download className="w-4 h-4" />
                                                     下载
                                                 </Button>
@@ -491,32 +492,32 @@ export function GradingDetail() {
                                     {data.reportContent ? (
                                         <RichTextContent
                                             html={data.reportContent}
-                                            className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-white/50 dark:bg-slate-950/50 p-6 rounded-lg border border-slate-200/50 dark:border-slate-800/50"
+                                            className="text-sm text-foreground/90 leading-relaxed bg-background/50 p-6 rounded-lg border border-border/50"
                                         />
                                     ) : (
-                                        <div className="text-slate-500 text-center py-20 bg-white/30 dark:bg-slate-950/30 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                                        <div className="text-muted-foreground text-center py-20 bg-background/30 dark:bg-background/30 rounded-lg border border-dashed border-border">
                                             暂无报告内容
                                         </div>
                                     )}
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="questionnaire" className="mt-0 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-8 min-h-[500px] shadow-sm">
-                                <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-200 dark:border-slate-800">
-                                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                                        <ListChecks className="w-5 h-5 text-indigo-500" />
+                            <TabsContent value="questionnaire" className="mt-0 bg-card rounded-lg border border-border p-8 min-h-[500px] shadow-sm">
+                                <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
+                                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                                        <ListChecks className="w-5 h-5 text-primary" />
                                         问卷设计
                                     </h3>
                                     {data.questionnairePdfPath && (
                                         <div className="flex items-center gap-2">
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/questionnaire`} target="_blank" rel="noreferrer">
-                                                <Button variant="outline" size="sm" className="gap-2 border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700">
+                                                <Button variant="outline" size="sm" className="gap-2 border-input bg-muted text-foreground/90 hover:text-foreground hover:bg-muted">
                                                     <ExternalLink className="w-4 h-4" />
                                                     预览
                                                 </Button>
                                             </a>
                                             <a href={`/api/teacher/submissions/${submissionId}/pdf/questionnaire`} download>
-                                                <Button variant="outline" size="sm" className="gap-2 border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-700">
+                                                <Button variant="outline" size="sm" className="gap-2 border-input bg-muted text-foreground/90 hover:text-foreground hover:bg-muted">
                                                     <Download className="w-4 h-4" />
                                                     下载
                                                 </Button>
@@ -526,19 +527,19 @@ export function GradingDetail() {
                                 </div>
                                 <div className="space-y-6">
                                     {questionnaire && questionnaire.title ? (
-                                        <div className="space-y-6 max-w-3xl mx-auto bg-white dark:bg-slate-950 p-8 rounded-lg border border-slate-200 dark:border-slate-800 shadow-inner">
-                                            <div className="text-center space-y-2 border-b border-slate-200 dark:border-slate-800 pb-6 mb-6">
-                                                <div className="font-bold text-xl text-slate-900 dark:text-slate-100">{questionnaire.title}</div>
+                                        <div className="space-y-6 max-w-3xl mx-auto bg-background p-8 rounded-lg border border-border shadow-inner">
+                                            <div className="text-center space-y-2 border-b border-border pb-6 mb-6">
+                                                <div className="font-bold text-xl text-foreground">{questionnaire.title}</div>
                                                 {questionnaire.welcomeText && (
                                                     <RichTextContent
                                                         html={questionnaire.welcomeText}
-                                                        className="text-sm text-slate-600 dark:text-slate-400"
+                                                        className="text-sm text-muted-foreground"
                                                     />
                                                 )}
                                             </div>
                                             <div className="space-y-6">
                                                 {(questionnaire.questions ?? []).map((q: any, idx: number) => (
-                                                    <div key={q.id ?? idx} className="p-4 border border-slate-200 dark:border-slate-800 rounded-lg bg-slate-50/50 dark:bg-slate-900/50">
+                                                    <div key={q.id ?? idx} className="p-4 border border-border rounded-lg bg-card/50">
                                                         {renderQuestion(q, idx)}
                                                     </div>
                                                 ))}
@@ -546,21 +547,21 @@ export function GradingDetail() {
                                             {questionnaire.endingText && (
                                                 <RichTextContent
                                                     html={questionnaire.endingText}
-                                                    className="text-sm text-slate-500 text-center border-t border-slate-200 dark:border-slate-800 pt-6 mt-6"
+                                                    className="text-sm text-muted-foreground text-center border-t border-border pt-6 mt-6"
                                                 />
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="text-slate-500 text-center py-20 bg-white/30 dark:bg-slate-950/30 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                                        <div className="text-muted-foreground text-center py-20 bg-background/30 dark:bg-background/30 rounded-lg border border-dashed border-border">
                                             未设计问卷
                                         </div>
                                     )}
                                 </div>
                             </TabsContent>
 
-                            <TabsContent value="data" className="mt-0 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-8 min-h-[500px] shadow-sm">
-                                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6 pb-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
-                                    <BarChart3 className="w-5 h-5 text-indigo-500" />
+                            <TabsContent value="data" className="mt-0 bg-card rounded-lg border border-border p-8 min-h-[500px] shadow-sm">
+                                <h3 className="text-lg font-semibold text-foreground mb-6 pb-4 border-b border-border flex items-center gap-2">
+                                    <BarChart3 className="w-5 h-5 text-primary" />
                                     样本数据概览
                                 </h3>
                                 <div className="space-y-8">
@@ -575,17 +576,17 @@ export function GradingDetail() {
                 </div>
 
                 {/* Right: Grading Form（表单与按钮同一滚动容器，避免按钮被 flex 顶到视口底部） */}
-                <div className="w-96 bg-slate-50 dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shrink-0 flex flex-col min-h-0 shadow-xl z-10">
-                    <div className="p-4 border-b border-slate-200 dark:border-slate-800 font-medium text-slate-900 dark:text-slate-100 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between shrink-0">
+                <div className="w-96 bg-card border-l border-border shrink-0 flex flex-col min-h-0 shadow-xl z-10">
+                    <div className="p-4 border-b border-border font-medium text-foreground bg-card/50 flex items-center justify-between shrink-0">
                         <span>{data.isAssistant ? '助教评分' : '评分'}</span>
-                        <div className="text-xs text-slate-500">权重总和: {weights.questionnaire + weights.process + weights.report}%</div>
+                        <div className="text-xs text-muted-foreground">权重总和: {weights.questionnaire + weights.process + weights.report}%</div>
                     </div>
                     <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                         <div className="p-6 space-y-8 pb-4">
                             <div className="space-y-3">
-                                <Label className="text-slate-700 dark:text-slate-300 flex justify-between">
+                                <Label className="text-foreground/90 flex justify-between">
                                     <span>问卷设计</span>
-                                    <span className="text-xs text-indigo-500 font-mono bg-indigo-500/10 px-1.5 py-0.5 rounded">{weights.questionnaire}%</span>
+                                    <span className="text-xs text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded">{weights.questionnaire}%</span>
                                 </Label>
                                 <div className="flex items-center gap-3">
                                     <Input
@@ -594,17 +595,17 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.questionnaire}
                                         onChange={(e) => setScores({ ...scores, questionnaire: e.target.value })}
-                                        className="text-left bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
+                                        className="text-left bg-background border-input text-foreground h-10 text-lg font-mono focus:border-ring"
                                         disabled={saving || gradingLocked}
                                     />
-                                    <span className="text-sm text-slate-500 whitespace-nowrap">分</span>
+                                    <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-slate-700 dark:text-slate-300 flex justify-between">
+                                <Label className="text-foreground/90 flex justify-between">
                                     <span>实施过程</span>
-                                    <span className="text-xs text-indigo-500 font-mono bg-indigo-500/10 px-1.5 py-0.5 rounded">{weights.process}%</span>
+                                    <span className="text-xs text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded">{weights.process}%</span>
                                 </Label>
                                 <div className="flex items-center gap-3">
                                     <Input
@@ -613,17 +614,17 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.process}
                                         onChange={(e) => setScores({ ...scores, process: e.target.value })}
-                                        className="text-left bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
+                                        className="text-left bg-background border-input text-foreground h-10 text-lg font-mono focus:border-ring"
                                         disabled={saving || gradingLocked}
                                     />
-                                    <span className="text-sm text-slate-500 whitespace-nowrap">分</span>
+                                    <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-slate-700 dark:text-slate-300 flex justify-between">
+                                <Label className="text-foreground/90 flex justify-between">
                                     <span>分析报告</span>
-                                    <span className="text-xs text-indigo-500 font-mono bg-indigo-500/10 px-1.5 py-0.5 rounded">{weights.report}%</span>
+                                    <span className="text-xs text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded">{weights.report}%</span>
                                 </Label>
                                 <div className="flex items-center gap-3">
                                     <Input
@@ -632,27 +633,27 @@ export function GradingDetail() {
                                         min="0" max="100"
                                         value={scores.report}
                                         onChange={(e) => setScores({ ...scores, report: e.target.value })}
-                                        className="text-left bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 h-10 text-lg font-mono focus:border-indigo-500"
+                                        className="text-left bg-background border-input text-foreground h-10 text-lg font-mono focus:border-ring"
                                         disabled={saving || gradingLocked}
                                     />
-                                    <span className="text-sm text-slate-500 whitespace-nowrap">分</span>
+                                    <span className="text-sm text-muted-foreground whitespace-nowrap">分</span>
                                 </div>
                             </div>
 
-                            <Separator className="bg-slate-200 dark:bg-slate-800" />
+                            <Separator className="bg-muted" />
 
-                            <div className="flex justify-between items-center bg-indigo-900/20 p-4 rounded-lg border border-indigo-500/20">
-                                <span className="font-semibold text-indigo-700 dark:text-indigo-300">总分</span>
-                                <span className="text-3xl font-bold text-indigo-500 font-mono">{totalScore.toFixed(1)}</span>
+                            <div className="flex justify-between items-center bg-primary/20 p-4 rounded-lg border border-primary/20">
+                                <span className="font-semibold text-primary">总分</span>
+                                <span className="text-3xl font-bold text-primary font-mono">{totalScore.toFixed(1)}</span>
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                                <Label className="text-foreground/90 flex items-center justify-between">
                                     <span>{data.isAssistant ? '助教评语' : '教师评语'}</span>
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-6 text-xs text-indigo-500 hover:text-indigo-600 hover:bg-indigo-500/10 px-2"
+                                        className="h-6 text-xs text-primary hover:text-primary hover:bg-primary/10 px-2"
                                         onClick={() => setShowTemplates(!showTemplates)}
                                         disabled={saving || gradingLocked}
                                     >
@@ -662,11 +663,11 @@ export function GradingDetail() {
                                     </Button>
                                 </Label>
                                 {showTemplates && (
-                                    <div className="flex flex-wrap gap-1.5 p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg">
+                                    <div className="flex flex-wrap gap-1.5 p-3 bg-background border border-border rounded-lg">
                                         {COMMENT_TEMPLATES.map((tpl, idx) => (
                                             <button
                                                 key={idx}
-                                                className="text-xs px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors disabled:opacity-50"
+                                                className="text-xs px-2.5 py-1 rounded-full border border-input text-foreground/90 hover:border-primary hover:text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
                                                 disabled={saving || gradingLocked}
                                                 onClick={() =>
                                                     setComment((prev) => {
@@ -692,18 +693,18 @@ export function GradingDetail() {
                                     placeholder="请输入评语..."
                                     value={comment}
                                     onChange={(e) => setComment(e.target.value)}
-                                    className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 resize-none focus:border-indigo-500"
+                                    className="bg-background border-input text-foreground resize-none focus:border-ring"
                                     disabled={saving || gradingLocked}
                                 />
-                                <div className="text-xs text-slate-500 text-right">{comment.length}/2000</div>
+                                <div className="text-xs text-muted-foreground text-right">{comment.length}/2000</div>
                             </div>
                         </div>
 
-                        <div className="px-6 pb-6 pt-4 border-t border-b border-slate-200 dark:border-slate-800 space-y-3 bg-slate-50/50 dark:bg-slate-900/50">
+                        <div className="px-6 pb-6 pt-4 border-t border-b border-border space-y-3 bg-card/50">
                             {!gradingLocked && data.status === 2 && (
                                 <Button
                                     data-testid="teacher-grading-update"
-                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11"
+                                    className="w-full bg-primary hover:bg-primary text-primary-foreground h-11"
                                     onClick={() => { void handleSubmit(2); }}
                                     disabled={saving}
                                 >
@@ -713,11 +714,11 @@ export function GradingDetail() {
                             )}
                             {(data.status === 0 || data.status === 1) && !isReadOnly && (
                                 <>
-                                    <Button data-testid="teacher-grading-submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-11" onClick={() => { void handleSubmit(2); }} disabled={saving}>
+                                    <Button data-testid="teacher-grading-submit" className="w-full bg-primary hover:bg-primary text-primary-foreground h-11" onClick={() => { void handleSubmit(2); }} disabled={saving}>
                                         <CheckCircle className="w-4 h-4 mr-2" />
                                         {saving ? "提交中..." : "确认评分"}
                                     </Button>
-                                    <Button data-testid="teacher-grading-reject-open" variant="outline" className="w-full border-slate-300 dark:border-slate-700 bg-transparent text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 h-11" onClick={() => setShowRejectModal(true)} disabled={saving}>
+                                    <Button data-testid="teacher-grading-reject-open" variant="outline" className="w-full border-input bg-transparent text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-11" onClick={() => setShowRejectModal(true)} disabled={saving}>
                                         <XCircle className="w-4 h-4 mr-2" />
                                         {saving ? "提交中..." : "驳回重做"}
                                     </Button>
@@ -729,29 +730,29 @@ export function GradingDetail() {
             </div>
 
             <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-                <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent className="bg-card border-border text-foreground">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">驳回理由</DialogTitle>
+                        <DialogTitle className="text-foreground">驳回理由</DialogTitle>
                         <DialogDescription className="sr-only">
                             输入驳回原因，学生将看到这段说明。
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-3 py-4">
-                        <Label className="text-slate-700 dark:text-slate-300">驳回理由（学生可见，至少10字）</Label>
+                        <Label className="text-foreground/90">驳回理由（学生可见，至少10字）</Label>
                         <Textarea
                             data-testid="teacher-grading-reject-reason"
                             rows={4}
                             value={rejectReason}
                             onChange={(e) => setRejectReason(e.target.value)}
-                            className="bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                            className="bg-background border-input text-foreground"
                             placeholder="请详细说明驳回原因..."
                         />
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setShowRejectModal(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">取消</Button>
+                        <Button variant="ghost" onClick={() => setShowRejectModal(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
                         <Button
                             data-testid="teacher-grading-reject-submit"
-                            className="bg-rose-600 hover:bg-rose-700 text-white"
+                            className="bg-destructive hover:bg-destructive text-destructive-foreground"
                             onClick={() => {
                                 if (rejectReason.trim().length < 10) {
                                     toast.error("驳回理由至少10字");

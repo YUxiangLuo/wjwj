@@ -61,12 +61,12 @@ export function FactorsPhase({ step, params, onNext }: Props) {
     return (
         <div className="space-y-8">
             <div className="text-center space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-100 dark:bg-teal-950/50 text-xs font-medium text-teal-700 dark:text-teal-300">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-info text-xs font-medium text-info">
                     <Icon className="w-3.5 h-3.5" />
                     {meta.badge}
                 </span>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{meta.label}</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto">{meta.intro}</p>
+                <h2 className="text-2xl font-bold text-foreground">{meta.label}</h2>
+                <p className="text-sm text-muted-foreground max-w-2xl mx-auto">{meta.intro}</p>
             </div>
 
             {step === "error_tolerance" && <ErrorToleranceContent params={params} />}
@@ -79,7 +79,7 @@ export function FactorsPhase({ step, params, onNext }: Props) {
                 <Button
                     type="button"
                     onClick={onNext}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-5 rounded-xl shadow-lg shadow-indigo-500/20"
+                    className="bg-primary hover:bg-primary text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
                 >
                     {step === "summary" ? "继续：进入样本量公式" : "继续：看下一个因素"}
                     <ChevronRight className="w-5 h-5 ml-2" />
@@ -116,23 +116,23 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
 
     return (
         <div className="space-y-6">
-            <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
+            <p className="text-center text-muted-foreground text-sm">
                 {isMeanEstimation ? (
                     <>
-                        绝对误差限 <strong className="text-slate-700 dark:text-slate-200">e</strong> 越小，对均值估计的精度要求越高，
-                        所需样本量按 <strong className="text-slate-700 dark:text-slate-200">1/e²</strong> 增长。
+                        绝对误差限 <strong className="text-foreground/90">e</strong> 越小，对均值估计的精度要求越高，
+                        所需样本量按 <strong className="text-foreground/90">1/e²</strong> 增长。
                     </>
                 ) : (
                     <>
-                        误差限越小，对精度的要求越高，所需样本量呈<strong className="text-slate-700 dark:text-slate-200">非线性增长</strong>。
+                        误差限越小，对精度的要求越高，所需样本量呈<strong className="text-foreground/90">非线性增长</strong>。
                         通常需要在可接受的误差和可承受的成本之间取得平衡。
                     </>
                 )}
             </p>
 
-            <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-                <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
-                    <p className="text-sm text-center text-slate-500 dark:text-slate-400">
+            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background dark:bg-card shadow-sm overflow-hidden">
+                <div className="bg-card dark:bg-muted/50 px-4 py-2.5 border-b border-border dark:border-input">
+                    <p className="text-sm text-center text-muted-foreground">
                         {isMeanEstimation ? "不同绝对误差限下的样本量" : "不同误差限下的样本量"}
                         <span className="text-xs">
                             {isMeanEstimation
@@ -151,8 +151,8 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                                 aria-pressed={demoError === e}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                                     demoError === e
-                                        ? "bg-teal-500 text-white shadow-sm"
-                                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                                        ? "bg-info text-info-foreground shadow-sm"
+                                        : "bg-muted text-muted-foreground hover:bg-muted-foreground/50"
                                 }`}
                             >
                                 {isMeanEstimation ? `±${formatAbsoluteErrorValue(e)}` : `±${e}%`}
@@ -160,16 +160,16 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                         ))}
                     </div>
                     <div className="text-center">
-                        <p className="text-xs text-slate-400">所需样本量</p>
-                        <p className="text-3xl font-black tabular-nums text-teal-600 dark:text-teal-400">
+                        <p className="text-xs text-muted-foreground">所需样本量</p>
+                        <p className="text-3xl font-black tabular-nums text-info">
                             {demoN.toLocaleString()}
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div className="mx-auto max-w-lg rounded-xl border border-teal-200 dark:border-teal-800/50 bg-teal-50/50 dark:bg-teal-950/20 p-4">
-                <p className="text-sm text-teal-700 dark:text-teal-400/80">
+            <div className="mx-auto max-w-lg rounded-xl border border-info bg-info/50 p-4">
+                <p className="text-sm text-info">
                     {isMeanEstimation ? (
                         <>
                             <strong>关键洞察：</strong>把绝对误差限减半，样本量大约增加 4 倍。
@@ -238,34 +238,34 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
 
     return (
         <div className="space-y-6">
-            <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
-                如果需要分别估计各<strong className="text-slate-700 dark:text-slate-200">子总体</strong>（域）的参数，
-                每个域都需要足够的样本量来保证精度。这里的示例把子总体视为<strong className="text-slate-700 dark:text-slate-200">互不重叠的年龄层</strong>，
+            <p className="text-center text-muted-foreground text-sm">
+                如果需要分别估计各<strong className="text-foreground/90">子总体</strong>（域）的参数，
+                每个域都需要足够的样本量来保证精度。这里的示例把子总体视为<strong className="text-foreground/90">互不重叠的年龄层</strong>，
                 因此总样本量按各层样本量求和，会显著高于仅做整体估计的需求。
                 {isMeanEstimation && ` 这里为便于比较，暂假定各层方差近似相同，统一使用 σ²=${sigma2}。`}
             </p>
 
-            <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-                <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
-                    <p className="text-sm text-center text-slate-500 dark:text-slate-400">
+            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background dark:bg-card shadow-sm overflow-hidden">
+                <div className="bg-card dark:bg-muted/50 px-4 py-2.5 border-b border-border dark:border-input">
+                    <p className="text-sm text-center text-muted-foreground">
                         {isMeanEstimation
                             ? `方案对比示例：按互斥年龄层分别估计均值 (±${formatAbsoluteErrorValue(params.marginOfError)}, σ²=${sigma2}, ${params.confidenceLevel}% CI)`
                             : `方案对比示例：按互斥年龄层分别估计 (±5%, ${params.confidenceLevel}% CI)`}
                     </p>
                 </div>
-                <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    <div className="flex items-center justify-between px-4 py-3 bg-blue-50/50 dark:bg-blue-950/20">
-                        <span className="text-sm font-medium text-blue-600 dark:text-blue-400">方案1: 仅做整体估计</span>
-                        <span className="text-sm font-bold tabular-nums text-blue-600 dark:text-blue-400">n = {nOverall.toLocaleString()}</span>
+                <div className="divide-y divide-border">
+                    <div className="flex items-center justify-between px-4 py-3 bg-info/50">
+                        <span className="text-sm font-medium text-info">方案1: 仅做整体估计</span>
+                        <span className="text-sm font-bold tabular-nums text-info">n = {nOverall.toLocaleString()}</span>
                     </div>
                     <div className="px-4 py-3 space-y-2">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-rose-600 dark:text-rose-400">方案2: 各子总体分别估计</span>
-                            <span className="text-sm font-bold tabular-nums text-rose-600 dark:text-rose-400">n ≈ {totalDomainSample.toLocaleString()}</span>
+                            <span className="text-sm font-medium text-destructive">方案2: 各子总体分别估计</span>
+                            <span className="text-sm font-bold tabular-nums text-destructive">n ≈ {totalDomainSample.toLocaleString()}</span>
                         </div>
                         <div className="space-y-1 pl-3">
                             {domainSizes.map((d) => (
-                                <div key={d.name} className="flex items-center justify-between text-xs text-slate-500">
+                                <div key={d.name} className="flex items-center justify-between text-xs text-muted-foreground">
                                     <span>{d.name} (N={d.domainN.toLocaleString()})</span>
                                     <span className="tabular-nums">{d.domainSample.toLocaleString()}</span>
                                 </div>
@@ -276,8 +276,8 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
             </div>
 
             {totalDomainSample > nOverall && nOverall > 0 && (
-                <div className="mx-auto max-w-lg rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-950/20 p-4">
-                    <p className="text-sm text-amber-700 dark:text-amber-400/80">
+                <div className="mx-auto max-w-lg rounded-xl border border-warning bg-warning/50 p-4">
+                    <p className="text-sm text-warning">
                         <strong>方案2 约为方案1 的 {(totalDomainSample / nOverall).toFixed(1)} 倍！</strong>
                         子总体估计的样本量代价很大。在规划前，需先确认哪些域必须单独估计。
                     </p>
@@ -290,15 +290,15 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
 function VariabilityContent() {
     return (
         <div className="space-y-6">
-            <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
+            <p className="text-center text-muted-foreground text-sm">
                 这一步是在判断公式里的“变异度”该怎么理解。变异越大，需要的样本越多。
             </p>
 
             <div className="mx-auto max-w-lg space-y-4">
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-4">
+                <div className="rounded-2xl border border-border bg-background dark:bg-card p-5 shadow-sm space-y-4">
                     <div className="space-y-2">
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">比例估计中的变异</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm font-semibold text-foreground/90">比例估计中的变异</p>
+                        <p className="text-sm text-muted-foreground">
                             p(1−p) 在 p=0.5 时取最大值 0.25（最大方差）。
                             当比例越接近 0 或 1 时，方差越小，所需样本量越少。
                             <strong> 不确定 p 时，取 p=0.5 是最保守的选择。</strong>
@@ -306,11 +306,11 @@ function VariabilityContent() {
                     </div>
 
                     <div className="space-y-2">
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">均值估计中的变异</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                        <p className="text-sm font-semibold text-foreground/90">均值估计中的变异</p>
+                        <p className="text-sm text-muted-foreground">
                             需要总体方差 σ² 的先验估计。常用的获取途径：
                         </p>
-                        <ul className="text-sm text-slate-500 dark:text-slate-400 list-disc list-inside space-y-1 pl-2">
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 pl-2">
                             <li>历史调查数据</li>
                             <li>小规模预调查（pilot survey）</li>
                             <li>相似总体的经验值</li>
@@ -318,13 +318,13 @@ function VariabilityContent() {
                     </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm space-y-3">
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">多指标时的变异处理</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                <div className="rounded-2xl border border-border bg-background dark:bg-card p-5 shadow-sm space-y-3">
+                    <p className="text-sm font-semibold text-foreground/90">多指标时的变异处理</p>
+                    <p className="text-sm text-muted-foreground">
                         调查通常涉及多个指标，各指标的方差不同。原则上：
                     </p>
-                    <div className="rounded-xl bg-indigo-50 dark:bg-indigo-950/30 p-4">
-                        <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium">
+                    <div className="rounded-xl bg-primary p-4">
+                        <p className="text-sm text-primary font-medium">
                             以<strong>所需样本量最大的那个指标</strong>为准来确定样本量，
                             从而保证所有指标都能达到预期精度。
                         </p>
@@ -362,14 +362,14 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
 
     return (
         <div className="space-y-6">
-            <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
-                精度提升的边际收益<strong className="text-slate-700 dark:text-slate-200">递减</strong>：
+            <p className="text-center text-muted-foreground text-sm">
+                精度提升的边际收益<strong className="text-foreground/90">递减</strong>：
                 {isMeanEstimation ? "每减少一部分绝对误差限，所需额外样本量都会更快地增加。" : "每减少一个百分点的误差限，所需额外样本量越来越多。"}
             </p>
 
-            <div className="mx-auto max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
-                <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
-                    <p className="text-sm text-center text-slate-500 dark:text-slate-400">
+            <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background dark:bg-card shadow-sm overflow-hidden">
+                <div className="bg-card dark:bg-muted/50 px-4 py-2.5 border-b border-border dark:border-input">
+                    <p className="text-sm text-center text-muted-foreground">
                         {isMeanEstimation ? "绝对误差限 vs 样本量" : "误差限 vs 样本量"}
                         <span className="text-xs">
                             {isMeanEstimation
@@ -381,20 +381,20 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
                 <div className="p-4 space-y-2">
                     {barData.map((d) => (
                         <div key={d.e} className="flex items-center gap-3">
-                            <span className="text-xs tabular-nums text-slate-500 w-14 text-right">
+                            <span className="text-xs tabular-nums text-muted-foreground w-14 text-right">
                                 {isMeanEstimation ? `±${formatAbsoluteErrorValue(d.e)}` : `±${d.e}%`}
                             </span>
-                            <div className="flex-1 h-5 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                            <div className="flex-1 h-5 rounded-full bg-muted-foreground/50 overflow-hidden">
                                 <div
                                     className={`h-full rounded-full transition-all duration-300 ${
                                         d.e === params.marginOfError
-                                            ? "bg-indigo-500"
-                                            : "bg-teal-400 dark:bg-teal-600"
+                                            ? "bg-primary"
+                                            : "bg-info"
                                     }`}
                                     style={{ width: `${Math.max(2, (d.n / maxN) * 100)}%` }}
                                 />
                             </div>
-                            <span className="text-xs tabular-nums text-slate-600 dark:text-slate-300 w-16 text-right font-medium">
+                            <span className="text-xs tabular-nums text-muted-foreground w-16 text-right font-medium">
                                 {d.n.toLocaleString()}
                             </span>
                         </div>
@@ -402,8 +402,8 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
                 </div>
             </div>
 
-            <div className="mx-auto max-w-lg rounded-xl border border-teal-200 dark:border-teal-800/50 bg-teal-50/50 dark:bg-teal-950/20 p-4">
-                <p className="text-sm text-teal-700 dark:text-teal-400/80">
+            <div className="mx-auto max-w-lg rounded-xl border border-info bg-info/50 p-4">
+                <p className="text-sm text-info">
                     <strong>实践建议：</strong>找到"精度够用、费用可控"的平衡点。
                     {isMeanEstimation
                         ? " 对均值估计而言，误差限 e 每减半，样本量大约要增加 4 倍。"
@@ -424,25 +424,25 @@ function SummaryContent() {
 
     return (
         <div className="space-y-6">
-            <p className="text-center text-gray-500 dark:text-slate-400 text-sm">
+            <p className="text-center text-muted-foreground text-sm">
                 到这里，你已经看完决定样本量的四类关键条件。
                 它们会一起决定“多少样本才够”。
             </p>
 
             <div className="mx-auto max-w-lg grid grid-cols-2 gap-3">
                 {factors.map(({ icon: FIcon, title, desc }) => (
-                    <div key={title} className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-sm space-y-2">
-                        <div className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-950/50 flex items-center justify-center">
-                            <FIcon className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                    <div key={title} className="rounded-2xl border border-border bg-background dark:bg-card p-4 shadow-sm space-y-2">
+                        <div className="w-9 h-9 rounded-xl bg-info flex items-center justify-center">
+                            <FIcon className="w-4 h-4 text-info" />
                         </div>
-                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">{desc}</p>
+                        <p className="text-sm font-semibold text-foreground/90">{title}</p>
+                        <p className="text-xs text-muted-foreground">{desc}</p>
                     </div>
                 ))}
             </div>
 
-            <div className="mx-auto max-w-lg rounded-xl border border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/50 dark:bg-indigo-950/20 p-4">
-                <p className="text-sm text-indigo-700 dark:text-indigo-400/80">
+            <div className="mx-auto max-w-lg rounded-xl border border-primary bg-primary/50 p-4">
+                <p className="text-sm text-primary">
                     下一步进入公式阶段：先选估计目标，再把这些条件量化成样本量 n。
                 </p>
             </div>

@@ -13,11 +13,11 @@ export function SamplePlanningAdvancedFeatures({
 }: SamplePlanningAdvancedFeaturesProps) {
     return (
         <Card
-            className="rounded-2xl border-slate-200 bg-slate-50/50 shadow-sm dark:border-slate-800 dark:bg-slate-900/50"
+            className="rounded-2xl border-border bg-card/50 shadow-sm dark:border-border dark:bg-card/50"
             data-testid="student-sample-plan-advanced-features"
         >
             <CardHeader className="pb-2">
-                <CardTitle className="text-base text-slate-800 dark:text-slate-200">高级功能</CardTitle>
+                <CardTitle className="text-base text-foreground">高级功能</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
                 <div className="grid grid-cols-2 gap-2">
@@ -30,7 +30,7 @@ export function SamplePlanningAdvancedFeatures({
                             className={`h-auto py-2 text-xs ${
                                 activeAdvancedTab === key
                                     ? activeClass
-                                    : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                                    : "border-input text-foreground/90 hover:bg-card dark:border-input dark:text-muted-foreground"
                             }`}
                         >
                             {label}

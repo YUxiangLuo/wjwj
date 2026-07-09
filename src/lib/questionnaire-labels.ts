@@ -8,8 +8,8 @@ export const questionTypeLabels: Record<QuestionType, string> = {
 };
 
 export const questionTypeBadgeColors: Record<QuestionType, string> = {
-    boolean: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-    single: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-    multiple: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-    scale: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+    boolean: "bg-success/10 text-success border-success/20",
+    single: "bg-info/10 text-info border-info/20",
+    multiple: "bg-warning/10 text-warning border-warning/20",
+    scale: "bg-auxiliary/10 text-auxiliary border-auxiliary/20",
 };

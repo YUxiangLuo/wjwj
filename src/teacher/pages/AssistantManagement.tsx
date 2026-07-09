@@ -20,6 +20,9 @@ import { AssistantAddDialog } from "../components/AssistantAddDialog";
 import { AssistantAssignDialog } from "../components/AssistantAssignDialog";
 import { teacherApi, type Assistant, type TeacherClass } from "../api-client";
 import { toast } from "sonner";
+import { IconTile } from "@/components/IconTile";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 
 export function AssistantManagement() {
     const [assistants, setAssistants] = useState<Assistant[]>([]);
@@ -118,144 +121,144 @@ export function AssistantManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">助教管理</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">维护助教账号与负责班级。</p>
+                <h2 className="text-lg font-semibold text-foreground">助教管理</h2>
+                <p className="text-sm text-muted-foreground mt-1">维护助教账号与负责班级。</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">助教总数</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{summary.total}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">助教总数</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
+                        <IconTile intent="info">
                             <Users className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">正常账号</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{summary.active}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">正常账号</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{summary.active}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已停用</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{summary.disabled}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已停用</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{summary.disabled}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <IconTile intent="warning">
                             <PauseCircle className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">覆盖班级</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{summary.classCount}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">覆盖班级</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{summary.classCount}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                        <IconTile intent="auxiliary">
                             <Users className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
-                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <Card>
+                <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">助教列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredAssistants.length} 条数据</p>
+                        <CardTitle className="text-base text-foreground">助教列表</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">共 {filteredAssistants.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-assistant-search"
                                 placeholder="搜索姓名/工号/邮箱"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "active" | "disabled")}>
-                            <SelectTrigger data-testid="teacher-assistant-status-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-28">
+                            <SelectTrigger data-testid="teacher-assistant-status-filter" className="bg-background border-border text-foreground sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="active">正常</SelectItem>
                                 <SelectItem value="disabled">已停用</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-assistant-add-open" onClick={() => setShowAddModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                        <Button data-testid="teacher-assistant-add-open" onClick={() => setShowAddModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
                             <UserPlus className="w-4 h-4 mr-2" />
                             添加助教
                         </Button>
                     </div>
-                </CardHeader>
+                </PageHeader>
                 <CardContent className="pt-0">
                     <Table>
                         <TableHeader>
-                            <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                <TableHead className="text-slate-600 dark:text-slate-400">姓名</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">工号</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">邮箱</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">负责班级</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400">状态</TableHead>
-                                <TableHead className="text-slate-600 dark:text-slate-400 text-right">操作</TableHead>
+                            <TableRow className="border-border hover:bg-card/50">
+                                <TableHead className="text-muted-foreground">姓名</TableHead>
+                                <TableHead className="text-muted-foreground">工号</TableHead>
+                                <TableHead className="text-muted-foreground">邮箱</TableHead>
+                                <TableHead className="text-muted-foreground">负责班级</TableHead>
+                                <TableHead className="text-muted-foreground">状态</TableHead>
+                                <TableHead className="text-muted-foreground text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredAssistants.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-slate-500">
+                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
-                                            <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center">
-                                                <Users className="w-6 h-6 text-slate-500" />
+                                            <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                                                <Users className="w-6 h-6 text-muted-foreground" />
                                             </div>
                                             <p>暂无符合条件的助教</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             ) : filteredAssistants.map((ta) => (
-                                <TableRow data-testid={`teacher-assistant-row-${ta.id}`} key={ta.id} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <TableCell className="font-medium text-slate-800 dark:text-slate-200">{ta.name}</TableCell>
-                                    <TableCell className="font-mono text-slate-700 dark:text-slate-300">{ta.studentId}</TableCell>
-                                    <TableCell className="text-slate-600 dark:text-slate-400">{ta.email || "-"}</TableCell>
+                                <TableRow data-testid={`teacher-assistant-row-${ta.id}`} key={ta.id} className="border-border hover:bg-muted/50 transition-colors">
+                                    <TableCell className="font-medium text-foreground">{ta.name}</TableCell>
+                                    <TableCell className="font-mono text-foreground/90">{ta.studentId}</TableCell>
+                                    <TableCell className="text-muted-foreground">{ta.email || "-"}</TableCell>
                                     <TableCell>
                                         <div className="flex gap-1 flex-wrap">
                                             {ta.assignedClasses.map((cls) => (
-                                                <Badge key={cls} variant="secondary" className="text-xs bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700">{cls}</Badge>
+                                                <Badge key={cls} variant="secondary" className="text-xs bg-muted text-foreground/90 border-input hover:bg-muted">{cls}</Badge>
                                             ))}
-                                            {ta.assignedClasses.length === 0 && <span className="text-slate-500 text-xs">-</span>}
+                                            {ta.assignedClasses.length === 0 && <span className="text-muted-foreground text-xs">-</span>}
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         {ta.status === 1 ? (
-                                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">正常</Badge>
+                                            <StatusBadge intent="success">正常</StatusBadge>
                                         ) : (
-                                            <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700">已停用</Badge>
+                                            <Badge variant="secondary" className="bg-muted text-muted-foreground border-input">已停用</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex flex-wrap justify-end gap-2">
-                                            <Button data-testid={`teacher-assistant-assign-open-${ta.id}`} variant="ghost" size="sm" className="h-8 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10" onClick={() => openAssignModal(ta)}>
+                                            <Button data-testid={`teacher-assistant-assign-open-${ta.id}`} variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openAssignModal(ta)}>
                                                 <UserCog className="w-3.5 h-3.5 mr-1" />分配班级
                                             </Button>
                                             <Button
                                                 data-testid={`teacher-assistant-reset-${ta.id}`}
                                                 variant="ghost"
                                                 size="sm"
-                                                className="h-8 text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-500/10"
+                                                className="h-8 text-muted-foreground hover:text-info hover:bg-info/10"
                                                 onClick={async () => {
                                                     const res = await teacherApi.updateAssistant(ta.id, { action: "reset_password" });
                                                     if (res.success) {
@@ -271,7 +274,7 @@ export function AssistantManagement() {
                                                 data-testid={`teacher-assistant-toggle-${ta.id}`}
                                                 variant="ghost"
                                                 size="sm"
-                                                className={`h-8 ${ta.status === 1 ? "text-slate-600 dark:text-slate-400 hover:text-amber-600 hover:bg-amber-500/10" : "text-slate-600 dark:text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10"}`}
+                                                className={`h-8 ${ta.status === 1 ? "text-muted-foreground hover:text-warning hover:bg-warning/10" : "text-muted-foreground hover:text-success hover:bg-success/10"}`}
                                                 onClick={async () => {
                                                     const res = await teacherApi.updateAssistant(ta.id, { action: "toggle_status" });
                                                     if (res.success) {
@@ -283,7 +286,7 @@ export function AssistantManagement() {
                                             >
                                                 {ta.status === 1 ? <><PauseCircle className="w-3.5 h-3.5 mr-1" />停用</> : <><CheckCircle2 className="w-3.5 h-3.5 mr-1" />启用</>}
                                             </Button>
-                                            <Button data-testid={`teacher-assistant-delete-${ta.id}`} variant="ghost" size="sm" className="h-8 text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" onClick={() => setDeleteId(ta.id)}>
+                                            <Button data-testid={`teacher-assistant-delete-${ta.id}`} variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteId(ta.id)}>
                                                 <Trash2 className="w-3.5 h-3.5 mr-1" />移除
                                             </Button>
                                         </div>
@@ -314,16 +317,16 @@ export function AssistantManagement() {
             />
 
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <AlertDialogContent className="bg-card border-border text-foreground">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认移除助教</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                        <AlertDialogTitle className="text-foreground">确认移除助教</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
                             此操作将移除该助教及其所有班级关联，无法撤销。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-rose-600 hover:bg-rose-700 text-white">确认移除</AlertDialogAction>
+                        <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive text-destructive-foreground">确认移除</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

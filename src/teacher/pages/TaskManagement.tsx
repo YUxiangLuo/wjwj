@@ -22,6 +22,9 @@ import { TaskPublishDialog } from "../components/TaskPublishDialog";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { localWallClockToUtcIso } from "@/lib/datetime";
+import { IconTile } from "@/components/IconTile";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 
 export function TaskManagement() {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -170,129 +173,129 @@ export function TaskManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">任务管理</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">管理发布任务与批改进度。</p>
+                <h2 className="text-lg font-semibold text-foreground">任务管理</h2>
+                <p className="text-sm text-muted-foreground mt-1">管理发布任务与批改进度。</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">任务总数</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">任务总数</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
+                        <IconTile intent="info">
                             <ClipboardList className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">待批改</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.pendingTotal}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">待批改</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.pendingTotal}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-rose-500/10 text-rose-600 flex items-center justify-center border border-rose-500/20">
+                        <IconTile intent="destructive">
                             <AlertTriangle className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已完成</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.completedTotal}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已完成</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.completedTotal}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <IconTile intent="success">
                             <CheckCircle2 className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">总提交数</p>
-                            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.totalSubmissions}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">总提交数</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.totalSubmissions}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <IconTile intent="warning">
                             <CalendarDays className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
-                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <Card>
+                <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">任务列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredTasks.length} 条数据</p>
+                        <CardTitle className="text-base text-foreground">任务列表</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">共 {filteredTasks.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-task-search"
                                 placeholder="搜索课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger data-testid="teacher-task-class-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-task-class-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all">全部班级</SelectItem>
                                 {Array.from(new Set(tasks.map((task) => task.className))).map((name) => (
                                     <SelectItem key={name} value={name}>{name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                        <Button data-testid="teacher-task-publish-open" onClick={() => setShowPublishModal(true)} className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20">
                             <Plus className="w-4 h-4 mr-1" /> 发布任务
                         </Button>
                     </div>
-                </CardHeader>
+                </PageHeader>
                 <CardContent className="pt-0">
-                    {loading ? <div className="text-center py-12 text-slate-500">加载中...</div> : (
+                    {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : (
                         <Table>
                             <TableHeader>
-                                <TableRow className="border-slate-200 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                    <TableHead className="text-slate-600 dark:text-slate-400">课题</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">班级</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">发布时间</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">截止时间</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">完成进度</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400">待批改</TableHead>
-                                    <TableHead className="text-slate-600 dark:text-slate-400 text-right">操作</TableHead>
+                                <TableRow className="border-border hover:bg-card/50">
+                                    <TableHead className="text-muted-foreground">课题</TableHead>
+                                    <TableHead className="text-muted-foreground">班级</TableHead>
+                                    <TableHead className="text-muted-foreground">发布时间</TableHead>
+                                    <TableHead className="text-muted-foreground">截止时间</TableHead>
+                                    <TableHead className="text-muted-foreground">完成进度</TableHead>
+                                    <TableHead className="text-muted-foreground">待批改</TableHead>
+                                    <TableHead className="text-muted-foreground text-right">操作</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredTasks.map((task) => (
-                                    <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
-                                        <TableCell className="font-medium text-slate-800 dark:text-slate-200">{task.topic}</TableCell>
-                                        <TableCell className="text-slate-700 dark:text-slate-300">{task.className}</TableCell>
-                                        <TableCell className="text-slate-500 text-xs">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</TableCell>
-                                        <TableCell className="text-slate-500 text-xs">{task.deadline ? new Date(task.deadline).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "无"}</TableCell>
+                                    <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="border-border hover:bg-muted/50 transition-colors">
+                                        <TableCell className="font-medium text-foreground">{task.topic}</TableCell>
+                                        <TableCell className="text-foreground/90">{task.className}</TableCell>
+                                        <TableCell className="text-muted-foreground text-xs">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</TableCell>
+                                        <TableCell className="text-muted-foreground text-xs">{task.deadline ? new Date(task.deadline).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "无"}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-slate-200 dark:bg-slate-800 [&>div]:bg-emerald-500" />
-                                                <span className="text-xs text-slate-500">{task.completed}/{task.total}</span>
+                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
+                                                <span className="text-xs text-muted-foreground">{task.completed}/{task.total}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             {task.pending && task.pending > 0 ? (
-                                                <Badge variant="secondary" className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20">
+                                                <StatusBadge intent="destructive">
                                                     {task.pending}
-                                                </Badge>
+                                                </StatusBadge>
                                             ) : (
-                                                <span className="text-slate-500 text-xs">-</span>
+                                                <span className="text-muted-foreground text-xs">-</span>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="sm" asChild className="h-8 text-slate-600 dark:text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-success hover:bg-success/10">
                                                     <Link to={`/task/${task.id}/progress`}>
                                                         <BarChart3 className="w-3.5 h-3.5 mr-1" />
                                                         进度
@@ -307,12 +310,12 @@ export function TaskManagement() {
                                                         setExtendDeadline("");
                                                         setShowExtendModal(true);
                                                     }}
-                                                    className="h-8 text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10"
+                                                    className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                 >
                                                     <Clock className="w-3.5 h-3.5 mr-1" />
                                                     延时
                                                 </Button>
-                                                <Button variant="ghost" size="sm" asChild className="h-8 text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10">
+                                                <Button variant="ghost" size="sm" asChild className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
                                                     <Link to="/grading">批改</Link>
                                                 </Button>
                                                 <Button
@@ -321,7 +324,7 @@ export function TaskManagement() {
                                                     size="sm"
                                                     type="button"
                                                     onClick={() => setTaskToDelete(task)}
-                                                    className="h-8 text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10"
+                                                    className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                     title="删除任务"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -332,10 +335,10 @@ export function TaskManagement() {
                                 ))}
                                 {filteredTasks.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-16 text-slate-500">
+                                        <TableCell colSpan={7} className="text-center py-16 text-muted-foreground">
                                             <div className="flex flex-col items-center gap-2">
-                                                <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center">
-                                                    <Search className="w-5 h-5 text-slate-500" />
+                                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
+                                                    <Search className="w-5 h-5 text-muted-foreground" />
                                                 </div>
                                                 <p>暂无符合条件的数据</p>
                                             </div>
@@ -373,17 +376,17 @@ export function TaskManagement() {
             />
 
             <AlertDialog open={taskToDelete !== null} onOpenChange={(open) => { if (!open) setTaskToDelete(null); }}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <AlertDialogContent className="bg-card border-border text-foreground">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">删除任务？</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                        <AlertDialogTitle className="text-foreground">删除任务？</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
                             {taskToDelete
                                 ? `将取消「${taskToDelete.topic}」在「${taskToDelete.className}」的任务发布：学生端与批改中均不再显示。需要再次布置同一课题时，可在「发布任务」中重新向该班级发布。`
                                 : null}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-slate-200 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                        <AlertDialogCancel className="bg-muted border-input text-foreground/90">
                             取消
                         </AlertDialogCancel>
                         <Button

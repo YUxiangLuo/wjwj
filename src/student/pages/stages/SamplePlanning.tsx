@@ -136,17 +136,17 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             )}
 
             {/* Population info */}
-            <Card className="gap-2 py-4 rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                <CardHeader className="border-b border-slate-200 dark:border-slate-800 px-4 pb-3 pt-0 [.border-b]:pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base text-slate-900 dark:text-slate-100">
-                        <Users className="w-4 h-4 shrink-0 text-indigo-500" />
+            <Card className="gap-2 py-4 rounded-2xl border-border bg-card/50 shadow-sm">
+                <CardHeader className="border-b border-border px-4 pb-3 pt-0 [.border-b]:pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                        <Users className="w-4 h-4 shrink-0 text-primary" />
                         总体信息
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-1 pt-3">
-                    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950/50">
-                        <span className="text-slate-600 dark:text-slate-400">总体规模 (N)</span>
-                        <span className="text-xl font-bold tabular-nums text-indigo-500">{N.toLocaleString()} <span className="text-sm font-normal text-slate-500">人</span></span>
+                    <div className="flex items-center justify-between rounded-xl border border-border bg-background/50 px-3 py-2.5 dark:border-border dark:bg-background/50">
+                        <span className="text-muted-foreground">总体规模 (N)</span>
+                        <span className="text-xl font-bold tabular-nums text-primary">{N.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">人</span></span>
                     </div>
                 </CardContent>
             </Card>
@@ -154,10 +154,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             {displayData ? (
                 <>
                     {/* Parameter summary (read-only) */}
-                    <Card className="gap-2 py-4 rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 px-4 pb-3 pt-0 [.border-b]:pb-3">
-                            <CardTitle className="flex items-center gap-2 text-base text-slate-900 dark:text-slate-100">
-                                <ClipboardList className="w-4 h-4 shrink-0 text-slate-500" />
+                    <Card className="gap-2 py-4 rounded-2xl border-border bg-card/50 shadow-sm">
+                        <CardHeader className="border-b border-border px-4 pb-3 pt-0 [.border-b]:pb-3">
+                            <CardTitle className="flex items-center gap-2 text-base text-foreground">
+                                <ClipboardList className="w-4 h-4 shrink-0 text-muted-foreground" />
                                 参数摘要
                             </CardTitle>
                         </CardHeader>
@@ -181,14 +181,14 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                                 <SummaryRow label="设计效应" value={displayData.designEffect.toFixed(1)} />
                                 <SummaryRow label="无回答率" value={`${Math.round(displayData.nonResponseRate * 100)}%`} />
                             </div>
-                            <div className="mt-2 grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-white/50 px-3 py-2 dark:border-slate-800 dark:bg-slate-950/50">
+                            <div className="mt-2 grid grid-cols-2 gap-3 rounded-lg border border-border bg-background/50 px-3 py-2 dark:border-border dark:bg-background/50">
                                 <div>
-                                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">建议样本量</p>
-                                    <p className="text-base font-bold font-mono tabular-nums text-teal-600 dark:text-teal-400">{displayData.recommendedSize.toLocaleString()}</p>
+                                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">建议样本量</p>
+                                    <p className="text-base font-bold font-mono tabular-nums text-info">{displayData.recommendedSize.toLocaleString()}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">最终设定</p>
-                                    <p className="text-lg font-bold font-mono tabular-nums text-indigo-500">{displayData.finalSampleSize.toLocaleString()}</p>
+                                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">最终设定</p>
+                                    <p className="text-lg font-bold font-mono tabular-nums text-primary">{displayData.finalSampleSize.toLocaleString()}</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -200,7 +200,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             variant="outline"
                             onClick={() => setImmersiveOpen(true)}
-                            className="border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
+                            className="border-primary text-primary hover:bg-primary/30"
                         >
                             <Sparkles className="w-4 h-4 mr-1.5" />
                             重新规划样本量
@@ -208,7 +208,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     </div>
 
                     {!isValidFinalSize && (
-                        <div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-600 dark:text-rose-400">
+                        <div className="flex items-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                             <Info className="h-4 w-4 shrink-0" />
                             最终样本量需在 {minSampleSize}～{maxSampleSize.toLocaleString()} 人之间，请重新规划样本量。
                         </div>
@@ -216,14 +216,14 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 </>
             ) : (
                 /* First visit — prompt to start sample planning */
-                <Card className="gap-2 py-8 rounded-2xl border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-sm">
+                <Card className="gap-2 py-8 rounded-2xl border-primary bg-primary/50 shadow-sm">
                     <CardContent className="flex flex-col items-center text-center space-y-4 px-6">
-                        <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                            <Sparkles className="w-7 h-7 text-indigo-600 dark:text-indigo-400" />
+                        <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                            <Sparkles className="w-7 h-7 text-primary" />
                         </div>
                         <div className="space-y-1">
-                            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">开始样本量规划</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+                            <h3 className="text-lg font-semibold text-foreground">开始样本量规划</h3>
+                            <p className="text-sm text-muted-foreground max-w-sm">
                                 通过分步引导，逐步理解样本量计算原理并确定最终样本量。
                             </p>
                         </div>
@@ -231,7 +231,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             onClick={() => setImmersiveOpen(true)}
                             data-testid="student-sample-plan-start"
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 shadow-lg shadow-indigo-500/20"
+                            className="bg-primary hover:bg-primary text-primary-foreground px-8 shadow-lg shadow-primary/20"
                         >
                             <Sparkles className="w-4 h-4 mr-1.5" />
                             开始规划样本量
@@ -241,12 +241,12 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             )}
 
             {/* Bottom navigation */}
-            <div className="flex justify-between items-center gap-3 pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
+            <div className="flex justify-between items-center gap-3 pt-6 border-t border-border/50">
                 <Button
                     variant="outline"
                     onClick={onPrev}
                     data-testid="student-sample-plan-prev"
-                    className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100"
+                    className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground"
                 >
                     <ChevronLeft className="w-4 h-4 mr-1" />
                     上一阶段
@@ -257,7 +257,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         onClick={() => setConfirmNextOpen(true)}
                         disabled={!isValidFinalSize}
                         data-testid="student-sample-plan-next"
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 disabled:opacity-40 disabled:shadow-none"
+                        className="bg-primary hover:bg-primary text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-40 disabled:shadow-none"
                     >
                         确认并进入下一阶段
                         <ChevronRight className="w-4 h-4 ml-1" />
@@ -266,10 +266,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             </div>
 
             <AlertDialog open={confirmNextOpen} onOpenChange={handleConfirmNextDialogOpenChange}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                <AlertDialogContent className="bg-card border-border">
                     <AlertDialogHeader>
                         <AlertDialogTitle>进入抽样执行？</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-300">
+                        <AlertDialogDescription className="text-muted-foreground">
                             将保存当前样本量规划并进入「抽样执行」阶段。若之后返回修改本阶段，后续阶段已填数据可能被清空。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -281,7 +281,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             onClick={() => void handleConfirmNext()}
                             disabled={confirmNextSaving}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            className="bg-primary hover:bg-primary text-primary-foreground"
                         >
                             {confirmNextSaving ? (
                                 <>
@@ -303,9 +303,9 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
     return (
-        <div className="flex justify-between gap-2 border-b border-slate-200/50 py-1.5 text-sm dark:border-slate-800/50">
-            <span className="text-slate-500">{label}</span>
-            <span className="font-mono text-slate-800 dark:text-slate-200 tabular-nums">{value}</span>
+        <div className="flex justify-between gap-2 border-b border-border/50 py-1.5 text-sm dark:border-border/50">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-mono text-foreground tabular-nums">{value}</span>
         </div>
     );
 }

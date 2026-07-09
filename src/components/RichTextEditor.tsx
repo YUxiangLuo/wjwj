@@ -59,8 +59,8 @@ function ToolbarButton({
             }}
             className={cn(
                 "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
-                "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800",
-                active && "bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100",
+                "text-muted-foreground hover:text-foreground hover:bg-muted",
+                active && "bg-muted text-foreground",
                 disabled && "opacity-40 pointer-events-none",
             )}
         >
@@ -70,7 +70,7 @@ function ToolbarButton({
 }
 
 function ToolbarDivider() {
-    return <div className="mx-0.5 h-5 w-px bg-slate-300 dark:bg-slate-700" />;
+    return <div className="mx-0.5 h-5 w-px bg-muted-foreground/20" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,12 +106,12 @@ export function RichTextEditor({
                 "data-testid": editorTestId ?? "",
                 ...(id ? { id } : {}),
                 class: cn(
-                    "min-h-[180px] p-4 text-sm text-slate-800 dark:text-slate-200 leading-relaxed outline-none rich-text-content",
+                    "min-h-[180px] p-4 text-sm text-foreground leading-relaxed outline-none rich-text-content",
                     "[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1",
                     "[&_p]:mb-2 [&_p:last-child]:mb-0",
                     "[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5 [&_li]:mb-1",
-                    "[&_blockquote]:border-l-3 [&_blockquote]:border-slate-300 dark:[&_blockquote]:border-slate-600 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-600 dark:[&_blockquote]:text-slate-400 [&_blockquote]:my-2",
-                    "[&_hr]:border-slate-200 dark:[&_hr]:border-slate-700 [&_hr]:my-3",
+                    "[&_blockquote]:border-l-3 [&_blockquote]:border-input dark:[&_blockquote]:border-input [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-muted-foreground dark:[&_blockquote]:text-muted-foreground [&_blockquote]:my-2",
+                    "[&_hr]:border-border dark:[&_hr]:border-input [&_hr]:my-3",
                     editorClassName,
                 ),
             },
@@ -144,13 +144,13 @@ export function RichTextEditor({
     return (
         <div
             className={cn(
-                "rounded-xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-950/40 overflow-hidden",
+                "rounded-xl border border-border bg-background/40 dark:bg-background/40 overflow-hidden",
                 className,
             )}
             data-testid={dataTestId}
         >
             {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-0.5 border-b border-slate-200 dark:border-slate-800 px-2 py-1.5">
+            <div className="flex flex-wrap items-center gap-0.5 border-b border-border px-2 py-1.5">
                 <ToolbarButton
                     title="标题 2"
                     active={editor.isActive("heading", { level: 2 })}
@@ -244,7 +244,7 @@ export function RichTextEditor({
                     <Redo2 className="h-4 w-4" />
                 </ToolbarButton>
 
-                <div className="ml-auto text-xs text-slate-500 tabular-nums">
+                <div className="ml-auto text-xs text-muted-foreground tabular-nums">
                     {plainLength} 字
                 </div>
             </div>

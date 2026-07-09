@@ -20,6 +20,9 @@ import { teacherApi, type Topic, type TopicDetail, type Question } from "../api-
 import { TopicWizardDialog } from "../components/TopicWizardDialog";
 import { TopicViewDialog } from "../components/TopicViewDialog";
 import { toast } from "sonner";
+import { IconTile } from "@/components/IconTile";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 
 export function TopicManagement() {
     const [topics, setTopics] = useState<Topic[]>([]);
@@ -310,136 +313,136 @@ export function TopicManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">课题管理</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">配置课题信息、数据与评分权重。</p>
+                <h2 className="text-lg font-semibold text-foreground">课题管理</h2>
+                <p className="text-sm text-muted-foreground mt-1">配置课题信息、数据与评分权重。</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">课题总数</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.total}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">课题总数</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20">
+                        <IconTile intent="info">
                             <BookOpen className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">已发布</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.published}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已发布</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.published}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center border border-emerald-500/20">
+                        <IconTile intent="success">
                             <Layers className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">草稿</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.draft}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">草稿</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.draft}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-500/20">
+                        <IconTile intent="warning">
                             <FileText className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
-                <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+                <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">数据行数</p>
-                            <p className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">数据行数</p>
+                            <p className="text-2xl font-semibold text-foreground mt-1">{loading ? "-" : summary.totalRows.toLocaleString()}</p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                        <IconTile intent="auxiliary">
                             <Layers className="w-5 h-5" />
-                        </div>
+                        </IconTile>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
-                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <Card>
+                <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">课题列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {filteredTopics.length} 条数据</p>
+                        <CardTitle className="text-base text-foreground">课题列表</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">共 {filteredTopics.length} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-topic-search"
                                 placeholder="搜索课题名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger data-testid="teacher-topic-status-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-28">
+                            <SelectTrigger data-testid="teacher-topic-status-filter" className="bg-background border-border text-foreground sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all">全部状态</SelectItem>
                                 <SelectItem value="draft">草稿</SelectItem>
                                 <SelectItem value="published">已发布</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                        <Button data-testid="teacher-topic-create-open" onClick={openCreateModal} className="bg-primary hover:bg-primary text-primary-foreground">
                             + 创建课题
                         </Button>
                     </div>
-                </CardHeader>
+                </PageHeader>
                 <CardContent className="space-y-4 pt-4">
-                    {loading ? <div className="text-center py-12 text-slate-500">加载中...</div> : filteredTopics.map((topic) => (
-                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-slate-200 dark:border-slate-800 rounded-lg p-5 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                    {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
+                        <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-lg p-5 bg-background hover:bg-card hover:border-input transition-all">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
                                 <div className="flex items-start gap-4">
-                                    <div className="w-12 h-12 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
+                                    <div className="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
                                         <BookOpen className="w-6 h-6" />
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-lg">{topic.name}</h4>
+                                            <h4 className="font-semibold text-foreground text-lg">{topic.name}</h4>
                                             {topic.status === 1 ? (
-                                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20">已发布</Badge>
+                                                <StatusBadge intent="success">已发布</StatusBadge>
                                             ) : (
-                                                <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20">草稿</Badge>
+                                                <StatusBadge intent="warning">草稿</StatusBadge>
                                             )}
                                         </div>
-                                        <div className="text-xs text-slate-500 mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
-                                        <div className="text-sm text-slate-600 dark:text-slate-400 mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
+                                        <div className="text-xs text-muted-foreground mt-1">创建于 {new Date(topic.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</div>
+                                        <div className="text-sm text-muted-foreground mt-2 line-clamp-2 max-w-2xl">{getRichTextPlainText(topic.description) || "暂无描述"}</div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-4 mt-2">
-                                <div className="flex items-center gap-6 text-sm text-slate-500">
+                            <div className="flex items-center justify-between border-t border-border pt-4 mt-2">
+                                <div className="flex items-center gap-6 text-sm text-muted-foreground">
                                     <span className="flex items-center gap-2">
                                         <Layers className="w-4 h-4" />
-                                        数据行数：<span className="text-slate-700 dark:text-slate-300">{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
+                                        数据行数：<span className="text-foreground/90">{topic.dataRows > 0 ? topic.dataRows.toLocaleString() : "未上传"}</span>
                                     </span>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     {topic.status === 0 ? (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
-                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-emerald-600 hover:bg-emerald-500/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info/10" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button data-testid={`teacher-topic-publish-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-success hover:bg-success/10" onClick={() => setConfirmDialog({ open: true, type: "publish", topic })}>发布</Button>
+                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     ) : (
                                         <>
-                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-500/10" onClick={() => openViewModal(topic)}>查看</Button>
-                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10" onClick={() => openEditModal(topic)}>编辑</Button>
+                                            <Button data-testid={`teacher-topic-view-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-info hover:bg-info/10" onClick={() => openViewModal(topic)}>查看</Button>
+                                            <Button data-testid={`teacher-topic-edit-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => openEditModal(topic)}>编辑</Button>
                                             <Button
                                                 data-testid={`teacher-topic-copy-${topic.id}`}
                                                 variant="ghost"
                                                 size="sm"
                                                 disabled={copyingTopicId !== null}
-                                                className="text-slate-600 dark:text-slate-400 hover:text-cyan-600 hover:bg-cyan-500/10"
+                                                className="text-muted-foreground hover:text-info hover:bg-info/10"
                                                 onClick={async () => {
                                                     setCopyingTopicId(topic.id);
                                                     try {
@@ -456,7 +459,7 @@ export function TopicManagement() {
                                             >
                                                 复制
                                             </Button>
-                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
+                                            <Button data-testid={`teacher-topic-delete-${topic.id}`} variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => setConfirmDialog({ open: true, type: "delete", topic })}>删除</Button>
                                         </>
                                     )}
                                 </div>
@@ -523,19 +526,19 @@ export function TopicManagement() {
                 open={confirmDialog.open}
                 onOpenChange={(open) => !open && setConfirmDialog(markdown => ({ ...markdown, open: false }))}
             >
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <AlertDialogContent className="bg-card border-border text-foreground">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认操作</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+                        <AlertDialogTitle className="text-foreground">确认操作</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground">
                             {confirmDialog.type === "delete" && "确认删除该课题吗？删除后无法恢复。"}
                             {confirmDialog.type === "publish" && "确认发布该课题吗？发布后学生将可见。"}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">
+                        <AlertDialogCancel onClick={() => setConfirmDialog({ open: false, type: null, topic: null })} className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">
                             取消
                         </AlertDialogCancel>
-                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"}>
+                        <AlertDialogAction onClick={executeConfirmAction} className={confirmDialog.type === "delete" ? "bg-destructive hover:bg-destructive text-destructive-foreground" : "bg-primary hover:bg-primary text-primary-foreground"}>
                             确认
                         </AlertDialogAction>
                     </AlertDialogFooter>

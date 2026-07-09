@@ -46,33 +46,33 @@ export function SensitivityAnalysisCard({
 
     // 置信水平颜色映射
     const confidenceColors: Record<string, string> = {
-        "90": "bg-emerald-500",
-        "95": "bg-blue-500",
-        "99": "bg-violet-500",
+        "90": "bg-success",
+        "95": "bg-info",
+        "99": "bg-auxiliary",
     };
 
     const cellHeatClasses = (intensity: number, isCurrent: boolean) => {
         if (isCurrent) {
-            return "bg-white dark:bg-slate-950 ring-2 ring-indigo-500 dark:ring-indigo-400 shadow-sm";
+            return "bg-background ring-2 ring-primary shadow-sm";
         }
-        if (intensity < 40) return "bg-indigo-50/95 dark:bg-indigo-950/45";
-        if (intensity < 55) return "bg-indigo-100/90 dark:bg-indigo-900/40";
-        if (intensity < 72) return "bg-indigo-200/85 dark:bg-indigo-800/35";
-        return "bg-indigo-300/80 dark:bg-indigo-700/45";
+        if (intensity < 40) return "bg-primary/95 dark:bg-primary/45";
+        if (intensity < 55) return "bg-primary/90 dark:bg-primary/40";
+        if (intensity < 72) return "bg-primary/85 dark:bg-primary/35";
+        return "bg-primary/80 dark:bg-primary/45";
     };
 
     return (
-        <Card className="rounded-2xl border border-indigo-200/90 bg-indigo-50/90 shadow-sm dark:border-indigo-900/50 dark:bg-slate-950">
+        <Card className="rounded-2xl border border-primary/90 bg-primary/90 shadow-sm dark:border-primary/50 dark:bg-background">
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-50">
+                        <Activity className="w-5 h-5 text-primary" />
+                        <CardTitle className="text-base text-foreground">
                             样本量敏感性分析
                         </CardTitle>
                     </div>
                 </div>
-                <CardDescription className="text-slate-700 dark:text-slate-300">
+                <CardDescription className="text-foreground/90">
                     样本量随置信水平和允许误差的变化
                 </CardDescription>
             </CardHeader>
@@ -81,14 +81,14 @@ export function SensitivityAnalysisCard({
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                         <thead>
-                            <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-100/90 dark:bg-slate-900/90">
-                                <th className="text-left py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">置信水平 \ 允许误差</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±1%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±2%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±3%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±5%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±7%</th>
-                                <th className="text-center py-2 px-2 text-slate-800 dark:text-slate-200 font-medium">±10%</th>
+                            <tr className="border-b border-border dark:border-input bg-muted/90 dark:bg-card/90">
+                                <th className="text-left py-2 px-2 text-foreground font-medium">置信水平 \ 允许误差</th>
+                                <th className="text-center py-2 px-2 text-foreground font-medium">±1%</th>
+                                <th className="text-center py-2 px-2 text-foreground font-medium">±2%</th>
+                                <th className="text-center py-2 px-2 text-foreground font-medium">±3%</th>
+                                <th className="text-center py-2 px-2 text-foreground font-medium">±5%</th>
+                                <th className="text-center py-2 px-2 text-foreground font-medium">±7%</th>
+                                <th className="text-center py-2 px-2 text-foreground font-medium">±10%</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -98,18 +98,18 @@ export function SensitivityAnalysisCard({
                                 return (
                                     <tr 
                                         key={confidenceLevel}
-                                        className={`border-b border-slate-200/80 dark:border-slate-800 ${
-                                            isCurrentConfidence ? "bg-white/60 dark:bg-slate-900/60" : ""
+                                        className={`border-b border-border/80 ${
+                                            isCurrentConfidence ? "bg-background/60 dark:bg-card/60" : ""
                                         }`}
                                     >
                                         <td className="py-2 px-2">
                                             <div className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${confidenceColors[confidenceLevel] || "bg-slate-400"}`} />
-                                                <span className={`font-medium ${isCurrentConfidence ? "text-slate-900 dark:text-slate-100" : "text-slate-700 dark:text-slate-300"}`}>
+                                                <div className={`w-2 h-2 rounded-full ${confidenceColors[confidenceLevel] || "bg-muted-foreground/50"}`} />
+                                                <span className={`font-medium ${isCurrentConfidence ? "text-foreground" : "text-foreground/90"}`}>
                                                     {confidenceLevel}%
                                                 </span>
                                                 {isCurrentConfidence && (
-                                                    <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-800 dark:border-indigo-600 dark:text-indigo-200 bg-indigo-50 dark:bg-indigo-950/50">
+                                                    <Badge variant="outline" className="text-xs border-primary text-primary dark:border-primary dark:text-primary bg-primary">
                                                         当前
                                                     </Badge>
                                                 )}
@@ -128,7 +128,7 @@ export function SensitivityAnalysisCard({
                                                             ${isCurrentCell ? "font-bold" : ""}
                                                         `}
                                                     >
-                                                        <span className="text-slate-900 dark:text-slate-100 tabular-nums">
+                                                        <span className="text-foreground tabular-nums">
                                                             {item.sampleSize.toLocaleString()}
                                                         </span>
                                                     </div>
@@ -143,8 +143,8 @@ export function SensitivityAnalysisCard({
                 </div>
 
                 {/* 说明 */}
-                <div className="flex items-start gap-2 text-xs text-slate-700 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/60 p-3">
-                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-indigo-600 dark:text-indigo-400" />
+                <div className="flex items-start gap-2 text-xs text-foreground/90 rounded-xl border border-border dark:border-input bg-background/80 dark:bg-card/60 p-3">
+                    <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
                     <div className="space-y-1">
                         <p>
                             <span className="font-medium">颜色深浅</span>：颜色越深表示样本量越大。行/列高亮显示当前设置。
@@ -156,17 +156,17 @@ export function SensitivityAnalysisCard({
                 </div>
 
                 {/* 图例 */}
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-800 dark:text-slate-200">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-foreground">
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-emerald-500" />
+                        <div className="w-3 h-3 rounded bg-success" />
                         <span>90% 置信度</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-blue-500" />
+                        <div className="w-3 h-3 rounded bg-info" />
                         <span>95% 置信度</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-3 rounded bg-violet-500" />
+                        <div className="w-3 h-3 rounded bg-auxiliary" />
                         <span>99% 置信度</span>
                     </div>
                 </div>
