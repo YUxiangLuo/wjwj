@@ -110,7 +110,7 @@ export function CVBasedSampleSizeCalculator({
                                 当你关注估计值的<strong>相对精度</strong>（变异系数）而非绝对误差限时，
                                 例如要求"估计值的变异系数不超过5%"时。
                             </p>
-                            <p className="text-info/95 dark:text-info/95 leading-relaxed">
+                            <p className="text-info dark:text-info leading-relaxed">
                                 <span className="font-medium">为何 n 往往比「误差限公式」小？</span>
                                 本工具按 SE(ȳ)/ȳ ≤ 目标 CV 推导，核心为 n ∝ (CV<sub>总体</sub>/CV<sub>目标</sub>)²，
                                 <strong className="font-semibold">不含 Z 值</strong>；左侧常规面板
@@ -315,7 +315,7 @@ export function CVBasedSampleSizeCalculator({
                                 <br />
                                 其中 a<sub>h</sub> 为分配系数，各层样本量 n<sub>h</sub> = n × a<sub>h</sub>
                             </div>
-                            <p className="text-auxiliary/80 dark:text-auxiliary/80">
+                            <p className="text-auxiliary dark:text-auxiliary">
                                 上方计算器适用于简单随机抽样下的 CV 估算；若采用分层抽样，可在「抽样执行」阶段的分层分配方法对比中查看各层实际分配结果。
                             </p>
                         </div>

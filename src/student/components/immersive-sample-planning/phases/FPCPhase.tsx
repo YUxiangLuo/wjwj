@@ -96,7 +96,7 @@ export function FPCPhase({ params, onNext }: Props) {
                             key={row.N}
                             className={`flex items-center gap-4 px-4 py-3 ${
                                 row.isUser
-                                    ? "bg-primary/50 dark:bg-primary/20"
+                                    ? "bg-primary/10 dark:bg-primary/20"
                                     : ""
                             }`}
                         >

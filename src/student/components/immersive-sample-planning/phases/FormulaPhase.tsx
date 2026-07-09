@@ -347,11 +347,11 @@ export function FormulaPhase({
             <div className="mx-auto max-w-md rounded-2xl border border-border bg-card dark:bg-muted/30 p-5 space-y-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">两种估计公式对比</p>
                 <div className="grid grid-cols-2 gap-3">
-                    <div className={`rounded-xl p-3 text-center ${isProportion ? "bg-primary/30 ring-2 ring-primary" : "bg-background dark:bg-card"}`}>
+                    <div className={`rounded-xl p-3 text-center ${isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background dark:bg-card"}`}>
                         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">比例估计</p>
                         <p className="font-mono text-xs text-muted-foreground">n₀ = Z²p(1−p)/E²</p>
                     </div>
-                    <div className={`rounded-xl p-3 text-center ${!isProportion ? "bg-primary/30 ring-2 ring-primary" : "bg-background dark:bg-card"}`}>
+                    <div className={`rounded-xl p-3 text-center ${!isProportion ? "bg-primary/10 ring-2 ring-primary" : "bg-background dark:bg-card"}`}>
                         <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">均值估计</p>
                         <p className="font-mono text-xs text-muted-foreground">n₀ = Z²σ²/e²</p>
                     </div>

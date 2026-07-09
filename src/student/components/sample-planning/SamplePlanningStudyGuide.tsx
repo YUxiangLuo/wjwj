@@ -2,13 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 
 export function SamplePlanningStudyGuide() {
     return (
-        <Card className="rounded-2xl border-info bg-info/80 shadow-sm dark:border-info/20 dark:bg-info/10">
+        <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm dark:border-info/20 dark:bg-info/10">
             <CardHeader>
                 <CardTitle className="text-base text-info">学习指南</CardTitle>
                 <CardDescription className="text-info">理解公式与参数含义</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm text-info/80">
-                <div className="space-y-1 rounded-xl border border-info bg-background/80 p-4 font-mono text-xs text-info shadow-sm dark:border-info/20 dark:bg-info/40 dark:text-info">
+            <CardContent className="space-y-4 text-sm text-info">
+                <div className="space-y-1 rounded-xl border border-info/20 bg-background/80 p-4 font-mono text-xs text-info shadow-sm dark:border-info/20 dark:bg-info/10 dark:text-info">
                     <p className="mb-2 text-info">// 样本量计算公式</p>
                     <p>n₀ = (Z² × p × (1-p)) / E²</p>
                     <p>n₁ = n₀ / (1 + (n₀ - 1) / N)</p>

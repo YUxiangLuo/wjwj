@@ -150,7 +150,7 @@ export function Login() {
                             <div className="space-y-2.5">
                                 <div className="flex items-center justify-between ml-1">
                                     <Label htmlFor="password" className="text-foreground/90 text-sm font-medium">密码</Label>
-                                    <span className="text-xs font-medium text-primary/80">
+                                    <span className="text-xs font-medium text-primary">
                                         忘记密码？请联系系统管理员重置
                                     </span>
                                 </div>

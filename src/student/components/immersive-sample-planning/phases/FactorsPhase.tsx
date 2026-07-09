@@ -168,7 +168,7 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                 </div>
             </div>
 
-            <div className="mx-auto max-w-lg rounded-xl border border-info bg-info/50 p-4">
+            <div className="mx-auto max-w-lg rounded-xl border border-info/20 bg-info/10 p-4">
                 <p className="text-sm text-info">
                     {isMeanEstimation ? (
                         <>
@@ -254,7 +254,7 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
                     </p>
                 </div>
                 <div className="divide-y divide-border">
-                    <div className="flex items-center justify-between px-4 py-3 bg-info/50">
+                    <div className="flex items-center justify-between px-4 py-3 bg-info/10">
                         <span className="text-sm font-medium text-info">方案1: 仅做整体估计</span>
                         <span className="text-sm font-bold tabular-nums text-info">n = {nOverall.toLocaleString()}</span>
                     </div>
@@ -276,7 +276,7 @@ function SubpopulationContent({ params }: { params: SampleParams }) {
             </div>
 
             {totalDomainSample > nOverall && nOverall > 0 && (
-                <div className="mx-auto max-w-lg rounded-xl border border-warning bg-warning/50 p-4">
+                <div className="mx-auto max-w-lg rounded-xl border border-warning/20 bg-warning/10 p-4">
                     <p className="text-sm text-warning">
                         <strong>方案2 约为方案1 的 {(totalDomainSample / nOverall).toFixed(1)} 倍！</strong>
                         子总体估计的样本量代价很大。在规划前，需先确认哪些域必须单独估计。
@@ -323,7 +323,7 @@ function VariabilityContent() {
                     <p className="text-sm text-muted-foreground">
                         调查通常涉及多个指标，各指标的方差不同。原则上：
                     </p>
-                    <div className="rounded-xl bg-primary p-4">
+                    <div className="rounded-xl bg-primary/10 p-4">
                         <p className="text-sm text-primary font-medium">
                             以<strong>所需样本量最大的那个指标</strong>为准来确定样本量，
                             从而保证所有指标都能达到预期精度。
@@ -402,7 +402,7 @@ function CostBalanceContent({ params }: { params: SampleParams }) {
                 </div>
             </div>
 
-            <div className="mx-auto max-w-lg rounded-xl border border-info bg-info/50 p-4">
+            <div className="mx-auto max-w-lg rounded-xl border border-info/20 bg-info/10 p-4">
                 <p className="text-sm text-info">
                     <strong>实践建议：</strong>找到"精度够用、费用可控"的平衡点。
                     {isMeanEstimation
@@ -432,7 +432,7 @@ function SummaryContent() {
             <div className="mx-auto max-w-lg grid grid-cols-2 gap-3">
                 {factors.map(({ icon: FIcon, title, desc }) => (
                     <div key={title} className="rounded-2xl border border-border bg-background dark:bg-card p-4 shadow-sm space-y-2">
-                        <div className="w-9 h-9 rounded-xl bg-info flex items-center justify-center">
+                        <div className="w-9 h-9 rounded-xl bg-info/10 flex items-center justify-center">
                             <FIcon className="w-4 h-4 text-info" />
                         </div>
                         <p className="text-sm font-semibold text-foreground/90">{title}</p>
@@ -441,7 +441,7 @@ function SummaryContent() {
                 ))}
             </div>
 
-            <div className="mx-auto max-w-lg rounded-xl border border-primary bg-primary/50 p-4">
+            <div className="mx-auto max-w-lg rounded-xl border border-primary/20 bg-primary/10 p-4">
                 <p className="text-sm text-primary">
                     下一步进入公式阶段：先选估计目标，再把这些条件量化成样本量 n。
                 </p>

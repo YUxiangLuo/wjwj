@@ -67,7 +67,7 @@ export function EnhancedMetricsCard({
                         <div className="text-lg font-bold text-primary">
                             {isMeanEstimation ? metrics.standardError.toFixed(4) : formatPercent(metrics.standardError)}
                         </div>
-                        <div className="text-xs text-primary/70 mt-1">
+                        <div className="text-xs text-primary mt-1">
                             {isMeanEstimation ? "SE(ȳ) = √(σ²/n × FPC)" : "抽样方差的平方根"}
                         </div>
                     </div>
@@ -82,7 +82,7 @@ export function EnhancedMetricsCard({
                                 <div className="text-lg font-bold text-primary">
                                     {formattedMeanMetricMargin}
                                 </div>
-                                <div className="text-xs text-primary/70 mt-1">
+                                <div className="text-xs text-primary mt-1">
                                     ME = Z × SE
                                 </div>
                             </div>
@@ -94,7 +94,7 @@ export function EnhancedMetricsCard({
                                 <div className="text-lg font-bold text-primary">
                                     {Math.ceil(metrics.n1).toLocaleString()}
                                 </div>
-                                <div className="text-xs text-primary/70 mt-1">
+                                <div className="text-xs text-primary mt-1">
                                     有限总体校正后的 n₁
                                 </div>
                             </div>
@@ -108,7 +108,7 @@ export function EnhancedMetricsCard({
                             <div className="text-lg font-bold text-primary">
                                 {formatPercent(metrics.relativeStandardError)}
                             </div>
-                            <div className="text-xs text-primary/70 mt-1">
+                            <div className="text-xs text-primary mt-1">
                                 RSE = SE / p
                             </div>
                         </div>
@@ -124,10 +124,10 @@ export function EnhancedMetricsCard({
                             </Badge>
                         </div>
                         <div className="space-y-2 text-sm text-primary">
-                            <div className="rounded-lg bg-primary/80 px-3 py-2 dark:bg-primary/30">
+                            <div className="rounded-lg bg-primary/10 px-3 py-2 dark:bg-primary/30">
                                 <span className="font-mono">ȳ ± Z×SE = ȳ ± {metrics.marginOfError.toFixed(4)}</span>
                             </div>
-                            <p className="text-xs leading-relaxed text-primary/80">
+                            <p className="text-xs leading-relaxed text-primary">
                                 这里展示的是当前样本量下的理论区间半宽。正式区间应以实际样本均值 ȳ 为中心，而不是预先假定一个真值中心。
                             </p>
                         </div>
@@ -162,7 +162,7 @@ export function EnhancedMetricsCard({
                                 </div>
                             </div>
                         </div>
-                        <p className="text-xs text-primary/70 mt-3 leading-relaxed">
+                        <p className="text-xs text-primary mt-3 leading-relaxed">
                             该范围基于当前规划假设 p 与样本量对应的理论误差限，用于教学说明。正式区间估计需以实际样本比例为中心重新计算。
                         </p>
                     </div>

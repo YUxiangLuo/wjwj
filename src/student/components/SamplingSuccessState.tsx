@@ -17,7 +17,7 @@ export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }
                 </div>
                 <div>
                     <p className="text-lg font-medium text-success">抽样完成</p>
-                    <p className="mt-1 text-sm text-success/70">{summary}</p>
+                    <p className="mt-1 text-sm text-success">{summary}</p>
                 </div>
                 <Button
                     variant="ghost"

@@ -121,7 +121,7 @@ export function Dashboard() {
                         <div className="flex-1 min-w-0">
                             <span className="text-sm text-warning font-medium truncate block">{latest.title}</span>
                         </div>
-                        <span className="text-xs text-warning/70 shrink-0">{unread.length} 条未读</span>
+                        <span className="text-xs text-warning shrink-0">{unread.length} 条未读</span>
                         <Button
                             variant="ghost"
                             size="sm"

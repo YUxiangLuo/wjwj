@@ -140,7 +140,7 @@ export function SubmissionHistory() {
                                                 </div>
 
                                                 {sub.rejectReason && (
-                                                    <div className="flex items-start gap-2 text-sm text-destructive/90 bg-destructive/5 px-3 py-2 rounded-md border border-destructive/10 mt-2">
+                                                    <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/5 px-3 py-2 rounded-md border border-destructive/10 mt-2">
                                                         <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                                                         <span>驳回原因：{sub.rejectReason}</span>
                                                     </div>

@@ -302,7 +302,7 @@ export function MultiVariableSamplePlan({
                                                 {variable.name}
                                             </div>
                                             <div className="flex items-center gap-2 text-xs text-primary">
-                                                <span className="px-1.5 py-0.5 rounded bg-primary">
+                                                <span className="px-1.5 py-0.5 rounded bg-primary text-primary-foreground">
                                                     {importanceConfig.label}
                                                 </span>
                                                 <span>需 n ≥ {variable.requiredSampleSize.toLocaleString()}</span>

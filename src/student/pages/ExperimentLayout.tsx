@@ -387,7 +387,7 @@ export function ExperimentLayout() {
                                             isCurrent
                                                 ? "bg-primary/20 text-primary border border-primary/30"
                                                 : isCompleted
-                                                    ? "text-success/80 hover:bg-success/10 cursor-pointer"
+                                                    ? "text-success hover:bg-success/10 cursor-pointer"
                                                     : "text-muted-foreground"
                                         }`}
                                     >

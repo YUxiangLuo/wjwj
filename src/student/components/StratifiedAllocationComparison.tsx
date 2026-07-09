@@ -143,7 +143,7 @@ export function StratifiedAllocationComparison({
                             <Calculator className="w-4 h-4 text-auxiliary" />
                             <span className="text-sm font-medium text-auxiliary-foreground">目标估计变量</span>
                         </div>
-                        <p className="text-xs text-auxiliary/80 dark:text-auxiliary/80 mb-2">
+                        <p className="text-xs text-auxiliary dark:text-auxiliary mb-2">
                             选择目标变量后，将使用各层的实际标准差计算奈曼最优分配和方差估计
                         </p>
                         <Select
@@ -163,7 +163,7 @@ export function StratifiedAllocationComparison({
                             </SelectContent>
                         </Select>
                         {targetVariable && layerStdDevs && (
-                            <div className="mt-2 text-xs text-auxiliary/70 dark:text-auxiliary/70 space-y-0.5">
+                            <div className="mt-2 text-xs text-auxiliary dark:text-auxiliary space-y-0.5">
                                 {layers.map((l, i) => (
                                     <div key={l.name} className="flex justify-between">
                                         <span>{l.name}</span>
@@ -278,7 +278,7 @@ export function StratifiedAllocationComparison({
                         <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                         <div className="text-xs text-warning space-y-1">
                             <p className="font-medium">效率解读</p>
-                            <p className="text-warning/80 dark:text-warning/80">
+                            <p className="text-warning dark:text-warning">
                                 相对效率以按比例分配为基准（1.00×）。&gt; 1 表示比按比例分配更精确。
                                 奈曼分配通常在层间方差差异大时效果最好，而按比例分配在层规模差异大时表现稳定。
                             </p>
@@ -311,7 +311,7 @@ export function StratifiedAllocationComparison({
                                             </Badge>
                                         ))}
                                     </div>
-                                    <p className="text-xs text-destructive/80">
+                                    <p className="text-xs text-destructive">
                                         超额分配意味着需要对该层进行全数调查（抽取全部单元），这可能导致实际总样本量小于计划值。
                                     </p>
                                 </div>
@@ -324,7 +324,7 @@ export function StratifiedAllocationComparison({
                                 <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
                                 <div className="text-xs text-success">
                                     <p className="font-medium mb-1">处理方法建议</p>
-                                    <ul className="space-y-1 text-success/80 list-disc list-inside">
+                                    <ul className="space-y-1 text-success list-disc list-inside">
                                         <li>对超额分配的层进行全数调查（n_h = N_h）</li>
                                         <li>将剩余样本量分配给其他层</li>
                                         <li>考虑使用按比例分配（通常较少出现超额分配）</li>

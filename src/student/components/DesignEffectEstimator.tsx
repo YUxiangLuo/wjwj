@@ -178,7 +178,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                         </div>
 
                         {/* deff 解释 */}
-                        <div className="rounded-lg bg-primary/90 p-2 border border-primary/80 dark:bg-card/80">
+                        <div className="rounded-lg bg-primary/10 p-2 border border-primary/20 dark:bg-card/80">
                             <div className="flex items-center gap-2 text-xs">
                                 <Info className="w-3.5 h-3.5 text-primary" />
                                 <span className="text-primary">
@@ -228,7 +228,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                         </p>
 
                         {/* 样本量补偿计算 */}
-                        <div className="rounded-lg bg-warning/50 p-2 dark:bg-warning/20 border border-warning/50">
+                        <div className="rounded-lg bg-warning/10 p-2 dark:bg-warning/20 border border-warning/20">
                             <div className="flex items-center gap-2 text-xs text-warning">
                                 <Calculator className="w-3.5 h-3.5 text-warning" />
                                 <span>

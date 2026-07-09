@@ -395,7 +395,7 @@ export function TeacherApp() {
                                     <span className="font-medium">{item.label}</span>
                                 </div>
                                 {item.path === "/grading" && pendingGradingCount > 0 && (
-                                    <Badge className="bg-destructive/10 text-destructive border-none hover:bg-destructive/20">
+                                    <Badge className="bg-destructive text-destructive-foreground border-none hover:bg-destructive">
                                         {pendingGradingCount}
                                     </Badge>
                                 )}

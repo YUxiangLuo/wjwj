@@ -153,7 +153,7 @@ export function SubmissionDetailPage() {
                         </div>
                         {detail.gradedAt && (
                             <div className="flex items-center gap-1.5">
-                                <CheckCircle2 className="w-4 h-4 text-success/80" />
+                                <CheckCircle2 className="w-4 h-4 text-success" />
                                 <span>批改: <span className="text-foreground/90 ml-1">{new Date(detail.gradedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</span></span>
                             </div>
                         )}
@@ -215,7 +215,7 @@ export function SubmissionDetailPage() {
                                 <AlertCircle className="w-4 h-4" />
                                 驳回理由
                             </h4>
-                            <p className="text-destructive/90 dark:text-destructive/90 text-sm leading-relaxed whitespace-pre-line pl-6 border-l-2 border-destructive/30">
+                            <p className="text-destructive dark:text-destructive text-sm leading-relaxed whitespace-pre-line pl-6 border-l-2 border-destructive/30">
                                 {detail.rejectReason}
                             </p>
                         </div>

@@ -29,7 +29,7 @@ export function TopicDeletedState({
                         <AlertTriangle className="w-6 h-6 text-destructive" />
                     </div>
                     <h2 className="text-2xl font-bold text-destructive">{title}</h2>
-                    <p className="text-sm text-destructive/80 leading-relaxed max-w-md mx-auto">{description}</p>
+                    <p className="text-sm text-destructive leading-relaxed max-w-md mx-auto">{description}</p>
                     <Link to={backTo}>
                         <Button className="bg-muted hover:bg-muted text-foreground">
                             {backText}

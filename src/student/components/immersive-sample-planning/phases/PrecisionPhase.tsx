@@ -126,7 +126,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                     </div>
 
                     <div className={`grid gap-3 text-center ${isMeanEstimation ? "grid-cols-2" : "grid-cols-3"}`}>
-                        <div className="rounded-xl bg-info p-3">
+                        <div className="rounded-xl bg-info/10 p-3">
                             <p className="text-[10px] font-medium uppercase tracking-wider text-info">SE</p>
                             <p className="text-lg font-bold tabular-nums text-info">{fmt(se)}</p>
                         </div>
@@ -135,7 +135,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                             <p className="text-lg font-bold tabular-nums text-auxiliary">{fmt(me)}</p>
                         </div>
                         {!isMeanEstimation && cv != null && (
-                            <div className="rounded-xl bg-success p-3">
+                            <div className="rounded-xl bg-success/10 p-3">
                                 <p className="text-[10px] font-medium uppercase tracking-wider text-success">CV</p>
                                 <p className="text-lg font-bold tabular-nums text-success">{(cv * 100).toFixed(1)}%</p>
                             </div>
@@ -150,7 +150,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
             </div>
 
             {/* Confidence interval explanation */}
-            <div className="mx-auto max-w-lg rounded-2xl border border-warning bg-warning/50 p-5 space-y-2">
+            <div className="mx-auto max-w-lg rounded-2xl border border-warning/20 bg-warning/10 p-5 space-y-2">
                 <p className="text-sm font-semibold text-warning">置信区间的含义</p>
                 <p className="text-sm text-warning">
                     「{params.confidenceLevel}% 置信区间」的含义是：<strong>如果用相同方法重复抽样 100 次，大约有 {params.confidenceLevel} 次的区间会包含总体真值。</strong>

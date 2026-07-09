@@ -156,7 +156,13 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                                         : String.fromCharCode(65 + i)}
                             </span>
                             <span className={`text-base ${
-                                !submitted && i === selected ? "text-primary-foreground font-medium" : "text-foreground/90"
+                                submitted && i === q.correctIndex
+                                    ? "text-success-foreground font-medium"
+                                    : submitted && i === selected && !isCorrect
+                                        ? "text-destructive-foreground font-medium"
+                                        : !submitted && i === selected
+                                            ? "text-primary-foreground font-medium"
+                                            : "text-foreground/90"
                             }`}>
                                 {option}
                             </span>
@@ -169,8 +175,8 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
             {submitted && (
                 <div className={`max-w-md mx-auto rounded-xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300 ${
                     isCorrect
-                        ? "bg-success/30 border border-success"
-                        : "bg-warning/30 border border-warning"
+                        ? "bg-success/10 border border-success/20"
+                        : "bg-warning/10 border border-warning/20"
                 }`}>
                     <p className={`text-sm font-medium mb-1 ${isCorrect ? "text-success" : "text-warning"}`}>
                         {isCorrect ? "正确！" : "不太对 —"}

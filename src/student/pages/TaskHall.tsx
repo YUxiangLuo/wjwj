@@ -200,7 +200,7 @@ function TaskCard({ task }: TaskCardProps) {
                                 <Trophy className="w-5 h-5 text-success" />
                             </div>
                             <div>
-                                <div className="text-xs text-success/80 uppercase font-bold tracking-wider">最终得分</div>
+                                <div className="text-xs text-success uppercase font-bold tracking-wider">最终得分</div>
                                 <span className="font-bold text-2xl text-success">{task.score}</span>
                             </div>
                         </div>

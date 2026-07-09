@@ -367,7 +367,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             <AlertCircle className="h-5 w-5" />
                             无法开始抽样执行
                         </CardTitle>
-                        <CardDescription className="text-destructive/80 dark:text-destructive/80">
+                        <CardDescription className="text-destructive dark:text-destructive">
                             当前实验缺少有效的最终样本量，抽样执行必须建立在已确认的样本量规划之上。
                         </CardDescription>
                     </CardHeader>

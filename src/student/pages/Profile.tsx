@@ -134,7 +134,7 @@ export function Profile() {
 
                         <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 flex items-start gap-3">
                             <Shield className="w-5 h-5 text-warning mt-0.5" />
-                            <div className="text-sm text-warning/80 leading-relaxed">
+                            <div className="text-sm text-warning leading-relaxed">
                                 如需修改基础信息，请联系管理员或任课教师。
                             </div>
                         </div>

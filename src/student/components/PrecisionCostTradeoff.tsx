@@ -402,7 +402,7 @@ export function PrecisionCostTradeoff({
                     </div>
 
                     {achievablePrecision && achievablePrecision.totalCost > currentScenario.totalBudget * 0.9 && (
-                        <div className="mt-3 rounded-lg border border-warning bg-warning p-2 dark:border-warning/50 dark:bg-warning/40">
+                        <div className="mt-3 rounded-lg border border-warning/20 bg-warning/10 p-2 dark:border-warning/50 dark:bg-warning/40">
                             <div className="flex items-center gap-2 text-xs text-warning">
                                 <AlertCircle className="w-4 h-4 shrink-0 text-warning" />
                                 <span>预算已接近上限，无法进一步提高精度</span>
@@ -549,7 +549,7 @@ export function PrecisionCostTradeoff({
                         <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
                         <div className="text-xs space-y-1 text-info">
                             <p className="font-medium">决策建议</p>
-                            <ul className="space-y-1 list-disc list-inside text-info/95">
+                            <ul className="space-y-1 list-disc list-inside text-info">
                                 <li>在预算约束下，精度与成本呈非线性关系</li>
                                 <li>当样本量超过1000后，精度提升的边际效益显著下降</li>
                                 <li>建议优先保证 ±3-5% 的误差限，性价比最高</li>

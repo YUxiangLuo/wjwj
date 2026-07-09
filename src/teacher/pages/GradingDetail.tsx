@@ -281,7 +281,7 @@ export function GradingDetail() {
                     <div className="font-medium text-foreground/90">{label}</div>
                     <div className="text-sm text-warning">{DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE}</div>
                     {previewState.reason !== DEFAULT_SAMPLING_UNAVAILABLE_MESSAGE && (
-                        <div className="text-xs text-warning/80">{previewState.reason}</div>
+                        <div className="text-xs text-warning">{previewState.reason}</div>
                     )}
                 </div>
             );
@@ -421,7 +421,7 @@ export function GradingDetail() {
                         <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
                         <div className="space-y-1">
                             <div className="font-medium text-destructive">驳回原因</div>
-                            <div className="leading-6 text-destructive/90">{data.rejectReason}</div>
+                            <div className="leading-6 text-destructive">{data.rejectReason}</div>
                         </div>
                     </div>
                 </div>

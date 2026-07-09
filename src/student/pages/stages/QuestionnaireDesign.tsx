@@ -379,7 +379,7 @@ export function QuestionnaireDesign() {
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="h-fit rounded-2xl border-info bg-info/80 shadow-sm dark:border-info/20 dark:bg-info/10">
+                        <Card className="h-fit rounded-2xl border-info/20 bg-info/10 shadow-sm dark:border-info/20 dark:bg-info/10">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2 text-base text-info">
                                     <HelpCircle className="w-4 h-4" />
@@ -387,10 +387,10 @@ export function QuestionnaireDesign() {
                                 </CardTitle>
                                 <CardDescription className="text-info">好的欢迎语能提高数据质量。</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4 text-sm leading-relaxed text-info/80">
+                            <CardContent className="space-y-4 text-sm leading-relaxed text-info">
                                 <p>建议说明调查目的、预计用时与隐私保护方式。</p>
                                 <p>保持简洁友好，最好控制在 200 字以内。</p>
-                                <div className="rounded-xl border border-info bg-background/80 p-3 text-xs text-info shadow-sm dark:border-info/20 dark:bg-info/40 dark:text-info">
+                                <div className="rounded-xl border border-info/20 bg-background/80 p-3 text-xs text-info shadow-sm dark:border-info/20 dark:bg-info/10 dark:text-info">
                                     <span className="font-semibold block mb-1">示例：</span>
                                     感谢参与本次调查，本问卷约 3 分钟完成，数据仅用于教学分析。
                                 </div>
@@ -647,7 +647,7 @@ export function QuestionnaireDesign() {
                                             </div>
                                             <div>
                                                 <h3 className="text-base font-semibold text-primary">模拟填写体验</h3>
-                                                <p className="text-xs text-primary/70 mt-0.5">请以受访者身份完整体验一次问卷填写</p>
+                                                <p className="text-xs text-primary mt-0.5">请以受访者身份完整体验一次问卷填写</p>
                                             </div>
                                         </div>
                                     </div>
@@ -779,7 +779,7 @@ export function QuestionnaireDesign() {
                                         <span className="text-xs uppercase tracking-wider text-primary">当前得分</span>
                                         <span className="text-2xl font-bold text-primary">{preliminaryScore}</span>
                                     </div>
-                                    <div className="text-xs text-primary/80">
+                                    <div className="text-xs text-primary">
                                         {preliminaryScore >= 90
                                             ? "问卷结构优秀"
                                             : preliminaryScore >= 75

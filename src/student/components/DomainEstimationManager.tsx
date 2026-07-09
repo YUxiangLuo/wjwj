@@ -454,7 +454,7 @@ export function DomainEstimationManager({
                             </div>
 
                             {sampleSizeIncrease > 0 && (
-                                <div className="rounded-lg bg-warning/80 border border-warning p-2 dark:bg-warning/30 dark:border-warning/50">
+                                <div className="rounded-lg bg-warning/10 border border-warning/20 p-2 dark:bg-warning/30 dark:border-warning/50">
                                     <div className="flex items-center gap-2 text-xs text-warning">
                                         <AlertCircle className="w-4 h-4" />
                                         <span>
@@ -466,7 +466,7 @@ export function DomainEstimationManager({
                             )}
 
                             {populationOverflow > 0 && (
-                                <div className="rounded-lg bg-destructive/80 border border-destructive p-2 dark:bg-destructive/30 dark:border-destructive/50">
+                                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-2 dark:bg-destructive/30 dark:border-destructive/50">
                                     <div className="flex items-start gap-2 text-xs text-destructive">
                                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                                         <span>
@@ -529,13 +529,13 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                             n = {domainTotal.toLocaleString()}
                         </span>
                     </div>
-                    <div className="text-xs text-auxiliary/80 dark:text-auxiliary/80">
+                    <div className="text-xs text-auxiliary dark:text-auxiliary">
                         {domains.map(d => `${d.name}: ${d.requiredSampleSize.toLocaleString()}`).join(" + ")} = {domainTotal.toLocaleString()}
                     </div>
                 </div>
 
                 {ratio > 1 && (
-                    <div className="rounded-lg bg-warning/80 border border-warning p-2 dark:bg-warning/30 dark:border-warning/50">
+                    <div className="rounded-lg bg-warning/10 border border-warning/20 p-2 dark:bg-warning/30 dark:border-warning/50">
                         <div className="flex items-start gap-2 text-xs text-warning">
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                             <div>
@@ -543,7 +543,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                                     <span className="font-medium">方案二是方案一的 {ratio.toFixed(1)} 倍</span>
                                     —— 当需要对互斥各层分别进行估计时，需确保每层样本量都足够大，总样本量往往远高于仅估计总体时的需求。
                                 </p>
-                                <p className="mt-1 text-warning/90">
+                                <p className="mt-1 text-warning">
                                     最终样本量的确定需要在精度、费用、时限和操作可行性之间进行协调。
                                 </p>
                             </div>

@@ -61,7 +61,7 @@ function samplingMethodPanelForKey(
                     <div className="space-y-0">
                         <ParamRow label="抽取样本量" value={r.sampleCount?.toLocaleString() ?? "—"} />
                         {targetSampleSize !== null && r.sampleCount !== targetSampleSize && (
-                            <p className="mt-2 text-[11px] text-warning/90">
+                            <p className="mt-2 text-[11px] text-warning">
                                 与规划目标 {targetSampleSize.toLocaleString()} 不一致时，请在报告中说明原因（若仅为整数舍入可简述）。
                             </p>
                         )}
@@ -204,12 +204,12 @@ export function SamplePlanDecisionPanel({
 
     return (
         <div className="space-y-4">
-            <div className="rounded-xl border border-warning/80 bg-warning/50 p-3 dark:border-warning/40 dark:bg-warning/20">
+            <div className="rounded-xl border border-warning/20 bg-warning/10 p-3 dark:border-warning/40 dark:bg-warning/20">
                 <div className="flex gap-2">
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                    <div className="space-y-1.5 text-xs leading-relaxed text-warning/90">
+                    <div className="space-y-1.5 text-xs leading-relaxed text-warning">
                         <p className="font-medium text-warning">关于高级工具（子总体、多变量、成本/CV/整群等）</p>
-                        <p className="text-warning/85 dark:text-warning/80">
+                        <p className="text-warning dark:text-warning">
                             高级工具的<span className="font-medium">完整中间状态与推演明细不会完整写入实验存档</span>，
                             但回写到核心决策参数里的结果仍会保存，例如最终样本量或设计效应。
                             下方展示的是「确认并进入下一阶段」时真正保存下来的核心参数；若最终样本量来自某个非标准工具，页面会直接标出来源。
@@ -263,7 +263,7 @@ export function SamplePlanDecisionPanel({
                     <ParamRow label="推荐样本量 n" value={samplePlan.recommendedSize?.toLocaleString() ?? "—"} />
                     <ParamRow label="最终样本量 n" value={samplePlan.finalSampleSize?.toLocaleString() ?? "—"} />
                     {advancedSourceLabel && (
-                        <p className="mt-2 text-[11px] text-warning/90">
+                        <p className="mt-2 text-[11px] text-warning">
                             当前最终样本量由「{advancedSourceLabel}」回写；此处的“推荐样本量 n”仍是常规公式建议值。
                         </p>
                     )}

@@ -307,7 +307,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     >
                                         {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                                     </div>
-                                    <span className={`text-xs ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success/80" : "text-muted-foreground"}`}>{step}</span>
+                                    <span className={`text-xs ml-2 ${isCurrent ? "text-primary font-medium" : isCompleted ? "text-success" : "text-muted-foreground"}`}>{step}</span>
                                     {idx < 5 && <ChevronRight className="w-3 h-3 mx-2 text-muted-foreground dark:text-foreground/90" />}
                                 </div>
                             );

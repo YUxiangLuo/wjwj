@@ -760,7 +760,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 分析提示
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3 text-sm text-primary/70">
+                        <CardContent className="space-y-3 text-sm text-primary">
                             <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。</p>
                             <p>• 再看分类分布与代表性偏差，识别各方法对总体结构的贴近程度。</p>
                             <p>• 最后结合设计标准误，说明估计精度与稳定性。</p>

@@ -45,6 +45,7 @@ const SEMANTIC_INTENT_COLORS = ["primary", "success", "warning", "info", "destru
 const MAX_HARDCODED_COLOR_CLASSES = 0;
 const MAX_DARK_COLOR_CLASSES = 0;
 const MAX_SAME_INTENT_FILLED_CLASSES = 0;
+const MAX_SEMANTIC_ALPHA_TEXT_CLASSES = 0;
 
 const palettePattern = PALETTE_COLORS.join("|");
 const prefixPattern = COLOR_UTILITY_PREFIXES.join("|");
@@ -62,12 +63,14 @@ const sameIntentFilledClassPattern = new RegExp(
     `bg-(${semanticIntentPattern})(?![-/\\w])(?=[^\"\`\\n]*text-\\1(?!-foreground))`,
     "g"
 );
+const semanticAlphaTextClassPattern = new RegExp(`text-(?:${semanticIntentPattern})/[0-9]+`, "g");
 
 type FileStats = {
     path: string;
     hardcodedColorClasses: number;
     darkColorClasses: number;
     sameIntentFilledClasses: number;
+    semanticAlphaTextClasses: number;
 };
 
 async function listSourceFiles() {
@@ -93,6 +96,7 @@ async function collectStats() {
             hardcodedColorClasses: countMatches(text, hardcodedColorClassPattern),
             darkColorClasses: countMatches(text, darkColorClassPattern),
             sameIntentFilledClasses: countMatches(text, sameIntentFilledClassPattern),
+            semanticAlphaTextClasses: countMatches(text, semanticAlphaTextClassPattern),
         });
     }
 
@@ -112,6 +116,7 @@ const stats = await collectStats();
 const hardcodedColorClasses = stats.reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
 const darkColorClasses = stats.reduce((sum, item) => sum + item.darkColorClasses, 0);
 const sameIntentFilledClasses = stats.reduce((sum, item) => sum + item.sameIntentFilledClasses, 0);
+const semanticAlphaTextClasses = stats.reduce((sum, item) => sum + item.semanticAlphaTextClasses, 0);
 const uiHardcodedColorClasses = stats
     .filter((item) => item.path.startsWith("src/components/ui/"))
     .reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
@@ -138,10 +143,17 @@ if (sameIntentFilledClasses > MAX_SAME_INTENT_FILLED_CLASSES) {
     );
 }
 
+if (semanticAlphaTextClasses > MAX_SEMANTIC_ALPHA_TEXT_CLASSES) {
+    failures.push(
+        `Alpha semantic text classes increased to ${semanticAlphaTextClasses}; maximum is ${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}. Use the full semantic text token, or move opacity to a safe background/border.`
+    );
+}
+
 console.log("Style usage:");
 console.log(`  hardcoded palette classes: ${hardcodedColorClasses}/${MAX_HARDCODED_COLOR_CLASSES}`);
 console.log(`  dark: color classes:       ${darkColorClasses}/${MAX_DARK_COLOR_CLASSES}`);
 console.log(`  same-intent filled pairs:  ${sameIntentFilledClasses}/${MAX_SAME_INTENT_FILLED_CLASSES}`);
+console.log(`  semantic alpha text:       ${semanticAlphaTextClasses}/${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}`);
 console.log(`  ui palette classes:        ${uiHardcodedColorClasses}`);
 
 if (failures.length > 0) {
@@ -166,6 +178,12 @@ if (failures.length > 0) {
     if (sameIntentTop) {
         console.error("\nTop same-intent filled semantic color files:");
         console.error(sameIntentTop);
+    }
+
+    const semanticAlphaTextTop = topFiles(stats, "semanticAlphaTextClasses");
+    if (semanticAlphaTextTop) {
+        console.error("\nTop alpha semantic text files:");
+        console.error(semanticAlphaTextTop);
     }
 
     process.exit(1);
