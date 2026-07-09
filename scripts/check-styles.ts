@@ -46,6 +46,7 @@ const MAX_HARDCODED_COLOR_CLASSES = 0;
 const MAX_DARK_COLOR_CLASSES = 0;
 const MAX_SAME_INTENT_FILLED_CLASSES = 0;
 const MAX_SEMANTIC_ALPHA_TEXT_CLASSES = 0;
+const MAX_DUPLICATE_DARK_CLASSES = 0;
 
 const palettePattern = PALETTE_COLORS.join("|");
 const prefixPattern = COLOR_UTILITY_PREFIXES.join("|");
@@ -64,6 +65,7 @@ const sameIntentFilledClassPattern = new RegExp(
     "g"
 );
 const semanticAlphaTextClassPattern = new RegExp(`text-(?:${semanticIntentPattern})/[0-9]+`, "g");
+const duplicateDarkClassPattern = /([a-z][a-z0-9/-]*) dark:\1(?=[ "'`])/g;
 
 type FileStats = {
     path: string;
@@ -71,6 +73,7 @@ type FileStats = {
     darkColorClasses: number;
     sameIntentFilledClasses: number;
     semanticAlphaTextClasses: number;
+    duplicateDarkClasses: number;
 };
 
 async function listSourceFiles() {
@@ -97,6 +100,7 @@ async function collectStats() {
             darkColorClasses: countMatches(text, darkColorClassPattern),
             sameIntentFilledClasses: countMatches(text, sameIntentFilledClassPattern),
             semanticAlphaTextClasses: countMatches(text, semanticAlphaTextClassPattern),
+            duplicateDarkClasses: countMatches(text, duplicateDarkClassPattern),
         });
     }
 
@@ -117,6 +121,7 @@ const hardcodedColorClasses = stats.reduce((sum, item) => sum + item.hardcodedCo
 const darkColorClasses = stats.reduce((sum, item) => sum + item.darkColorClasses, 0);
 const sameIntentFilledClasses = stats.reduce((sum, item) => sum + item.sameIntentFilledClasses, 0);
 const semanticAlphaTextClasses = stats.reduce((sum, item) => sum + item.semanticAlphaTextClasses, 0);
+const duplicateDarkClasses = stats.reduce((sum, item) => sum + item.duplicateDarkClasses, 0);
 const uiHardcodedColorClasses = stats
     .filter((item) => item.path.startsWith("src/components/ui/"))
     .reduce((sum, item) => sum + item.hardcodedColorClasses, 0);
@@ -149,11 +154,18 @@ if (semanticAlphaTextClasses > MAX_SEMANTIC_ALPHA_TEXT_CLASSES) {
     );
 }
 
+if (duplicateDarkClasses > MAX_DUPLICATE_DARK_CLASSES) {
+    failures.push(
+        `No-op duplicate dark: classes increased to ${duplicateDarkClasses}; maximum is ${MAX_DUPLICATE_DARK_CLASSES}. Drop the dark: copy when it repeats the same class.`
+    );
+}
+
 console.log("Style usage:");
 console.log(`  hardcoded palette classes: ${hardcodedColorClasses}/${MAX_HARDCODED_COLOR_CLASSES}`);
 console.log(`  dark: color classes:       ${darkColorClasses}/${MAX_DARK_COLOR_CLASSES}`);
 console.log(`  same-intent filled pairs:  ${sameIntentFilledClasses}/${MAX_SAME_INTENT_FILLED_CLASSES}`);
 console.log(`  semantic alpha text:       ${semanticAlphaTextClasses}/${MAX_SEMANTIC_ALPHA_TEXT_CLASSES}`);
+console.log(`  duplicate dark: classes:   ${duplicateDarkClasses}/${MAX_DUPLICATE_DARK_CLASSES}`);
 console.log(`  ui palette classes:        ${uiHardcodedColorClasses}`);
 
 if (failures.length > 0) {
@@ -184,6 +196,12 @@ if (failures.length > 0) {
     if (semanticAlphaTextTop) {
         console.error("\nTop alpha semantic text files:");
         console.error(semanticAlphaTextTop);
+    }
+
+    const duplicateDarkTop = topFiles(stats, "duplicateDarkClasses");
+    if (duplicateDarkTop) {
+        console.error("\nTop duplicate dark: class files:");
+        console.error(duplicateDarkTop);
     }
 
     process.exit(1);

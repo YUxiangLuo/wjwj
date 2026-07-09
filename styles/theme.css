@@ -37,6 +37,7 @@
     --color-info-foreground: var(--info-foreground);
     --color-auxiliary: var(--auxiliary);
     --color-auxiliary-foreground: var(--auxiliary-foreground);
+    --color-auxiliary-strong: var(--auxiliary-strong);
     --color-auxiliary-muted: var(--auxiliary-muted);
     --color-auxiliary-border: var(--auxiliary-border);
     --color-overlay: var(--overlay);
@@ -103,7 +104,8 @@
     --info: #1d4ed8;
     --info-foreground: #ffffff;
     --auxiliary: #7c3aed;
-    --auxiliary-foreground: #4c1d95;
+    --auxiliary-foreground: #ffffff;
+    --auxiliary-strong: #4c1d95;
     --auxiliary-muted: #f5f3ff;
     --auxiliary-border: #ddd6fe;
     --overlay: #000000;
@@ -138,7 +140,8 @@
     --info: #60a5fa;
     --info-foreground: #0b1220;
     --auxiliary: #a78bfa;
-    --auxiliary-foreground: #ede9fe;
+    --auxiliary-foreground: #2e1065;
+    --auxiliary-strong: #ede9fe;
     --auxiliary-muted: #2e1065;
     --auxiliary-border: #6d28d9;
     --overlay: #000000;

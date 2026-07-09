@@ -542,7 +542,7 @@ export function AdminApp() {
                                 </button>
                             ))
                         ) : (
-                            <div className="text-center py-12 text-muted-foreground bg-background/30 dark:bg-background/30 rounded-lg border border-dashed border-border">
+                            <div className="text-center py-12 text-muted-foreground bg-background/30 rounded-lg border border-dashed border-border">
                                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
                                 暂无通知
                             </div>

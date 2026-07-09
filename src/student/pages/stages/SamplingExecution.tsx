@@ -367,7 +367,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             <AlertCircle className="h-5 w-5" />
                             无法开始抽样执行
                         </CardTitle>
-                        <CardDescription className="text-destructive dark:text-destructive">
+                        <CardDescription className="text-destructive">
                             当前实验缺少有效的最终样本量，抽样执行必须建立在已确认的样本量规划之上。
                         </CardDescription>
                     </CardHeader>
@@ -484,7 +484,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="p-4 bg-background/30 dark:bg-background/30 rounded-xl border border-border/50">
+                                    <div className="p-4 bg-background/30 rounded-xl border border-border/50">
                                         <Label htmlFor="simpleSeed" className="text-foreground/90 text-xs">随机种子（可选）</Label>
                                         <Input
                                             id="simpleSeed"
@@ -558,7 +558,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 dark:bg-background/30 rounded-xl border border-border/50">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
                                         <div className="space-y-3">
                                             <Label htmlFor="kValue" className="text-foreground/90">间隔 K 值 (步长)</Label>
                                             <div className="relative">
@@ -674,7 +674,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 dark:bg-background/30 rounded-xl border border-border/50">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
                                         <div className="space-y-3">
                                             <Label className="text-foreground/90">选择规模变量</Label>
                                             {hasPpsNumericField ? (
@@ -736,7 +736,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="bg-auxiliary hover:bg-auxiliary text-primary-foreground shadow-lg shadow-auxiliary/20 w-auto px-8">
+                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="bg-auxiliary hover:bg-auxiliary/90 text-auxiliary-foreground shadow-lg shadow-auxiliary/20 w-auto px-8">
                                                 {executing === "pps" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (

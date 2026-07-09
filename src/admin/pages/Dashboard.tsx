@@ -276,7 +276,7 @@ export function Dashboard() {
                             <div className="text-sm text-muted-foreground flex items-center justify-center py-4">加载中...</div>
                         ) : announcements.length > 0 ? (
                             announcements.map((item) => (
-                                <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-background/30 dark:bg-background/30 hover:bg-muted/50 hover:border-input transition-all group">
+                                <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-border bg-background/30 hover:bg-muted/50 hover:border-input transition-all group">
                                     <div>
                                         <div className="text-sm font-medium text-foreground group-hover:text-foreground dark:group-hover:text-foreground transition-colors">{item.title}</div>
                                         <div className="text-xs text-muted-foreground mt-1">发布于 {formatDate(item.createdAt)}</div>

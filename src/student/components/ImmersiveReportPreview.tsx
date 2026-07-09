@@ -55,7 +55,7 @@ export function ImmersiveReportPreview({ experiment, taskName, onClose }: Props)
 
     return (
         <div
-            className={`fixed inset-0 z-50 bg-background/98 dark:bg-background/98 backdrop-blur-sm transition-opacity duration-300 ${opacityClass}`}
+            className={`fixed inset-0 z-50 bg-background/98 backdrop-blur-sm transition-opacity duration-300 ${opacityClass}`}
         >
             {/* top bar */}
             <div className="flex items-center justify-between px-6 py-3 border-b border-border/60 bg-background/80 backdrop-blur">

@@ -300,7 +300,7 @@ export function ExperimentLayout() {
         <ExperimentContext.Provider value={contextValue}>
             <div className="pb-12" data-testid="student-experiment-layout">
                 {/* Sticky header: top bar + compact stage navigation */}
-                <div className="sticky top-[4rem] z-40 bg-background/90 dark:bg-background/90 backdrop-blur -mt-2 border-b border-border/50">
+                <div className="sticky top-[4rem] z-40 bg-background/90 backdrop-blur -mt-2 border-b border-border/50">
                     {/* Row 1: Title + actions */}
                     <div className="flex justify-between items-center pt-2 pb-2 px-0">
                         <div className="flex items-center gap-2">

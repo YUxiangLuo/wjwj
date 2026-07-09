@@ -356,7 +356,7 @@ export function StratifiedSamplingTab({
                                         </TableCell>
                                     </TableRow>
                                 )}
-                                <TableRow className="bg-background/30 dark:bg-background/30 border-t border-input font-medium hover:bg-background/30 dark:hover:bg-background/30">
+                                <TableRow className="bg-background/30 border-t border-input font-medium hover:bg-background/30 dark:hover:bg-background/30">
                                     <TableCell colSpan={3} className="text-right text-foreground/90 pr-4">合计 Total</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
@@ -419,7 +419,7 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setShowAllocationComparison(true)}
-                                className="h-7 text-xs border-auxiliary-border text-auxiliary-foreground hover:bg-auxiliary-muted dark:border-auxiliary-border dark:text-auxiliary dark:hover:bg-auxiliary-muted/30"
+                                className="h-7 text-xs border-auxiliary-border text-auxiliary-strong hover:bg-auxiliary-muted dark:hover:bg-auxiliary-muted/30"
                             >
                                 <BarChart3 className="w-3 h-3 mr-1" />
                                 对比分析全部方法

@@ -144,7 +144,7 @@ export function RichTextEditor({
     return (
         <div
             className={cn(
-                "rounded-xl border border-border bg-background/40 dark:bg-background/40 overflow-hidden",
+                "rounded-xl border border-border bg-background/40 overflow-hidden",
                 className,
             )}
             data-testid={dataTestId}

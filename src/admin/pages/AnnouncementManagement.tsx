@@ -331,7 +331,7 @@ export function AnnouncementManagement() {
                     ) : (
                         <>
                             {filteredAnnouncements.map((announcement) => (
-                                <div key={announcement.id} className="border border-border rounded-lg p-4 bg-background/30 dark:bg-background/30 hover:bg-card transition-colors">
+                                <div key={announcement.id} className="border border-border rounded-lg p-4 bg-background/30 hover:bg-card transition-colors">
                                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-2">
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-medium text-foreground">{announcement.title}</h4>

@@ -501,7 +501,7 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
         <div className="rounded-xl border border-auxiliary-border/90 bg-auxiliary-muted/50 p-4 dark:border-auxiliary-border/40 dark:bg-auxiliary-muted/20">
             <div className="flex items-center gap-2 mb-3">
                 <Info className="w-4 h-4 text-auxiliary" />
-                <span className="font-medium text-sm text-auxiliary-foreground">
+                <span className="font-medium text-sm text-auxiliary-strong">
                     方案对比（课件例 7.2）
                 </span>
             </div>
@@ -510,10 +510,10 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                 <div className="rounded-lg border border-auxiliary-border/60 bg-background p-3 dark:border-auxiliary-border/40 dark:bg-background">
                     <div className="flex justify-between items-center">
                         <div>
-                            <span className="text-sm font-medium text-auxiliary-foreground">方案一</span>
+                            <span className="text-sm font-medium text-auxiliary-strong">方案一</span>
                             <span className="text-xs text-auxiliary ml-2">仅需整体估计</span>
                         </div>
-                        <span className="font-mono font-bold text-auxiliary-foreground">
+                        <span className="font-mono font-bold text-auxiliary-strong">
                             n = {baseSampleSize.toLocaleString()}
                         </span>
                     </div>
@@ -522,14 +522,14 @@ function SchemeComparison({ domains, baseSampleSize }: { domains: Domain[]; base
                 <div className="rounded-lg border border-auxiliary-border/60 bg-background p-3 dark:border-auxiliary-border/40 dark:bg-background">
                     <div className="flex justify-between items-center mb-2">
                         <div>
-                            <span className="text-sm font-medium text-auxiliary-foreground">方案二</span>
+                            <span className="text-sm font-medium text-auxiliary-strong">方案二</span>
                             <span className="text-xs text-auxiliary ml-2">互斥各层分别精确估计</span>
                         </div>
-                        <span className="font-mono font-bold text-auxiliary-foreground">
+                        <span className="font-mono font-bold text-auxiliary-strong">
                             n = {domainTotal.toLocaleString()}
                         </span>
                     </div>
-                    <div className="text-xs text-auxiliary dark:text-auxiliary">
+                    <div className="text-xs text-auxiliary">
                         {domains.map(d => `${d.name}: ${d.requiredSampleSize.toLocaleString()}`).join(" + ")} = {domainTotal.toLocaleString()}
                     </div>
                 </div>

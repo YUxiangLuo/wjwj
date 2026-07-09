@@ -72,7 +72,7 @@ export function FPCPhase({ params, onNext }: Props) {
     return (
         <div className="space-y-8">
             <div className="text-center space-y-3">
-                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-auxiliary-muted/50 text-xs font-medium text-auxiliary-foreground">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-auxiliary-muted/50 text-xs font-medium text-auxiliary-strong">
                     有限总体校正
                 </span>
                 <h2 className="text-2xl font-bold text-foreground">

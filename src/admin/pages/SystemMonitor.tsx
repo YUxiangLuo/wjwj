@@ -185,7 +185,7 @@ export function SystemMonitor() {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground px-3 py-1.5 rounded-md bg-card border border-border">
-                        <span className={`w-2 h-2 rounded-full ${isLive ? "bg-success animate-pulse" : "bg-muted-foreground/50 dark:bg-muted-foreground/50"}`} />
+                        <span className={`w-2 h-2 rounded-full ${isLive ? "bg-success animate-pulse" : "bg-muted-foreground/50"}`} />
                         {isLive ? "实时监控中" : "监控已暂停"}
                     </div>
                     <Button data-testid="monitor-export-report" variant="outline" onClick={handleExportReport} className="border-input text-foreground/90 hover:text-foreground hover:bg-muted">

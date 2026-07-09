@@ -110,7 +110,7 @@ export function CVBasedSampleSizeCalculator({
                                 当你关注估计值的<strong>相对精度</strong>（变异系数）而非绝对误差限时，
                                 例如要求"估计值的变异系数不超过5%"时。
                             </p>
-                            <p className="text-info dark:text-info leading-relaxed">
+                            <p className="text-info leading-relaxed">
                                 <span className="font-medium">为何 n 往往比「误差限公式」小？</span>
                                 本工具按 SE(ȳ)/ȳ ≤ 目标 CV 推导，核心为 n ∝ (CV<sub>总体</sub>/CV<sub>目标</sub>)²，
                                 <strong className="font-semibold">不含 Z 值</strong>；左侧常规面板
@@ -305,9 +305,9 @@ export function CVBasedSampleSizeCalculator({
                 <div className="rounded-xl border border-auxiliary-border/90 bg-auxiliary-muted/50 p-3 dark:border-auxiliary-border/40 dark:bg-auxiliary-muted/20">
                     <div className="flex items-start gap-2">
                         <Info className="w-4 h-4 text-auxiliary shrink-0 mt-0.5" />
-                        <div className="text-xs text-auxiliary-foreground space-y-1.5">
+                        <div className="text-xs text-auxiliary-strong space-y-1.5">
                             <p className="font-medium">给定变异系数确定分层抽样样本量（课件第24页）</p>
-                            <p className="text-auxiliary-foreground/90 dark:text-auxiliary-foreground/90 leading-relaxed">
+                            <p className="text-auxiliary-strong/90 leading-relaxed">
                                 在分层抽样中，可先给定总体估计值的变异系数 <em>C</em>，再由各层方差与分配系数推导所需样本量：
                             </p>
                             <div className="font-mono text-[11px] bg-background/60 rounded p-2 border border-auxiliary-border/50 dark:border-auxiliary-border/40 leading-relaxed">
@@ -315,7 +315,7 @@ export function CVBasedSampleSizeCalculator({
                                 <br />
                                 其中 a<sub>h</sub> 为分配系数，各层样本量 n<sub>h</sub> = n × a<sub>h</sub>
                             </div>
-                            <p className="text-auxiliary dark:text-auxiliary">
+                            <p className="text-auxiliary">
                                 上方计算器适用于简单随机抽样下的 CV 估算；若采用分层抽样，可在「抽样执行」阶段的分层分配方法对比中查看各层实际分配结果。
                             </p>
                         </div>

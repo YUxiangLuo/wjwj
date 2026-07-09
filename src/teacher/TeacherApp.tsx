@@ -317,7 +317,7 @@ export function TeacherApp() {
             <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
                 <div className="w-full max-w-2xl rounded-3xl border border-border bg-card/60 p-8 shadow-2xl shadow-border/40 dark:shadow-background/40">
                     <div className="space-y-3 text-center">
-                        <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold text-primary-foreground shadow-lg ${teacherUser.type === "assistant" ? "bg-auxiliary shadow-auxiliary/20" : "bg-primary shadow-primary/20"}`}>
+                        <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-bold shadow-lg ${teacherUser.type === "assistant" ? "bg-auxiliary text-auxiliary-foreground shadow-auxiliary/20" : "bg-primary text-primary-foreground shadow-primary/20"}`}>
                             {teacherUser.type === "assistant" ? "助" : "师"}
                         </div>
                         <h1 className="text-2xl font-bold text-foreground">首次登录需完成密码更新</h1>

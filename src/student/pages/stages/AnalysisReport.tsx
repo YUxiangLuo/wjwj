@@ -66,14 +66,14 @@ function ChartBars({
 
     if (rows.length === 0) {
         return (
-            <div className={`${heightClass} rounded-2xl bg-background/30 dark:bg-background/30 border border-border flex items-center justify-center text-muted-foreground text-sm`}>
+            <div className={`${heightClass} rounded-2xl bg-background/30 border border-border flex items-center justify-center text-muted-foreground text-sm`}>
                 {emptyMessage}
             </div>
         );
     }
 
     return (
-        <div className={`${heightClass} rounded-2xl bg-background/30 dark:bg-background/30 border border-border p-4 overflow-auto`}>
+        <div className={`${heightClass} rounded-2xl bg-background/30 border border-border p-4 overflow-auto`}>
             <div className="space-y-4">
                 {rows.map((row) => (
                     <div key={row.label} className="rounded-xl border border-border bg-card/40 p-3">

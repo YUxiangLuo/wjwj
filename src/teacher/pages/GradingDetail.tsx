@@ -495,7 +495,7 @@ export function GradingDetail() {
                                             className="text-sm text-foreground/90 leading-relaxed bg-background/50 p-6 rounded-lg border border-border/50"
                                         />
                                     ) : (
-                                        <div className="text-muted-foreground text-center py-20 bg-background/30 dark:bg-background/30 rounded-lg border border-dashed border-border">
+                                        <div className="text-muted-foreground text-center py-20 bg-background/30 rounded-lg border border-dashed border-border">
                                             暂无报告内容
                                         </div>
                                     )}
@@ -552,7 +552,7 @@ export function GradingDetail() {
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="text-muted-foreground text-center py-20 bg-background/30 dark:bg-background/30 rounded-lg border border-dashed border-border">
+                                        <div className="text-muted-foreground text-center py-20 bg-background/30 rounded-lg border border-dashed border-border">
                                             未设计问卷
                                         </div>
                                     )}

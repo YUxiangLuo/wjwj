@@ -168,17 +168,17 @@ export function SubmissionDetailPage() {
                 <CardContent className="space-y-6 pt-6">
                     {/* Score Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-muted/40 dark:bg-muted/40 rounded-lg p-4 text-center border border-input/30">
+                        <div className="bg-muted/40 rounded-lg p-4 text-center border border-input/30">
                             <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">问卷设计</div>
                             <div className="text-2xl font-bold text-foreground font-mono">{detail.scoreQuestionnaire ?? "-"}</div>
                             <div className="text-[10px] text-muted-foreground mt-1">权重 {detail.weights.questionnaire}%</div>
                         </div>
-                        <div className="bg-muted/40 dark:bg-muted/40 rounded-lg p-4 text-center border border-input/30">
+                        <div className="bg-muted/40 rounded-lg p-4 text-center border border-input/30">
                             <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">实验过程</div>
                             <div className="text-2xl font-bold text-foreground font-mono">{detail.scoreProcess ?? "-"}</div>
                             <div className="text-[10px] text-muted-foreground mt-1">权重 {detail.weights.process}%</div>
                         </div>
-                        <div className="bg-muted/40 dark:bg-muted/40 rounded-lg p-4 text-center border border-input/30">
+                        <div className="bg-muted/40 rounded-lg p-4 text-center border border-input/30">
                             <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">实验报告</div>
                             <div className="text-2xl font-bold text-foreground font-mono">{detail.scoreReport ?? "-"}</div>
                             <div className="text-[10px] text-muted-foreground mt-1">权重 {detail.weights.report}%</div>
@@ -215,7 +215,7 @@ export function SubmissionDetailPage() {
                                 <AlertCircle className="w-4 h-4" />
                                 驳回理由
                             </h4>
-                            <p className="text-destructive dark:text-destructive text-sm leading-relaxed whitespace-pre-line pl-6 border-l-2 border-destructive/30">
+                            <p className="text-destructive text-sm leading-relaxed whitespace-pre-line pl-6 border-l-2 border-destructive/30">
                                 {detail.rejectReason}
                             </p>
                         </div>
