@@ -61,7 +61,7 @@ function ToolbarButton({
                 "h-7 w-7 rounded-md flex items-center justify-center transition-colors",
                 "text-muted-foreground hover:text-foreground hover:bg-muted",
                 active && "bg-muted text-foreground",
-                disabled && "opacity-40 pointer-events-none",
+                disabled && "opacity-40 cursor-not-allowed",
             )}
         >
             {children}
