@@ -390,9 +390,10 @@ async function main() {
         || !themeCss.includes('@import "tailwindcss";')
         || !themeCss.includes('@source not "../*.md";')
         || !themeCss.includes('@source not "../**/*.md";')
+        || !themeCss.includes('@source not "../scripts";')
     ) {
         failures.push(
-            "styles/theme.css must use Bun-compatible Tailwind import and exclude markdown sources so docs/examples cannot generate forbidden utilities.",
+            "styles/theme.css must use the Bun-compatible Tailwind import and exclude non-runtime markdown and script sources.",
         );
     }
 

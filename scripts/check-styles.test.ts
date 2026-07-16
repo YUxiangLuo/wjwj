@@ -5,6 +5,12 @@ import {
 } from "./check-styles";
 
 describe("style guard", () => {
+    test("excludes test fixtures from Tailwind production source detection", async () => {
+        const themeCss = await Bun.file("styles/theme.css").text();
+
+        expect(themeCss).toContain('@source not "../scripts";');
+    });
+
     test("detects a solid semantic parent with same-intent child text", () => {
         const source = `
             export function BrokenState() {

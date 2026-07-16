@@ -1,4 +1,5 @@
 import tailwind from "bun-plugin-tailwind";
+import { countHardcodedPaletteClasses } from "./check-styles";
 
 const outdir = process.env.BUILD_OUTDIR ?? "dist";
 const entrypoints = [
@@ -26,6 +27,21 @@ for (const entrypoint of entrypoints) {
 
     for (const log of result.logs) console.warn(log);
     if (!result.success) process.exit(1);
+
+    const invalidCssOutputs: Array<{ path: string; count: number }> = [];
+    for (const output of result.outputs) {
+        if (!output.path.endsWith(".css")) continue;
+        const count = countHardcodedPaletteClasses(await output.text());
+        if (count > 0) invalidCssOutputs.push({ path: output.path, count });
+    }
+    if (invalidCssOutputs.length > 0) {
+        console.error("Production CSS contains forbidden hardcoded palette utilities:");
+        for (const output of invalidCssOutputs) {
+            console.error(`- ${output.path}: ${output.count}`);
+        }
+        process.exit(1);
+    }
+
     outputCount += result.outputs.length;
 }
 

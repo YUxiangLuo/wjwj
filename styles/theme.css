@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @source not "../*.md";
 @source not "../**/*.md";
+@source not "../scripts";
 @import "tw-animate-css";
 
 @theme inline {
