@@ -11,6 +11,22 @@ describe("style guard", () => {
         expect(themeCss).toContain('@source not "../scripts";');
     });
 
+    test("defines shared cursors for enabled and disabled interactive controls", async () => {
+        const themeCss = await Bun.file("styles/theme.css").text();
+        const richTextEditor = await Bun.file("src/components/RichTextEditor.tsx").text();
+
+        expect(themeCss).toContain('label[for],');
+        expect(themeCss).toContain('[role="button"],');
+        expect(themeCss).toContain('[role="option"],');
+        expect(themeCss).toContain('[data-slot="slider"]');
+        expect(themeCss).toContain("cursor: pointer;");
+        expect(themeCss).toContain("cursor: not-allowed;");
+        expect(themeCss).toContain("@custom-variant hover");
+        expect(themeCss).toContain('&:hover:not(:disabled):not([aria-disabled="true"]):not([data-disabled])');
+        expect(richTextEditor).toContain('disabled && "opacity-40 cursor-not-allowed"');
+        expect(richTextEditor).not.toContain('disabled && "opacity-40 pointer-events-none"');
+    });
+
     test("detects a solid semantic parent with same-intent child text", () => {
         const source = `
             export function BrokenState() {
