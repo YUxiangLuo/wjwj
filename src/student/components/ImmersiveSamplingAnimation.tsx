@@ -48,10 +48,10 @@ const METHOD_META: Record<SamplingMethod, {
     accentBg: string; accentBgLight: string; accentText: string;
     accentRing: string; accentBorder: string;
 }> = {
-    simple: { label: "简单随机抽样", color: "from-indigo-600/20 to-violet-600/20", accent: "indigo", icon: Shuffle, accentBg: "bg-indigo-500", accentBgLight: "bg-indigo-500/20", accentText: "text-indigo-600 dark:text-indigo-400", accentRing: "ring-indigo-400", accentBorder: "border-indigo-500/30" },
-    systematic: { label: "系统抽样", color: "from-teal-600/20 to-cyan-600/20", accent: "teal", icon: Target, accentBg: "bg-teal-500", accentBgLight: "bg-teal-500/20", accentText: "text-teal-600 dark:text-teal-400", accentRing: "ring-teal-400", accentBorder: "border-teal-500/30" },
-    pps: { label: "PPS抽样", color: "from-purple-600/20 to-fuchsia-600/20", accent: "purple", icon: Target, accentBg: "bg-purple-500", accentBgLight: "bg-purple-500/20", accentText: "text-purple-600 dark:text-purple-400", accentRing: "ring-purple-400", accentBorder: "border-purple-500/30" },
-    stratified: { label: "分层抽样", color: "from-amber-600/20 to-orange-600/20", accent: "amber", icon: Layers, accentBg: "bg-amber-500", accentBgLight: "bg-amber-500/20", accentText: "text-amber-600 dark:text-amber-400", accentRing: "ring-amber-400", accentBorder: "border-amber-500/30" },
+    simple: { label: "简单随机抽样", color: "from-primary/20 to-auxiliary/20", accent: "indigo", icon: Shuffle, accentBg: "bg-primary", accentBgLight: "bg-primary/20", accentText: "text-primary", accentRing: "ring-primary", accentBorder: "border-primary/30" },
+    systematic: { label: "系统抽样", color: "from-info/20 to-info/20", accent: "teal", icon: Target, accentBg: "bg-info", accentBgLight: "bg-info/20", accentText: "text-info", accentRing: "ring-info", accentBorder: "border-info/30" },
+    pps: { label: "PPS抽样", color: "from-auxiliary/20 to-auxiliary/20", accent: "purple", icon: Target, accentBg: "bg-auxiliary", accentBgLight: "bg-auxiliary/20", accentText: "text-auxiliary", accentRing: "ring-auxiliary", accentBorder: "border-auxiliary/30" },
+    stratified: { label: "分层抽样", color: "from-warning/20 to-warning/20", accent: "amber", icon: Layers, accentBg: "bg-warning", accentBgLight: "bg-warning/20", accentText: "text-warning", accentRing: "ring-warning", accentBorder: "border-warning/30" },
 };
 
 const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; sampling: string; complete: string }> = {
@@ -78,12 +78,12 @@ const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; samplin
 };
 
 const LAYER_COLORS = [
-    { bg: "bg-rose-500", ring: "ring-rose-400", text: "text-rose-600 dark:text-rose-400" },
-    { bg: "bg-sky-500", ring: "ring-sky-400", text: "text-sky-600 dark:text-sky-400" },
-    { bg: "bg-emerald-500", ring: "ring-emerald-400", text: "text-emerald-600 dark:text-emerald-400" },
-    { bg: "bg-amber-500", ring: "ring-amber-400", text: "text-amber-600 dark:text-amber-400" },
-    { bg: "bg-violet-500", ring: "ring-violet-400", text: "text-violet-600 dark:text-violet-400" },
-    { bg: "bg-pink-500", ring: "ring-pink-400", text: "text-pink-600 dark:text-pink-400" },
+    { bg: "bg-chart-8", ring: "ring-chart-8" },
+    { bg: "bg-chart-2", ring: "ring-chart-2" },
+    { bg: "bg-chart-7", ring: "ring-chart-7" },
+    { bg: "bg-chart-5", ring: "ring-chart-5" },
+    { bg: "bg-chart-4", ring: "ring-chart-4" },
+    { bg: "bg-chart-6", ring: "ring-chart-6" },
 ] as const;
 
 function lc(index: number) {
@@ -161,9 +161,10 @@ const DotGrid = memo(function DotGrid({
                         inlineStyle = { opacity };
                     } else if (method === "systematic" && systematicScanIndex !== undefined && i > systematicScanIndex) {
                         // Not yet scanned — dimmer to show the scan sweeping through
-                        bgClass = "bg-slate-300/30 dark:bg-slate-700/30";
+                        bgClass = "bg-muted-foreground/15";
                     } else {
-                        bgClass = "bg-slate-300 dark:bg-slate-700";
+                        // Already scanned points remain visibly stronger than the pending field.
+                        bgClass = method === "systematic" ? "bg-muted-foreground/80" : "bg-muted-foreground/20";
                     }
                 } else {
                     bgClass = "bg-transparent";
@@ -468,9 +469,9 @@ export function ImmersiveSamplingAnimation({
     const Icon = meta.icon;
 
     return (
-        <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 flex flex-col" data-testid="immersive-sampling-animation">
+        <div className="fixed inset-0 z-50 bg-background flex flex-col" data-testid="immersive-sampling-animation">
             {/* Progress bar */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-slate-200 dark:bg-slate-800 z-10">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-muted z-10">
                 <div
                     className={`h-full transition-all duration-300 ease-out ${meta.accentBg}`}
                     style={{ width: `${progress}%` }}
@@ -484,8 +485,8 @@ export function ImmersiveSamplingAnimation({
                         <Icon className={`w-5 h-5 ${meta.accentText}`} />
                     </div>
                     <div>
-                        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{meta.label}</h2>
-                        <p className="text-xs text-slate-500">
+                        <h2 className="text-sm font-semibold text-foreground">{meta.label}</h2>
+                        <p className="text-xs text-muted-foreground">
                             {phase.type === "intro" && "准备中..."}
                             {phase.type === "populating" && progressCopy.populating}
                             {phase.type === "sampling" && `${progressCopy.sampling} ${sampleProgressDisplay.current}/${sampleProgressDisplay.total}`}
@@ -498,7 +499,7 @@ export function ImmersiveSamplingAnimation({
                         onClick={onClose}
                         variant="outline"
                         data-testid="immersive-sampling-return"
-                        className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+                        className="border-input text-foreground/90 hover:bg-muted"
                     >
                         关闭
                         <X className="w-4 h-4 ml-1" />
@@ -506,7 +507,7 @@ export function ImmersiveSamplingAnimation({
                 ) : (
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground/90 hover:bg-muted transition-colors"
                         aria-label="关闭"
                     >
                         <X className="w-5 h-5" />
@@ -522,15 +523,15 @@ export function ImmersiveSamplingAnimation({
                         <div className={`w-20 h-20 mx-auto rounded-2xl flex items-center justify-center ${meta.accentBgLight}`}>
                             <Icon className={`w-10 h-10 ${meta.accentText}`} />
                         </div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{meta.label}</h1>
-                        <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{introText}</p>
+                        <h1 className="text-2xl font-bold text-foreground">{meta.label}</h1>
+                        <p className="text-muted-foreground leading-relaxed">{introText}</p>
                         <div className="flex items-center justify-center gap-6 text-sm">
-                            <div className="flex items-center gap-2 text-slate-500">
+                            <div className="flex items-center gap-2 text-muted-foreground">
                                 <Users className="w-4 h-4" />
                                 <span>总体 {populationSize.toLocaleString()}</span>
                             </div>
                             <div className={`w-1 h-1 rounded-full ${meta.accentBg}`} />
-                            <div className="flex items-center gap-2 text-slate-500">
+                            <div className="flex items-center gap-2 text-muted-foreground">
                                 <Target className="w-4 h-4" />
                                 <span>抽取 {sampleSize}</span>
                             </div>
@@ -547,7 +548,7 @@ export function ImmersiveSamplingAnimation({
                                 {layers.map((layer, i) => (
                                     <div key={layer.name} className="flex items-center gap-2">
                                         <div className={`w-3 h-3 rounded-full ${lc(i).bg}`} />
-                                        <span className="text-xs text-slate-600 dark:text-slate-400">{layer.name}</span>
+                                        <span className="text-xs text-muted-foreground">{layer.name}</span>
                                     </div>
                                 ))}
                             </div>
@@ -555,9 +556,9 @@ export function ImmersiveSamplingAnimation({
 
                         {/* Dot grid */}
                         {phase.type !== "complete" && (
-                            <div className="relative bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 overflow-hidden">
+                            <div className="relative bg-card/50 rounded-2xl border border-border p-4 overflow-hidden">
                                 {method === "stratified" && phase.type === "populating" && (
-                                    <div className="mb-3 flex items-center justify-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+                                    <div className="mb-3 flex items-center justify-center gap-2 text-xs text-warning">
                                         <Layers className="w-3.5 h-3.5" />
                                         <span>先按 {fieldLabel} 分层，再在各层内抽样</span>
                                     </div>
@@ -585,18 +586,18 @@ export function ImmersiveSamplingAnimation({
                                             <div className="pointer-events-none absolute inset-4">
                                                 {/* Horizontal scan line showing current row */}
                                                 <div
-                                                    className="absolute inset-x-0 h-px bg-teal-400/50 transition-all duration-[80ms]"
+                                                    className="absolute inset-x-0 h-px bg-info/50 transition-all duration-[80ms]"
                                                     style={{ top: systematicIndicator.top }}
                                                 />
                                                 {/* Scan cursor */}
                                                 <div
-                                                    className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-teal-400 bg-white shadow-md dark:bg-slate-950 transition-all duration-[80ms]"
+                                                    className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-info bg-background shadow-md transition-all duration-[80ms]"
                                                     style={{ left: systematicIndicator.left, top: systematicIndicator.top }}
                                                 />
                                             </div>
                                         )}
                                         <div className="absolute bottom-3 left-0 right-0 text-center">
-                                            <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-slate-50/90 px-3 py-1.5 text-xs font-mono ${meta.accentText} dark:bg-slate-900/90`}>
+                                            <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs font-mono ${meta.accentText}`}>
                                                 间隔 K = {kValue}，从总体首端至末端等距抽取
                                             </span>
                                         </div>
@@ -605,7 +606,7 @@ export function ImmersiveSamplingAnimation({
 
                                 {method === "simple" && phase.type === "sampling" && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className={`inline-flex items-center gap-2 bg-slate-50/90 dark:bg-slate-900/90 border ${meta.accentBorder} ${meta.accentText} text-xs px-3 py-1.5 rounded-full`}>
+                                        <span className={`inline-flex items-center gap-2 bg-card/90 border ${meta.accentBorder} ${meta.accentText} text-xs px-3 py-1.5 rounded-full`}>
                                             <Shuffle className="w-3.5 h-3.5" />
                                             每个样本点被抽中的机会相同
                                         </span>
@@ -614,7 +615,7 @@ export function ImmersiveSamplingAnimation({
 
                                 {method === "pps" && phase.type === "sampling" && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-slate-50/90 px-3 py-1.5 text-xs ${meta.accentText} dark:bg-slate-900/90`}>
+                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs ${meta.accentText}`}>
                                             <Target className="w-3.5 h-3.5" />
                                             按 {FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模"} 权重系统选取，亮度越高规模越大
                                         </span>
@@ -623,7 +624,7 @@ export function ImmersiveSamplingAnimation({
 
                                 {method === "stratified" && phase.type === "sampling" && stratifiedActiveLayer !== null && layers?.[stratifiedActiveLayer] && (
                                     <div className="absolute bottom-3 left-0 right-0 text-center">
-                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-slate-50/90 px-3 py-1.5 text-xs ${meta.accentText} dark:bg-slate-900/90`}>
+                                        <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs ${meta.accentText}`}>
                                             <div className={`h-2.5 w-2.5 rounded-full ${lc(stratifiedActiveLayer).bg}`} />
                                             当前正在抽取 {layers[stratifiedActiveLayer].name} 层样本
                                         </span>
@@ -634,7 +635,7 @@ export function ImmersiveSamplingAnimation({
 
                         {/* Sampling stats bar */}
                         {phase.type === "sampling" && (
-                            <div className="flex items-center justify-between px-2 text-xs text-slate-500 animate-in fade-in duration-200">
+                            <div className="flex items-center justify-between px-2 text-xs text-muted-foreground animate-in fade-in duration-200">
                                 <span>总体 {populationSize.toLocaleString()} 个数据点</span>
                                 <span className={meta.accentText}>
                                     已选中 {sampleProgressDisplay.current} / {sampleProgressDisplay.total}
@@ -647,8 +648,8 @@ export function ImmersiveSamplingAnimation({
                             <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full">
                                 {!sampledData ? (
                                     <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
-                                        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-                                        <p className="text-sm text-slate-500">正在获取抽样数据...</p>
+                                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground">正在获取抽样数据...</p>
                                     </div>
                                 ) : (
                                     <SampledDataTable data={sampledData} total={sampledTotal ?? sampledData.length} />
@@ -672,7 +673,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
     useEffect(() => { setPage(1); }, [data]);
 
     if (data.length === 0) {
-        return <div className="flex-1 flex items-center justify-center text-sm text-slate-500 italic">暂无抽样数据</div>;
+        return <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground italic">暂无抽样数据</div>;
     }
 
     const keys = Object.keys(data[0] ?? {});
@@ -684,13 +685,13 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
 
     return (
         <div className="flex flex-col min-h-0 h-full gap-2">
-            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border">
                 <table className="w-full text-left min-w-max">
-                    <thead className="sticky top-0 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-sm z-10">
+                    <thead className="sticky top-0 bg-muted/95 backdrop-blur-sm z-10">
                         <tr>
-                            <th className="px-3 py-2 text-xs font-medium text-slate-500 whitespace-nowrap border-b border-slate-200 dark:border-slate-800">#</th>
+                            <th className="px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap border-b border-border">#</th>
                             {keys.map((key) => (
-                                <th key={key} className="px-3 py-2 text-xs font-medium text-slate-500 whitespace-nowrap border-b border-slate-200 dark:border-slate-800">
+                                <th key={key} className="px-3 py-2 text-xs font-medium text-muted-foreground whitespace-nowrap border-b border-border">
                                     {FIELD_LABELS[key] || key}
                                 </th>
                             ))}
@@ -698,10 +699,10 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                     </thead>
                     <tbody>
                         {rows.map((row, rowIndex) => (
-                            <tr key={start + rowIndex} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                <td className="px-3 py-1.5 text-xs text-slate-400 font-mono whitespace-nowrap">{start + rowIndex + 1}</td>
+                            <tr key={start + rowIndex} className="border-b border-border hover:bg-card">
+                                <td className="px-3 py-1.5 text-xs text-muted-foreground font-mono whitespace-nowrap">{start + rowIndex + 1}</td>
                                 {keys.map((key) => (
-                                    <td key={key} className="px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                    <td key={key} className="px-3 py-1.5 text-xs text-foreground/90 whitespace-nowrap">
                                         {String(row[key] ?? "")}
                                     </td>
                                 ))}
@@ -711,24 +712,24 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                 </table>
             </div>
             <div className="flex items-center justify-between shrink-0 px-1">
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                     显示第 {start + 1}-{end} 条{total > data.length ? `（已加载 ${data.length} 条，共 ${total} 条）` : `，共 ${data.length} 条`}
                 </p>
                 <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+                        className="h-7 px-2 text-xs border-input text-foreground/90 hover:bg-muted"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={currentPage <= 1}
                     >
                         <ChevronLeft className="w-3.5 h-3.5" />
                     </Button>
-                    <span className="text-xs text-slate-500 font-mono tabular-nums">{currentPage}/{totalPages}</span>
+                    <span className="text-xs text-muted-foreground font-mono tabular-nums">{currentPage}/{totalPages}</span>
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 px-2 text-xs border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800"
+                        className="h-7 px-2 text-xs border-input text-foreground/90 hover:bg-muted"
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={currentPage >= totalPages}
                     >

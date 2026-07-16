@@ -25,19 +25,19 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:max-w-md">
+            <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="text-slate-900 dark:text-slate-100">延长截止时间</DialogTitle>
+                    <DialogTitle className="text-foreground">延长截止时间</DialogTitle>
                     <DialogDescription className="sr-only">
                         为所选任务设置新的截止时间。
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <div className="text-sm text-slate-500">
+                    <div className="text-sm text-muted-foreground">
                         {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="extendDeadline" className="text-slate-700 dark:text-slate-300">新截止时间</Label>
+                        <Label htmlFor="extendDeadline" className="text-foreground/90">新截止时间</Label>
                         <DatetimePicker24
                             id="extendDeadline"
                             data-testid="teacher-task-extend-deadline"
@@ -49,8 +49,8 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800">取消</Button>
-                    <Button data-testid="teacher-task-extend-submit" onClick={onConfirm} className="bg-indigo-600 hover:bg-indigo-700 text-white">确认延长</Button>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground hover:bg-muted">取消</Button>
+                    <Button data-testid="teacher-task-extend-submit" onClick={onConfirm} className="bg-primary hover:bg-primary/90 text-primary-foreground">确认延长</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

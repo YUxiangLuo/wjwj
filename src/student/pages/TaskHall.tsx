@@ -5,8 +5,8 @@ import {
     ChevronRight, Clock, AlertCircle, Loader2, Trophy, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -30,13 +30,13 @@ export type { TaskStatus, StudentTask };
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ["not_started", "in_progress", "rejected"];
-const statusConfig: Record<TaskStatus, { label: string; color: string }> = {
-    not_started: { label: "未开始", color: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20" },
-    in_progress: { label: "进行中", color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
-    submitted: { label: "已提交", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
-    grading: { label: "批改中", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" },
-    graded: { label: "已批改", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-    rejected: { label: "被驳回", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" },
+const statusConfig: Record<TaskStatus, { label: string; intent: StatusBadgeIntent }> = {
+    not_started: { label: "未开始", intent: "neutral" },
+    in_progress: { label: "进行中", intent: "primary" },
+    submitted: { label: "已提交", intent: "warning" },
+    grading: { label: "批改中", intent: "warning" },
+    graded: { label: "已批改", intent: "success" },
+    rejected: { label: "被驳回", intent: "destructive" },
 };
 
 function formatDateTime(value: string | null) {
@@ -79,13 +79,13 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
     if (!deadline) return null;
     if (status === "graded") return null;
     if (notOpenYet) {
-        return <span className="text-sm text-cyan-800">尚未开放</span>;
+        return <span className="text-sm text-info">尚未开放</span>;
     }
 
     const remainingMs = getRemainingMs(deadline);
     if (remainingMs === null) return null;
     if (remainingMs <= 0) {
-        return <span className="text-sm text-slate-500">已截止</span>;
+        return <span className="text-sm text-muted-foreground">已截止</span>;
     }
 
     const minuteMs = 60 * 1000;
@@ -96,7 +96,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
         const hours = Math.floor(remainingMs / hourMs);
         const minutes = Math.floor((remainingMs % hourMs) / minuteMs);
         return (
-            <span className="text-sm text-rose-600 font-medium flex items-center gap-1">
+            <span className="text-sm text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
                 还剩 {hours} 小时 {minutes} 分钟
             </span>
@@ -107,7 +107,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
         const days = Math.floor(remainingMs / dayMs);
         const hours = Math.floor((remainingMs % dayMs) / hourMs);
         return (
-            <span className="text-sm text-amber-600 font-medium flex items-center gap-1">
+            <span className="text-sm text-warning font-medium flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
                 还剩 {days} 天 {hours} 小时
             </span>
@@ -115,7 +115,7 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
     }
 
     const days = Math.ceil(remainingMs / dayMs);
-    return <span className="text-sm text-slate-500">还剩 {days} 天</span>;
+    return <span className="text-sm text-muted-foreground">还剩 {days} 天</span>;
 }
 
 interface TaskCardProps {
@@ -164,13 +164,13 @@ function TaskCard({ task }: TaskCardProps) {
 
     return (
         <>
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur-sm shadow-lg hover:shadow-indigo-500/10 transition-all hover:-translate-y-1" data-testid={`student-task-card-${task.id}`}>
-                <CardHeader className="pb-3 text-slate-800 dark:text-slate-200">
+            <Card className="rounded-2xl border-border bg-card/60 backdrop-blur-sm shadow-lg hover:shadow-primary/10 transition-all hover:-translate-y-1" data-testid={`student-task-card-${task.id}`}>
+                <CardHeader className="pb-3 text-foreground">
                 <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-lg line-clamp-1 text-slate-900 dark:text-slate-100">{task.name}</CardTitle>
-                    <Badge variant="outline" className={`${status.color} border whitespace-nowrap`}>{status.label}</Badge>
+                    <CardTitle className="text-lg line-clamp-1 text-foreground">{task.name}</CardTitle>
+                    <StatusBadge intent={status.intent} className="whitespace-nowrap">{status.label}</StatusBadge>
                 </div>
-                <CardDescription className="line-clamp-2 text-slate-600 dark:text-slate-400">
+                <CardDescription className="line-clamp-2 text-muted-foreground">
                     {task.description ? getRichTextPlainText(task.description) : null}
                 </CardDescription>
                 </CardHeader>
@@ -180,13 +180,13 @@ function TaskCard({ task }: TaskCardProps) {
                     {task.status !== "graded" && task.status !== "rejected" && (
                         <div className="space-y-2">
                             <div className="flex justify-between text-sm">
-                                <span className="text-slate-500">实验进度</span>
-                                <span className="text-slate-700 dark:text-slate-300 font-medium">{task.progress}%</span>
+                                <span className="text-muted-foreground">实验进度</span>
+                                <span className="text-foreground/90 font-medium">{task.progress}%</span>
                             </div>
-                            <Progress value={task.progress} className="h-2 bg-slate-200 dark:bg-slate-800 [&>div]:bg-indigo-500" />
+                            <Progress value={task.progress} className="h-2 bg-muted [&>div]:bg-primary" />
                             {task.currentStage > 0 && task.currentStage < 4 && (
-                                <p className="text-xs text-slate-500 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
                                     当前阶段：{stageNames[task.currentStage - 1]}
                                 </p>
                             )}
@@ -195,20 +195,20 @@ function TaskCard({ task }: TaskCardProps) {
 
                     {/* Score display */}
                     {task.status === "graded" && task.score !== undefined && (
-                        <div className="flex items-center gap-3 py-3 px-4 bg-emerald-500/10 rounded-lg border border-emerald-500/10">
-                            <div className="p-2 bg-emerald-500/20 rounded-full">
-                                <Trophy className="w-5 h-5 text-emerald-600" />
+                        <div className="flex items-center gap-3 py-3 px-4 bg-success/10 rounded-lg border border-success/10">
+                            <div className="p-2 bg-success/20 rounded-full">
+                                <Trophy className="w-5 h-5 text-success" />
                             </div>
                             <div>
-                                <div className="text-xs text-emerald-600/80 uppercase font-bold tracking-wider">最终得分</div>
-                                <span className="font-bold text-2xl text-emerald-600">{task.score}</span>
+                                <div className="text-xs text-success uppercase font-bold tracking-wider">最终得分</div>
+                                <span className="font-bold text-2xl text-success">{task.score}</span>
                             </div>
                         </div>
                     )}
 
                     {/* Reject reason */}
                     {task.status === "rejected" && task.rejectReason && (
-                        <div className="p-3 bg-rose-500/10 rounded-lg border border-rose-500/20 text-sm text-rose-500">
+                        <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20 text-sm text-destructive">
                             <div className="font-semibold mb-1 flex items-center gap-2">
                                 <AlertCircle className="w-3 h-3" /> 驳回理由
                             </div>
@@ -217,8 +217,8 @@ function TaskCard({ task }: TaskCardProps) {
                     )}
 
                     {/* Footer */}
-                    <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
-                        <div className="text-xs text-slate-500 space-y-0.5">
+                    <div className="flex justify-between items-center pt-3 border-t border-border">
+                        <div className="text-xs text-muted-foreground space-y-0.5">
                             <div>{notOpenYet ? "开放" : "发布"}：{formatDateTime(task.publishedAt)}</div>
                             <div>截止：{formatDateTime(task.deadline)}</div>
                         </div>
@@ -228,7 +228,7 @@ function TaskCard({ task }: TaskCardProps) {
                     {/* Action button */}
                     <div className="flex gap-2">
                         <Button
-                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-indigo-600 hover:bg-indigo-700 text-white hover:text-white shadow-lg shadow-indigo-500/20' : ''} ${action.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700 text-white hover:text-white' : ''} ${action.variant === 'outline' ? 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100' : ''}`}
+                            className={`flex-1 w-full ${action.variant === 'default' ? 'bg-primary hover:bg-primary/90 text-primary-foreground hover:text-primary-foreground shadow-lg shadow-primary/20' : ''} ${action.variant === 'destructive' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground hover:text-destructive-foreground' : ''} ${action.variant === 'outline' ? 'border-input text-foreground/90 hover:bg-muted hover:text-foreground' : ''}`}
                             variant="ghost"
                             disabled={disabled}
                             onClick={() => { void handlePrimaryAction(); }}
@@ -239,14 +239,14 @@ function TaskCard({ task }: TaskCardProps) {
                         </Button>
                         {showHistory && (
                             <Link to={`/task/${task.id}/history`}>
-                                <Button variant="outline" size="icon" className="border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100" title="历史记录">
+                                <Button variant="outline" size="icon" className="border-input text-muted-foreground hover:bg-muted hover:text-foreground" title="历史记录">
                                     <Clock className="w-4 h-4" />
                                 </Button>
                             </Link>
                         )}
                     </div>
                     {disabled && (
-                        <div className="px-4 py-2 text-xs text-slate-500 text-center bg-slate-200/50 dark:bg-slate-800/50 rounded-md">
+                        <div className="px-4 py-2 text-xs text-muted-foreground text-center bg-muted/50 rounded-md">
                             {notOpenYet ? "任务尚未开放，暂不可操作" : "已截止，无法继续操作"}
                         </div>
                     )}
@@ -255,19 +255,19 @@ function TaskCard({ task }: TaskCardProps) {
             </Card>
 
             <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
-                <AlertDialogContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <AlertDialogContent className="bg-card border-border text-foreground">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-slate-900 dark:text-slate-100">确认重新开始实验</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
-                            重新开始将<strong className="text-rose-600">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
+                        <AlertDialogTitle className="text-foreground">确认重新开始实验</AlertDialogTitle>
+                        <AlertDialogDescription className="text-muted-foreground text-base leading-relaxed">
+                            重新开始将<strong className="text-destructive">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
                             <br />
                             确定继续吗？
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100">取消</AlertDialogCancel>
+                        <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
                         <AlertDialogAction
-                            className="bg-rose-600 hover:bg-rose-700 text-white"
+                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                             onClick={async () => {
                                 const res = await experimentApi.reset(task.id, {
                                     resetToStage: 1,
@@ -368,7 +368,7 @@ export function TaskHall() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-10 h-10 animate-spin text-indigo-500" />
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
             </div>
         );
     }
@@ -376,17 +376,17 @@ export function TaskHall() {
     return (
         <div className="space-y-8">
             {latestUnread && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 flex items-center justify-between gap-4">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-full bg-amber-500/20 text-amber-500 shrink-0">
+                        <div className="p-2 rounded-full bg-warning/20 text-warning shrink-0">
                             <AlertCircle className="w-5 h-5" />
                         </div>
                         <div>
-                            <div className="text-sm text-amber-500 font-medium font-mono tracking-wider uppercase text-[10px] mb-0.5">最新公告</div>
-                            <div className="text-sm text-amber-800 dark:text-amber-200 font-medium line-clamp-1">{latestUnread.title}</div>
+                            <div className="text-sm text-warning font-medium font-mono tracking-wider uppercase text-[10px] mb-0.5">最新公告</div>
+                            <div className="text-sm text-warning font-medium line-clamp-1">{latestUnread.title}</div>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="rounded-full text-amber-600 hover:text-amber-500 hover:bg-amber-500/10 shrink-0" onClick={() => setShowAnnouncements(true)}>
+                    <Button variant="ghost" size="sm" className="rounded-full text-warning hover:text-warning hover:bg-warning/10 shrink-0" onClick={() => setShowAnnouncements(true)}>
                         查看详情
                     </Button>
                 </div>
@@ -394,73 +394,73 @@ export function TaskHall() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="student-stats-section">
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors group" data-testid="student-stat-in-progress">
+                <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-in-progress">
                     <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-indigo-500/10 rounded-2xl text-indigo-500 group-hover:bg-indigo-500/20 group-hover:scale-110 transition-all duration-300">
+                        <div className="p-4 bg-primary/10 rounded-2xl text-primary group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
                             <FlaskConical className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-500 transition-colors">{inProgressCount}</p>
-                            <p className="text-sm text-slate-500">进行中的实验</p>
+                            <p className="text-3xl font-bold text-foreground group-hover:text-primary transition-colors">{inProgressCount}</p>
+                            <p className="text-sm text-muted-foreground">进行中的实验</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors group" data-testid="student-stat-graded">
+                <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-graded">
                     <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-600 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all duration-300">
+                        <div className="p-4 bg-success/10 rounded-2xl text-success group-hover:bg-success/20 group-hover:scale-110 transition-all duration-300">
                             <CheckCircle className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 transition-colors">{gradedCount}</p>
-                            <p className="text-sm text-slate-500">已批改实验</p>
+                            <p className="text-3xl font-bold text-foreground group-hover:text-success transition-colors">{gradedCount}</p>
+                            <p className="text-sm text-muted-foreground">已批改实验</p>
                         </div>
                     </CardContent>
                 </Card>
-                <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-colors group" data-testid="student-stat-average">
+                <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-average">
                     <CardContent className="p-6 flex items-center gap-5">
-                        <div className="p-4 bg-purple-500/10 rounded-2xl text-purple-600 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all duration-300">
+                        <div className="p-4 bg-auxiliary/10 rounded-2xl text-auxiliary group-hover:bg-auxiliary/20 group-hover:scale-110 transition-all duration-300">
                             <Trophy className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 group-hover:text-purple-600 transition-colors">{averageScore.toFixed(0) || "-"}</p>
-                            <p className="text-sm text-slate-500">平均得分</p>
+                            <p className="text-3xl font-bold text-foreground group-hover:text-auxiliary transition-colors">{averageScore.toFixed(0) || "-"}</p>
+                            <p className="text-sm text-muted-foreground">平均得分</p>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Filter Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                    <LayoutDashboard className="w-5 h-5 text-indigo-500" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+                <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    <LayoutDashboard className="w-5 h-5 text-primary" />
                     我的任务
                 </h3>
-                <div className="flex p-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg self-start sm:self-auto">
+                <div className="flex p-1 bg-card border border-border rounded-lg self-start sm:self-auto">
                     <button
                         onClick={() => setFilter("all")}
                         data-testid="student-filter-all"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "all" ? "bg-slate-200 dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "all" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
                     >
                         全部
                     </button>
                     <button
                         onClick={() => setFilter("in_progress")}
                         data-testid="student-filter-in-progress"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "in_progress" ? "bg-slate-200 dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "in_progress" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
                     >
                         进行中
                     </button>
                     <button
                         onClick={() => setFilter("submitted")}
                         data-testid="student-filter-submitted"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "submitted" ? "bg-slate-200 dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "submitted" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
                     >
                         已提交
                     </button>
                     <button
                         onClick={() => setFilter("graded")}
                         data-testid="student-filter-graded"
-                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "graded" ? "bg-slate-200 dark:bg-slate-800 text-slate-950 dark:text-slate-50 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                        className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${filter === "graded" ? "bg-muted text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/90"}`}
                     >
                         已批改
                     </button>
@@ -470,12 +470,12 @@ export function TaskHall() {
             {/* Task Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
                 {taskError ? (
-                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-red-50/30 dark:bg-red-950/20 rounded-3xl border border-dashed border-red-200 dark:border-red-800/50">
-                        <div className="w-16 h-16 bg-red-50 dark:bg-red-950/40 rounded-full flex items-center justify-center mb-4 border border-red-200 dark:border-red-800/50">
-                            <AlertCircle className="w-8 h-8 text-red-400 dark:text-red-500" />
+                    <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-destructive/40 bg-destructive/10 py-20">
+                        <div className="w-16 h-16 bg-destructive rounded-full flex items-center justify-center mb-4 border border-destructive">
+                            <AlertCircle className="w-8 h-8 text-destructive-foreground" />
                         </div>
-                        <p className="text-lg text-slate-600 dark:text-slate-400 font-medium">任务加载失败</p>
-                        <p className="text-sm text-slate-500 mt-1">请检查网络连接后重试</p>
+                        <p className="text-lg text-muted-foreground font-medium">任务加载失败</p>
+                        <p className="text-sm text-muted-foreground mt-1">请检查网络连接后重试</p>
                         <Button variant="outline" size="sm" className="mt-4" onClick={() => loadTasks()}>
                             重试
                         </Button>
@@ -485,44 +485,44 @@ export function TaskHall() {
                         <TaskCard key={task.id} task={task} />
                     ))
                 ) : (
-                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-slate-50/30 dark:bg-slate-900/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
-                        <div className="w-16 h-16 bg-slate-50 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4 border border-slate-200 dark:border-slate-800">
-                            <BookOpen className="w-8 h-8 text-slate-300 dark:text-slate-700" />
+                    <div className="col-span-full flex flex-col items-center justify-center py-20 bg-card/30 rounded-3xl border border-dashed border-border">
+                        <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 border border-border">
+                            <BookOpen className="w-8 h-8 text-muted-foreground" />
                         </div>
-                        <p className="text-lg text-slate-600 dark:text-slate-400 font-medium">暂无相关任务</p>
-                        <p className="text-sm text-slate-500 mt-1">当有新任务发布或状态变更时将出现在这里</p>
+                        <p className="text-lg text-muted-foreground font-medium">暂无相关任务</p>
+                        <p className="text-sm text-muted-foreground mt-1">当有新任务发布或状态变更时将出现在这里</p>
                     </div>
                 )}
             </div>
 
             <Dialog open={showAnnouncements} onOpenChange={setShowAnnouncements}>
-                <DialogContent className="max-w-2xl bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                <DialogContent className="max-w-2xl bg-card border-border text-foreground">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100 text-xl font-bold flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5 text-indigo-500" />
+                        <DialogTitle className="text-foreground text-xl font-bold flex items-center gap-2">
+                            <AlertCircle className="w-5 h-5 text-primary" />
                             系统公告
                         </DialogTitle>
-                        <DialogDescription className="text-slate-600 dark:text-slate-400">查看实验室最新通知与动态</DialogDescription>
+                        <DialogDescription className="text-muted-foreground">查看实验室最新通知与动态</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 min-h-[400px]">
                         {/* List */}
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar border-r border-slate-200 dark:border-slate-800 md:pr-4">
+                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar border-r border-border md:pr-4">
                             {announcements.length === 0 && (
-                                <div className="text-sm text-slate-500 text-center py-12 italic">暂无公告</div>
+                                <div className="text-sm text-muted-foreground text-center py-12 italic">暂无公告</div>
                             )}
                             {announcements.map((announcement) => (
                                 <button
                                     key={announcement.id}
-                                    className={`w-full text-left p-4 rounded-xl border transition-all duration-200 group ${selectedAnnouncement?.id === announcement.id ? "bg-indigo-900/20 border-indigo-500/30 ring-1 ring-indigo-500/20" : "bg-white/50 dark:bg-slate-950/50 border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-700"}`}
+                                    className={`w-full text-left p-4 rounded-xl border transition-all duration-200 group ${selectedAnnouncement?.id === announcement.id ? "bg-primary/20 border-primary/30 ring-1 ring-primary/20" : "bg-background/50 border-border hover:bg-muted hover:border-input"}`}
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-indigo-600 transition-colors ${!announcement.isRead ? "text-slate-900 dark:text-slate-100" : "text-slate-600 dark:text-slate-400"}`}>
+                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-primary transition-colors ${!announcement.isRead ? "text-foreground" : "text-muted-foreground"}`}>
                                             {announcement.title}
                                         </div>
-                                        {!announcement.isRead && <span className="w-2 h-2 rounded-full bg-rose-500 mt-1 shrink-0"></span>}
+                                        {!announcement.isRead && <span className="w-2 h-2 rounded-full bg-destructive mt-1 shrink-0"></span>}
                                     </div>
-                                    <div className="text-xs text-slate-500 mt-2 font-mono opacity-70">
+                                    <div className="text-xs text-muted-foreground mt-2 font-mono opacity-70">
                                         {new Date(announcement.createdAt).toLocaleString("zh-CN", {
                                             timeZone: "Asia/Shanghai",
                                             month: "2-digit",
@@ -539,20 +539,20 @@ export function TaskHall() {
                             {selectedAnnouncement ? (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div>
-                                        <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-tight">{selectedAnnouncement.title}</h3>
-                                        <div className="flex items-center gap-2 mt-2 text-xs text-slate-500 font-mono bg-white/50 dark:bg-slate-950/50 inline-flex px-2 py-1 rounded">
+                                        <h3 className="text-lg font-bold text-foreground leading-tight">{selectedAnnouncement.title}</h3>
+                                        <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground font-mono bg-background/50 inline-flex px-2 py-1 rounded">
                                             <Clock className="w-3 h-3" />
                                             {new Date(selectedAnnouncement.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}
                                         </div>
                                     </div>
-                                    <div className="w-full h-px bg-slate-200 dark:bg-slate-800" />
+                                    <div className="w-full h-px bg-muted" />
                                     <RichTextContent
                                         html={selectedAnnouncement.content}
-                                        className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"
+                                        className="text-sm text-foreground/90 leading-relaxed"
                                     />
                                 </div>
                             ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-3 opacity-50">
+                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-3 opacity-50">
                                     <FileText className="w-12 h-12 stroke-1" />
                                     <p className="text-sm">请选择左侧公告查看详情</p>
                                 </div>

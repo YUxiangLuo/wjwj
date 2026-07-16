@@ -1,0 +1,72 @@
+import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
+import { cleanup, render } from "@testing-library/react";
+import { CheckCircle2 } from "lucide-react";
+
+import { IconTile } from "@/components/IconTile";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
+import { installDomGlobals } from "@/test-utils/dom";
+
+let restoreDom: (() => void) | null = null;
+
+beforeAll(() => {
+    const dom = installDomGlobals();
+    restoreDom = dom.restore;
+});
+
+afterEach(() => {
+    cleanup();
+});
+
+afterAll(() => {
+    restoreDom?.();
+    restoreDom = null;
+});
+
+test("status badge variants use semantic intent tokens", () => {
+    const view = render(
+        <div>
+            <StatusBadge intent="success">成功</StatusBadge>
+            <StatusBadge intent="warning">警告</StatusBadge>
+            <StatusBadge intent="destructive">危险</StatusBadge>
+            <StatusBadge intent="info">信息</StatusBadge>
+        </div>
+    );
+
+    expect(view.getByText("成功").className).toContain("bg-success/10");
+    expect(view.getByText("警告").className).toContain("text-warning");
+    expect(view.getByText("危险").className).toContain("border-destructive/20");
+    expect(view.getByText("信息").className).toContain("bg-info/10");
+});
+
+test("icon tile keeps repeated stat icon styling tokenized", () => {
+    const view = render(
+        <div>
+            <IconTile intent="primary" data-testid="primary-tile" />
+            <IconTile intent="neutral" data-testid="neutral-tile" />
+        </div>
+    );
+
+    expect(view.getByTestId("primary-tile").className).toContain("bg-primary/10");
+    expect(view.getByTestId("neutral-tile").className).toContain("h-10");
+});
+
+test("shared pattern components render expected accessible content", () => {
+    const view = render(
+        <PageHeader>
+            <div>
+                <h2>作业批改</h2>
+                <p>查看待批改列表</p>
+                <IconTile intent="info" data-testid="icon-tile" />
+            </div>
+            <div>
+                <StatusBadge intent="success"><CheckCircle2 /> 已完成</StatusBadge>
+            </div>
+        </PageHeader>
+    );
+
+    expect(view.getByText("作业批改")).toBeTruthy();
+    expect(view.getByText("查看待批改列表")).toBeTruthy();
+    expect(view.getByText("已完成")).toBeTruthy();
+    expect(view.getByTestId("icon-tile").className).toContain("bg-info/10");
+});

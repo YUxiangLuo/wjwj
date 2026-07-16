@@ -8,6 +8,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, AlertTriangle, ClipboardList, Search, XCircle, Clock, UserCheck, FileEdit, ChevronLeft, ChevronRight } from "lucide-react";
 import { teacherApi, type GradingItem, type GradingListParams } from "../api-client";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
 
 const PAGE_SIZE = 20;
 
@@ -95,10 +97,10 @@ export function GradingManagement() {
     const getStatusBadge = (status: number, score?: number | null) => {
         switch (status) {
             case 0:
-            case 1: return <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20"><Clock className="w-3 h-3 mr-1" /> 待批改</Badge>;
-            case 2: return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</Badge>;
-            case 3: return <Badge variant="destructive" className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500/20"><XCircle className="w-3 h-3 mr-1" /> 已驳回</Badge>;
-            default: return <Badge variant="outline" className="text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700">未知状态</Badge>;
+            case 1: return <StatusBadge intent="warning"><Clock className="w-3 h-3 mr-1" /> 待批改</StatusBadge>;
+            case 2: return <StatusBadge intent="success"><CheckCircle2 className="w-3 h-3 mr-1" /> 已批改 ({score ?? 0}分)</StatusBadge>;
+            case 3: return <StatusBadge intent="destructive"><XCircle className="w-3 h-3 mr-1" /> 已驳回</StatusBadge>;
+            default: return <Badge variant="outline" className="text-muted-foreground border-input">未知状态</Badge>;
         }
     };
 
@@ -110,7 +112,7 @@ export function GradingManagement() {
         return (
             <Badge
                 variant="outline"
-                className={`text-xs ${isTeacher ? 'text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/10' : 'text-purple-600 border-purple-500/30 bg-purple-500/10'}`}
+                className={`text-xs ${isTeacher ? 'text-info border-info/30 bg-info/10' : 'text-auxiliary border-auxiliary/30 bg-auxiliary/10'}`}
             >
                 <UserCheck className="w-3 h-3 mr-1" />
                 {isTeacher ? '教师' : '助教'}: {item.gradedByName}
@@ -121,32 +123,32 @@ export function GradingManagement() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">作业批改</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">查看待批改列表并快速进入评分。</p>
+                <h2 className="text-lg font-semibold text-foreground">作业批改</h2>
+                <p className="text-sm text-muted-foreground mt-1">查看待批改列表并快速进入评分。</p>
             </div>
 
-            <Card className="border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-sm">
-                <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+            <Card>
+                <PageHeader as={CardHeader}>
                     <div>
-                        <CardTitle className="text-base text-slate-900 dark:text-slate-100">批改列表</CardTitle>
-                        <p className="text-xs text-slate-500 mt-1">共 {total} 条数据</p>
+                        <CardTitle className="text-base text-foreground">批改列表</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-1">共 {total} 条数据</p>
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-56">
-                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-grading-search"
                                 placeholder="搜索学生/课题"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 placeholder:text-slate-500 focus:border-indigo-500/50"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
                         </div>
                         <Select value={filterClass} onValueChange={setFilterClass}>
-                            <SelectTrigger data-testid="teacher-grading-class-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-grading-class-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all-class">全部班级</SelectItem>
                                 {classOptions.map((name) => (
                                     <SelectItem key={name} value={name}>{name}</SelectItem>
@@ -154,10 +156,10 @@ export function GradingManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterTopic} onValueChange={setFilterTopic}>
-                            <SelectTrigger data-testid="teacher-grading-topic-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-40">
+                            <SelectTrigger data-testid="teacher-grading-topic-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部课题" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all-topic">全部课题</SelectItem>
                                 {topicOptions.map((name) => (
                                     <SelectItem key={name} value={name}>{name}</SelectItem>
@@ -165,10 +167,10 @@ export function GradingManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger data-testid="teacher-grading-status-filter" className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 sm:w-28">
+                            <SelectTrigger data-testid="teacher-grading-status-filter" className="bg-background border-border text-foreground sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
-                            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                            <SelectContent className="bg-card border-border text-foreground">
                                 <SelectItem value="all-status">全部状态</SelectItem>
                                 <SelectItem value="pending">待批改</SelectItem>
                                 <SelectItem value="graded">已批改</SelectItem>
@@ -176,58 +178,58 @@ export function GradingManagement() {
                             </SelectContent>
                         </Select>
                     </div>
-                </CardHeader>
+                </PageHeader>
                 <CardContent className="space-y-3 pt-4">
-                    {loading ? <div className="text-center py-12 text-slate-500">加载中...</div> : (
+                    {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : (
                         items.length === 0 ?
-                            <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-                                <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center mb-3">
-                                    <ClipboardList className="w-6 h-6 text-slate-500" />
+                            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                                <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center mb-3">
+                                    <ClipboardList className="w-6 h-6 text-muted-foreground" />
                                 </div>
                                 <p>暂无待批改作业</p>
                             </div>
                             :
                             items.map((sub) => (
-                                <div data-testid={`teacher-grading-card-${sub.id}`} key={sub.id} className="border border-slate-200 dark:border-slate-800 rounded-lg p-5 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+                                <div data-testid={`teacher-grading-card-${sub.id}`} key={sub.id} className="border border-border rounded-lg p-5 bg-background hover:bg-card hover:border-input transition-all">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div className="flex items-center gap-4">
-                                            <Avatar className="w-10 h-10 border border-slate-300 dark:border-slate-700">
-                                                <AvatarFallback className="bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">{sub.studentName?.[0] ?? "?"}</AvatarFallback>
+                                            <Avatar className="w-10 h-10 border border-input">
+                                                <AvatarFallback className="bg-muted text-foreground/90">{sub.studentName?.[0] ?? "?"}</AvatarFallback>
                                             </Avatar>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-semibold text-slate-800 dark:text-slate-200">{sub.studentName}</span>
-                                                    <span className="text-xs font-mono text-slate-500">({sub.studentId})</span>
+                                                    <span className="font-semibold text-foreground">{sub.studentName}</span>
+                                                    <span className="text-xs font-mono text-muted-foreground">({sub.studentId})</span>
                                                 </div>
-                                                <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{sub.className} · <span className="text-indigo-500">{sub.topic}</span></div>
+                                                <div className="text-sm text-muted-foreground mt-1">{sub.className} · <span className="text-primary">{sub.topic}</span></div>
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
                                             {getStatusBadge(sub.status, sub.score)}
                                             {getGraderBadge(sub)}
-                                            <div className="text-xs text-slate-500 mt-1">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</div>
+                                            <div className="text-xs text-muted-foreground mt-1">{sub.submittedAt ? new Date(sub.submittedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end mt-4 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
+                                    <div className="flex justify-end mt-4 pt-3 border-t border-border/50">
                                         {sub.status === 1 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                                                 <FileEdit className="w-3.5 h-3.5 mr-2" />
                                                 开始批改
                                             </Button>
                                         )}
                                         {sub.status === 0 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 text-slate-950 dark:text-slate-50">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="bg-muted-foreground/20 hover:bg-muted-foreground/30 text-foreground">
                                                 <FileEdit className="w-3.5 h-3.5 mr-2" />
                                                 继续批改
                                             </Button>
                                         )}
                                         {sub.status === 2 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200 dark:hover:bg-slate-800">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-muted-foreground hover:text-foreground hover:bg-muted">
                                                 查看详情
                                             </Button>
                                         )}
                                         {sub.status === 3 && (
-                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-500/10">
+                                            <Button data-testid={`teacher-grading-open-${sub.id}`} variant="ghost" size="sm" onClick={() => navigate(`/grading/${sub.id}`)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10">
                                                 查看原因
                                             </Button>
                                         )}
@@ -238,8 +240,8 @@ export function GradingManagement() {
 
                     {/* 分页 */}
                     {!loading && total > PAGE_SIZE && (
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
-                            <p className="text-xs text-slate-500">
+                        <div className="flex items-center justify-between pt-4 border-t border-border">
+                            <p className="text-xs text-muted-foreground">
                                 第 {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, total)} 条，共 {total} 条
                             </p>
                             <div className="flex items-center gap-1">
@@ -248,7 +250,7 @@ export function GradingManagement() {
                                     size="sm"
                                     disabled={page <= 1}
                                     onClick={() => goToPage(page - 1)}
-                                    className="h-8 w-8 p-0 border-slate-200 dark:border-slate-800"
+                                    className="h-8 w-8 p-0 border-border"
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                 </Button>
@@ -261,7 +263,7 @@ export function GradingManagement() {
                                     }, [])
                                     .map((item, idx) =>
                                         item === "ellipsis" ? (
-                                            <span key={`e-${idx}`} className="px-1 text-slate-400 text-sm">…</span>
+                                            <span key={`e-${idx}`} className="px-1 text-muted-foreground text-sm">…</span>
                                         ) : (
                                             <Button
                                                 key={item}
@@ -270,8 +272,8 @@ export function GradingManagement() {
                                                 onClick={() => goToPage(item)}
                                                 className={`h-8 w-8 p-0 text-xs ${
                                                     item === page
-                                                        ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                                                        ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                                        : "border-border text-muted-foreground"
                                                 }`}
                                             >
                                                 {item}
@@ -283,7 +285,7 @@ export function GradingManagement() {
                                     size="sm"
                                     disabled={page >= totalPages}
                                     onClick={() => goToPage(page + 1)}
-                                    className="h-8 w-8 p-0 border-slate-200 dark:border-slate-800"
+                                    className="h-8 w-8 p-0 border-border"
                                 >
                                     <ChevronRight className="w-4 h-4" />
                                 </Button>

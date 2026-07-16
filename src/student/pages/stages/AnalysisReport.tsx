@@ -66,26 +66,26 @@ function ChartBars({
 
     if (rows.length === 0) {
         return (
-            <div className={`${heightClass} rounded-2xl bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 text-sm`}>
+            <div className={`${heightClass} rounded-2xl bg-background/30 border border-border flex items-center justify-center text-muted-foreground text-sm`}>
                 {emptyMessage}
             </div>
         );
     }
 
     return (
-        <div className={`${heightClass} rounded-2xl bg-white/30 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 p-4 overflow-auto`}>
+        <div className={`${heightClass} rounded-2xl bg-background/30 border border-border p-4 overflow-auto`}>
             <div className="space-y-4">
                 {rows.map((row) => (
-                    <div key={row.label} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 p-3">
-                        <div className="text-xs text-slate-700 dark:text-slate-300 font-medium mb-2">{row.label}</div>
+                    <div key={row.label} className="rounded-xl border border-border bg-card/40 p-3">
+                        <div className="text-xs text-foreground/90 font-medium mb-2">{row.label}</div>
                         <div className="space-y-2">
                             {series.map((s) => {
                                 const value = row.values[s.key] ?? 0;
                                 const widthPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
                                 return (
                                     <div key={`${row.label}-${s.key}`} className="flex items-center gap-2">
-                                        <span className="w-20 text-[11px] text-slate-500 shrink-0">{s.label}</span>
-                                        <div className="h-3 flex-1 rounded bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                                        <span className="w-20 text-[11px] text-muted-foreground shrink-0">{s.label}</span>
+                                        <div className="h-3 flex-1 rounded bg-muted overflow-hidden">
                                             <div
                                                 className="h-full rounded"
                                                 style={{
@@ -94,7 +94,7 @@ function ChartBars({
                                                 }}
                                             />
                                         </div>
-                                        <span className="w-20 text-right text-[11px] text-slate-600 dark:text-slate-400 font-mono">
+                                        <span className="w-20 text-right text-[11px] text-muted-foreground font-mono">
                                             {value.toFixed(2)}{unit}
                                         </span>
                                     </div>
@@ -134,13 +134,13 @@ function ChartTabPanel({
     return (
         <div className="mt-6 space-y-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <div className="text-sm text-slate-600 dark:text-slate-400">{description}</div>
+                <div className="text-sm text-muted-foreground">{description}</div>
                 <div className="flex items-center gap-2">
                     {fieldSelector}
-                    <Button variant="outline" size="icon" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700" onClick={onZoom}>
+                    <Button variant="outline" size="icon" className="border-input bg-muted text-foreground/90 hover:bg-muted" onClick={onZoom}>
                         <Maximize2 className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="icon" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700" onClick={onDownload}>
+                    <Button variant="outline" size="icon" className="border-input bg-muted text-foreground/90 hover:bg-muted" onClick={onDownload}>
                         <Download className="w-4 h-4" />
                     </Button>
                 </div>
@@ -167,10 +167,10 @@ function FieldSelect({
 }) {
     return (
         <Select value={value} onValueChange={onChange}>
-            <SelectTrigger className="w-[220px] bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+            <SelectTrigger className="w-[220px] bg-background border-border text-foreground">
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
-            <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+            <SelectContent className="bg-card border-border text-foreground">
                 {fields.map((field) => (
                     <SelectItem key={field} value={field}>{field}</SelectItem>
                 ))}
@@ -563,10 +563,10 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             {draftRestored && (
                 <Card
                     data-testid="student-analysis-draft-restored"
-                    className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 shadow-sm"
+                    className="rounded-2xl border border-success/30 bg-success/10 shadow-sm"
                 >
                     <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-300">
+                        <div className="flex items-center gap-2 text-sm text-success">
                             <CheckCircle className="h-4 w-4" />
                             <span>已恢复未提交的本地报告草稿。</span>
                         </div>
@@ -576,13 +576,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
-                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                                <BarChart3 className="w-5 h-5 text-indigo-500" />
+                    <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
+                        <CardHeader className="border-b border-border pb-4">
+                            <CardTitle className="flex items-center gap-2 text-foreground">
+                                <BarChart3 className="w-5 h-5 text-primary" />
                                 分析数据
                             </CardTitle>
-                            <CardDescription className="text-slate-600 dark:text-slate-400">
+                            <CardDescription className="text-muted-foreground">
                                 {statsLoading
                                     ? "正在加载总体统计数据…"
                                     : "在图表分析、样本量规划决策参数与抽样执行参数之间切换查看"}
@@ -591,7 +591,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <CardContent className="pt-6">
                             {analysisMetricsError && (
                                 <div
-                                    className="mb-4 flex items-start gap-2 rounded-xl border border-rose-300/70 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:border-rose-800/70 dark:bg-rose-950/20 dark:text-rose-300"
+                                    className="mb-4 flex items-start gap-2 rounded-xl border border-destructive/70 bg-destructive/10 px-4 py-3 text-sm text-destructive"
                                     data-testid="student-analysis-metrics-error"
                                 >
                                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -600,13 +600,13 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             )}
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList
-                                    className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950"
+                                    className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-border bg-background p-1"
                                     data-testid="student-analysis-section-tabs"
                                 >
                                     <TabsTrigger
                                         value="charts"
                                         data-testid="student-analysis-section-tab-charts"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
                                             <BarChart3 className="h-3.5 w-3.5 shrink-0" />
@@ -616,7 +616,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <TabsTrigger
                                         value="plan"
                                         data-testid="student-analysis-section-tab-plan"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
                                             <Ruler className="h-3.5 w-3.5 shrink-0" />
@@ -626,7 +626,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <TabsTrigger
                                         value="sampling"
                                         data-testid="student-analysis-section-tab-sampling"
-                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-slate-600 data-[state=active]:bg-slate-200 data-[state=active]:text-slate-950 dark:text-slate-400 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-slate-50"
+                                        className="flex-1 min-w-[7rem] rounded-lg py-2.5 text-muted-foreground data-[state=active]:bg-muted data-[state=active]:text-foreground"
                                     >
                                         <span className="flex items-center justify-center gap-1.5">
                                             <ListTree className="h-3.5 w-3.5 shrink-0" />
@@ -637,11 +637,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="charts" className="mt-0 focus-visible:outline-none">
                             <Tabs defaultValue="mean">
-                                <TabsList className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-1 rounded-xl w-full flex h-auto" data-testid="student-analysis-tabs">
-                                    <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">均值对比</TabsTrigger>
-                                    <TabsTrigger value="dist" data-testid="student-analysis-tab-dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">分布对比</TabsTrigger>
-                                    <TabsTrigger value="error" data-testid="student-analysis-tab-error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">误差分析</TabsTrigger>
-                                    <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-slate-200 dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-950 dark:data-[state=active]:text-slate-50 text-slate-600 dark:text-slate-400">样本代表性</TabsTrigger>
+                                <TabsList className="bg-background border border-border p-1 rounded-xl w-full flex h-auto" data-testid="student-analysis-tabs">
+                                    <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">均值对比</TabsTrigger>
+                                    <TabsTrigger value="dist" data-testid="student-analysis-tab-dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">分布对比</TabsTrigger>
+                                    <TabsTrigger value="error" data-testid="student-analysis-tab-error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">误差分析</TabsTrigger>
+                                    <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">样本代表性</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="mean">
@@ -726,19 +726,19 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                        <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                                <Download className="w-5 h-5 text-teal-500" />
+                    <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
+                        <CardHeader className="border-b border-border pb-4">
+                            <CardTitle className="flex items-center gap-2 text-foreground">
+                                <Download className="w-5 h-5 text-info" />
                                 数据导出
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="pt-4 space-y-3">
                             <Select value={exportType} onValueChange={(v) => setExportType(v as MethodKey | "all")}>
-                                <SelectTrigger className="w-full bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <SelectTrigger className="w-full bg-background border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200">
+                                <SelectContent className="bg-card border-border text-foreground">
                                     <SelectItem value="all">全部抽样数据</SelectItem>
                                     <SelectItem value="simple">{METHOD_META.simple.label}结果</SelectItem>
                                     <SelectItem value="systematic">{METHOD_META.systematic.label}结果</SelectItem>
@@ -746,21 +746,21 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <SelectItem value="stratified">{METHOD_META.stratified.label}结果</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Button className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20" onClick={() => handleExport(exportType)}>
+                            <Button className="w-full bg-info hover:bg-info/90 text-info-foreground shadow-lg shadow-info/20" onClick={() => handleExport(exportType)}>
                                 <Download className="w-4 h-4 mr-2" />
                                 导出 CSV
                             </Button>
                         </CardContent>
                     </Card>
 
-                    <Card className="rounded-2xl border-indigo-500/20 bg-indigo-500/5 shadow-sm">
+                    <Card className="rounded-2xl border-primary/20 bg-primary/5 shadow-sm">
                         <CardHeader>
-                            <CardTitle className="text-base text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                            <CardTitle className="text-base text-primary flex items-center gap-2">
                                 <Sparkles className="w-4 h-4" />
                                 分析提示
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-3 text-sm text-indigo-800/70 dark:text-indigo-200/70">
+                        <CardContent className="space-y-3 text-sm text-primary">
                             <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。</p>
                             <p>• 再看分类分布与代表性偏差，识别各方法对总体结构的贴近程度。</p>
                             <p>• 最后结合设计标准误，说明估计精度与稳定性。</p>
@@ -769,19 +769,19 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                 </div>
             </div>
 
-            <Card className="rounded-2xl border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shadow-sm">
-                <CardHeader className="border-b border-slate-200 dark:border-slate-800 pb-4">
-                    <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                        <FileText className="w-5 h-5 text-indigo-500" />
+            <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
+                <CardHeader className="border-b border-border pb-4">
+                    <CardTitle className="flex items-center gap-2 text-foreground">
+                        <FileText className="w-5 h-5 text-primary" />
                         撰写报告
                     </CardTitle>
-                    <CardDescription className="text-slate-600 dark:text-slate-400">
+                    <CardDescription className="text-muted-foreground">
                         请根据实验结果撰写分析报告（{minLength}-{maxLength}字）
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    <div className="p-4 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-600 dark:text-slate-400">
-                        <p className="font-semibold text-slate-700 dark:text-slate-300 mb-2">建议包含以下内容：</p>
+                    <div className="p-4 bg-background/50 border border-border rounded-xl text-sm text-muted-foreground">
+                        <p className="font-semibold text-foreground/90 mb-2">建议包含以下内容：</p>
                         <ul className="list-disc list-inside space-y-1.5 pl-2">
                             <li>抽样方法选择的理由</li>
                             <li>各方法执行结果的对比分析</li>
@@ -792,7 +792,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                     </div>
 
                     <div className="space-y-3">
-                        <Label htmlFor="report" className="text-slate-700 dark:text-slate-300">报告内容</Label>
+                        <Label htmlFor="report" className="text-foreground/90">报告内容</Label>
                         <div className="space-y-2">
                             <RichTextEditor
                                 dataTestId="student-analysis-report"
@@ -804,14 +804,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 editorClassName="min-h-[400px]"
                             />
                             <div className="text-right text-xs">
-                                <span className={reportTextLength < minLength || reportTextLength > maxLength ? "text-rose-600" : "text-emerald-600"}>
+                                <span className={reportTextLength < minLength || reportTextLength > maxLength ? "text-destructive" : "text-success"}>
                                     {reportTextLength > maxLength
                                         ? `已超出 ${reportTextLength - maxLength} 字`
                                         : reportTextLength < minLength
                                             ? `还需 ${minLength - reportTextLength} 字`
                                             : "✓ 字数符合要求"}
                                 </span>
-                                <span className="text-slate-500 ml-2">{reportTextLength}/{maxLength}</span>
+                                <span className="text-muted-foreground ml-2">{reportTextLength}/{maxLength}</span>
                             </div>
                         </div>
                     </div>
@@ -819,11 +819,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             </Card>
 
             {/* Navigation */}
-            <div className="flex justify-between items-center pt-6 border-t border-slate-200/50 dark:border-slate-800/50">
-                <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev" className="border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-slate-100">
+            <div className="flex justify-between items-center pt-6 border-t border-border/50">
+                <Button variant="outline" onClick={onPrev} data-testid="student-analysis-prev" className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground">
                     上一阶段
                 </Button>
-                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting} data-testid="student-analysis-preview" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/20">
+                <Button onClick={handleSubmit} disabled={!isValidLength || isSubmitting} data-testid="student-analysis-preview" className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/20">
                     {isSubmitting ? (
                         <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -840,9 +840,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             {/* Zoom dialog */}
             <Dialog open={zoomChart !== null} onOpenChange={(open) => { if (!open) setZoomChart(null); }}>
-                <DialogContent className="sm:max-w-[50vw] bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200" data-testid="student-analysis-zoom-dialog">
+                <DialogContent className="sm:max-w-[50vw] bg-card border-border text-foreground" data-testid="student-analysis-zoom-dialog">
                     <DialogHeader>
-                        <DialogTitle className="text-slate-900 dark:text-slate-100">
+                        <DialogTitle className="text-foreground">
                             {activeZoom?.title}（放大）
                         </DialogTitle>
                     </DialogHeader>
