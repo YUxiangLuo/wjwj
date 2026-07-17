@@ -67,7 +67,7 @@ test("topic copy duplicates the topic and related resources under the current te
                 fileSize: 1024,
             }],
         ],
-        insert: [[{ insertId: 44 }]],
+        insert: [[{ id: 44 }]],
     });
 
     const request = withRouteParam(new Request("https://example.com/api/teacher/topics/12/copy", {

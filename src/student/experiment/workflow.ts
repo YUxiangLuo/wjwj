@@ -32,25 +32,25 @@ export async function getOrCreateStudentExperiment(studentId: number, taskId: nu
         return record;
     }
 
-    try {
-        const [result] = await db.insert(experiment).values({
+    const [created] = await db
+        .insert(experiment)
+        .values({
             studentId,
             taskId,
             currentStage: 0,
             status: ExperimentStatus.IN_PROGRESS,
-        });
+        })
+        .onConflictDoNothing({ target: [experiment.studentId, experiment.taskId] })
+        .returning();
 
-        [record] = await db.select().from(experiment).where(eq(experiment.id, result.insertId));
-    } catch (error: unknown) {
-        if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") {
-            [record] = await db
-                .select()
-                .from(experiment)
-                .where(and(eq(experiment.studentId, studentId), eq(experiment.taskId, taskId)));
-        } else {
-            throw error;
-        }
+    if (created) {
+        return created;
     }
+
+    [record] = await db
+        .select()
+        .from(experiment)
+        .where(and(eq(experiment.studentId, studentId), eq(experiment.taskId, taskId)));
 
     return record ?? null;
 }

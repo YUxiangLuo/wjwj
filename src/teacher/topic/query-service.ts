@@ -57,14 +57,14 @@ export async function listTeacherTasks(teacherId: number) {
             deadline: task.deadline,
             total: count(student.id),
             completed: sql<number>`(
-                SELECT COUNT(*)
+                SELECT COUNT(*)::integer
                 FROM submission s
                 INNER JOIN experiment e ON s.experiment_id = e.id
                 INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
                 WHERE e.task_id = ${task.id} AND s.status IN (0, 1, 2, 3)
             )`,
             pending: sql<number>`(
-                SELECT COUNT(*)
+                SELECT COUNT(*)::integer
                 FROM submission s
                 INNER JOIN experiment e ON s.experiment_id = e.id
                 INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
@@ -83,7 +83,7 @@ export async function listTeacherTasks(teacherId: number) {
                 isNull(topic.deletedAt)
             )
         )
-        .groupBy(task.id)
+        .groupBy(task.id, topic.id, class_.id)
         .orderBy(desc(task.createdAt));
 }
 

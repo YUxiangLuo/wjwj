@@ -153,7 +153,7 @@ test("grading POST first-time grade still sends GRADE_COMPLETED and updates expe
             [{ ...detailRowBase, status: 1 }],
             [{ weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
         ],
-        update: [{ affectedRows: 1 }, { affectedRows: 1 }],
+        update: [[{ id: 301 }], [{ id: 201 }]],
     });
 
     const response = await module.gradingDetailRoutes.POST!(

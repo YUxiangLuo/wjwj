@@ -10,12 +10,9 @@ function requireEnv(name: string) {
 
 export default {
     schema: "./src/db/schema.ts",
-    out: "./drizzle",
-    dialect: "mysql",
+    out: "./drizzle/postgresql",
+    dialect: "postgresql",
     dbCredentials: {
-        host: requireEnv("DB_HOST"),
-        user: requireEnv("DB_USER"),
-        password: requireEnv("DB_PASSWORD"),
-        database: requireEnv("DB_NAME"),
+        url: requireEnv("DATABASE_URL"),
     },
 } satisfies Config;

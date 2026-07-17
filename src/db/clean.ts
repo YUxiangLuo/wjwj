@@ -5,8 +5,12 @@
  * Only use in development environment!
  */
 
-import { db } from "./index";
+import { closeDatabase, db } from "./index";
 import { sql } from "drizzle-orm";
+
+function quoteIdentifier(value: string) {
+    return `"${value.replaceAll('"', '""')}"`;
+}
 
 async function reset() {
     const args = process.argv.slice(2);
@@ -22,34 +26,30 @@ async function reset() {
 
     console.log("🗑️  Dropping all tables...\n");
 
-    // Disable foreign key checks temporarily
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
-
-    // Get all table names
     const tables = await db.execute(sql`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = DATABASE() 
-        AND table_type = 'BASE TABLE'
+        SELECT schemaname, tablename
+        FROM pg_catalog.pg_tables
+        WHERE schemaname = 'public'
+        ORDER BY tablename
     `);
 
-    // Drop each table
-    const result = (tables as unknown as [Array<{ table_name?: string; TABLE_NAME?: string }>])[0];
-    for (const row of result) {
-        const tableName = row.table_name || row.TABLE_NAME;
-        if (!tableName) continue;
-        console.log(`  Dropping table: ${tableName}`);
-        await db.execute(sql.raw(`DROP TABLE IF EXISTS \`${tableName}\``));
+    for (const row of tables as Array<{ schemaname: string; tablename: string }>) {
+        console.log(`  Dropping table: ${row.tablename}`);
+        await db.execute(sql.raw(
+            `DROP TABLE IF EXISTS ${quoteIdentifier(row.schemaname)}.${quoteIdentifier(row.tablename)} CASCADE`
+        ));
     }
 
-    // Re-enable foreign key checks
-    await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
+    await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`);
 
     console.log("\n✅ All tables dropped.");
-    process.exit(0);
 }
 
-reset().catch((err) => {
+try {
+    await reset();
+} catch (err) {
     console.error("❌ Reset failed:", err);
-    process.exit(1);
-});
+    process.exitCode = 1;
+} finally {
+    await closeDatabase();
+}

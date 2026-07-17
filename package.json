@@ -17,13 +17,12 @@
     "check:styles": "bun run scripts/check-styles.ts",
     "db:generate": "bunx drizzle-kit generate",
     "db:migrate": "bun run src/db/migrate.ts",
-    "db:push": "bunx drizzle-kit push",
-    "db:studio": "bunx drizzle-kit studio",
-    "db:drop": "bunx drizzle-kit drop",
     "db:check": "bunx drizzle-kit check",
     "db:clean": "bun run src/db/clean.ts --force",
     "db:seed": "bun run src/db/seeds/default.ts",
-    "db:reset": "bun run db:clean && bun run db:push && bun run db:seed"
+    "db:reset": "bun run db:clean && bun run db:migrate && bun run db:seed",
+    "db:migrate:mysql-to-postgres": "bun run scripts/migrate-mysql-to-postgres.ts",
+    "test:db": "REQUIRE_TEST_DATABASE=1 bun test src/db/postgresql.integration.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -50,7 +49,6 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.545.0",
-    "mysql2": "^3.16.1",
     "pdfkit": "^0.17.2",
     "react": "^19",
     "react-day-picker": "^9.14.0",

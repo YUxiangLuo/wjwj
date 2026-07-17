@@ -1,7 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, topic } from "../../db/schema";
-import { getAffectedRows } from "../../db/utils";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import {
@@ -167,12 +166,13 @@ const experimentRoutes: RouteDefinition = {
             return error(saveResult.message, saveResult.code, saveResult.status);
         }
 
-        const [updateResult] = await db
+        const updateResult = await db
             .update(experiment)
             .set(saveResult.updates)
-            .where(and(eq(experiment.id, exp.id), eq(experiment.version, exp.version)));
+            .where(and(eq(experiment.id, exp.id), eq(experiment.version, exp.version)))
+            .returning({ id: experiment.id });
 
-        if (getAffectedRows(updateResult) === 0) {
+        if (updateResult.length === 0) {
             return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 
@@ -419,12 +419,13 @@ const resetRoutes: RouteDefinition = {
             return error(resetResult.message, resetResult.code, resetResult.status);
         }
 
-        const [updateResult] = await db
+        const updateResult = await db
             .update(experiment)
             .set(resetResult.updates)
-            .where(and(eq(experiment.id, exp.id), eq(experiment.version, exp.version)));
+            .where(and(eq(experiment.id, exp.id), eq(experiment.version, exp.version)))
+            .returning({ id: experiment.id });
 
-        if (getAffectedRows(updateResult) === 0) {
+        if (updateResult.length === 0) {
             return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 

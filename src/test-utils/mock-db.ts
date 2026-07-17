@@ -33,11 +33,10 @@ function shiftQueue(kind: QueryKind, queues: Required<QueueMap>) {
         case "select":
             return [];
         case "insert":
-            return [{ insertId: 1 }];
         case "update":
         case "delete":
         default:
-            return { affectedRows: 1 };
+            return [{ id: 1 }];
     }
 }
 
@@ -84,7 +83,14 @@ function createBuilder(kind: QueryKind, operation: MockDbOperation, queues: Requ
             operation.set = values;
             return builder;
         },
-        onDuplicateKeyUpdate() {
+        onConflictDoUpdate() {
+            return builder;
+        },
+        onConflictDoNothing() {
+            return builder;
+        },
+        returning(selection?: unknown) {
+            operation.selection = selection;
             return builder;
         },
         then(resolve: (value: unknown) => unknown, reject?: (error: unknown) => unknown) {

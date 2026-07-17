@@ -5,7 +5,6 @@ import { and, asc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import { db } from "../../db";
 import { experiment, notification, student, submission, task, topic } from "../../db/schema";
-import { getAffectedRows } from "../../db/utils";
 import { resolveStoragePath } from "../../server/storage-files";
 import { formatDateTimeCN } from "../../utils/format";
 import { getRichTextPlainText } from "../../utils/rich-text";
@@ -387,7 +386,7 @@ async function claimSubmissionPdfJobs(limit: number) {
                 isNull(submission.pdfLastAttemptAt)
             );
 
-        const [result] = await db
+        const result = await db
             .update(submission)
             .set({
                 pdfStatus: SubmissionPdfStatus.GENERATING,
@@ -395,9 +394,10 @@ async function claimSubmissionPdfJobs(limit: number) {
                 pdfLastAttemptAt: claimTime,
                 pdfError: null,
             })
-            .where(where);
+            .where(where)
+            .returning({ id: submission.id });
 
-        if (getAffectedRows(result) === 0) {
+        if (result.length === 0) {
             continue;
         }
 

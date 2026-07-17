@@ -160,16 +160,16 @@ const announcementReadRoutes: RouteDefinition = {
             );
 
         if (!existing) {
-            try {
-                await db.insert(announcementRead).values({
+            await db
+                .insert(announcementRead)
+                .values({
                     announcementId,
                     userType: 4,
                     userId: currentStudent.id,
+                })
+                .onConflictDoNothing({
+                    target: [announcementRead.announcementId, announcementRead.userType, announcementRead.userId],
                 });
-            } catch (e: unknown) {
-                const isDuplicate = e instanceof Error && "code" in e && (e as { code: string }).code === "ER_DUP_ENTRY";
-                if (!isDuplicate) throw e;
-            }
         }
 
         return json({ success: true });

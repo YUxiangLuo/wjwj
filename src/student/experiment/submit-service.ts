@@ -1,7 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, submission } from "../../db/schema";
-import { getAffectedRows } from "../../db/utils";
 import { kickSubmissionPdfProcessing } from "./submission-pdf";
 import { SubmissionPdfStatus } from "./pdf-status";
 import { parseStoredJson } from "./serialization";
@@ -112,7 +111,7 @@ export async function submitStudentExperiment(params: {
 
     const transactionResult: SubmitFailure | SubmitSuccess = await db.transaction(async (tx) => {
         const nextLastSavedAt = new Date();
-        const [submitUpdateResult] = await tx
+        const submitUpdateResult = await tx
             .update(experiment)
             .set({
                 status: ExperimentStatus.SUBMITTED,
@@ -124,28 +123,32 @@ export async function submitStudentExperiment(params: {
                     eq(experiment.id, params.experimentRecord.id),
                     eq(experiment.version, params.experimentRecord.version)
                 )
-            );
+            )
+            .returning({ id: experiment.id });
 
-        if (getAffectedRows(submitUpdateResult) === 0) {
+        if (submitUpdateResult.length === 0) {
             return fail("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         }
 
         const nextSubmittedAt = new Date();
-        const [submissionResult] = await tx.insert(submission).values({
-            experimentId: params.experimentRecord.id,
-            pdfSnapshotQuestionnaire: questionnaire,
-            pdfSnapshotSamplingResults: samplingResults,
-            pdfSnapshotSamplePlan: samplePlanSnapshot,
-            pdfSnapshotPopulationSize: normalizedPopulationSize,
-            pdfSnapshotReportContent: params.experimentRecord.reportContent ?? "",
-            pdfSnapshotTopicName: params.taskInfo.topicName ?? "未命名课题",
-            pdfSnapshotStudentName: params.student.name ?? params.student.studentId,
-            status: ExperimentStatus.SUBMITTED,
-            pdfStatus: SubmissionPdfStatus.PENDING,
-            submittedAt: nextSubmittedAt,
-        });
+        const [createdSubmission] = await tx
+            .insert(submission)
+            .values({
+                experimentId: params.experimentRecord.id,
+                pdfSnapshotQuestionnaire: questionnaire,
+                pdfSnapshotSamplingResults: samplingResults,
+                pdfSnapshotSamplePlan: samplePlanSnapshot,
+                pdfSnapshotPopulationSize: normalizedPopulationSize,
+                pdfSnapshotReportContent: params.experimentRecord.reportContent ?? "",
+                pdfSnapshotTopicName: params.taskInfo.topicName ?? "未命名课题",
+                pdfSnapshotStudentName: params.student.name ?? params.student.studentId,
+                status: ExperimentStatus.SUBMITTED,
+                pdfStatus: SubmissionPdfStatus.PENDING,
+                submittedAt: nextSubmittedAt,
+            })
+            .returning({ id: submission.id });
 
-        const nextSubmissionId = submissionResult.insertId as number;
+        const nextSubmissionId = createdSubmission!.id;
 
         await notifySubmissionReviewers({
             classId: params.taskInfo.classId ?? null,

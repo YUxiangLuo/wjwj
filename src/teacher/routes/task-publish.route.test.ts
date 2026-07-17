@@ -268,7 +268,7 @@ test("task delete soft-deletes when teacher owns the class", async () => {
     const { module, operations } = await loadTaskRoutes({
         teacherId: 9,
         select: [[{ id: 88 }]],
-        update: [{ affectedRows: 1 }],
+        update: [[{ id: 88 }]],
     });
     const request = createJsonRequest(
         "https://example.com/api/teacher/tasks/88",

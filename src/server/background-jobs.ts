@@ -19,18 +19,6 @@ let notificationCleanupRunning = false;
 let deadlineReminderRunning = false;
 let submissionPdfRunning = false;
 
-function getResultHeader(result: unknown) {
-    if (Array.isArray(result) && result.length > 0 && result[0] && typeof result[0] === "object") {
-        return result[0] as { affectedRows?: number };
-    }
-
-    if (result && typeof result === "object") {
-        return result as { affectedRows?: number };
-    }
-
-    return null;
-}
-
 async function tryAcquireJobLease(jobName: string, leaseMs: number) {
     const leaseKey = `scheduler.${jobName}.lease`;
     const leaseUntil = Date.now() + leaseMs;
@@ -39,18 +27,21 @@ async function tryAcquireJobLease(jobName: string, leaseMs: number) {
     const result = await db.execute(sql`
         INSERT INTO system_config (config_key, config_value, value_type, description)
         VALUES (${leaseKey}, ${leaseValue}, 'string', ${`scheduler lease for ${jobName}`})
-        ON DUPLICATE KEY UPDATE
-            config_value = IF(
-                CAST(SUBSTRING_INDEX(config_value, ':', -1) AS UNSIGNED) < ${Date.now()}
-                OR SUBSTRING_INDEX(config_value, ':', 1) = ${schedulerOwnerId},
-                ${leaseValue},
-                config_value
-            ),
+        ON CONFLICT (config_key) DO UPDATE SET
+            config_value = EXCLUDED.config_value,
             value_type = 'string',
-            description = ${`scheduler lease for ${jobName}`}
+            description = EXCLUDED.description
+        WHERE
+            split_part(system_config.config_value, ':', 1) = ${schedulerOwnerId}
+            OR CASE
+                WHEN system_config.config_value ~ '^[^:]+:[0-9]+$'
+                    THEN split_part(system_config.config_value, ':', 2)::bigint < ${Date.now()}
+                ELSE TRUE
+            END
+        RETURNING id
     `);
 
-    return (getResultHeader(result)?.affectedRows ?? 0) > 0;
+    return result.length > 0;
 }
 
 async function releaseJobLease(jobName: string) {
@@ -59,7 +50,7 @@ async function releaseJobLease(jobName: string) {
         UPDATE system_config
         SET config_value = ${`${schedulerOwnerId}:0`}, value_type = 'string'
         WHERE config_key = ${leaseKey}
-          AND SUBSTRING_INDEX(config_value, ':', 1) = ${schedulerOwnerId}
+          AND split_part(config_value, ':', 1) = ${schedulerOwnerId}
     `);
 }
 

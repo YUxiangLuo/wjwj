@@ -37,7 +37,7 @@ test("topic attachment upload stores metadata and writes the file under storage"
             [{ id: 12, status: 0 }],
             [{ count: 0 }],
         ],
-        insert: [[{ insertId: 18 }]],
+        insert: [[{ id: 18 }]],
     });
 
     const form = new FormData();
