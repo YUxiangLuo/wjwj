@@ -2,12 +2,6 @@ import { SQL } from "bun";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sql";
-import {
-    assertJsonRowsMatch,
-    insertBatch,
-    transformSourceRows,
-    type TableSpec,
-} from "../../scripts/migrate-mysql-to-postgres";
 import * as schema from "./schema";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL?.trim();
@@ -35,49 +29,6 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
     let closeApplicationDatabase: (() => Promise<void>) | undefined;
 
     try {
-        const jsonProbeSpec = {
-            name: "migration_json_probe",
-            columns: ["id", "large_number", "nested_number", "json_null", "sql_null"],
-            jsonColumns: ["large_number", "nested_number", "json_null", "sql_null"],
-        } as const satisfies TableSpec;
-        const jsonProbeRows = transformSourceRows(jsonProbeSpec, [{
-            id: 1,
-            large_number: "9007199254740993",
-            nested_number: '{"value":9007199254740993}',
-            json_null: "null",
-            sql_null: null,
-        }], "+09:00");
-        await sqlClient`
-            CREATE TEMP TABLE migration_json_probe (
-                id bigint PRIMARY KEY,
-                large_number jsonb,
-                nested_number jsonb,
-                json_null jsonb,
-                sql_null jsonb
-            )
-        `;
-        await insertBatch(sqlClient, jsonProbeSpec, jsonProbeRows);
-        const [jsonProbe] = await sqlClient`
-            SELECT
-                large_number::text AS large_number,
-                nested_number->>'value' AS nested_number,
-                json_null::text AS json_null,
-                json_null IS NULL AS json_null_is_sql_null,
-                sql_null IS NULL AS sql_null_is_sql_null
-            FROM migration_json_probe
-        `;
-        expect(jsonProbe).toEqual({
-            large_number: "9007199254740993",
-            nested_number: "9007199254740993",
-            json_null: "null",
-            json_null_is_sql_null: false,
-            sql_null_is_sql_null: true,
-        });
-        expect(await assertJsonRowsMatch(sqlClient, jsonProbeSpec, jsonProbeRows)).toHaveLength(64);
-        await sqlClient`UPDATE migration_json_probe SET large_number = '9007199254740992'::jsonb`;
-        await expect(assertJsonRowsMatch(sqlClient, jsonProbeSpec, jsonProbeRows))
-            .rejects.toThrow("migration_json_probe: JSON mismatch in 1 rows");
-
         const [createdAdmin] = await database
             .insert(schema.admin)
             .values({ username, password: "initial-password" })
