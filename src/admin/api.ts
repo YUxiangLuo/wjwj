@@ -106,7 +106,7 @@ const statsRoutes = {
         // Using sql within select to ensure correct return type integration
         const [activeUserStat] = await db
             .select({
-                count: sql<number>`count(distinct ${loginLog.userType}, ${loginLog.userId})`
+                count: sql<number>`count(distinct (${loginLog.userType}, ${loginLog.userId}))::integer`
             })
             .from(loginLog)
             .where(sql`${loginLog.loginAt} >= ${startOfDay}`);
@@ -211,7 +211,7 @@ const systemMetricsRoutes = {
             .where(
                 and(
                     sql`${userSession.expiresAt} > NOW()`,
-                    sql`${userSession.lastActiveAt} > DATE_SUB(NOW(), INTERVAL 30 MINUTE)` // Active in last 30 mins
+                    sql`${userSession.lastActiveAt} > NOW() - INTERVAL '30 minutes'` // Active in last 30 mins
                 )
             );
 
@@ -237,7 +237,7 @@ const systemMetricsRoutes = {
             .where(
                 and(
                     sql`${userSession.expiresAt} > NOW()`,
-                    sql`${userSession.lastActiveAt} > DATE_SUB(NOW(), INTERVAL 30 MINUTE)`
+                    sql`${userSession.lastActiveAt} > NOW() - INTERVAL '30 minutes'`
                 )
             )
             .groupBy(userSession.userType);
@@ -316,7 +316,8 @@ const systemSettingsRoutes = {
                 configKey: key,
                 configValue: valStr,
                 valueType: valType,
-            }).onDuplicateKeyUpdate({
+            }).onConflictDoUpdate({
+                target: systemConfig.configKey,
                 set: {
                     configValue: valStr,
                     valueType: valType,

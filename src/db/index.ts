@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
+import { SQL } from "bun";
+import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
 
 function requireEnv(name: string) {
@@ -10,16 +10,10 @@ function requireEnv(name: string) {
     return value;
 }
 
-// Create the connection pool
-const poolConnection = mysql.createPool({
-    host: requireEnv("DB_HOST"),
-    user: requireEnv("DB_USER"),
-    password: requireEnv("DB_PASSWORD"),
-    database: requireEnv("DB_NAME"),
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    // 未设 timezone：datetime 与 JS Date 的转换随部署环境；应用层对截止时间统一用 UTC ISO 传输与解析
-});
+export const sqlClient = new SQL(requireEnv("DATABASE_URL"));
 
-export const db = drizzle(poolConnection, { schema, mode: "default" });
+export const db = drizzle(sqlClient, { schema });
+
+export async function closeDatabase() {
+    await sqlClient.close();
+}

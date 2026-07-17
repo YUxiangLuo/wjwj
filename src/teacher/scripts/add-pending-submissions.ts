@@ -27,7 +27,10 @@ async function run() {
         questionnaire: { title: "S3 Survey", questions: [] },
         version: 1,
         stage1CompletedAt: new Date()
-    }).onDuplicateKeyUpdate({ set: { status: 1 } });
+    }).onConflictDoUpdate({
+        target: [experiment.studentId, experiment.taskId],
+        set: { status: 1 },
+    });
 
     const [exp3] = await db.select().from(experiment)
         .where(and(eq(experiment.studentId, s3.id), eq(experiment.taskId, taskId)));
@@ -51,7 +54,10 @@ async function run() {
         questionnaire: { title: "S4 Survey", questions: [] },
         version: 1,
         stage1CompletedAt: new Date()
-    }).onDuplicateKeyUpdate({ set: { status: 1 } });
+    }).onConflictDoUpdate({
+        target: [experiment.studentId, experiment.taskId],
+        set: { status: 1 },
+    });
 
     const [exp4] = await db.select().from(experiment)
         .where(and(eq(experiment.studentId, s4.id), eq(experiment.taskId, taskId)));

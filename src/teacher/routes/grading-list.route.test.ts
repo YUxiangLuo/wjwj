@@ -8,7 +8,7 @@ const sql = Object.assign(
     }
 );
 
-// Pre-load the real drizzle-orm so internal deps (mysql-core) resolve correctly
+// Pre-load the real drizzle-orm so its internal column dependencies resolve correctly.
 const realDrizzle = await import("drizzle-orm");
 
 async function loadGradingRoutes(options: {

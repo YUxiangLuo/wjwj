@@ -134,13 +134,13 @@ const gradeExportPreviewRoutes: RouteDefinition = {
                 className: class_.name,
                 total: count(student.id),
                 graded: sql<number>`(
-                    SELECT COUNT(*)
+                    SELECT COUNT(*)::integer
                     FROM submission s
                     INNER JOIN experiment e ON s.experiment_id = e.id
                     WHERE e.task_id = ${task.id} AND s.status = 2
                 )`,
                 avgScore: sql<number>`(
-                    SELECT AVG(s.total_score)
+                    SELECT COALESCE(AVG(s.total_score), 0)::double precision
                     FROM submission s
                     INNER JOIN experiment e ON s.experiment_id = e.id
                     WHERE e.task_id = ${task.id} AND s.status = 2
@@ -152,7 +152,7 @@ const gradeExportPreviewRoutes: RouteDefinition = {
             .innerJoin(semester, eq(class_.semesterId, semester.id))
             .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
             .where(conditions.length === 1 ? conditions[0]! : and(...conditions))
-            .groupBy(task.id);
+            .groupBy(task.id, topic.id, class_.id);
         return json(rows.map((r) => ({
             taskId: r.taskId,
             topicId: r.topicId,

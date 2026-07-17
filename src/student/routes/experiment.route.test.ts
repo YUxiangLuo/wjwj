@@ -236,7 +236,7 @@ test("experiment save updates stage and recalculates sample size", async () => {
             [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
             [{ topicId: 12, excelRowCount: 200 }],
         ],
-        update: [[{ affectedRows: 1 }]],
+        update: [[{ id: 91 }]],
     });
 
     const request = withRouteParam(createJsonRequest(
@@ -319,7 +319,7 @@ test("experiment save recalculates sample size with mean formula", async () => {
             [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
             [{ topicId: 12, excelRowCount: 200 }],
         ],
-        update: [[{ affectedRows: 1 }]],
+        update: [[{ id: 91 }]],
     });
 
     const request = withRouteParam(createJsonRequest(
@@ -471,8 +471,8 @@ test("experiment submit marks experiment submitted, inserts submission, and noti
             }],
             [{ assistantId: 31 }, { assistantId: 32 }],
         ],
-        update: [[{ affectedRows: 1 }]],
-        insert: [[{ insertId: 501 }]],
+        update: [[{ id: 91 }]],
+        insert: [[{ id: 501 }]],
     });
 
     const request = withRouteParam(createJsonRequest(
@@ -541,7 +541,7 @@ test("experiment reset clears downstream progress and reopens rejected experimen
             [{ openTime: null, deadline: new Date(Date.now() + 3600_000) }],
             [{ excelRowCount: 200 }],
         ],
-        update: [[{ affectedRows: 1 }]],
+        update: [[{ id: 91 }]],
     });
 
     const request = withRouteParam(createJsonRequest(

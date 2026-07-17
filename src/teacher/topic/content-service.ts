@@ -53,15 +53,18 @@ export async function uploadTopicAttachment(params: {
 
     try {
         await writeStorageFile(filePath, buffer);
-        const [result] = await db.insert(topicAttachment).values({
-            topicId: params.topicId,
-            fileName: params.file.name,
-            filePath,
-            fileType: params.file.type || "unknown",
-            fileSize: params.file.size,
-        });
+        const [created] = await db
+            .insert(topicAttachment)
+            .values({
+                topicId: params.topicId,
+                fileName: params.file.name,
+                filePath,
+                fileType: params.file.type || "unknown",
+                fileSize: params.file.size,
+            })
+            .returning({ id: topicAttachment.id });
 
-        return { ok: true as const, id: result.insertId, filePath };
+        return { ok: true as const, id: created!.id, filePath };
     } catch (error) {
         await deleteStorageFileIfExists(filePath).catch(() => undefined);
         throw error;
@@ -163,19 +166,22 @@ export async function copyTopicWithResources(params: {
                 | null;
 
         const newTopicId = await db.transaction(async (tx) => {
-            const [result] = await tx.insert(topic).values({
-                teacherId: params.teacherId,
-                name: `${sourceTopic.name} (副本)`,
-                description: sourceTopic.description ?? "",
-                excelFilePath: copiedExcelFilePath,
-                excelRowCount: sourceTopic.excelRowCount,
-                fieldMapping: normalizeJsonColumnValue(sourceTopic.fieldMapping),
-                weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
-                recommendQuestions: recommendQuestions ?? null,
-                status: 0,
-            });
+            const [created] = await tx
+                .insert(topic)
+                .values({
+                    teacherId: params.teacherId,
+                    name: `${sourceTopic.name} (副本)`,
+                    description: sourceTopic.description ?? "",
+                    excelFilePath: copiedExcelFilePath,
+                    excelRowCount: sourceTopic.excelRowCount,
+                    fieldMapping: normalizeJsonColumnValue(sourceTopic.fieldMapping),
+                    weightConfig: normalizeJsonColumnValue(sourceTopic.weightConfig),
+                    recommendQuestions: recommendQuestions ?? null,
+                    status: 0,
+                })
+                .returning({ id: topic.id });
 
-            const insertedTopicId = Number(result.insertId);
+            const insertedTopicId = created!.id;
 
             if (copiedAttachments.length) {
                 await tx.insert(topicAttachment).values(

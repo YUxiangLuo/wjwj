@@ -1,6 +1,6 @@
 /**
  * 任务截止时间：教师端用「本地墙钟」编辑，提交与 API 传输使用 ISO-8601 UTC（…Z）。
- * 数据库存储由 Drizzle/mysql2 将 JS Date 写入 datetime；JSON 响应中 Date 序列化为 UTC ISO。
+ * 数据库存储由 Drizzle/Bun SQL 将 JS Date 写入 PostgreSQL timestamptz；JSON 响应中 Date 序列化为 UTC ISO。
  */
 
 /** 解析 `YYYY-MM-DDTHH:mm`（浏览器本地日历/时分），与 DatetimePicker24 存储一致 */

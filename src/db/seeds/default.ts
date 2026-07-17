@@ -10,7 +10,7 @@
  * 批改列表分页：`gradingPageTestPendingCount` 名额外学生（消费者行为 A 班任务）+ 待批改提交，便于 UI 分页联调。
  */
 
-import { db } from "../index";
+import { closeDatabase, db } from "../index";
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import PDFDocument from "pdfkit";
@@ -147,8 +147,8 @@ async function insertOrGet<T extends { id: number }>(
         }
         return (exist as T).id;
     }
-    const [res] = await db.insert(table).values(values);
-    return res.insertId;
+    const [created] = await db.insert(table).values(values).returning({ id: table.id });
+    return created!.id;
 }
 
 async function deleteRowsNotInIds(table: any, keepIds: number[]) {
@@ -234,7 +234,10 @@ async function seed() {
         await db
             .insert(systemConfig)
             .values({ configKey: c.key, configValue: c.value, valueType: c.valueType, description: c.desc })
-            .onDuplicateKeyUpdate({ set: { configValue: c.value, valueType: c.valueType } });
+            .onConflictDoUpdate({
+                target: systemConfig.configKey,
+                set: { configValue: c.value, valueType: c.valueType },
+            });
     }
 
     const adminsData = [
@@ -252,7 +255,8 @@ async function seed() {
                 loginFailCount: 0,
                 lockedUntil: null,
             })
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+                target: admin.username,
                 set: {
                     username: adm.username,
                     password: hashedPassword,
@@ -661,8 +665,8 @@ async function seed() {
             continue;
         }
 
-        const [res] = await db.insert(topic).values(topicSeed);
-        topicIds.push(res.insertId);
+        const [created] = await db.insert(topic).values(topicSeed).returning({ id: topic.id });
+        topicIds.push(created!.id);
     }
 
     const existingTopicRows = await db
@@ -779,7 +783,8 @@ async function seed() {
         };
         await db.insert(task).values({
             ...taskSeed,
-        }).onDuplicateKeyUpdate({
+        }).onConflictDoUpdate({
+            target: [task.topicId, task.classId],
             set: {
                 openTime: taskSeed.openTime,
                 deadline: taskSeed.deadline,
@@ -1011,7 +1016,8 @@ async function seed() {
         await db
             .insert(experiment)
             .values(experimentSeed)
-            .onDuplicateKeyUpdate({
+            .onConflictDoUpdate({
+                target: [experiment.studentId, experiment.taskId],
                 set: {
                     currentStage: experimentSeed.currentStage,
                     status: experimentSeed.status,
@@ -1244,8 +1250,8 @@ async function seed() {
     await db.delete(announcement);
     const announcementIds: number[] = [];
     for (const a of announcementsDefs) {
-        const [res] = await db.insert(announcement).values(a);
-        announcementIds.push(res.insertId);
+        const [created] = await db.insert(announcement).values(a).returning({ id: announcement.id });
+        announcementIds.push(created!.id);
     }
 
     // 已读记录
@@ -1405,10 +1411,13 @@ async function seed() {
     console.log("   2024204          → 已停用学生");
     console.log("══════════════════════════════════════════");
 
-    process.exit(0);
 }
 
-seed().catch((err) => {
+try {
+    await seed();
+} catch (err) {
     console.error("❌ 初始化失败:", err);
-    process.exit(1);
-});
+    process.exitCode = 1;
+} finally {
+    await closeDatabase();
+}
