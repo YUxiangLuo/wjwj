@@ -96,6 +96,7 @@ const classStudentsRoutes: RouteDefinition = {
             email: email || null,
             classId,
             password: await Bun.password.hash(studentId),
+            isFirstLogin: 1,
         });
         return json({ success: true }, 201);
     },
@@ -185,6 +186,7 @@ const classStudentsImportRoutes: RouteDefinition = {
                     email: item.email,
                     classId,
                     password: hashes[index]!,
+                    isFirstLogin: 1,
                 })),
             );
         }
@@ -208,7 +210,7 @@ const studentRoutes: RouteDefinition = {
         if (body.action === "reset_password") {
             await db
                 .update(student)
-                .set({ password: await Bun.password.hash(owned.studentId), updatedAt: new Date() })
+                .set({ password: await Bun.password.hash(owned.studentId), isFirstLogin: 1, updatedAt: new Date() })
                 .where(eq(student.id, id));
             await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
         } else if (body.action === "toggle_status") {

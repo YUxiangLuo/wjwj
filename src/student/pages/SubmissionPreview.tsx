@@ -30,7 +30,6 @@ import {
 import { PPS_UNAVAILABLE_STATUS_MESSAGE } from "../experiment/sampling-messages";
 import { getPreviewSubmitBlocker, isSubmissionCompleteResponse } from "../experiment/preview-submit";
 import { ImmersiveReportPreview } from "../components/ImmersiveReportPreview";
-import { parseDeadline } from "@/utils/format";
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
     return (
@@ -130,22 +129,19 @@ export function SubmissionPreview() {
         setConfirmOpen(false);
         setError(null);
 
-        // Pre-submission deadline check
-        if (task?.deadline) {
-            const deadlineDate = parseDeadline(task.deadline);
-            if (deadlineDate && new Date() > deadlineDate) {
-                setError("任务已截止，无法提交");
-                return;
-            }
-        }
-
         setSubmitting(true);
         try {
-            const response = await experimentApi.submit(Number(taskId));
+            const response = await experimentApi.submit(Number(taskId), experiment.version);
             if (isSubmissionCompleteResponse(response)) {
                 navigate(`/task/${taskId}/result`, { replace: true });
             }
-            else setError(response.error?.message ?? "提交失败");
+            else {
+                setError(response.error?.message ?? "提交失败");
+                if (response.error?.code === "VERSION_CONFLICT") {
+                    const latest = await experimentApi.get(Number(taskId));
+                    if (latest.success && latest.data) setExperiment(latest.data);
+                }
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : "提交失败");
         } finally {

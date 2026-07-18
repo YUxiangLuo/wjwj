@@ -1,5 +1,6 @@
 import { expect, mock, test } from "bun:test";
 import { student } from "../../db/schema";
+import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function withId(request: Request, id: string) {
@@ -7,12 +8,10 @@ function withId(request: Request, id: string) {
     return request;
 }
 
-test("student password reset only replaces the password and clears sessions", async () => {
+test("student password reset requires a password change and clears sessions", async () => {
     const { db, operations } = createMockDb({ select: [[{ id: 12, studentId: "2024002", status: 1 }]] });
-    const clearSessions = mock(async () => undefined);
     mock.module("../../db", () => ({ db }));
-    mock.module("../../server/user-session", () => ({ clearUserSessionsForUser: clearSessions }));
-    mock.module("./auth", () => ({ getPrimaryTeacherIdOrThrow: () => 9 }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
     const module = await import(`./classroom.ts?reset=${Date.now()}`);
 
     const response = await module.studentRoutes.PUT!(withId(new Request("https://example.com/api/teacher/students/12", {
@@ -23,8 +22,7 @@ test("student password reset only replaces the password and clears sessions", as
 
     expect(response.status).toBe(200);
     const update = operations.find((operation) => operation.kind === "update" && operation.table === student);
-    expect(update?.set).toMatchObject({ password: expect.any(String), updatedAt: expect.any(Date) });
-    expect(update?.set).not.toHaveProperty("isFirstLogin");
+    expect(update?.set).toMatchObject({ password: expect.any(String), isFirstLogin: 1, updatedAt: expect.any(Date) });
     expect(update?.set).not.toHaveProperty("loginFailCount");
-    expect(clearSessions).toHaveBeenCalledWith(3, 12);
+    expect(operations.filter((operation) => operation.kind === "delete")).toHaveLength(1);
 });

@@ -142,7 +142,7 @@ export function StudentManagement() {
         }
 
         if (res?.success) {
-            if (type === "reset") toast.success("密码已重置为学号");
+            if (type === "reset") toast.success("密码已重置为学号，下次登录必须修改");
             loadData();
         } else {
             toast.error("操作失败: " + res?.error?.message);

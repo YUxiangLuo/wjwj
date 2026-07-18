@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
+import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import {
@@ -94,6 +95,8 @@ export async function updateTeacherTopicBasics(params: {
         return { ok: true as const };
     }
 
+    updateData.updatedAt = new Date();
+
     await db
         .update(topic)
         .set(updateData)
@@ -118,7 +121,7 @@ export async function softDeleteTeacherTopic(params: { teacherId: number; topicI
 
         await tx
             .update(task)
-            .set({ deletedAt })
+            .set({ deletedAt, updatedAt: deletedAt })
             .where(and(eq(task.topicId, params.topicId), isNull(task.deletedAt)));
 
         return true;
@@ -144,8 +147,14 @@ export async function replaceTopicExcelData(params: {
     const filePath = createStorageUploadPath(sanitizeUploadFileName(params.file.name));
 
     try {
-        await writeStorageFile(filePath, buffer);
-        await db.update(topic).set({ excelFilePath: filePath, excelRowCount: parsed.rowCount }).where(eq(topic.id, params.topicId));
+        await db.transaction(async (tx) => {
+            await acquireStorageMutationLock(tx);
+            await writeStorageFile(filePath, buffer);
+            await tx
+                .update(topic)
+                .set({ excelFilePath: filePath, excelRowCount: parsed.rowCount, updatedAt: new Date() })
+                .where(eq(topic.id, params.topicId));
+        });
     } catch (error) {
         await deleteStorageFileIfExists(filePath).catch(() => undefined);
         throw error;
@@ -188,7 +197,10 @@ export async function updateTopicFieldMapping(params: {
     const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
     if (cardinalityError) return fail(cardinalityError);
 
-    await db.update(topic).set({ fieldMapping: params.fieldMapping }).where(eq(topic.id, params.topicId));
+    await db
+        .update(topic)
+        .set({ fieldMapping: params.fieldMapping, updatedAt: new Date() })
+        .where(eq(topic.id, params.topicId));
     return { ok: true as const };
 }
 
@@ -199,6 +211,9 @@ export async function updateTopicWeightConfig(params: {
     const weightError = validateWeightConfig(params.weightConfig);
     if (weightError) return fail(weightError);
 
-    await db.update(topic).set({ weightConfig: params.weightConfig }).where(eq(topic.id, params.topicId));
+    await db
+        .update(topic)
+        .set({ weightConfig: params.weightConfig, updatedAt: new Date() })
+        .where(eq(topic.id, params.topicId));
     return { ok: true as const };
 }

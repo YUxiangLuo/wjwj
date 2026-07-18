@@ -56,6 +56,7 @@ test("submit overwrites the same experiment and stores a grading snapshot", asyn
     const { submitStudentExperiment } = await import(`./submit-service.ts?submit=${crypto.randomUUID()}`);
     const result = await submitStudentExperiment({
         experimentRecord: validRecord("rejected"),
+        observedVersion: 4,
         taskInfo: {
             topicName: "抽样调查",
             populationSize: 200,
@@ -89,6 +90,7 @@ test("submit rejects a stale experiment record when the conditional update chang
     const { submitStudentExperiment } = await import(`./submit-service.ts?conflict=${crypto.randomUUID()}`);
     const result = await submitStudentExperiment({
         experimentRecord: validRecord(),
+        observedVersion: 4,
         taskInfo: {
             topicName: "抽样调查",
             populationSize: 200,
@@ -98,4 +100,39 @@ test("submit rejects a stale experiment record when the conditional update chang
     });
 
     expect(result).toMatchObject({ ok: false, code: "VERSION_CONFLICT", status: 409 });
+});
+
+test("submit rejects a version that was already stale when the request began", async () => {
+    const { db, operations } = createMockDb();
+    mock.module("../../db", () => ({ db }));
+    const { submitStudentExperiment } = await import(`./submit-service.ts?stale=${crypto.randomUUID()}`);
+    const result = await submitStudentExperiment({
+        experimentRecord: validRecord(),
+        observedVersion: 3,
+        taskInfo: { topicName: "抽样调查", populationSize: 200 },
+        student: { studentId: "S001", name: "学生一" },
+    });
+
+    expect(result).toMatchObject({ ok: false, code: "VERSION_CONFLICT", status: 409 });
+    expect(operations.filter((item) => item.kind === "update")).toHaveLength(0);
+});
+
+test("an already-submitted retry accepts the older version without another write", async () => {
+    const { db, operations } = createMockDb();
+    mock.module("../../db", () => ({ db }));
+    const { submitStudentExperiment } = await import(`./submit-service.ts?idempotent=${crypto.randomUUID()}`);
+    const result = await submitStudentExperiment({
+        experimentRecord: {
+            ...validRecord(),
+            version: 5,
+            status: "submitted",
+            submittedAt: new Date("2026-01-01T00:00:00Z"),
+        },
+        observedVersion: 4,
+        taskInfo: { topicName: "抽样调查", populationSize: 200 },
+        student: { studentId: "S001", name: "学生一" },
+    });
+
+    expect(result).toMatchObject({ ok: true, experimentId: 9 });
+    expect(operations.filter((item) => item.kind === "update")).toHaveLength(0);
 });

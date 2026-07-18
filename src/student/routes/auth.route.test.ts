@@ -22,11 +22,12 @@ test("student login creates an independent fixed session", async () => {
     const password = "Teaching123!";
     const { module, operations } = await load([[{
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
-        deletedAt: null, password: await Bun.password.hash(password),
+        deletedAt: null, password: await Bun.password.hash(password), isFirstLogin: 0,
     }]]);
     const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password }));
     expect(response.status).toBe(200);
     expect(response.headers.get("Set-Cookie")).toContain("student_session=");
+    expect(await response.json()).toMatchObject({ data: { user: { isFirstLogin: 0 } } });
     const session = operations.find((item) => item.kind === "insert");
     expect(session?.values).toMatchObject({ userType: 3, userId: 11, expiresAt: expect.any(Date) });
     expect(session?.values).not.toHaveProperty("deviceInfo");
@@ -35,7 +36,7 @@ test("student login creates an independent fixed session", async () => {
 test("wrong student password has no counters or lockout state", async () => {
     const { module, operations } = await load([[{
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
-        deletedAt: null, password: await Bun.password.hash("Teaching123!"),
+        deletedAt: null, password: await Bun.password.hash("Teaching123!"), isFirstLogin: 0,
     }]]);
     const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password: "wrong" }));
     expect(response.status).toBe(401);
@@ -46,12 +47,14 @@ test("wrong student password has no counters or lockout state", async () => {
 test("student me reads the fixed session without extending it", async () => {
     const { module, operations } = await load([
         [{ id: 5, sessionToken: "token", userType: 3, userId: 11, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
-        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1 }],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
         [{ className: "统计一班" }],
     ]);
     const response = await module.meRoutes.GET!(request("GET", undefined, "student_session=token"));
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ data: { studentId: "S001", className: "统计一班" } });
+    expect(await response.json()).toMatchObject({
+        data: { studentId: "S001", className: "统计一班", isFirstLogin: 1 },
+    });
     expect(operations.some((item) => item.kind === "update")).toBe(false);
 });
 
@@ -67,7 +70,7 @@ test("student password change revokes other sessions while keeping the current t
     const currentPassword = "Teaching123!";
     const { module, operations } = await load([
         [{ id: 5, sessionToken: "current-token", userType: 3, userId: 11, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
-        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1 }],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
         [{ id: 11, studentId: "S001", password: await Bun.password.hash(currentPassword) }],
     ]);
 
@@ -78,10 +81,37 @@ test("student password change revokes other sessions while keeping the current t
     ));
 
     expect(response.status).toBe(200);
-    expect(operations.some((item) => item.kind === "update")).toBe(true);
+    const update = operations.find((item) => item.kind === "update");
+    expect(update?.set).toMatchObject({ password: expect.any(String), isFirstLogin: 0, updatedAt: expect.any(Date) });
     const deletions = operations.filter((item) => item.kind === "delete");
     expect(deletions).toHaveLength(1);
     const revokeQuery = new PgDialect().sqlToQuery(deletions[0]!.where as SQL);
     expect(revokeQuery.sql).toContain("session_token\" <> $3");
     expect(revokeQuery.params).toEqual([3, 11, "current-token"]);
+});
+
+test("student protected routes stay locked until the first-login flag is cleared", async () => {
+    const session = (token: string) => ({
+        id: 5,
+        sessionToken: token,
+        userType: 3,
+        userId: 11,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+    });
+    const { module } = await load([
+        [session("student-first")],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
+        [session("student-changed")],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 0 }],
+    ]);
+
+    const locked = await module.requireAuth(request("GET", undefined, "student_session=student-first"));
+    expect(locked.student).toBeNull();
+    expect(locked.error?.status).toBe(403);
+    expect(await locked.error?.json()).toMatchObject({ error: { code: "PASSWORD_CHANGE_REQUIRED" } });
+
+    const unlocked = await module.requireAuth(request("GET", undefined, "student_session=student-changed"));
+    expect(unlocked.error).toBeNull();
+    expect(unlocked.student).toMatchObject({ studentId: "S001", isFirstLogin: 0 });
 });

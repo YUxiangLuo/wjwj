@@ -1,5 +1,6 @@
 import { expect, mock, test } from "bun:test";
 import { student } from "../../db/schema";
+import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function withRouteParam(request: Request, classId: string) {
@@ -18,16 +19,8 @@ async function loadClassroomRoutes(options: {
     });
 
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({
+    mock.module("./auth", () => createTeacherAuthModuleMock({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
-        requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
-        withTeacherAuth: (handler: unknown) => handler,
-        withPrimaryTeacherAuth: (handler: unknown) => handler,
-        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
-        notifyStudentsByClassIds: async () => undefined,
-        notifyStudentById: async () => undefined,
-        isLockExpired: () => true,
-        TEACHER_USER_TYPE: 2,
     }));
 
     const module = await import(`./classroom.ts?classroom=${crypto.randomUUID()}`);
@@ -76,8 +69,8 @@ test("student import preserves Chinese text for utf-8 csv files", async () => {
     const insertOperations = operations.filter((operation) => operation.kind === "insert" && operation.table === student);
     expect(insertOperations).toHaveLength(1);
     expect(insertOperations[0]?.values).toEqual([
-        expect.objectContaining({ studentId: "2099201", name: "浏览器学生甲", email: "qa-import-a@example.com", classId: 3 }),
-        expect.objectContaining({ studentId: "2099202", name: "浏览器学生乙", email: "qa-import-b@example.com", classId: 3 }),
+        expect.objectContaining({ studentId: "2099201", name: "浏览器学生甲", email: "qa-import-a@example.com", classId: 3, isFirstLogin: 1 }),
+        expect.objectContaining({ studentId: "2099202", name: "浏览器学生乙", email: "qa-import-b@example.com", classId: 3, isFirstLogin: 1 }),
     ]);
 });
 
@@ -108,7 +101,7 @@ test("student import treats differently-cased student IDs as duplicates", async 
     expect(payload.data.errors).toEqual([{ row: 3, reason: "文件中学号重复: s001" }]);
     const insert = operations.find((operation) => operation.kind === "insert" && operation.table === student);
     expect(insert?.values).toEqual([
-        expect.objectContaining({ studentId: "S001", name: "学生甲", classId: 3 }),
+        expect.objectContaining({ studentId: "S001", name: "学生甲", classId: 3, isFirstLogin: 1 }),
     ]);
 });
 

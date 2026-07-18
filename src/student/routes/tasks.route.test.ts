@@ -1,4 +1,5 @@
 import { expect, mock, test } from "bun:test";
+import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function withId(request: Request, id: string) {
@@ -9,7 +10,7 @@ function withId(request: Request, id: string) {
 async function load(select: unknown[]) {
     const { db } = createMockDb({ select });
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({ requireAuth: async () => ({ student: { id: 11, classId: 7 }, error: null }) }));
+    mock.module("./auth", () => createStudentAuthModuleMock());
     return import(`./tasks.ts?tasks=${crypto.randomUUID()}`);
 }
 

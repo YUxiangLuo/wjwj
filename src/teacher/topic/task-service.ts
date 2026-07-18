@@ -104,7 +104,7 @@ export async function publishTopicTasks(params: {
             if (toRevive.length > 0) {
                 await tx
                     .update(task)
-                    .set({ deletedAt: null, openTime: now, deadline: deadlineDate })
+                    .set({ deletedAt: null, openTime: now, deadline: deadlineDate, updatedAt: now })
                     .where(inArray(task.id, toRevive.map((r) => r.taskId)));
             }
             if (toInsert.length > 0) {
@@ -178,6 +178,7 @@ export async function softDeleteTeacherTask(params: {
         return fail("任务不存在", "NOT_FOUND", 404);
     }
 
-    await db.update(task).set({ deletedAt: new Date() }).where(eq(task.id, params.taskId));
+    const deletedAt = new Date();
+    await db.update(task).set({ deletedAt, updatedAt: deletedAt }).where(eq(task.id, params.taskId));
     return { ok: true };
 }

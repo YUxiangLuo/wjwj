@@ -1,4 +1,5 @@
 import { expect, mock, test } from "bun:test";
+import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function createRequest(url: string) {
@@ -16,9 +17,8 @@ async function loadFilesRoutes(options: {
 } = {}) {
     const { db } = createMockDb(options);
 
-    mock.restore();
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({
+    mock.module("./auth", () => createStudentAuthModuleMock({
         requireAuth: async () => ({
             student: {
                 id: 11,
@@ -32,6 +32,10 @@ async function loadFilesRoutes(options: {
             sessionExpiresAt: null,
         }),
     }));
+    mock.module("../experiment/task-access", () => ({
+        getStudentTaskAccessError: async () => null,
+        getStudentTopicAttachmentAccessError: async () => null,
+    }));
 
     const module = await import(`./files?student-files-route-test=${Math.random()}`);
     return module;
@@ -40,7 +44,6 @@ async function loadFilesRoutes(options: {
 test("export route reads serialized sampling results and returns csv", async () => {
     const module = await loadFilesRoutes({
         select: [
-            [{ id: 40 }],
             [{
                 samplingResults: JSON.stringify({
                     simple: { data: [{ id: 1, city: "北京" }] },

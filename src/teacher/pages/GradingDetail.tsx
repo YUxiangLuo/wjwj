@@ -54,21 +54,31 @@ export function GradingDetail() {
         + (Number(scores.report) || 0) * weights.report
     ) / 100, [scores, weights]);
     const grade = async () => {
+        if (!data) return;
         setSaving(true);
-        const response = await teacherApi.submitGrade(id, {
+        const response = await teacherApi.submitGrade(id, data.version, {
             scoreQuestionnaire: Number(scores.questionnaire),
             scoreProcess: Number(scores.process),
             scoreReport: Number(scores.report),
             comment,
         });
         setSaving(false);
-        if (!response.success) return toast.error(response.error?.message ?? "评分失败");
+        if (!response.success) {
+            toast.error(response.error?.message ?? "评分失败");
+            if (response.error?.code === "VERSION_CONFLICT") void load();
+            return;
+        }
         toast.success("评分已保存");
         navigate("/grading");
     };
     const reject = async () => {
-        const response = await teacherApi.rejectSubmission(id, rejectReason);
-        if (!response.success) return toast.error(response.error?.message ?? "驳回失败");
+        if (!data) return;
+        const response = await teacherApi.rejectSubmission(id, data.version, rejectReason);
+        if (!response.success) {
+            toast.error(response.error?.message ?? "驳回失败");
+            if (response.error?.code === "VERSION_CONFLICT") void load();
+            return;
+        }
         toast.success("已驳回，学生可修改后重交");
         navigate("/grading");
     };

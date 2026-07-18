@@ -8,13 +8,14 @@ type QueueMap = {
 };
 
 export interface MockDbOperation {
-    kind: QueryKind | "transaction";
+    kind: QueryKind | "execute" | "transaction";
     table?: unknown;
     values?: unknown;
     set?: unknown;
     where?: unknown;
     joins?: Array<{ type: string; table: unknown }>;
     selection?: unknown;
+    query?: unknown;
 }
 
 interface MockDbClient {
@@ -22,6 +23,7 @@ interface MockDbClient {
     insert(table: unknown): ReturnType<typeof createBuilder>;
     update(table: unknown): ReturnType<typeof createBuilder>;
     delete(table: unknown): ReturnType<typeof createBuilder>;
+    execute(query: unknown): Promise<unknown[]>;
     transaction<T>(callback: (tx: MockDbClient) => Promise<T> | T): Promise<T>;
 }
 
@@ -124,6 +126,10 @@ export function createMockDb(queues: QueueMap = {}) {
         },
         delete(table: unknown) {
             return createBuilder("delete", { kind: "delete", table }, normalizedQueues, operations);
+        },
+        async execute(query: unknown) {
+            operations.push({ kind: "execute", query });
+            return [];
         },
         async transaction<T>(callback: (tx: typeof db) => Promise<T> | T) {
             operations.push({ kind: "transaction" });

@@ -88,6 +88,7 @@ async function seed() {
         employeeId: "T001",
         name: "张老师",
         password,
+        isFirstLogin: 0,
     }).returning();
     const [semesterRow] = await db.insert(semester).values({
         name: "2026-2027-1",
@@ -99,10 +100,10 @@ async function seed() {
         teacherId: teacherRow!.id,
     }).returning();
     const studentRows = await db.insert(student).values([
-        { studentId: "S001", name: "李明", email: "s001@example.edu", password, classId: classRow!.id },
-        { studentId: "S002", name: "王芳", email: "s002@example.edu", password, classId: classRow!.id },
-        { studentId: "S003", name: "陈晨", email: "s003@example.edu", password, classId: classRow!.id },
-        { studentId: "S004", name: "赵悦", email: "s004@example.edu", password, classId: classRow!.id },
+        { studentId: "S001", name: "李明", email: "s001@example.edu", password, isFirstLogin: 0, classId: classRow!.id },
+        { studentId: "S002", name: "王芳", email: "s002@example.edu", password, isFirstLogin: 0, classId: classRow!.id },
+        { studentId: "S003", name: "陈晨", email: "s003@example.edu", password, isFirstLogin: 0, classId: classRow!.id },
+        { studentId: "S004", name: "赵悦", email: "s004@example.edu", password, isFirstLogin: 0, classId: classRow!.id },
     ]).returning();
     const [topicRow] = await db.insert(topic).values({
         teacherId: teacherRow!.id,

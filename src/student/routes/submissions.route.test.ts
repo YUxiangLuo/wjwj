@@ -1,4 +1,5 @@
 import { expect, mock, test } from "bun:test";
+import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function withId(request: Request, id: string) {
@@ -10,6 +11,7 @@ test("submission endpoint returns the task's current experiment result", async (
     const { db } = createMockDb({ select: [[{
         id: 501,
         taskId: 40,
+        version: 12,
         topicId: 12,
         topicName: "抽样调查",
         submittedAt: new Date("2026-03-08T08:00:00Z"),
@@ -26,14 +28,17 @@ test("submission endpoint returns the task's current experiment result", async (
         submissionSnapshot: { weightConfig: { questionnaire: 40, process: 35, report: 25 } },
     }]] });
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({ requireAuth: async () => ({ student: { id: 11, classId: 7 }, error: null }) }));
-    mock.module("../experiment/task-access", () => ({ getStudentTaskAccessError: async () => null }));
+    mock.module("./auth", () => createStudentAuthModuleMock());
+    mock.module("../experiment/task-access", () => ({
+        getStudentTaskAccessError: async () => null,
+        getStudentTopicAttachmentAccessError: async () => null,
+    }));
     const module = await import(`./submissions.ts?result=${crypto.randomUUID()}`);
 
     const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com/api/student/tasks/40/submission"), "40"));
     const payload = await response.json() as any;
     expect(response.status).toBe(200);
-    expect(payload.data).toMatchObject({ id: 501, taskId: 40, status: "graded", totalScore: 89.9, graderName: "王老师" });
+    expect(payload.data).toMatchObject({ id: 501, taskId: 40, version: 12, status: "graded", totalScore: 89.9, graderName: "王老师" });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
     expect(payload.data).not.toHaveProperty("pdfStatus");
 });
@@ -41,8 +46,11 @@ test("submission endpoint returns the task's current experiment result", async (
 test("in-progress experiment is not exposed as a result", async () => {
     const { db } = createMockDb({ select: [[{ id: 501, taskId: 40, status: "in_progress" }]] });
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({ requireAuth: async () => ({ student: { id: 11, classId: 7 }, error: null }) }));
-    mock.module("../experiment/task-access", () => ({ getStudentTaskAccessError: async () => null }));
+    mock.module("./auth", () => createStudentAuthModuleMock());
+    mock.module("../experiment/task-access", () => ({
+        getStudentTaskAccessError: async () => null,
+        getStudentTopicAttachmentAccessError: async () => null,
+    }));
     const module = await import(`./submissions.ts?missing=${crypto.randomUUID()}`);
     const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com"), "40"));
     expect(response.status).toBe(404);

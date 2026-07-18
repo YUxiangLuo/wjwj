@@ -29,15 +29,27 @@ const menu = [
     { path: "/export", label: "成绩导出", icon: Download },
 ];
 
-function TeacherWorkspace({ user, onLogout }: { user: TeacherUser; onLogout: () => Promise<void> }) {
+function TeacherWorkspace({
+    user,
+    onLogout,
+    onPasswordChanged,
+}: {
+    user: TeacherUser;
+    onLogout: () => Promise<void>;
+    onPasswordChanged: () => void;
+}) {
     const location = useLocation();
     const [sidebar, setSidebar] = useState(false);
     const [passwordOpen, setPasswordOpen] = useState(false);
+    const mustChangePassword = user.isFirstLogin === 1;
     const passwordChange = usePasswordChange({
         policy: TEACHER_PASSWORD_POLICY,
         forbiddenSubstrings: [user.employeeId],
         onSubmit: authApi.changePassword,
-        onSuccess: () => setPasswordOpen(false),
+        onSuccess: () => {
+            onPasswordChanged();
+            setPasswordOpen(false);
+        },
     });
     const title = menu.find((item) => item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path))?.label ?? "教师工作台";
 
@@ -82,7 +94,9 @@ function TeacherWorkspace({ user, onLogout }: { user: TeacherUser; onLogout: () 
                     </div>
                 </header>
                 <div className="p-4 sm:p-6">
-                    <Routes>
+                    {mustChangePassword ? (
+                        <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
+                    ) : <Routes>
                         <Route index element={<Dashboard />} />
                         <Route path="class" element={<ClassManagement />} />
                         <Route path="class/:classId/students" element={<StudentManagement />} />
@@ -93,15 +107,15 @@ function TeacherWorkspace({ user, onLogout }: { user: TeacherUser; onLogout: () 
                         <Route path="grading/:submissionId" element={<GradingDetail />} />
                         <Route path="export" element={<GradeExport />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
+                    </Routes>}
                 </div>
             </main>
             <PasswordChangeDialog
-                open={passwordOpen}
-                onOpenChange={setPasswordOpen}
-                allowClose
-                title="修改密码"
-                description="输入当前密码并设置新密码。"
+                open={mustChangePassword || passwordOpen}
+                onOpenChange={(open) => { if (!mustChangePassword) setPasswordOpen(open); }}
+                allowClose={!mustChangePassword}
+                title={mustChangePassword ? "首次登录请修改密码" : "修改密码"}
+                description={mustChangePassword ? "当前使用初始或重置密码，设置新密码后才能进入教学工作台。" : "输入当前密码并设置新密码。"}
                 form={passwordChange.form}
                 onFieldChange={passwordChange.setField}
                 error={passwordChange.error}
@@ -133,7 +147,11 @@ export function TeacherApp() {
     if (checking) return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
     if (location.pathname === "/login") return user ? <Navigate to="/" replace /> : <Login />;
     if (!user) return <Navigate to="/login" replace />;
-    return <TeacherWorkspace user={user} onLogout={async () => { await authApi.logout(); setUser(null); navigate("/login", { replace: true }); }} />;
+    return <TeacherWorkspace
+        user={user}
+        onPasswordChanged={() => setUser((current) => current ? { ...current, isFirstLogin: 0 } : current)}
+        onLogout={async () => { await authApi.logout(); setUser(null); navigate("/login", { replace: true }); }}
+    />;
 }
 
 export default TeacherApp;

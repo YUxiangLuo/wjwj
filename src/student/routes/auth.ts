@@ -24,10 +24,25 @@ export interface CurrentStudent {
     name: string;
     classId: number;
     status: number;
+    isFirstLogin: number;
 }
 
 type StudentAuthResult = { student: CurrentStudent | null; error: Response | null };
 type StudentRequestContext = Request & { [STUDENT_AUTH_CACHE]?: StudentAuthResult };
+
+export interface StudentAuthOptions {
+    allowFirstLogin?: boolean;
+}
+
+function applyStudentPasswordGate(result: StudentAuthResult, options: StudentAuthOptions): StudentAuthResult {
+    if (result.student?.isFirstLogin === 1 && !options.allowFirstLogin) {
+        return {
+            student: null,
+            error: error("首次登录或密码已重置，请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403),
+        };
+    }
+    return result;
+}
 
 export async function getCurrentStudent(req: Request): Promise<StudentAuthResult> {
     const cached = (req as StudentRequestContext)[STUDENT_AUTH_CACHE];
@@ -47,6 +62,7 @@ export async function getCurrentStudent(req: Request): Promise<StudentAuthResult
             name: student.name,
             classId: student.classId,
             status: student.status,
+            isFirstLogin: student.isFirstLogin,
         })
         .from(student)
         .where(and(eq(student.id, currentSession.session.userId), isNull(student.deletedAt)));
@@ -60,8 +76,8 @@ export async function getCurrentStudent(req: Request): Promise<StudentAuthResult
     return result;
 }
 
-export async function requireAuth(req: Request) {
-    return getCurrentStudent(req);
+export async function requireAuth(req: Request, options: StudentAuthOptions = {}) {
+    return applyStudentPasswordGate(await getCurrentStudent(req), options);
 }
 
 const loginRoutes: RouteDefinition = {
@@ -81,7 +97,15 @@ const loginRoutes: RouteDefinition = {
 
         const { token, expiresAt } = await createUserSession(STUDENT_USER_TYPE, row.id);
         return json(
-            { user: { id: row.id, studentId: row.studentId, name: row.name, classId: row.classId } },
+            {
+                user: {
+                    id: row.id,
+                    studentId: row.studentId,
+                    name: row.name,
+                    classId: row.classId,
+                    isFirstLogin: row.isFirstLogin,
+                },
+            },
             200,
             { "Set-Cookie": buildSessionCookie(STUDENT_SESSION_COOKIE, token, expiresAt, isSecureRequest(req)) },
         );
@@ -102,7 +126,7 @@ const logoutRoutes: RouteDefinition = {
 
 const passwordRoutes: RouteDefinition = {
     async PUT(req) {
-        const auth = await requireAuth(req);
+        const auth = await requireAuth(req, { allowFirstLogin: true });
         if (auth.error || !auth.student) return auth.error!;
 
         const body = await parseBody<{ currentPassword?: string; newPassword?: string }>(req);
@@ -128,7 +152,7 @@ const passwordRoutes: RouteDefinition = {
         if (!currentToken) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         await db
             .update(student)
-            .set({ password: await Bun.password.hash(newPassword), updatedAt: new Date() })
+            .set({ password: await Bun.password.hash(newPassword), isFirstLogin: 0, updatedAt: new Date() })
             .where(eq(student.id, row.id));
         await clearOtherUserSessionsForUser(STUDENT_USER_TYPE, row.id, currentToken);
         return json({ success: true });
@@ -137,7 +161,7 @@ const passwordRoutes: RouteDefinition = {
 
 const meRoutes: RouteDefinition = {
     async GET(req) {
-        const auth = await requireAuth(req);
+        const auth = await requireAuth(req, { allowFirstLogin: true });
         if (auth.error || !auth.student) return auth.error!;
         const [classInfo] = await db
             .select({ className: class_.name })

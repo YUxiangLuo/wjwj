@@ -1,5 +1,6 @@
 import { expect, mock, test } from "bun:test";
 import { topic } from "../../db/schema";
+import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function request(id: string) {
@@ -15,7 +16,7 @@ function request(id: string) {
 async function load(status: number) {
     const { db, operations } = createMockDb({ select: [[{ id: 12, status, excelFilePath: null }]] });
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({ getPrimaryTeacherIdOrThrow: () => 9 }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
     const module = await import(`./topic-task.ts?weights=${crypto.randomUUID()}`);
     return { module, operations };
 }
@@ -33,5 +34,8 @@ test("draft topic weights can still be configured", async () => {
     const response = await module.topicWeightRoutes.PUT!(request("12"));
     expect(response.status).toBe(200);
     const update = operations.find((operation) => operation.kind === "update" && operation.table === topic);
-    expect(update?.set).toEqual({ weightConfig: { questionnaire: 40, process: 35, report: 25 } });
+    expect(update?.set).toMatchObject({
+        weightConfig: { questionnaire: 40, process: 35, report: 25 },
+        updatedAt: expect.any(Date),
+    });
 });

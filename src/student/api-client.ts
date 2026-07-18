@@ -16,6 +16,7 @@ export interface CurrentStudent {
     name: string;
     classId: number;
     className: string | null;
+    isFirstLogin: number;
 }
 
 export type TaskStatus = "not_started" | ExperimentStatus;
@@ -82,6 +83,7 @@ export interface SamplingResultsData {
 export interface ExperimentData {
     id: number;
     taskId: number;
+    version: number;
     currentStage: number;
     status: ExperimentStatus;
     questionnaire: QuestionnaireData | null;
@@ -122,6 +124,7 @@ export interface Announcement {
 export interface SubmissionDetail {
     id: number;
     taskId: number;
+    version: number;
     topicId: number;
     topicName: string;
     submittedAt: string | null;
@@ -176,17 +179,17 @@ export const tasksApi = {
 
 export const experimentApi = {
     get: (taskId: number) => request<ExperimentData>(`/api/student/tasks/${taskId}/experiment`),
-    completeStage: (taskId: number, stage: number, data: Record<string, unknown>) => request<ExperimentData>(
+    completeStage: (taskId: number, stage: number, observedVersion: number, data: Record<string, unknown>) => request<ExperimentData>(
         `/api/student/tasks/${taskId}/experiment/stages/${stage}/complete`,
-        { method: "POST", body: JSON.stringify(data) },
+        { method: "POST", body: JSON.stringify({ ...data, observedVersion }) },
     ),
-    reopenStage: (taskId: number, stage: number) => request<ExperimentData>(
+    reopenStage: (taskId: number, stage: number, observedVersion: number) => request<ExperimentData>(
         `/api/student/tasks/${taskId}/experiment/stages/${stage}/reopen`,
-        { method: "POST" },
+        { method: "POST", body: JSON.stringify({ observedVersion }) },
     ),
-    submit: (taskId: number) => request<{ success: boolean; experimentId: number }>(
+    submit: (taskId: number, observedVersion: number) => request<{ success: boolean; experimentId: number }>(
         `/api/student/tasks/${taskId}/submit`,
-        { method: "POST" },
+        { method: "POST", body: JSON.stringify({ observedVersion }) },
     ),
     executeSampling: (taskId: number, method: MethodKey, params: unknown) => request<{ success: boolean; result: any }>(
         `/api/student/tasks/${taskId}/sampling`,

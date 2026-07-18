@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
+import { validateObservedVersion } from "../../lib/observed-version";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { buildAnalysisMetrics } from "../experiment/analysis-metrics";
@@ -51,6 +52,7 @@ function buildExperimentResponse(record: typeof experiment.$inferSelect, populat
     return {
         id: record.id,
         taskId: record.taskId,
+        version: record.version,
         currentStage: record.currentStage,
         status: record.status,
         questionnaire: parseStoredJson(record.questionnaire),
@@ -73,10 +75,10 @@ async function loadOwnedExperiment(studentId: number, taskId: number) {
     return record ?? null;
 }
 
-function matchesObservedExperiment(record: typeof experiment.$inferSelect) {
+function matchesObservedExperiment(record: typeof experiment.$inferSelect, observedVersion: number) {
     return and(
         eq(experiment.id, record.id),
-        eq(experiment.version, record.version),
+        eq(experiment.version, observedVersion),
         eq(experiment.status, record.status),
         eq(experiment.currentStage, record.currentStage),
     );
@@ -118,6 +120,10 @@ const stageCompleteRoutes: RouteDefinition = {
         if (accessError) return accessError;
         const record = await loadOwnedExperiment(auth.student.id, taskId);
         if (!record) return error("实验记录不存在", "NOT_FOUND", 404);
+        const body = await parseBody<Record<string, unknown> & { observedVersion?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+        const { observedVersion: _observedVersion, ...payload } = body;
 
         const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
         const openError = ensureTaskIsOpen(schedule?.openTime);
@@ -126,7 +132,7 @@ const stageCompleteRoutes: RouteDefinition = {
         const result = buildStageCompletionUpdates({
             experimentRecord: record,
             stage,
-            payload: await parseBody<Record<string, unknown>>(req),
+            payload,
             populationSize,
             deadlinePassed: hasTaskDeadlinePassed(schedule?.deadline),
         });
@@ -135,7 +141,7 @@ const stageCompleteRoutes: RouteDefinition = {
         const [updated] = await db
             .update(experiment)
             .set(result.updates)
-            .where(matchesObservedExperiment(record))
+            .where(matchesObservedExperiment(record, versionResult.value))
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json(buildExperimentResponse(updated, populationSize));
@@ -153,6 +159,9 @@ const stageReopenRoutes: RouteDefinition = {
         if (accessError) return accessError;
         const record = await loadOwnedExperiment(auth.student.id, taskId);
         if (!record) return error("实验记录不存在", "NOT_FOUND", 404);
+        const body = await parseBody<{ observedVersion?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
         const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
         const result = buildStageReopenUpdates({
             experimentRecord: record,
@@ -164,7 +173,7 @@ const stageReopenRoutes: RouteDefinition = {
         const [updated] = await db
             .update(experiment)
             .set(result.updates)
-            .where(matchesObservedExperiment(record))
+            .where(matchesObservedExperiment(record, versionResult.value))
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json(buildExperimentResponse(updated, populationSize));
@@ -262,6 +271,13 @@ const submitRoutes: RouteDefinition = {
         if (accessError) return accessError;
         const record = await loadOwnedExperiment(auth.student.id, taskId);
         if (!record) return error("实验记录不存在", "NOT_FOUND", 404);
+        const body = await parseBody<{ observedVersion?: unknown }>(req);
+        const submissionIsComplete = record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED;
+        const versionResult = validateObservedVersion(body.observedVersion, record.version, {
+            allowOlder: submissionIsComplete,
+        });
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+        if (submissionIsComplete) return json({ success: true, experimentId: record.id });
         const taskInfo = await findStudentTaskSubmitInfo(taskId, auth.student.classId);
         const openError = ensureTaskIsOpen(taskInfo?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
@@ -269,6 +285,7 @@ const submitRoutes: RouteDefinition = {
         if (windowError) return error(windowError.message, windowError.code, windowError.status);
         const result = await submitStudentExperiment({
             experimentRecord: record,
+            observedVersion: versionResult.value,
             taskInfo: {
                 topicName: taskInfo?.topicName ?? null,
                 populationSize: taskInfo?.populationSize ?? null,

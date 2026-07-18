@@ -27,6 +27,7 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
             experiment={{
                 id: 88,
                 taskId: 2,
+                version: 4,
                 currentStage: 4,
                 status: "in_progress",
                 questionnaire: {

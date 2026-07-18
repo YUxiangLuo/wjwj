@@ -23,11 +23,16 @@ export interface AuthUser {
     type: "teacher";
     name: string;
     employeeId: string;
+    isFirstLogin: number;
 }
 
 interface TeacherAuthResult {
     user: AuthUser | null;
     error: Response | null;
+}
+
+export interface TeacherAuthOptions {
+    allowFirstLogin?: boolean;
 }
 
 type TeacherRequestContext = Request & { [TEACHER_AUTH_CACHE]?: TeacherAuthResult };
@@ -48,19 +53,38 @@ export function getPrimaryTeacherIdOrThrow(req: Request) {
     return getTeacherUser(req).id;
 }
 
-export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResult> {
+function applyTeacherPasswordGate(result: TeacherAuthResult, options: TeacherAuthOptions): TeacherAuthResult {
+    if (result.user?.isFirstLogin === 1 && !options.allowFirstLogin) {
+        return {
+            user: null,
+            error: error("首次登录或密码已重置，请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403),
+        };
+    }
+    return result;
+}
+
+export async function requireTeacherAuth(
+    req: Request,
+    options: TeacherAuthOptions = {},
+): Promise<TeacherAuthResult> {
     const cached = (req as TeacherRequestContext)[TEACHER_AUTH_CACHE];
-    if (cached) return cached;
+    if (cached) return applyTeacherPasswordGate(cached, options);
 
     const currentSession = await loadActiveUserSession(req, TEACHER_SESSION_COOKIE, [TEACHER_USER_TYPE]);
     if (!currentSession.session) {
         const result = { user: null, error: error("未登录或登录已过期", "UNAUTHORIZED", 401) };
         (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] = result;
-        return result;
+        return applyTeacherPasswordGate(result, options);
     }
 
     const [row] = await db
-        .select({ id: teacher.id, employeeId: teacher.employeeId, name: teacher.name, status: teacher.status })
+        .select({
+            id: teacher.id,
+            employeeId: teacher.employeeId,
+            name: teacher.name,
+            status: teacher.status,
+            isFirstLogin: teacher.isFirstLogin,
+        })
         .from(teacher)
         .where(eq(teacher.id, currentSession.session.userId));
 
@@ -71,30 +95,36 @@ export async function requireTeacherAuth(req: Request): Promise<TeacherAuthResul
         result = { user: null, error: error("账号已停用，请联系管理员", "ACCOUNT_DISABLED", 403) };
     } else {
         result = {
-            user: { id: row.id, type: "teacher", name: row.name, employeeId: row.employeeId },
+            user: {
+                id: row.id,
+                type: "teacher",
+                name: row.name,
+                employeeId: row.employeeId,
+                isFirstLogin: row.isFirstLogin,
+            },
             error: null,
         };
     }
 
     (req as TeacherRequestContext)[TEACHER_AUTH_CACHE] = result;
-    return result;
+    return applyTeacherPasswordGate(result, options);
 }
 
-function wrapRoute(handler?: RouteHandler): RouteHandler | undefined {
+function wrapRoute(handler: RouteHandler | undefined, options: TeacherAuthOptions): RouteHandler | undefined {
     if (!handler) return undefined;
     return async (req) => {
-        const auth = await requireTeacherAuth(req);
+        const auth = await requireTeacherAuth(req, options);
         if (auth.error) return auth.error;
         return handler(req);
     };
 }
 
-export function withTeacherAuth(routes: RouteDefinition): RouteDefinition {
+export function withTeacherAuth(routes: RouteDefinition, options: TeacherAuthOptions = {}): RouteDefinition {
     return {
-        GET: wrapRoute(routes.GET),
-        POST: wrapRoute(routes.POST),
-        PUT: wrapRoute(routes.PUT),
-        DELETE: wrapRoute(routes.DELETE),
+        GET: wrapRoute(routes.GET, options),
+        POST: wrapRoute(routes.POST, options),
+        PUT: wrapRoute(routes.PUT, options),
+        DELETE: wrapRoute(routes.DELETE, options),
     };
 }
 
@@ -114,7 +144,15 @@ const teacherLoginRoutes: RouteDefinition = {
 
         const { token, expiresAt } = await createUserSession(TEACHER_USER_TYPE, row.id);
         return json(
-            { user: { id: row.id, type: "teacher", name: row.name, employeeId: row.employeeId } },
+            {
+                user: {
+                    id: row.id,
+                    type: "teacher",
+                    name: row.name,
+                    employeeId: row.employeeId,
+                    isFirstLogin: row.isFirstLogin,
+                },
+            },
             200,
             { "Set-Cookie": buildSessionCookie(TEACHER_SESSION_COOKIE, token, expiresAt, isSecureRequest(req)) },
         );
@@ -165,7 +203,7 @@ const teacherPasswordRoutes: RouteDefinition = {
         if (!currentToken) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         await db
             .update(teacher)
-            .set({ password: await Bun.password.hash(newPassword), updatedAt: new Date() })
+            .set({ password: await Bun.password.hash(newPassword), isFirstLogin: 0, updatedAt: new Date() })
             .where(eq(teacher.id, current.id));
         await clearOtherUserSessionsForUser(TEACHER_USER_TYPE, current.id, currentToken);
         return json({ success: true });

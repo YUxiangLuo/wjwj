@@ -25,6 +25,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             .select({
                 id: experiment.id,
                 taskId: experiment.taskId,
+                version: experiment.version,
                 topicId: topic.id,
                 topicName: topic.name,
                 status: experiment.status,
@@ -51,6 +52,7 @@ const submissionByTaskRoutes: RouteDefinition = {
         return json({
             id: row.id,
             taskId: row.taskId,
+            version: row.version,
             topicId: row.topicId,
             topicName: row.topicName,
             submittedAt: row.submittedAt?.toISOString() ?? null,

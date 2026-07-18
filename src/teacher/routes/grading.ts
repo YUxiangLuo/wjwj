@@ -1,6 +1,7 @@
 import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, task, teacher, topic } from "../../db/schema";
+import { validateObservedVersion } from "../../lib/observed-version";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
 import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
@@ -170,15 +171,18 @@ const gradingDetailRoutes: RouteDefinition = {
         if (!Number.isInteger(experimentId) || experimentId <= 0) return error("无效的实验ID", "INVALID_ID");
         const row = await findOwnedExperiment(experimentId, current.id);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
-        if (row.status !== "submitted" && row.status !== "graded") {
-            return error("当前状态不能评分", "INVALID_STATUS", 409);
-        }
         const body = await parseBody<{
+            observedVersion?: unknown;
             scoreQuestionnaire?: number;
             scoreProcess?: number;
             scoreReport?: number;
             comment?: string;
         }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, row.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+        if (row.status !== "submitted" && row.status !== "graded") {
+            return error("当前状态不能评分", "INVALID_STATUS", 409);
+        }
         const scores = [body.scoreQuestionnaire, body.scoreProcess, body.scoreReport];
         if (scores.some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100)) {
             return error("分项分数需在 0-100 之间", "VALIDATION_ERROR", 400);
@@ -195,7 +199,7 @@ const gradingDetailRoutes: RouteDefinition = {
         const now = new Date();
         const updated = await db.update(experiment).set({
             status: "graded",
-            version: row.version + 1,
+            version: versionResult.value + 1,
             scoreQuestionnaire: String(body.scoreQuestionnaire),
             scoreProcess: String(body.scoreProcess),
             scoreReport: String(body.scoreReport),
@@ -207,7 +211,7 @@ const gradingDetailRoutes: RouteDefinition = {
             updatedAt: now,
         }).where(and(
             eq(experiment.id, experimentId),
-            eq(experiment.version, row.version),
+            eq(experiment.version, versionResult.value),
             eq(experiment.status, row.status),
         )).returning({ id: experiment.id });
         if (!updated.length) return error("提交记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
@@ -222,8 +226,10 @@ const gradingRejectRoutes: RouteDefinition = {
         if (!Number.isInteger(experimentId) || experimentId <= 0) return error("无效的实验ID", "INVALID_ID");
         const row = await findOwnedExperiment(experimentId, current.id);
         if (!row) return error("提交记录不存在", "NOT_FOUND", 404);
+        const body = await parseBody<{ observedVersion?: unknown; reason?: string }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, row.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
         if (row.status !== "submitted") return error("只有待批改实验可以驳回", "INVALID_STATUS", 409);
-        const body = await parseBody<{ reason?: string }>(req);
         const reason = body.reason?.trim() ?? "";
         if (reason.length < 5 || reason.length > 1_000) {
             return error("驳回理由长度需在5-1000字之间", "VALIDATION_ERROR", 400);
@@ -231,7 +237,7 @@ const gradingRejectRoutes: RouteDefinition = {
         const now = new Date();
         const updated = await db.update(experiment).set({
             status: "rejected",
-            version: row.version + 1,
+            version: versionResult.value + 1,
             rejectReason: reason,
             scoreQuestionnaire: null,
             scoreProcess: null,
@@ -243,7 +249,7 @@ const gradingRejectRoutes: RouteDefinition = {
             updatedAt: now,
         }).where(and(
             eq(experiment.id, experimentId),
-            eq(experiment.version, row.version),
+            eq(experiment.version, versionResult.value),
             eq(experiment.status, row.status),
         )).returning({ id: experiment.id });
         if (!updated.length) return error("提交记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);

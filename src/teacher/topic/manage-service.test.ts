@@ -70,5 +70,21 @@ test("updateTeacherTopicBasics allows publishing a fully configured topic", asyn
     });
 
     expect(result).toEqual({ ok: true });
-    expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(1);
+    const updates = operations.filter((operation) => operation.kind === "update");
+    expect(updates).toHaveLength(1);
+    expect(updates[0]?.set).toMatchObject({ status: 1, updatedAt: expect.any(Date) });
+});
+
+test("soft deleting a topic advances task update metadata with the deletion time", async () => {
+    const { module, operations } = await loadManageService();
+
+    expect(await module.softDeleteTeacherTopic({ teacherId: 9, topicId: 12 })).toEqual({ ok: true });
+
+    const updates = operations.filter((operation) => operation.kind === "update");
+    expect(updates).toHaveLength(2);
+    const topicValues = updates[0]?.set as { deletedAt?: Date; updatedAt?: Date };
+    const taskValues = updates[1]?.set as { deletedAt?: Date; updatedAt?: Date };
+    expect(topicValues.updatedAt).toBe(topicValues.deletedAt);
+    expect(taskValues.deletedAt).toBe(topicValues.deletedAt);
+    expect(taskValues.updatedAt).toBe(topicValues.deletedAt);
 });

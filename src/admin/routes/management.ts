@@ -130,7 +130,7 @@ const teacherRoutes: RouteDefinition = {
         }
         const [created] = await db
             .insert(teacher)
-            .values({ employeeId, name, password: await Bun.password.hash(employeeId) })
+            .values({ employeeId, name, password: await Bun.password.hash(employeeId), isFirstLogin: 1 })
             .returning({ id: teacher.id });
         return json({ id: created!.id }, 201);
     },
@@ -176,7 +176,7 @@ const teacherResetPasswordRoutes: RouteDefinition = {
         if (!row) return error("教师不存在", "NOT_FOUND", 404);
         await db
             .update(teacher)
-            .set({ password: await Bun.password.hash(row.employeeId), updatedAt: new Date() })
+            .set({ password: await Bun.password.hash(row.employeeId), isFirstLogin: 1, updatedAt: new Date() })
             .where(eq(teacher.id, id));
         await clearUserSessionsForUser(TEACHER_USER_TYPE, id);
         return json({ success: true });
@@ -390,7 +390,7 @@ const studentResetPasswordRoutes: RouteDefinition = {
         if (!row) return error("学生不存在", "NOT_FOUND", 404);
         await db
             .update(student)
-            .set({ password: await Bun.password.hash(row.studentId), updatedAt: new Date() })
+            .set({ password: await Bun.password.hash(row.studentId), isFirstLogin: 1, updatedAt: new Date() })
             .where(eq(student.id, id));
         await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
         return json({ success: true });

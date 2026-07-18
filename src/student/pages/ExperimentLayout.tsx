@@ -75,19 +75,30 @@ export function ExperimentLayout() {
     }, [numericTaskId]);
 
     const completeStage = useCallback(async (stage: number, data: Record<string, unknown>) => {
+        if (!experiment) return false;
         setIsSaving(true); setSaveError(null);
-        const response = await experimentApi.completeStage(numericTaskId, stage, data);
+        const response = await experimentApi.completeStage(numericTaskId, stage, experiment.version, data);
         setIsSaving(false);
         if (response.success && response.data) { setExperiment(response.data); return true; }
         setSaveError(response.error?.message ?? "阶段保存失败，请重试");
+        if (response.error?.code === "VERSION_CONFLICT") {
+            const latest = await experimentApi.get(numericTaskId);
+            if (latest.success && latest.data) setExperiment(latest.data);
+        }
         return false;
-    }, [numericTaskId]);
+    }, [experiment, numericTaskId]);
 
     const applyReopen = async () => {
-        if (reopenStage === null) return;
-        const response = await experimentApi.reopenStage(numericTaskId, reopenStage);
+        if (reopenStage === null || !experiment) return;
+        const response = await experimentApi.reopenStage(numericTaskId, reopenStage, experiment.version);
         if (response.success && response.data) setExperiment(response.data);
-        else setSaveError(response.error?.message ?? "无法重新编辑该阶段");
+        else {
+            setSaveError(response.error?.message ?? "无法重新编辑该阶段");
+            if (response.error?.code === "VERSION_CONFLICT") {
+                const latest = await experimentApi.get(numericTaskId);
+                if (latest.success && latest.data) setExperiment(latest.data);
+            }
+        }
         setReopenStage(null);
     };
 

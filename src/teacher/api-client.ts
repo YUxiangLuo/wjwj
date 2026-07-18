@@ -3,7 +3,7 @@ import { notifyAuthExpired } from "@/lib/auth-expired";
 import type { QuestionnaireData, SamplePlanData, SamplingResultsData } from "../student/api-client";
 
 export interface ApiResponse<T> { success: boolean; data?: T; error?: { code: string; message: string } }
-export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher" }
+export interface TeacherUser { id: number; employeeId: string; name: string; type: "teacher"; isFirstLogin: number }
 export interface TeacherStats {
     stats: Array<{ label: string; value: number }>;
     recentSubmissions: Array<{ student: string; class: string; topic: string; time: string }>;
@@ -31,6 +31,7 @@ export interface GradingItem {
 export interface GradingListResponse { items: GradingItem[]; total: number; page: number; pageSize: number }
 export interface GradingListParams { status?: string; className?: string; topicName?: string; keyword?: string; page?: number; pageSize?: number }
 export interface SubmissionDetail extends GradingItem {
+    version: number;
     topicDesc: string | null;
     reportContent: string;
     samplePlan: SamplePlanData | null;
@@ -118,8 +119,8 @@ export const teacherApi = {
         return request<GradingListResponse>(`/api/teacher/grading${search.size ? `?${search}` : ""}`);
     },
     getSubmissionDetail: (id: number) => request<SubmissionDetail>(`/api/teacher/grading/${id}`),
-    submitGrade: (id: number, data: { scoreQuestionnaire: number; scoreProcess: number; scoreReport: number; comment: string }) => request<{ success: boolean; totalScore: number }>(`/api/teacher/grading/${id}`, { method: "POST", body: JSON.stringify(data) }),
-    rejectSubmission: (id: number, reason: string) => request<{ success: boolean }>(`/api/teacher/grading/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
+    submitGrade: (id: number, observedVersion: number, data: { scoreQuestionnaire: number; scoreProcess: number; scoreReport: number; comment: string }) => request<{ success: boolean; totalScore: number }>(`/api/teacher/grading/${id}`, { method: "POST", body: JSON.stringify({ ...data, observedVersion }) }),
+    rejectSubmission: (id: number, observedVersion: number, reason: string) => request<{ success: boolean }>(`/api/teacher/grading/${id}/reject`, { method: "POST", body: JSON.stringify({ reason, observedVersion }) }),
 
     getStudents: (classId: number) => request<Student[]>(`/api/teacher/classes/${classId}/students`),
     addStudent: (classId: number, data: { studentId: string; name: string; email?: string }) => request<{ success: boolean }>(`/api/teacher/classes/${classId}/students`, { method: "POST", body: JSON.stringify(data) }),

@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
+import { validateObservedVersion } from "../../lib/observed-version";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
@@ -71,9 +72,22 @@ export function validateExperimentSubmission(params: {
 
 export async function submitStudentExperiment(params: {
     experimentRecord: ExperimentRecord;
+    observedVersion: unknown;
     taskInfo: SubmitTaskInfo;
     student: SubmitStudentInfo;
 }) {
+    const submissionIsComplete = params.experimentRecord.status === ExperimentStatus.SUBMITTED
+        || params.experimentRecord.status === ExperimentStatus.GRADED;
+    const versionResult = validateObservedVersion(
+        params.observedVersion,
+        params.experimentRecord.version,
+        { allowOlder: submissionIsComplete },
+    );
+    if (!versionResult.ok) return fail(versionResult.message, versionResult.code, versionResult.status);
+    if (submissionIsComplete) {
+        return { ok: true as const, experimentId: params.experimentRecord.id, submittedAt: params.experimentRecord.submittedAt };
+    }
+
     const validation = validateExperimentSubmission(params);
     if (!validation.ok) return validation;
 
@@ -100,7 +114,7 @@ export async function submitStudentExperiment(params: {
         .update(experiment)
         .set({
             status: ExperimentStatus.SUBMITTED,
-            version: params.experimentRecord.version + 1,
+            version: versionResult.value + 1,
             submissionSnapshot: snapshot,
             submittedAt,
             scoreQuestionnaire: null,
@@ -115,7 +129,7 @@ export async function submitStudentExperiment(params: {
         })
         .where(and(
             eq(experiment.id, params.experimentRecord.id),
-            eq(experiment.version, params.experimentRecord.version),
+            eq(experiment.version, versionResult.value),
             eq(experiment.status, params.experimentRecord.status),
             eq(experiment.currentStage, params.experimentRecord.currentStage),
         ))

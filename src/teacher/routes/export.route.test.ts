@@ -1,5 +1,6 @@
 import { expect, mock, test } from "bun:test";
 import { semester } from "../../db/schema";
+import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 async function loadExportRoutes(options: {
@@ -15,14 +16,8 @@ async function loadExportRoutes(options: {
         formatDateStampCN: () => "2026-03-09",
         formatDateTimeCN: () => "2026/03/09 04:25:06",
     }));
-    mock.module("./auth", () => ({
+    mock.module("./auth", () => createTeacherAuthModuleMock({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
-        requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
-        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
-        notifyStudentsByClassIds: async () => undefined,
-        notifyStudentById: async () => undefined,
-        isLockExpired: () => true,
-        TEACHER_USER_TYPE: 2,
     }));
 
     const module = await import("./export");

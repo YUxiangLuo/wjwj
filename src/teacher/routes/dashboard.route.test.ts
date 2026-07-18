@@ -1,6 +1,7 @@
 import { expect, mock, test } from "bun:test";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
+import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 test("dashboard keeps completed submissions and rejected grading activity", async () => {
@@ -15,7 +16,7 @@ test("dashboard keeps completed submissions and rejected grading activity", asyn
         [{ studentName: "被驳回学生", className: "统计一班", topicName: "抽样调查", totalScore: null, status: "rejected", gradedAt }],
     ] });
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({ getPrimaryTeacherIdOrThrow: () => 9 }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
     const module = await import(`./dashboard.ts?dashboard=${crypto.randomUUID()}`);
 
     const response = await module.dashboardRoutes.GET!(new Request("https://example.com/api/teacher/dashboard"));
