@@ -5,15 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1784268407210,
-      "tag": "0000_open_leader",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1784269705982,
-      "tag": "0001_simple_tigra",
+      "when": 1784364770050,
+      "tag": "0000_steady_magma",
       "breakpoints": true
     }
   ]

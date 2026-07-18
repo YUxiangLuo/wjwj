@@ -23,7 +23,7 @@ interface TopicWizardDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     editingTopicId: number | null;
-    /** 已发布课题：上传数据、字段映射步骤只读，下一步不触发保存接口 */
+    /** 已发布课题：总体数据、字段映射和评分权重只读 */
     isPublishedTopic?: boolean;
     currentStep: number;
     setCurrentStep: (value: number | ((prev: number) => number)) => void;
@@ -758,6 +758,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 type="number"
                                                 min={0}
                                                 max={100}
+                                                disabled={isPublishedTopic}
                                                 value={weightConfig.questionnaire}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, questionnaire: Number(e.target.value) }))}
                                                 className="bg-card border-border text-foreground text-2xl font-bold h-16 text-center"
@@ -773,6 +774,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 type="number"
                                                 min={0}
                                                 max={100}
+                                                disabled={isPublishedTopic}
                                                 value={weightConfig.process}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, process: Number(e.target.value) }))}
                                                 className="bg-card border-border text-foreground text-2xl font-bold h-16 text-center"
@@ -788,6 +790,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                 type="number"
                                                 min={0}
                                                 max={100}
+                                                disabled={isPublishedTopic}
                                                 value={weightConfig.report}
                                                 onChange={(e) => setWeightConfig(prev => ({ ...prev, report: Number(e.target.value) }))}
                                                 className="bg-card border-border text-foreground text-2xl font-bold h-16 text-center"
@@ -844,7 +847,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                 <Button data-testid="teacher-topic-next" onClick={onSaveRecommendQuestions} className="bg-primary hover:bg-primary/90 text-primary-foreground">保存并继续</Button>
                             )}
                             {!loadingDetail && currentStep === 6 && (
-                                <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-primary hover:bg-primary/90 text-primary-foreground">完成</Button>
+                                <Button data-testid="teacher-topic-finish" onClick={onSaveWeights} className="bg-primary hover:bg-primary/90 text-primary-foreground">{isPublishedTopic ? "关闭" : "完成"}</Button>
                             )}
                         </div>
                     </div>

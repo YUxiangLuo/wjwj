@@ -26,7 +26,6 @@ async function loadFilesRoutes(options: {
                 name: "Alice",
                 studentId: "20230001",
                 status: 1,
-                isFirstLogin: 0,
                 ...options.authStudent,
             },
             error: null,

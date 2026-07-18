@@ -24,7 +24,6 @@ async function loadTopicRoutes(options: {
         notifyStudentById: async () => undefined,
         isLockExpired: () => true,
         TEACHER_USER_TYPE: 2,
-        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./topic-task");

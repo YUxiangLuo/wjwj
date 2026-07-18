@@ -1,4 +1,4 @@
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import { basename } from "node:path";
 import { db } from "../../db";
 import { topic, topicAttachment } from "../../db/schema";
@@ -124,7 +124,7 @@ export async function copyTopicWithResources(params: {
     const [sourceTopic] = await db
         .select()
         .from(topic)
-        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)));
+        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
     if (!sourceTopic) {
         return fail("课题不存在", "NOT_FOUND", 404);
     }

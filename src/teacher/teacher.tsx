@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import "./teacher.css";
 import { TeacherApp } from "./TeacherApp";
 
 const elem = document.getElementById("root")!;

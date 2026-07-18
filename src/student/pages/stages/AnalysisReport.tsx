@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,19 +12,11 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, CheckCircle, Ruler, ListTree, AlertCircle } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, Ruler, ListTree, AlertCircle } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
 import { experimentApi, type AnalysisMetricsData } from "../../api-client";
-import {
-    clearReportDraft,
-    clearLegacyTaskReportDraft,
-    createReportDraftBasis,
-    hashSerializedValue,
-    loadReportDraft,
-    saveReportDraft,
-} from "../../draft-sync";
 import {
     type MethodKey,
     type ChartSeries,
@@ -34,6 +26,7 @@ import {
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
+import { notifyAuthExpired } from "@/lib/auth-expired";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -184,7 +177,7 @@ function FieldSelect({
 // ---------------------------------------------------------------------------
 
 export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
-    const { experiment, populationSize, registerStageSave, saveExperiment } = useExperiment();
+    const { experiment, populationSize, completeStage } = useExperiment();
 
     const [reportContent, setReportContent] = useState(experiment?.reportContent ?? "");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -195,20 +188,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [statsLoading, setStatsLoading] = useState(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
-    const [draftRestored, setDraftRestored] = useState(false);
-    const experimentId = experiment?.id ?? null;
-    const taskId = experiment?.taskId ?? null;
-    const serverReportContent = experiment?.reportContent ?? "";
-    const reportDraftBasis = useMemo(() => createReportDraftBasis({
-        samplePlan: experiment?.samplePlan ?? null,
-        samplingResults: experiment?.samplingResults ?? null,
-    }), [experiment?.samplePlan, experiment?.samplingResults]);
-    const reportSourceKey = experimentId === null
-        ? null
-        : `${experimentId}::${reportDraftBasis}::${serverReportContent}`;
-    const [hydratedReportSourceKey, setHydratedReportSourceKey] = useState<string | null>(null);
     const samplingResultsKey = useMemo(
-        () => hashSerializedValue(experiment?.samplingResults ?? null),
+        () => JSON.stringify(experiment?.samplingResults ?? null),
         [experiment?.samplingResults],
     );
     const isPpsUnavailable = Boolean(experiment?.samplingResults?.pps?.unavailable);
@@ -442,80 +423,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const activeZoom = zoomChart ? chartConfig[zoomChart] : null;
 
-    useEffect(() => {
-        if (!experimentId) {
-            setDraftRestored(false);
-            setReportContent(serverReportContent);
-            setHydratedReportSourceKey(null);
-            return;
-        }
-
-        clearLegacyTaskReportDraft(taskId);
-
-        const restoredDraft = loadReportDraft({
-            experimentId,
-            basis: reportDraftBasis,
-            serverContent: serverReportContent,
-        });
-
-        if (restoredDraft !== null) {
-            setReportContent(restoredDraft);
-            setDraftRestored(true);
-            setHydratedReportSourceKey(reportSourceKey);
-            return;
-        }
-
-        setReportContent(serverReportContent);
-        setDraftRestored(false);
-        setHydratedReportSourceKey(reportSourceKey);
-    }, [experimentId, reportDraftBasis, reportSourceKey, serverReportContent, taskId]);
-
-    useEffect(() => {
-        if (!experimentId) return;
-        if (hydratedReportSourceKey !== reportSourceKey) return;
-
-        if (reportContent === serverReportContent) {
-            clearReportDraft(experimentId);
-            return;
-        }
-
-        saveReportDraft({
-            experimentId,
-            basis: reportDraftBasis,
-            content: reportContent,
-        });
-    }, [experimentId, hydratedReportSourceKey, reportContent, reportDraftBasis, reportSourceKey, serverReportContent]);
-
-    const saveCurrentReport = useCallback(async () => {
-        if (!experimentId) return false;
-
-        if (reportContent === serverReportContent) {
-            clearReportDraft(experimentId);
-            setDraftRestored(false);
-            return true;
-        }
-
-        const success = await saveExperiment({ reportContent });
-        if (success) {
-            clearReportDraft(experimentId);
-            setDraftRestored(false);
-        }
-        return success;
-    }, [experimentId, reportContent, saveExperiment, serverReportContent]);
-
-    useEffect(() => {
-        registerStageSave(saveCurrentReport);
-        return () => {
-            registerStageSave(null);
-        };
-    }, [registerStageSave, saveCurrentReport]);
-
     // ---- Handlers ----
 
     const handleSubmit = async () => {
         setIsSubmitting(true);
         try {
-            const success = await saveCurrentReport();
+            const success = await completeStage(4, { reportContent });
             if (!success) return;
             onSubmit();
         } finally {
@@ -529,6 +442,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             const res = await fetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
                 credentials: "include",
             });
+            notifyAuthExpired(res);
             if (!res.ok) throw new Error("导出失败");
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
@@ -560,20 +474,6 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
-            {draftRestored && (
-                <Card
-                    data-testid="student-analysis-draft-restored"
-                    className="rounded-2xl border border-success/30 bg-success/10 shadow-sm"
-                >
-                    <CardContent className="px-4 py-3">
-                        <div className="flex items-center gap-2 text-sm text-success">
-                            <CheckCircle className="h-4 w-4" />
-                            <span>已恢复未提交的本地报告草稿。</span>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="rounded-2xl border-border bg-card/50 shadow-sm">

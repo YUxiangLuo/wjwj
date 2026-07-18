@@ -11,6 +11,7 @@ import { formatLocalDateStamp } from "@/utils/format";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { notifyAuthExpired } from "@/lib/auth-expired";
 
 export function GradeExport() {
     const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -78,8 +79,6 @@ export function GradeExport() {
         setSelectedTaskIds([]);
     }
 
-    const previewMap = useMemo(() => new Map(preview.map(p => [p.taskId, p])), [preview]);
-
     function toggleTask(taskId: number) {
         setSelectedTaskIds(prev => prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]);
     }
@@ -109,6 +108,7 @@ export function GradeExport() {
             const res = await fetch(`/api/teacher/grade-export/excel?${search.toString()}`, {
                 credentials: "include",
             });
+            notifyAuthExpired(res);
 
             if (!res.ok) {
                 toast.error("导出失败");

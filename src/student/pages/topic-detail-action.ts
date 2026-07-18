@@ -21,22 +21,21 @@ export function getTaskPrimaryAction(taskId: number, status: TaskStatus, canStar
                 disabled: !canStartExperiment,
             };
         case "submitted":
-        case "grading":
             return {
                 text: "查看提交内容",
-                link: `/task/${taskId}/history`,
+                link: `/task/${taskId}/result`,
                 disabled: false,
             };
         case "graded":
             return {
                 text: "查看成绩",
-                link: `/task/${taskId}/history`,
+                link: `/task/${taskId}/result`,
                 disabled: false,
             };
         case "rejected":
             return {
-                text: "重新开始",
-                link: null,
+                text: "继续修改",
+                link: `/task/${taskId}/experiment`,
                 disabled: !canStartExperiment,
             };
         default: {

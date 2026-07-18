@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, createContext, useContext, useMemo, useRef } from "react";
-import { ArrowLeft, Save, Loader2, FileText, Ruler, Play, BarChart3, CheckCircle2, ChevronRight, Home, Clock, AlertCircle } from "lucide-react";
-import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Loader2, Play, Ruler } from "lucide-react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
 import {
     AlertDialog,
     AlertDialogAction,
@@ -13,456 +12,131 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-    experimentApi,
-    tasksApi,
-    type ExperimentData,
-    type QuestionnaireData,
-    type SamplePlanData,
-    type SamplingResultsData,
-} from "../api-client";
+import { experimentApi, tasksApi, type ExperimentData } from "../api-client";
+import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
-import { clearLegacyTaskReportDraft, clearReportDraft } from "../draft-sync";
-
-// Stage components
+import { AnalysisReport } from "./stages/AnalysisReport";
 import { QuestionnaireDesign } from "./stages/QuestionnaireDesign";
 import { SamplePlanning } from "./stages/SamplePlanning";
 import { SamplingExecution } from "./stages/SamplingExecution";
-import { AnalysisReport } from "./stages/AnalysisReport";
-import { TopicDeletedState } from "../components/TopicDeletedState";
 
 const stages = [
-    { name: "问卷设计", description: "第一步：围绕调研目标，设计包含判断题、单选题、多选题和量表题的调查问卷，设置标题、欢迎语和结束语", icon: FileText },
-    { name: "样本量规划", description: "第二步：根据置信水平、允许误差、设计效应和预期无回答率等参数，利用公式计算并确定最终调查样本量", icon: Ruler },
-    { name: "抽样执行", description: "第三步：在确定的样本量基础上，分别使用简单随机抽样、系统抽样、PPS抽样和分层抽样四种方法从总体中抽取样本", icon: Play },
-    { name: "分析与报告", description: "第四步：对比各抽样方法的结果差异，分析样本代表性，撰写调查研究报告", icon: BarChart3 },
+    { name: "问卷设计", description: "设计调查问卷并完成模拟填写", icon: FileText },
+    { name: "样本量规划", description: "计算并确认最终调查样本量", icon: Ruler },
+    { name: "抽样执行", description: "完成简单随机、系统、PPS 和分层抽样", icon: Play },
+    { name: "分析与报告", description: "比较抽样结果并撰写实验报告", icon: BarChart3 },
 ] as const;
 
-// Context for experiment data
 interface ExperimentContextValue {
     experiment: ExperimentData | null;
     populationSize: number;
     isSaving: boolean;
-    lastSavedAt: string | null;
-    registerStageSave: (saveHandler: (() => Promise<boolean>) | null) => void;
-    saveExperiment: (data: Partial<{
-        currentStage: number;
-        questionnaire: QuestionnaireData;
-        samplePlan: SamplePlanData;
-        samplingResults: SamplingResultsData;
-        reportContent: string;
-    }>) => Promise<boolean>;
+    completeStage: (stage: number, data: Record<string, unknown>) => Promise<boolean>;
 }
 
 const ExperimentContext = createContext<ExperimentContextValue | null>(null);
 
 export function useExperiment() {
-    const context = useContext(ExperimentContext);
-    if (!context) {
-        throw new Error("useExperiment must be used within ExperimentLayout");
-    }
-    return context;
+    const value = useContext(ExperimentContext);
+    if (!value) throw new Error("useExperiment must be used within ExperimentLayout");
+    return value;
 }
 
 export function ExperimentLayout() {
     const { taskId } = useParams();
     const navigate = useNavigate();
+    const numericTaskId = Number(taskId);
     const [experiment, setExperiment] = useState<ExperimentData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [notFound, setNotFound] = useState(false);
-    const [accessDeniedVariant, setAccessDeniedVariant] = useState<"topic_deleted" | "task_revoked" | null>(null);
     const [taskName, setTaskName] = useState("");
     const [deadline, setDeadline] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [notFound, setNotFound] = useState(false);
+    const [accessDenied, setAccessDenied] = useState<"topic_deleted" | "task_revoked" | null>(null);
+    const [redirect, setRedirect] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-    const [confirmRollbackOpen, setConfirmRollbackOpen] = useState(false);
-    const [targetStage, setTargetStage] = useState<number | null>(null);
-    const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
-    const stageSaveHandlerRef = useRef<(() => Promise<boolean>) | null>(null);
-    const currentStage = Math.min(4, Math.max(experiment?.currentStage || 1, 1));
-    const lastSavedAt = experiment?.lastSavedAt ?? null;
+    const [reopenStage, setReopenStage] = useState<number | null>(null);
 
-    const registerStageSave = useCallback((saveHandler: (() => Promise<boolean>) | null) => {
-        stageSaveHandlerRef.current = saveHandler;
-    }, []);
-
-    // Load experiment data
     useEffect(() => {
-        async function loadExperiment() {
-            if (!taskId) {
-                setNotFound(true);
+        if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) { setNotFound(true); setLoading(false); return; }
+        void Promise.all([experimentApi.get(numericTaskId), tasksApi.get(numericTaskId)]).then(([experimentResponse, taskResponse]) => {
+            if (!taskResponse.success || !taskResponse.data) {
+                const code = taskResponse.error?.code;
+                if (code === "TOPIC_DELETED" || code === "TASK_REVOKED") setAccessDenied(code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
+                else setNotFound(true);
                 return;
             }
+            setTaskName(taskResponse.data.name);
+            setDeadline(taskResponse.data.deadline);
+            setRedirect(getExperimentRouteRedirect({ taskId: numericTaskId, publishedAt: taskResponse.data.publishedAt, deadline: taskResponse.data.deadline, status: taskResponse.data.status }));
+            if (experimentResponse.success && experimentResponse.data) setExperiment(experimentResponse.data);
+            else setNotFound(true);
+        }).finally(() => setLoading(false));
+    }, [numericTaskId]);
 
-            setLoading(true);
-            setNotFound(false);
-            setAccessDeniedVariant(null);
-            setRedirectTarget(null);
-            try {
-                const numericTaskId = parseInt(taskId);
-                const [experimentRes, taskRes] = await Promise.all([
-                    experimentApi.get(numericTaskId),
-                    tasksApi.get(numericTaskId),
-                ]);
+    const completeStage = useCallback(async (stage: number, data: Record<string, unknown>) => {
+        setIsSaving(true); setSaveError(null);
+        const response = await experimentApi.completeStage(numericTaskId, stage, data);
+        setIsSaving(false);
+        if (response.success && response.data) { setExperiment(response.data); return true; }
+        setSaveError(response.error?.message ?? "阶段保存失败，请重试");
+        return false;
+    }, [numericTaskId]);
 
-                if (taskRes.success && taskRes.data) {
-                    setTaskName(taskRes.data.name);
-                    setDeadline(taskRes.data.deadline ?? null);
-                    const nextRedirect = getExperimentRouteRedirect({
-                        taskId: numericTaskId,
-                        publishedAt: taskRes.data.publishedAt,
-                        deadline: taskRes.data.deadline,
-                        status: taskRes.data.status,
-                    });
-                    if (nextRedirect) {
-                        setRedirectTarget(nextRedirect);
-                    }
-                } else if (taskRes.error?.code === "TOPIC_DELETED" || taskRes.error?.code === "TASK_REVOKED") {
-                    setExperiment(null);
-                    setAccessDeniedVariant(taskRes.error?.code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted");
-                    return;
-                } else {
-                    setExperiment(null);
-                    setNotFound(true);
-                    return;
-                }
+    const applyReopen = async () => {
+        if (reopenStage === null) return;
+        const response = await experimentApi.reopenStage(numericTaskId, reopenStage);
+        if (response.success && response.data) setExperiment(response.data);
+        else setSaveError(response.error?.message ?? "无法重新编辑该阶段");
+        setReopenStage(null);
+    };
 
-                if (experimentRes.success && experimentRes.data) {
-                    const normalizedExperiment = {
-                        ...experimentRes.data,
-                        currentStage: Math.min(4, Math.max(experimentRes.data.currentStage || 1, 1)),
-                    };
-                    clearLegacyTaskReportDraft(normalizedExperiment.taskId);
-                    if (normalizedExperiment.currentStage < 4) {
-                        clearReportDraft(normalizedExperiment.id);
-                    }
-                    setExperiment(normalizedExperiment);
-                } else if (experimentRes.error?.code === "TOPIC_DELETED" || experimentRes.error?.code === "TASK_REVOKED") {
-                    setExperiment(null);
-                    setAccessDeniedVariant(
-                        experimentRes.error?.code === "TASK_REVOKED" ? "task_revoked" : "topic_deleted"
-                    );
-                } else {
-                    setExperiment(null);
-                    setNotFound(true);
-                }
-            } catch (error) {
-                console.error("Failed to load experiment:", error);
-                setExperiment(null);
-                setNotFound(true);
-            } finally {
-                setLoading(false);
-            }
-        }
-        loadExperiment();
-    }, [taskId]);
-
-    // Save experiment data（samplePlan 仅含核心决策参数；高级工具完整中间状态不入库，仅保留最小来源标签）
-    const saveExperiment = useCallback(async (data: Partial<{
-        currentStage: number;
-        questionnaire: QuestionnaireData;
-        samplePlan: SamplePlanData;
-        samplingResults: SamplingResultsData;
-        reportContent: string;
-    }>) => {
-        if (!taskId) return false;
-
-        setIsSaving(true);
-        setSaveError(null);
-        try {
-            const res = await experimentApi.save(parseInt(taskId), data);
-            if (res.success && res.data) {
-                const normalizedExperiment = {
-                    ...res.data,
-                    currentStage: Math.min(4, Math.max(res.data.currentStage || 1, 1)),
-                };
-                clearLegacyTaskReportDraft(normalizedExperiment.taskId);
-                if (normalizedExperiment.currentStage < 4) {
-                    clearReportDraft(normalizedExperiment.id);
-                }
-                setExperiment(normalizedExperiment);
-                return true;
-            }
-            setSaveError(res.error?.message ?? "保存失败，请稍后重试");
-            return false;
-        } catch (error) {
-            console.error("Failed to save experiment:", error);
-            setSaveError("保存失败，请稍后重试");
-            return false;
-        } finally {
-            setIsSaving(false);
-        }
-    }, [taskId]);
-
-    // Manual save button handler
-    const handleSave = useCallback(async () => {
-        if (stageSaveHandlerRef.current) {
-            await stageSaveHandlerRef.current();
-            return;
-        }
-        await saveExperiment({ currentStage });
-    }, [currentStage, saveExperiment]);
-
-    const handlePrevStage = useCallback(() => {
-        if (currentStage > 1) {
-            setTargetStage(currentStage - 1);
-            setConfirmRollbackOpen(true);
-        }
-    }, [currentStage]);
-
-    const applyRollback = useCallback(async () => {
-        if (!taskId || targetStage === null) return;
-        const res = await experimentApi.reset(Number(taskId), { resetToStage: targetStage });
-        if (res.success && res.data) {
-            clearLegacyTaskReportDraft(res.data.taskId);
-            if (res.data.currentStage <= 3) {
-                clearReportDraft(res.data.id);
-            }
-            setExperiment(res.data);
-        }
-        setConfirmRollbackOpen(false);
-    }, [taskId, targetStage]);
-
-    // Deadline countdown timer - updates every minute
-    const [now, setNow] = useState(() => Date.now());
-    useEffect(() => {
-        if (!deadline) return;
-        const timer = window.setInterval(() => setNow(Date.now()), 60_000);
-        return () => window.clearInterval(timer);
-    }, [deadline]);
-
+    const [now, setNow] = useState(Date.now());
+    useEffect(() => { if (!deadline) return; const timer = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(timer); }, [deadline]);
     const deadlineInfo = useMemo(() => {
         if (!deadline) return null;
-        const deadlineMs = new Date(deadline).getTime();
-        const diff = deadlineMs - now;
-        if (diff <= 0) return { passed: true, text: "已截止", level: "expired" as const };
-        const hours = diff / (1000 * 60 * 60);
-        const days = Math.floor(hours / 24);
-        const remainHours = Math.floor(hours % 24);
-        const remainMinutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        if (hours <= 24) return { passed: false, text: `剩余 ${Math.floor(hours)} 小时 ${remainMinutes} 分钟`, level: "urgent" as const };
-        if (days <= 7) return { passed: false, text: `剩余 ${days} 天 ${remainHours} 小时`, level: "warning" as const };
-        return { passed: false, text: `剩余 ${days} 天`, level: "normal" as const };
+        const diff = new Date(deadline).getTime() - now;
+        if (diff <= 0) return { text: "已截止", urgent: true };
+        const hours = Math.floor(diff / 3_600_000);
+        return { text: hours < 24 ? `剩余 ${hours} 小时` : `剩余 ${Math.floor(hours / 24)} 天`, urgent: hours < 24 };
     }, [deadline, now]);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
-            </div>
-        );
-    }
-
-    if (accessDeniedVariant) {
-        return <TopicDeletedState variant={accessDeniedVariant} />;
-    }
-
-    if (redirectTarget) {
-        return <Navigate to={redirectTarget} replace />;
-    }
-
-    if (notFound || !experiment) {
-        return <Navigate to="/" replace />;
-    }
-
+    if (loading) return <div className="grid place-items-center py-24"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+    if (accessDenied) return <TopicDeletedState variant={accessDenied} />;
+    if (redirect) return <Navigate to={redirect} replace />;
+    if (notFound || !experiment) return <Navigate to="/" replace />;
+    const currentStage = Math.max(1, Math.min(4, experiment.currentStage));
+    const completed = [experiment.stage1CompletedAt, experiment.stage2CompletedAt, experiment.stage3CompletedAt, experiment.stage4CompletedAt];
     const renderStage = () => {
-        const stageToRender = Math.min(4, Math.max(currentStage, 1));
-
-        switch (stageToRender) {
-            case 1:
-                return <QuestionnaireDesign />;
-            case 2:
-                return <SamplePlanning onPrev={handlePrevStage} />;
-            case 3:
-                return <SamplingExecution onPrev={handlePrevStage} />;
-            case 4:
-                return <AnalysisReport onPrev={handlePrevStage} onSubmit={() => {
-                    if (taskId) {
-                        navigate(`/task/${taskId}/preview`);
-                    }
-                }} />;
-            default:
-                return null;
-        }
+        if (currentStage === 1) return <QuestionnaireDesign />;
+        if (currentStage === 2) return <SamplePlanning onPrev={() => setReopenStage(1)} />;
+        if (currentStage === 3) return <SamplingExecution onPrev={() => setReopenStage(2)} />;
+        return <AnalysisReport onPrev={() => setReopenStage(3)} onSubmit={() => navigate(`/task/${numericTaskId}/preview`)} />;
     };
-
-    const contextValue: ExperimentContextValue = {
-        experiment,
-        populationSize: experiment.populationSize,
-        isSaving,
-        lastSavedAt,
-        registerStageSave,
-        saveExperiment,
-    };
-
 
     return (
-        <ExperimentContext.Provider value={contextValue}>
+        <ExperimentContext.Provider value={{ experiment, populationSize: experiment.populationSize, isSaving, completeStage }}>
             <div className="pb-12" data-testid="student-experiment-layout">
-                {/* Sticky header: top bar + compact stage navigation */}
-                <div className="sticky top-[4rem] z-40 bg-background/90 backdrop-blur -mt-2 border-b border-border/50">
-                    {/* Row 1: Title + actions */}
-                    <div className="flex justify-between items-center pt-2 pb-2 px-0">
-                        <div className="flex items-center gap-2">
-                            <Link to="/">
-                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground hover:bg-muted" title="返回首页">
-                                    <Home className="w-4 h-4" />
-                                </Button>
-                            </Link>
-                            <Link to={`/task/${taskId}`}>
-                                <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted hidden sm:flex">
-                                    <ArrowLeft className="w-4 h-4" />
-                                    退出实验
-                                </Button>
-                            </Link>
-                            <h1 className="text-sm font-semibold text-foreground border-l border-input pl-4 ml-2 line-clamp-1 max-w-[200px] sm:max-w-md">
-                                {taskName || `Experiment #${experiment.taskId}`}
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            {deadlineInfo && (
-                                <span className={`text-xs font-medium flex items-center gap-1 hidden sm:flex ${
-                                    deadlineInfo.level === "urgent" ? "text-destructive" :
-                                    deadlineInfo.level === "warning" ? "text-warning" :
-                                    deadlineInfo.level === "expired" ? "text-muted-foreground" :
-                                    "text-muted-foreground"
-                                }`}>
-                                    {deadlineInfo.level === "urgent" ? (
-                                        <AlertCircle className="w-3.5 h-3.5" />
-                                    ) : (
-                                        <Clock className="w-3.5 h-3.5" />
-                                    )}
-                                    {deadlineInfo.text}
-                                </span>
-                            )}
-                            {lastSavedAt && (
-                                <span className="text-xs text-muted-foreground font-mono hidden sm:inline-block">
-                                    已保存于 {new Date(lastSavedAt).toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai" })}
-                                </span>
-                            )}
-                            <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving} data-testid="student-experiment-save" className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground">
-                                {isSaving ? (
-                                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                ) : (
-                                    <Save className="w-3.5 h-3.5 mr-1.5" />
-                                )}
-                                保存
-                            </Button>
-                        </div>
+                <div className="sticky top-16 z-40 -mt-2 border-b border-border/50 bg-background/90 backdrop-blur">
+                    <div className="flex items-center justify-between py-2">
+                        <div className="flex items-center gap-2"><Link to="/"><Button variant="ghost" size="icon"><Home className="h-4 w-4" /></Button></Link><Link to={`/task/${numericTaskId}`}><Button variant="ghost" className="hidden gap-2 sm:flex"><ArrowLeft className="h-4 w-4" />退出实验</Button></Link><h1 className="ml-2 line-clamp-1 border-l border-border pl-4 text-sm font-semibold">{taskName}</h1></div>
+                        {deadlineInfo && <span className={`hidden items-center gap-1 text-xs sm:flex ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
                     </div>
-
-                    {saveError && (
-                        <div
-                            className="mb-2 rounded-lg border border-destructive/30 bg-destructive/20 px-3 py-2 text-sm text-destructive"
-                            data-testid="student-experiment-save-error"
-                        >
-                            {saveError}
-                        </div>
-                    )}
-
-                    {/* Row 2: Compact stage progress (always visible) */}
-                    <div className="flex items-center gap-3 pb-2.5 px-1 overflow-x-auto scrollbar-hide" data-testid="student-experiment-stages">
+                    {saveError && <div className="mb-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{saveError}</div>}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2.5" data-testid="student-experiment-stages">
                         {stages.map((stage, index) => {
-                            const stageNum = index + 1;
-                            const isCompleted = stageNum < currentStage;
-                            const isCurrent = stageNum === currentStage;
+                            const number = index + 1;
+                            const isCurrent = number === currentStage;
+                            const isCompleted = completed[index] !== null;
                             const Icon = stage.icon;
-
-                            return (
-                                <div key={stage.name} className="flex items-center gap-2">
-                                    {index > 0 && (
-                                        <ChevronRight className={`w-3 h-3 flex-shrink-0 ${isCompleted || isCurrent ? "text-muted-foreground" : "text-muted-foreground"}`} />
-                                    )}
-                                    <button
-                                        onClick={() => {
-                                            if (stageNum < currentStage) {
-                                                setTargetStage(stageNum);
-                                                setConfirmRollbackOpen(true);
-                                            }
-                                        }}
-                                        disabled={stageNum >= currentStage}
-                                        data-testid={`student-experiment-stage-${stageNum}`}
-                                        aria-label={`阶段 ${stageNum}: ${stage.name}`}
-                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 disabled:cursor-default ${
-                                            isCurrent
-                                                ? "bg-primary/20 text-primary border border-primary/30"
-                                                : isCompleted
-                                                    ? "text-success hover:bg-success/10 cursor-pointer"
-                                                    : "text-muted-foreground"
-                                        }`}
-                                    >
-                                        <span className="relative flex-shrink-0">
-                                            {isCompleted ? (
-                                                <CheckCircle2 className="w-3.5 h-3.5 text-success" />
-                                            ) : (
-                                                <Icon className={`w-3.5 h-3.5 ${isCurrent ? "text-primary" : "text-muted-foreground"}`} />
-                                            )}
-                                        </span>
-                                        <span className="hidden sm:inline">{stage.name}</span>
-                                        <span className="sm:hidden">{stageNum}</span>
-                                    </button>
-                                </div>
-                            );
+                            return <div key={stage.name} className="flex items-center gap-2">{index > 0 && <ChevronRight className="h-3 w-3 text-muted-foreground" />}<button disabled={number >= currentStage || !isCompleted} onClick={() => setReopenStage(number)} className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-medium ${isCurrent ? "border border-primary/30 bg-primary/15 text-primary" : isCompleted ? "text-success hover:bg-success/10" : "text-muted-foreground"}`}>{isCompleted && !isCurrent ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}<span className="hidden sm:inline">{stage.name}</span><span className="sm:hidden">{number}</span></button></div>;
                         })}
-                        <div className="ml-auto text-xs font-bold text-primary font-mono flex-shrink-0">
-                            {Math.round((currentStage / stages.length) * 100)}%
-                        </div>
                     </div>
                 </div>
-
-                {/* Stage description card */}
-                <div className="mt-6 mb-6">
-                    {(() => {
-                        const currentStageConfig = stages[currentStage - 1] ?? stages[0];
-                        const StageIcon = currentStageConfig.icon;
-                        return (
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card/50 border border-border/50">
-                                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/15 border border-primary/20 flex-shrink-0">
-                                    <StageIcon className="w-4 h-4 text-primary" />
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="text-sm font-semibold text-foreground">
-                                        阶段 {currentStage}: {currentStageConfig.name}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground mt-0.5">
-                                        {currentStageConfig.description}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })()}
-                </div>
-
-                {/* Stage Content */}
-                <div className="min-h-[500px] animate-in slide-in-from-bottom-4 duration-500">
-                    {renderStage()}
-                </div>
+                <div className="my-6 flex items-center gap-3 rounded-xl border border-border bg-card/50 px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-sm font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-xs text-muted-foreground">{stages[currentStage - 1]!.description}。仅点击阶段完成按钮时保存。</p></div></div>
+                <div className="min-h-[500px]">{renderStage()}</div>
             </div>
-
-            <AlertDialog open={confirmRollbackOpen} onOpenChange={setConfirmRollbackOpen}>
-                <AlertDialogContent className="bg-card border-border text-foreground" data-testid="student-experiment-rollback-dialog">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-foreground">确认返回阶段</AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="text-muted-foreground text-base leading-relaxed">
-                                返回到“<span className="text-primary font-medium">{targetStage ? stages[targetStage - 1]!.name : ""}</span>”将导致以下后续阶段的数据被<strong className="text-destructive">永久清空</strong>：
-                                <ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-muted-foreground">
-                                    {targetStage !== null && targetStage <= 1 && <li>样本量规划数据</li>}
-                                    {targetStage !== null && targetStage <= 2 && <li>抽样执行结果</li>}
-                                    {targetStage !== null && targetStage <= 3 && <li>分析报告内容</li>}
-                                </ul>
-                                <div className="mt-4 p-3 bg-warning/10 border border-warning/20 rounded-lg text-warning text-xs">
-                                    ⚠️ 警告：此操作不可撤销。
-                                </div>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction onClick={applyRollback} data-testid="student-experiment-rollback-confirm" className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">确认返回</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>当前阶段内容会保留，该阶段之后的内容将被清空。确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </ExperimentContext.Provider>
     );
 }

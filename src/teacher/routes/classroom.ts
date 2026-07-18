@@ -1,21 +1,38 @@
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
-import { assistant, assistantClass, class_, loginLog, semester, student } from "../../db/schema";
+import { class_, semester, student } from "../../db/schema";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
-import { ASSISTANT_USER_TYPE, getPrimaryTeacherIdOrThrow } from "./auth";
+import { clearUserSessionsForUser } from "../../server/user-session";
+import { STUDENT_USER_TYPE } from "../../student/routes/auth";
+import { getPrimaryTeacherIdOrThrow } from "./auth";
 
-const STUDENT_USER_TYPE = 4;
-const DELETED_ASSISTANT_SUFFIX = "(已删除)";
+const MAX_IMPORT_ROWS = 500;
+const MAX_STUDENT_ID_LENGTH = 50;
+const MAX_STUDENT_NAME_LENGTH = 100;
+const MAX_STUDENT_EMAIL_LENGTH = 120;
 
-function isDeletedAssistantName(name: string | null | undefined) {
-    return !!name && name.endsWith(DELETED_ASSISTANT_SUFFIX);
+function normalizeStudentId(value: string) {
+    return value.toLocaleLowerCase("en-US");
+}
+
+function parseRouteId(req: Request, name: string) {
+    const id = Number.parseInt(getRouteParam(req, name) ?? "", 10);
+    return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+async function requireOwnedClass(classId: number, teacherId: number) {
+    const [row] = await db
+        .select({ id: class_.id })
+        .from(class_)
+        .where(and(eq(class_.id, classId), eq(class_.teacherId, teacherId)));
+    return row ?? null;
 }
 
 const classRoutes: RouteDefinition = {
     async GET(req) {
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
+        const teacherId = getPrimaryTeacherIdOrThrow(req);
         const rows = await db
             .select({
                 id: class_.id,
@@ -27,406 +44,197 @@ const classRoutes: RouteDefinition = {
             .from(class_)
             .leftJoin(semester, eq(class_.semesterId, semester.id))
             .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
-            .where(eq(class_.teacherId, currentTeacherId))
+            .where(eq(class_.teacherId, teacherId))
             .groupBy(class_.id, semester.id)
             .orderBy(desc(class_.createdAt));
-
         return json(rows);
-    }
+    },
 };
 
 const classStudentsRoutes: RouteDefinition = {
     async GET(req) {
-        const classId = Number(getRouteParam(req, "classId"));
-
-        if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
-
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
-        const [cls] = await db
-            .select({ id: class_.id })
-            .from(class_)
-            .where(and(eq(class_.id, classId), eq(class_.teacherId, currentTeacherId)));
-
-        if (!cls) return error("无权限访问该班级", "FORBIDDEN", 403);
-
-        const rows = await db
-            .select({
-                id: student.id,
-                studentId: student.studentId,
-                name: student.name,
-                email: student.email,
-                status: student.status,
-                isFirstLogin: student.isFirstLogin,
-                lastLogin: sql<string>`(select max(login_at) from login_log where user_id = ${student.id} and user_type = ${STUDENT_USER_TYPE})`,
-            })
-            .from(student)
-            .where(and(eq(student.classId, classId), isNull(student.deletedAt)));
-
-        return json(rows);
+        const classId = parseRouteId(req, "classId");
+        if (!classId) return error("无效的班级ID", "INVALID_ID");
+        if (!(await requireOwnedClass(classId, getPrimaryTeacherIdOrThrow(req)))) {
+            return error("无权限访问该班级", "FORBIDDEN", 403);
+        }
+        return json(
+            await db
+                .select({
+                    id: student.id,
+                    studentId: student.studentId,
+                    name: student.name,
+                    email: student.email,
+                    status: student.status,
+                })
+                .from(student)
+                .where(and(eq(student.classId, classId), isNull(student.deletedAt)))
+                .orderBy(student.studentId),
+        );
     },
 
     async POST(req) {
-        const classId = Number(getRouteParam(req, "classId"));
-
-        if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
-
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
-        const [cls] = await db
-            .select({ id: class_.id })
-            .from(class_)
-            .where(and(eq(class_.id, classId), eq(class_.teacherId, currentTeacherId)));
-
-        if (!cls) return error("无权限访问该班级", "FORBIDDEN", 403);
-
-        const body = await parseBody<{ studentId: string; name: string; email?: string }>(req);
-        if (!body.studentId || !body.name) return error("Missing required fields", "VALIDATION_ERROR");
-
-        const [exist] = await db.select().from(student).where(eq(student.studentId, body.studentId));
-        if (exist) return error("Student ID already exists", "DUPLICATE_ERROR");
-
-        const defaultPassword = await Bun.password.hash(body.studentId);
-
+        const classId = parseRouteId(req, "classId");
+        if (!classId) return error("无效的班级ID", "INVALID_ID");
+        if (!(await requireOwnedClass(classId, getPrimaryTeacherIdOrThrow(req)))) {
+            return error("无权限访问该班级", "FORBIDDEN", 403);
+        }
+        const body = await parseBody<{ studentId?: string; name?: string; email?: string }>(req);
+        const studentId = body.studentId?.trim() ?? "";
+        const name = body.name?.trim() ?? "";
+        const email = body.email?.trim() ?? "";
+        if (!studentId || !name) return error("学号和姓名不能为空", "VALIDATION_ERROR");
+        if (studentId.length > MAX_STUDENT_ID_LENGTH) return error("学号不能超过50个字符", "VALIDATION_ERROR");
+        if (name.length > MAX_STUDENT_NAME_LENGTH) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
+        if (email.length > MAX_STUDENT_EMAIL_LENGTH) return error("邮箱不能超过120个字符", "VALIDATION_ERROR");
+        if ((await db.select({ id: student.id }).from(student).where(eq(student.studentId, studentId))).length) {
+            return error("学号已存在", "DUPLICATE_ERROR", 409);
+        }
         await db.insert(student).values({
-            studentId: body.studentId,
-            name: body.name,
-            email: body.email?.trim() || null,
+            studentId,
+            name,
+            email: email || null,
             classId,
-            password: defaultPassword,
-            status: 1,
-            isFirstLogin: 1,
+            password: await Bun.password.hash(studentId),
         });
-
         return json({ success: true }, 201);
-    }
+    },
 };
 
 const classStudentsImportRoutes: RouteDefinition = {
     async POST(req) {
-        const classId = Number(getRouteParam(req, "classId"));
-
-        if (isNaN(classId)) return error("Invalid Class ID", "INVALID_ID");
-
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
-        const [cls] = await db
-            .select({ id: class_.id })
-            .from(class_)
-            .where(and(eq(class_.id, classId), eq(class_.teacherId, currentTeacherId)));
-
-        if (!cls) return error("无权限访问该班级", "FORBIDDEN", 403);
+        const classId = parseRouteId(req, "classId");
+        if (!classId) return error("无效的班级ID", "INVALID_ID");
+        if (!(await requireOwnedClass(classId, getPrimaryTeacherIdOrThrow(req)))) {
+            return error("无权限访问该班级", "FORBIDDEN", 403);
+        }
 
         const formData = await req.formData();
         const file = formData.get("file");
+        if (!(file instanceof File)) return error("请选择文件", "VALIDATION_ERROR", 400);
 
-        if (!file || !(file instanceof File)) {
-            return error("请选择文件", "VALIDATION_ERROR", 400);
+        let rows: Array<Record<string, unknown>>;
+        try {
+            const buffer = await file.arrayBuffer();
+            const workbook = file.name.toLowerCase().endsWith(".csv")
+                ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
+                : XLSX.read(buffer, { type: "array" });
+            const firstSheetName = workbook.SheetNames[0];
+            const firstSheet = firstSheetName ? workbook.Sheets[firstSheetName] : undefined;
+            rows = firstSheet ? XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: "" }) : [];
+        } catch {
+            return error("无法读取表格文件", "INVALID_FILE", 400);
         }
 
-        const buffer = await file.arrayBuffer();
-        const fileName = file.name.toLowerCase();
-        const workbook = fileName.endsWith(".csv")
-            ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
-            : XLSX.read(buffer, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        if (!sheetName) return error("文件内容为空", "VALIDATION_ERROR", 400);
-
-        const sheet = workbook.Sheets[sheetName];
-        if (!sheet) return error("文件内容为空", "VALIDATION_ERROR", 400);
-        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
-
-        if (rows.length === 0) {
-            return error("文件内容为空", "VALIDATION_ERROR", 400);
-        }
-
-        if (rows.length > 500) {
-            return error("单次导入最多500行", "VALIDATION_ERROR", 400);
-        }
+        if (rows.length === 0) return error("文件内容为空", "VALIDATION_ERROR", 400);
+        if (rows.length > MAX_IMPORT_ROWS) return error(`单次导入最多${MAX_IMPORT_ROWS}行`, "VALIDATION_ERROR", 400);
 
         const errors: Array<{ row: number; reason: string }> = [];
-        const toInsert: Array<{ studentId: string; name: string; email?: string }> = [];
-
-        rows.forEach((row, index) => {
-            const rowIndex = index + 2;
-            const studentId = String(row.studentId ?? row.学号 ?? row.id ?? "").trim();
-            const name = String(row.name ?? row.姓名 ?? "").trim();
-            const email = String(row.email ?? row.邮箱 ?? "").trim();
-
+        const seenIds = new Set<string>();
+        const parsed = rows.flatMap((row, index) => {
+            const rowNumber = index + 2;
+            const studentId = String(row.studentId ?? row["学号"] ?? row.id ?? "").trim();
+            const name = String(row.name ?? row["姓名"] ?? "").trim();
+            const email = String(row.email ?? row["邮箱"] ?? "").trim();
             if (!studentId || !name) {
-                errors.push({ row: rowIndex, reason: "缺少学号或姓名" });
-                return;
+                errors.push({ row: rowNumber, reason: "缺少学号或姓名" });
+                return [];
             }
-
-            toInsert.push({ studentId, name, email: email || undefined });
+            if (studentId.length > MAX_STUDENT_ID_LENGTH) {
+                errors.push({ row: rowNumber, reason: "学号不能超过50个字符" });
+                return [];
+            }
+            if (name.length > MAX_STUDENT_NAME_LENGTH) {
+                errors.push({ row: rowNumber, reason: "姓名不能超过100个字符" });
+                return [];
+            }
+            if (email.length > MAX_STUDENT_EMAIL_LENGTH) {
+                errors.push({ row: rowNumber, reason: "邮箱不能超过120个字符" });
+                return [];
+            }
+            const normalizedStudentId = normalizeStudentId(studentId);
+            if (seenIds.has(normalizedStudentId)) {
+                errors.push({ row: rowNumber, reason: `文件中学号重复: ${studentId}` });
+                return [];
+            }
+            seenIds.add(normalizedStudentId);
+            return [{ studentId, normalizedStudentId, name, email: email || null, row: rowNumber }];
         });
 
-        if (toInsert.length === 0) {
-            return json({ successCount: 0, failureCount: errors.length, errors });
+        const candidates = parsed;
+        const existing = candidates.length
+            ? await db
+                  .select({ studentId: student.studentId })
+                  .from(student)
+                  .where(sql`${student.studentId} IN (${sql.join(candidates.map((item) => item.studentId), sql`, `)})`)
+            : [];
+        const existingIds = new Set(existing.map((item) => normalizeStudentId(item.studentId)));
+        for (const item of candidates) {
+            if (existingIds.has(item.normalizedStudentId)) {
+                errors.push({ row: item.row, reason: `学号已存在: ${item.studentId}` });
+            }
         }
+        const inserts = candidates.filter((item) => !existingIds.has(item.normalizedStudentId));
+        const hashes = await Promise.all(inserts.map((item) => Bun.password.hash(item.studentId)));
 
-        const existing = await db
-            .select({ studentId: student.studentId })
-            .from(student)
-            .where(sql`${student.studentId} IN (${sql.join(toInsert.map((s) => s.studentId), sql`, `)})`);
-
-        const existingSet = new Set(existing.map((e) => e.studentId));
-        const finalInsert = toInsert.filter((item) => !existingSet.has(item.studentId));
-
-        existingSet.forEach((id) => {
-            errors.push({ row: -1, reason: `学号已存在: ${id}` });
-        });
-
-        // Pre-compute hashed passwords before the transaction to minimise lock time
-        const hashedPasswords = await Promise.all(
-            finalInsert.map((item) => Bun.password.hash(item.studentId))
-        );
-
-        await db.transaction(async (tx) => {
-            for (let i = 0; i < finalInsert.length; i++) {
-                const item = finalInsert[i]!;
-                await tx.insert(student).values({
+        if (inserts.length) {
+            await db.insert(student).values(
+                inserts.map((item, index) => ({
                     studentId: item.studentId,
                     name: item.name,
-                    email: item.email ?? null,
+                    email: item.email,
                     classId,
-                    password: hashedPasswords[i]!,
-                    status: 1,
-                    isFirstLogin: 1,
-                });
-            }
-        });
-
-        return json({
-            successCount: finalInsert.length,
-            failureCount: errors.length,
-            errors,
-        });
-    }
+                    password: hashes[index]!,
+                })),
+            );
+        }
+        return json({ successCount: inserts.length, failureCount: errors.length, errors });
+    },
 };
 
 const studentRoutes: RouteDefinition = {
     async PUT(req) {
-        const studentId = Number(getRouteParam(req, "id"));
-        if (isNaN(studentId)) return error("Invalid ID", "INVALID_ID");
-
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
+        const id = parseRouteId(req, "id");
+        if (!id) return error("无效的学生ID", "INVALID_ID");
+        const teacherId = getPrimaryTeacherIdOrThrow(req);
         const [owned] = await db
-            .select({ id: student.id, studentId: student.studentId })
+            .select({ id: student.id, studentId: student.studentId, status: student.status })
             .from(student)
             .innerJoin(class_, eq(student.classId, class_.id))
-            .where(and(eq(student.id, studentId), eq(class_.teacherId, currentTeacherId)));
-
+            .where(and(eq(student.id, id), eq(class_.teacherId, teacherId), isNull(student.deletedAt)));
         if (!owned) return error("无权限操作该学生", "FORBIDDEN", 403);
 
-        const body = await parseBody<{ action: "reset_password" | "toggle_status" }>(req);
-
+        const body = await parseBody<{ action?: "reset_password" | "toggle_status" }>(req);
         if (body.action === "reset_password") {
-            const newPassword = await Bun.password.hash(owned.studentId);
-            await db.update(student).set({
-                password: newPassword,
-                isFirstLogin: 1,
-                loginFailCount: 0,
-                lockedUntil: null,
-            }).where(eq(student.id, studentId));
+            await db
+                .update(student)
+                .set({ password: await Bun.password.hash(owned.studentId), updatedAt: new Date() })
+                .where(eq(student.id, id));
+            await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
         } else if (body.action === "toggle_status") {
-            const [current] = await db.select({ status: student.status }).from(student).where(eq(student.id, studentId));
-            if (current) {
-                const newStatus = current.status === 1 ? 0 : 1;
-                await db.update(student).set({ status: newStatus }).where(eq(student.id, studentId));
-            }
+            const status = owned.status === 1 ? 0 : 1;
+            await db.update(student).set({ status, updatedAt: new Date() }).where(eq(student.id, id));
+            if (status === 0) await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
+        } else {
+            return error("无效的操作", "VALIDATION_ERROR");
         }
-
         return json({ success: true });
     },
 
     async DELETE(req) {
-        const studentId = Number(getRouteParam(req, "id"));
-        if (isNaN(studentId)) return error("Invalid ID", "INVALID_ID");
-
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
+        const id = parseRouteId(req, "id");
+        if (!id) return error("无效的学生ID", "INVALID_ID");
+        const teacherId = getPrimaryTeacherIdOrThrow(req);
         const [owned] = await db
             .select({ id: student.id })
             .from(student)
             .innerJoin(class_, eq(student.classId, class_.id))
-            .where(and(eq(student.id, studentId), eq(class_.teacherId, currentTeacherId)));
-
+            .where(and(eq(student.id, id), eq(class_.teacherId, teacherId), isNull(student.deletedAt)));
         if (!owned) return error("无权限操作该学生", "FORBIDDEN", 403);
-
-        await db.update(student).set({ deletedAt: new Date(), status: 0 }).where(eq(student.id, studentId));
-        return json({ success: true });
-    }
-};
-
-const assistantRoutes: RouteDefinition = {
-    async GET(req) {
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
-        const assistants = await db
-            .select({
-                id: assistant.id,
-                account: assistant.account,
-                name: assistant.name,
-                status: assistant.status,
-            })
-            .from(assistant)
-            .where(eq(assistant.creatorTeacherId, currentTeacherId));
-
-        const visibleAssistants = assistants.filter((ast) => !isDeletedAssistantName(ast.name));
-
-        const results = await Promise.all(visibleAssistants.map(async (ast) => {
-            const classes = await db
-                .select({ name: class_.name, id: class_.id })
-                .from(assistantClass)
-                .innerJoin(class_, eq(assistantClass.classId, class_.id))
-                .where(eq(assistantClass.assistantId, ast.id));
-
-            const [lastLogin] = await db
-                .select({
-                    lastLogin: sql<string>`(select max(login_at) from login_log where user_id = ${ast.id} and user_type = ${ASSISTANT_USER_TYPE})`,
-                })
-                .from(loginLog)
-                .limit(1);
-
-            return {
-                id: ast.id,
-                name: ast.name,
-                studentId: ast.account,
-                email: "",
-                assignedClasses: classes.map((c) => c.name),
-                assignedClassIds: classes.map((c) => c.id),
-                status: ast.status,
-                lastLogin: lastLogin?.lastLogin ?? null,
-            };
-        }));
-
-        return json(results);
-    },
-
-    async POST(req) {
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-        const body = await parseBody<{ name: string; studentId: string }>(req);
-
-        if (!body.name || !body.studentId) return error("Missing fields", "VALIDATION_ERROR");
-
-        const [exist] = await db.select().from(assistant).where(eq(assistant.account, body.studentId));
-        if (exist) return error("Account already exists", "DUPLICATE_ERROR");
-
-        const defaultPassword = await Bun.password.hash(body.studentId);
-
-        await db.insert(assistant).values({
-            name: body.name,
-            account: body.studentId,
-            password: defaultPassword,
-            creatorTeacherId: currentTeacherId,
-            status: 1,
-        });
-
-        return json({ success: true }, 201);
-    }
-};
-
-const assistantItemRoutes: RouteDefinition = {
-    async PUT(req) {
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
-
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
-        const [owned] = await db
-            .select({ id: assistant.id, account: assistant.account, name: assistant.name, status: assistant.status })
-            .from(assistant)
-            .where(and(eq(assistant.id, id), eq(assistant.creatorTeacherId, currentTeacherId)));
-
-        if (!owned || isDeletedAssistantName(owned.name)) return error("无权限操作该助教", "FORBIDDEN", 403);
-
-        const body = await parseBody<{ action: "reset_password" | "toggle_status" | "delete" }>(req);
-
-        if (body.action === "reset_password") {
-            const newPassword = await Bun.password.hash(owned.account);
-            await db.update(assistant).set({
-                password: newPassword,
-                isFirstLogin: 1,
-                loginFailCount: 0,
-                lockedUntil: null,
-            }).where(eq(assistant.id, id));
-        } else if (body.action === "toggle_status") {
-            const newStatus = owned.status === 1 ? 0 : 1;
-            await db.update(assistant).set({ status: newStatus }).where(eq(assistant.id, id));
-        } else if (body.action === "delete") {
-            const newName = isDeletedAssistantName(owned.name) ? owned.name : `${owned.name}${DELETED_ASSISTANT_SUFFIX}`;
-            await db.transaction(async (tx) => {
-                await tx.delete(assistantClass).where(eq(assistantClass.assistantId, id));
-                await tx.update(assistant).set({ status: 0, name: newName }).where(eq(assistant.id, id));
-            });
-        }
-
+        await db.update(student).set({ deletedAt: new Date(), status: 0, updatedAt: new Date() }).where(eq(student.id, id));
+        await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
         return json({ success: true });
     },
-    async DELETE(req) {
-        const id = Number(getRouteParam(req, "id"));
-        if (isNaN(id)) return error("Invalid ID", "INVALID_ID");
-
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
-        const [owned] = await db
-            .select({ id: assistant.id, name: assistant.name })
-            .from(assistant)
-            .where(and(eq(assistant.id, id), eq(assistant.creatorTeacherId, currentTeacherId)));
-
-        if (!owned || isDeletedAssistantName(owned.name)) return error("无权限操作该助教", "FORBIDDEN", 403);
-
-        const newName = isDeletedAssistantName(owned.name) ? owned.name : `${owned.name}${DELETED_ASSISTANT_SUFFIX}`;
-        await db.transaction(async (tx) => {
-            await tx.delete(assistantClass).where(eq(assistantClass.assistantId, id));
-            await tx.update(assistant).set({ status: 0, name: newName }).where(eq(assistant.id, id));
-        });
-
-        return json({ success: true });
-    }
 };
 
-const assistantClassAssignRoutes: RouteDefinition = {
-    async POST(req) {
-        const assistantId = Number(getRouteParam(req, "id"));
-        if (isNaN(assistantId)) return error("Invalid ID", "INVALID_ID");
-
-        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
-
-        const [owned] = await db
-            .select({ id: assistant.id, name: assistant.name })
-            .from(assistant)
-            .where(and(eq(assistant.id, assistantId), eq(assistant.creatorTeacherId, currentTeacherId)));
-
-        if (!owned || isDeletedAssistantName(owned.name)) return error("无权限操作该助教", "FORBIDDEN", 403);
-
-        const body = await parseBody<{ classIds: number[] }>(req);
-
-        await db.transaction(async (tx) => {
-            await tx.delete(assistantClass).where(eq(assistantClass.assistantId, assistantId));
-
-            if (body.classIds && body.classIds.length > 0) {
-                for (const classId of body.classIds) {
-                    await tx.insert(assistantClass).values({
-                        assistantId,
-                        classId,
-                    });
-                }
-            }
-        });
-
-        return json({ success: true });
-    }
-};
-
-export {
-    assistantClassAssignRoutes,
-    assistantItemRoutes,
-    assistantRoutes,
-    classRoutes,
-    classStudentsImportRoutes,
-    classStudentsRoutes,
-    studentRoutes,
-};
+export { classRoutes, classStudentsImportRoutes, classStudentsRoutes, studentRoutes };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, FileText, Send, Loader2, CheckCircle2, AlertCircle, Maximize2 } from "lucide-react";
+import { ArrowLeft, FileText, Send, Loader2, AlertCircle, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { experimentApi, tasksApi, type ExperimentData, type TaskDetail, type Question } from "../api-client";
-import { getRichTextPlainLength } from "@/utils/rich-text";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import {
     formatSystematicRange,
@@ -29,9 +28,8 @@ import {
     getMarginOfErrorLabel,
 } from "../experiment/sample-plan-display";
 import { PPS_UNAVAILABLE_STATUS_MESSAGE } from "../experiment/sampling-messages";
-import { getPreviewSubmitBlocker } from "../experiment/preview-submit";
+import { getPreviewSubmitBlocker, isSubmissionCompleteResponse } from "../experiment/preview-submit";
 import { ImmersiveReportPreview } from "../components/ImmersiveReportPreview";
-import { clearReportDraft } from "../draft-sync";
 import { parseDeadline } from "@/utils/format";
 
 function QuestionPreview({ question, index }: { question: Question; index: number }) {
@@ -141,46 +139,13 @@ export function SubmissionPreview() {
             }
         }
 
-        if (!navigator.onLine) {
-            setError("网络连接异常，请检查网络后重试");
-            return;
-        }
-
         setSubmitting(true);
         try {
-            const nonRetryableCodes = new Set([
-                "TASK_DEADLINE",
-                "ALREADY_GRADED",
-                "ALREADY_SUBMITTED",
-                "REJECTED_NEED_RESET",
-                "INCOMPLETE",
-                "REPORT_TOO_SHORT",
-                "VERSION_CONFLICT",
-                "VALIDATION_ERROR",
-            ]);
-
-            const first = await experimentApi.submit(Number(taskId));
-            if (first.success || first.error?.code === "ALREADY_SUBMITTED") {
-                clearReportDraft(experiment.id);
-                navigate("/", { replace: true });
-                return;
+            const response = await experimentApi.submit(Number(taskId));
+            if (isSubmissionCompleteResponse(response)) {
+                navigate(`/task/${taskId}/result`, { replace: true });
             }
-
-            if (nonRetryableCodes.has(first.error?.code ?? "")) {
-                setError(first.error?.message ?? "提交失败");
-                return;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 800));
-
-            const second = await experimentApi.submit(Number(taskId));
-            if (second.success || second.error?.code === "ALREADY_SUBMITTED") {
-                clearReportDraft(experiment.id);
-                navigate("/", { replace: true });
-                return;
-            }
-
-            setError(second.error?.message ?? first.error?.message ?? "提交失败（已自动重试一次）");
+            else setError(response.error?.message ?? "提交失败");
         } catch (e) {
             setError(e instanceof Error ? e.message : "提交失败");
         } finally {
@@ -211,7 +176,6 @@ export function SubmissionPreview() {
     const samplePlan = experiment.samplePlan;
     const samplingResults = experiment.samplingResults;
     const reportContent = experiment.reportContent ?? "";
-    const reportLength = getRichTextPlainLength(reportContent);
     const submitBlocker = getPreviewSubmitBlocker({
         questionnaire,
         samplePlan,
@@ -219,7 +183,6 @@ export function SubmissionPreview() {
         reportContent,
         populationSize: experiment.populationSize,
     });
-    const reportLengthValid = reportLength >= 100 && reportLength <= 5000;
     const canSubmit = submitBlocker === null;
     const systematicAcceptedRange = getSystematicAcceptedRange(samplePlan?.finalSampleSize);
     const systematicSampleCount = samplingResults?.systematic?.sampleCount ?? null;

@@ -13,17 +13,6 @@ mock.module("@/components/ui/dialog", () => ({
     DialogTitle: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
 }));
 
-mock.module("@/components/ui/alert-dialog", () => ({
-    AlertDialog: ({ children, open }: { children: ReactNode; open?: boolean }) => (open ? <div data-testid="mock-alert-dialog">{children}</div> : null),
-    AlertDialogContent: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
-    AlertDialogDescription: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
-    AlertDialogFooter: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
-    AlertDialogHeader: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
-    AlertDialogTitle: ({ children, className }: { children: ReactNode; className?: string }) => <div className={className}>{children}</div>,
-    AlertDialogCancel: ({ children, className, onClick }: { children: ReactNode; className?: string; onClick?: () => void }) => <button className={className} onClick={onClick}>{children}</button>,
-    AlertDialogAction: ({ children, className, onClick }: { children: ReactNode; className?: string; onClick?: () => void }) => <button className={className} onClick={onClick}>{children}</button>,
-}));
-
 const { TaskHall } = await import("./TaskHall");
 
 function buildTask(overrides: Partial<StudentTask> = {}): StudentTask {
@@ -47,7 +36,6 @@ function buildAnnouncement(overrides: Partial<Announcement> = {}): Announcement 
         title: "系统维护通知",
         content: "<p>今晚 22:00 进行系统维护。</p>",
         createdAt: new Date(Date.now() - 60_000).toISOString(),
-        isRead: false,
         ...overrides,
     };
 }
@@ -82,7 +70,7 @@ test("TaskHall renders stats and filters by real task status", async () => {
         buildTask({ id: 1, status: "not_started", name: "未开始任务" }),
         buildTask({ id: 2, status: "in_progress", name: "进行中任务", progress: 50, currentStage: 2 }),
         buildTask({ id: 3, status: "rejected", name: "驳回任务", progress: 75, currentStage: 3, rejectReason: "请补充分析" }),
-        buildTask({ id: 6, status: "rejected", name: "已截止驳回任务", progress: 100, currentStage: 4, rejectReason: "已截止", deadline: new Date(Date.now() - 60_000).toISOString() }),
+        buildTask({ id: 6, status: "rejected", name: "已截止驳回任务", progress: 75, currentStage: 4, rejectReason: "已截止", deadline: new Date(Date.now() - 60_000).toISOString() }),
         buildTask({ id: 4, status: "submitted", name: "已提交任务", progress: 100, currentStage: 4 }),
         buildTask({ id: 5, status: "graded", name: "已批改任务", progress: 100, currentStage: 4, score: 95 }),
     ];
@@ -140,11 +128,11 @@ test("TaskHall renders stats and filters by real task status", async () => {
     });
 });
 
-test("TaskHall opens announcements and marks unread items as read when selected", async () => {
+test("TaskHall opens a simple read-only announcement", async () => {
     const tasks: StudentTask[] = [buildTask({ id: 1, status: "in_progress", name: "进行中任务" })];
     const announcements = [
-        buildAnnouncement({ id: 11, title: "系统维护通知", content: "<p>今晚 22:00 维护。</p>", isRead: false }),
-        buildAnnouncement({ id: 12, title: "课程安排更新", content: "<p>下周实验时间调整。</p>", isRead: true }),
+        buildAnnouncement({ id: 11, title: "系统维护通知", content: "<p>今晚 22:00 维护。</p>" }),
+        buildAnnouncement({ id: 12, title: "课程安排更新", content: "<p>下周实验时间调整。</p>" }),
     ];
 
     globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -158,12 +146,6 @@ test("TaskHall opens announcements and marks unread items as read when selected"
 
         if (url.endsWith("/api/student/announcements")) {
             return new Response(JSON.stringify({ success: true, data: announcements }), {
-                headers: { "Content-Type": "application/json" },
-            });
-        }
-
-        if (url.endsWith("/api/student/announcements/11/read")) {
-            return new Response(JSON.stringify({ success: true, data: { success: true } }), {
                 headers: { "Content-Type": "application/json" },
             });
         }
@@ -196,10 +178,10 @@ test("TaskHall opens announcements and marks unread items as read when selected"
     });
 
     const fetchMock = globalThis.fetch as unknown as ReturnType<typeof mock>;
-    expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/student/announcements/11/read"))).toBe(true);
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).includes("announcements")).length).toBe(1);
 });
 
-test("TaskHall rejected task card confirms restart and resets experiment", async () => {
+test("TaskHall rejected task continues the same experiment", async () => {
     const tasks: StudentTask[] = [
         buildTask({
             id: 7,
@@ -226,14 +208,6 @@ test("TaskHall rejected task card confirms restart and resets experiment", async
             });
         }
 
-        if (url.endsWith("/api/student/tasks/7/reset")) {
-            expect(init?.method).toBe("POST");
-            expect(init?.body).toBe(JSON.stringify({ resetToStage: 1, clearQuestionnaire: true }));
-            return new Response(JSON.stringify({ success: true, data: { currentStage: 1, status: 0 } }), {
-                headers: { "Content-Type": "application/json" },
-            });
-        }
-
         throw new Error(`Unhandled fetch: ${url} ${init?.method ?? "GET"}`);
     }) as unknown as typeof fetch;
 
@@ -251,14 +225,8 @@ test("TaskHall rejected task card confirms restart and resets experiment", async
     fireEvent.click(view.getByTestId("student-task-primary-7"));
 
     await waitFor(() => {
-        expect(view.getByText("确认重新开始实验")).toBeTruthy();
-    });
-
-    fireEvent.click(view.getByText("确认重新开始"));
-
-    await waitFor(() => {
         const fetchMock = globalThis.fetch as unknown as ReturnType<typeof mock>;
-        expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/student/tasks/7/reset"))).toBe(true);
+        expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/api/student/tasks/7/reset"))).toBe(false);
         expect(view.getByTestId("location-probe").textContent).toBe("/task/7/experiment");
     });
 });

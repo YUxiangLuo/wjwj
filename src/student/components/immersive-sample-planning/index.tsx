@@ -11,12 +11,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
 import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "../../experiment/sample-plan";
 import type { ConfidenceLevel } from "../../experiment/confidence-level";
 import { normalizeConfidenceLevel } from "../../experiment/confidence-level";
 import { formatMarginOfError } from "../../experiment/sample-plan-display";
-import type { SamplePlanData } from "../../api-client";
 import type { AdvancedNonStandardSampleSource } from "../sample-planning/advancedTabs";
 import type { Domain } from "../DomainEstimationManager";
 import type { SurveyVariable } from "../MultiVariableSamplePlan";
@@ -49,7 +47,7 @@ const PHASE_LABELS: Record<string, string> = {
     fourstep: "汇总 n",
     decision: "确认方案",
     quiz: "快速自检",
-    confirm: "确认保存",
+    confirm: "确认方案",
     launching: "进入抽样",
     done: "完成",
 };
@@ -66,8 +64,6 @@ interface Props {
     initialAdvancedPlanSource?: AdvancedNonStandardSampleSource | null;
     onComplete: (params: SampleParams) => void;
     onClose: () => void;
-    /** When provided, 「确认并保存」只写入 samplePlan 并关闭浮层，不进入抽样执行开场动画。未提供时（独立预览）仍会走启动动画。 */
-    saveExperiment?: (data: { samplePlan: SamplePlanData }) => Promise<boolean>;
     /** Called after the launch animation completes (phase reaches "done"). */
     onLaunchComplete?: () => void;
 }
@@ -84,7 +80,6 @@ export function ImmersiveSamplePlanning({
     initialAdvancedPlanSource = null,
     onComplete,
     onClose,
-    saveExperiment,
     onLaunchComplete,
 }: Props) {
     // --- Parameter state (shared across all phases) ---
@@ -152,6 +147,7 @@ export function ImmersiveSamplePlanning({
         nonResponseRate,
         finalSampleSize,
         recommendedSize,
+        ...(advancedPlanSource ? { advancedPlanSource } : {}),
     };
 
     const paramsRef = useRef(params);
@@ -169,45 +165,7 @@ export function ImmersiveSamplePlanning({
     // --- Phase navigation ---
     const { phase, setPhase, direction, progress, goNext, goPrev, jumpTo, skipQuiz } = usePhaseState();
 
-    // --- Save & confirm ---
-    const [saving, setSaving] = useState(false);
-    const savingRef = useRef(false);
-
-    const handleConfirm = useCallback(async () => {
-        if (savingRef.current) return;
-        if (!saveExperiment) {
-            // Standalone / preview: no persistence — play launch animation then complete
-            jumpTo("launching");
-            return;
-        }
-        savingRef.current = true;
-        setSaving(true);
-        try {
-            const success = await saveExperiment({
-                samplePlan: {
-                    ...(advancedPlanSource ? { advancedPlanSource } : {}),
-                    estimationType,
-                    confidenceLevel,
-                    marginOfError,
-                    ...(estimationType === "mean" ? { populationVariance } : {}),
-                    designEffect,
-                    nonResponseRate,
-                    recommendedSize,
-                    finalSampleSize,
-                },
-            });
-            if (success) {
-                // Persist-only flow: return to classic page without launch animation
-                onComplete(paramsRef.current);
-                onClose();
-            } else {
-                toast.error("保存失败，请重试");
-            }
-        } finally {
-            savingRef.current = false;
-            setSaving(false);
-        }
-    }, [saveExperiment, jumpTo, advancedPlanSource, estimationType, confidenceLevel, marginOfError, populationVariance, designEffect, nonResponseRate, recommendedSize, finalSampleSize, onComplete, onClose]);
+    const handleConfirm = useCallback(() => jumpTo("launching"), [jumpTo]);
 
     const handleLaunchComplete = useCallback(() => {
         jumpTo("done");
@@ -460,7 +418,7 @@ export function ImmersiveSamplePlanning({
                             </div>
                             <h2 className="text-2xl font-bold text-foreground">确认样本量规划</h2>
                             <p className="text-muted-foreground">
-                                请确认以下核心参数。保存后，这里的最终样本量会写入实验，并直接用于后续抽样执行与分析报告；之后仍可返回修改。
+                                请确认以下核心参数。这里仅完成规划；返回阶段页并点击“确认并进入下一阶段”后才会保存。
                             </p>
                         </div>
 
@@ -501,12 +459,11 @@ export function ImmersiveSamplePlanning({
                             <Button
                                 type="button"
                                 onClick={handleConfirm}
-                                disabled={saving}
                                 data-testid="immersive-sp-confirm"
-                                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20 disabled:opacity-60"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-5 rounded-xl shadow-lg shadow-primary/20"
                             >
-                                {saving ? "保存中..." : "确认并保存"}
-                                {!saving && <ChevronRight className="w-5 h-5 ml-2" />}
+                                确认规划结果
+                                <ChevronRight className="w-5 h-5 ml-2" />
                             </Button>
                         </div>
                     </div>
@@ -640,7 +597,7 @@ export function ImmersiveSamplePlanning({
                     <AlertDialogHeader>
                         <AlertDialogTitle>退出样本量规划？</AlertDialogTitle>
                         <AlertDialogDescription>
-                            当前进度将不会保存。你可以稍后重新规划样本量。
+                            本次规划结果不会带回阶段页。你可以稍后重新规划。
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

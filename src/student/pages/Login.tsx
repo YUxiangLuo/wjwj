@@ -1,24 +1,15 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { markLoginSuccess, useLoginRedirectReason } from "@/hooks/useAuthRecovery";
 import { authApi } from "../api-client";
-import { STUDENT_LOGIN_REDIRECT_REASON_KEY, STUDENT_LOGIN_SUCCESS_KEY } from "../auth-keys";
 
 export function Login() {
-    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [username, setUsername] = useState("student");
-    const [password, setPassword] = useState("123456");
-
-    useLoginRedirectReason({
-        redirectReasonKey: STUDENT_LOGIN_REDIRECT_REASON_KEY,
-        onReason: setError,
-    });
+    const [username, setUsername] = useState("S001");
+    const [password, setPassword] = useState("Teaching123!");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,8 +26,7 @@ export function Login() {
                 password,
             });
             if (res.success && res.data) {
-                markLoginSuccess(STUDENT_LOGIN_SUCCESS_KEY);
-                navigate("/", { replace: true });
+                window.location.assign("/student");
             } else {
                 setError(res.error?.message || "登录失败，请检查账号密码");
             }

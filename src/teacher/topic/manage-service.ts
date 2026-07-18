@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
-import { task, topic } from "../../db/schema";
-import { createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
+import { task, topic, topicAttachment } from "../../db/schema";
+import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import {
     validateParsedExcelUpload,
@@ -31,6 +31,9 @@ export async function createTeacherTopic(params: {
 }) {
     const nameError = validateTopicName(params.name);
     if (nameError) return fail(nameError);
+    if (params.status !== undefined && params.status !== 0 && params.status !== 1) {
+        return fail("课题状态无效");
+    }
     if (params.status === 1) {
         return fail("课题需先上传总体数据后才能发布");
     }
@@ -53,6 +56,9 @@ export async function updateTeacherTopicBasics(params: {
     topicId: number;
     body: { name?: string; description?: string; status?: number };
 }) {
+    if (params.body.status !== undefined && params.body.status !== 0 && params.body.status !== 1) {
+        return fail("课题状态无效");
+    }
     if (params.body.status === 1) {
         const [topicInfo] = await db
             .select({
@@ -61,7 +67,7 @@ export async function updateTeacherTopicBasics(params: {
                 weightConfig: topic.weightConfig,
             })
             .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)));
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
 
         if (!topicInfo) {
             return fail("课题不存在", "NOT_FOUND", 404);
@@ -91,7 +97,7 @@ export async function updateTeacherTopicBasics(params: {
     await db
         .update(topic)
         .set(updateData)
-        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)));
+        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
 
     return { ok: true as const };
 }
@@ -102,8 +108,8 @@ export async function softDeleteTeacherTopic(params: { teacherId: number; topicI
     const deleted = await db.transaction(async (tx) => {
         const result = await tx
             .update(topic)
-            .set({ isDeleted: 1, deletedAt })
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)))
+            .set({ deletedAt, updatedAt: deletedAt })
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
             .returning({ id: topic.id });
 
         if (result.length === 0) {
@@ -128,6 +134,7 @@ export async function softDeleteTeacherTopic(params: { teacherId: number; topicI
 export async function replaceTopicExcelData(params: {
     topicId: number;
     file: File;
+    previousFilePath?: string | null;
 }) {
     const buffer = await params.file.arrayBuffer();
     const parsed = await parseExcelFile(buffer, params.file.name);
@@ -142,6 +149,18 @@ export async function replaceTopicExcelData(params: {
     } catch (error) {
         await deleteStorageFileIfExists(filePath).catch(() => undefined);
         throw error;
+    }
+
+    if (params.previousFilePath && params.previousFilePath !== filePath) {
+        const [[topicReference], [attachmentReference]] = await Promise.all([
+            db.select({ id: topic.id }).from(topic).where(eq(topic.excelFilePath, params.previousFilePath)).limit(1),
+            db.select({ id: topicAttachment.id }).from(topicAttachment).where(eq(topicAttachment.filePath, params.previousFilePath)).limit(1),
+        ]);
+        if (!topicReference && !attachmentReference) {
+            await deleteStorageFileIfExists(params.previousFilePath).catch((error) => {
+                console.warn(`旧总体数据文件清理失败：${params.previousFilePath}`, error);
+            });
+        }
     }
 
     return {
@@ -164,7 +183,7 @@ export async function updateTopicFieldMapping(params: {
     const [topicInfo] = await db.select({ excelFilePath: topic.excelFilePath }).from(topic).where(eq(topic.id, params.topicId));
     if (!topicInfo?.excelFilePath) return fail("请先上传总体数据");
 
-    const buffer = await Bun.file(`${process.cwd()}${topicInfo.excelFilePath}`).arrayBuffer();
+    const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
     const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
     const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
     if (cardinalityError) return fail(cardinalityError);

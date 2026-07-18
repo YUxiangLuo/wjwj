@@ -26,7 +26,7 @@ test("semester create rejects names longer than 20 characters before touching th
         success: false,
         error: {
             code: "VALIDATION_ERROR",
-            message: "学期名称不能超过20个字符",
+            message: "学期名称须为1-20个字符",
         },
     });
     expect(operations).toHaveLength(0);

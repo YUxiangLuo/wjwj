@@ -1,543 +1,108 @@
-import { useState, useEffect } from "react";
-import {
-    LayoutDashboard, Calendar, Users, GraduationCap, School, UserCheck,
-    Activity, Megaphone, Settings, Bell, LogOut, Loader2, Search,
-    Menu, X, BarChart3,
-} from "lucide-react";
-import { Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, Loader2, LogOut, Megaphone, Menu, School, Users, X } from "lucide-react";
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Toaster } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Dashboard } from "./pages/Dashboard";
-import { authApi, systemApi, type AdminUser, type AdminNotification } from "./api-client";
-import { Toaster } from "sonner";
 import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
-import { useNotificationCenter } from "@/hooks/useNotificationCenter";
-import { clearLoginSuccess, useAuthBootstrap, useLoginSuccessRecovery } from "@/hooks/useAuthRecovery";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
-import { usePollingTask } from "@/hooks/usePollingTask";
-import { useSessionExpiryEvent, useSessionWarningTimeout } from "@/hooks/useSessionExpiry";
-import { ADMIN_LOGIN_SUCCESS_KEY } from "./auth-keys";
-import { SemesterManagement } from "./pages/SemesterManagement";
-import { TeacherManagement } from "./pages/TeacherManagement";
-import { ClassManagement } from "./pages/ClassManagement";
-import { AssistantManagement } from "./pages/AssistantManagement";
-import { StudentManagement } from "./pages/StudentManagement";
+import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
+import { authApi, type AdminUser } from "./api-client";
 import { AnnouncementManagement } from "./pages/AnnouncementManagement";
-import { SystemMonitor } from "./pages/SystemMonitor";
-import { SystemSettings } from "./pages/SystemSettings";
+import { ClassManagement } from "./pages/ClassManagement";
+import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
+import { SemesterManagement } from "./pages/SemesterManagement";
+import { StudentManagement } from "./pages/StudentManagement";
+import { TeacherManagement } from "./pages/TeacherManagement";
 
-const menuItems = [
+const menu = [
     { path: "/", label: "首页概览", icon: LayoutDashboard },
     { path: "/semester", label: "学期管理", icon: Calendar },
     { path: "/teacher", label: "教师管理", icon: Users },
-    { path: "/assistant", label: "助教管理", icon: UserCheck },
     { path: "/class", label: "班级管理", icon: School },
     { path: "/student", label: "学生管理", icon: GraduationCap },
-    { path: "/monitor", label: "系统监控", icon: Activity },
     { path: "/announcement", label: "公告管理", icon: Megaphone },
-    { path: "/settings", label: "系统设置", icon: Settings },
 ];
 
-const pageTitles: Record<string, string> = {
-    "/": "首页概览",
-    "/semester": "学期管理",
-    "/teacher": "教师管理",
-    "/assistant": "助教管理",
-    "/class": "班级管理",
-    "/student": "学生管理",
-    "/monitor": "系统监控",
-    "/announcement": "公告管理",
-    "/settings": "系统设置",
-};
-
-export function AdminApp() {
+function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => Promise<void> }) {
     const location = useLocation();
-    const navigate = useNavigate();
-    const currentPath = location.pathname;
-    const isLoginPage = currentPath === "/login" || currentPath.endsWith("/login");
-    const pageTitle = pageTitles[currentPath] ?? "管理后台";
-    const [authState, setAuthState] = useState<"checking" | "authed" | "guest">("checking");
-    const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
-    const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
-    const [showSessionExpired, setShowSessionExpired] = useState(false);
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
+    const [sidebar, setSidebar] = useState(false);
+    const [passwordOpen, setPasswordOpen] = useState(false);
     const passwordChange = usePasswordChange({
         policy: ADMIN_PASSWORD_POLICY,
-        forbiddenSubstrings: [adminUser?.username],
+        forbiddenSubstrings: [user.username],
         onSubmit: authApi.changePassword,
-        onSuccess: () => {
-            setShowPasswordModal(false);
-            setAdminUser((prev) => (prev ? { ...prev, isFirstLogin: 0 } : prev));
-        },
+        onSuccess: () => setPasswordOpen(false),
     });
-
-    const {
-        items: notifications,
-        unreadCount,
-        loading: notificationsLoading,
-        isOpen: showNotifications,
-        setIsOpen: setShowNotifications,
-        load: fetchNotifications,
-        open: openNotifications,
-        markAsRead: handleMarkNotificationRead,
-        markAllAsRead: handleMarkAllRead,
-    } = useNotificationCenter<AdminNotification, { count: number; items: AdminNotification[]; sessionExpiresAt?: string | null }>({
-        list: systemApi.getNotifications,
-        markOne: systemApi.markNotificationRead,
-        markAll: systemApi.markAllNotificationsRead,
-        normalize: (data) => ({
-            items: data.items ?? [],
-            unreadCount: data.count ?? 0,
-        }),
-        getItemId: (item) => item.id,
-        isItemRead: (item) => item.isRead === 1,
-        markItemRead: (item) => ({ ...item, isRead: 1 }),
-        onLoaded: (data) => {
-            if (data.sessionExpiresAt) {
-                setSessionExpiresAt(data.sessionExpiresAt);
-            }
-        },
-    });
-
-    const handleTimedSessionExpiry = () => {
-        setShowSessionWarning(false);
-        setAuthState("guest");
-        setAdminUser(null);
-        setSessionExpiresAt(null);
-        navigate("/login", { replace: true });
-    };
-
-    const handleRemoteSessionExpiry = () => {
-        if (isLoginPage || authState !== "authed") return;
-        setShowSessionWarning(false);
-        setShowNotifications(false);
-        setAuthState("guest");
-        setAdminUser(null);
-        setSessionExpiresAt(null);
-        setShowSessionExpired(true);
-    };
-
-    const { showSessionWarning, setShowSessionWarning } = useSessionWarningTimeout({
-        enabled: authState === "authed",
-        sessionExpiresAt,
-        onExpire: handleTimedSessionExpiry,
-    });
-
-    useSessionExpiryEvent({
-        enabled: !isLoginPage && authState === "authed",
-        eventName: "admin:session-expired",
-        onExpire: handleRemoteSessionExpiry,
-    });
-
-    usePollingTask({
-        enabled: !isLoginPage && authState === "authed",
-        task: () => fetchNotifications({ includeItems: false }),
-        intervalMs: 60_000,
-    });
-
-    useAuthBootstrap({
-        enabled: authState === "checking",
-        fetchCurrentUser: authApi.me,
-        onAuthenticated: (response) => {
-            setAuthState("authed");
-            setAdminUser(response.data ?? null);
-            setSessionExpiresAt(response.data?.sessionExpiresAt ?? null);
-            if (response.data?.isFirstLogin) setShowPasswordModal(true);
-        },
-        onUnauthenticated: () => {
-            setAuthState("guest");
-            setAdminUser(null);
-            setSessionExpiresAt(null);
-        },
-    });
-
-    const isRecoveringLogin = useLoginSuccessRecovery({
-        enabled: !isLoginPage && authState === "guest",
-        loginSuccessKey: ADMIN_LOGIN_SUCCESS_KEY,
-        onRecover: () => {
-            setAuthState("checking");
-        },
-    });
-
-    const handleLogout = async () => {
-        try {
-            await authApi.logout();
-            clearLoginSuccess(ADMIN_LOGIN_SUCCESS_KEY);
-            setAuthState("guest");
-            setAdminUser(null);
-            setSessionExpiresAt(null);
-        } finally {
-            navigate("/login", { replace: true });
-        }
-    };
-
-    const handleExtendSession = async () => {
-        try {
-            const res = await authApi.me();
-            if (res.success && res.data?.sessionExpiresAt) setSessionExpiresAt(res.data.sessionExpiresAt);
-            setShowSessionWarning(false);
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    if (isLoginPage) {
-        if (authState === "checking") {
-            return (
-                <div className="min-h-screen flex items-center justify-center bg-background">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                </div>
-            );
-        }
-        if (authState === "authed") return <Navigate to="/" replace />;
-        return <Login />;
-    }
-
-    if (authState === "checking") {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-        );
-    }
-
-    if (isRecoveringLogin) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-        );
-    }
-
-    if (authState !== "authed") return <Navigate to="/login" replace />;
-
-    if (adminUser?.isFirstLogin) {
-        return (
-            <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
-                <div className="w-full max-w-2xl rounded-3xl border border-border bg-card/60 p-8 shadow-2xl shadow-border/40">
-                    <div className="space-y-3 text-center">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground shadow-lg shadow-primary/20">
-                            A
-                        </div>
-                        <h1 className="text-2xl font-bold text-foreground">首次登录需完成密码更新</h1>
-                        <p className="text-sm leading-6 text-muted-foreground">
-                            修改管理员密码前，系统设置、用户管理和通知功能暂不可访问。
-                        </p>
-                    </div>
-
-                    <div className="mt-6 rounded-2xl border border-border bg-background/50 p-4 text-sm text-muted-foreground">
-                        当前账号：<span className="font-mono text-foreground">{adminUser.username}</span>
-                    </div>
-                </div>
-
-                <PasswordChangeDialog
-                    open={showPasswordModal}
-                    onOpenChange={setShowPasswordModal}
-                    allowClose={false}
-                    title="首次登录请修改密码"
-                    description="为保证账号安全，请先修改管理员密码。"
-                    form={passwordChange.form}
-                    onFieldChange={passwordChange.setField}
-                    error={passwordChange.error}
-                    saving={passwordChange.saving}
-                    onSubmit={passwordChange.submit}
-                    submitLabel="保存新密码"
-                    submitTestId="admin-first-login-password-submit"
-                    fieldTestIds={{
-                        currentPassword: "admin-first-login-current-password",
-                        newPassword: "admin-first-login-new-password",
-                        confirmPassword: "admin-first-login-confirm-password",
-                    }}
-                />
-
-                <Toaster richColors position="top-right" />
-            </div>
-        );
-    }
+    const title = menu.find((item) => item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path))?.label ?? "管理后台";
 
     return (
-        <div className="flex min-h-screen bg-background text-foreground font-sans antialiased">
-            <Toaster richColors position="top-right" />
-
-            {/* Sidebar */}
-            <aside
-                className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto lg:flex lg:flex-col ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-                    }`}
-            >
-                <div className="min-h-16 px-4 sm:px-6 py-3 border-b border-border flex items-center justify-between lg:justify-start gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div className="bg-primary p-1.5 rounded-xl shadow-md shadow-primary/20 shrink-0">
-                            <BarChart3 className="w-5 h-5 text-primary-foreground" />
-                        </div>
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground text-sm font-semibold tracking-tight leading-snug">
-                            统计学虚拟仿真实验平台
-                        </span>
-                    </div>
-                    <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-muted-foreground hover:text-foreground">
-                        <X className="w-5 h-5" />
-                    </button>
+        <div className="flex min-h-screen bg-background text-foreground">
+            <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card transition-transform lg:static lg:translate-x-0 ${sidebar ? "translate-x-0" : "-translate-x-full"}`}>
+                <div className="flex h-16 items-center justify-between border-b border-border px-5">
+                    <div className="flex items-center gap-2.5 font-semibold"><span className="rounded-xl bg-primary p-2 text-primary-foreground"><BarChart3 className="h-5 w-5" /></span>系统管理</div>
+                    <button className="lg:hidden" onClick={() => setSidebar(false)}><X className="h-5 w-5" /></button>
                 </div>
-
-                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-                    <div className="px-3 mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Main Menu</div>
-                    {menuItems.map((item) => {
+                <nav className="flex-1 space-y-1 p-3">
+                    {menu.map((item) => {
                         const Icon = item.icon;
-                        const isActive = item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path);
                         return (
-                            <NavLink
-                                key={item.path}
-                                to={item.path}
-                                data-testid={`admin-nav-${item.path === "/" ? "dashboard" : item.path.slice(1)}`}
-                                className={({ isActive: activeLink }) => `
-                                    flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-all duration-200 group
-                                    ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
-                                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                                    }
-                                `}
-                            >
-                                <Icon className={`w-4 h-4 transition-colors ${(item.path === "/" ? currentPath === "/" : currentPath.startsWith(item.path))
-                                        ? "text-primary-foreground"
-                                        : "text-muted-foreground group-hover:text-foreground/90"
-                                    }`} />
-                                <span className="font-medium">{item.label}</span>
+                            <NavLink key={item.path} to={item.path} end={item.path === "/"} onClick={() => setSidebar(false)} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                                <Icon className="h-4 w-4" />{item.label}
                             </NavLink>
                         );
                     })}
                 </nav>
-
-                <div className="p-4 border-t border-border bg-card/50">
-                    <div className="flex items-center gap-3">
-                        <Avatar className="w-9 h-9 border border-input ring-2 ring-card">
-                            <AvatarFallback className="bg-muted text-primary text-sm font-medium">
-                                {adminUser?.username?.charAt(0)?.toUpperCase() ?? "A"}
-                            </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-foreground truncate">{adminUser?.username ?? "管理员"}</div>
-                            <div className="text-xs text-muted-foreground truncate">Administrator</div>
-                        </div>
-                    </div>
+                <div className="border-t border-border p-4">
+                    <div className="flex items-center gap-3"><Avatar className="h-9 w-9"><AvatarFallback className="bg-primary text-primary-foreground">{user.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar><div><p className="text-sm font-medium">{user.username}</p><p className="text-xs text-muted-foreground">管理员</p></div></div>
                 </div>
             </aside>
-
-            {/* Overlay for mobile sidebar */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-overlay/50 backdrop-blur-sm z-40 lg:hidden"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
-
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background">
-                <header className="h-16 px-6 border-b border-border bg-card/50 backdrop-blur-xl sticky top-0 z-30 flex items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setIsSidebarOpen(true)}
-                            className="lg:hidden p-2 -ml-2 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted"
-                        >
-                            <Menu className="w-5 h-5" />
-                        </button>
-                        <div>
-                            <h2 className="text-lg font-semibold text-foreground">{pageTitle}</h2>
-                            <p className="hidden md:block text-xs text-muted-foreground">
-                                {new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai", year: "numeric", month: "long", day: "numeric", weekday: "long" })}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4 flex-1 justify-end">
-                        <div className="hidden md:flex items-center gap-2 bg-muted/50 border border-input rounded-lg px-3 py-1.5 w-64 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all">
-                            <Search className="w-4 h-4 text-muted-foreground" />
-                            <input
-                                className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none w-full"
-                                placeholder="搜索功能或数据..."
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Button
-                                data-testid="admin-notifications-trigger"
-                                variant="ghost"
-                                size="icon"
-                                className="relative text-muted-foreground hover:text-foreground hover:bg-muted"
-                                onClick={() => { void openNotifications(); }}
-                                aria-label="打开通知中心"
-                            >
-                                <Bell className="w-5 h-5" />
-                                {unreadCount > 0 && (
-                                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-destructive ring-2 ring-card rounded-full animate-pulse"></span>
-                                )}
-                            </Button>
-                            <Separator orientation="vertical" className="h-6 bg-muted" />
-
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button data-testid="admin-logout-trigger" variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="退出登录">
-                                        <LogOut className="w-5 h-5" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="bg-card border-border text-foreground">
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle className="text-foreground">确认退出登录?</AlertDialogTitle>
-                                        <AlertDialogDescription className="text-muted-foreground">
-                                            您确定要退出当前账号吗？未保存的内容可能会丢失。
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel className="bg-muted border-input text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground border-none">退出</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    </div>
+            {sidebar && <button className="fixed inset-0 z-40 bg-overlay/50 lg:hidden" onClick={() => setSidebar(false)} aria-label="关闭菜单" />}
+            <main className="min-w-0 flex-1">
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur sm:px-6">
+                    <div className="flex items-center gap-3"><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></Button><div><h1 className="font-semibold">{title}</h1><p className="text-xs text-muted-foreground">内网教学系统</p></div></div>
+                    <div className="flex items-center gap-1"><Button variant="ghost" size="icon" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></Button><Button variant="ghost" size="icon" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></Button></div>
                 </header>
-
-                <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
-                    <div className="max-w-7xl mx-auto space-y-6">
-                        <Routes>
-                            <Route index element={<Dashboard />} />
-                            <Route path="login" element={<Login />} />
-                            <Route path="semester" element={<SemesterManagement />} />
-                            <Route path="teacher" element={<TeacherManagement />} />
-                            <Route path="assistant" element={<AssistantManagement />} />
-                            <Route path="class" element={<ClassManagement />} />
-                            <Route path="student" element={<StudentManagement />} />
-                            <Route path="monitor" element={<SystemMonitor />} />
-                            <Route path="announcement" element={<AnnouncementManagement />} />
-                            <Route path="settings" element={<SystemSettings />} />
-                            <Route path="*" element={<Navigate to="/" replace />} />
-                        </Routes>
-                    </div>
+                <div className="p-4 sm:p-6">
+                    <Routes>
+                        <Route index element={<Dashboard />} />
+                        <Route path="semester" element={<SemesterManagement />} />
+                        <Route path="teacher" element={<TeacherManagement />} />
+                        <Route path="class" element={<ClassManagement />} />
+                        <Route path="student" element={<StudentManagement />} />
+                        <Route path="announcement" element={<AnnouncementManagement />} />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
                 </div>
             </main>
-
-            <PasswordChangeDialog
-                open={showPasswordModal}
-                onOpenChange={setShowPasswordModal}
-                allowClose={false}
-                title="首次登录请修改密码"
-                description="为保证账号安全，请先修改管理员密码。"
-                form={passwordChange.form}
-                onFieldChange={passwordChange.setField}
-                error={passwordChange.error}
-                saving={passwordChange.saving}
-                onSubmit={passwordChange.submit}
-                submitLabel="保存新密码"
-                submitTestId="admin-first-login-password-submit"
-                fieldTestIds={{
-                    currentPassword: "admin-first-login-current-password",
-                    newPassword: "admin-first-login-new-password",
-                    confirmPassword: "admin-first-login-confirm-password",
-                }}
-            />
-
-            <Dialog open={showSessionWarning} onOpenChange={setShowSessionWarning}>
-                <DialogContent className="bg-card border-border text-foreground">
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">会话即将过期</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                            您的会话将在 5 分钟内过期，是否继续保持登录状态？
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={handleLogout} className="border-input hover:bg-muted text-foreground/90">退出登录</Button>
-                        <Button onClick={handleExtendSession} className="bg-primary hover:bg-primary/90">继续</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={showSessionExpired} onOpenChange={setShowSessionExpired}>
-                <DialogContent className="bg-card border-border text-foreground">
-                    <DialogHeader>
-                        <DialogTitle className="text-foreground">会话已过期</DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                            您的会话已过期，请重新登录。
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button onClick={() => navigate("/login", { replace: true })} className="bg-primary hover:bg-primary/90">重新登录</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={showNotifications} onOpenChange={setShowNotifications}>
-                <DialogContent showCloseButton={false} className="bg-card border-border text-foreground sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center justify-between text-foreground">
-                            通知
-                            <Button
-                                data-testid="admin-notifications-mark-all-read"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => { void handleMarkAllRead(); }}
-                                disabled={unreadCount === 0}
-                                className="text-xs text-primary hover:text-primary hover:bg-primary/10"
-                            >
-                                全部已读
-                            </Button>
-                        </DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                            查看系统通知与操作提醒（未读 {unreadCount} 条）
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="max-h-[60vh] overflow-y-auto space-y-2 -mx-2 px-2 custom-scrollbar">
-                        {notificationsLoading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                            </div>
-                        ) : notifications.length > 0 ? (
-                            notifications.map(item => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    data-testid={`admin-notification-item-${item.id}`}
-                                    onClick={() => item.isRead ? null : void handleMarkNotificationRead(item.id)}
-                                    className={`w-full text-left p-4 rounded-lg border transition-all duration-200 hover:border-input ${item.isRead ? "bg-background/50 border-transparent opacity-70" : "bg-muted/50 border-input/50 shadow-sm"
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between mb-1">
-                                        <div className="flex items-center gap-2">
-                                            {!item.isRead && <span className="flex-shrink-0 w-2 h-2 rounded-full bg-primary ring-2 ring-primary/20" />}
-                                            <span className={`text-sm font-medium ${item.isRead ? "text-muted-foreground" : "text-foreground"}`}>{item.title}</span>
-                                        </div>
-                                        <span className="text-xs text-muted-foreground font-mono">
-                                            {new Date(item.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                    <div className="text-sm text-muted-foreground line-clamp-2 pl-4 border-l-2 border-border">{item.content}</div>
-                                </button>
-                            ))
-                        ) : (
-                            <div className="text-center py-12 text-muted-foreground bg-background/30 rounded-lg border border-dashed border-border">
-                                <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                                暂无通知
-                            </div>
-                        )}
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <PasswordChangeDialog open={passwordOpen} onOpenChange={setPasswordOpen} allowClose title="修改密码" description="输入当前密码并设置新密码。" form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error} saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />
+            <Toaster richColors position="top-right" />
         </div>
     );
+}
+
+export function AdminApp() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const [checking, setChecking] = useState(true);
+    const [user, setUser] = useState<AdminUser | null>(null);
+    useEffect(() => {
+        const clearUser = () => setUser(null);
+        window.addEventListener(AUTH_EXPIRED_EVENT, clearUser);
+        return () => window.removeEventListener(AUTH_EXPIRED_EVENT, clearUser);
+    }, []);
+    useEffect(() => {
+        void authApi.me().then((response) => {
+            setUser(response.success && response.data ? response.data : null);
+            setChecking(false);
+        });
+    }, []);
+    if (checking) return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    if (location.pathname === "/login") return user ? <Navigate to="/" replace /> : <Login />;
+    if (!user) return <Navigate to="/login" replace />;
+    return <AdminWorkspace user={user} onLogout={async () => { await authApi.logout(); setUser(null); navigate("/login", { replace: true }); }} />;
 }
 
 export default AdminApp;

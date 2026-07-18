@@ -177,7 +177,7 @@ export function StratifiedAllocationComparison({
 
                 {/* 方法卡片 */}
                 <div className="space-y-3">
-                    {comparisons.map((comparison, index) => {
+                    {comparisons.map((comparison) => {
                         const isBest = comparison.method === bestMethod.method;
 
                         return (
@@ -225,7 +225,7 @@ export function StratifiedAllocationComparison({
 
                                 {/* 各层分配可视化 */}
                                 <div className="space-y-2 mb-3">
-                                    {comparison.allocation.map((layer, idx) => (
+                                    {comparison.allocation.map((layer) => (
                                         <div key={layer.layerName} className="flex items-center gap-3">
                                             <span className="text-xs text-auxiliary w-16 truncate">
                                                 {layer.layerName}
@@ -424,7 +424,6 @@ export function StratifiedAllocationComparison({
 // 检测并标记超额分配
 function detectOverAllocation(
     allocation: Array<{ layerName: string; populationSize: number; sampleSize: number; proportion: number }>,
-    layers: LayerInfo[]
 ): {
     markedAllocation: Array<{ layerName: string; populationSize: number; sampleSize: number; proportion: number; isOverAllocated?: boolean; isFullyEnumerated?: boolean }>;
     hasOverAllocation: boolean;
@@ -435,7 +434,7 @@ function detectOverAllocation(
     const overAllocatedLayers: string[] = [];
     let adjustedTotalSampleSize = 0;
 
-    const markedAllocation = allocation.map((a, i) => {
+    const markedAllocation = allocation.map((a) => {
         const isOverAllocated = a.sampleSize > a.populationSize;
         const isFullyEnumerated = isOverAllocated;
 
@@ -465,8 +464,7 @@ function detectOverAllocation(
 
 // 计算按比例分配
 function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: number, stdDevs?: number[]): AllocationComparison {
-    const totalPopulation = layers.reduce((a, l) => a + l.count, 0);
-
+    const totalPopulation = layers.reduce((sum, layer) => sum + layer.count, 0);
     // 按比例分配
     let allocation = layers.map(layer => {
         const proportion = totalPopulation > 0 ? layer.count / totalPopulation : 0;
@@ -487,7 +485,7 @@ function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: n
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize
-    } = detectOverAllocation(allocation, layers);
+    } = detectOverAllocation(allocation);
 
     // 计算方差
     const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
@@ -525,7 +523,7 @@ function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number, 
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize
-    } = detectOverAllocation(allocation, layers);
+    } = detectOverAllocation(allocation);
 
     const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 
@@ -544,8 +542,6 @@ function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number, 
 
 // 计算奈曼分配
 function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number, stdDevs?: number[]): AllocationComparison {
-    const totalPopulation = layers.reduce((a, l) => a + l.count, 0);
-
     // Neyman allocation: n_h ∝ N_h × S_h
     // When actual std devs are provided, use them; otherwise fall back to sqrt(N_h) heuristic
     const weights = layers.map((layer, i) => {
@@ -573,7 +569,7 @@ function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number,
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize
-    } = detectOverAllocation(allocation, layers);
+    } = detectOverAllocation(allocation);
 
     const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 
@@ -681,7 +677,7 @@ function calculateSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSize: n
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize,
-    } = detectOverAllocation(allocation, layers);
+    } = detectOverAllocation(allocation);
 
     const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 
@@ -721,7 +717,7 @@ function calculateSqrtSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSiz
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize,
-    } = detectOverAllocation(allocation, layers);
+    } = detectOverAllocation(allocation);
 
     const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 
@@ -762,7 +758,7 @@ function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: nu
         hasOverAllocation,
         overAllocatedLayers,
         adjustedTotalSampleSize
-    } = detectOverAllocation(allocation, layers);
+    } = detectOverAllocation(allocation);
 
     const totalVariance = calculateVariance(markedAllocation, layers, stdDevs);
 

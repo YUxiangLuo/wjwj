@@ -31,7 +31,6 @@ async function loadTopicRoutes(options: {
         notifyStudentById: async () => undefined,
         isLockExpired: () => true,
         TEACHER_USER_TYPE: 2,
-        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./topic-task");
@@ -39,8 +38,11 @@ async function loadTopicRoutes(options: {
 }
 
 test("topic excel upload stores parsed metadata and writes workbook to storage", async () => {
+    const previousFilePath = `/storage/uploads/previous-topic-${crypto.randomUUID()}.xlsx`;
+    const previousAbsolutePath = `${process.cwd()}${previousFilePath}`;
+    await Bun.write(previousAbsolutePath, "old workbook");
     const { module, operations } = await loadTopicRoutes({
-        select: [[{ id: 12, status: 0 }]],
+        select: [[{ id: 12, status: 0, excelFilePath: previousFilePath }]],
     });
 
     const buffer = buildWorkbookBuffer([
@@ -80,8 +82,10 @@ test("topic excel upload stores parsed metadata and writes workbook to storage",
 
         const writtenText = await Bun.file(absolutePath).text();
         expect(writtenText.length).toBeGreaterThan(0);
+        expect(await Bun.file(previousAbsolutePath).exists()).toBe(false);
     } finally {
         await unlink(absolutePath).catch(() => undefined);
+        await unlink(previousAbsolutePath).catch(() => undefined);
     }
 });
 
@@ -137,13 +141,18 @@ test("topic excel upload preserves Chinese text for utf-8 csv files", async () =
 
     const response = await module.topicExcelUploadRoutes.POST!(request);
     const payload = await response.json() as any;
+    const absolutePath = `${process.cwd()}${payload.data.filePath}`;
 
-    expect(response.status).toBe(200);
-    expect(payload.success).toBe(true);
-    expect(payload.data.columns).toEqual(["行业名称", "公司名称", "销售数量"]);
-    expect(payload.data.preview[0]).toEqual({
-        行业名称: "电子行业",
-        公司名称: "测试科技",
-        销售数量: 1200,
-    });
+    try {
+        expect(response.status).toBe(200);
+        expect(payload.success).toBe(true);
+        expect(payload.data.columns).toEqual(["行业名称", "公司名称", "销售数量"]);
+        expect(payload.data.preview[0]).toEqual({
+            行业名称: "电子行业",
+            公司名称: "测试科技",
+            销售数量: 1200,
+        });
+    } finally {
+        await unlink(absolutePath).catch(() => undefined);
+    }
 });

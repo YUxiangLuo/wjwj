@@ -1,20 +1,15 @@
 import { expect, test } from "bun:test";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 
-test("submitted, grading, and graded task actions stay available after the editable window closes", () => {
+test("submitted and graded task actions stay available after the editable window closes", () => {
     expect(getTaskPrimaryAction(3, "submitted", false)).toEqual({
         text: "查看提交内容",
-        link: "/task/3/history",
-        disabled: false,
-    });
-    expect(getTaskPrimaryAction(6, "grading", false)).toEqual({
-        text: "查看提交内容",
-        link: "/task/6/history",
+        link: "/task/3/result",
         disabled: false,
     });
     expect(getTaskPrimaryAction(5, "graded", false)).toEqual({
         text: "查看成绩",
-        link: "/task/5/history",
+        link: "/task/5/result",
         disabled: false,
     });
 });
@@ -31,8 +26,8 @@ test("editable task actions remain gated by availability windows", () => {
         disabled: true,
     });
     expect(getTaskPrimaryAction(4, "rejected", false)).toEqual({
-        text: "重新开始",
-        link: null,
+        text: "继续修改",
+        link: "/task/4/experiment",
         disabled: true,
     });
 });
@@ -49,8 +44,8 @@ test("editable task actions are enabled when within availability window", () => 
         disabled: false,
     });
     expect(getTaskPrimaryAction(4, "rejected", true)).toEqual({
-        text: "重新开始",
-        link: null,
+        text: "继续修改",
+        link: "/task/4/experiment",
         disabled: false,
     });
 });
@@ -60,6 +55,5 @@ test("availability hints only show for editable task states", () => {
     expect(shouldShowTaskAvailabilityHint("in_progress", false)).toBe(true);
     expect(shouldShowTaskAvailabilityHint("rejected", false)).toBe(true);
     expect(shouldShowTaskAvailabilityHint("submitted", false)).toBe(false);
-    expect(shouldShowTaskAvailabilityHint("grading", false)).toBe(false);
     expect(shouldShowTaskAvailabilityHint("graded", false)).toBe(false);
 });

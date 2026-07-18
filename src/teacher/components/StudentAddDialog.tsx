@@ -38,6 +38,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             id="studentId"
                             data-testid="teacher-student-add-id"
                             placeholder="请输入学号"
+                            maxLength={50}
                             value={form.id}
                             onChange={(e) => onFormChange({ ...form, id: e.target.value })}
                             className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
@@ -49,6 +50,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             id="studentName"
                             data-testid="teacher-student-add-name"
                             placeholder="请输入姓名"
+                            maxLength={100}
                             value={form.name}
                             onChange={(e) => onFormChange({ ...form, name: e.target.value })}
                             className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
@@ -61,6 +63,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             data-testid="teacher-student-add-email"
                             type="email"
                             placeholder="请输入邮箱"
+                            maxLength={120}
                             value={form.email}
                             onChange={(e) => onFormChange({ ...form, email: e.target.value })}
                             className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"

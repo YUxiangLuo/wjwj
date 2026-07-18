@@ -7,6 +7,10 @@ import {
     validateSamplingResultsForSubmit,
 } from "./submit-validation";
 
+export function isSubmissionCompleteResponse(response: { success: boolean; error?: { code?: string } }) {
+    return response.success || response.error?.code === "ALREADY_SUBMITTED";
+}
+
 export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questionnaire" | "samplePlan" | "samplingResults" | "reportContent" | "populationSize">) {
     const questionnaireError = validateQuestionnaireForSubmit(experiment.questionnaire);
     if (questionnaireError) return questionnaireError;

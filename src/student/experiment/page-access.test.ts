@@ -13,13 +13,13 @@ test("experiment route guard redirects unopened tasks back to detail page", () =
     })).toBe("/task/4");
 });
 
-test("experiment route guard redirects submitted tasks to history page", () => {
+test("experiment route guard redirects submitted tasks to current result", () => {
     expect(getExperimentRouteRedirect({
         taskId: 3,
         publishedAt: new Date(Date.now() - 3600_000).toISOString(),
         deadline: new Date(Date.now() - 60_000).toISOString(),
         status: "submitted",
-    })).toBe("/task/3/history");
+    })).toBe("/task/3/result");
 });
 
 test("experiment route guard redirects editable tasks back to detail page after deadline", () => {

@@ -258,6 +258,13 @@ export function TopicManagement() {
 
     async function handleSaveWeights() {
         if (!editingTopicId) return;
+        if (editingTopicPublished) {
+            setShowCreateModal(false);
+            setCurrentStep(1);
+            setEditingTopicId(null);
+            setEditingTopicPublished(false);
+            return;
+        }
         const { questionnaire, process, report } = weightConfig;
         if (questionnaire < 10 || questionnaire > 50) {
             toast.error("问卷设计权重需在10-50%之间");

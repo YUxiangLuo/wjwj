@@ -2,7 +2,6 @@ import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
-import { createReportDraftBasis, getReportDraftKey } from "../../draft-sync";
 
 const mockExperimentApi = {
     getAnalysisMetrics: mock(async () => ({
@@ -19,8 +18,9 @@ const mockToastError = mock(() => undefined);
 
 let mockExperimentContext: {
     experiment: Record<string, unknown> | null;
-    registerStageSave: (saveHandler: (() => Promise<boolean>) | null) => void;
-    saveExperiment: (payload: unknown) => Promise<boolean>;
+    populationSize: number;
+    isSaving: boolean;
+    completeStage: (stage: number, payload: Record<string, unknown>) => Promise<boolean>;
 };
 
 mock.module("../ExperimentLayout", () => ({
@@ -118,8 +118,9 @@ beforeEach(() => {
                 stratified: { completed: true, data: [], layers: [] },
             },
         },
-        registerStageSave: () => undefined,
-        saveExperiment: async () => true,
+        populationSize: 8000,
+        isSaving: false,
+        completeStage: async () => true,
     };
 });
 
@@ -129,33 +130,6 @@ afterEach(async () => {
     localStorage.clear();
     restoreDom?.();
     restoreDom = null;
-});
-
-test("AnalysisReport restores a valid local report draft before persistence clears it", async () => {
-    const experiment = mockExperimentContext.experiment as NonNullable<typeof mockExperimentContext.experiment>;
-    const draftContent = "<p>本地未提交报告草稿。</p>";
-    const draftKey = getReportDraftKey(Number(experiment.id));
-    const draftBasis = createReportDraftBasis({
-        samplePlan: experiment.samplePlan,
-        samplingResults: experiment.samplingResults,
-    });
-
-    localStorage.setItem(draftKey, JSON.stringify({
-        basis: draftBasis,
-        content: draftContent,
-    }));
-
-    const view = render(
-        <AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />
-    );
-
-    await waitFor(() => {
-        expect(view.getByTestId("student-analysis-draft-restored")).toBeTruthy();
-    });
-
-    expect(view.getByTestId("student-analysis-report-editor").innerHTML).toBe(draftContent);
-    expect(localStorage.getItem(draftKey)).not.toBeNull();
-    expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
 });
 
 test("AnalysisReport does not refetch metrics when sampling results receive a new reference with unchanged content", async () => {

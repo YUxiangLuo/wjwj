@@ -1,26 +1,16 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Loader2, Clock, AlertTriangle, BookOpen, ChevronRight, Eye } from "lucide-react";
-import { Link, Navigate, useParams, useNavigate } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { experimentApi, tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
-import { clearReportDraft } from "../draft-sync";
+import { tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
+import { notifyAuthExpired } from "@/lib/auth-expired";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -28,7 +18,6 @@ const statusConfig: Record<TaskStatus, { label: string; intent: StatusBadgeInten
     not_started: { label: "未开始", intent: "neutral" },
     in_progress: { label: "进行中", intent: "primary" },
     submitted: { label: "已提交", intent: "warning" },
-    grading: { label: "批改中", intent: "auxiliary" },
     graded: { label: "已批改", intent: "success" },
     rejected: { label: "被驳回", intent: "destructive" },
 };
@@ -105,12 +94,10 @@ function formatFileSize(bytes: number): string {
 
 export function TopicDetails() {
     const { taskId } = useParams();
-    const navigate = useNavigate();
     const [task, setTask] = useState<TaskDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
     const [accessDeniedVariant, setAccessDeniedVariant] = useState<"topic_deleted" | "task_revoked" | null>(null);
-    const [showRestartConfirm, setShowRestartConfirm] = useState(false);
     const [previewFile, setPreviewFile] = useState<TopicAttachment | null>(null);
 
     useEffect(() => {
@@ -191,6 +178,7 @@ export function TopicDetails() {
             const res = await fetch(`/api/student/attachments/${file.id}/download`, {
                 credentials: "include",
             });
+            notifyAuthExpired(res);
             if (!res.ok) throw new Error("下载失败");
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
@@ -364,7 +352,7 @@ export function TopicDetails() {
                             <div className="w-full h-px bg-muted" />
                             <div className="space-y-0.5">
                                 <div className="text-xs text-muted-foreground uppercase tracking-wider font-medium">操作提示</div>
-                                <div className="text-sm text-muted-foreground leading-relaxed">开始实验后，请按步骤完成并保存进度。系统将自动记录您的每一次操作。</div>
+                                <div className="text-sm text-muted-foreground leading-relaxed">每个阶段只在点击“完成”或“下一步”时保存；中途离开会丢失本阶段未完成的修改。</div>
                             </div>
                         </CardContent>
                     </Card>
@@ -381,16 +369,7 @@ export function TopicDetails() {
                                     <span className="text-xl font-bold text-success tracking-tight ml-auto">{task.score}</span>
                                 </div>
                             )}
-                            {task.status === "rejected" ? (
-                                <Button
-                                    size="lg"
-                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
-                                    disabled={action.disabled}
-                                    onClick={() => setShowRestartConfirm(true)}
-                                >
-                                    {action.text} <ChevronRight className="w-4 h-4 ml-1" />
-                                </Button>
-                            ) : action.link ? (
+                            {action.link ? (
                                 <Link to={action.link} className="w-full block">
                                     <Button
                                         size="lg"
@@ -452,38 +431,6 @@ export function TopicDetails() {
                     </div>
                 </CardContent>
             </Card>
-
-            <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
-                <AlertDialogContent className="bg-card border-border text-foreground">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-foreground">确认重新开始实验</AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground text-base leading-relaxed">
-                            重新开始将<strong className="text-destructive">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
-                            <br />
-                            确定继续吗？
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                            onClick={async () => {
-                                if (!taskId) return;
-                                const res = await experimentApi.reset(Number(taskId), {
-                                    resetToStage: 1,
-                                    clearQuestionnaire: true,
-                                });
-                                if (res.success && res.data) {
-                                    clearReportDraft(res.data.id);
-                                    navigate(`/task/${taskId}/experiment`);
-                                }
-                            }}
-                        >
-                            确认重新开始
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
             <Dialog open={!!previewFile} onOpenChange={(open) => { if (!open) setPreviewFile(null); }}>
                 <DialogContent className="max-w-5xl bg-card border-border text-foreground">

@@ -1,10 +1,11 @@
+import type { ExperimentStatus } from "../../db/schema";
+
 export interface TeacherTaskProgressStudentRow {
     studentId: string;
     name: string;
     experimentId: number | null;
     currentStage: number | null;
-    experimentStatus: number | null;
-    latestSubmission: string | null;
+    experimentStatus: ExperimentStatus | null;
     lastActivity: Date | null;
 }
 
@@ -15,20 +16,16 @@ export function buildTaskProgressSnapshot(students: TeacherTaskProgressStudentRo
         let status = "not_started";
         let stage: number | null = null;
 
-        const [submissionId, submissionStatus] = student.latestSubmission
-            ? student.latestSubmission.split(",").map(Number)
-            : [null, null];
-
         if (!student.experimentId) {
             status = "not_started";
             counts.not_started++;
-        } else if (submissionStatus === 2) {
+        } else if (student.experimentStatus === "graded") {
             status = "graded";
             counts.graded++;
-        } else if (submissionStatus === 3) {
+        } else if (student.experimentStatus === "rejected") {
             status = "rejected";
             counts.rejected++;
-        } else if (student.experimentStatus === 1) {
+        } else if (student.experimentStatus === "submitted") {
             status = "submitted";
             counts.submitted++;
         } else {
@@ -54,7 +51,7 @@ export function buildTaskProgressSnapshot(students: TeacherTaskProgressStudentRo
             status,
             stage,
             lastActivity: student.lastActivity,
-            submissionId: submissionId ?? null,
+            submissionId: student.experimentStatus === "in_progress" ? null : student.experimentId,
         };
     });
 

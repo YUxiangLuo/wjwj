@@ -106,7 +106,11 @@ const topicExcelUploadRoutes: RouteDefinition = {
         const formData = await req.formData();
         const file = formData.get("file");
         if (!file || !(file instanceof File)) return error("请选择文件", "VALIDATION_ERROR", 400);
-        const replaceResult = await replaceTopicExcelData({ topicId: id, file });
+        const replaceResult = await replaceTopicExcelData({
+            topicId: id,
+            file,
+            previousFilePath: topicRow.excelFilePath,
+        });
         if (!replaceResult.ok) return error(replaceResult.message, replaceResult.code, replaceResult.status);
 
         return json({
@@ -199,6 +203,7 @@ const topicWeightRoutes: RouteDefinition = {
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
+        if (topicRow.status === 1) return error("已发布课题不能修改评分权重", "FORBIDDEN", 403);
 
         const body = await parseBody<{ weightConfig: { questionnaire: number; process: number; report: number } }>(req);
         const weightResult = await updateTopicWeightConfig({

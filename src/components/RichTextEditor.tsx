@@ -118,7 +118,7 @@ export function RichTextEditor({
         },
     });
 
-    // Sync external value changes (e.g. draft restore)
+    // Sync external value changes, such as switching the edited record.
     useEffect(() => {
         if (!editor || editor.isDestroyed) return;
         const current = editor.isEmpty ? "" : editor.getHTML();
