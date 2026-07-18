@@ -73,6 +73,15 @@ async function loadOwnedExperiment(studentId: number, taskId: number) {
     return record ?? null;
 }
 
+function matchesObservedExperiment(record: typeof experiment.$inferSelect) {
+    return and(
+        eq(experiment.id, record.id),
+        eq(experiment.version, record.version),
+        eq(experiment.status, record.status),
+        eq(experiment.currentStage, record.currentStage),
+    );
+}
+
 const experimentRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -126,9 +135,10 @@ const stageCompleteRoutes: RouteDefinition = {
         const [updated] = await db
             .update(experiment)
             .set(result.updates)
-            .where(eq(experiment.id, record.id))
+            .where(matchesObservedExperiment(record))
             .returning();
-        return json(buildExperimentResponse(updated!, populationSize));
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        return json(buildExperimentResponse(updated, populationSize));
     },
 };
 
@@ -154,9 +164,10 @@ const stageReopenRoutes: RouteDefinition = {
         const [updated] = await db
             .update(experiment)
             .set(result.updates)
-            .where(eq(experiment.id, record.id))
+            .where(matchesObservedExperiment(record))
             .returning();
-        return json(buildExperimentResponse(updated!, populationSize));
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        return json(buildExperimentResponse(updated, populationSize));
     },
 };
 

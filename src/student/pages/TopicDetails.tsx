@@ -10,7 +10,7 @@ import { tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
 import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
-import { notifyAuthExpired } from "@/lib/auth-expired";
+import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
 
@@ -178,7 +178,7 @@ export function TopicDetails() {
             const res = await fetch(`/api/student/attachments/${file.id}/download`, {
                 credentials: "include",
             });
-            notifyAuthExpired(res);
+            await notifyAuthExpiredFromResponse(res);
             if (!res.ok) throw new Error("下载失败");
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);

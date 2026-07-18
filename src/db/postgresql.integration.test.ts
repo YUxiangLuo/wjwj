@@ -1,6 +1,6 @@
 import { SQL } from "bun";
 import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
 
@@ -101,6 +101,32 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             .values({ topicId, classId })
             .returning({ id: schema.task.id });
         taskId = createdTask!.id;
+
+        const [createdExperiment] = await database
+            .insert(schema.experiment)
+            .values({ studentId, taskId })
+            .returning({ id: schema.experiment.id, version: schema.experiment.version });
+        expect(createdExperiment?.version).toBe(1);
+
+        const staleUpdate = await database
+            .update(schema.experiment)
+            .set({ version: 2 })
+            .where(and(
+                eq(schema.experiment.id, createdExperiment!.id),
+                eq(schema.experiment.version, 0),
+            ))
+            .returning({ id: schema.experiment.id });
+        expect(staleUpdate).toHaveLength(0);
+
+        const [versionedExperiment] = await database
+            .update(schema.experiment)
+            .set({ version: 2 })
+            .where(and(
+                eq(schema.experiment.id, createdExperiment!.id),
+                eq(schema.experiment.version, 1),
+            ))
+            .returning({ version: schema.experiment.version });
+        expect(versionedExperiment?.version).toBe(2);
 
         process.env.DATABASE_URL = testDatabaseUrl!;
         const [{ listTeacherTasks }, applicationDatabase] = await Promise.all([

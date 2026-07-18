@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
@@ -100,6 +100,7 @@ export async function submitStudentExperiment(params: {
         .update(experiment)
         .set({
             status: ExperimentStatus.SUBMITTED,
+            version: params.experimentRecord.version + 1,
             submissionSnapshot: snapshot,
             submittedAt,
             scoreQuestionnaire: null,
@@ -112,9 +113,14 @@ export async function submitStudentExperiment(params: {
             gradedAt: null,
             updatedAt: submittedAt,
         })
-        .where(eq(experiment.id, params.experimentRecord.id))
+        .where(and(
+            eq(experiment.id, params.experimentRecord.id),
+            eq(experiment.version, params.experimentRecord.version),
+            eq(experiment.status, params.experimentRecord.status),
+            eq(experiment.currentStage, params.experimentRecord.currentStage),
+        ))
         .returning({ id: experiment.id });
 
-    if (!updated.length) return fail("实验记录不存在", "NOT_FOUND", 404);
+    if (!updated.length) return fail("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
     return { ok: true as const, experimentId: params.experimentRecord.id, submittedAt };
 }

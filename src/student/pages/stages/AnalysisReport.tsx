@@ -26,7 +26,7 @@ import {
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
-import { notifyAuthExpired } from "@/lib/auth-expired";
+import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
 
 interface AnalysisReportProps {
     onPrev: () => void;
@@ -442,7 +442,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
             const res = await fetch(`/api/student/tasks/${experiment.taskId}/export?type=${type}`, {
                 credentials: "include",
             });
-            notifyAuthExpired(res);
+            await notifyAuthExpiredFromResponse(res);
             if (!res.ok) throw new Error("导出失败");
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);

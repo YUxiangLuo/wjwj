@@ -52,7 +52,10 @@ export function buildStageCompletionUpdates(params: {
     }
 
     const now = new Date();
-    const updates: Partial<typeof experiment.$inferInsert> = { updatedAt: now };
+    const updates: Partial<typeof experiment.$inferInsert> = {
+        version: record.version + 1,
+        updatedAt: now,
+    };
 
     if (stage === 1) {
         const questionnaire = payload.questionnaire;
@@ -112,6 +115,7 @@ export function buildStageReopenUpdates(params: {
     if (!completedAtForStage(record, stage)) return fail("该阶段尚未完成", "STAGE_NOT_COMPLETED", 409);
 
     const updates: Partial<typeof experiment.$inferInsert> = {
+        version: record.version + 1,
         currentStage: stage,
         updatedAt: new Date(),
     };

@@ -1,4 +1,6 @@
 import { expect, mock, test } from "bun:test";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { experiment } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
 
@@ -17,6 +19,7 @@ function validRecord(status: "in_progress" | "rejected" = "in_progress") {
         id: 9,
         studentId: 2,
         taskId: 3,
+        version: 4,
         currentStage: 4,
         status,
         questionnaire: validQuestionnaire(),
@@ -66,6 +69,7 @@ test("submit overwrites the same experiment and stores a grading snapshot", asyn
     const update = operations.find((item) => item.kind === "update" && item.table === experiment);
     expect(update?.set).toMatchObject({
         status: "submitted",
+        version: 5,
         totalScore: null,
         teacherComment: null,
         rejectReason: null,
@@ -75,4 +79,23 @@ test("submit overwrites the same experiment and stores a grading snapshot", asyn
             weightConfig: { questionnaire: 40, process: 35, report: 25 },
         },
     });
+    const condition = new PgDialect().sqlToQuery(update!.where as SQL);
+    expect(condition.params).toEqual([9, 4, "rejected", 4]);
+});
+
+test("submit rejects a stale experiment record when the conditional update changes no rows", async () => {
+    const { db } = createMockDb({ update: [[]] });
+    mock.module("../../db", () => ({ db }));
+    const { submitStudentExperiment } = await import(`./submit-service.ts?conflict=${crypto.randomUUID()}`);
+    const result = await submitStudentExperiment({
+        experimentRecord: validRecord(),
+        taskInfo: {
+            topicName: "抽样调查",
+            populationSize: 200,
+            weightConfig: { questionnaire: 40, process: 35, report: 25 },
+        },
+        student: { studentId: "S001", name: "学生一" },
+    });
+
+    expect(result).toMatchObject({ ok: false, code: "VERSION_CONFLICT", status: 409 });
 });

@@ -89,6 +89,7 @@ const gradingRoutes: RouteDefinition = {
 async function findOwnedExperiment(experimentId: number, teacherId: number) {
     const [row] = await db.select({
         id: experiment.id,
+        version: experiment.version,
         studentName: student.name,
         studentId: student.studentId,
         className: class_.name,
@@ -192,8 +193,9 @@ const gradingDetailRoutes: RouteDefinition = {
             + body.scoreReport! * weights.report
         ) / 100;
         const now = new Date();
-        await db.update(experiment).set({
+        const updated = await db.update(experiment).set({
             status: "graded",
+            version: row.version + 1,
             scoreQuestionnaire: String(body.scoreQuestionnaire),
             scoreProcess: String(body.scoreProcess),
             scoreReport: String(body.scoreReport),
@@ -203,7 +205,12 @@ const gradingDetailRoutes: RouteDefinition = {
             gradedByTeacherId: current.id,
             gradedAt: now,
             updatedAt: now,
-        }).where(eq(experiment.id, experimentId));
+        }).where(and(
+            eq(experiment.id, experimentId),
+            eq(experiment.version, row.version),
+            eq(experiment.status, row.status),
+        )).returning({ id: experiment.id });
+        if (!updated.length) return error("提交记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json({ success: true, totalScore: Number(total.toFixed(2)) });
     },
 };
@@ -222,8 +229,9 @@ const gradingRejectRoutes: RouteDefinition = {
             return error("驳回理由长度需在5-1000字之间", "VALIDATION_ERROR", 400);
         }
         const now = new Date();
-        await db.update(experiment).set({
+        const updated = await db.update(experiment).set({
             status: "rejected",
+            version: row.version + 1,
             rejectReason: reason,
             scoreQuestionnaire: null,
             scoreProcess: null,
@@ -233,7 +241,12 @@ const gradingRejectRoutes: RouteDefinition = {
             gradedByTeacherId: current.id,
             gradedAt: now,
             updatedAt: now,
-        }).where(eq(experiment.id, experimentId));
+        }).where(and(
+            eq(experiment.id, experimentId),
+            eq(experiment.version, row.version),
+            eq(experiment.status, row.status),
+        )).returning({ id: experiment.id });
+        if (!updated.length) return error("提交记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json({ success: true });
     },
 };

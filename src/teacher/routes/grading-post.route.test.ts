@@ -1,4 +1,6 @@
 import { expect, mock, test } from "bun:test";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { experiment } from "../../db/schema";
 import { createMockDb } from "../../test-utils/mock-db";
 
@@ -8,8 +10,8 @@ function post(id: string, body: unknown) {
     return request;
 }
 
-async function load(row: Record<string, unknown>) {
-    const { db, operations } = createMockDb({ select: [[row]] });
+async function load(row: Record<string, unknown>, update?: unknown[]) {
+    const { db, operations } = createMockDb({ select: [[row]], update });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => ({ getTeacherUser: () => ({ id: 9, type: "teacher", name: "教师", employeeId: "T001" }) }));
     const module = await import(`./grading.ts?post=${crypto.randomUUID()}`);
@@ -18,6 +20,7 @@ async function load(row: Record<string, unknown>) {
 
 const row = {
     id: 99,
+    version: 7,
     status: "submitted",
     weightConfig: { questionnaire: 30, process: 30, report: 40 },
     submissionSnapshot: { weightConfig: { questionnaire: 50, process: 20, report: 30 } },
@@ -29,7 +32,9 @@ test("grading updates the same experiment with weighted scores", async () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ data: { success: true, totalScore: 88 } });
     const update = operations.find((item) => item.kind === "update" && item.table === experiment);
-    expect(update?.set).toMatchObject({ status: "graded", totalScore: "88.00", teacherComment: "完成良好", gradedByTeacherId: 9 });
+    expect(update?.set).toMatchObject({ status: "graded", version: 8, totalScore: "88.00", teacherComment: "完成良好", gradedByTeacherId: 9 });
+    const condition = new PgDialect().sqlToQuery(update!.where as SQL);
+    expect(condition.params).toEqual([99, 7, "submitted"]);
 });
 
 test("rejecting a submission only changes the current experiment", async () => {
@@ -39,4 +44,23 @@ test("rejecting a submission only changes the current experiment", async () => {
     const update = operations.find((item) => item.kind === "update" && item.table === experiment);
     expect(update?.set).toMatchObject({ status: "rejected", rejectReason: "请补充抽样结果分析", totalScore: null });
     expect(operations.filter((item) => item.kind === "insert")).toHaveLength(0);
+});
+
+test("grading returns 409 when a concurrent transition wins first", async () => {
+    const { module } = await load(row, [[]]);
+    const response = await module.gradingDetailRoutes.POST!(post("99", {
+        scoreQuestionnaire: 80,
+        scoreProcess: 90,
+        scoreReport: 100,
+        comment: "完成良好",
+    }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "VERSION_CONFLICT" } });
+});
+
+test("rejecting returns 409 when a concurrent transition wins first", async () => {
+    const { module } = await load(row, [[]]);
+    const response = await module.gradingRejectRoutes.POST!(post("99", { reason: "请补充抽样结果分析" }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "VERSION_CONFLICT" } });
 });

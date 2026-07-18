@@ -6,6 +6,7 @@ function record(overrides: Record<string, unknown> = {}) {
         id: 1,
         studentId: 2,
         taskId: 3,
+        version: 4,
         status: "in_progress",
         currentStage: 2,
         questionnaire: { title: "问卷" },
@@ -53,6 +54,7 @@ test("completing the current stage saves it and advances once", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.updates.currentStage).toBe(3);
+    expect(result.updates.version).toBe(5);
     expect(result.updates.stage2CompletedAt).toBeInstanceOf(Date);
     expect(result.updates.samplePlan).toMatchObject({ finalSampleSize: 50 });
 });
@@ -87,6 +89,7 @@ test("reopening a completed stage keeps that stage data and clears downstream da
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.updates).toMatchObject({
+        version: 5,
         currentStage: 2,
         stage2CompletedAt: null,
         samplingResults: null,

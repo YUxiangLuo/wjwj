@@ -174,6 +174,7 @@ export const experiment = pgTable(
         id: bigint("id", { mode: "number" }).generatedByDefaultAsIdentity().primaryKey(),
         studentId: bigint("student_id", { mode: "number" }).notNull().references(() => student.id, { onDelete: "cascade" }),
         taskId: bigint("task_id", { mode: "number" }).notNull().references(() => task.id, { onDelete: "cascade" }),
+        version: integer("version").notNull().default(1),
         currentStage: smallint("current_stage").notNull().default(1),
         status: varchar("status", { length: 20 }).$type<ExperimentStatus>().notNull().default("in_progress"),
         questionnaire: jsonb("questionnaire"),
