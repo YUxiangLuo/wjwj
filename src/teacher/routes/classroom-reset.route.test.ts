@@ -23,6 +23,6 @@ test("student password reset requires a password change and clears sessions", as
     expect(response.status).toBe(200);
     const update = operations.find((operation) => operation.kind === "update" && operation.table === student);
     expect(update?.set).toMatchObject({ password: expect.any(String), isFirstLogin: 1, updatedAt: expect.any(Date) });
-    expect(update?.set).not.toHaveProperty("loginFailCount");
+    expect(update?.set).toMatchObject({ loginFailCount: 0, lockedUntil: null });
     expect(operations.filter((operation) => operation.kind === "delete")).toHaveLength(1);
 });

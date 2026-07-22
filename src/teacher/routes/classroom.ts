@@ -210,7 +210,7 @@ const studentRoutes: RouteDefinition = {
         if (body.action === "reset_password") {
             await db
                 .update(student)
-                .set({ password: await Bun.password.hash(owned.studentId), isFirstLogin: 1, updatedAt: new Date() })
+                .set({ password: await Bun.password.hash(owned.studentId), isFirstLogin: 1, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
                 .where(eq(student.id, id));
             await clearUserSessionsForUser(STUDENT_USER_TYPE, id);
         } else if (body.action === "toggle_status") {

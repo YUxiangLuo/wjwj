@@ -26,15 +26,19 @@ const menu = [
     { path: "/announcement", label: "公告管理", icon: Megaphone },
 ];
 
-function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => Promise<void> }) {
+function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser; onLogout: () => Promise<void>; onPasswordChanged: () => void }) {
     const location = useLocation();
     const [sidebar, setSidebar] = useState(false);
     const [passwordOpen, setPasswordOpen] = useState(false);
+    const mustChangePassword = user.isFirstLogin === 1;
     const passwordChange = usePasswordChange({
         policy: ADMIN_PASSWORD_POLICY,
         forbiddenSubstrings: [user.username],
         onSubmit: authApi.changePassword,
-        onSuccess: () => setPasswordOpen(false),
+        onSuccess: () => {
+            onPasswordChanged();
+            setPasswordOpen(false);
+        },
     });
     const title = menu.find((item) => item.path === "/" ? location.pathname === "/" : location.pathname.startsWith(item.path))?.label ?? "管理后台";
 
@@ -66,7 +70,9 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                     <div className="flex items-center gap-1"><Button variant="ghost" size="icon" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></Button><Button variant="ghost" size="icon" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></Button></div>
                 </header>
                 <div className="p-4 sm:p-6">
-                    <Routes>
+                    {mustChangePassword ? (
+                        <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用管理功能。</div>
+                    ) : <Routes>
                         <Route index element={<Dashboard />} />
                         <Route path="semester" element={<SemesterManagement />} />
                         <Route path="teacher" element={<TeacherManagement />} />
@@ -74,10 +80,10 @@ function AdminWorkspace({ user, onLogout }: { user: AdminUser; onLogout: () => P
                         <Route path="student" element={<StudentManagement />} />
                         <Route path="announcement" element={<AnnouncementManagement />} />
                         <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
+                    </Routes>}
                 </div>
             </main>
-            <PasswordChangeDialog open={passwordOpen} onOpenChange={setPasswordOpen} allowClose title="修改密码" description="输入当前密码并设置新密码。" form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error} saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />
+            <PasswordChangeDialog open={mustChangePassword || passwordOpen} onOpenChange={(open) => { if (!mustChangePassword) setPasswordOpen(open); }} allowClose={!mustChangePassword} title={mustChangePassword ? "首次登录请修改密码" : "修改密码"} description={mustChangePassword ? "当前使用初始密码，设置新密码后才能进入管理后台。" : "输入当前密码并设置新密码。"} form={passwordChange.form} onFieldChange={passwordChange.setField} error={passwordChange.error} saving={passwordChange.saving} onSubmit={passwordChange.submit} submitLabel="保存" />
             <Toaster richColors position="top-right" />
         </div>
     );
@@ -102,7 +108,11 @@ export function AdminApp() {
     if (checking) return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
     if (location.pathname === "/login") return user ? <Navigate to="/" replace /> : <Login />;
     if (!user) return <Navigate to="/login" replace />;
-    return <AdminWorkspace user={user} onLogout={async () => { await authApi.logout(); setUser(null); navigate("/login", { replace: true }); }} />;
+    return <AdminWorkspace
+        user={user}
+        onPasswordChanged={() => setUser((current) => current ? { ...current, isFirstLogin: 0 } : current)}
+        onLogout={async () => { await authApi.logout(); setUser(null); navigate("/login", { replace: true }); }}
+    />;
 }
 
 export default AdminApp;

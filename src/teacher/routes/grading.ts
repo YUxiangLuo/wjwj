@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, task, teacher, topic } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
@@ -15,6 +15,14 @@ function escapeLike(value: string) {
 
 function numeric(value: string | null) {
     return value == null ? null : Number(value);
+}
+
+function snapshotTextField(field: "studentName" | "topicName") {
+    return sql<string>`CASE
+        WHEN jsonb_typeof(${experiment.submissionSnapshot}) = 'string'
+            THEN ((${experiment.submissionSnapshot} #>> '{}')::jsonb ->> ${field})
+        ELSE (${experiment.submissionSnapshot} ->> ${field})
+    END`;
 }
 
 function baseConditions(teacherId: number) {
@@ -44,7 +52,13 @@ const gradingRoutes: RouteDefinition = {
         const keyword = params.get("keyword")?.trim();
         if (keyword) {
             const value = `%${escapeLike(keyword)}%`;
-            conditions.push(or(ilike(student.name, value), ilike(student.studentId, value), ilike(topic.name, value))!);
+            conditions.push(or(
+                ilike(student.name, value),
+                ilike(student.studentId, value),
+                ilike(topic.name, value),
+                ilike(snapshotTextField("studentName"), value),
+                ilike(snapshotTextField("topicName"), value),
+            )!);
         }
         const where = and(...conditions);
         const [[totalRow], rows] = await Promise.all([
@@ -66,6 +80,7 @@ const gradingRoutes: RouteDefinition = {
                 score: experiment.totalScore,
                 gradedByName: teacher.name,
                 gradedAt: experiment.gradedAt,
+                submissionSnapshot: experiment.submissionSnapshot,
             })
                 .from(experiment)
                 .innerJoin(student, eq(experiment.studentId, student.id))
@@ -79,7 +94,16 @@ const gradingRoutes: RouteDefinition = {
                 .offset((page - 1) * pageSize),
         ]);
         return json({
-            items: rows.map((row) => ({ ...row, score: numeric(row.score) })),
+            items: rows.map((row) => {
+                const snapshot = parseStoredJson<{ studentName?: string; topicName?: string }>(row.submissionSnapshot);
+                const { submissionSnapshot: _, ...item } = row;
+                return {
+                    ...item,
+                    studentName: snapshot?.studentName ?? row.studentName,
+                    topic: snapshot?.topicName ?? row.topic,
+                    score: numeric(row.score),
+                };
+            }),
             total: Number(totalRow?.count ?? 0),
             page,
             pageSize,

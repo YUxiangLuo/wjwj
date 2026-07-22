@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { teacher } from "../../db/schema";
 import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody } from "../../server/http";
+import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 import {
     clearOtherUserSessionsForUser,
@@ -136,11 +137,20 @@ const teacherLoginRoutes: RouteDefinition = {
         if (!employeeId || !password) return error("请输入工号和密码", "VALIDATION_ERROR", 400);
 
         const [row] = await db.select().from(teacher).where(eq(teacher.employeeId, employeeId));
+        if (row?.status === 1 && isLoginLocked(row)) {
+            return error("登录失败次数过多，账号暂时锁定，请稍后重试", "ACCOUNT_LOCKED", 423);
+        }
         const valid = row
             ? await Bun.password.verify(password, row.password)
             : await Bun.password.verify(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row || !valid) return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
-        if (row.status !== 1) return error("账号已停用，请联系管理员", "ACCOUNT_DISABLED", 403);
+        if (!row || row.status !== 1) return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
+        if (!valid) {
+            const failure = nextFailedLoginState(row);
+            await db.update(teacher).set({ loginFailCount: failure.loginFailCount, lockedUntil: failure.lockedUntil }).where(eq(teacher.id, row.id));
+            return error(failedLoginMessage(failure), "INVALID_CREDENTIALS", 401);
+        }
+
+        await db.update(teacher).set({ loginFailCount: 0, lockedUntil: null }).where(eq(teacher.id, row.id));
 
         const { token, expiresAt } = await createUserSession(TEACHER_USER_TYPE, row.id);
         return json(
@@ -203,7 +213,7 @@ const teacherPasswordRoutes: RouteDefinition = {
         if (!currentToken) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         await db
             .update(teacher)
-            .set({ password: await Bun.password.hash(newPassword), isFirstLogin: 0, updatedAt: new Date() })
+            .set({ password: await Bun.password.hash(newPassword), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
             .where(eq(teacher.id, current.id));
         await clearOtherUserSessionsForUser(TEACHER_USER_TYPE, current.id, currentToken);
         return json({ success: true });

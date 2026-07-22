@@ -33,15 +33,19 @@ test("student login creates an independent fixed session", async () => {
     expect(session?.values).not.toHaveProperty("deviceInfo");
 });
 
-test("wrong student password has no counters or lockout state", async () => {
+test("fifth wrong student password locks the account", async () => {
     const { module, operations } = await load([[{
         id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
         deletedAt: null, password: await Bun.password.hash("Teaching123!"), isFirstLogin: 0,
+        loginFailCount: 4, lockedUntil: null,
     }]]);
     const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password: "wrong" }));
     expect(response.status).toBe(401);
-    expect(await response.json()).toMatchObject({ error: { code: "INVALID_CREDENTIALS", message: "账号或密码错误" } });
-    expect(operations.some((item) => item.kind === "update")).toBe(false);
+    expect(await response.json()).toMatchObject({ error: { code: "INVALID_CREDENTIALS" } });
+    expect(operations.find((item) => item.kind === "update")?.set).toMatchObject({
+        loginFailCount: 5,
+        lockedUntil: expect.any(Date),
+    });
 });
 
 test("student me reads the fixed session without extending it", async () => {

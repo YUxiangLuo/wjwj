@@ -39,7 +39,12 @@ const submissionByTaskRoutes: RouteDefinition = {
                 gradedAt: experiment.gradedAt,
                 graderName: teacher.name,
                 weightConfig: topic.weightConfig,
+                populationSize: topic.excelRowCount,
                 submissionSnapshot: experiment.submissionSnapshot,
+                questionnaire: experiment.questionnaire,
+                samplePlan: experiment.samplePlan,
+                samplingResults: experiment.samplingResults,
+                reportContent: experiment.reportContent,
             })
             .from(experiment)
             .innerJoin(task, eq(experiment.taskId, task.id))
@@ -48,13 +53,31 @@ const submissionByTaskRoutes: RouteDefinition = {
             .where(and(eq(experiment.studentId, auth.student.id), eq(experiment.taskId, taskId)));
 
         if (!row || row.status === "in_progress") return error("尚未提交实验", "NOT_FOUND", 404);
-        const snapshot = parseStoredJson<{ weightConfig?: unknown }>(row.submissionSnapshot);
+        const snapshot = parseStoredJson<{
+            topicName?: string;
+            studentName?: string;
+            populationSize?: number | null;
+            questionnaire?: unknown;
+            samplePlan?: unknown;
+            samplingResults?: unknown;
+            reportContent?: string;
+            weightConfig?: unknown;
+        }>(row.submissionSnapshot);
+        const snapshotContent = {
+            topicName: snapshot?.topicName ?? row.topicName,
+            studentName: snapshot?.studentName ?? auth.student.name,
+            populationSize: snapshot?.populationSize ?? row.populationSize,
+            questionnaire: snapshot?.questionnaire ?? parseStoredJson(row.questionnaire),
+            samplePlan: snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
+            samplingResults: snapshot?.samplingResults ?? parseStoredJson(row.samplingResults),
+            reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
+        };
         return json({
             id: row.id,
             taskId: row.taskId,
             version: row.version,
             topicId: row.topicId,
-            topicName: row.topicName,
+            topicName: snapshotContent.topicName,
             submittedAt: row.submittedAt?.toISOString() ?? null,
             status: row.status,
             scoreQuestionnaire: score(row.scoreQuestionnaire),
@@ -66,6 +89,7 @@ const submissionByTaskRoutes: RouteDefinition = {
             gradedAt: row.gradedAt?.toISOString() ?? null,
             graderName: row.graderName,
             weights: scoringWeightsFrom(snapshot?.weightConfig ?? row.weightConfig),
+            snapshot: snapshotContent,
         });
     },
 };

@@ -60,9 +60,9 @@ const statsRoutes = {
 
 export const adminApiRoutes = {
     "/api/admin/login": adminLoginRoutes,
-    "/api/admin/me": withAdminAuth(adminMeRoutes),
+    "/api/admin/me": withAdminAuth(adminMeRoutes, { allowFirstLogin: true }),
     "/api/admin/logout": adminLogoutRoutes,
-    "/api/admin/password": withAdminAuth(adminPasswordRoutes),
+    "/api/admin/password": withAdminAuth(adminPasswordRoutes, { allowFirstLogin: true }),
     "/api/admin/stats": withAdminAuth(statsRoutes),
 
     "/api/admin/semesters": withAdminAuth(semesterRoutes),

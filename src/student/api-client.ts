@@ -138,6 +138,15 @@ export interface SubmissionDetail {
     gradedAt: string | null;
     graderName: string | null;
     weights: { questionnaire: number; process: number; report: number };
+    snapshot: {
+        topicName: string;
+        studentName: string;
+        populationSize: number | null;
+        questionnaire: QuestionnaireData | null;
+        samplePlan: SamplePlanData | null;
+        samplingResults: SamplingResultsData | null;
+        reportContent: string;
+    };
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {

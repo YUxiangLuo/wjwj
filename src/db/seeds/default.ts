@@ -13,6 +13,7 @@ import {
     teacher,
     topic,
 } from "../schema";
+import type { SubmissionSnapshot } from "../../student/experiment/submit-service";
 
 const questionnaire = {
     title: "校园学习体验调查",
@@ -77,18 +78,22 @@ async function writePopulationFixture() {
 }
 
 async function seed() {
-    const password = await Bun.password.hash("Teaching123!");
+    const generatedAdminPassword = `Bootstrap!${crypto.randomUUID()}`;
+    const adminInitialPassword = process.env.SEED_ADMIN_PASSWORD?.trim() || generatedAdminPassword;
+    const adminPassword = await Bun.password.hash(adminInitialPassword);
+    const teacherInitialPassword = "T001";
+    const teacherPassword = await Bun.password.hash(teacherInitialPassword);
     const populationPath = await writePopulationFixture();
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1_000);
     const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1_000);
 
-    await db.insert(admin).values({ username: "admin", password });
+    await db.insert(admin).values({ username: "admin", password: adminPassword, isFirstLogin: 1 });
     const [teacherRow] = await db.insert(teacher).values({
         employeeId: "T001",
         name: "张老师",
-        password,
-        isFirstLogin: 0,
+        password: teacherPassword,
+        isFirstLogin: 1,
     }).returning();
     const [semesterRow] = await db.insert(semester).values({
         name: "2026-2027-1",
@@ -99,12 +104,20 @@ async function seed() {
         semesterId: semesterRow!.id,
         teacherId: teacherRow!.id,
     }).returning();
-    const studentRows = await db.insert(student).values([
-        { studentId: "S001", name: "李明", email: "s001@example.edu", password, isFirstLogin: 0, classId: classRow!.id },
-        { studentId: "S002", name: "王芳", email: "s002@example.edu", password, isFirstLogin: 0, classId: classRow!.id },
-        { studentId: "S003", name: "陈晨", email: "s003@example.edu", password, isFirstLogin: 0, classId: classRow!.id },
-        { studentId: "S004", name: "赵悦", email: "s004@example.edu", password, isFirstLogin: 0, classId: classRow!.id },
-    ]).returning();
+    const studentSeeds = [
+        { studentId: "S001", name: "李明", email: "s001@example.edu" },
+        { studentId: "S002", name: "王芳", email: "s002@example.edu" },
+        { studentId: "S003", name: "陈晨", email: "s003@example.edu" },
+        { studentId: "S004", name: "赵悦", email: "s004@example.edu" },
+    ];
+    const studentPasswords = await Promise.all(studentSeeds.map((item) => Bun.password.hash(item.studentId)));
+    const studentRows = await db.insert(student).values(studentSeeds.map((item, index) => ({
+        ...item,
+        password: studentPasswords[index]!,
+        isFirstLogin: 1,
+        classId: classRow!.id,
+    }))).returning();
+    const weightConfig = { questionnaire: 30, process: 30, report: 40 };
     const [topicRow] = await db.insert(topic).values({
         teacherId: teacherRow!.id,
         name: "校园学习体验抽样调查",
@@ -117,7 +130,7 @@ async function seed() {
             stratified: ["年级"],
             others: ["专业"],
         },
-        weightConfig: { questionnaire: 30, process: 30, report: 40 },
+        weightConfig,
         recommendQuestions: questionnaire.questions,
         status: 1,
     }).returning();
@@ -145,7 +158,8 @@ async function seed() {
         samplePlan,
         samplingResults,
         reportContent,
-    };
+        weightConfig,
+    } satisfies SubmissionSnapshot;
     await db.insert(experiment).values({
         studentId: studentRows[1]!.id,
         taskId: taskRow!.id,
@@ -193,9 +207,9 @@ async function seed() {
     });
 
     console.log("Seed completed.");
-    console.log("Admin: admin / Teaching123!");
-    console.log("Teacher: T001 / Teaching123!");
-    console.log("Students: S001-S004 / Teaching123!");
+    console.log(`Admin: admin / ${adminInitialPassword} (password change required on first login)`);
+    console.log(`Teacher: T001 / ${teacherInitialPassword} (password change required on first login)`);
+    console.log("Students: initial password equals each student ID (password change required on first login)");
 }
 
 try {

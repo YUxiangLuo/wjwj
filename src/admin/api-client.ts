@@ -12,7 +12,7 @@ export interface StudentExperiment {
     statusText: string; submitTime: string | null; score: number | null; lastUpdate: string | null; progress: number;
 }
 export interface Announcement { id: number; title: string; content: string; targetScope: "all" | "teacher" | "student"; status: number; createdAt: string; updatedAt: string }
-export interface AdminUser { id: number; username: string }
+export interface AdminUser { id: number; username: string; isFirstLogin: number }
 
 async function request<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
     try {

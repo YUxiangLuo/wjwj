@@ -3,6 +3,7 @@ import { db } from "../../db";
 import { class_, student } from "../../db/schema";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody } from "../../server/http";
+import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import type { RouteDefinition } from "../../server/route-types";
 import {
     clearOtherUserSessionsForUser,
@@ -88,12 +89,22 @@ const loginRoutes: RouteDefinition = {
         if (!studentId || !password) return error("请输入学号和密码", "VALIDATION_ERROR", 400);
 
         const [row] = await db.select().from(student).where(eq(student.studentId, studentId));
+        if (row?.status === 1 && !row.deletedAt && isLoginLocked(row)) {
+            return error("登录失败次数过多，账号暂时锁定，请稍后重试", "ACCOUNT_LOCKED", 423);
+        }
         const valid = row
             ? await Bun.password.verify(password, row.password)
             : await Bun.password.verify(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row || !valid || row.status !== 1 || row.deletedAt) {
+        if (!row || row.status !== 1 || row.deletedAt) {
             return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
         }
+        if (!valid) {
+            const failure = nextFailedLoginState(row);
+            await db.update(student).set({ loginFailCount: failure.loginFailCount, lockedUntil: failure.lockedUntil }).where(eq(student.id, row.id));
+            return error(failedLoginMessage(failure), "INVALID_CREDENTIALS", 401);
+        }
+
+        await db.update(student).set({ loginFailCount: 0, lockedUntil: null }).where(eq(student.id, row.id));
 
         const { token, expiresAt } = await createUserSession(STUDENT_USER_TYPE, row.id);
         return json(
@@ -152,7 +163,7 @@ const passwordRoutes: RouteDefinition = {
         if (!currentToken) return error("未登录或登录已过期", "UNAUTHORIZED", 401);
         await db
             .update(student)
-            .set({ password: await Bun.password.hash(newPassword), isFirstLogin: 0, updatedAt: new Date() })
+            .set({ password: await Bun.password.hash(newPassword), isFirstLogin: 0, loginFailCount: 0, lockedUntil: null, updatedAt: new Date() })
             .where(eq(student.id, row.id));
         await clearOtherUserSessionsForUser(STUDENT_USER_TYPE, row.id, currentToken);
         return json({ success: true });

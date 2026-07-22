@@ -25,7 +25,21 @@ test("submission endpoint returns the task's current experiment result", async (
         gradedAt: new Date("2026-03-08T10:00:00Z"),
         graderName: "王老师",
         weightConfig: { questionnaire: 30, process: 30, report: 40 },
-        submissionSnapshot: { weightConfig: { questionnaire: 40, process: 35, report: 25 } },
+        populationSize: 1000,
+        questionnaire: { title: "实时问卷" },
+        samplePlan: { finalSampleSize: 80 },
+        samplingResults: { simple: { completed: true, sampleCount: 80 } },
+        reportContent: "<p>实时报告</p>",
+        submissionSnapshot: {
+            topicName: "提交时课题",
+            studentName: "提交时姓名",
+            populationSize: 900,
+            questionnaire: { title: "提交时问卷", questions: [] },
+            samplePlan: { finalSampleSize: 60 },
+            samplingResults: { simple: { completed: true, sampleCount: 60 } },
+            reportContent: "<p>提交时报告</p>",
+            weightConfig: { questionnaire: 40, process: 35, report: 25 },
+        },
     }]] });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createStudentAuthModuleMock());
@@ -38,7 +52,24 @@ test("submission endpoint returns the task's current experiment result", async (
     const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com/api/student/tasks/40/submission"), "40"));
     const payload = await response.json() as any;
     expect(response.status).toBe(200);
-    expect(payload.data).toMatchObject({ id: 501, taskId: 40, version: 12, status: "graded", totalScore: 89.9, graderName: "王老师" });
+    expect(payload.data).toMatchObject({
+        id: 501,
+        taskId: 40,
+        version: 12,
+        status: "graded",
+        topicName: "提交时课题",
+        totalScore: 89.9,
+        graderName: "王老师",
+        snapshot: {
+            topicName: "提交时课题",
+            studentName: "提交时姓名",
+            populationSize: 900,
+            questionnaire: { title: "提交时问卷" },
+            samplePlan: { finalSampleSize: 60 },
+            samplingResults: { simple: { sampleCount: 60 } },
+            reportContent: "<p>提交时报告</p>",
+        },
+    });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
     expect(payload.data).not.toHaveProperty("pdfStatus");
 });

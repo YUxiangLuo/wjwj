@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, FileText, Loader2, User } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
+import { RichTextContent } from "@/components/RichTextContent";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { submissionsApi, type SubmissionDetail } from "../api-client";
@@ -13,6 +15,34 @@ const statusConfig: Record<SubmissionDetail["status"], { label: string; intent: 
     graded: { label: "已批改", intent: "success" },
     rejected: { label: "已驳回", intent: "destructive" },
 };
+
+function SnapshotJson({ value, emptyText }: { value: unknown; emptyText: string }) {
+    if (value == null) return <p className="text-sm text-muted-foreground">{emptyText}</p>;
+    return <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted p-4 text-xs text-foreground">{JSON.stringify(value, null, 2)}</pre>;
+}
+
+function QuestionnaireSnapshot({ questionnaire }: { questionnaire: SubmissionDetail["snapshot"]["questionnaire"] }) {
+    if (!questionnaire) return <p className="text-sm text-muted-foreground">暂无问卷内容</p>;
+    return (
+        <div className="space-y-5">
+            <div className="space-y-2 border-b border-border pb-4">
+                <h3 className="text-lg font-semibold">{questionnaire.title || "未命名问卷"}</h3>
+                <RichTextContent html={questionnaire.welcomeText ?? ""} className="text-sm text-muted-foreground" emptyFallback="无欢迎语" />
+            </div>
+            <div className="space-y-3">
+                {(questionnaire.questions ?? []).map((question, index) => (
+                    <div key={question.id || index} className="rounded-xl border border-border bg-muted/30 p-4">
+                        <p className="text-sm font-medium">{index + 1}. {question.content}</p>
+                        {question.options?.length ? <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{question.options.map((option, optionIndex) => <li key={`${question.id}-${optionIndex}`}>{option}</li>)}</ul> : null}
+                        {question.type === "boolean" && <p className="mt-2 text-sm text-muted-foreground">选项：是 / 否</p>}
+                        {question.type === "scale" && <p className="mt-2 text-sm text-muted-foreground">量表：{question.scaleMin ?? 1}–{question.scaleMax ?? 10}</p>}
+                    </div>
+                ))}
+            </div>
+            <RichTextContent html={questionnaire.endingText ?? ""} className="border-t border-border pt-4 text-sm text-muted-foreground" emptyFallback="无结束语" />
+        </div>
+    );
+}
 
 export function SubmissionDetailPage() {
     const { taskId } = useParams();
@@ -78,6 +108,29 @@ export function SubmissionDetailPage() {
                             <p className={cn("mt-1 text-3xl font-bold", detail.totalScore !== null && detail.totalScore >= 60 ? "text-success" : "text-foreground")}>{detail.totalScore ?? "-"}</p>
                         </div>
                     </div>
+
+                    <section data-testid="student-submission-content" className="rounded-xl border border-border bg-card">
+                        <div className="border-b border-border px-5 py-4">
+                            <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-primary" />提交内容快照</h2>
+                            <p className="mt-1 text-xs text-muted-foreground">以下内容固定为本次提交时的版本，不受后续课题修改影响。</p>
+                        </div>
+                        <div className="p-5">
+                            <Tabs defaultValue="report">
+                                <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+                                    <TabsTrigger value="report">实验报告</TabsTrigger>
+                                    <TabsTrigger value="questionnaire">问卷</TabsTrigger>
+                                    <TabsTrigger value="plan">抽样方案</TabsTrigger>
+                                    <TabsTrigger value="sampling">抽样结果</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="report" className="mt-4 rounded-xl bg-muted/30 p-5">
+                                    <RichTextContent html={detail.snapshot.reportContent} className="text-sm leading-relaxed" emptyFallback="暂无报告内容" />
+                                </TabsContent>
+                                <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} /></TabsContent>
+                                <TabsContent value="plan" className="mt-4"><SnapshotJson value={detail.snapshot.samplePlan} emptyText="暂无抽样方案" /></TabsContent>
+                                <TabsContent value="sampling" className="mt-4"><SnapshotJson value={detail.snapshot.samplingResults} emptyText="暂无抽样结果" /></TabsContent>
+                            </Tabs>
+                        </div>
+                    </section>
 
                     {detail.teacherComment && (
                         <section className="rounded-xl border border-border bg-muted/30 p-5">

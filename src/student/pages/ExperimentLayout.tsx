@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Loader2, Play, Ruler } from "lucide-react";
+import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Loader2, Play, RefreshCw, Ruler } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +55,8 @@ export function ExperimentLayout() {
     const [redirect, setRedirect] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [versionConflict, setVersionConflict] = useState(false);
+    const [editorRevision, setEditorRevision] = useState(0);
     const [reopenStage, setReopenStage] = useState<number | null>(null);
 
     useEffect(() => {
@@ -76,27 +78,57 @@ export function ExperimentLayout() {
 
     const completeStage = useCallback(async (stage: number, data: Record<string, unknown>) => {
         if (!experiment) return false;
+        if (versionConflict) {
+            setSaveError("检测到其他页面已更新。请先复制需要保留的内容，再加载最新版本。");
+            return false;
+        }
         setIsSaving(true); setSaveError(null);
         const response = await experimentApi.completeStage(numericTaskId, stage, experiment.version, data);
         setIsSaving(false);
-        if (response.success && response.data) { setExperiment(response.data); return true; }
+        if (response.success && response.data) {
+            setExperiment(response.data);
+            setVersionConflict(false);
+            return true;
+        }
         setSaveError(response.error?.message ?? "阶段保存失败，请重试");
         if (response.error?.code === "VERSION_CONFLICT") {
-            const latest = await experimentApi.get(numericTaskId);
-            if (latest.success && latest.data) setExperiment(latest.data);
+            setVersionConflict(true);
+            setSaveError("检测到其他页面已更新。当前草稿尚未覆盖服务器数据；请先复制需要保留的内容，再加载最新版本。");
         }
         return false;
-    }, [experiment, numericTaskId]);
+    }, [experiment, numericTaskId, versionConflict]);
+
+    const loadLatestVersion = async () => {
+        setIsSaving(true);
+        const latest = await experimentApi.get(numericTaskId);
+        setIsSaving(false);
+        if (!latest.success || !latest.data) {
+            setSaveError(latest.error?.message ?? "加载最新版本失败，请重试");
+            return;
+        }
+        setExperiment(latest.data);
+        setEditorRevision((revision) => revision + 1);
+        setVersionConflict(false);
+        setSaveError(null);
+    };
 
     const applyReopen = async () => {
         if (reopenStage === null || !experiment) return;
+        if (versionConflict) {
+            setSaveError("检测到其他页面已更新。请先加载最新版本，再重新编辑阶段。");
+            setReopenStage(null);
+            return;
+        }
         const response = await experimentApi.reopenStage(numericTaskId, reopenStage, experiment.version);
-        if (response.success && response.data) setExperiment(response.data);
+        if (response.success && response.data) {
+            setExperiment(response.data);
+            setVersionConflict(false);
+        }
         else {
             setSaveError(response.error?.message ?? "无法重新编辑该阶段");
             if (response.error?.code === "VERSION_CONFLICT") {
-                const latest = await experimentApi.get(numericTaskId);
-                if (latest.success && latest.data) setExperiment(latest.data);
+                setVersionConflict(true);
+                setSaveError("检测到其他页面已更新。请先加载最新版本，再重新编辑阶段。");
             }
         }
         setReopenStage(null);
@@ -133,7 +165,7 @@ export function ExperimentLayout() {
                         <div className="flex items-center gap-2"><Link to="/"><Button variant="ghost" size="icon"><Home className="h-4 w-4" /></Button></Link><Link to={`/task/${numericTaskId}`}><Button variant="ghost" className="hidden gap-2 sm:flex"><ArrowLeft className="h-4 w-4" />退出实验</Button></Link><h1 className="ml-2 line-clamp-1 border-l border-border pl-4 text-sm font-semibold">{taskName}</h1></div>
                         {deadlineInfo && <span className={`hidden items-center gap-1 text-xs sm:flex ${deadlineInfo.urgent ? "text-destructive" : "text-muted-foreground"}`}>{deadlineInfo.urgent ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}{deadlineInfo.text}</span>}
                     </div>
-                    {saveError && <div className="mb-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{saveError}</div>}
+                    {saveError && <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"><span>{saveError}</span>{versionConflict && <Button type="button" size="sm" variant="outline" disabled={isSaving} data-testid="student-load-latest-version" onClick={() => void loadLatestVersion()} className="border-destructive/30 bg-background text-destructive hover:bg-destructive/10 hover:text-destructive"><RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSaving ? "animate-spin" : ""}`} />加载最新版本</Button>}</div>}
                     <div className="flex items-center gap-2 overflow-x-auto pb-2.5" data-testid="student-experiment-stages">
                         {stages.map((stage, index) => {
                             const number = index + 1;
@@ -145,7 +177,7 @@ export function ExperimentLayout() {
                     </div>
                 </div>
                 <div className="my-6 flex items-center gap-3 rounded-xl border border-border bg-card/50 px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-sm font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-xs text-muted-foreground">{stages[currentStage - 1]!.description}。仅点击阶段完成按钮时保存。</p></div></div>
-                <div className="min-h-[500px]">{renderStage()}</div>
+                <div key={editorRevision} className="min-h-[500px]">{renderStage()}</div>
             </div>
             <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>当前阶段内容会保留，该阶段之后的内容将被清空。确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
         </ExperimentContext.Provider>

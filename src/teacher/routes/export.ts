@@ -4,6 +4,7 @@ import { db } from "../../db";
 import { class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { error, getSearchParams, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { parseStoredJson } from "../../student/experiment/serialization";
 import { formatDateStampCN, formatDateTimeCN } from "../../utils/format";
 import { getPrimaryTeacherIdOrThrow } from "./auth";
 
@@ -35,6 +36,7 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
     const conditions = [
         eq(class_.teacherId, teacherId),
         ...activeEntityFilters(),
+        isNull(student.deletedAt),
         inArray(experiment.status, ["submitted", "graded", "rejected"]),
     ];
     const semesterName = params.get("semester");
@@ -58,6 +60,7 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
         status: experiment.status,
         gradedByName: teacher.name,
         gradedAt: experiment.gradedAt,
+        submissionSnapshot: experiment.submissionSnapshot,
     })
         .from(experiment)
         .innerJoin(student, eq(experiment.studentId, student.id))
@@ -67,11 +70,13 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
         .innerJoin(semester, eq(class_.semesterId, semester.id))
         .leftJoin(teacher, eq(experiment.gradedByTeacherId, teacher.id))
         .where(and(...conditions));
-    return rows.map((row) => ({
+    return rows.map((row) => {
+        const snapshot = parseStoredJson<{ studentName?: string; topicName?: string }>(row.submissionSnapshot);
+        return {
         studentId: row.studentId,
-        name: row.studentName,
+        name: snapshot?.studentName ?? row.studentName,
         className: row.className,
-        topicName: row.topicName,
+        topicName: snapshot?.topicName ?? row.topicName,
         submittedAt: row.submittedAt ? formatDateTimeCN(row.submittedAt) : "",
         scoreQuestionnaire: row.scoreQuestionnaire ?? "",
         scoreProcess: row.scoreProcess ?? "",
@@ -80,7 +85,8 @@ async function getGradeExportRows(teacherId: number, params: URLSearchParams) {
         status: statusLabel(row.status),
         gradedAt: row.gradedAt ? formatDateTimeCN(row.gradedAt) : "",
         gradedBy: row.gradedByName ?? "",
-    }));
+        };
+    });
 }
 
 const gradeExportPreviewRoutes: RouteDefinition = {
@@ -105,11 +111,17 @@ const gradeExportPreviewRoutes: RouteDefinition = {
             total: count(student.id),
             graded: sql<number>`(
                 SELECT COUNT(*)::integer FROM experiment e
-                WHERE e.task_id = ${task.id} AND e.status = 'graded'
+                INNER JOIN student counted_student ON counted_student.id = e.student_id
+                WHERE e.task_id = ${task.id}
+                  AND e.status = 'graded'
+                  AND counted_student.deleted_at IS NULL
             )`,
             avgScore: sql<number>`(
                 SELECT COALESCE(AVG(e.total_score), 0)::double precision FROM experiment e
-                WHERE e.task_id = ${task.id} AND e.status = 'graded'
+                INNER JOIN student counted_student ON counted_student.id = e.student_id
+                WHERE e.task_id = ${task.id}
+                  AND e.status = 'graded'
+                  AND counted_student.deleted_at IS NULL
             )`,
         })
             .from(task)
