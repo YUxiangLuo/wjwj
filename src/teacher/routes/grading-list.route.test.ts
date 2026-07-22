@@ -1,4 +1,6 @@
 import { expect, mock, test } from "bun:test";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
@@ -31,4 +33,8 @@ test("grading list reads current experiment statuses directly", async () => {
         },
     });
     expect(operations.filter((item) => item.kind === "select")).toHaveLength(2);
+
+    const listQuery = operations.find((item) => item.kind === "select");
+    const sql = new PgDialect().sqlToQuery(listQuery?.where as SQL).sql;
+    expect(sql).toContain('"student"."deleted_at" is null');
 });

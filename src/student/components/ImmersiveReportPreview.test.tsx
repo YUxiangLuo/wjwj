@@ -62,6 +62,9 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
         expect(view.getByText("样本量规划摘要")).toBeTruthy();
     });
 
+    expect(view.getByRole("dialog", { name: "抽样调查实验报告全屏预览" })).toBeTruthy();
+    expect(view.getByRole("button", { name: "关闭全屏预览" })).toBeTruthy();
+
     const text = view.container.textContent ?? "";
     expect(text).toContain("估计类型");
     expect(text).toContain("均值估计");

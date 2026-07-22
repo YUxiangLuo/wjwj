@@ -28,6 +28,7 @@ function snapshotTextField(field: "studentName" | "topicName") {
 function baseConditions(teacherId: number) {
     return [
         eq(class_.teacherId, teacherId),
+        isNull(student.deletedAt),
         isNull(task.deletedAt),
         isNull(topic.deletedAt),
         inArray(experiment.status, ["submitted", "graded", "rejected"]),

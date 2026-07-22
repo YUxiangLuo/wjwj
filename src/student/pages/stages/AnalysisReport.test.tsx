@@ -193,3 +193,13 @@ test("AnalysisReport shows persisted advanced tool source in the sample plan pan
     expect(view.getByText(/完整中间状态与推演明细不会完整写入实验存档/)).toBeTruthy();
     expect(view.getByText(/当前最终样本量由「CV-based计算」回写/)).toBeTruthy();
 });
+
+test("AnalysisReport gives icon-only chart controls accessible names", async () => {
+    const view = render(
+        <AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />
+    );
+
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+    expect(view.getAllByLabelText("放大图表").length).toBeGreaterThan(0);
+    expect(view.getAllByLabelText("下载图表 SVG").length).toBeGreaterThan(0);
+});

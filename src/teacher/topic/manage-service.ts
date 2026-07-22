@@ -8,6 +8,7 @@ import {
     validateParsedExcelUpload,
     validateTopicPublishReadiness,
     validateStratifiedValueCardinality,
+    validateTopicFieldMappingColumns,
     validateTopicFieldMappingConfig,
     validateTopicName,
     validateWeightConfig,
@@ -152,7 +153,12 @@ export async function replaceTopicExcelData(params: {
             await writeStorageFile(filePath, buffer);
             await tx
                 .update(topic)
-                .set({ excelFilePath: filePath, excelRowCount: parsed.rowCount, updatedAt: new Date() })
+                .set({
+                    excelFilePath: filePath,
+                    excelRowCount: parsed.rowCount,
+                    fieldMapping: null,
+                    updatedAt: new Date(),
+                })
                 .where(eq(topic.id, params.topicId));
         });
     } catch (error) {
@@ -194,6 +200,8 @@ export async function updateTopicFieldMapping(params: {
 
     const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
     const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
+    const columnsError = validateTopicFieldMappingColumns(params.fieldMapping, parsed.columns);
+    if (columnsError) return fail(columnsError);
     const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
     if (cardinalityError) return fail(cardinalityError);
 

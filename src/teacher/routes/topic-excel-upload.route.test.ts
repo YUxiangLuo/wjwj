@@ -73,6 +73,7 @@ test("topic excel upload stores parsed metadata and writes workbook to storage",
         expect(updateOperation?.set).toMatchObject({
             excelFilePath: expect.stringContaining("/storage/uploads/"),
             excelRowCount: 2,
+            fieldMapping: null,
             updatedAt: expect.any(Date),
         });
         expect(operations.some((operation) => operation.kind === "execute")).toBe(true);

@@ -11,7 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, Ruler, ListTree, AlertCircle } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
@@ -130,10 +130,10 @@ function ChartTabPanel({
                 <div className="text-sm text-muted-foreground">{description}</div>
                 <div className="flex items-center gap-2">
                     {fieldSelector}
-                    <Button variant="outline" size="icon" className="border-input bg-muted text-foreground/90 hover:bg-muted" onClick={onZoom}>
+                    <Button aria-label="放大图表" title="放大图表" variant="outline" size="icon" className="border-input bg-muted text-foreground/90 hover:bg-muted" onClick={onZoom}>
                         <Maximize2 className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="icon" className="border-input bg-muted text-foreground/90 hover:bg-muted" onClick={onDownload}>
+                    <Button aria-label="下载图表 SVG" title="下载图表 SVG" variant="outline" size="icon" className="border-input bg-muted text-foreground/90 hover:bg-muted" onClick={onDownload}>
                         <Download className="w-4 h-4" />
                     </Button>
                 </div>
@@ -364,11 +364,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     []);
 
     const meanSeries = useMemo<ChartSeries[]>(() => [
-        { key: "value", label: selectedNumericField ? `${selectedNumericField} 估计均值` : "估计均值", color: "#60a5fa" },
+        { key: "value", label: selectedNumericField ? `${selectedNumericField} 估计均值` : "估计均值", color: "var(--chart-2)" },
     ], [selectedNumericField]);
 
     const errorSeries = useMemo<ChartSeries[]>(() => [
-        { key: "value", label: `${selectedNumericField || "字段"} 设计标准误`, color: "#f59e0b" },
+        { key: "value", label: `${selectedNumericField || "字段"} 设计标准误`, color: "var(--chart-5)" },
     ], [selectedNumericField]);
 
     const distributionSeries = useMemo<ChartSeries[]>(() =>
@@ -745,6 +745,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         <DialogTitle className="text-foreground">
                             {activeZoom?.title}（放大）
                         </DialogTitle>
+                        <DialogDescription>
+                            放大查看当前统计图表；关闭后可继续编辑实验报告。
+                        </DialogDescription>
                     </DialogHeader>
                     {activeZoom && (
                         <ChartBars

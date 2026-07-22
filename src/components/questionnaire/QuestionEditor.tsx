@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -170,6 +171,9 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     <DialogTitle className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
                         {isEditing ? "编辑题目" : "添加题目"}
                     </DialogTitle>
+                    <DialogDescription>
+                        配置题目类型、题干、选项和作答规则。
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-6 py-4">

@@ -3,6 +3,7 @@ import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, FileText, Loader2, User
 import { Link, useParams } from "react-router-dom";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { RichTextContent } from "@/components/RichTextContent";
+import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -127,7 +128,7 @@ export function SubmissionDetailPage() {
                                 </TabsContent>
                                 <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} /></TabsContent>
                                 <TabsContent value="plan" className="mt-4"><SnapshotJson value={detail.snapshot.samplePlan} emptyText="暂无抽样方案" /></TabsContent>
-                                <TabsContent value="sampling" className="mt-4"><SnapshotJson value={detail.snapshot.samplingResults} emptyText="暂无抽样结果" /></TabsContent>
+                                <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={detail.snapshot.samplingResults} /></TabsContent>
                             </Tabs>
                         </div>
                     </section>

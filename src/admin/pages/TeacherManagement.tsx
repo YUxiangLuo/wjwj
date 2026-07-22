@@ -3,7 +3,7 @@ import { Loader2, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -42,7 +42,7 @@ export function TeacherManagement() {
                     ))}</TableBody></Table>
                 )}
             </CardContent>
-            <Dialog open={creating || editing !== null} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); } }}><DialogContent><DialogHeader><DialogTitle>{editing ? "编辑教师" : "新增教师"}</DialogTitle></DialogHeader><div className="space-y-4"><div><Label>工号</Label><Input value={form.employeeId} disabled={!!editing} onChange={(event) => setForm({ ...form, employeeId: event.target.value })} /></div><div><Label>姓名</Label><Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></div></div><DialogFooter><Button variant="outline" onClick={() => { setCreating(false); setEditing(null); }}>取消</Button><Button disabled={!form.name.trim() || (!editing && !form.employeeId.trim())} onClick={() => void save()}>保存</Button></DialogFooter></DialogContent></Dialog>
+            <Dialog open={creating || editing !== null} onOpenChange={(open) => { if (!open) { setCreating(false); setEditing(null); } }}><DialogContent><DialogHeader><DialogTitle>{editing ? "编辑教师" : "新增教师"}</DialogTitle><DialogDescription>{editing ? "修改教师姓名。工号创建后不可变更。" : "填写工号和姓名以创建教师账号。"}</DialogDescription></DialogHeader><div className="space-y-4"><div><Label htmlFor="admin-teacher-employee-id">工号</Label><Input id="admin-teacher-employee-id" value={form.employeeId} disabled={!!editing} onChange={(event) => setForm({ ...form, employeeId: event.target.value })} /></div><div><Label htmlFor="admin-teacher-name">姓名</Label><Input id="admin-teacher-name" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></div></div><DialogFooter><Button variant="outline" onClick={() => { setCreating(false); setEditing(null); }}>取消</Button><Button disabled={!form.name.trim() || (!editing && !form.employeeId.trim())} onClick={() => void save()}>保存</Button></DialogFooter></DialogContent></Dialog>
         </Card>
     );
 }
