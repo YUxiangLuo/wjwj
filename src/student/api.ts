@@ -1,59 +1,36 @@
-/**
- * Student API Route Registry
- */
-
-import { loginRoutes, logoutRoutes, meRoutes, passwordRoutes, sessionRoutes } from "./routes/auth";
-import { analysisMetricsRoutes, experimentRoutes, resetRoutes, samplingActionRoutes, statsRoutes, submitRoutes } from "./routes/experiment";
-import { attachmentDownloadRoutes, exportRoutes } from "./routes/files";
+import { loginRoutes, logoutRoutes, meRoutes, passwordRoutes } from "./routes/auth";
 import {
-    announcementReadRoutes,
-    announcementsRoutes,
-    notificationDeleteRoutes,
-    notificationReadAllRoutes,
-    notificationReadRoutes,
-    notificationsRoutes,
-} from "./routes/notifications";
-import { submissionDetailRoutes, submissionDownloadRoutes, submissionsByTaskRoutes } from "./routes/submissions";
+    analysisMetricsRoutes,
+    experimentRoutes,
+    samplingActionRoutes,
+    stageCompleteRoutes,
+    stageReopenRoutes,
+    statsRoutes,
+    submitRoutes,
+} from "./routes/experiment";
+import { attachmentDownloadRoutes, exportRoutes } from "./routes/files";
+import { announcementsRoutes } from "./routes/announcements";
+import { submissionByTaskRoutes } from "./routes/submissions";
 import { taskDetailRoutes, tasksRoutes } from "./routes/tasks";
 
 export const studentApiRoutes = {
-    // Auth
     "/api/student/login": loginRoutes,
     "/api/student/logout": logoutRoutes,
     "/api/student/password": passwordRoutes,
-
-    // Me
     "/api/student/me": meRoutes,
-    "/api/student/session": sessionRoutes,
 
-    // Tasks
     "/api/student/tasks": tasksRoutes,
     "/api/student/tasks/:id": taskDetailRoutes,
-
-    // Experiment
     "/api/student/tasks/:id/experiment": experimentRoutes,
+    "/api/student/tasks/:id/experiment/stages/:stage/complete": stageCompleteRoutes,
+    "/api/student/tasks/:id/experiment/stages/:stage/reopen": stageReopenRoutes,
     "/api/student/tasks/:id/sampling": samplingActionRoutes,
     "/api/student/tasks/:id/stats": statsRoutes,
     "/api/student/tasks/:id/analysis-metrics": analysisMetricsRoutes,
     "/api/student/tasks/:id/submit": submitRoutes,
-    "/api/student/tasks/:id/reset": resetRoutes,
     "/api/student/tasks/:id/export": exportRoutes,
+    "/api/student/tasks/:id/submission": submissionByTaskRoutes,
 
-    // Notifications
-    "/api/student/notifications": notificationsRoutes,
-    "/api/student/notifications/read-all": notificationReadAllRoutes,
-    "/api/student/notifications/:id": notificationDeleteRoutes,
-    "/api/student/notifications/:id/read": notificationReadRoutes,
-
-    // Announcements
     "/api/student/announcements": announcementsRoutes,
-    "/api/student/announcements/:id/read": announcementReadRoutes,
-
-    // Submissions
-    "/api/student/tasks/:id/submissions": submissionsByTaskRoutes,
-    "/api/student/submissions/:id": submissionDetailRoutes,
-    "/api/student/submissions/:id/download": submissionDownloadRoutes,
-
-    // Attachments
     "/api/student/attachments/:id/download": attachmentDownloadRoutes,
 };

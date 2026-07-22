@@ -1,114 +1,88 @@
 import { expect, mock, test } from "bun:test";
+import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
-function withRouteParam(request: Request, id: string) {
+function withId(request: Request, id: string) {
     (request as Request & { params?: Record<string, string> }).params = { id };
     return request;
 }
 
-async function loadSubmissionRoutes(selectQueue: unknown[]) {
-    const { db } = createMockDb({ select: selectQueue });
-
-    mock.restore();
+test("submission endpoint returns the task's current experiment result", async () => {
+    const { db } = createMockDb({ select: [[{
+        id: 501,
+        taskId: 40,
+        version: 12,
+        topicId: 12,
+        topicName: "抽样调查",
+        submittedAt: new Date("2026-03-08T08:00:00Z"),
+        status: "graded",
+        scoreQuestionnaire: "88.00",
+        scoreProcess: "90.00",
+        scoreReport: "91.00",
+        totalScore: "89.90",
+        teacherComment: "完成良好",
+        rejectReason: null,
+        gradedAt: new Date("2026-03-08T10:00:00Z"),
+        graderName: "王老师",
+        weightConfig: { questionnaire: 30, process: 30, report: 40 },
+        populationSize: 1000,
+        questionnaire: { title: "实时问卷" },
+        samplePlan: { finalSampleSize: 80 },
+        samplingResults: { simple: { completed: true, sampleCount: 80 } },
+        reportContent: "<p>实时报告</p>",
+        submissionSnapshot: {
+            topicName: "提交时课题",
+            studentName: "提交时姓名",
+            populationSize: 900,
+            questionnaire: { title: "提交时问卷", questions: [] },
+            samplePlan: { finalSampleSize: 60 },
+            samplingResults: { simple: { completed: true, sampleCount: 60 } },
+            reportContent: "<p>提交时报告</p>",
+            weightConfig: { questionnaire: 40, process: 35, report: 25 },
+        },
+    }]] });
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({
-        requireAuth: async () => ({
-            student: {
-                id: 11,
-                classId: 7,
-                name: "Alice",
-                studentId: "20230001",
-                status: 1,
-                isFirstLogin: 0,
-            },
-            error: null,
-            sessionExpiresAt: null,
-        }),
+    mock.module("./auth", () => createStudentAuthModuleMock());
+    mock.module("../experiment/task-access", () => ({
+        getStudentTaskAccessError: async () => null,
+        getStudentTopicAttachmentAccessError: async () => null,
     }));
+    const module = await import(`./submissions.ts?result=${crypto.randomUUID()}`);
 
-    return import(`./submissions?student-submissions-route-test=${Math.random()}`);
-}
-
-test("submission detail exposes pending pdf state and message", async () => {
-    const module = await loadSubmissionRoutes([
-        [{
-            id: 501,
-            submittedAt: new Date("2026-03-08T08:00:00.000Z"),
-            status: 1,
-            scoreQuestionnaire: null,
-            scoreProcess: null,
-            scoreReport: null,
-            totalScore: null,
-            teacherComment: null,
-            rejectReason: null,
-            gradedAt: null,
-            gradedByType: null,
-            gradedById: null,
-            questionnairePdfPath: null,
-            reportPdfPath: null,
-            pdfStatus: 0,
-            pdfGenerationAttempts: 0,
-            taskId: 40,
-            topicId: 12,
-            topicName: "抽样调查",
-            weightConfig: { questionnaire: 30, process: 30, report: 40 },
-        }],
-    ]);
-
-    const response = await module.submissionDetailRoutes.GET!(withRouteParam(
-        new Request("https://example.com/api/student/submissions/501", { method: "GET" }),
-        "501"
-    ));
+    const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com/api/student/tasks/40/submission"), "40"));
     const payload = await response.json() as any;
-
     expect(response.status).toBe(200);
     expect(payload.data).toMatchObject({
         id: 501,
-        pdfStatus: "pending",
-        pdfStatusMessage: "PDF 已加入生成队列，请稍后刷新。",
-        questionnairePdfPath: null,
-        reportPdfPath: null,
+        taskId: 40,
+        version: 12,
+        status: "graded",
+        topicName: "提交时课题",
+        totalScore: 89.9,
+        graderName: "王老师",
+        snapshot: {
+            topicName: "提交时课题",
+            studentName: "提交时姓名",
+            populationSize: 900,
+            questionnaire: { title: "提交时问卷" },
+            samplePlan: { finalSampleSize: 60 },
+            samplingResults: { simple: { sampleCount: 60 } },
+            reportContent: "<p>提交时报告</p>",
+        },
     });
+    expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
+    expect(payload.data).not.toHaveProperty("pdfStatus");
 });
 
-test("submission detail reports ready pdf state when both file paths exist", async () => {
-    const module = await loadSubmissionRoutes([
-        [{
-            id: 502,
-            submittedAt: new Date("2026-03-08T09:00:00.000Z"),
-            status: 2,
-            scoreQuestionnaire: "88.00",
-            scoreProcess: "90.00",
-            scoreReport: "91.00",
-            totalScore: "89.90",
-            teacherComment: "完成良好",
-            rejectReason: null,
-            gradedAt: new Date("2026-03-08T10:00:00.000Z"),
-            gradedByType: null,
-            gradedById: null,
-            questionnairePdfPath: "/storage/uploads/submissions/502-questionnaire.pdf",
-            reportPdfPath: "/storage/uploads/submissions/502-report.pdf",
-            pdfStatus: 0,
-            pdfGenerationAttempts: 1,
-            taskId: 40,
-            topicId: 12,
-            topicName: "抽样调查",
-            weightConfig: { questionnaire: 30, process: 30, report: 40 },
-        }],
-    ]);
-
-    const response = await module.submissionDetailRoutes.GET!(withRouteParam(
-        new Request("https://example.com/api/student/submissions/502", { method: "GET" }),
-        "502"
-    ));
-    const payload = await response.json() as any;
-
-    expect(response.status).toBe(200);
-    expect(payload.data).toMatchObject({
-        id: 502,
-        pdfStatus: "ready",
-        pdfStatusMessage: null,
-        questionnairePdfPath: "/storage/uploads/submissions/502-questionnaire.pdf",
-        reportPdfPath: "/storage/uploads/submissions/502-report.pdf",
-    });
+test("in-progress experiment is not exposed as a result", async () => {
+    const { db } = createMockDb({ select: [[{ id: 501, taskId: 40, status: "in_progress" }]] });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createStudentAuthModuleMock());
+    mock.module("../experiment/task-access", () => ({
+        getStudentTaskAccessError: async () => null,
+        getStudentTopicAttachmentAccessError: async () => null,
+    }));
+    const module = await import(`./submissions.ts?missing=${crypto.randomUUID()}`);
+    const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com"), "40"));
+    expect(response.status).toBe(404);
 });

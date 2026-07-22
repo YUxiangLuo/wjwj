@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { getPreviewSubmitBlocker } from "./preview-submit";
+import { getPreviewSubmitBlocker, isSubmissionCompleteResponse } from "./preview-submit";
 
 const validExperiment = {
     populationSize: 200,
@@ -58,4 +58,9 @@ test("preview submit blocker returns report error when previous stages are compl
 
 test("preview submit blocker returns null for a complete valid experiment", () => {
     expect(getPreviewSubmitBlocker(validExperiment)).toBeNull();
+});
+
+test("an already-submitted retry is treated as completed", () => {
+    expect(isSubmissionCompleteResponse({ success: false, error: { code: "ALREADY_SUBMITTED" } })).toBe(true);
+    expect(isSubmissionCompleteResponse({ success: false, error: { code: "INCOMPLETE" } })).toBe(false);
 });

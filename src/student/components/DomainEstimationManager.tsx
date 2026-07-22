@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
     Plus, 
     Trash2, 
-    Target, 
     Layers, 
     Calculator, 
     AlertCircle, 

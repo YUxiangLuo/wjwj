@@ -1,11 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
-import { experiment, submission } from "../../db/schema";
-import { kickSubmissionPdfProcessing } from "./submission-pdf";
-import { SubmissionPdfStatus } from "./pdf-status";
+import { experiment } from "../../db/schema";
+import { validateObservedVersion } from "../../lib/observed-version";
+import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
+import { normalizeSamplePlanData } from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "./status";
-import { normalizeSamplePlanData } from "./sample-plan-display";
 import {
     getTargetSampleSizeFromSamplePlan,
     validateQuestionnaireForSubmit,
@@ -13,167 +13,128 @@ import {
     validateSamplePlanForSubmit,
     validateSamplingResultsForSubmit,
 } from "./submit-validation";
-import { notifySubmissionReviewers } from "./workflow";
 
 type ExperimentRecord = typeof experiment.$inferSelect;
+
+export interface SubmissionSnapshot {
+    topicName: string;
+    studentName: string;
+    populationSize: number | null;
+    questionnaire: Record<string, unknown> | null;
+    samplePlan: Record<string, unknown> | null;
+    samplingResults: Record<string, unknown> | null;
+    reportContent: string;
+    weightConfig: ScoringWeights;
+}
 
 interface SubmitTaskInfo {
     topicName: string | null;
     populationSize: number | string | null;
-    teacherId: number | null;
-    classId: number | null;
+    weightConfig?: unknown;
 }
 
 interface SubmitStudentInfo {
-    id: number;
     studentId: string;
     name?: string | null;
 }
 
-interface SubmitFailure {
-    ok: false;
-    code: string;
-    message: string;
-    status: number;
+function fail(message: string, code: string, status = 400) {
+    return { ok: false as const, message, code, status };
 }
 
-interface SubmitSuccess {
-    submissionId: number;
-    submittedAt: Date;
-    lastSavedAt: Date;
-}
-
-function fail(message: string, code: string, status = 400): SubmitFailure {
-    return { ok: false, message, code, status };
-}
-
-function normalizePopulationSize(populationSize: SubmitTaskInfo["populationSize"]) {
-    if (populationSize === null || populationSize === undefined) return null;
-    const parsed = Number(populationSize);
-    return Number.isFinite(parsed) ? parsed : null;
-}
-
-function isSubmitFailure(result: SubmitFailure | SubmitSuccess): result is SubmitFailure {
-    return "ok" in result && result.ok === false;
+function normalizePopulationSize(value: SubmitTaskInfo["populationSize"]) {
+    if (value == null) return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 export function validateExperimentSubmission(params: {
     experimentRecord: ExperimentRecord;
     taskInfo: SubmitTaskInfo;
 }) {
-    const exp = params.experimentRecord;
-    const questionnaire = parseStoredJson<Record<string, unknown>>(exp.questionnaire);
-    const samplePlan = parseStoredJson<Record<string, unknown>>(exp.samplePlan);
-    const samplingResults = parseStoredJson<Record<string, unknown>>(exp.samplingResults);
+    const record = params.experimentRecord;
+    if (record.status === ExperimentStatus.SUBMITTED) return fail("实验已提交，请勿重复提交", "ALREADY_SUBMITTED");
+    if (record.status === ExperimentStatus.GRADED) return fail("实验已批改完成", "ALREADY_GRADED");
+    if (record.currentStage !== 4 || !record.stage4CompletedAt) return fail("请完成所有实验阶段后再提交", "INCOMPLETE");
 
-    if (exp.status === ExperimentStatus.SUBMITTED) return fail("实验已提交，请勿重复提交", "ALREADY_SUBMITTED");
-    if (exp.status === ExperimentStatus.GRADED) return fail("实验已批改完成", "ALREADY_GRADED");
-    if (exp.status === ExperimentStatus.REJECTED) return fail("实验已被驳回，请先重置后再提交", "REJECTED_NEED_RESET");
-    if (exp.currentStage < 4) return fail("请完成所有实验阶段后再提交", "INCOMPLETE");
+    const questionnaire = parseStoredJson(record.questionnaire);
+    const samplePlan = parseStoredJson(record.samplePlan);
+    const samplingResults = parseStoredJson(record.samplingResults);
+    const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
 
-    const questionnaireError = validateQuestionnaireForSubmit(questionnaire);
-    if (questionnaireError) return fail(questionnaireError, "INCOMPLETE");
-
-    const normalizedPopulationSize = normalizePopulationSize(params.taskInfo.populationSize);
-    const samplePlanError = validateSamplePlanForSubmit(samplePlan, normalizedPopulationSize);
-    if (samplePlanError) return fail(samplePlanError, "INCOMPLETE");
-
-    const targetSampleSize = getTargetSampleSizeFromSamplePlan(samplePlan);
-    const samplingResultsError = validateSamplingResultsForSubmit(samplingResults, targetSampleSize);
-    if (samplingResultsError) return fail(samplingResultsError, "INCOMPLETE");
-
-    const reportError = validateReportForSubmit(exp.reportContent);
-    if (reportError) return fail(reportError, "INCOMPLETE");
-
-    return { ok: true as const };
+    const validationError =
+        validateQuestionnaireForSubmit(questionnaire) ??
+        validateSamplePlanForSubmit(samplePlan, populationSize) ??
+        validateSamplingResultsForSubmit(samplingResults, getTargetSampleSizeFromSamplePlan(samplePlan)) ??
+        validateReportForSubmit(record.reportContent);
+    return validationError ? fail(validationError, "INCOMPLETE") : { ok: true as const };
 }
 
 export async function submitStudentExperiment(params: {
     experimentRecord: ExperimentRecord;
-    taskId: number;
+    observedVersion: unknown;
     taskInfo: SubmitTaskInfo;
     student: SubmitStudentInfo;
 }) {
+    const submissionIsComplete = params.experimentRecord.status === ExperimentStatus.SUBMITTED
+        || params.experimentRecord.status === ExperimentStatus.GRADED;
+    const versionResult = validateObservedVersion(
+        params.observedVersion,
+        params.experimentRecord.version,
+        { allowOlder: submissionIsComplete },
+    );
+    if (!versionResult.ok) return fail(versionResult.message, versionResult.code, versionResult.status);
+    if (submissionIsComplete) {
+        return { ok: true as const, experimentId: params.experimentRecord.id, submittedAt: params.experimentRecord.submittedAt };
+    }
+
+    const validation = validateExperimentSubmission(params);
+    if (!validation.ok) return validation;
+
+    const populationSize = normalizePopulationSize(params.taskInfo.populationSize);
     const questionnaire = parseStoredJson<Record<string, unknown>>(params.experimentRecord.questionnaire);
-    const samplePlan = parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan);
+    const samplePlan = normalizeSamplePlanData(
+        parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan),
+        populationSize,
+    );
     const samplingResults = parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults);
+    const snapshot: SubmissionSnapshot = {
+        topicName: params.taskInfo.topicName ?? "未命名课题",
+        studentName: params.student.name || params.student.studentId,
+        populationSize,
+        questionnaire,
+        samplePlan: samplePlan as Record<string, unknown> | null,
+        samplingResults,
+        reportContent: params.experimentRecord.reportContent ?? "",
+        weightConfig: scoringWeightsFrom(params.taskInfo.weightConfig),
+    };
+    const submittedAt = new Date();
 
-    const validation = validateExperimentSubmission({
-        experimentRecord: params.experimentRecord,
-        taskInfo: params.taskInfo,
-    });
-    if (!validation.ok) {
-        return validation;
-    }
+    const updated = await db
+        .update(experiment)
+        .set({
+            status: ExperimentStatus.SUBMITTED,
+            version: versionResult.value + 1,
+            submissionSnapshot: snapshot,
+            submittedAt,
+            scoreQuestionnaire: null,
+            scoreProcess: null,
+            scoreReport: null,
+            totalScore: null,
+            teacherComment: null,
+            rejectReason: null,
+            gradedByTeacherId: null,
+            gradedAt: null,
+            updatedAt: submittedAt,
+        })
+        .where(and(
+            eq(experiment.id, params.experimentRecord.id),
+            eq(experiment.version, versionResult.value),
+            eq(experiment.status, params.experimentRecord.status),
+            eq(experiment.currentStage, params.experimentRecord.currentStage),
+        ))
+        .returning({ id: experiment.id });
 
-    const normalizedPopulationSize = normalizePopulationSize(params.taskInfo.populationSize);
-    const samplePlanSnapshot = normalizeSamplePlanData(samplePlan, normalizedPopulationSize);
-
-    const transactionResult: SubmitFailure | SubmitSuccess = await db.transaction(async (tx) => {
-        const nextLastSavedAt = new Date();
-        const submitUpdateResult = await tx
-            .update(experiment)
-            .set({
-                status: ExperimentStatus.SUBMITTED,
-                version: params.experimentRecord.version + 1,
-                lastSavedAt: nextLastSavedAt,
-            })
-            .where(
-                and(
-                    eq(experiment.id, params.experimentRecord.id),
-                    eq(experiment.version, params.experimentRecord.version)
-                )
-            )
-            .returning({ id: experiment.id });
-
-        if (submitUpdateResult.length === 0) {
-            return fail("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
-        }
-
-        const nextSubmittedAt = new Date();
-        const [createdSubmission] = await tx
-            .insert(submission)
-            .values({
-                experimentId: params.experimentRecord.id,
-                pdfSnapshotQuestionnaire: questionnaire,
-                pdfSnapshotSamplingResults: samplingResults,
-                pdfSnapshotSamplePlan: samplePlanSnapshot,
-                pdfSnapshotPopulationSize: normalizedPopulationSize,
-                pdfSnapshotReportContent: params.experimentRecord.reportContent ?? "",
-                pdfSnapshotTopicName: params.taskInfo.topicName ?? "未命名课题",
-                pdfSnapshotStudentName: params.student.name ?? params.student.studentId,
-                status: ExperimentStatus.SUBMITTED,
-                pdfStatus: SubmissionPdfStatus.PENDING,
-                submittedAt: nextSubmittedAt,
-            })
-            .returning({ id: submission.id });
-
-        const nextSubmissionId = createdSubmission!.id;
-
-        await notifySubmissionReviewers({
-            classId: params.taskInfo.classId ?? null,
-            teacherId: params.taskInfo.teacherId ?? null,
-            submissionId: nextSubmissionId,
-            studentIdText: params.student.studentId,
-            studentName: params.student.name ?? "",
-            topicName: params.taskInfo.topicName ?? "未命名课题",
-        }, tx);
-
-        return {
-            submissionId: nextSubmissionId,
-            submittedAt: nextSubmittedAt,
-            lastSavedAt: nextLastSavedAt,
-        };
-    });
-
-    if (isSubmitFailure(transactionResult)) {
-        return transactionResult;
-    }
-
-    const { submissionId, submittedAt, lastSavedAt } = transactionResult;
-
-    // Best-effort inline kick for fast feedback; durable retry is handled by the PDF background job.
-    kickSubmissionPdfProcessing();
-
-    return { ok: true as const, submissionId, submittedAt, lastSavedAt };
+    if (!updated.length) return fail("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+    return { ok: true as const, experimentId: params.experimentRecord.id, submittedAt };
 }

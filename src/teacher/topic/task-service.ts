@@ -1,8 +1,6 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { class_, notification, task, topic } from "../../db/schema";
-import { formatDateTimeCN } from "../../utils/format";
-import { notifyStudentsByClassIds } from "../routes/auth";
+import { class_, task, topic } from "../../db/schema";
 import { validateTopicPublishReadiness } from "./validation";
 
 interface TaskServiceFailure {
@@ -45,7 +43,7 @@ export async function publishTopicTasks(params: {
             weightConfig: topic.weightConfig,
         })
         .from(topic)
-        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), eq(topic.isDeleted, 0)));
+        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
     if (!topicRow) {
         return fail("无权限使用该课题", "FORBIDDEN", 403);
     }
@@ -106,7 +104,7 @@ export async function publishTopicTasks(params: {
             if (toRevive.length > 0) {
                 await tx
                     .update(task)
-                    .set({ deletedAt: null, openTime: now, deadline: deadlineDate })
+                    .set({ deletedAt: null, openTime: now, deadline: deadlineDate, updatedAt: now })
                     .where(inArray(task.id, toRevive.map((r) => r.taskId)));
             }
             if (toInsert.length > 0) {
@@ -120,15 +118,6 @@ export async function publishTopicTasks(params: {
                 );
             }
 
-            const deadlineText = deadlineDate ? formatDateTimeCN(deadlineDate) : "无限制";
-            const notifiedClasses = [...toRevive.map((r) => r.classId), ...toInsert];
-            await notifyStudentsByClassIds(notifiedClasses, {
-                type: "TASK_PUBLISHED",
-                title: "新任务已发布",
-                content: `教师发布了新任务「${topicRow.name ?? "未命名课题"}」，截止时间：${deadlineText}`,
-                relatedType: "topic",
-                relatedId: params.topicId,
-            }, tx);
         });
     }
 
@@ -167,22 +156,7 @@ export async function extendTopicTaskDeadline(params: {
         return fail("新截止时间必须晚于原截止时间", "VALIDATION_ERROR");
     }
 
-    await db.transaction(async (tx) => {
-        await tx.update(task).set({ deadline: newDeadline }).where(eq(task.id, params.taskId));
-        await tx.delete(notification).where(and(
-            eq(notification.receiverType, 4),
-            eq(notification.type, "DEADLINE_REMINDER"),
-            eq(notification.relatedType, "task"),
-            eq(notification.relatedId, params.taskId),
-        ));
-        await notifyStudentsByClassIds([row.classId], {
-            type: "TASK_EXTENDED",
-            title: "截止时间已延长",
-            content: `任务截止时间已延长至 ${formatDateTimeCN(newDeadline)}`,
-            relatedType: "task",
-            relatedId: params.taskId,
-        }, tx);
-    });
+    await db.update(task).set({ deadline: newDeadline, updatedAt: new Date() }).where(eq(task.id, params.taskId));
 
     return { ok: true };
 }
@@ -204,6 +178,7 @@ export async function softDeleteTeacherTask(params: {
         return fail("任务不存在", "NOT_FOUND", 404);
     }
 
-    await db.update(task).set({ deletedAt: new Date() }).where(eq(task.id, params.taskId));
+    const deletedAt = new Date();
+    await db.update(task).set({ deletedAt, updatedAt: deletedAt }).where(eq(task.id, params.taskId));
     return { ok: true };
 }

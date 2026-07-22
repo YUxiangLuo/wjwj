@@ -142,7 +142,7 @@ export function StudentManagement() {
         }
 
         if (res?.success) {
-            if (type === "reset") toast.success("密码已重置为学号");
+            if (type === "reset") toast.success("密码已重置为学号，下次登录必须修改");
             loadData();
         } else {
             toast.error("操作失败: " + res?.error?.message);
@@ -254,15 +254,13 @@ export function StudentManagement() {
                                 <TableHead className="text-muted-foreground">姓名</TableHead>
                                 <TableHead className="text-muted-foreground">邮箱</TableHead>
                                 <TableHead className="text-muted-foreground">账号状态</TableHead>
-                                <TableHead className="text-muted-foreground">首次登录</TableHead>
-                                <TableHead className="text-muted-foreground">最后登录</TableHead>
                                 <TableHead className="text-muted-foreground text-right">操作</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredStudents.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             <div className="w-12 h-12 rounded-full bg-card border border-border flex items-center justify-center">
                                                 <Search className="w-5 h-5 text-muted-foreground" />
@@ -283,14 +281,6 @@ export function StudentManagement() {
                                             <Badge variant="destructive" className="bg-muted-foreground/20 text-foreground/90 hover:bg-muted-foreground/20">已禁用</Badge>
                                         )}
                                     </TableCell>
-                                    <TableCell>
-                                        {student.isFirstLogin === 1 ? (
-                                            <StatusBadge intent="warning">是</StatusBadge>
-                                        ) : (
-                                            <span className="text-muted-foreground text-xs">否</span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-xs">{student.lastLogin ? new Date(student.lastLogin).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10">

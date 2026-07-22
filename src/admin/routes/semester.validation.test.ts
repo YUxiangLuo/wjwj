@@ -26,7 +26,7 @@ test("semester create rejects names longer than 20 characters before touching th
         success: false,
         error: {
             code: "VALIDATION_ERROR",
-            message: "学期名称不能超过20个字符",
+            message: "学期名称须为1-20个字符",
         },
     });
     expect(operations).toHaveLength(0);
@@ -56,4 +56,24 @@ test("semester update rejects names longer than 20 characters before touching th
         },
     });
     expect(operations).toHaveLength(0);
+});
+
+test("semester update explicitly advances updatedAt", async () => {
+    const { db, operations } = createMockDb({ select: [[]] });
+    mock.module("../../db", () => ({ db }));
+
+    const module = await import(`./semester?semester-update-timestamp-test=${crypto.randomUUID()}`);
+    const req = Object.assign(createJsonRequest(
+        "https://example.com/api/admin/semesters/8/update",
+        "PUT",
+        { name: "2026 秋季" },
+    ), {
+        params: { id: "8" },
+    });
+
+    const response = await module.semesterUpdateRoutes.PUT!(req);
+
+    expect(response.status).toBe(200);
+    const update = operations.find((operation) => operation.kind === "update");
+    expect(update?.set).toMatchObject({ name: "2026 秋季", updatedAt: expect.any(Date) });
 });

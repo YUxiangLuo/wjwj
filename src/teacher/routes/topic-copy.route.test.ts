@@ -1,5 +1,6 @@
 import { unlink } from "node:fs/promises";
 import { expect, mock, test } from "bun:test";
+import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function withRouteParam(request: Request, id: string) {
@@ -15,15 +16,8 @@ async function loadTopicRoutes(options: {
     const { db, operations } = createMockDb(options);
 
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({
+    mock.module("./auth", () => createTeacherAuthModuleMock({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
-        requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
-        notifyStudentsByClassIds: async () => undefined,
-        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
-        notifyStudentById: async () => undefined,
-        isLockExpired: () => true,
-        TEACHER_USER_TYPE: 2,
-        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./topic-task");
@@ -107,6 +101,7 @@ test("topic copy duplicates the topic and related resources under the current te
         }]);
         expect(copiedAttachmentPath).toContain("/storage/uploads/");
         expect(copiedAttachmentPath).not.toBe(sourceAttachmentPath);
+        expect(operations.some((operation) => operation.kind === "execute")).toBe(true);
 
         expect(await Bun.file(`${process.cwd()}${copiedExcelPath}`).text()).toBe("excel-content");
         expect(await Bun.file(`${process.cwd()}${copiedAttachmentPath}`).text()).toBe("attachment-content");

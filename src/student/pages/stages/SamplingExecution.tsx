@@ -28,7 +28,6 @@ import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
 import type { MethodKey as SamplingMethod } from "../../api-client";
 import { ImmersiveSamplingAnimation } from "../../components/ImmersiveSamplingAnimation";
-import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
 import { SamplingSuccessState } from "../../components/SamplingSuccessState";
 import { SamplePreviewTable } from "../../components/SamplePreviewTable";
 import { StratifiedSamplingTab, type StratifiedLayer } from "../../components/StratifiedSamplingTab";
@@ -61,7 +60,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
-    const { populationSize, experiment, registerStageSave, saveExperiment } = useExperiment();
+    const { populationSize, experiment, completeStage } = useExperiment();
 
     // Get sample size from sample plan
     const samplePlan = experiment?.samplePlan as SamplePlanData | null;
@@ -104,25 +103,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [numericFields, setNumericFields] = useState<string[]>([]);
     const [ppsEligibleFields, setPpsEligibleFields] = useState<string[]>([]);
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
-
-    /** 从经典样本量规划「确认并进入下一阶段」进入时播放一次（sessionStorage 由 SamplePlanning 设置） */
-    const [showSamplingStageIntro, setShowSamplingStageIntro] = useState(false);
-    useEffect(() => {
-        if (!experiment?.id) return;
-        const key = `wj-sampling-intro-${experiment.id}`;
-        try {
-            if (sessionStorage.getItem(key) === "1") {
-                try {
-                    sessionStorage.removeItem(key);
-                } catch {
-                    /* remove 失败不阻断开场 */
-                }
-                setShowSamplingStageIntro(true);
-            }
-        } catch {
-            /* 隐私模式等可能导致 getItem 不可用，跳过开场动画 */
-        }
-    }, [experiment?.id]);
 
     // Fetch stats on mount
     useEffect(() => {
@@ -197,27 +177,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         return next ? { ...payload, ...next } : payload;
     }, [simpleResult, systematicResult, ppsResult, stratifiedResult]);
 
-    // Save results when they change
-    const saveResults = useCallback(async () => {
-        if (!hasValidSamplePlan) {
-            toast.error("缺少有效的样本量规划，无法保存抽样执行结果");
-            return false;
-        }
-        const payload = buildSamplingResultsPayload();
-        if (Object.keys(payload).length === 0) {
-            return true;
-        }
-        return saveExperiment({ samplingResults: payload });
-    }, [buildSamplingResultsPayload, hasValidSamplePlan, saveExperiment]);
-
-    useEffect(() => {
-        registerStageSave(saveResults);
-        return () => {
-            registerStageSave(null);
-        };
-    }, [registerStageSave, saveResults]);
-
-
     const taskId = experiment?.taskId;
 
     // Execute sampling with real API
@@ -239,11 +198,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSimple.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length });
-                try {
-                    await saveExperiment({ samplingResults: buildSamplingResultsPayload({ simple: nextSimple }) });
-                } catch {
-                    toast.error("抽样结果保存失败");
-                }
             } else {
                 toast.error(res.error?.message || "简单随机抽样执行失败");
                 setAnimatingMethod(null);
@@ -275,11 +229,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSystematic.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextSystematic.sampleCount ?? dataArr.length });
-                try {
-                    await saveExperiment({ samplingResults: buildSamplingResultsPayload({ systematic: nextSystematic }) });
-                } catch {
-                    toast.error("抽样结果保存失败");
-                }
             } else {
                 toast.error(res.error?.message || "系统抽样执行失败");
                 setAnimatingMethod(null);
@@ -311,11 +260,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, pps: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextPps.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextPps.sampleCount ?? dataArr.length });
-                try {
-                    await saveExperiment({ samplingResults: buildSamplingResultsPayload({ pps: nextPps }) });
-                } catch {
-                    toast.error("抽样结果保存失败");
-                }
             } else {
                 toast.error(res.error?.message || "PPS抽样执行失败");
                 setAnimatingMethod(null);
@@ -352,10 +296,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     ].filter(Boolean).length;
 
     const handleConfirmNext = async () => {
-        const saved = await saveResults();
-        if (!saved) return;
-
-        await saveExperiment({ currentStage: 4 });
+        await completeStage(3, { samplingResults: buildSamplingResultsPayload() });
     };
 
     if (!hasValidSamplePlan) {
@@ -388,17 +329,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sampling">
-            {showSamplingStageIntro && samplePlan && (
-                <ImmersiveExperimentLaunch
-                    populationSize={N}
-                    sampleSize={n}
-                    estimationType={samplePlan.estimationType ?? "proportion"}
-                    confidenceLevel={String(samplePlan.confidenceLevel ?? "95")}
-                    marginOfError={samplePlan.marginOfError ?? 5}
-                    onComplete={() => setShowSamplingStageIntro(false)}
-                    onClose={() => setShowSamplingStageIntro(false)}
-                />
-            )}
             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                 <CardContent className="py-6 px-6">
                     <div className="flex flex-wrap items-center justify-between gap-6">
@@ -803,13 +733,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         }}
                         onRegisterExecute={(fn) => { stratifiedExecuteRef.current = fn; }}
                         onExecutionError={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
-                        buildSavePayload={async (result) => {
-                            try {
-                                await saveExperiment({ samplingResults: buildSamplingResultsPayload({ stratified: result }) });
-                            } catch {
-                                toast.error("抽样结果保存失败");
-                            }
-                        }}
+                        buildSavePayload={() => undefined}
                         executionTime={executionTimes.stratified}
                         setExecutionTime={(ms) => setExecutionTimes(prev => ({ ...prev, stratified: ms }))}
                     />

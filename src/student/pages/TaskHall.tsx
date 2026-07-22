@@ -9,20 +9,9 @@ import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
 import { getRichTextPlainText } from "@/utils/rich-text";
-import { announcementsApi, experimentApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
-import { clearReportDraft } from "../draft-sync";
+import { announcementsApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
 import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
 
 // Re-export types for compatibility
@@ -34,7 +23,6 @@ const statusConfig: Record<TaskStatus, { label: string; intent: StatusBadgeInten
     not_started: { label: "未开始", intent: "neutral" },
     in_progress: { label: "进行中", intent: "primary" },
     submitted: { label: "已提交", intent: "warning" },
-    grading: { label: "批改中", intent: "warning" },
     graded: { label: "已批改", intent: "success" },
     rejected: { label: "被驳回", intent: "destructive" },
 };
@@ -124,9 +112,7 @@ interface TaskCardProps {
 
 function TaskCard({ task }: TaskCardProps) {
     const navigate = useNavigate();
-    const [showRestartConfirm, setShowRestartConfirm] = useState(false);
     const status = statusConfig[task.status];
-    const deadlinePassed = isDeadlinePassed(task.deadline);
     const notOpenYet = isTaskNotOpenYet(task.publishedAt);
 
     const getActionButton = () => {
@@ -139,27 +125,27 @@ function TaskCard({ task }: TaskCardProps) {
             case "in_progress":
                 return { text: "继续实验", variant: "default" as const };
             case "submitted":
-            case "grading":
                 return { text: "查看提交", variant: "outline" as const };
             case "graded":
                 return { text: "查看成绩", variant: "outline" as const };
             case "rejected":
-                return { text: "重新开始", variant: "destructive" as const };
+                return { text: "继续修改", variant: "destructive" as const };
         }
     };
 
     const action = getActionButton();
     const disabled = !isTaskActionable(task) && ACTIVE_TASK_STATUSES.includes(task.status);
-    const showHistory = ["submitted", "grading", "graded", "rejected"].includes(task.status);
-    const isRejected = task.status === "rejected";
+    const showResult = task.status === "submitted" || task.status === "graded";
 
     const handlePrimaryAction = async () => {
         if (disabled) return;
-        if (isRejected) {
-            setShowRestartConfirm(true);
-            return;
+        if (task.status === "submitted" || task.status === "graded") {
+            navigate(`/task/${task.id}/result`);
+        } else if (task.status === "rejected") {
+            navigate(`/task/${task.id}/experiment`);
+        } else {
+            navigate(`/task/${task.id}`);
         }
-        navigate(`/task/${task.id}`);
     };
 
     return (
@@ -237,9 +223,9 @@ function TaskCard({ task }: TaskCardProps) {
                             {action.text}
                             <ChevronRight className="w-4 h-4 ml-1 opacity-70" />
                         </Button>
-                        {showHistory && (
-                            <Link to={`/task/${task.id}/history`}>
-                                <Button variant="outline" size="icon" className="border-input text-muted-foreground hover:bg-muted hover:text-foreground" title="历史记录">
+                        {showResult && (
+                            <Link to={`/task/${task.id}/result`}>
+                                <Button variant="outline" size="icon" className="border-input text-muted-foreground hover:bg-muted hover:text-foreground" title="查看结果">
                                     <Clock className="w-4 h-4" />
                                 </Button>
                             </Link>
@@ -254,36 +240,6 @@ function TaskCard({ task }: TaskCardProps) {
                 </CardContent>
             </Card>
 
-            <AlertDialog open={showRestartConfirm} onOpenChange={setShowRestartConfirm}>
-                <AlertDialogContent className="bg-card border-border text-foreground">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="text-foreground">确认重新开始实验</AlertDialogTitle>
-                        <AlertDialogDescription className="text-muted-foreground text-base leading-relaxed">
-                            重新开始将<strong className="text-destructive">清空所有已有的实验数据</strong>，从问卷设计阶段重新开始。
-                            <br />
-                            确定继续吗？
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-background border-border text-foreground/90 hover:bg-muted hover:text-foreground">取消</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-                            onClick={async () => {
-                                const res = await experimentApi.reset(task.id, {
-                                    resetToStage: 1,
-                                    clearQuestionnaire: true,
-                                });
-                                if (res.success && res.data) {
-                                    clearReportDraft(res.data.id);
-                                    navigate(`/task/${task.id}/experiment`);
-                                }
-                            }}
-                        >
-                            确认重新开始
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </>
     );
 }
@@ -336,17 +292,10 @@ export function TaskHall() {
         loadAnnouncements();
     }, []);
 
-    const unreadAnnouncements = announcements.filter((a) => !a.isRead);
-    const latestUnread = unreadAnnouncements[0] ?? null;
+    const latestAnnouncement = announcements[0] ?? null;
 
-    const handleOpenAnnouncement = async (announcement: Announcement) => {
+    const handleOpenAnnouncement = (announcement: Announcement) => {
         setSelectedAnnouncement(announcement);
-        if (!announcement.isRead) {
-            await announcementsApi.markAsRead(announcement.id);
-            setAnnouncements((prev) =>
-                prev.map((a) => (a.id === announcement.id ? { ...a, isRead: true } : a))
-            );
-        }
     };
 
     const filteredTasks = tasks.filter(task => {
@@ -354,7 +303,7 @@ export function TaskHall() {
         if (filter === "in_progress") {
             return isTaskOngoing(task);
         }
-        if (filter === "submitted") return ["submitted", "grading"].includes(task.status);
+        if (filter === "submitted") return task.status === "submitted";
         if (filter === "graded") return task.status === "graded";
         return true;
     });
@@ -375,7 +324,7 @@ export function TaskHall() {
 
     return (
         <div className="space-y-8">
-            {latestUnread && (
+            {latestAnnouncement && (
                 <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="p-2 rounded-full bg-warning/20 text-warning shrink-0">
@@ -383,7 +332,7 @@ export function TaskHall() {
                         </div>
                         <div>
                             <div className="text-sm text-warning font-medium font-mono tracking-wider uppercase text-[10px] mb-0.5">最新公告</div>
-                            <div className="text-sm text-warning font-medium line-clamp-1">{latestUnread.title}</div>
+                            <div className="text-sm text-warning font-medium line-clamp-1">{latestAnnouncement.title}</div>
                         </div>
                     </div>
                     <Button variant="ghost" size="sm" className="rounded-full text-warning hover:text-warning hover:bg-warning/10 shrink-0" onClick={() => setShowAnnouncements(true)}>
@@ -517,10 +466,9 @@ export function TaskHall() {
                                     onClick={() => handleOpenAnnouncement(announcement)}
                                 >
                                     <div className="flex justify-between items-start gap-2">
-                                        <div className={`text-sm font-medium line-clamp-1 group-hover:text-primary transition-colors ${!announcement.isRead ? "text-foreground" : "text-muted-foreground"}`}>
+                                        <div className="text-sm font-medium line-clamp-1 text-foreground group-hover:text-primary transition-colors">
                                             {announcement.title}
                                         </div>
-                                        {!announcement.isRead && <span className="w-2 h-2 rounded-full bg-destructive mt-1 shrink-0"></span>}
                                     </div>
                                     <div className="text-xs text-muted-foreground mt-2 font-mono opacity-70">
                                         {new Date(announcement.createdAt).toLocaleString("zh-CN", {

@@ -1,19 +1,15 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { markLoginSuccess } from "@/hooks/useAuthRecovery";
 import { authApi } from "../api-client";
-import { ADMIN_LOGIN_SUCCESS_KEY } from "../auth-keys";
 
 export function Login() {
-    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [username, setUsername] = useState("admin");
-    const [password, setPassword] = useState("123456");
+    const [password, setPassword] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -30,8 +26,7 @@ export function Login() {
                 password,
             });
             if (res.success) {
-                markLoginSuccess(ADMIN_LOGIN_SUCCESS_KEY);
-                navigate("/", { replace: true });
+                window.location.assign("/admin");
             } else {
                 setError(res.error?.message ?? "登录失败");
             }

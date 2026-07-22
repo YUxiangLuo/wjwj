@@ -1,26 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
-import { assistantClass, experiment, notification } from "../../db/schema";
+import { experiment } from "../../db/schema";
 import { ExperimentStatus } from "./status";
-
-type NotificationDbClient = Pick<typeof db, "insert" | "select" | "update" | "delete">;
-
-async function notifyUser(
-    receiverType: number,
-    receiverId: number,
-    payload: { type: string; title: string; content: string; relatedType?: string; relatedId?: number },
-    database: NotificationDbClient = db
-) {
-    await database.insert(notification).values({
-        receiverType,
-        receiverId,
-        type: payload.type,
-        title: payload.title,
-        content: payload.content,
-        relatedType: payload.relatedType,
-        relatedId: payload.relatedId,
-    });
-}
 
 export async function getOrCreateStudentExperiment(studentId: number, taskId: number) {
     let [record] = await db
@@ -37,7 +18,7 @@ export async function getOrCreateStudentExperiment(studentId: number, taskId: nu
         .values({
             studentId,
             taskId,
-            currentStage: 0,
+            currentStage: 1,
             status: ExperimentStatus.IN_PROGRESS,
         })
         .onConflictDoNothing({ target: [experiment.studentId, experiment.taskId] })
@@ -53,45 +34,4 @@ export async function getOrCreateStudentExperiment(studentId: number, taskId: nu
         .where(and(eq(experiment.studentId, studentId), eq(experiment.taskId, taskId)));
 
     return record ?? null;
-}
-
-export async function notifySubmissionReviewers(params: {
-    classId: number | null;
-    teacherId: number | null;
-    submissionId: number;
-    studentIdText: string;
-    studentName: string;
-    topicName: string;
-}, database: NotificationDbClient = db) {
-    const studentName = params.studentName || params.studentIdText;
-
-    if (params.teacherId) {
-        await notifyUser(2, params.teacherId, {
-            type: "NEW_SUBMISSION",
-            title: "有新作业提交",
-            content: `学生「${studentName}」提交了「${params.topicName}」`,
-            relatedType: "submission",
-            relatedId: params.submissionId,
-        }, database);
-    }
-
-    if (!params.classId) {
-        return;
-    }
-
-    const assistantRows = await database
-        .select({ assistantId: assistantClass.assistantId })
-        .from(assistantClass)
-        .where(eq(assistantClass.classId, params.classId));
-
-    const assistantIds = Array.from(new Set(assistantRows.map((row) => row.assistantId)));
-    await Promise.all(assistantIds.map((assistantId) =>
-        notifyUser(3, assistantId, {
-            type: "NEW_SUBMISSION",
-            title: "有新作业提交",
-            content: `学生「${studentName}」提交了「${params.topicName}」`,
-            relatedType: "submission",
-            relatedId: params.submissionId,
-        }, database)
-    ));
 }

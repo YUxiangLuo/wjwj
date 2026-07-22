@@ -45,8 +45,6 @@ export function calculateFinitePopulationSampleSize(params: {
     // Basic sample size with finite population correction
     const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
     let n = n0 / (1 + (n0 - 1) / N);
-    const n1 = n; // 有限总体校正后的样本量
-
     // Apply design effect (deff): accounts for complex sampling designs (e.g., cluster sampling)
     const deff = Number(params.designEffect);
     if (Number.isFinite(deff) && deff > 0) {

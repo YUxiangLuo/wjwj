@@ -8,23 +8,7 @@ export interface TopicFieldMapping {
     others?: string[];
 }
 
-// LRU-TTL cache for parsed population data, keyed by filePath
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const CACHE_MAX_SIZE = 50;
-const populationCache = new Map<string, { data: Record<string, any>[]; ts: number }>();
-
 export async function readPopulationData(filePath: string): Promise<Record<string, any>[]> {
-    // Check cache first
-    const cached = populationCache.get(filePath);
-    if (cached && Date.now() - cached.ts < CACHE_TTL) {
-        // Move to end for LRU ordering
-        populationCache.delete(filePath);
-        populationCache.set(filePath, cached);
-        return cached.data;
-    }
-    // Remove stale entry if expired
-    if (cached) populationCache.delete(filePath);
-
     let fullPath: string;
     try {
         fullPath = resolveStoragePath(filePath);
@@ -40,30 +24,10 @@ export async function readPopulationData(filePath: string): Promise<Record<strin
         if (!sheetName) return [];
         const sheet = workbook.Sheets[sheetName];
         if (!sheet) return [];
-        const data = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
-
-        // Evict oldest entries if at capacity
-        while (populationCache.size >= CACHE_MAX_SIZE) {
-            const oldest = populationCache.keys().next().value;
-            if (oldest !== undefined) populationCache.delete(oldest);
-            else break;
-        }
-        // Store in cache
-        populationCache.set(filePath, { data, ts: Date.now() });
-
-        return data;
+        return XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
     } catch (error) {
         console.error("Failed to read excel:", error);
         return [];
-    }
-}
-
-/** Evict a specific file from the population cache (e.g. after topic Excel re-upload). */
-export function invalidatePopulationCache(filePath?: string) {
-    if (filePath) {
-        populationCache.delete(filePath);
-    } else {
-        populationCache.clear();
     }
 }
 

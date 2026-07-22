@@ -1,258 +1,155 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, FileText, Loader2, User } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Download, Loader2, FileText, CheckCircle2, AlertCircle, Calendar, User } from "lucide-react";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
+import { RichTextContent } from "@/components/RichTextContent";
+import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { submissionsApi, type SubmissionDetail } from "../api-client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { formatDateTimeDisplay } from "@/utils/format";
+import { submissionsApi, type SubmissionDetail } from "../api-client";
 
-const statusConfig: Record<number, { label: string; intent: StatusBadgeIntent }> = {
-    0: { label: "待批改", intent: "warning" },
-    1: { label: "待批改", intent: "warning" },
-    2: { label: "已批改", intent: "success" },
-    3: { label: "被驳回", intent: "destructive" },
+const statusConfig: Record<SubmissionDetail["status"], { label: string; intent: StatusBadgeIntent }> = {
+    submitted: { label: "待批改", intent: "warning" },
+    graded: { label: "已批改", intent: "success" },
+    rejected: { label: "已驳回", intent: "destructive" },
 };
 
-function getDownloadFileName(contentDisposition: string | null, fallback: string) {
-    if (!contentDisposition) return fallback;
+function SnapshotJson({ value, emptyText }: { value: unknown; emptyText: string }) {
+    if (value == null) return <p className="text-sm text-muted-foreground">{emptyText}</p>;
+    return <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted p-4 text-xs text-foreground">{JSON.stringify(value, null, 2)}</pre>;
+}
 
-    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
-    if (utf8Match?.[1]) {
-        return decodeURIComponent(utf8Match[1]);
-    }
-
-    const plainMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
-    return plainMatch?.[1] || fallback;
+function QuestionnaireSnapshot({ questionnaire }: { questionnaire: SubmissionDetail["snapshot"]["questionnaire"] }) {
+    if (!questionnaire) return <p className="text-sm text-muted-foreground">暂无问卷内容</p>;
+    return (
+        <div className="space-y-5">
+            <div className="space-y-2 border-b border-border pb-4">
+                <h3 className="text-lg font-semibold">{questionnaire.title || "未命名问卷"}</h3>
+                <RichTextContent html={questionnaire.welcomeText ?? ""} className="text-sm text-muted-foreground" emptyFallback="无欢迎语" />
+            </div>
+            <div className="space-y-3">
+                {(questionnaire.questions ?? []).map((question, index) => (
+                    <div key={question.id || index} className="rounded-xl border border-border bg-muted/30 p-4">
+                        <p className="text-sm font-medium">{index + 1}. {question.content}</p>
+                        {question.options?.length ? <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{question.options.map((option, optionIndex) => <li key={`${question.id}-${optionIndex}`}>{option}</li>)}</ul> : null}
+                        {question.type === "boolean" && <p className="mt-2 text-sm text-muted-foreground">选项：是 / 否</p>}
+                        {question.type === "scale" && <p className="mt-2 text-sm text-muted-foreground">量表：{question.scaleMin ?? 1}–{question.scaleMax ?? 10}</p>}
+                    </div>
+                ))}
+            </div>
+            <RichTextContent html={questionnaire.endingText ?? ""} className="border-t border-border pt-4 text-sm text-muted-foreground" emptyFallback="无结束语" />
+        </div>
+    );
 }
 
 export function SubmissionDetailPage() {
-    const { submissionId } = useParams();
+    const { taskId } = useParams();
     const [detail, setDetail] = useState<SubmissionDetail | null>(null);
     const [loading, setLoading] = useState(true);
-    const [refreshingPdf, setRefreshingPdf] = useState(false);
-    const pollCountRef = useRef(0);
-
-    async function loadDetail(options?: { background?: boolean }) {
-        if (!submissionId) return;
-
-        const isBackground = options?.background === true;
-        if (isBackground) {
-            setRefreshingPdf(true);
-        } else {
-            setLoading(true);
-        }
-
-        try {
-            const res = await submissionsApi.getDetail(Number(submissionId));
-            if (res.success && res.data) {
-                setDetail(res.data);
-            }
-        } finally {
-            if (isBackground) {
-                setRefreshingPdf(false);
-            } else {
-                setLoading(false);
-            }
-        }
-    }
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        pollCountRef.current = 0;
-        void loadDetail();
-    }, [submissionId]);
-
-    useEffect(() => {
-        if (!submissionId || !detail) return;
-        if (detail.pdfStatus === "ready" || detail.pdfStatus === "failed") return;
-
-        const MAX_POLLS = 60;
-        const BASE_INTERVAL = 5000;
-        const MAX_INTERVAL = 30000;
-
-        if (pollCountRef.current >= MAX_POLLS) return;
-
-        const delay = Math.min(BASE_INTERVAL * Math.pow(1.5, pollCountRef.current), MAX_INTERVAL);
-        const timer = window.setTimeout(() => {
-            pollCountRef.current += 1;
-            void loadDetail({ background: true });
-        }, delay);
-
-        return () => window.clearTimeout(timer);
-    }, [detail, submissionId]);
-
-    const handleDownload = async (type: "questionnaire" | "report") => {
-        if (!detail) return;
-        try {
-            const res = await fetch(`/api/student/submissions/${detail.id}/download?type=${type}`, {
-                credentials: "include",
-            });
-            if (!res.ok) throw new Error("下载失败");
-            const blob = await res.blob();
-            const fileName = getDownloadFileName(
-                res.headers.get("Content-Disposition"),
-                type === "questionnaire" ? "questionnaire.pdf" : "report.pdf"
-            );
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = fileName.toLowerCase().endsWith(".pdf") ? fileName : `${fileName}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Download failed:", error);
+        const numericTaskId = Number(taskId);
+        if (!Number.isInteger(numericTaskId) || numericTaskId <= 0) {
+            setError("无效的任务");
+            setLoading(false);
+            return;
         }
-    };
+        void submissionsApi.getByTask(numericTaskId).then((response) => {
+            if (response.success && response.data) setDetail(response.data);
+            else setError(response.error?.message ?? "未找到提交记录");
+        }).finally(() => setLoading(false));
+    }, [taskId]);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-8 h-8 animate-spin text-info" />
-            </div>
-        );
-    }
+    if (loading) return <div className="grid place-items-center py-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    if (!detail) return <div className="mx-auto max-w-xl rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">{error ?? "未找到提交记录"}</div>;
 
-    if (!detail) {
-        return <div className="text-center text-muted-foreground mt-20">未找到提交记录</div>;
-    }
-
-    const status = statusConfig[detail.status] ?? statusConfig[1]!;
+    const status = statusConfig[detail.status];
+    const scores = [
+        ["问卷设计", detail.scoreQuestionnaire, detail.weights.questionnaire],
+        ["实验过程", detail.scoreProcess, detail.weights.process],
+        ["实验报告", detail.scoreReport, detail.weights.report],
+    ] as const;
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-detail">
-            <div className="flex items-center justify-between">
-                <Link to={`/task/${detail.taskId}/history`}>
-                    <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted">
-                        <ArrowLeft className="w-4 h-4" />
-                        返回历史记录
-                    </Button>
+        <div className="mx-auto max-w-4xl space-y-6" data-testid="student-submission-detail">
+            <div className="flex items-center justify-between gap-4">
+                <Link to={`/task/${detail.taskId}`}>
+                    <Button variant="ghost" className="gap-2"><ArrowLeft className="h-4 w-4" />返回任务</Button>
                 </Link>
-                {/* Status Badge in Header */}
-                <StatusBadge intent={status.intent} className="px-3 py-1 text-sm font-medium">
-                    {detail.status === 2 ? <CheckCircle2 className="w-3.5 h-3.5" /> :
-                        detail.status === 3 ? <AlertCircle className="w-3.5 h-3.5" /> :
-                            <Loader2 className="w-3.5 h-3.5" />}
+                <StatusBadge intent={status.intent}>
+                    {detail.status === "graded" ? <CheckCircle2 className="h-3.5 w-3.5" /> : detail.status === "rejected" ? <AlertCircle className="h-3.5 w-3.5" /> : <Loader2 className="h-3.5 w-3.5" />}
                     {status.label}
                 </StatusBadge>
             </div>
 
-            <Card className="border-primary/20 bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-info opacity-20" />
-                <CardHeader className="pb-4 border-b border-input/30">
-                    <CardTitle className="text-2xl text-foreground flex items-center gap-3">
-                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
-                            {detail.topicName}
-                        </span>
-                    </CardTitle>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-2">
-                        <div className="flex items-center gap-1.5">
-                            <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span>提交: <span className="text-foreground/90 ml-1">{detail.submittedAt ? new Date(detail.submittedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</span></span>
-                        </div>
-                        {detail.gradedAt && (
-                            <div className="flex items-center gap-1.5">
-                                <CheckCircle2 className="w-4 h-4 text-success" />
-                                <span>批改: <span className="text-foreground/90 ml-1">{new Date(detail.gradedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</span></span>
-                            </div>
-                        )}
-                        {detail.graderName && (
-                            <div className="flex items-center gap-1.5">
-                                <User className="w-4 h-4 text-primary" />
-                                <span>批改人: <span className="text-foreground/90 ml-1">{detail.graderName}</span></span>
-                            </div>
-                        )}
+            <Card>
+                <CardHeader className="border-b border-border">
+                    <CardTitle className="text-2xl">{detail.topicName}</CardTitle>
+                    <div className="flex flex-wrap gap-4 pt-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" />提交：{formatDateTimeDisplay(detail.submittedAt, "-")}</span>
+                        {detail.gradedAt && <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-success" />批改：{formatDateTimeDisplay(detail.gradedAt, "-")}</span>}
+                        {detail.graderName && <span className="flex items-center gap-1.5"><User className="h-4 w-4" />教师：{detail.graderName}</span>}
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    {/* Score Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-muted/40 rounded-lg p-4 text-center border border-input/30">
-                            <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">问卷设计</div>
-                            <div className="text-2xl font-bold text-foreground font-mono">{detail.scoreQuestionnaire ?? "-"}</div>
-                            <div className="text-[10px] text-muted-foreground mt-1">权重 {detail.weights.questionnaire}%</div>
-                        </div>
-                        <div className="bg-muted/40 rounded-lg p-4 text-center border border-input/30">
-                            <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">实验过程</div>
-                            <div className="text-2xl font-bold text-foreground font-mono">{detail.scoreProcess ?? "-"}</div>
-                            <div className="text-[10px] text-muted-foreground mt-1">权重 {detail.weights.process}%</div>
-                        </div>
-                        <div className="bg-muted/40 rounded-lg p-4 text-center border border-input/30">
-                            <div className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">实验报告</div>
-                            <div className="text-2xl font-bold text-foreground font-mono">{detail.scoreReport ?? "-"}</div>
-                            <div className="text-[10px] text-muted-foreground mt-1">权重 {detail.weights.report}%</div>
-                        </div>
-                        <div className="bg-primary/20 rounded-lg p-4 text-center border border-primary/30 relative overflow-hidden">
-                            <div className="absolute inset-0 bg-primary/5" />
-                            <div className="text-xs text-primary mb-1 uppercase tracking-wider font-semibold relative">总分</div>
-                            <div className={cn("text-3xl font-bold font-mono relative",
-                                (detail.totalScore ?? 0) >= 90 ? "text-success" :
-                                    (detail.totalScore ?? 0) >= 60 ? "text-info" : "text-foreground"
-                            )}>
-                                {detail.totalScore ?? "-"}
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {scores.map(([label, value, weight]) => (
+                            <div key={label} className="rounded-xl border border-border bg-muted/40 p-4 text-center">
+                                <p className="text-xs text-muted-foreground">{label}</p>
+                                <p className="mt-1 text-2xl font-bold">{value ?? "-"}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">权重 {weight}%</p>
                             </div>
+                        ))}
+                        <div className="rounded-xl border border-primary/20 bg-primary/10 p-4 text-center">
+                            <p className="text-xs font-medium text-primary">总分</p>
+                            <p className={cn("mt-1 text-3xl font-bold", detail.totalScore !== null && detail.totalScore >= 60 ? "text-success" : "text-foreground")}>{detail.totalScore ?? "-"}</p>
                         </div>
                     </div>
 
-                    {/* Teacher Comment */}
+                    <section data-testid="student-submission-content" className="rounded-xl border border-border bg-card">
+                        <div className="border-b border-border px-5 py-4">
+                            <h2 className="flex items-center gap-2 font-semibold"><FileText className="h-4 w-4 text-primary" />提交内容快照</h2>
+                            <p className="mt-1 text-xs text-muted-foreground">以下内容固定为本次提交时的版本，不受后续课题修改影响。</p>
+                        </div>
+                        <div className="p-5">
+                            <Tabs defaultValue="report">
+                                <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+                                    <TabsTrigger value="report">实验报告</TabsTrigger>
+                                    <TabsTrigger value="questionnaire">问卷</TabsTrigger>
+                                    <TabsTrigger value="plan">抽样方案</TabsTrigger>
+                                    <TabsTrigger value="sampling">抽样结果</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="report" className="mt-4 rounded-xl bg-muted/30 p-5">
+                                    <RichTextContent html={detail.snapshot.reportContent} className="text-sm leading-relaxed" emptyFallback="暂无报告内容" />
+                                </TabsContent>
+                                <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} /></TabsContent>
+                                <TabsContent value="plan" className="mt-4"><SnapshotJson value={detail.snapshot.samplePlan} emptyText="暂无抽样方案" /></TabsContent>
+                                <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={detail.snapshot.samplingResults} /></TabsContent>
+                            </Tabs>
+                        </div>
+                    </section>
+
                     {detail.teacherComment && (
-                        <div className="bg-muted/30 rounded-xl p-5 border border-input/50">
-                            <h4 className="text-sm font-medium text-foreground/90 mb-2 flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-primary" />
-                                教师评语
-                            </h4>
-                            <p className="text-foreground/90 text-sm leading-relaxed whitespace-pre-line pl-6 border-l-2 border-primary/30">
-                                {detail.teacherComment}
-                            </p>
-                        </div>
+                        <section className="rounded-xl border border-border bg-muted/30 p-5">
+                            <h2 className="mb-2 flex items-center gap-2 text-sm font-medium"><FileText className="h-4 w-4 text-primary" />教师评语</h2>
+                            <p className="whitespace-pre-line text-sm leading-relaxed text-foreground/90">{detail.teacherComment}</p>
+                        </section>
                     )}
 
-                    {/* Reject Reason */}
                     {detail.rejectReason && (
-                        <div className="bg-destructive/10 rounded-xl p-5 border border-destructive/20">
-                            <h4 className="text-sm font-medium text-destructive mb-2 flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4" />
-                                驳回理由
-                            </h4>
-                            <p className="text-destructive text-sm leading-relaxed whitespace-pre-line pl-6 border-l-2 border-destructive/30">
-                                {detail.rejectReason}
-                            </p>
-                        </div>
+                        <section className="rounded-xl border border-destructive/20 bg-destructive/10 p-5">
+                            <h2 className="mb-2 flex items-center gap-2 text-sm font-medium text-destructive"><AlertCircle className="h-4 w-4" />驳回理由</h2>
+                            <p className="whitespace-pre-line text-sm leading-relaxed text-destructive">{detail.rejectReason}</p>
+                            <Link to={`/task/${detail.taskId}/experiment`} className="mt-4 inline-block"><Button>继续修改</Button></Link>
+                        </section>
                     )}
 
-                    {/* Downloads */}
-                    <div className="pt-4 border-t border-input/30 flex flex-wrap gap-4">
-                        <Button
-                            variant="outline"
-                            onClick={() => handleDownload("questionnaire")}
-                            disabled={!detail.questionnairePdfPath}
-                            className="bg-muted/50 border-input text-foreground/90 hover:text-foreground hover:bg-muted hover:border-input gap-2"
-                        >
-                            <Download className="w-4 h-4" />
-                            下载问卷 PDF
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={() => handleDownload("report")}
-                            disabled={!detail.reportPdfPath}
-                            className="bg-muted/50 border-input text-foreground/90 hover:text-foreground hover:bg-muted hover:border-input gap-2"
-                        >
-                            <Download className="w-4 h-4" />
-                            下载报告 PDF
-                        </Button>
-                    </div>
-
-                    {detail.pdfStatus !== "ready" && detail.pdfStatusMessage && (
-                        <div className={cn(
-                            "rounded-xl border px-4 py-3 text-sm flex items-center justify-between gap-3",
-                            detail.pdfStatus === "failed"
-                                ? "border-destructive/30 bg-destructive/10 text-destructive"
-                                : "border-info/20 bg-info/10 text-info"
-                        )}>
-                            <span>{detail.pdfStatusMessage}</span>
-                            {refreshingPdf && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
-                        </div>
+                    {!detail.teacherComment && !detail.rejectReason && detail.status === "submitted" && (
+                        <p className="rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm text-warning">实验已经提交，等待教师批改。</p>
                     )}
                 </CardContent>
             </Card>

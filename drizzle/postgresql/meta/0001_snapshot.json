@@ -1,6 +1,6 @@
 {
-  "id": "5e693783-803a-44f7-b8b7-525a8f1f5351",
-  "prevId": "b2873013-35de-4a0c-bece-693be0c730a9",
+  "id": "b0a5077d-2dba-4e0f-81ec-286dd10376f1",
+  "prevId": "10ea2c43-72f5-4322-b3ca-b87ed0976ad6",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -36,26 +36,6 @@
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
-        },
-        "is_first_login": {
-          "name": "is_first_login",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "login_fail_count": {
-          "name": "login_fail_count",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -176,336 +156,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.announcement_read": {
-      "name": "announcement_read",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "announcement_read_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "announcement_id": {
-          "name": "announcement_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_type": {
-          "name": "user_type",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "read_at": {
-          "name": "read_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "announcement_read_uk_announcement_user": {
-          "name": "announcement_read_uk_announcement_user",
-          "columns": [
-            {
-              "expression": "announcement_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "user_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "announcement_read_idx_user": {
-          "name": "announcement_read_idx_user",
-          "columns": [
-            {
-              "expression": "user_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.assistant": {
-      "name": "assistant",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "assistant_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "account": {
-          "name": "account",
-          "type": "citext",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "password": {
-          "name": "password",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "creator_teacher_id": {
-          "name": "creator_teacher_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_first_login": {
-          "name": "is_first_login",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "status": {
-          "name": "status",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "login_fail_count": {
-          "name": "login_fail_count",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "assistant_idx_status": {
-          "name": "assistant_idx_status",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assistant_idx_creator_teacher_id": {
-          "name": "assistant_idx_creator_teacher_id",
-          "columns": [
-            {
-              "expression": "creator_teacher_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "assistant_account_unique": {
-          "name": "assistant_account_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "account"
-          ]
-        }
-      },
-      "policies": {},
       "checkConstraints": {
-        "assistant_ck_account_length": {
-          "name": "assistant_ck_account_length",
-          "value": "char_length(\"assistant\".\"account\") <= 50"
+        "announcement_ck_target_scope": {
+          "name": "announcement_ck_target_scope",
+          "value": "\"announcement\".\"target_scope\" in ('all', 'teacher', 'student')"
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.assistant_class": {
-      "name": "assistant_class",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "assistant_class_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "assistant_id": {
-          "name": "assistant_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "class_id": {
-          "name": "class_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "assistant_class_uk_assistant_class": {
-          "name": "assistant_class_uk_assistant_class",
-          "columns": [
-            {
-              "expression": "assistant_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "class_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "assistant_class_idx_class_id": {
-          "name": "assistant_class_idx_class_id",
-          "columns": [
-            {
-              "expression": "class_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.class": {
@@ -594,7 +250,34 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "class_semester_id_semester_id_fk": {
+          "name": "class_semester_id_semester_id_fk",
+          "tableFrom": "class",
+          "tableTo": "semester",
+          "columnsFrom": [
+            "semester_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "class_teacher_id_teacher_id_fk": {
+          "name": "class_teacher_id_teacher_id_fk",
+          "tableFrom": "class",
+          "tableTo": "teacher",
+          "columnsFrom": [
+            "teacher_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -634,19 +317,26 @@
           "primaryKey": false,
           "notNull": true
         },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
         "current_stage": {
           "name": "current_stage",
           "type": "smallint",
           "primaryKey": false,
           "notNull": true,
-          "default": 0
+          "default": 1
         },
         "status": {
           "name": "status",
-          "type": "smallint",
+          "type": "varchar(20)",
           "primaryKey": false,
           "notNull": true,
-          "default": 0
+          "default": "'in_progress'"
         },
         "questionnaire": {
           "name": "questionnaire",
@@ -663,12 +353,6 @@
         "sampling_results": {
           "name": "sampling_results",
           "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sampling_data_path": {
-          "name": "sampling_data_path",
-          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false
         },
@@ -702,18 +386,65 @@
           "primaryKey": false,
           "notNull": false
         },
-        "last_saved_at": {
-          "name": "last_saved_at",
+        "submission_snapshot": {
+          "name": "submission_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_at": {
+          "name": "submitted_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "version": {
-          "name": "version",
-          "type": "integer",
+        "score_questionnaire": {
+          "name": "score_questionnaire",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
-          "notNull": true,
-          "default": 1
+          "notNull": false
+        },
+        "score_process": {
+          "name": "score_process",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "score_report": {
+          "name": "score_report",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_score": {
+          "name": "total_score",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teacher_comment": {
+          "name": "teacher_comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reject_reason": {
+          "name": "reject_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "graded_by_teacher_id": {
+          "name": "graded_by_teacher_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "graded_at": {
+          "name": "graded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -781,392 +512,73 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "experiment_idx_grader": {
+          "name": "experiment_idx_grader",
+          "columns": [
+            {
+              "expression": "graded_by_teacher_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "experiment_student_id_student_id_fk": {
+          "name": "experiment_student_id_student_id_fk",
+          "tableFrom": "experiment",
+          "tableTo": "student",
+          "columnsFrom": [
+            "student_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "experiment_task_id_task_id_fk": {
+          "name": "experiment_task_id_task_id_fk",
+          "tableFrom": "experiment",
+          "tableTo": "task",
+          "columnsFrom": [
+            "task_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "experiment_graded_by_teacher_id_teacher_id_fk": {
+          "name": "experiment_graded_by_teacher_id_teacher_id_fk",
+          "tableFrom": "experiment",
+          "tableTo": "teacher",
+          "columnsFrom": [
+            "graded_by_teacher_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.login_log": {
-      "name": "login_log",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "login_log_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "user_type": {
-          "name": "user_type",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "login_at": {
-          "name": "login_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "ip_address": {
-          "name": "ip_address",
-          "type": "varchar(45)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "user_agent": {
-          "name": "user_agent",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
+      "checkConstraints": {
+        "experiment_ck_status": {
+          "name": "experiment_ck_status",
+          "value": "\"experiment\".\"status\" in ('in_progress', 'submitted', 'graded', 'rejected')"
         }
       },
-      "indexes": {
-        "login_log_idx_user": {
-          "name": "login_log_idx_user",
-          "columns": [
-            {
-              "expression": "user_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "login_log_idx_login_at": {
-          "name": "login_log_idx_login_at",
-          "columns": [
-            {
-              "expression": "login_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.notification": {
-      "name": "notification",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "notification_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "receiver_type": {
-          "name": "receiver_type",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "receiver_id": {
-          "name": "receiver_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "related_type": {
-          "name": "related_type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "related_id": {
-          "name": "related_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_read": {
-          "name": "is_read",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "read_at": {
-          "name": "read_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "notification_idx_receiver": {
-          "name": "notification_idx_receiver",
-          "columns": [
-            {
-              "expression": "receiver_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "receiver_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "is_read",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "notification_idx_type": {
-          "name": "notification_idx_type",
-          "columns": [
-            {
-              "expression": "type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "notification_idx_created": {
-          "name": "notification_idx_created",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.operation_log": {
-      "name": "operation_log",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "operation_log_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "user_type": {
-          "name": "user_type",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "action": {
-          "name": "action",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "target_type": {
-          "name": "target_type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "target_id": {
-          "name": "target_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "detail": {
-          "name": "detail",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ip_address": {
-          "name": "ip_address",
-          "type": "varchar(45)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "operation_log_idx_user": {
-          "name": "operation_log_idx_user",
-          "columns": [
-            {
-              "expression": "user_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "operation_log_idx_action": {
-          "name": "operation_log_idx_action",
-          "columns": [
-            {
-              "expression": "action",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "operation_log_idx_created_at": {
-          "name": "operation_log_idx_created_at",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.semester": {
@@ -1290,32 +702,12 @@
           "primaryKey": false,
           "notNull": true
         },
-        "is_first_login": {
-          "name": "is_first_login",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
         "status": {
           "name": "status",
           "type": "smallint",
           "primaryKey": false,
           "notNull": true,
           "default": 1
-        },
-        "login_fail_count": {
-          "name": "login_fail_count",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "deleted_at": {
           "name": "deleted_at",
@@ -1385,7 +777,21 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "student_class_id_class_id_fk": {
+          "name": "student_class_id_class_id_fk",
+          "tableFrom": "student",
+          "tableTo": "class",
+          "columnsFrom": [
+            "class_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "student_student_id_unique": {
@@ -1403,573 +809,6 @@
           "value": "char_length(\"student\".\"student_id\") <= 50"
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.student_transfer": {
-      "name": "student_transfer",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "student_transfer_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "from_class_id": {
-          "name": "from_class_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "to_class_id": {
-          "name": "to_class_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reason": {
-          "name": "reason",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "operated_by": {
-          "name": "operated_by",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transferred_at": {
-          "name": "transferred_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "student_transfer_idx_student": {
-          "name": "student_transfer_idx_student",
-          "columns": [
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "student_transfer_idx_from_class": {
-          "name": "student_transfer_idx_from_class",
-          "columns": [
-            {
-              "expression": "from_class_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "student_transfer_idx_to_class": {
-          "name": "student_transfer_idx_to_class",
-          "columns": [
-            {
-              "expression": "to_class_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.submission": {
-      "name": "submission",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "submission_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "experiment_id": {
-          "name": "experiment_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "questionnaire_pdf_path": {
-          "name": "questionnaire_pdf_path",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "report_pdf_path": {
-          "name": "report_pdf_path",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_snapshot_questionnaire": {
-          "name": "pdf_snapshot_questionnaire",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_snapshot_sampling_results": {
-          "name": "pdf_snapshot_sampling_results",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_snapshot_sample_plan": {
-          "name": "pdf_snapshot_sample_plan",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_snapshot_population_size": {
-          "name": "pdf_snapshot_population_size",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_snapshot_report_content": {
-          "name": "pdf_snapshot_report_content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_snapshot_topic_name": {
-          "name": "pdf_snapshot_topic_name",
-          "type": "varchar(200)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_snapshot_student_name": {
-          "name": "pdf_snapshot_student_name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_status": {
-          "name": "pdf_status",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "pdf_generation_attempts": {
-          "name": "pdf_generation_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "pdf_last_attempt_at": {
-          "name": "pdf_last_attempt_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_generated_at": {
-          "name": "pdf_generated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "pdf_error": {
-          "name": "pdf_error",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "score_questionnaire": {
-          "name": "score_questionnaire",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "score_process": {
-          "name": "score_process",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "score_report": {
-          "name": "score_report",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "total_score": {
-          "name": "total_score",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "teacher_comment": {
-          "name": "teacher_comment",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reject_reason": {
-          "name": "reject_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "graded_by_type": {
-          "name": "graded_by_type",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "graded_by_id": {
-          "name": "graded_by_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "locked_by_type": {
-          "name": "locked_by_type",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "locked_by_id": {
-          "name": "locked_by_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "locked_at": {
-          "name": "locked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "submitted_at": {
-          "name": "submitted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "graded_at": {
-          "name": "graded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "submission_idx_experiment_id": {
-          "name": "submission_idx_experiment_id",
-          "columns": [
-            {
-              "expression": "experiment_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "submission_idx_experiment_submitted_id": {
-          "name": "submission_idx_experiment_submitted_id",
-          "columns": [
-            {
-              "expression": "experiment_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "submitted_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "submission_idx_status": {
-          "name": "submission_idx_status",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "submission_idx_pdf_status_attempt": {
-          "name": "submission_idx_pdf_status_attempt",
-          "columns": [
-            {
-              "expression": "pdf_status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "pdf_last_attempt_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "submission_idx_locked": {
-          "name": "submission_idx_locked",
-          "columns": [
-            {
-              "expression": "locked_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.system_config": {
-      "name": "system_config",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "system_config_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "config_key": {
-          "name": "config_key",
-          "type": "citext",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "config_value": {
-          "name": "config_value",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "value_type": {
-          "name": "value_type",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'string'"
-        },
-        "description": {
-          "name": "description",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "system_config_config_key_unique": {
-          "name": "system_config_config_key_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "config_key"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "system_config_ck_config_key_length": {
-          "name": "system_config_ck_config_key_length",
-          "value": "char_length(\"system_config\".\"config_key\") <= 100"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.system_metrics": {
-      "name": "system_metrics",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "byDefault",
-            "name": "system_metrics_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "metric_type": {
-          "name": "metric_type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "metric_value": {
-          "name": "metric_value",
-          "type": "numeric(10, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_at": {
-          "name": "recorded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "system_metrics_idx_type_time": {
-          "name": "system_metrics_idx_type_time",
-          "columns": [
-            {
-              "expression": "metric_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "recorded_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.task": {
@@ -2091,7 +930,34 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "task_topic_id_topic_id_fk": {
+          "name": "task_topic_id_topic_id_fk",
+          "tableFrom": "task",
+          "tableTo": "topic",
+          "columnsFrom": [
+            "topic_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "task_class_id_class_id_fk": {
+          "name": "task_class_id_class_id_fk",
+          "tableFrom": "task",
+          "tableTo": "class",
+          "columnsFrom": [
+            "class_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -2137,32 +1003,12 @@
           "primaryKey": false,
           "notNull": true
         },
-        "is_first_login": {
-          "name": "is_first_login",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
         "status": {
           "name": "status",
           "type": "smallint",
           "primaryKey": false,
           "notNull": true,
           "default": 1
-        },
-        "login_fail_count": {
-          "name": "login_fail_count",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -2265,7 +1111,7 @@
           "name": "excel_row_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": 0
         },
         "field_mapping": {
@@ -2292,25 +1138,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "is_deleted": {
-          "name": "is_deleted",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "locked_by": {
-          "name": "locked_by",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "locked_at": {
-          "name": "locked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "deleted_at": {
           "name": "deleted_at",
@@ -2380,7 +1207,21 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "topic_teacher_id_teacher_id_fk": {
+          "name": "topic_teacher_id_teacher_id_fk",
+          "tableFrom": "topic",
+          "tableTo": "teacher",
+          "columnsFrom": [
+            "teacher_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -2464,7 +1305,21 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "topic_attachment_topic_id_topic_id_fk": {
+          "name": "topic_attachment_topic_id_topic_id_fk",
+          "tableFrom": "topic_attachment",
+          "tableTo": "topic",
+          "columnsFrom": [
+            "topic_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -2510,12 +1365,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "device_info": {
-          "name": "device_info",
-          "type": "varchar(500)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -2528,13 +1377,6 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
-        },
-        "last_active_at": {
-          "name": "last_active_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {

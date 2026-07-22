@@ -39,6 +39,17 @@ const FIELD_LABELS: Record<string, string> = {
     "spending": "消费支出",
 };
 
+export function resolveStratifyBy(
+    populationStats: Record<string, Record<string, number>>,
+    preferredField?: string,
+) {
+    const availableFields = Object.keys(populationStats);
+    if (preferredField && (availableFields.length === 0 || populationStats[preferredField])) {
+        return preferredField;
+    }
+    return availableFields[0] ?? "";
+}
+
 export interface StratifiedLayer {
     name: string;
     count: number;
@@ -91,11 +102,20 @@ export function StratifiedSamplingTab({
     executionTime,
     setExecutionTime,
 }: StratifiedSamplingTabProps) {
-    const [stratifyBy, setStratifyBy] = useState(initialResult?.stratifyBy ?? "gender");
+    const [stratifyBy, setStratifyBy] = useState(() => resolveStratifyBy(populationStats, initialResult?.stratifyBy));
     const [stratifiedSeed, setStratifiedSeed] = useState(initialResult?.seed ? String(initialResult.seed) : "");
     const [layers, setLayers] = useState<StratifiedLayer[]>([]);
     const [result, setResult] = useState<StratifiedResult | null>(initialResult);
     const [showAllocationComparison, setShowAllocationComparison] = useState(false);
+
+    useEffect(() => {
+        if (Object.keys(populationStats).length === 0) return;
+        setStratifyBy((current) => (
+            current && populationStats[current]
+                ? current
+                : resolveStratifyBy(populationStats, initialResult?.stratifyBy)
+        ));
+    }, [populationStats, initialResult?.stratifyBy]);
 
     useEffect(() => {
         const stats = populationStats[stratifyBy];

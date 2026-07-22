@@ -200,9 +200,8 @@ function classExpressionStates(expression: string) {
 function classGroupsForTag(tag: string) {
     const groups: StaticClassGroup[] = [];
     const attributePattern = /\bclass(?:Name)?\s*=/g;
-    let match: RegExpExecArray | null;
 
-    while ((match = attributePattern.exec(tag))) {
+    while (attributePattern.exec(tag)) {
         let valueStart = attributePattern.lastIndex;
         while (/\s/.test(tag[valueStart] ?? "")) valueStart += 1;
         const firstCharacter = tag[valueStart];

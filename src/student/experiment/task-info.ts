@@ -12,7 +12,7 @@ export async function findStudentTaskTopicInfo(taskId: number, classId: number) 
                 eq(task.id, taskId),
                 eq(task.classId, classId),
                 isNull(task.deletedAt),
-                eq(topic.isDeleted, 0),
+                eq(topic.status, 1),
                 isNull(topic.deletedAt)
             )
         );
@@ -30,7 +30,7 @@ export async function findStudentTaskSchedule(taskId: number, classId: number) {
                 eq(task.id, taskId),
                 eq(task.classId, classId),
                 isNull(task.deletedAt),
-                eq(topic.isDeleted, 0),
+                eq(topic.status, 1),
                 isNull(topic.deletedAt)
             )
         );
@@ -48,7 +48,7 @@ export async function findStudentTaskPopulationSize(taskId: number, classId: num
                 eq(task.id, taskId),
                 eq(task.classId, classId),
                 isNull(task.deletedAt),
-                eq(topic.isDeleted, 0),
+                eq(topic.status, 1),
                 isNull(topic.deletedAt)
             )
         );
@@ -70,7 +70,7 @@ export async function findStudentTaskSamplingInfo(taskId: number, classId: numbe
                 eq(task.id, taskId),
                 eq(task.classId, classId),
                 isNull(task.deletedAt),
-                eq(topic.isDeleted, 0),
+                eq(topic.status, 1),
                 isNull(topic.deletedAt)
             )
         );
@@ -85,6 +85,7 @@ export async function findStudentTaskSubmitInfo(taskId: number, classId: number)
             deadline: task.deadline,
             topicName: topic.name,
             populationSize: topic.excelRowCount,
+            weightConfig: topic.weightConfig,
             teacherId: class_.teacherId,
             classId: task.classId,
         })
@@ -96,7 +97,7 @@ export async function findStudentTaskSubmitInfo(taskId: number, classId: number)
                 eq(task.id, taskId),
                 eq(task.classId, classId),
                 isNull(task.deletedAt),
-                eq(topic.isDeleted, 0),
+                eq(topic.status, 1),
                 isNull(topic.deletedAt)
             )
         );

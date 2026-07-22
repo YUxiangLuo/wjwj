@@ -18,8 +18,8 @@ async function checkAccess(
 ): Promise<Response | null> {
     const sharedActiveFilters: SQL[] = [
         isNull(task.deletedAt),
-        eq(topic.isDeleted, 0),
         isNull(topic.deletedAt),
+        eq(topic.status, 1),
     ];
 
     const [activeRow] = await db
@@ -33,8 +33,8 @@ async function checkAccess(
     const [row] = await db
         .select({
             taskDeletedAt: task.deletedAt,
-            topicIsDeleted: topic.isDeleted,
             topicDeletedAt: topic.deletedAt,
+            topicStatus: topic.status,
         })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
@@ -45,12 +45,15 @@ async function checkAccess(
         return error(fallbackMessage, fallbackCode, fallbackStatus);
     }
 
-    const topicUnavailable = row.topicIsDeleted === 1 || row.topicDeletedAt !== null;
+    const topicUnavailable = row.topicDeletedAt !== null;
     if (topicUnavailable) {
         return error("课题已删除", "TOPIC_DELETED", 410);
     }
     if (row.taskDeletedAt !== null) {
         return error("任务已撤销", "TASK_REVOKED", 410);
+    }
+    if (row.topicStatus !== 1) {
+        return error("课题未发布", "TOPIC_UNAVAILABLE", 404);
     }
 
     return error(fallbackMessage, fallbackCode, fallbackStatus);

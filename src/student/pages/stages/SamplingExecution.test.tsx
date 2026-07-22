@@ -17,8 +17,7 @@ const mockExperimentApi = {
 let mockExperimentContext: {
     populationSize: number;
     experiment: Record<string, unknown> | null;
-    registerStageSave: (saveHandler: (() => Promise<boolean>) | null) => void;
-    saveExperiment: (payload: unknown) => Promise<boolean>;
+    completeStage: (stage: number, data: Record<string, unknown>) => Promise<boolean>;
 };
 
 mock.module("../ExperimentLayout", () => ({
@@ -121,8 +120,7 @@ beforeEach(() => {
             },
             samplingResults: null,
         },
-        registerStageSave: () => undefined,
-        saveExperiment: async () => true,
+        completeStage: async () => true,
     };
 });
 

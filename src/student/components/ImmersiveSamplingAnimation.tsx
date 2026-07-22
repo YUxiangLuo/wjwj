@@ -217,7 +217,6 @@ export function ImmersiveSamplingAnimation({
     const [phase, setPhase] = useState<Phase>({ type: "intro" });
     const [visiblePopCount, setVisiblePopCount] = useState(0);
     const [currentSelectIndex, setCurrentSelectIndex] = useState(0);
-    const animFrameRef = useRef(0);
     const hasCalledComplete = useRef(false);
     const meta = METHOD_META[method];
     const progressCopy = METHOD_PROGRESS_COPY[method];

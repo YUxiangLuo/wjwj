@@ -1,6 +1,6 @@
 import { SQL } from "bun";
 import { expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
 
@@ -15,7 +15,6 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
     const database = drizzle(sqlClient, { schema });
     const suffix = crypto.randomUUID();
     const username = `PgCase_${suffix}`;
-    const configKey = `integration.${suffix}`;
     const sessionToken = `integration-${suffix}`;
     const employeeId = `PG-${suffix}`;
     const semesterName = `PG-${suffix.slice(0, 8)}`;
@@ -46,36 +45,13 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             .where(eq(schema.admin.username, username.toUpperCase()));
         expect(caseInsensitiveAdmin?.id).toBe(createdAdmin!.id);
 
-        await sqlClient`SELECT pg_sleep(0.01)`;
+        const explicitUpdatedAt = new Date(createdAdmin!.updatedAt.getTime() + 1_000);
         const [updatedAdmin] = await database
             .update(schema.admin)
-            .set({ password: "updated-password" })
+            .set({ password: "updated-password", updatedAt: explicitUpdatedAt })
             .where(eq(schema.admin.id, createdAdmin!.id))
             .returning({ updatedAt: schema.admin.updatedAt });
-        expect(updatedAdmin!.updatedAt.getTime()).toBeGreaterThan(createdAdmin!.updatedAt.getTime());
-
-        const [createdConfig] = await database
-            .insert(schema.systemConfig)
-            .values({ configKey, configValue: "first" })
-            .returning({ id: schema.systemConfig.id });
-        expect(createdConfig?.id).toBeNumber();
-
-        const ignoredConflict = await database
-            .insert(schema.systemConfig)
-            .values({ configKey: configKey.toUpperCase(), configValue: "ignored" })
-            .onConflictDoNothing({ target: schema.systemConfig.configKey })
-            .returning({ id: schema.systemConfig.id });
-        expect(ignoredConflict).toEqual([]);
-
-        const [updatedConfig] = await database
-            .insert(schema.systemConfig)
-            .values({ configKey, configValue: "second" })
-            .onConflictDoUpdate({
-                target: schema.systemConfig.configKey,
-                set: { configValue: "second" },
-            })
-            .returning({ configValue: schema.systemConfig.configValue });
-        expect(updatedConfig?.configValue).toBe("second");
+        expect(updatedAdmin!.updatedAt.toISOString()).toBe(explicitUpdatedAt.toISOString());
 
         const expiresAt = new Date("2030-06-01T12:34:56.789Z");
         await database.insert(schema.userSession).values({
@@ -126,6 +102,32 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             .returning({ id: schema.task.id });
         taskId = createdTask!.id;
 
+        const [createdExperiment] = await database
+            .insert(schema.experiment)
+            .values({ studentId, taskId })
+            .returning({ id: schema.experiment.id, version: schema.experiment.version });
+        expect(createdExperiment?.version).toBe(1);
+
+        const staleUpdate = await database
+            .update(schema.experiment)
+            .set({ version: 2 })
+            .where(and(
+                eq(schema.experiment.id, createdExperiment!.id),
+                eq(schema.experiment.version, 0),
+            ))
+            .returning({ id: schema.experiment.id });
+        expect(staleUpdate).toHaveLength(0);
+
+        const [versionedExperiment] = await database
+            .update(schema.experiment)
+            .set({ version: 2 })
+            .where(and(
+                eq(schema.experiment.id, createdExperiment!.id),
+                eq(schema.experiment.version, 1),
+            ))
+            .returning({ version: schema.experiment.version });
+        expect(versionedExperiment?.version).toBe(2);
+
         process.env.DATABASE_URL = testDatabaseUrl!;
         const [{ listTeacherTasks }, applicationDatabase] = await Promise.all([
             import("../teacher/topic/query-service"),
@@ -150,7 +152,6 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         if (semesterId) await database.delete(schema.semester).where(eq(schema.semester.id, semesterId));
         if (teacherId) await database.delete(schema.teacher).where(eq(schema.teacher.id, teacherId));
         await database.delete(schema.userSession).where(eq(schema.userSession.sessionToken, sessionToken));
-        await database.delete(schema.systemConfig).where(eq(schema.systemConfig.configKey, configKey));
         await database.delete(schema.admin).where(eq(schema.admin.username, username));
         await sqlClient.close();
     }

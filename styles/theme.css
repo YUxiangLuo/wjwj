@@ -4,6 +4,14 @@
 @source not "../scripts";
 @import "tw-animate-css";
 
+@font-face {
+    font-family: "Noto Sans SC";
+    src: url("../public/fonts/NotoSansSC-Regular.otf") format("opentype");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
 /* Hover feedback must never make a disabled control look actionable. */
 @custom-variant hover {
     @media (hover: hover) {

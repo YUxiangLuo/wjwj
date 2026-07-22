@@ -1,24 +1,15 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Loader2, Lock, HelpCircle, BarChart3, LineChart, PieChart, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { markLoginSuccess, useLoginRedirectReason } from "@/hooks/useAuthRecovery";
 import { authApi } from "../api-client";
-import { TEACHER_LOGIN_REDIRECT_REASON_KEY, TEACHER_LOGIN_SUCCESS_KEY } from "../auth-keys";
 
 export function Login() {
-    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [username, setUsername] = useState("teacher");
-    const [password, setPassword] = useState("123456");
-
-    useLoginRedirectReason({
-        redirectReasonKey: TEACHER_LOGIN_REDIRECT_REASON_KEY,
-        onReason: setError,
-    });
+    const [username, setUsername] = useState("T001");
+    const [password, setPassword] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,13 +26,7 @@ export function Login() {
                 password,
             });
             if (res.success) {
-                markLoginSuccess(TEACHER_LOGIN_SUCCESS_KEY);
-                // 如果是助教，直接跳转到批改页面
-                if (res.data?.user?.type === "assistant") {
-                    navigate("/grading", { replace: true });
-                } else {
-                    navigate("/", { replace: true });
-                }
+                window.location.assign("/teacher");
             } else {
                 setError(res.error?.message ?? "登录失败");
             }
@@ -129,18 +114,18 @@ export function Login() {
                             教师登录
                         </h2>
                         <p className="text-base text-muted-foreground">
-                            请输入您的工号/助教账号和密码登录系统
+                            请输入教师工号和密码登录系统
                         </p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-5">
                             <div className="space-y-2.5">
-                                <Label htmlFor="username" className="text-foreground/90 text-sm font-medium ml-1">工号/助教账号</Label>
+                                <Label htmlFor="username" className="text-foreground/90 text-sm font-medium ml-1">教师工号</Label>
                                 <Input
                                     id="username"
                                     data-testid="teacher-login-username"
-                                    placeholder="请输入工号或助教账号"
+                                    placeholder="请输入教师工号"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
                                     autoComplete="username"

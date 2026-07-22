@@ -31,7 +31,7 @@ interface SamplePlanningProps {
 }
 
 export function SamplePlanning({ onPrev }: SamplePlanningProps) {
-    const { populationSize, experiment, registerStageSave, saveExperiment } = useExperiment();
+    const { populationSize, experiment, completeStage } = useExperiment();
 
     const N = populationSize;
     const initialData = useMemo(
@@ -60,20 +60,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             nonResponseRate: result.nonResponseRate,
             recommendedSize: result.recommendedSize,
             finalSampleSize: result.finalSampleSize,
+            ...(result.advancedPlanSource ? { advancedPlanSource: result.advancedPlanSource } : {}),
         });
         setImmersiveOpen(false);
     }, []);
-
-    // Register stage save handler (saves current display data if present)
-    const saveSamplePlan = useCallback(async () => {
-        if (!displayData) return true;
-        return saveExperiment({ samplePlan: displayData });
-    }, [displayData, saveExperiment]);
-
-    useEffect(() => {
-        registerStageSave(saveSamplePlan);
-        return () => registerStageSave(null);
-    }, [registerStageSave, saveSamplePlan]);
 
     useEffect(() => {
         setDisplayData(initialData);
@@ -95,13 +85,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         }
         setConfirmNextSaving(true);
         try {
-            const ok = await saveExperiment({ samplePlan: displayData, currentStage: 3 });
+            const ok = await completeStage(2, { samplePlan: displayData });
             if (ok) {
-                try {
-                    sessionStorage.setItem(`wj-sampling-intro-${experiment.id}`, "1");
-                } catch {
-                    /* 隐私模式等可能导致不可用，不阻断进入下一阶段 */
-                }
                 setConfirmNextOpen(false);
             } else {
                 toast.error("保存失败，请重试");
@@ -131,7 +116,6 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     initialAdvancedPlanSource={displayData?.advancedPlanSource ?? null}
                     onComplete={handleImmersiveComplete}
                     onClose={() => setImmersiveOpen(false)}
-                    saveExperiment={saveExperiment}
                 />
             )}
 

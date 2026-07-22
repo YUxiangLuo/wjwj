@@ -4,6 +4,7 @@ import {
     validateTopicPublishReadiness,
     validateStratifiedValueCardinality,
     validateTopicAttachmentUpload,
+    validateTopicFieldMappingColumns,
     validateTopicFieldMappingConfig,
     validateTopicName,
     validateWeightConfig,
@@ -36,6 +37,20 @@ describe("topic validation helpers", () => {
         expect(validateTopicFieldMappingConfig({ stratified: ["gender"], numeric: ["score"] })).toBe("必须选择1个标识符字段");
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: [], numeric: ["score"] })).toBe("至少选择1个分层变量");
         expect(validateTopicFieldMappingConfig({ identifier: "id", stratified: ["id"], numeric: [] })).toBe("至少选择1个数值变量");
+    });
+
+    test("validateTopicFieldMappingColumns rejects mappings left over from a replaced workbook", () => {
+        const mapping = {
+            identifier: "样本ID",
+            stratified: ["小组"],
+            numeric: ["数值指标"],
+            others: [] as string[],
+        };
+
+        expect(validateTopicFieldMappingColumns(mapping, ["样本ID", "年级", "每周学习时长"]))
+            .toBe("字段映射包含当前总体数据中不存在的列：小组、数值指标");
+        expect(validateTopicFieldMappingColumns(mapping, ["样本ID", "小组", "数值指标"]))
+            .toBeNull();
     });
 
     test("validateStratifiedValueCardinality rejects fields with too many unique values", () => {

@@ -21,6 +21,8 @@
     "db:clean": "bun run src/db/clean.ts --force",
     "db:seed": "bun run src/db/seeds/default.ts",
     "db:reset": "bun run db:clean && bun run db:migrate && bun run db:seed",
+    "storage:audit": "bun run scripts/audit-storage.ts",
+    "storage:clean": "bun run scripts/audit-storage.ts --delete --force",
     "test:db": "REQUIRE_TEST_DATABASE=1 bun test src/db/postgresql.integration.test.ts"
   },
   "dependencies": {
@@ -36,9 +38,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
-    "@radix-ui/react-tooltip": "^1.2.8",
     "@tiptap/extension-placeholder": "^3.20.4",
-    "@tiptap/extension-underline": "^3.20.4",
     "@tiptap/pm": "^3.20.4",
     "@tiptap/react": "^3.20.4",
     "@tiptap/starter-kit": "^3.20.4",
@@ -48,19 +48,17 @@
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.545.0",
-    "pdfkit": "^0.17.2",
     "react": "^19",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19",
     "react-router-dom": "^7.12.0",
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.3.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",
     "@types/bun": "latest",
-    "@types/pdfkit": "^0.17.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.8",

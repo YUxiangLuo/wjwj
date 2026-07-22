@@ -1,6 +1,7 @@
 import { unlink } from "node:fs/promises";
 import { expect, mock, test } from "bun:test";
 import * as XLSX from "xlsx";
+import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 function withRouteParam(request: Request, id: string) {
@@ -22,15 +23,8 @@ async function loadTopicRoutes(options: {
     const { db, operations } = createMockDb(options);
 
     mock.module("../../db", () => ({ db }));
-    mock.module("./auth", () => ({
+    mock.module("./auth", () => createTeacherAuthModuleMock({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
-        requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
-        notifyStudentsByClassIds: async () => undefined,
-        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
-        notifyStudentById: async () => undefined,
-        isLockExpired: () => true,
-        TEACHER_USER_TYPE: 2,
-        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./topic-task");

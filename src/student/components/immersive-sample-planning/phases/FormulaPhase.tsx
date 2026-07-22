@@ -1,8 +1,6 @@
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
-import { ChevronRight } from "lucide-react";
 import { Z_VALUES, type EstimationType, type FormulaStep, type SampleParams } from "../types";
 import { calculateSampleSizeStepDetails } from "../../../experiment/sample-plan";
 import { PhaseNextButton as NextButton } from "./shared";

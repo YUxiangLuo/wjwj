@@ -27,8 +27,9 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
             experiment={{
                 id: 88,
                 taskId: 2,
+                version: 4,
                 currentStage: 4,
-                status: 0,
+                status: "in_progress",
                 questionnaire: {
                     title: "问卷",
                     welcomeText: "<p>欢迎</p>",
@@ -48,7 +49,10 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
                 },
                 samplingResults: null,
                 reportContent: "<p>报告</p>",
-                lastSavedAt: null,
+                stage1CompletedAt: null,
+                stage2CompletedAt: null,
+                stage3CompletedAt: null,
+                stage4CompletedAt: null,
                 populationSize: 8000,
             }}
         />,
@@ -57,6 +61,9 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
     await waitFor(() => {
         expect(view.getByText("样本量规划摘要")).toBeTruthy();
     });
+
+    expect(view.getByRole("dialog", { name: "抽样调查实验报告全屏预览" })).toBeTruthy();
+    expect(view.getByRole("button", { name: "关闭全屏预览" })).toBeTruthy();
 
     const text = view.container.textContent ?? "";
     expect(text).toContain("估计类型");

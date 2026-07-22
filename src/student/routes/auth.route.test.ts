@@ -1,355 +1,121 @@
 import { expect, mock, test } from "bun:test";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { createMockDb } from "../../test-utils/mock-db";
 
-type ConfigValues = Record<string, number>;
-
-function createJsonRequest(url: string, method: string, body?: unknown, headers?: HeadersInit) {
-    return new Request(url, {
+function request(method: string, body?: unknown, cookie?: string) {
+    return new Request("https://example.com", {
         method,
-        headers: {
-            ...(body ? { "Content-Type": "application/json" } : {}),
-            ...headers,
-        },
+        headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(cookie ? { cookie } : {}) },
         body: body ? JSON.stringify(body) : undefined,
     });
 }
 
-async function loadStudentAuthModule(options: {
-    select?: unknown[];
-    insert?: unknown[];
-    update?: unknown[];
-    delete?: unknown[];
-    config?: ConfigValues;
-} = {}) {
-    const { db, operations } = createMockDb(options);
-    const config = options.config ?? {};
-
-    mock.restore();
+async function load(select: unknown[] = []) {
+    const { db, operations } = createMockDb({ select });
     mock.module("../../db", () => ({ db }));
-    mock.module("../../server/system-config", () => ({
-        getConfigNumber: async (key: string, fallback: number) => config[key] ?? fallback,
-    }));
-
-    const module = await import(`./auth?student-auth-route-test=${Math.random()}`);
+    const module = await import(`./auth.ts?auth=${crypto.randomUUID()}`);
     return { module, operations };
 }
 
-test("student login succeeds and creates a single-device session", async () => {
-    const password = "Student@2026";
-    const hashed = await Bun.password.hash(password);
-    const { module, operations } = await loadStudentAuthModule({
-        select: [[{
-            id: 11,
-            studentId: "20230001",
-            name: "Alice",
-            classId: 7,
-            status: 1,
-            isFirstLogin: 1,
-            password: hashed,
-            loginFailCount: 0,
-            lockedUntil: null,
-        }]],
-        config: {
-            "session.student_timeout_minutes": 60,
-        },
-    });
-
-    const response = await module.loginRoutes.POST!(createJsonRequest(
-        "https://example.com/api/student/login",
-        "POST",
-        { studentId: "20230001", password },
-        { "user-agent": "bun-test" }
-    ));
-    const payload = await response.json() as any;
-
+test("student login creates an independent fixed session", async () => {
+    const password = "Teaching123!";
+    const { module, operations } = await load([[{
+        id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
+        deletedAt: null, password: await Bun.password.hash(password), isFirstLogin: 0,
+    }]]);
+    const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password }));
     expect(response.status).toBe(200);
-    expect(payload.success).toBe(true);
-    expect(payload.data.user).toMatchObject({
-        id: 11,
-        studentId: "20230001",
-        name: "Alice",
-        classId: 7,
-        isFirstLogin: 1,
-    });
     expect(response.headers.get("Set-Cookie")).toContain("student_session=");
-
-    const resetLoginState = operations.find((operation) => operation.kind === "update");
-    expect(resetLoginState?.set).toEqual({ loginFailCount: 0, lockedUntil: null });
-
-    const sessionInsert = operations.find((operation) => operation.kind === "insert" && (operation.values as any)?.sessionToken);
-    expect(sessionInsert?.values).toMatchObject({
-        userType: 4,
-        userId: 11,
-        deviceInfo: "bun-test",
-    });
-
-    const loginLogInsert = operations.find((operation) => operation.kind === "insert" && (operation.values as any)?.userAgent);
-    expect(loginLogInsert?.values).toMatchObject({
-        userType: 4,
-        userId: 11,
-        userAgent: "bun-test",
-    });
+    expect(await response.json()).toMatchObject({ data: { user: { isFirstLogin: 0 } } });
+    const session = operations.find((item) => item.kind === "insert");
+    expect(session?.values).toMatchObject({ userType: 3, userId: 11, expiresAt: expect.any(Date) });
+    expect(session?.values).not.toHaveProperty("deviceInfo");
 });
 
-test("student login with wrong password increments fail count and returns 401", async () => {
-    const hashed = await Bun.password.hash("Student@2026");
-    const { module, operations } = await loadStudentAuthModule({
-        select: [[{
-            id: 11,
-            studentId: "20230001",
-            name: "Alice",
-            classId: 7,
-            status: 1,
-            isFirstLogin: 1,
-            password: hashed,
-            loginFailCount: 0,
-            lockedUntil: null,
-        }]],
-    });
-
-    const response = await module.loginRoutes.POST!(createJsonRequest(
-        "https://example.com/api/student/login",
-        "POST",
-        { studentId: "20230001", password: "wrong-password" }
-    ));
-    const payload = await response.json() as any;
-
+test("fifth wrong student password locks the account", async () => {
+    const { module, operations } = await load([[{
+        id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1,
+        deletedAt: null, password: await Bun.password.hash("Teaching123!"), isFirstLogin: 0,
+        loginFailCount: 4, lockedUntil: null,
+    }]]);
+    const response = await module.loginRoutes.POST!(request("POST", { studentId: "S001", password: "wrong" }));
     expect(response.status).toBe(401);
-    expect(payload.success).toBe(false);
-    expect(payload.error).toMatchObject({
-        code: "INVALID_CREDENTIALS",
-        message: "账号或密码错误，还剩4次尝试机会",
-    });
-
-    const failUpdate = operations.find((operation) => operation.kind === "update");
-    expect(failUpdate?.set).toMatchObject({ loginFailCount: 1 });
-    expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
-});
-
-test("student login returns a readable lockout duration when account is already locked", async () => {
-    const hashed = await Bun.password.hash("Student@2026");
-    const { module } = await loadStudentAuthModule({
-        select: [[{
-            id: 11,
-            studentId: "20230001",
-            name: "Alice",
-            classId: 7,
-            status: 1,
-            isFirstLogin: 0,
-            password: hashed,
-            loginFailCount: 5,
-            lockedUntil: new Date(Date.now() + 1_839 * 60 * 1000),
-        }]],
-    });
-
-    const response = await module.loginRoutes.POST!(createJsonRequest(
-        "https://example.com/api/student/login",
-        "POST",
-        { studentId: "20230001", password: "Student@2026" }
-    ));
-    const payload = await response.json() as any;
-
-    expect(response.status).toBe(403);
-    expect(payload.error).toMatchObject({
-        code: "ACCOUNT_LOCKED",
-        message: "账号已被锁定，请在1天7小时后重试",
+    expect(await response.json()).toMatchObject({ error: { code: "INVALID_CREDENTIALS" } });
+    expect(operations.find((item) => item.kind === "update")?.set).toMatchObject({
+        loginFailCount: 5,
+        lockedUntil: expect.any(Date),
     });
 });
 
-test("deleted student login returns account disabled after password verification", async () => {
-    const password = "Student@2026";
-    const hashed = await Bun.password.hash(password);
-    const { module, operations } = await loadStudentAuthModule({
-        select: [[{
-            id: 11,
-            studentId: "20230001",
-            name: "Alice",
-            classId: 7,
-            status: 1,
-            isFirstLogin: 0,
-            deletedAt: new Date("2026-03-08T00:00:00.000Z"),
-            password: hashed,
-            loginFailCount: 0,
-            lockedUntil: null,
-        }]],
-    });
-
-    const response = await module.loginRoutes.POST!(createJsonRequest(
-        "https://example.com/api/student/login",
-        "POST",
-        { studentId: "20230001", password }
-    ));
-    const payload = await response.json() as any;
-
-    expect(response.status).toBe(401);
-    expect(payload.error).toMatchObject({
-        code: "INVALID_CREDENTIALS",
-        message: "账号或密码错误",
-    });
-    expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
-});
-
-test("student me route returns profile and extends session expiry", async () => {
-    const now = Date.now();
-    const { module, operations } = await loadStudentAuthModule({
-        select: [
-            [{
-                id: 5,
-                sessionToken: "session-token",
-                userType: 4,
-                userId: 11,
-                expiresAt: new Date(now + 60_000),
-            }],
-            [{
-                id: 11,
-                studentId: "20230001",
-                name: "Alice",
-                classId: 7,
-                status: 1,
-                isFirstLogin: 0,
-            }],
-            [{ className: "统计1班" }],
-        ],
-        config: {
-            "session.student_timeout_minutes": 30,
-        },
-    });
-
-    const response = await module.meRoutes.GET!(createJsonRequest(
-        "https://example.com/api/student/me",
-        "GET",
-        undefined,
-        { cookie: "student_session=session-token" }
-    ));
-    const payload = await response.json() as any;
-
+test("student me reads the fixed session without extending it", async () => {
+    const { module, operations } = await load([
+        [{ id: 5, sessionToken: "token", userType: 3, userId: 11, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
+        [{ className: "统计一班" }],
+    ]);
+    const response = await module.meRoutes.GET!(request("GET", undefined, "student_session=token"));
     expect(response.status).toBe(200);
-    expect(payload.success).toBe(true);
-    expect(payload.data).toMatchObject({
-        id: 11,
-        studentId: "20230001",
-        name: "Alice",
-        classId: 7,
-        className: "统计1班",
-        isFirstLogin: 0,
+    expect(await response.json()).toMatchObject({
+        data: { studentId: "S001", className: "统计一班", isFirstLogin: 1 },
     });
-    expect(payload.data.sessionExpiresAt).toBeString();
-
-    const sessionUpdate = operations.find((operation) => operation.kind === "update");
-    expect(sessionUpdate?.set).toMatchObject({
-        lastActiveAt: expect.any(Date),
-        expiresAt: expect.any(Date),
-    });
+    expect(operations.some((item) => item.kind === "update")).toBe(false);
 });
 
-test("student requireAuth blocks protected access before first password change", async () => {
-    const now = Date.now();
-    const { module } = await loadStudentAuthModule({
-        select: [
-            [{
-                id: 5,
-                sessionToken: "session-token",
-                userType: 4,
-                userId: 11,
-                expiresAt: new Date(now + 60_000),
-            }],
-            [{
-                id: 11,
-                studentId: "20230001",
-                name: "Alice",
-                classId: 7,
-                status: 1,
-                isFirstLogin: 1,
-            }],
-        ],
-    });
-
-    const result = await module.requireAuth(createJsonRequest(
-        "https://example.com/api/student/tasks",
-        "GET",
-        undefined,
-        { cookie: "student_session=session-token" }
-    ));
-
-    expect(result.student).toBeNull();
-    expect(result.error?.status).toBe(403);
-    expect(await result.error?.json()).toEqual({
-        success: false,
-        error: {
-            code: "PASSWORD_CHANGE_REQUIRED",
-            message: "首次登录请先修改密码",
-        },
-    });
-});
-
-test("student me route still allows first-login user bootstrap", async () => {
-    const now = Date.now();
-    const { module } = await loadStudentAuthModule({
-        select: [
-            [{
-                id: 5,
-                sessionToken: "session-token",
-                userType: 4,
-                userId: 11,
-                expiresAt: new Date(now + 60_000),
-            }],
-            [{
-                id: 11,
-                studentId: "20230001",
-                name: "Alice",
-                classId: 7,
-                status: 1,
-                isFirstLogin: 1,
-            }],
-            [{ className: "统计1班" }],
-        ],
-    });
-
-    const response = await module.meRoutes.GET!(createJsonRequest(
-        "https://example.com/api/student/me",
-        "GET",
-        undefined,
-        { cookie: "student_session=session-token" }
-    ));
-    const payload = await response.json() as any;
-
+test("student logout removes only the current session and clears the cookie", async () => {
+    const { module, operations } = await load();
+    const response = await module.logoutRoutes.POST!(request("POST", undefined, "student_session=token"));
     expect(response.status).toBe(200);
-    expect(payload.data).toMatchObject({
-        studentId: "20230001",
-        isFirstLogin: 1,
-    });
-});
-
-test("student session route without token returns auth expired error", async () => {
-    const { module } = await loadStudentAuthModule();
-    const response = await module.sessionRoutes.GET!(createJsonRequest(
-        "https://example.com/api/student/session",
-        "GET"
-    ));
-    const payload = await response.json() as any;
-
-    expect(response.status).toBe(401);
-    expect(payload).toEqual({
-        success: false,
-        error: {
-            code: "AUTH_004",
-            message: "会话已过期，请重新登录",
-        },
-    });
-});
-
-test("student logout clears cookie and removes current session", async () => {
-    const { module, operations } = await loadStudentAuthModule();
-    const response = await module.logoutRoutes.POST!(createJsonRequest(
-        "https://example.com/api/student/logout",
-        "POST",
-        undefined,
-        { cookie: "student_session=session-token" }
-    ));
-    const payload = await response.json() as any;
-
-    expect(response.status).toBe(200);
-    expect(payload.success).toBe(true);
     expect(response.headers.get("Set-Cookie")).toContain("Expires=Thu, 01 Jan 1970 00:00:00 GMT");
-    expect(operations.find((operation) => operation.kind === "delete")).toBeDefined();
+    expect(operations.some((item) => item.kind === "delete")).toBe(true);
+});
+
+test("student password change revokes other sessions while keeping the current token", async () => {
+    const currentPassword = "Teaching123!";
+    const { module, operations } = await load([
+        [{ id: 5, sessionToken: "current-token", userType: 3, userId: 11, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000) }],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
+        [{ id: 11, studentId: "S001", password: await Bun.password.hash(currentPassword) }],
+    ]);
+
+    const response = await module.passwordRoutes.PUT!(request(
+        "PUT",
+        { currentPassword, newPassword: "Different456!" },
+        "student_session=current-token",
+    ));
+
+    expect(response.status).toBe(200);
+    const update = operations.find((item) => item.kind === "update");
+    expect(update?.set).toMatchObject({ password: expect.any(String), isFirstLogin: 0, updatedAt: expect.any(Date) });
+    const deletions = operations.filter((item) => item.kind === "delete");
+    expect(deletions).toHaveLength(1);
+    const revokeQuery = new PgDialect().sqlToQuery(deletions[0]!.where as SQL);
+    expect(revokeQuery.sql).toContain("session_token\" <> $3");
+    expect(revokeQuery.params).toEqual([3, 11, "current-token"]);
+});
+
+test("student protected routes stay locked until the first-login flag is cleared", async () => {
+    const session = (token: string) => ({
+        id: 5,
+        sessionToken: token,
+        userType: 3,
+        userId: 11,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+    });
+    const { module } = await load([
+        [session("student-first")],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 1 }],
+        [session("student-changed")],
+        [{ id: 11, studentId: "S001", name: "学生一", classId: 7, status: 1, isFirstLogin: 0 }],
+    ]);
+
+    const locked = await module.requireAuth(request("GET", undefined, "student_session=student-first"));
+    expect(locked.student).toBeNull();
+    expect(locked.error?.status).toBe(403);
+    expect(await locked.error?.json()).toMatchObject({ error: { code: "PASSWORD_CHANGE_REQUIRED" } });
+
+    const unlocked = await module.requireAuth(request("GET", undefined, "student_session=student-changed"));
+    expect(unlocked.error).toBeNull();
+    expect(unlocked.student).toMatchObject({ studentId: "S001", isFirstLogin: 0 });
 });

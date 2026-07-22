@@ -1,24 +1,27 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
-import { experiment, topic } from "../../db/schema";
+import { experiment } from "../../db/schema";
+import { validateObservedVersion } from "../../lib/observed-version";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
+import { buildAnalysisMetrics } from "../experiment/analysis-metrics";
 import {
     buildPopulationCategoricalStats,
     buildPopulationNumericStats,
-    buildStratifiedStats,
     buildStratifiedNumericStats,
+    buildStratifiedStats,
     getCategoricalFieldsFromTopicMapping,
     getPpsEligibleNumericFields,
     parseTopicFieldMapping,
     readPopulationData,
 } from "../experiment/population-data";
-import { deserializeExperimentFields, parseStoredJson } from "../experiment/serialization";
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
 import { executeSamplingAction } from "../experiment/sampling-service";
-import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
+import { parseStoredJson } from "../experiment/serialization";
+import { ExperimentStatus } from "../experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
-import { buildAnalysisMetrics } from "../experiment/analysis-metrics";
+import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
+import { getStudentTaskAccessError } from "../experiment/task-access";
 import {
     findStudentTaskPopulationSize,
     findStudentTaskSamplingInfo,
@@ -26,204 +29,179 @@ import {
     findStudentTaskSubmitInfo,
     findStudentTaskTopicInfo,
 } from "../experiment/task-info";
-import { getStudentTaskAccessError } from "../experiment/task-access";
 import { ensureTaskIsOpen, ensureTaskSubmissionWindow, hasTaskDeadlinePassed } from "../experiment/task-timing";
-import {
-    buildExperimentResetUpdates,
-    buildExperimentSaveUpdates,
-    normalizeExperimentResetRequest,
-} from "../experiment/update-service";
+import { buildStageCompletionUpdates, buildStageReopenUpdates } from "../experiment/update-service";
 import { getOrCreateStudentExperiment } from "../experiment/workflow";
-import { getConfigNumber } from "../../server/system-config";
 import { requireAuth } from "./auth";
 
-function getTaskId(req: Request): number {
-    return Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+function getTaskId(req: Request) {
+    const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
+    return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function buildExperimentSnapshotResponse(
-    rawExperiment: {
-        id: number;
-        taskId: number;
-        currentStage: number;
-        status: number;
-        questionnaire?: unknown;
-        samplePlan?: unknown;
-        samplingResults?: unknown;
-        reportContent?: string | null;
-        lastSavedAt?: Date | string | null;
-    },
-    populationSize: number | null | undefined,
-) {
-    const normalizedExperiment = deserializeExperimentFields(rawExperiment);
+function getStage(req: Request) {
+    const stage = Number.parseInt(getRouteParam(req, "stage") ?? "", 10);
+    return Number.isInteger(stage) && stage >= 1 && stage <= 4 ? stage : null;
+}
 
+function iso(value: Date | null) {
+    return value?.toISOString() ?? null;
+}
+
+function buildExperimentResponse(record: typeof experiment.$inferSelect, populationSize: number | null) {
     return {
-        id: normalizedExperiment.id,
-        taskId: normalizedExperiment.taskId,
-        currentStage: normalizedExperiment.currentStage,
-        status: normalizedExperiment.status,
-        questionnaire: normalizedExperiment.questionnaire,
-        samplePlan: normalizeSamplePlanData(normalizedExperiment.samplePlan, populationSize),
-        samplingResults: normalizedExperiment.samplingResults,
-        reportContent: normalizedExperiment.reportContent ?? null,
-        lastSavedAt: normalizedExperiment.lastSavedAt
-            ? new Date(normalizedExperiment.lastSavedAt).toISOString()
-            : null,
-        populationSize: populationSize ?? 10000,
+        id: record.id,
+        taskId: record.taskId,
+        version: record.version,
+        currentStage: record.currentStage,
+        status: record.status,
+        questionnaire: parseStoredJson(record.questionnaire),
+        samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
+        samplingResults: parseStoredJson(record.samplingResults),
+        reportContent: record.reportContent,
+        stage1CompletedAt: iso(record.stage1CompletedAt),
+        stage2CompletedAt: iso(record.stage2CompletedAt),
+        stage3CompletedAt: iso(record.stage3CompletedAt),
+        stage4CompletedAt: iso(record.stage4CompletedAt),
+        populationSize: populationSize ?? 10_000,
     };
+}
+
+async function loadOwnedExperiment(studentId: number, taskId: number) {
+    const [record] = await db
+        .select()
+        .from(experiment)
+        .where(and(eq(experiment.studentId, studentId), eq(experiment.taskId, taskId)));
+    return record ?? null;
+}
+
+function matchesObservedExperiment(record: typeof experiment.$inferSelect, observedVersion: number) {
+    return and(
+        eq(experiment.id, record.id),
+        eq(experiment.version, observedVersion),
+        eq(experiment.status, record.status),
+        eq(experiment.currentStage, record.currentStage),
+    );
 }
 
 const experimentRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
-        if (auth.error) return auth.error;
-        const currentStudent = auth.student!;
-
+        if (auth.error || !auth.student) return auth.error!;
         const taskId = getTaskId(req);
-        if (!taskId) {
-            return error("无效的任务ID", "INVALID_ID");
-        }
+        if (!taskId) return error("无效的任务ID", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
 
-        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
-        if (taskAccessError) return taskAccessError;
-
-        const [existingExperiment] = await db
-            .select()
-            .from(experiment)
-            .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
-
-        const taskSchedule = await findStudentTaskSchedule(taskId, currentStudent.classId);
-        const openError = ensureTaskIsOpen(taskSchedule?.openTime);
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const openError = ensureTaskIsOpen(schedule?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
 
-        if (hasTaskDeadlinePassed(taskSchedule?.deadline) && !existingExperiment) {
-            return error("任务已截止", "TASK_DEADLINE");
-        }
-
-        const taskInfo = await findStudentTaskTopicInfo(taskId, currentStudent.classId);
-
-        if (!taskInfo) {
+        let record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record && hasTaskDeadlinePassed(schedule?.deadline)) return error("任务已截止", "TASK_DEADLINE");
+        if (!(await findStudentTaskTopicInfo(taskId, auth.student.classId))) {
             return error("任务不存在", "NOT_FOUND", 404);
         }
-
-        const exp = existingExperiment ?? await getOrCreateStudentExperiment(currentStudent.id, taskId);
-
-        if (!exp) {
-            return error("创建实验记录失败", "CREATE_FAILED", 500);
-        }
-
-        const [topicInfo] = await db.select({ excelRowCount: topic.excelRowCount }).from(topic).where(eq(topic.id, taskInfo.topicId));
-
-        return json(buildExperimentSnapshotResponse(exp, topicInfo?.excelRowCount));
+        record ??= await getOrCreateStudentExperiment(auth.student.id, taskId);
+        if (!record) return error("创建实验记录失败", "CREATE_FAILED", 500);
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+        return json(buildExperimentResponse(record, populationSize));
     },
+};
 
-    async PUT(req) {
+const stageCompleteRoutes: RouteDefinition = {
+    async POST(req) {
         const auth = await requireAuth(req);
-        if (auth.error) return auth.error;
-        const currentStudent = auth.student!;
-
+        if (auth.error || !auth.student) return auth.error!;
         const taskId = getTaskId(req);
-        if (!taskId) {
-            return error("无效的任务ID", "INVALID_ID");
-        }
+        const stage = getStage(req);
+        if (!taskId || !stage) return error("无效的任务或阶段", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record) return error("实验记录不存在", "NOT_FOUND", 404);
+        const body = await parseBody<Record<string, unknown> & { observedVersion?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+        const { observedVersion: _observedVersion, ...payload } = body;
 
-        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
-        if (taskAccessError) return taskAccessError;
-
-        const body = await parseBody<{
-            currentStage?: number;
-            questionnaire?: unknown;
-            samplePlan?: unknown;
-            samplingResults?: unknown;
-            reportContent?: string;
-        }>(req);
-
-        const [exp] = await db
-            .select()
-            .from(experiment)
-            .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
-
-        if (!exp) {
-            return error("实验记录不存在", "NOT_FOUND", 404);
-        }
-
-        const taskInfo = await findStudentTaskSchedule(taskId, currentStudent.classId);
-
-        const openError = ensureTaskIsOpen(taskInfo?.openTime);
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const openError = ensureTaskIsOpen(schedule?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
-
-        const deadlinePassed = hasTaskDeadlinePassed(taskInfo?.deadline);
-
-        const populationSize = await findStudentTaskPopulationSize(taskId, currentStudent.classId);
-
-        const saveResult = buildExperimentSaveUpdates({
-            experimentRecord: exp,
-            body,
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+        const result = buildStageCompletionUpdates({
+            experimentRecord: record,
+            stage,
+            payload,
             populationSize,
-            deadlinePassed,
+            deadlinePassed: hasTaskDeadlinePassed(schedule?.deadline),
         });
-        if (!saveResult.ok) {
-            return error(saveResult.message, saveResult.code, saveResult.status);
-        }
+        if (!result.ok) return error(result.message, result.code, result.status);
 
-        const updateResult = await db
+        const [updated] = await db
             .update(experiment)
-            .set(saveResult.updates)
-            .where(and(eq(experiment.id, exp.id), eq(experiment.version, exp.version)))
-            .returning({ id: experiment.id });
+            .set(result.updates)
+            .where(matchesObservedExperiment(record, versionResult.value))
+            .returning();
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        return json(buildExperimentResponse(updated, populationSize));
+    },
+};
 
-        if (updateResult.length === 0) {
-            return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
-        }
-
-        const savedSnapshot = buildExperimentSnapshotResponse(
-            {
-                ...exp,
-                ...saveResult.updates,
-            },
-            populationSize,
-        );
-
-        return json(savedSnapshot);
+const stageReopenRoutes: RouteDefinition = {
+    async POST(req) {
+        const auth = await requireAuth(req);
+        if (auth.error || !auth.student) return auth.error!;
+        const taskId = getTaskId(req);
+        const stage = getStage(req);
+        if (!taskId || !stage) return error("无效的任务或阶段", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record) return error("实验记录不存在", "NOT_FOUND", 404);
+        const body = await parseBody<{ observedVersion?: unknown }>(req);
+        const versionResult = validateObservedVersion(body.observedVersion, record.version);
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+        const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
+        const result = buildStageReopenUpdates({
+            experimentRecord: record,
+            stage,
+            deadlinePassed: hasTaskDeadlinePassed(schedule?.deadline),
+        });
+        if (!result.ok) return error(result.message, result.code, result.status);
+        const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+        const [updated] = await db
+            .update(experiment)
+            .set(result.updates)
+            .where(matchesObservedExperiment(record, versionResult.value))
+            .returning();
+        if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+        return json(buildExperimentResponse(updated, populationSize));
     },
 };
 
 const statsRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
-        if (auth.error) return auth.error;
-        const currentStudent = auth.student!;
-
+        if (auth.error || !auth.student) return auth.error!;
         const taskId = getTaskId(req);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
-
-        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
-        if (taskAccessError) return taskAccessError;
-
-        const taskInfo = await findStudentTaskSamplingInfo(taskId, currentStudent.classId);
-
-        if (!taskInfo || !taskInfo.excelFilePath) {
-            return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
-        }
-
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
+        if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
         const population = await readPopulationData(taskInfo.excelFilePath);
-        const stats = buildStratifiedStats(population, taskInfo.fieldMapping);
-        const stratumNumericStats = buildStratifiedNumericStats(population, taskInfo.fieldMapping);
         const mapping = parseTopicFieldMapping(taskInfo.fieldMapping);
         const numericFields = mapping?.numeric ?? [];
         const categoricalFields = getCategoricalFieldsFromTopicMapping(taskInfo.fieldMapping);
-        const categoricalStats = buildPopulationCategoricalStats(population, categoricalFields);
-        const populationNumericStats = buildPopulationNumericStats(population, numericFields);
-        const ppsEligibleFields = getPpsEligibleNumericFields(population, numericFields);
-
         return json({
-            stats,
+            stats: buildStratifiedStats(population, taskInfo.fieldMapping),
             numericFields,
             categoricalFields,
-            categoricalStats,
-            populationNumericStats,
-            ppsEligibleFields,
-            stratumNumericStats,
+            categoricalStats: buildPopulationCategoricalStats(population, categoricalFields),
+            populationNumericStats: buildPopulationNumericStats(population, numericFields),
+            ppsEligibleFields: getPpsEligibleNumericFields(population, numericFields),
+            stratumNumericStats: buildStratifiedNumericStats(population, taskInfo.fieldMapping),
         });
     },
 };
@@ -231,215 +209,100 @@ const statsRoutes: RouteDefinition = {
 const samplingActionRoutes: RouteDefinition = {
     async POST(req) {
         const auth = await requireAuth(req);
-        if (auth.error) return auth.error;
-        const currentStudent = auth.student!;
-
+        if (auth.error || !auth.student) return auth.error!;
         const taskId = getTaskId(req);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
-
-        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
-        if (taskAccessError) return taskAccessError;
-
-        const body = await parseBody<{
-            method: "simple" | "systematic" | "pps" | "stratified";
-            params: any;
-        }>(req);
-        if (!["simple", "systematic", "pps", "stratified"].includes(body.method)) {
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const body = await parseBody<{ method?: "simple" | "systematic" | "pps" | "stratified"; params?: unknown }>(req);
+        if (!body.method || !["simple", "systematic", "pps", "stratified"].includes(body.method)) {
             return error("无效的抽样方法", "VALIDATION_ERROR", 400);
         }
-        const [exp] = await db
-            .select({ samplePlan: experiment.samplePlan })
-            .from(experiment)
-            .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
-        if (!exp) {
-            return error("实验记录不存在", "NOT_FOUND", 404);
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record || record.currentStage !== 3 || record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED) {
+            return error("当前不能执行抽样", "INVALID_STAGE_ORDER", 409);
         }
-
-        const targetSampleSize = getTargetSampleSizeFromSamplePlan(parseStoredJson(exp.samplePlan));
-
-        const taskInfo = await findStudentTaskSamplingInfo(taskId, currentStudent.classId);
-
-        if (!taskInfo || !taskInfo.excelFilePath) {
-            return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
-        }
-
+        const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
+        if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
         const population = await readPopulationData(taskInfo.excelFilePath);
-        if (population.length === 0) {
-            return error("总体数据为空或读取失败", "READ_FAILED");
-        }
-
-        const samplingResult = await executeSamplingAction({
+        if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED");
+        const result = await executeSamplingAction({
             method: body.method,
             rawParams: body.params,
-            targetSampleSize,
+            targetSampleSize: getTargetSampleSizeFromSamplePlan(parseStoredJson(record.samplePlan)),
             population,
             fieldMapping: taskInfo.fieldMapping,
         });
-        if (!samplingResult.ok) {
-            return error(samplingResult.errorMessage, "VALIDATION_ERROR", 400);
-        }
-
-        return json({ success: true, result: samplingResult.result });
+        return result.ok
+            ? json({ success: true, result: result.result })
+            : error(result.errorMessage, "VALIDATION_ERROR", 400);
     },
 };
 
 const analysisMetricsRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
-        if (auth.error) return auth.error;
-        const currentStudent = auth.student!;
-
+        if (auth.error || !auth.student) return auth.error!;
         const taskId = getTaskId(req);
         if (!taskId) return error("无效的任务ID", "INVALID_ID");
-
-        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
-        if (taskAccessError) return taskAccessError;
-
-        const [exp] = await db
-            .select({ samplingResults: experiment.samplingResults })
-            .from(experiment)
-            .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
-
-        if (!exp) {
-            return error("实验记录不存在", "NOT_FOUND", 404);
-        }
-
-        const taskInfo = await findStudentTaskSamplingInfo(taskId, currentStudent.classId);
-        if (!taskInfo || !taskInfo.excelFilePath) {
-            return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
-        }
-
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
+        if (!record || !taskInfo?.excelFilePath) return error("实验或总体数据不存在", "NOT_FOUND", 404);
         const population = await readPopulationData(taskInfo.excelFilePath);
-        const metrics = buildAnalysisMetrics({
-            population,
-            fieldMapping: parseTopicFieldMapping(taskInfo.fieldMapping),
-            samplingResults: parseStoredJson(exp.samplingResults),
-        });
-
-        return json(metrics);
+        return json(
+            buildAnalysisMetrics({
+                population,
+                fieldMapping: parseTopicFieldMapping(taskInfo.fieldMapping),
+                samplingResults: parseStoredJson(record.samplingResults),
+            }),
+        );
     },
 };
 
 const submitRoutes: RouteDefinition = {
     async POST(req) {
         const auth = await requireAuth(req);
-        if (auth.error) return auth.error;
-        const currentStudent = auth.student!;
-
+        if (auth.error || !auth.student) return auth.error!;
         const taskId = getTaskId(req);
-        if (!taskId) {
-            return error("无效的任务ID", "INVALID_ID");
-        }
-
-        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
-        if (taskAccessError) return taskAccessError;
-
-        const [exp] = await db
-            .select()
-            .from(experiment)
-            .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
-
-        if (!exp) {
-            return error("实验记录不存在", "NOT_FOUND", 404);
-        }
-
-        const taskInfo = await findStudentTaskSubmitInfo(taskId, currentStudent.classId);
-
+        if (!taskId) return error("无效的任务ID", "INVALID_ID");
+        const accessError = await getStudentTaskAccessError(taskId, auth.student.classId);
+        if (accessError) return accessError;
+        const record = await loadOwnedExperiment(auth.student.id, taskId);
+        if (!record) return error("实验记录不存在", "NOT_FOUND", 404);
+        const body = await parseBody<{ observedVersion?: unknown }>(req);
+        const submissionIsComplete = record.status === ExperimentStatus.SUBMITTED || record.status === ExperimentStatus.GRADED;
+        const versionResult = validateObservedVersion(body.observedVersion, record.version, {
+            allowOlder: submissionIsComplete,
+        });
+        if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
+        if (submissionIsComplete) return json({ success: true, experimentId: record.id });
+        const taskInfo = await findStudentTaskSubmitInfo(taskId, auth.student.classId);
         const openError = ensureTaskIsOpen(taskInfo?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
-
-        const submissionWindowError = ensureTaskSubmissionWindow(taskInfo?.deadline);
-        if (submissionWindowError) {
-            return error(submissionWindowError.message, submissionWindowError.code, submissionWindowError.status);
-        }
-
-        const submitResult = await submitStudentExperiment({
-            experimentRecord: exp,
-            taskId,
+        const windowError = ensureTaskSubmissionWindow(taskInfo?.deadline);
+        if (windowError) return error(windowError.message, windowError.code, windowError.status);
+        const result = await submitStudentExperiment({
+            experimentRecord: record,
+            observedVersion: versionResult.value,
             taskInfo: {
                 topicName: taskInfo?.topicName ?? null,
                 populationSize: taskInfo?.populationSize ?? null,
-                teacherId: taskInfo?.teacherId ?? null,
-                classId: taskInfo?.classId ?? null,
+                weightConfig: taskInfo?.weightConfig,
             },
-            student: {
-                id: currentStudent.id,
-                studentId: currentStudent.studentId,
-                name: currentStudent.name ?? "",
-            },
+            student: { studentId: auth.student.studentId, name: auth.student.name },
         });
-        if (!submitResult.ok) {
-            return error(submitResult.message, submitResult.code, submitResult.status);
-        }
-
-        return json({ success: true });
+        return result.ok ? json({ success: true, experimentId: result.experimentId }) : error(result.message, result.code, result.status);
     },
 };
 
-const resetRoutes: RouteDefinition = {
-    async POST(req) {
-        const auth = await requireAuth(req);
-        if (auth.error) return auth.error;
-        const currentStudent = auth.student!;
-
-        const taskId = getTaskId(req);
-        if (!taskId) {
-            return error("无效的任务ID", "INVALID_ID");
-        }
-
-        const taskAccessError = await getStudentTaskAccessError(taskId, currentStudent.classId);
-        if (taskAccessError) return taskAccessError;
-
-        const body = await parseBody<{ resetToStage: number; clearQuestionnaire?: boolean }>(req);
-        const resetRequest = normalizeExperimentResetRequest(body);
-
-        const [exp] = await db
-            .select()
-            .from(experiment)
-            .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
-
-        if (!exp) {
-            return error("实验记录不存在", "NOT_FOUND", 404);
-        }
-
-        const taskInfo = await findStudentTaskSchedule(taskId, currentStudent.classId);
-
-        const openError = ensureTaskIsOpen(taskInfo?.openTime);
-        if (openError) return error(openError.message, openError.code, openError.status);
-
-        const deadlinePassed = hasTaskDeadlinePassed(taskInfo?.deadline);
-
-        const resetResult = buildExperimentResetUpdates({
-            experimentRecord: exp,
-            resetToStage: resetRequest.resetToStage,
-            clearQuestionnaire: resetRequest.clearQuestionnaire,
-            deadlinePassed,
-        });
-        if (!resetResult.ok) {
-            return error(resetResult.message, resetResult.code, resetResult.status);
-        }
-
-        const updateResult = await db
-            .update(experiment)
-            .set(resetResult.updates)
-            .where(and(eq(experiment.id, exp.id), eq(experiment.version, exp.version)))
-            .returning({ id: experiment.id });
-
-        if (updateResult.length === 0) {
-            return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
-        }
-
-        const populationSize = await findStudentTaskPopulationSize(taskId, currentStudent.classId);
-        const resetSnapshot = buildExperimentSnapshotResponse(
-            {
-                ...exp,
-                ...resetResult.updates,
-            },
-            populationSize,
-        );
-
-        return json(resetSnapshot);
-    },
+export {
+    analysisMetricsRoutes,
+    experimentRoutes,
+    samplingActionRoutes,
+    stageCompleteRoutes,
+    stageReopenRoutes,
+    statsRoutes,
+    submitRoutes,
 };
-
-export { analysisMetricsRoutes, experimentRoutes, resetRoutes, samplingActionRoutes, statsRoutes, submitRoutes };

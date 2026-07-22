@@ -11,7 +11,6 @@ import {
     TrendingUp, 
     AlertCircle, 
     Target, 
-    Calculator,
     Info,
     ChevronRight
 } from "lucide-react";

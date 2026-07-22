@@ -56,6 +56,9 @@ export function ImmersiveReportPreview({ experiment, taskName, onClose }: Props)
     return (
         <div
             className={`fixed inset-0 z-50 bg-background/98 backdrop-blur-sm transition-opacity duration-300 ${opacityClass}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${taskName}实验报告全屏预览`}
         >
             {/* top bar */}
             <div className="flex items-center justify-between px-6 py-3 border-b border-border/60 bg-background/80 backdrop-blur">
@@ -65,6 +68,8 @@ export function ImmersiveReportPreview({ experiment, taskName, onClose }: Props)
                     <span className="text-xs text-muted-foreground">实验报告预览</span>
                 </div>
                 <button
+                    type="button"
+                    aria-label="关闭全屏预览"
                     onClick={handleClose}
                     className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >

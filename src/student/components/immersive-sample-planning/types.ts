@@ -51,6 +51,7 @@ export interface SampleParams {
     nonResponseRate: number;
     finalSampleSize: number;
     recommendedSize: number;
+    advancedPlanSource?: "cost" | "multivar" | "cv" | "cluster";
 }
 
 export function initialPhase(): Phase {

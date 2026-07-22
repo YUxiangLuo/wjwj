@@ -12,7 +12,6 @@ import {
     BarChart3, 
     AlertCircle, 
     Info,
-    CheckCircle2,
     ChevronDown,
     ChevronUp,
     Star,
@@ -598,7 +597,7 @@ export function MultiVariableSamplePlan({
                         <div className="space-y-2">
                             {variables
                                 .sort((a, b) => b.requiredSampleSize - a.requiredSampleSize)
-                                .map((variable, index) => {
+                                .map((variable) => {
                                     const importanceConfig = getImportanceConfig(variable.importance);
                                     if (!importanceConfig) return null;
                                     

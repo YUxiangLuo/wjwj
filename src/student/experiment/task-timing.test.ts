@@ -60,10 +60,9 @@ test("ensureTaskSubmissionWindow returns null for null deadline", () => {
     expect(ensureTaskSubmissionWindow(null)).toBeNull();
 });
 
-test("ensureTaskSubmissionWindow returns null within grace period", () => {
-    // Deadline just passed (5 seconds ago), but within 30s grace
+test("ensureTaskSubmissionWindow rejects immediately after the deadline", () => {
     const recent = new Date(Date.now() - 5_000).toISOString();
-    expect(ensureTaskSubmissionWindow(recent)).toBeNull();
+    expect(ensureTaskSubmissionWindow(recent)?.code).toBe("TASK_DEADLINE");
 });
 
 test("ensureTaskSubmissionWindow returns failure well past deadline", () => {

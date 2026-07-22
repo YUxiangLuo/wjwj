@@ -8,7 +8,7 @@ interface ExperimentRouteGuardInput {
 }
 
 const EDITABLE_STATUSES: TaskStatus[] = ["not_started", "in_progress", "rejected"];
-const COMPLETED_STATUSES: TaskStatus[] = ["submitted", "grading", "graded"];
+const COMPLETED_STATUSES: TaskStatus[] = ["submitted", "graded"];
 
 export function isTaskNotOpenYet(publishedAt: string) {
     const publishedTime = new Date(publishedAt).getTime();
@@ -27,7 +27,7 @@ export function getExperimentRouteRedirect(input: ExperimentRouteGuardInput) {
     }
 
     if (COMPLETED_STATUSES.includes(input.status)) {
-        return `/task/${input.taskId}/history`;
+        return `/task/${input.taskId}/result`;
     }
 
     if (EDITABLE_STATUSES.includes(input.status) && isTaskDeadlinePassed(input.deadline)) {

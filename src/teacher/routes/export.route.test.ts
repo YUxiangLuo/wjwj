@@ -1,5 +1,8 @@
 import { expect, mock, test } from "bun:test";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 import { semester } from "../../db/schema";
+import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
 
 async function loadExportRoutes(options: {
@@ -15,15 +18,8 @@ async function loadExportRoutes(options: {
         formatDateStampCN: () => "2026-03-09",
         formatDateTimeCN: () => "2026/03/09 04:25:06",
     }));
-    mock.module("./auth", () => ({
+    mock.module("./auth", () => createTeacherAuthModuleMock({
         getPrimaryTeacherIdOrThrow: () => options.teacherId ?? 9,
-        requirePrimaryTeacher: async () => ({ teacherId: options.teacherId ?? 9, error: null }),
-        getCurrentUser: async () => ({ id: options.teacherId ?? 9, type: "teacher" }),
-        notifyStudentsByClassIds: async () => undefined,
-        notifyStudentById: async () => undefined,
-        isLockExpired: () => true,
-        TEACHER_USER_TYPE: 2,
-        ASSISTANT_USER_TYPE: 3,
     }));
 
     const module = await import("./export");
@@ -67,6 +63,39 @@ test("grade export preview accepts semester filter and joins semester data", asy
             expect.objectContaining({ type: "innerJoin", table: semester }),
         ])
     );
+    const selection = query?.selection as { graded?: SQL; avgScore?: SQL } | undefined;
+    const dialect = new PgDialect();
+    expect(dialect.sqlToQuery(selection!.graded!).sql).toContain("INNER JOIN student counted_student");
+    expect(dialect.sqlToQuery(selection!.avgScore!).sql).toContain("counted_student.deleted_at IS NULL");
+});
+
+test("grade export data uses immutable student and topic names", async () => {
+    const { module } = await loadExportRoutes({
+        select: [[{
+            studentId: "2024001",
+            studentName: "当前学生名",
+            className: "统计学原理 A班",
+            topicName: "当前课题名",
+            submittedAt: new Date("2026-03-09T04:25:06+08:00"),
+            scoreQuestionnaire: "88.00",
+            scoreProcess: "90.00",
+            scoreReport: "91.00",
+            totalScore: "89.90",
+            status: "graded",
+            gradedByName: "张教授",
+            gradedAt: new Date("2026-03-09T04:25:06+08:00"),
+            submissionSnapshot: { studentName: "提交时学生名", topicName: "提交时课题名" },
+        }]],
+    });
+
+    const response = await module.gradeExportDataRoutes.GET!(
+        new Request("https://example.com/api/teacher/grade-export/data?taskId=12"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+        data: [{ studentId: "2024001", name: "提交时学生名", topicName: "提交时课题名" }],
+    });
 });
 
 test("grade export excel uses local date stamp for download filename", async () => {
@@ -86,6 +115,7 @@ test("grade export excel uses local date stamp for download filename", async () 
             gradedById: 9,
             gradedByName: "张教授（演示）",
             gradedAt: new Date("2026-03-09T04:25:06+08:00"),
+            submissionSnapshot: { studentName: "钱二", topicName: "消费者行为分析实验" },
         }]],
     });
 

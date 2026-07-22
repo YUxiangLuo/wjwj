@@ -159,13 +159,14 @@ export function ClassManagement() {
     }
 
     async function handleDelete(cls: Class) {
-        const description = cls.studentCount > 0
-            ? `该班级当前有 ${cls.studentCount} 名学生。\n\n删除后：\n- 班级内的学生将无法继续实验\n- 历史实验数据和成绩将被保留`
-            : "删除后该班级将从列表中移除，且无法恢复。";
+        if (cls.studentCount > 0) {
+            toast.error("班级仍有学生，不能删除");
+            return;
+        }
 
         const shouldDelete = await confirm({
             title: `删除班级「${cls.name}」`,
-            description,
+            description: "仅没有任何学生记录和历史任务的空班级可以删除。删除后无法恢复。",
             confirmLabel: "删除班级",
             tone: "destructive",
         });
@@ -403,6 +404,7 @@ export function ClassManagement() {
                                 data-testid="class-create-name"
                                 placeholder="请输入班级名称"
                                 value={newClass.name}
+                                maxLength={100}
                                 onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
                                 className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
@@ -466,6 +468,7 @@ export function ClassManagement() {
                                 data-testid="class-edit-name"
                                 placeholder="请输入班级名称"
                                 value={editForm.name}
+                                maxLength={100}
                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                                 className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />

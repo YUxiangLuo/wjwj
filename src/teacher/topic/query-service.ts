@@ -1,7 +1,8 @@
 import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { class_, experiment, student, submission, task, topic, topicAttachment } from "../../db/schema";
+import { class_, experiment, student, task, topic, topicAttachment } from "../../db/schema";
 import { normalizeRecommendQuestionsFromDb } from "../../lib/questionnaire-normalize";
+import { resolveStoragePath } from "../../server/storage-files";
 import { parseExcelFile } from "./file-utils";
 import { buildTaskProgressSnapshot } from "./task-progress";
 
@@ -16,7 +17,7 @@ export async function listTeacherTopics(teacherId: number) {
             createdAt: topic.createdAt,
         })
         .from(topic)
-        .where(and(eq(topic.teacherId, teacherId), eq(topic.isDeleted, 0), isNull(topic.deletedAt)))
+        .where(and(eq(topic.teacherId, teacherId), isNull(topic.deletedAt)))
         .orderBy(desc(topic.createdAt));
 }
 
@@ -34,7 +35,7 @@ export async function getTeacherTopicDetail(topicId: number) {
     let excelInfo = null as null | { columns: string[]; preview: any[] };
     if (topicInfo?.excelFilePath) {
         try {
-            const buffer = await Bun.file(`${process.cwd()}${topicInfo.excelFilePath}`).arrayBuffer();
+            const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
             const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
             excelInfo = { columns: parsed.columns, preview: parsed.preview };
         } catch {
@@ -56,30 +57,18 @@ export async function listTeacherTasks(teacherId: number) {
             publishedAt: task.openTime,
             deadline: task.deadline,
             total: count(student.id),
-            completed: sql<number>`(
-                SELECT COUNT(*)::integer
-                FROM submission s
-                INNER JOIN experiment e ON s.experiment_id = e.id
-                INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
-                WHERE e.task_id = ${task.id} AND s.status IN (0, 1, 2, 3)
-            )`,
-            pending: sql<number>`(
-                SELECT COUNT(*)::integer
-                FROM submission s
-                INNER JOIN experiment e ON s.experiment_id = e.id
-                INNER JOIN student st ON e.student_id = st.id AND st.deleted_at IS NULL
-                WHERE e.task_id = ${task.id} AND s.status IN (0, 1)
-            )`,
+            completed: sql<number>`count(${experiment.id}) filter (where ${experiment.status} in ('submitted', 'graded'))::integer`,
+            pending: sql<number>`count(${experiment.id}) filter (where ${experiment.status} = 'submitted')::integer`,
         })
         .from(task)
         .innerJoin(topic, eq(task.topicId, topic.id))
         .innerJoin(class_, eq(task.classId, class_.id))
         .leftJoin(student, and(eq(student.classId, class_.id), isNull(student.deletedAt)))
+        .leftJoin(experiment, and(eq(experiment.studentId, student.id), eq(experiment.taskId, task.id)))
         .where(
             and(
                 eq(class_.teacherId, teacherId),
                 isNull(task.deletedAt),
-                eq(topic.isDeleted, 0),
                 isNull(topic.deletedAt)
             )
         )
@@ -104,7 +93,6 @@ export async function getTeacherTaskProgress(taskId: number, teacherId: number) 
                 eq(task.id, taskId),
                 eq(class_.teacherId, teacherId),
                 isNull(task.deletedAt),
-                eq(topic.isDeleted, 0),
                 isNull(topic.deletedAt)
             )
         );
@@ -121,13 +109,6 @@ export async function getTeacherTaskProgress(taskId: number, teacherId: number) 
             experimentId: experiment.id,
             currentStage: experiment.currentStage,
             experimentStatus: experiment.status,
-            latestSubmission: sql<string | null>`(
-                SELECT CONCAT(s.id, ',', s.status)
-                FROM submission s
-                WHERE s.experiment_id = ${experiment.id}
-                ORDER BY s.submitted_at DESC, s.id DESC
-                LIMIT 1
-            )`,
             lastActivity: experiment.updatedAt,
         })
         .from(student)

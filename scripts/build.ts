@@ -1,12 +1,28 @@
 import tailwind from "bun-plugin-tailwind";
+import { rm, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { parse, relative, resolve } from "node:path";
 import { countHardcodedPaletteClasses } from "./check-styles";
 
-const outdir = process.env.BUILD_OUTDIR ?? "dist";
+const projectRoot = resolve(import.meta.dir, "..");
+const outdir = resolve(projectRoot, process.env.BUILD_OUTDIR ?? "dist");
 const entrypoints = [
     "src/admin/admin.html",
     "src/teacher/teacher.html",
     "src/student/student.html",
 ];
+
+function isChildPath(parent: string, candidate: string) {
+    const path = relative(parent, candidate);
+    return path !== "" && !path.startsWith("..") && !parse(path).root;
+}
+
+if (!isChildPath(projectRoot, outdir) && !isChildPath(resolve(tmpdir()), outdir)) {
+    throw new Error(`拒绝清理不安全的构建目录：${outdir}`);
+}
+
+await rm(outdir, { recursive: true, force: true });
+await mkdir(outdir, { recursive: true });
 
 let outputCount = 0;
 

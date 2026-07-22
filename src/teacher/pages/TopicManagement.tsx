@@ -116,7 +116,10 @@ export function TopicManagement() {
     }
 
     async function handleSubmitTopic() {
-        if (!newTopicName.trim()) return;
+        if (!newTopicName.trim()) {
+            toast.error("请输入课题名称");
+            return;
+        }
 
         let res;
         if (editingTopicId) {
@@ -207,6 +210,7 @@ export function TopicManagement() {
         if (res.success && res.data) {
             setExcelInfo(res.data);
             setColumns(res.data.columns ?? []);
+            setFieldMapping({ stratified: [], numeric: [], others: [] });
         } else {
             toast.error("上传失败: " + res.error?.message);
         }
@@ -258,6 +262,13 @@ export function TopicManagement() {
 
     async function handleSaveWeights() {
         if (!editingTopicId) return;
+        if (editingTopicPublished) {
+            setShowCreateModal(false);
+            setCurrentStep(1);
+            setEditingTopicId(null);
+            setEditingTopicPublished(false);
+            return;
+        }
         const { questionnaire, process, report } = weightConfig;
         if (questionnaire < 10 || questionnaire > 50) {
             toast.error("问卷设计权重需在10-50%之间");

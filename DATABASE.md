@@ -12,10 +12,18 @@ export DATABASE_URL='postgresql://user:password@127.0.0.1:5432/wenjuan'
 bun run db:migrate
 ```
 
-The first migration enables `citext`, creates the application tables and
-indexes, and installs the `updated_at` triggers. The role applying it must be
+The first migration enables `citext` and creates the application tables,
+foreign keys, constraints, and indexes. The role applying it must be
 allowed to run `CREATE EXTENSION citext`; otherwise a database administrator
 must install that extension first.
+
+This repository now uses a simplified-schema baseline intended for an empty
+database. `db:migrate` detects the former schema (for example, the old
+`submission` table) and stops instead of attempting to run `CREATE TABLE`
+statements over existing data. For an installation from before the
+simplification, first take a database and `storage/` backup. If retaining the
+old records is not required, run `bun run db:reset`; otherwise keep the old
+database for export and deploy this version against a new empty database.
 
 ## Change the schema
 
@@ -41,6 +49,22 @@ bun test
 bun run build
 ```
 
-`bun run db:clean` removes all application data. The package script supplies
-the cleaner's required `--force` flag, and `db:reset` invokes it before
-reapplying migrations and seed data.
+`bun run db:clean` removes only this project's current and legacy tables plus
+its `drizzle` metadata schema. It does not enumerate or delete unrelated
+tables in `public`. The package script supplies the cleaner's required
+`--force` flag, and `db:reset` invokes it before reapplying migrations and seed
+data.
+
+Database reset does not delete files under `storage/`. Replacing a topic's
+Excel file removes the previous file after the database update succeeds. For
+older orphaned files, first run the read-only audit:
+
+```sh
+bun run storage:audit
+```
+
+After reviewing the exact list, `bun run storage:clean` deletes only files not
+referenced by current topic data, attachments, or recognized legacy
+submission paths. Upload, copy, delete, audit, and cleanup operations share a
+PostgreSQL advisory lock, so cleanup cannot classify a file while its database
+reference is still being committed by the application.

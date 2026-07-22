@@ -73,7 +73,7 @@ function generateId(): string {
 }
 
 export function QuestionnaireDesign() {
-    const { experiment, registerStageSave, saveExperiment } = useExperiment();
+    const { experiment, completeStage } = useExperiment();
 
     // Initialize from experiment data
     const initialData = experiment?.questionnaire as QuestionnaireData | null;
@@ -138,17 +138,6 @@ export function QuestionnaireDesign() {
         setPreviewContentHash(contentFingerprint);
         setPreviewOpen(false);
     }, [contentFingerprint]);
-
-    const saveQuestionnaire = useCallback(async (nextData: QuestionnaireData) => {
-        return saveExperiment({ questionnaire: nextData });
-    }, [saveExperiment]);
-
-    useEffect(() => {
-        registerStageSave(() => saveQuestionnaire(questionnaireData));
-        return () => {
-            registerStageSave(null);
-        };
-    }, [questionnaireData, registerStageSave, saveQuestionnaire]);
 
     const steps = [
         { num: 1, title: "欢迎语设置" },
@@ -322,10 +311,7 @@ export function QuestionnaireDesign() {
     const warningCount = validation.questionTypes ? 0 : 1;
 
     const handleConfirmComplete = async () => {
-        await saveExperiment({
-            questionnaire: questionnaireData,
-            currentStage: 2,
-        });
+        await completeStage(1, { questionnaire: questionnaireData });
     };
 
     const renderStep = () => {

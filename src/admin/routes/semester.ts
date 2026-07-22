@@ -32,7 +32,7 @@ const semesterUpdateRoutes: RouteDefinition = {
             return error("学期名称已存在", "DUPLICATE_NAME");
         }
 
-        await db.update(semester).set({ name }).where(eq(semester.id, id));
+        await db.update(semester).set({ name, updatedAt: new Date() }).where(eq(semester.id, id));
 
         return json({ success: true });
     },

@@ -28,13 +28,13 @@ export function hasTaskDeadlinePassed(deadline: Date | string | null | undefined
     return Date.now() > deadlineAt;
 }
 
-export function ensureTaskSubmissionWindow(deadline: Date | string | null | undefined, graceMs = 30_000) {
+export function ensureTaskSubmissionWindow(deadline: Date | string | null | undefined) {
     if (!deadline) return null;
 
     const deadlineAt = new Date(deadline).getTime();
     // Fail-open: unparseable deadline → allow submission (preserves legacy NaN comparison behavior)
     if (!Number.isFinite(deadlineAt)) return null;
-    if (Date.now() > deadlineAt + graceMs) {
+    if (Date.now() > deadlineAt) {
         return fail("任务已截止，无法提交", "TASK_DEADLINE");
     }
 

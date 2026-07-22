@@ -76,6 +76,26 @@ export function validateTopicFieldMappingConfig(fieldMapping: TopicFieldMappingI
     return null;
 }
 
+export function validateTopicFieldMappingColumns(
+    fieldMapping: TopicFieldMappingInput,
+    columns: string[],
+) {
+    const columnSet = new Set(columns);
+    const mappedFields = [
+        fieldMapping.identifier,
+        ...(fieldMapping.stratified ?? []),
+        ...(fieldMapping.numeric ?? []),
+        ...(fieldMapping.others ?? []),
+    ].filter((field): field is string => Boolean(field));
+    const missingFields = [...new Set(mappedFields.filter((field) => !columnSet.has(field)))];
+
+    if (missingFields.length > 0) {
+        return `字段映射包含当前总体数据中不存在的列：${missingFields.join("、")}`;
+    }
+
+    return null;
+}
+
 export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput | null | undefined) {
     if (!topicInfo?.excelFilePath) return "课题需先上传总体数据后才能发布";
 
