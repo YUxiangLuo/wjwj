@@ -6,9 +6,10 @@ interface SamplingSuccessStateProps {
     onRerun: () => void;
     disabled: boolean;
     rerunTestId: string;
+    rerunLabel: string;
 }
 
-export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }: SamplingSuccessStateProps) {
+export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId, rerunLabel }: SamplingSuccessStateProps) {
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-4 rounded-2xl border border-success/20 bg-success/10 p-5">
@@ -24,6 +25,8 @@ export function SamplingSuccessState({ summary, onRerun, disabled, rerunTestId }
                     size="sm"
                     onClick={onRerun}
                     disabled={disabled}
+                    aria-label={rerunLabel}
+                    title={rerunLabel}
                     data-testid={rerunTestId}
                     className="ml-auto rounded-full text-success hover:bg-success/10 hover:text-success"
                 >

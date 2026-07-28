@@ -25,7 +25,7 @@ const validExperiment = {
     },
     samplingResults: {
         simple: { completed: true, sampleCount: 50, seed: 1, data: [{ id: 1 }] },
-        systematic: { completed: true, kValue: 4, sampleCount: 48, seed: 2, data: [{ id: 2 }] },
+        systematic: { completed: true, interval: 4, sampleCount: 50, seed: 2, data: [{ id: 2 }] },
         pps: { completed: true, sizeField: "income", sampleCount: 50, seed: 4, data: [{ id: 4 }] },
         stratified: {
             completed: true,
@@ -58,6 +58,19 @@ test("preview submit blocker returns report error when previous stages are compl
 
 test("preview submit blocker returns null for a complete valid experiment", () => {
     expect(getPreviewSubmitBlocker(validExperiment)).toBeNull();
+});
+
+test("preview submit blocker requires exact systematic sample size", () => {
+    expect(getPreviewSubmitBlocker({
+        ...validExperiment,
+        samplingResults: {
+            ...validExperiment.samplingResults,
+            systematic: {
+                ...validExperiment.samplingResults.systematic,
+                sampleCount: 48,
+            },
+        },
+    })).toBe("系统抽样样本量需等于目标样本量（50）");
 });
 
 test("an already-submitted retry is treated as completed", () => {

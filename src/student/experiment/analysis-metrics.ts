@@ -178,7 +178,7 @@ function computeSimpleRandomMeanSe(
     return Math.sqrt((1 - samplingFraction) * populationStat.variance / sampleSize);
 }
 
-function computeSystematicExactMeanSe(
+function computeLegacySystematicMeanSe(
     population: Array<Record<string, unknown>>,
     field: string,
     kValue: number,
@@ -203,6 +203,133 @@ function computeSystematicExactMeanSe(
     const meanEstimate = startMeans.reduce((sum, value) => sum + value, 0) / startMeans.length;
     const variance = startMeans.reduce((sum, value) => sum + (value - meanEstimate) ** 2, 0) / startMeans.length;
     return Math.sqrt(variance);
+}
+
+function computeFractionalSystematicMeanSe(
+    population: Array<Record<string, unknown>>,
+    field: string,
+    interval: number,
+    sampleSize: number,
+) {
+    const populationSize = population.length;
+    if (
+        !Number.isFinite(interval)
+        || interval < 1
+        || !Number.isInteger(sampleSize)
+        || sampleSize < 1
+        || sampleSize > populationSize
+    ) {
+        return null;
+    }
+
+    const expectedInterval = populationSize / sampleSize;
+    const tolerance = Number.EPSILON * Math.max(1, populationSize, interval) * 64;
+    if (Math.abs(interval - expectedInterval) > tolerance) {
+        return null;
+    }
+
+    // For r uniform on [0, K), a selected index changes only when
+    // r + jK crosses an integer. Sweep those boundaries so the exact design
+    // variance stays O(N log N), including for large uploaded populations.
+    const events: Array<{ position: number; sampleIndex: number }> = [];
+    for (let sampleIndex = 0; sampleIndex < sampleSize; sampleIndex += 1) {
+        const offset = sampleIndex * interval;
+        const upperBoundary = offset + interval;
+        for (
+            let integerBoundary = Math.floor(offset) + 1;
+            integerBoundary < upperBoundary;
+            integerBoundary += 1
+        ) {
+            const position = integerBoundary - offset;
+            if (position > tolerance && position < interval - tolerance) {
+                events.push({ position, sampleIndex });
+            }
+        }
+    }
+    events.sort((left, right) => left.position - right.position);
+
+    const firstBoundary = events[0]?.position ?? interval;
+    const initialStart = firstBoundary / 2;
+    const selectedIndices = Array.from(
+        { length: sampleSize },
+        (_, sampleIndex) => Math.floor(initialStart + sampleIndex * interval),
+    );
+
+    let valueSum = 0;
+    let valueCount = 0;
+    for (const selectedIndex of selectedIndices) {
+        const value = toFiniteNumber(population[selectedIndex]?.[field]);
+        if (value !== null) {
+            valueSum += value;
+            valueCount += 1;
+        }
+    }
+
+    let totalWeight = 0;
+    let weightedMean = 0;
+    let weightedSquaredDeviation = 0;
+    const includeSegment = (width: number) => {
+        if (width <= tolerance || valueCount === 0) return;
+        const weight = width / interval;
+        const segmentMean = valueSum / valueCount;
+        const nextTotalWeight = totalWeight + weight;
+        const delta = segmentMean - weightedMean;
+        weightedMean += delta * weight / nextTotalWeight;
+        weightedSquaredDeviation += weight * delta * (segmentMean - weightedMean);
+        totalWeight = nextTotalWeight;
+    };
+
+    let segmentStart = 0;
+    let eventIndex = 0;
+    while (eventIndex < events.length) {
+        const boundary = events[eventIndex]!.position;
+        includeSegment(boundary - segmentStart);
+
+        let groupEnd = eventIndex;
+        while (
+            groupEnd < events.length
+            && Math.abs(events[groupEnd]!.position - boundary) <= tolerance
+        ) {
+            const sampleIndex = events[groupEnd]!.sampleIndex;
+            const previousIndex = selectedIndices[sampleIndex]!;
+            const nextIndex = previousIndex + 1;
+            if (nextIndex >= populationSize) return null;
+
+            const previousValue = toFiniteNumber(population[previousIndex]?.[field]);
+            if (previousValue !== null) {
+                valueSum -= previousValue;
+                valueCount -= 1;
+            }
+            const nextValue = toFiniteNumber(population[nextIndex]?.[field]);
+            if (nextValue !== null) {
+                valueSum += nextValue;
+                valueCount += 1;
+            }
+            selectedIndices[sampleIndex] = nextIndex;
+            groupEnd += 1;
+        }
+
+        segmentStart = boundary;
+        eventIndex = groupEnd;
+    }
+    includeSegment(interval - segmentStart);
+
+    if (totalWeight === 0) return null;
+    return Math.sqrt(Math.max(0, weightedSquaredDeviation / totalWeight));
+}
+
+function computeSystematicExactMeanSe(
+    population: Array<Record<string, unknown>>,
+    field: string,
+    design: SamplingResultsData["systematic"] | undefined,
+) {
+    const interval = Number(design?.interval);
+    const sampleSize = Number(design?.sampleCount);
+    if (Number.isFinite(interval) && Number.isInteger(sampleSize)) {
+        return computeFractionalSystematicMeanSe(population, field, interval, sampleSize);
+    }
+
+    return computeLegacySystematicMeanSe(population, field, Number(design?.kValue));
 }
 
 function computeStratifiedMeanEstimate(
@@ -428,7 +555,7 @@ export function buildAnalysisMetrics(params: {
             standardError: computeSystematicExactMeanSe(
                 params.population,
                 field,
-                Number(params.samplingResults?.systematic?.kValue),
+                params.samplingResults?.systematic,
             ),
         };
         methods.pps = {

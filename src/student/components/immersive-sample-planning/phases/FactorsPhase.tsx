@@ -113,6 +113,28 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
         }) ?? 0;
 
     const errors = isMeanEstimation ? buildMeanErrorChoices(params.marginOfError) : [1, 2, 3, 5, 7, 10];
+    const finiteSampleAtFivePercent = isMeanEstimation
+        ? null
+        : calculateFinitePopulationSampleSize({
+            confidenceLevel: params.confidenceLevel,
+            marginOfError: 5,
+            populationSize: params.populationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? 0;
+    const finiteSampleAtOnePercent = isMeanEstimation
+        ? null
+        : calculateFinitePopulationSampleSize({
+            confidenceLevel: params.confidenceLevel,
+            marginOfError: 1,
+            populationSize: params.populationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+        }) ?? 0;
+    const finitePopulationRatio =
+        finiteSampleAtFivePercent && finiteSampleAtOnePercent
+            ? finiteSampleAtOnePercent / finiteSampleAtFivePercent
+            : null;
 
     return (
         <div className="space-y-6">
@@ -177,8 +199,16 @@ function ErrorToleranceContent({ params }: { params: SampleParams }) {
                         </>
                     ) : (
                         <>
-                            <strong>关键洞察：</strong>将误差限从 5% 缩小到 1%，样本量会增加约 25 倍！
-                            在实际项目中，±3%~5% 是最常见的精度要求。
+                            <strong>关键洞察：</strong>在未考虑有限总体校正的初始公式 n₀ 中，误差限从 5% 缩小到 1%，
+                            n₀ 会增加 25 倍。
+                            {finitePopulationRatio !== null && (
+                                <>
+                                    {" "}但当前 N={params.populationSize.toLocaleString()} 时，有限总体校正后的样本量由
+                                    {" "}{finiteSampleAtFivePercent?.toLocaleString()} 增至 {finiteSampleAtOnePercent?.toLocaleString()}，
+                                    实际约为 {finitePopulationRatio.toFixed(2)} 倍。
+                                </>
+                            )}
+                            {" "}在实际项目中，±3%~5% 是最常见的精度要求。
                         </>
                     )}
                 </p>

@@ -1,35 +1,29 @@
 import { expect, test } from "bun:test";
 import {
-    findBestSystematicKValue,
-    formatSystematicRange,
-    getSystematicAcceptedRange,
-    getSystematicSampleCountRange,
-    isSystematicRangeWithinAcceptedRange,
+    formatSystematicInterval,
+    getStoredSystematicInterval,
+    getSystematicInterval,
 } from "./systematic-sampling";
 
-test("systematic sample count range reflects random-start fluctuation", () => {
-    expect(getSystematicSampleCountRange(100, 10)).toEqual({ min: 10, max: 10 });
-    expect(getSystematicSampleCountRange(100, 11)).toEqual({ min: 9, max: 10 });
+test("systematic interval supports fractional K values", () => {
+    expect(getSystematicInterval(200, 132)).toBeCloseTo(200 / 132);
+    expect(getSystematicInterval(100, 10)).toBe(10);
 });
 
-test("systematic accepted range follows 80%-120% rule", () => {
-    expect(getSystematicAcceptedRange(960)).toEqual({ min: 768, max: 1152 });
-    expect(getSystematicAcceptedRange(null)).toBeNull();
+test("systematic interval rejects invalid target sizes", () => {
+    expect(getSystematicInterval(0, 10)).toBeNull();
+    expect(getSystematicInterval(100, null)).toBeNull();
+    expect(getSystematicInterval(100, 101)).toBeNull();
 });
 
-test("systematic range validation requires the whole fluctuation band to stay within limits", () => {
-    const acceptedRange = getSystematicAcceptedRange(13);
-
-    expect(isSystematicRangeWithinAcceptedRange({ min: 10, max: 10 }, acceptedRange)).toBe(true);
-    expect(isSystematicRangeWithinAcceptedRange({ min: 9, max: 10 }, acceptedRange)).toBe(false);
+test("systematic interval formatting is compact", () => {
+    expect(formatSystematicInterval(2)).toBe("2");
+    expect(formatSystematicInterval(200 / 132)).toBe("1.5152");
+    expect(formatSystematicInterval(null)).toBe("-");
 });
 
-test("systematic range formatting collapses equal bounds", () => {
-    expect(formatSystematicRange({ min: 10, max: 10 })).toBe("10");
-    expect(formatSystematicRange({ min: 9, max: 10 })).toBe("9-10");
-});
-
-test("best systematic K prefers a valid value close to the target sample size", () => {
-    expect(findBestSystematicKValue(100, 13)).toBe(8);
-    expect(findBestSystematicKValue(15, 10)).toBeNull();
+test("stored systematic interval reads both new and legacy results", () => {
+    expect(getStoredSystematicInterval({ interval: 1.5 })).toBe(1.5);
+    expect(getStoredSystematicInterval({ kValue: 2 })).toBe(2);
+    expect(getStoredSystematicInterval({})).toBeNull();
 });

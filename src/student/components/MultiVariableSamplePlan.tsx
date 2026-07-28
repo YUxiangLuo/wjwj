@@ -288,58 +288,63 @@ export function MultiVariableSamplePlan({
                                 }`}
                             >
                                 {/* 变量头部 */}
-                                <div 
-                                    className="flex items-center justify-between p-3 cursor-pointer"
-                                    onClick={() => setExpandedVariable(isExpanded ? null : variable.id)}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-primary-foreground font-bold text-sm ${importanceConfig.color}`}>
-                                            {index + 1}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-medium text-primary truncate">
-                                                {variable.name}
+                                <div className="flex items-center gap-2 p-3">
+                                    <button
+                                        type="button"
+                                        className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 text-left"
+                                        aria-expanded={isExpanded}
+                                        aria-controls={`sample-variable-panel-${variable.id}`}
+                                        aria-label={`${isExpanded ? "收起" : "展开"}变量：${variable.name || "未命名变量"}`}
+                                        onClick={() => setExpandedVariable(isExpanded ? null : variable.id)}
+                                    >
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-primary-foreground font-bold text-sm ${importanceConfig.color}`}>
+                                                {index + 1}
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs text-primary">
-                                                <span className="px-1.5 py-0.5 rounded bg-primary text-primary-foreground">
-                                                    {importanceConfig.label}
-                                                </span>
-                                                <span>需 n ≥ {variable.requiredSampleSize.toLocaleString()}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="font-medium text-primary truncate">
+                                                    {variable.name}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-primary">
+                                                    <span className="px-1.5 py-0.5 rounded bg-primary text-primary-foreground">
+                                                        {importanceConfig.label}
+                                                    </span>
+                                                    <span>需 n ≥ {variable.requiredSampleSize.toLocaleString()}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {variable.importance === "primary" && (
-                                            <Star className="w-4 h-4 text-destructive fill-destructive" />
-                                        )}
-                                        {isExpanded ? (
-                                            <ChevronUp className="w-4 h-4 text-primary" />
-                                        ) : (
-                                            <ChevronDown className="w-4 h-4 text-primary" />
-                                        )}
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeVariable(variable.id);
-                                            }}
-                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </div>
+                                        <div className="flex shrink-0 items-center gap-2">
+                                            {variable.importance === "primary" && (
+                                                <Star className="w-4 h-4 text-destructive fill-destructive" />
+                                            )}
+                                            {isExpanded ? (
+                                                <ChevronUp className="w-4 h-4 text-primary" />
+                                            ) : (
+                                                <ChevronDown className="w-4 h-4 text-primary" />
+                                            )}
+                                        </div>
+                                    </button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        aria-label={`删除变量：${variable.name || "未命名变量"}`}
+                                        onClick={() => removeVariable(variable.id)}
+                                        className="h-8 w-8 shrink-0 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
                                 </div>
 
                                 {/* 展开的配置面板 */}
                                 {isExpanded && (
-                                    <div className="px-4 pb-4 space-y-4">
+                                    <div id={`sample-variable-panel-${variable.id}`} className="px-4 pb-4 space-y-4">
                                         <div className="h-px bg-primary/50" />
                                         
                                         {/* 名称 */}
                                         <div className="space-y-2">
-                                            <Label className="text-xs text-primary">变量名称</Label>
+                                            <Label htmlFor={`sample-variable-name-${variable.id}`} className="text-xs text-primary">变量名称</Label>
                                             <Input
+                                                id={`sample-variable-name-${variable.id}`}
                                                 value={variable.name}
                                                 onChange={(e) => updateVariable(variable.id, { name: e.target.value })}
                                                 className="bg-background border-primary text-foreground"
@@ -363,7 +368,7 @@ export function MultiVariableSamplePlan({
                                                     })
                                                 }
                                             >
-                                                <SelectTrigger className="bg-background border-primary text-foreground">
+                                                <SelectTrigger aria-label={`${variable.name || "变量"}类型`} className="bg-background border-primary text-foreground">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-background border-primary">
@@ -375,11 +380,12 @@ export function MultiVariableSamplePlan({
 
                                         {/* 估计值 */}
                                         <div className="space-y-2">
-                                            <Label className="text-xs text-primary">
+                                            <Label htmlFor={`sample-variable-estimate-${variable.id}`} className="text-xs text-primary">
                                                 {variable.type === "proportion" ? "估计比例 p（0-1）" : "估计均值"}
                                             </Label>
                                             <div className="flex items-center gap-2">
                                                 <Input
+                                                    id={`sample-variable-estimate-${variable.id}`}
                                                     type="number"
                                                     value={variable.estimatedValue}
                                                     onChange={(e) => updateVariable(variable.id, { 
@@ -404,8 +410,9 @@ export function MultiVariableSamplePlan({
                                         {/* 标准差（均值类型时） */}
                                         {variable.type === "mean" && (
                                             <div className="space-y-2">
-                                                <Label className="text-xs text-primary">估计标准差 (σ)</Label>
+                                                <Label htmlFor={`sample-variable-deviation-${variable.id}`} className="text-xs text-primary">估计标准差 (σ)</Label>
                                                 <Input
+                                                    id={`sample-variable-deviation-${variable.id}`}
                                                     type="number"
                                                     value={variable.estimatedStdDev || ""}
                                                     onChange={(e) => updateVariable(variable.id, { 
@@ -426,7 +433,7 @@ export function MultiVariableSamplePlan({
                                                     updateVariable(variable.id, { importance: value })
                                                 }
                                             >
-                                                <SelectTrigger className="bg-background border-primary text-foreground">
+                                                <SelectTrigger aria-label={`${variable.name || "变量"}重要性`} className="bg-background border-primary text-foreground">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-background border-primary">
@@ -463,7 +470,7 @@ export function MultiVariableSamplePlan({
                                                     value={variable.confidenceLevel} 
                                                     onValueChange={(value) => updateVariable(variable.id, { confidenceLevel: value })}
                                                 >
-                                                    <SelectTrigger className="bg-background border-primary text-foreground">
+                                                    <SelectTrigger aria-label={`${variable.name || "变量"}置信水平`} className="bg-background border-primary text-foreground">
                                                         <SelectValue />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-background border-primary">
@@ -474,11 +481,12 @@ export function MultiVariableSamplePlan({
                                                 </Select>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs text-primary">
+                                                <Label htmlFor={`sample-variable-margin-${variable.id}`} className="text-xs text-primary">
                                                     {variable.type === "mean" ? "允许相对误差" : "允许误差"}
                                                 </Label>
                                                 <div className="flex items-center gap-1">
                                                     <Input
+                                                        id={`sample-variable-margin-${variable.id}`}
                                                         type="number"
                                                         value={variable.marginOfError}
                                                         onChange={(e) => updateVariable(variable.id, { 

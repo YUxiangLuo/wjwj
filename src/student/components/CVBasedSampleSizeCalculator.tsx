@@ -125,7 +125,7 @@ export function CVBasedSampleSizeCalculator({
                     <div className="space-y-1.5">
                         <Label className="text-xs text-primary">置信水平</Label>
                         <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
-                            <SelectTrigger className="h-9 text-sm bg-background border-primary">
+                            <SelectTrigger aria-label="CV 计算置信水平" className="h-9 text-sm bg-background border-primary">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -147,6 +147,7 @@ export function CVBasedSampleSizeCalculator({
                             </span>
                         </div>
                         <Slider
+                            aria-label="目标变异系数"
                             value={[targetCV]}
                             onValueChange={(v) => setTargetCV(v[0] ?? 5)}
                             min={1}
@@ -164,11 +165,12 @@ export function CVBasedSampleSizeCalculator({
                     {/* 估计CV */}
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                            <Label className="text-xs text-primary">
+                            <Label htmlFor="cv-estimated-value" className="text-xs text-primary">
                                 估计总体变异系数
                             </Label>
                             <div className="flex items-center gap-1">
                                 <Input
+                                    id="cv-estimated-value"
                                     type="number"
                                     value={estimatedCV}
                                     onChange={(e) => setEstimatedCV(parseFloat(e.target.value) || 0)}
@@ -188,8 +190,9 @@ export function CVBasedSampleSizeCalculator({
                     {/* 其他参数 */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                            <Label className="text-xs text-primary">设计效应</Label>
+                            <Label htmlFor="cv-design-effect" className="text-xs text-primary">设计效应</Label>
                             <Input
+                                id="cv-design-effect"
                                 type="number"
                                 value={designEffect}
                                 onChange={(e) => setDesignEffect(parseFloat(e.target.value) || 1)}
@@ -200,8 +203,9 @@ export function CVBasedSampleSizeCalculator({
                             />
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-xs text-primary">无回答率 (%)</Label>
+                            <Label htmlFor="cv-non-response-rate" className="text-xs text-primary">无回答率 (%)</Label>
                             <Input
+                                id="cv-non-response-rate"
                                 type="number"
                                 value={nonResponseRate}
                                 onChange={(e) => setNonResponseRate(parseFloat(e.target.value) || 0)}

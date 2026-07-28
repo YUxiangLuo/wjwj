@@ -37,7 +37,7 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                         {selectedTask ? `${selectedTask.topic} · ${selectedTask.className}` : ""}
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="extendDeadline" className="text-foreground/90">新截止时间</Label>
+                        <Label htmlFor="extendDeadline" className="text-foreground/90">新截止时间（中国标准时间）</Label>
                         <DatetimePicker24
                             id="extendDeadline"
                             data-testid="teacher-task-extend-deadline"
@@ -46,6 +46,7 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
                             placeholder="选择日期与时间（24 小时制）"
                             allowClear={false}
                         />
+                        <p className="text-xs text-muted-foreground">中国标准时间（UTC+8）</p>
                     </div>
                 </div>
                 <DialogFooter>

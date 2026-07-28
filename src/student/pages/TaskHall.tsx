@@ -169,7 +169,7 @@ function TaskCard({ task }: TaskCardProps) {
                                 <span className="text-muted-foreground">实验进度</span>
                                 <span className="text-foreground/90 font-medium">{task.progress}%</span>
                             </div>
-                            <Progress value={task.progress} className="h-2 bg-muted [&>div]:bg-primary" />
+                            <Progress aria-label={`${task.name}实验进度`} value={task.progress} className="h-2 bg-muted [&>div]:bg-primary" />
                             {task.currentStage > 0 && task.currentStage < 4 && (
                                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
@@ -224,11 +224,11 @@ function TaskCard({ task }: TaskCardProps) {
                             <ChevronRight className="w-4 h-4 ml-1 opacity-70" />
                         </Button>
                         {showResult && (
-                            <Link to={`/task/${task.id}/result`}>
-                                <Button variant="outline" size="icon" className="border-input text-muted-foreground hover:bg-muted hover:text-foreground" title="查看结果">
+                            <Button asChild variant="outline" size="icon" className="border-input text-muted-foreground hover:bg-muted hover:text-foreground">
+                                <Link to={`/task/${task.id}/result`} aria-label={`查看${task.name}结果`} title="查看结果">
                                     <Clock className="w-4 h-4" />
-                                </Button>
-                            </Link>
+                                </Link>
+                            </Button>
                         )}
                     </div>
                     {disabled && (
@@ -324,6 +324,10 @@ export function TaskHall() {
 
     return (
         <div className="space-y-8">
+            <div>
+                <h1 className="text-2xl font-bold text-foreground">任务大厅</h1>
+                <p className="mt-1 text-sm text-muted-foreground">查看实验任务、截止时间与学习进度（中国标准时间 UTC+8）。</p>
+            </div>
             {latestAnnouncement && (
                 <div className="rounded-xl border border-warning/20 bg-warning/10 p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -380,10 +384,10 @@ export function TaskHall() {
 
             {/* Filter Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-                <h3 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     <LayoutDashboard className="w-5 h-5 text-primary" />
                     我的任务
-                </h3>
+                </h2>
                 <div className="flex p-1 bg-card border border-border rounded-lg self-start sm:self-auto">
                     <button
                         onClick={() => setFilter("all")}
@@ -455,7 +459,12 @@ export function TaskHall() {
                     </DialogHeader>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 min-h-[400px]">
                         {/* List */}
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar border-r border-border md:pr-4">
+                        <div
+                            role="region"
+                            tabIndex={0}
+                            aria-label="公告列表"
+                            className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar border-r border-border md:pr-4"
+                        >
                             {announcements.length === 0 && (
                                 <div className="text-sm text-muted-foreground text-center py-12 italic">暂无公告</div>
                             )}
@@ -483,7 +492,12 @@ export function TaskHall() {
                             ))}
                         </div>
                         {/* Detail */}
-                        <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar pl-2">
+                        <div
+                            role="region"
+                            tabIndex={0}
+                            aria-label="公告详情"
+                            className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar pl-2"
+                        >
                             {selectedAnnouncement ? (
                                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                     <div>

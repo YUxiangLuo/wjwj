@@ -150,7 +150,7 @@ export function StratifiedAllocationComparison({
                             value={targetVariable ?? "__none__"}
                             onValueChange={(v) => setTargetVariable(v === "__none__" ? null : v)}
                         >
-                            <SelectTrigger className="bg-background border-auxiliary-border text-auxiliary-strong">
+                            <SelectTrigger aria-label="分层分配目标估计变量" className="bg-background border-auxiliary-border text-auxiliary-strong">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

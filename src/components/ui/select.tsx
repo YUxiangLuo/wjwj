@@ -18,14 +18,19 @@ function SelectValue({ ...props }: React.ComponentProps<typeof SelectPrimitive.V
   return <SelectPrimitive.Value data-slot="select-value" {...props} />;
 }
 
+type SelectTriggerProps = React.ComponentProps<typeof SelectPrimitive.Trigger> & {
+  size?: "sm" | "default";
+} & (
+  | { "aria-label": string; "aria-labelledby"?: never }
+  | { "aria-label"?: never; "aria-labelledby": string }
+);
+
 function SelectTrigger({
   className,
   size = "default",
   children,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
-  size?: "sm" | "default";
-}) {
+}: SelectTriggerProps) {
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"

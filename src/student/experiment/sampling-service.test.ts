@@ -1,30 +1,34 @@
 import { expect, test } from "bun:test";
 import { executeSamplingAction } from "./sampling-service";
 
-const population = Array.from({ length: 100 }, (_, i) => ({
+const population = Array.from({ length: 200 }, (_, i) => ({
     id: i + 1,
     gender: i % 2 === 0 ? "男" : "女",
 }));
 
-test("systematic sampling rejects K values whose actual count range can fall outside accepted limits", async () => {
+test("systematic sampling returns exact target count for N=200,n=132", async () => {
     const result = await executeSamplingAction({
         method: "systematic",
-        rawParams: { kValue: 11, seed: 2026 },
-        targetSampleSize: 13,
+        rawParams: { seed: 2026 },
+        targetSampleSize: 132,
         population,
         fieldMapping: null,
     });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
 
-    expect(result.errorMessage).toBe("K 值导致实际样本量可能为 9-10，需完全落在 10-16 之间");
+    expect(result.result.sampleCount).toBe(132);
+    expect(result.result.data).toHaveLength(132);
+    expect(result.result.interval).toBeCloseTo(200 / 132);
+    expect(result.result.randomStart!).toBeGreaterThanOrEqual(0);
+    expect(result.result.randomStart!).toBeLessThan(result.result.interval!);
 });
 
-test("systematic sampling still accepts K values whose count range stays within accepted limits", async () => {
+test("systematic sampling ignores legacy client K and uses the saved target", async () => {
     const result = await executeSamplingAction({
         method: "systematic",
-        rawParams: { kValue: 10, seed: 2026 },
+        rawParams: { kValue: 100, sampleSize: 1, seed: 2026 },
         targetSampleSize: 13,
         population,
         fieldMapping: null,
@@ -33,7 +37,21 @@ test("systematic sampling still accepts K values whose count range stays within 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
-    expect(result.result.sampleCount).toBe(10);
+    expect(result.result.sampleCount).toBe(13);
+});
+
+test("systematic sampling requires a valid saved target", async () => {
+    const result = await executeSamplingAction({
+        method: "systematic",
+        rawParams: { seed: 2026 },
+        targetSampleSize: null,
+        population,
+        fieldMapping: null,
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errorMessage).toBe("请先保存 1-200 之间的最终样本量");
 });
 
 test("PPS sampling rejects categorical size fields even when the field exists", async () => {

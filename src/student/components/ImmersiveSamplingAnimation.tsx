@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useMemo, memo } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "../api-client";
 import { computeSampleProgressDisplay } from "./sample-progress-display";
+import { formatSystematicInterval } from "../experiment/systematic-sampling";
 
 interface StratifiedLayer {
     name: string;
@@ -16,14 +17,12 @@ interface Props {
     populationSize: number;
     sampleSize: number;
     /** For systematic */
-    kValue?: number;
+    interval?: number;
     /** For pps */
     sizeField?: string;
     /** For stratified */
     stratifyBy?: string;
     layers?: StratifiedLayer[];
-    /** Called when animation finishes so parent can start the real API call */
-    onAnimationComplete: () => void;
     onClose: () => void;
     /** Sampled data rows returned from API — when set, displayed as a table in complete phase */
     sampledData?: Array<Record<string, unknown>>;
@@ -35,6 +34,12 @@ interface Props {
 const GRID_COLS = 40;
 const GRID_ROWS = 25;
 const TOTAL_DOTS = GRID_COLS * GRID_ROWS; // 1000 visual dots
+const POPULATION_TICK_MS = 16;
+const POPULATION_TICK_COUNT = Math.ceil(TOTAL_DOTS / 100);
+const POPULATION_TO_SAMPLING_DELAY_MS = 200;
+const MAX_SAMPLING_TICKS = 60;
+const SAMPLING_TICK_MS = 40;
+const COMPLETION_DELAY_MS = 300;
 
 // PPS weight simulation: each dot gets a random "size" in [MIN, MIN + RANGE]
 const PPS_WEIGHT_MIN = 0.1;
@@ -76,6 +81,15 @@ const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; samplin
         complete: "分层抽样完成",
     },
 };
+
+export function getSamplingAnimationDurationUpperBound(method: SamplingMethod) {
+    const introDelay = method === "stratified" ? 900 : 700;
+    return introDelay
+        + POPULATION_TICK_COUNT * POPULATION_TICK_MS
+        + POPULATION_TO_SAMPLING_DELAY_MS
+        + MAX_SAMPLING_TICKS * SAMPLING_TICK_MS
+        + COMPLETION_DELAY_MS;
+}
 
 const LAYER_COLORS = [
     { bg: "bg-chart-8", ring: "ring-chart-8" },
@@ -205,11 +219,10 @@ export function ImmersiveSamplingAnimation({
     method,
     populationSize,
     sampleSize,
-    kValue,
+    interval,
     sizeField,
     stratifyBy,
     layers,
-    onAnimationComplete,
     onClose,
     sampledData,
     sampledTotal,
@@ -217,11 +230,10 @@ export function ImmersiveSamplingAnimation({
     const [phase, setPhase] = useState<Phase>({ type: "intro" });
     const [visiblePopCount, setVisiblePopCount] = useState(0);
     const [currentSelectIndex, setCurrentSelectIndex] = useState(0);
-    const hasCalledComplete = useRef(false);
     const meta = METHOD_META[method];
     const progressCopy = METHOD_PROGRESS_COPY[method];
     const fieldLabel = FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy;
-    const introDelay = method === "stratified" ? 1700 : 1200;
+    const introDelay = method === "stratified" ? 900 : 700;
 
     // Prevent body scroll
     useEffect(() => {
@@ -238,7 +250,9 @@ export function ImmersiveSamplingAnimation({
         let weights: Float32Array | undefined;
 
         // Scale sample size to visual grid
-        const visualSampleSize = Math.min(Math.round((sampleSize / populationSize) * TOTAL_DOTS), TOTAL_DOTS);
+        const visualSampleSize = sampleSize > 0 && populationSize > 0
+            ? Math.min(Math.max(1, Math.round((sampleSize / populationSize) * TOTAL_DOTS)), TOTAL_DOTS)
+            : 0;
 
         if (method === "simple") {
             const shuffled = shuffleIndices(TOTAL_DOTS, rng);
@@ -301,10 +315,10 @@ export function ImmersiveSamplingAnimation({
         } else if (method === "systematic") {
             // Spread samples evenly across the entire grid so the animation
             // visibly scans from top-left to bottom-right.
-            const visualK = Math.max(2, Math.round(TOTAL_DOTS / Math.max(1, visualSampleSize)));
-            const start = Math.floor(rng() * visualK);
-            for (let i = start; i < TOTAL_DOTS && selection.length < visualSampleSize; i += visualK) {
-                selection.push(i);
+            const visualInterval = TOTAL_DOTS / Math.max(1, visualSampleSize);
+            const start = rng() * visualInterval;
+            for (let index = 0; index < visualSampleSize; index += 1) {
+                selection.push(Math.floor(start + index * visualInterval));
             }
         } else if (method === "stratified" && layers && layers.length > 0) {
             // Assign dots to layers proportionally
@@ -351,7 +365,19 @@ export function ImmersiveSamplingAnimation({
         }
 
         return { selectionOrder: selection, layerAssignment: layerMap, dotSelectedAt: selectedAtMap, dotWeights: weights };
-    }, [method, populationSize, sampleSize, kValue, layers]);
+    }, [method, populationSize, sampleSize, layers]);
+
+    const finishAnimation = useCallback(() => {
+        setVisiblePopCount(TOTAL_DOTS);
+        setCurrentSelectIndex(selectionOrder.length);
+        setPhase({ type: "complete" });
+    }, [selectionOrder.length]);
+
+    useEffect(() => {
+        if (typeof window.matchMedia !== "function") return;
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+        if (reducedMotion.matches) finishAnimation();
+    }, [finishAnimation]);
 
     // ─── Phase transitions ────────────────────────────────
     // Intro → Populating after 1.5s
@@ -365,19 +391,23 @@ export function ImmersiveSamplingAnimation({
     // Populating animation: fill grid rapidly
     useEffect(() => {
         if (phase.type !== "populating") return;
-        const batchSize = method === "stratified" ? 36 : 50;
-        const interval = setInterval(() => {
+        let transitionTimer: ReturnType<typeof setTimeout> | undefined;
+        const batchSize = 100;
+        const populationTimer = setInterval(() => {
             setVisiblePopCount((prev) => {
                 const next = Math.min(prev + batchSize, TOTAL_DOTS);
                 if (next >= TOTAL_DOTS) {
-                    clearInterval(interval);
-                    setTimeout(() => setPhase({ type: "sampling" }), method === "stratified" ? 650 : 400);
+                    clearInterval(populationTimer);
+                    transitionTimer = setTimeout(() => setPhase({ type: "sampling" }), POPULATION_TO_SAMPLING_DELAY_MS);
                 }
                 return next;
             });
-        }, 20);
-        return () => clearInterval(interval);
-    }, [phase, method]);
+        }, POPULATION_TICK_MS);
+        return () => {
+            clearInterval(populationTimer);
+            if (transitionTimer) clearTimeout(transitionTimer);
+        };
+    }, [phase]);
 
     // Sampling animation: highlight selected dots progressively
     useEffect(() => {
@@ -388,33 +418,24 @@ export function ImmersiveSamplingAnimation({
             return;
         }
 
-        // Reveal in batches, speed up as we go
+        // At most 60 ticks keeps the full visual sequence well under six seconds.
         let index = 0;
-        const batchSize = method === "systematic"
-            ? 1
-            : method === "pps"
-                ? 1  // PPS walks through cumulative distribution one-by-one like systematic
-                : method === "stratified"
-                    ? Math.max(1, Math.ceil(total / 75))
-                    : Math.max(1, Math.ceil(total / 60));
-        const tick = method === "systematic" ? 55 : method === "pps" ? 50 : method === "stratified" ? 45 : 35;
-        const interval = setInterval(() => {
+        const batchSize = Math.max(1, Math.ceil(total / MAX_SAMPLING_TICKS));
+        let completionTimer: ReturnType<typeof setTimeout> | undefined;
+        const samplingTimer = setInterval(() => {
             index = Math.min(index + batchSize, total);
             setCurrentSelectIndex(index);
             if (index >= total) {
-                clearInterval(interval);
-                setTimeout(() => {
-                    setPhase({ type: "complete" });
-                    if (!hasCalledComplete.current) {
-                        hasCalledComplete.current = true;
-                        onAnimationComplete();
-                    }
-                }, 600);
+                clearInterval(samplingTimer);
+                completionTimer = setTimeout(finishAnimation, COMPLETION_DELAY_MS);
             }
-        }, tick);
+        }, SAMPLING_TICK_MS);
 
-        return () => clearInterval(interval);
-    }, [phase, selectionOrder, onAnimationComplete, method]);
+        return () => {
+            clearInterval(samplingTimer);
+            if (completionTimer) clearTimeout(completionTimer);
+        };
+    }, [phase, selectionOrder, finishAnimation]);
 
     const progress =
         phase.type === "intro" ? 0
@@ -427,7 +448,7 @@ export function ImmersiveSamplingAnimation({
         if (method === "simple") {
             return `即将从 ${populationSize.toLocaleString()} 个总体中随机选取 ${sampleSize} 个样本，每个个体被选中的概率完全相等。`;
         } else if (method === "systematic") {
-            return `将按固定间隔 K=${kValue} 从总体中等距抽取样本，以确保样本均匀覆盖整个总体。`;
+            return `将按分数间隔 K=${formatSystematicInterval(interval)} 从总体中等距抽取 ${sampleSize} 个样本，样本量与规划值精确一致。`;
         } else if (method === "pps") {
             const label = FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模";
             return `按"${label}"大小赋予不同选中概率，从 ${populationSize.toLocaleString()} 个总体中抽取 ${sampleSize} 个样本。`;
@@ -435,7 +456,7 @@ export function ImmersiveSamplingAnimation({
             const layerNames = (layers ?? []).map((l) => l.name).join("、");
             return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
         }
-    }, [method, populationSize, sampleSize, kValue, sizeField, stratifyBy, layers]);
+    }, [method, populationSize, sampleSize, interval, sizeField, stratifyBy, layers]);
 
     const systematicIndicator = useMemo(() => {
         if (method !== "systematic" || phase.type !== "sampling" || selectionOrder.length === 0) {
@@ -472,6 +493,11 @@ export function ImmersiveSamplingAnimation({
             {/* Progress bar */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-muted z-10">
                 <div
+                    role="progressbar"
+                    aria-label={`${meta.label}动画进度`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(progress)}
                     className={`h-full transition-all duration-300 ease-out ${meta.accentBg}`}
                     style={{ width: `${progress}%` }}
                 />
@@ -504,13 +530,25 @@ export function ImmersiveSamplingAnimation({
                         <X className="w-4 h-4 ml-1" />
                     </Button>
                 ) : (
-                    <button
-                        onClick={onClose}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground/90 hover:bg-muted transition-colors"
-                        aria-label="关闭"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={finishAnimation}
+                            data-testid="immersive-sampling-skip"
+                            className="border-input text-foreground/90 hover:bg-muted"
+                        >
+                            跳过动画
+                        </Button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground/90 hover:bg-muted transition-colors"
+                            aria-label="关闭抽样动画"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -597,7 +635,7 @@ export function ImmersiveSamplingAnimation({
                                         )}
                                         <div className="absolute bottom-3 left-0 right-0 text-center">
                                             <span className={`inline-flex items-center gap-2 rounded-full border ${meta.accentBorder} bg-card/90 px-3 py-1.5 text-xs font-mono ${meta.accentText}`}>
-                                                间隔 K = {kValue}，从总体首端至末端等距抽取
+                                                间隔 K = {formatSystematicInterval(interval)}，从总体首端至末端等距抽取
                                             </span>
                                         </div>
                                     </>
@@ -684,7 +722,12 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
 
     return (
         <div className="flex flex-col min-h-0 h-full gap-2">
-            <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border">
+            <div
+                className="min-h-0 flex-1 overflow-auto rounded-xl border border-border"
+                role="region"
+                tabIndex={0}
+                aria-label="抽样结果数据表"
+            >
                 <table className="w-full text-left min-w-max">
                     <thead className="sticky top-0 bg-muted/95 backdrop-blur-sm z-10">
                         <tr>
@@ -710,7 +753,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                     </tbody>
                 </table>
             </div>
-            <div className="flex items-center justify-between shrink-0 px-1">
+            <div className="flex shrink-0 items-center justify-between rounded bg-background px-1">
                 <p className="text-xs text-muted-foreground">
                     显示第 {start + 1}-{end} 条{total > data.length ? `（已加载 ${data.length} 条，共 ${total} 条）` : `，共 ${data.length} 条`}
                 </p>
@@ -718,6 +761,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                     <Button
                         variant="outline"
                         size="sm"
+                        aria-label="抽样结果上一页"
                         className="h-7 px-2 text-xs border-input text-foreground/90 hover:bg-muted"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={currentPage <= 1}
@@ -728,6 +772,7 @@ function SampledDataTable({ data, total }: { data: Array<Record<string, unknown>
                     <Button
                         variant="outline"
                         size="sm"
+                        aria-label="抽样结果下一页"
                         className="h-7 px-2 text-xs border-input text-foreground/90 hover:bg-muted"
                         onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                         disabled={currentPage >= totalPages}

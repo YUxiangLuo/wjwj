@@ -12,8 +12,42 @@ import { closeDatabase } from "./db";
 
 type RouteRequest = Request & { params: Record<string, string> };
 
+async function faviconRoute(req: Request) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD" },
+    });
+  }
+
+  const file = Bun.file(new URL("./favicon.svg", import.meta.url));
+  const headers = {
+    "Content-Type": "image/svg+xml; charset=utf-8",
+    "Cache-Control": "public, max-age=86400",
+  };
+  return req.method === "HEAD" ? new Response(null, { headers }) : new Response(file, { headers });
+}
+
+function legacyFaviconRoute(req: Request) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD" },
+    });
+  }
+  return new Response(null, {
+    status: 308,
+    headers: {
+      Location: "/favicon.svg",
+      "Cache-Control": "public, max-age=86400",
+    },
+  });
+}
+
 const routes = {
   "/": redirect("/student"),
+  "/favicon.svg": faviconRoute,
+  "/favicon.ico": legacyFaviconRoute,
   "/student": studentPage,
   "/student/*": studentPage,
 

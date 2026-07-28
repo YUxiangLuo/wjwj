@@ -261,6 +261,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                         <Button
                                             variant="ghost"
                                             size="icon"
+                                            aria-label={`删除选项 ${index + 1}`}
                                             onClick={() => removeOption(index)}
                                             disabled={options.length <= 2}
                                             data-testid={`student-question-remove-option-${index + 1}`}

@@ -59,7 +59,19 @@ export interface SamplePlanData {
 
 export interface SamplingResultsData {
     simple?: { completed: boolean; sampleCount: number; seed?: number; data?: unknown[] };
-    systematic?: { completed: boolean; kValue: number; sampleCount: number; seed?: number; startIndex?: number; data?: unknown[] };
+    systematic?: {
+        completed: boolean;
+        /** Fractional K=N/n written by the exact-n algorithm. */
+        interval?: number;
+        /** Legacy integer interval retained for stored snapshot compatibility. */
+        kValue?: number;
+        sampleCount: number;
+        seed?: number;
+        randomStart?: number;
+        /** Legacy selected starting index. */
+        startIndex?: number;
+        data?: unknown[];
+    };
     pps?: {
         completed?: boolean;
         unavailable?: boolean;
@@ -75,6 +87,7 @@ export interface SamplingResultsData {
         completed: boolean;
         stratifyBy: string;
         layers: Array<{ name: string; count: number; ratio: number; sampleCount: number }>;
+        sampleCount?: number;
         seed?: number;
         data?: unknown[];
     };

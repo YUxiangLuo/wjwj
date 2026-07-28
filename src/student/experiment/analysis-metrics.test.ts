@@ -1,6 +1,10 @@
 import { expect, test } from "bun:test";
 import { buildAnalysisMetrics } from "./analysis-metrics";
-import { createSeededRandom, performPPSSampling } from "../sampling";
+import {
+    createSeededRandom,
+    performPPSSampling,
+    performSystematicSampling,
+} from "../sampling";
 
 test("analysis metrics use the true population mean as the numeric comparison baseline", () => {
     const population = [
@@ -42,6 +46,34 @@ test("analysis metrics use the true population mean as the numeric comparison ba
     expect(numericX.methods.systematic.estimate).toBe(20);
     expect(numericX.methods.systematic.standardError).toBe(5);
     expect(numericX.methods.stratified.estimate).toBe(25);
+});
+
+test("analysis metrics retain an exact standard error for fractional systematic intervals", () => {
+    const population = Array.from({ length: 5 }, (_, index) => ({ x: index * 10 }));
+    const systematicSample = performSystematicSampling(population, 3, () => 0);
+
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: {
+            stratified: [],
+            numeric: ["x"],
+            others: [],
+        },
+        samplingResults: {
+            systematic: {
+                completed: true,
+                interval: systematicSample.interval,
+                randomStart: systematicSample.randomStart,
+                sampleCount: systematicSample.data.length,
+                data: systematicSample.data,
+            },
+        },
+    });
+
+    expect(metrics.numeric.x?.methods.systematic.estimate).toBeCloseTo(40 / 3);
+    expect(metrics.numeric.x?.methods.systematic.standardError).toBeCloseTo(
+        Math.sqrt(200 / 9),
+    );
 });
 
 test("analysis metrics use stratified weights instead of pooled sample shares for categorical distributions", () => {

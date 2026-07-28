@@ -68,3 +68,49 @@ referenced by current topic data, attachments, or recognized legacy
 submission paths. Upload, copy, delete, audit, and cleanup operations share a
 PostgreSQL advisory lock, so cleanup cannot classify a file while its database
 reference is still being committed by the application.
+
+## Repair a collation version mismatch
+
+An operating-system libc/ICU upgrade can change sort rules after a database
+has recorded its collation version. Do not silence the warning by refreshing
+the version marker first: indexes whose ordering depends on the old rules must
+be rebuilt before the catalog version is updated.
+
+Check the recorded and current versions:
+
+```sql
+SELECT
+    datname,
+    datcollversion AS recorded_version,
+    pg_database_collation_actual_version(oid) AS actual_version
+FROM pg_database
+WHERE datname = current_database();
+```
+
+For the local development database, use a maintenance window:
+
+1. Stop application processes that can write to the database.
+2. Take a restorable backup outside the repository:
+
+   ```sh
+   pg_dump "$DATABASE_URL" --format=custom --file=/safe/path/wenjuan-before-collation-repair.dump
+   ```
+
+3. Rebuild database indexes using a connection to the affected database:
+
+   ```sql
+   REINDEX DATABASE wenjuan_pg_dev;
+   ```
+
+4. Only after `REINDEX` succeeds, refresh the database version marker:
+
+   ```sql
+   ALTER DATABASE wenjuan_pg_dev REFRESH COLLATION VERSION;
+   ```
+
+5. Re-run the version query, application database test, and a representative
+   case-insensitive lookup. Keep the backup until those checks pass.
+
+Use the real database identifier for non-development deployments and quote it
+when necessary. `ALTER DATABASE ... REFRESH COLLATION VERSION` only updates
+metadata; it does not verify that affected objects were rebuilt.

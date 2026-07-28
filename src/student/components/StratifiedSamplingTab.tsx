@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import { SamplingSuccessState } from "./SamplingSuccessState";
 import { SamplePreviewTable } from "./SamplePreviewTable";
 import { StratifiedAllocationComparison } from "./StratifiedAllocationComparison";
 import { allocateStratifiedSampleCounts } from "./stratified-allocation";
+import { getSamplingResultCount } from "../experiment/sampling-results";
 
 const FIELD_LABELS: Record<string, string> = {
     "gender": "性别",
@@ -61,6 +62,7 @@ interface StratifiedResult {
     completed: boolean;
     stratifyBy: string;
     layers: Array<{ name: string; count: number; ratio: number; sampleCount: number }>;
+    sampleCount?: number;
     seed?: number;
     data?: unknown[];
 }
@@ -77,8 +79,6 @@ export interface StratifiedSamplingTabProps {
     setExecuting: (method: MethodKey | null) => void;
     onResult: (result: StratifiedResult) => void;
     onAnimate: (layers: StratifiedLayer[], stratifyBy: string) => void;
-    onRegisterExecute: (executeFn: () => void) => void;
-    onExecutionError: () => void;
     buildSavePayload: (stratifiedResult: StratifiedResult) => void;
     executionTime: number | null;
     setExecutionTime: (ms: number) => void;
@@ -96,8 +96,6 @@ export function StratifiedSamplingTab({
     setExecuting,
     onResult,
     onAnimate,
-    onRegisterExecute,
-    onExecutionError,
     buildSavePayload,
     executionTime,
     setExecutionTime,
@@ -244,28 +242,16 @@ export function StratifiedSamplingTab({
                 setExecutionTime(Math.round(performance.now() - startTime));
                 onResult(nextResult);
                 buildSavePayload(nextResult);
+                onAnimate(layers, stratifyBy);
             } else {
                 toast.error(res.error?.message || "分层抽样执行失败");
-                onExecutionError();
             }
         } catch {
             toast.error("分层抽样执行失败，请检查网络后重试");
-            onExecutionError();
         } finally {
             setExecuting(null);
         }
-    }, [taskId, layers, stratifiedSeed, stratifyBy, parseSeed, setExecuting, setExecutionTime, onResult, onExecutionError, buildSavePayload]);
-
-    const executeRef = useRef(executeStratified);
-    executeRef.current = executeStratified;
-
-    useEffect(() => {
-        onRegisterExecute(() => executeRef.current());
-    }, [onRegisterExecute]);
-
-    const handleAnimateAndExecute = () => {
-        onAnimate(layers, stratifyBy);
-    };
+    }, [taskId, layers, stratifiedSeed, stratifyBy, parseSeed, setExecuting, setExecutionTime, onResult, onAnimate, buildSavePayload]);
 
     const handleApplyFromComparison = (
         _method: string,
@@ -298,7 +284,7 @@ export function StratifiedSamplingTab({
                         <div className="space-y-2">
                             <Label className="text-xs text-foreground/90">选择分层变量</Label>
                             <Select value={stratifyBy} onValueChange={setStratifyBy}>
-                                <SelectTrigger data-testid="student-sampling-stratify-by" className="w-48 bg-card border-input text-foreground">
+                                <SelectTrigger aria-label="选择分层字段" data-testid="student-sampling-stratify-by" className="w-48 bg-card border-input text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
@@ -357,6 +343,7 @@ export function StratifiedSamplingTab({
                                         <TableCell>
                                             <Input
                                                 type="number"
+                                                aria-label={`${layer.name}层样本数`}
                                                 value={layer.sampleCount}
                                                 onChange={(e) => updateLayerCount(index, parseInt(e.target.value) || 0)}
                                                 data-testid={`student-sampling-layer-count-${index + 1}`}
@@ -458,7 +445,7 @@ export function StratifiedSamplingTab({
                                 <div className="text-center space-y-3">
                                     <p className="text-sm text-muted-foreground">确认各层样本数后执行</p>
                                     <Button
-                                        onClick={handleAnimateAndExecute}
+                                        onClick={() => void executeStratified()}
                                         disabled={executing !== null || !isStratifiedValid || layers.length === 0}
                                         data-testid="student-sampling-stratified-run"
                                         className="bg-warning hover:bg-warning/90 text-warning-foreground shadow-lg shadow-warning/20 w-full"
@@ -473,10 +460,11 @@ export function StratifiedSamplingTab({
                                 </div>
                             ) : (
                                 <SamplingSuccessState
-                                    summary={`按 ${FIELD_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 ${result.layers?.reduce((a, l) => a + l.sampleCount, 0)} 个样本${executionTime !== null ? `，耗时 ${executionTime} ms` : ""}`}
-                                    onRerun={handleAnimateAndExecute}
+                                    summary={`按 ${FIELD_LABELS[stratifyBy] || stratifyBy} 分层，共抽取 ${getSamplingResultCount("stratified", result)} 个样本${executionTime !== null ? `，耗时 ${executionTime} ms` : ""}`}
+                                    onRerun={() => void executeStratified()}
                                     disabled={executing !== null || !isStratifiedValid || layers.length === 0}
                                     rerunTestId="student-sampling-stratified-rerun"
+                                    rerunLabel="重新执行分层抽样"
                                 />
                             )}
                         </CardContent>
@@ -499,7 +487,7 @@ export function StratifiedSamplingTab({
                             ) : (
                                 <SamplePreviewTable
                                     data={result.data ?? []}
-                                    total={result.layers?.reduce((a, l) => a + l.sampleCount, 0) ?? 0}
+                                    total={getSamplingResultCount("stratified", result)}
                                 />
                             )}
                         </CardContent>

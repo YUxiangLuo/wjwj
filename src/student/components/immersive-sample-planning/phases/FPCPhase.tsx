@@ -145,8 +145,9 @@ export function FPCPhase({ params, onNext }: Props) {
 
                 {/* Custom N input */}
                 <div className="px-4 py-3 bg-card/50 border-t border-border flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">试试其他 N：</span>
+                    <label htmlFor="fpc-custom-population" className="text-xs text-muted-foreground whitespace-nowrap">试试其他 N：</label>
                     <Input
+                        id="fpc-custom-population"
                         type="number"
                         placeholder="输入总体大小"
                         value={customN}

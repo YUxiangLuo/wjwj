@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +22,7 @@ import { TaskPublishDialog } from "../components/TaskPublishDialog";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { localWallClockToUtcIso } from "@/lib/datetime";
+import { formatDateTimeDisplay } from "@/utils/format";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -156,8 +158,8 @@ export function TaskManagement() {
         const total = tasks.length;
         const pendingTotal = tasks.reduce((sum, task) => sum + (task.pending ?? 0), 0);
         const completedTotal = tasks.reduce((sum, task) => sum + task.completed, 0);
-        const totalSubmissions = tasks.reduce((sum, task) => sum + task.total, 0);
-        return { total, pendingTotal, completedTotal, totalSubmissions };
+        const expectedCount = tasks.reduce((sum, task) => sum + task.total, 0);
+        return { total, pendingTotal, completedTotal, expectedCount };
     }, [tasks]);
 
     const filteredTasks = useMemo(() => {
@@ -213,8 +215,9 @@ export function TaskManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">总提交数</p>
-                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.totalSubmissions}</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">应交人次</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.expectedCount}</p>
+                            <p className="mt-1 text-[11px] text-muted-foreground">按任务覆盖班级学生数累计，非实际提交数</p>
                         </div>
                         <IconTile intent="warning">
                             <CalendarDays className="w-5 h-5" />
@@ -231,8 +234,10 @@ export function TaskManagement() {
                     </div>
                     <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
                         <div className="relative sm:w-56">
+                            <Label htmlFor="teacher-task-search" className="sr-only">搜索课题</Label>
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
+                                id="teacher-task-search"
                                 data-testid="teacher-task-search"
                                 placeholder="搜索课题"
                                 value={searchTerm}
@@ -241,7 +246,7 @@ export function TaskManagement() {
                             />
                         </div>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger data-testid="teacher-task-class-filter" className="bg-background border-border text-foreground sm:w-40">
+                            <SelectTrigger aria-label="按班级筛选任务" data-testid="teacher-task-class-filter" className="bg-background border-border text-foreground sm:w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -275,11 +280,11 @@ export function TaskManagement() {
                                     <TableRow data-testid={`teacher-task-row-${task.id}`} key={task.id} className="border-border hover:bg-muted/50 transition-colors">
                                         <TableCell className="font-medium text-foreground">{task.topic}</TableCell>
                                         <TableCell className="text-foreground/90">{task.className}</TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">{task.publishedAt ? new Date(task.publishedAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}</TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">{task.deadline ? new Date(task.deadline).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" }) : "无"}</TableCell>
+                                        <TableCell className="text-muted-foreground text-xs">{formatDateTimeDisplay(task.publishedAt, "-")}</TableCell>
+                                        <TableCell className="text-muted-foreground text-xs">{task.deadline ? `${formatDateTimeDisplay(task.deadline)}（UTC+8）` : "无"}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Progress value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
+                                                <Progress aria-label={`${task.topic}完成进度`} value={task.total > 0 ? (task.completed / task.total) * 100 : 0} className="w-20 h-1.5 bg-muted [&>div]:bg-success" />
                                                 <span className="text-xs text-muted-foreground">{task.completed}/{task.total}</span>
                                             </div>
                                         </TableCell>
@@ -322,6 +327,7 @@ export function TaskManagement() {
                                                     variant="ghost"
                                                     size="sm"
                                                     type="button"
+                                                    aria-label={`删除任务：${task.topic}`}
                                                     onClick={() => setTaskToDelete(task)}
                                                     className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                     title="删除任务"

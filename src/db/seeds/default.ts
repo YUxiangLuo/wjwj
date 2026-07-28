@@ -40,7 +40,7 @@ const samplePlan = {
 
 const samplingResults = {
     simple: { completed: true, sampleCount: 100, seed: 2026 },
-    systematic: { completed: true, kValue: 2, sampleCount: 100, seed: 2026, startIndex: 1 },
+    systematic: { completed: true, interval: 2, sampleCount: 100, seed: 2026, randomStart: 1 },
     pps: { completed: true, sizeField: "月生活费", sampleCount: 100, seed: 2026 },
     stratified: {
         completed: true,
@@ -51,6 +51,7 @@ const samplingResults = {
             { name: "大三", count: 50, ratio: 0.25, sampleCount: 25 },
             { name: "大四", count: 50, ratio: 0.25, sampleCount: 25 },
         ],
+        sampleCount: 100,
         seed: 2026,
     },
 };

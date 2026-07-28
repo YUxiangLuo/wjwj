@@ -259,7 +259,7 @@ export function SemesterManagement() {
                             className="bg-background border-border text-foreground placeholder:text-muted-foreground sm:w-64 focus:border-ring focus:ring-ring/20"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "current" | "history")}>
-                            <SelectTrigger className="bg-background border-border text-foreground sm:w-36 focus:ring-ring/20">
+                            <SelectTrigger aria-label="按学期状态筛选" className="bg-background border-border text-foreground sm:w-36 focus:ring-ring/20">
                                 <SelectValue placeholder="状态筛选" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">

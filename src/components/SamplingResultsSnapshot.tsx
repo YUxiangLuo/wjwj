@@ -2,6 +2,11 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { SamplingResultsData } from "@/student/api-client";
 import { SamplePreviewTable } from "@/student/components/SamplePreviewTable";
+import { getSamplingResultCount } from "@/student/experiment/sampling-results";
+import {
+    formatSystematicInterval,
+    getStoredSystematicInterval,
+} from "@/student/experiment/systematic-sampling";
 
 type SamplingMethod = keyof SamplingResultsData;
 
@@ -11,6 +16,7 @@ interface SamplingMethodValue {
     unavailableReason?: string;
     sampleCount?: number;
     seed?: number;
+    interval?: number;
     kValue?: number;
     startIndex?: number;
     sizeField?: string;
@@ -27,18 +33,17 @@ const METHOD_LABELS: Record<SamplingMethod, string> = {
     stratified: "分层抽样",
 };
 
-function getSampleCount(method: SamplingMethod, result: SamplingMethodValue) {
-    if (method === "stratified" && result.layers?.length) {
-        return result.layers.reduce((total, layer) => total + layer.sampleCount, 0);
-    }
-    return result.sampleCount ?? result.data?.length ?? 0;
-}
-
 function getMethodDetails(method: SamplingMethod, result: SamplingMethodValue) {
     const details: Array<{ label: string; value: string }> = [];
     if (result.seed !== undefined) details.push({ label: "随机种子", value: String(result.seed) });
     if (method === "systematic") {
-        if (result.kValue !== undefined) details.push({ label: "抽样间隔 K", value: String(result.kValue) });
+        const interval = getStoredSystematicInterval(result);
+        if (interval !== null) {
+            details.push({ label: "抽样间隔 K", value: formatSystematicInterval(interval) });
+        }
+        if (result.randomStart !== undefined) {
+            details.push({ label: "随机起点 r", value: formatSystematicInterval(result.randomStart) });
+        }
         if (result.startIndex !== undefined) details.push({ label: "起始位置", value: String(result.startIndex) });
     }
     if (method === "pps") {
@@ -73,7 +78,7 @@ export function SamplingResultsSnapshot({
                 {methods.map(({ method, result }) => (
                     <TabsTrigger key={method} value={method} className="flex-wrap py-2">
                         <span>{METHOD_LABELS[method]}</span>
-                        <span className="text-xs text-muted-foreground">{getSampleCount(method, result)} 条</span>
+                        <span className="text-xs text-muted-foreground">{getSamplingResultCount(method, result)} 条</span>
                     </TabsTrigger>
                 ))}
             </TabsList>
@@ -81,7 +86,7 @@ export function SamplingResultsSnapshot({
             {methods.map(({ method, result }) => {
                 const details = getMethodDetails(method, result);
                 const rows = Array.isArray(result.data) ? result.data : [];
-                const count = getSampleCount(method, result);
+                const count = getSamplingResultCount(method, result);
                 return (
                     <TabsContent key={method} value={method} className="mt-4 space-y-4">
                         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 p-4">

@@ -7,7 +7,11 @@ import { CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { parsePickerValue, toLocalDateTimeString } from "@/lib/datetime";
+import {
+    formatPickerDateTimeValue,
+    getCurrentPickerDateTimeValue,
+    parsePickerValue,
+} from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
 import "react-day-picker/style.css";
@@ -37,22 +41,28 @@ export function DatetimePicker24({
     className,
     allowClear = true,
 }: DatetimePicker24Props) {
+    const generatedId = React.useId();
+    const fieldPrefix = id ?? generatedId;
+    const hourId = `${fieldPrefix}-hour`;
+    const minuteId = `${fieldPrefix}-minute`;
     const parsed = React.useMemo(() => parsePickerValue(value), [value]);
-    const hour = parsed?.getHours() ?? 12;
-    const minute = parsed?.getMinutes() ?? 0;
+    const current = getCurrentPickerDateTimeValue();
+    const hour = parsed?.hour ?? 12;
+    const minute = parsed?.minute ?? 0;
+    const calendarDate = parsed
+        ? new Date(parsed.year, parsed.month - 1, parsed.day, 12, 0, 0, 0)
+        : undefined;
 
     const handleHourChange = (h: number) => {
-        const base = parsed ?? new Date();
-        const n = new Date(base);
-        n.setHours(h, minute, 0, 0);
-        onChange(toLocalDateTimeString(n));
+        const base = parsed ?? current;
+        if (!base) return;
+        onChange(formatPickerDateTimeValue({ ...base, hour: h, minute }));
     };
 
     const handleMinuteChange = (m: number) => {
-        const base = parsed ?? new Date();
-        const n = new Date(base);
-        n.setHours(hour, m, 0, 0);
-        onChange(toLocalDateTimeString(n));
+        const base = parsed ?? current;
+        if (!base) return;
+        onChange(formatPickerDateTimeValue({ ...base, hour, minute: m }));
     };
 
     const handleDateSelect = (d: Date | undefined) => {
@@ -60,12 +70,17 @@ export function DatetimePicker24({
             if (allowClear) onChange("");
             return;
         }
-        const n = new Date(d.getFullYear(), d.getMonth(), d.getDate(), hour, minute, 0, 0);
-        onChange(toLocalDateTimeString(n));
+        onChange(formatPickerDateTimeValue({
+            year: d.getFullYear(),
+            month: d.getMonth() + 1,
+            day: d.getDate(),
+            hour,
+            minute,
+        }));
     };
 
-    const label = parsed
-        ? format(parsed, "yyyy年M月d日 HH:mm", { locale: zhCN })
+    const label = calendarDate
+        ? `${format(calendarDate, "yyyy年M月d日", { locale: zhCN })} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
         : placeholder;
 
     return (
@@ -87,22 +102,28 @@ export function DatetimePicker24({
                     <span className="truncate">{label}</span>
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+            <PopoverContent
+                aria-label="日期与时间选择器"
+                className="w-auto p-0"
+                align="start"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-start">
                     <div className="rounded-md p-1">
                         <DayPicker
                             mode="single"
                             locale={zhCN}
                             className="rounded-md"
-                            selected={parsed ?? undefined}
+                            selected={calendarDate}
                             onSelect={handleDateSelect}
-                            defaultMonth={parsed ?? new Date()}
+                            defaultMonth={calendarDate ?? new Date()}
                         />
                     </div>
                     <div className="flex min-w-[200px] flex-col gap-3 border-t border-border pt-3 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
                         <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">时（24 小时）</Label>
+                            <Label htmlFor={hourId} className="text-xs text-muted-foreground">时（24 小时）</Label>
                             <select
+                                id={hourId}
                                 className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
                                 value={hour}
                                 onChange={(e) => handleHourChange(Number(e.target.value))}
@@ -115,8 +136,9 @@ export function DatetimePicker24({
                             </select>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">分</Label>
+                            <Label htmlFor={minuteId} className="text-xs text-muted-foreground">分</Label>
                             <select
+                                id={minuteId}
                                 className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground shadow-sm"
                                 value={minute}
                                 onChange={(e) => handleMinuteChange(Number(e.target.value))}

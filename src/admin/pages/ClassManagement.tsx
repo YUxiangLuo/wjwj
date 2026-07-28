@@ -286,7 +286,7 @@ export function ClassManagement() {
                             className="bg-background border-border text-foreground placeholder:text-muted-foreground sm:w-64 focus:border-ring"
                         />
                         <Select value={filterSemester} onValueChange={setFilterSemester}>
-                            <SelectTrigger data-testid="class-filter-semester" className="bg-background border-border text-foreground sm:w-36">
+                            <SelectTrigger aria-label="按学期筛选班级" data-testid="class-filter-semester" className="bg-background border-border text-foreground sm:w-36">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -297,7 +297,7 @@ export function ClassManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-                            <SelectTrigger data-testid="class-filter-teacher" className="bg-background border-border text-foreground sm:w-36">
+                            <SelectTrigger aria-label="按教师筛选班级" data-testid="class-filter-teacher" className="bg-background border-border text-foreground sm:w-36">
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -412,7 +412,7 @@ export function ClassManagement() {
                         <div className="space-y-2">
                             <Label className="text-foreground/90">所属学期</Label>
                             <Select value={newClass.semesterId} onValueChange={(v) => setNewClass({ ...newClass, semesterId: v })}>
-                                <SelectTrigger data-testid="class-create-semester" className="bg-background border-border text-foreground">
+                                <SelectTrigger aria-label="新建班级所属学期" data-testid="class-create-semester" className="bg-background border-border text-foreground">
                                     <SelectValue placeholder="选择学期" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
@@ -425,7 +425,7 @@ export function ClassManagement() {
                         <div className="space-y-2">
                             <Label className="text-foreground/90">授课教师</Label>
                             <Select value={newClass.teacherId} onValueChange={(v) => setNewClass({ ...newClass, teacherId: v })}>
-                                <SelectTrigger data-testid="class-create-teacher" className="bg-background border-border text-foreground">
+                                <SelectTrigger aria-label="新建班级授课教师" data-testid="class-create-teacher" className="bg-background border-border text-foreground">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">
@@ -481,7 +481,7 @@ export function ClassManagement() {
                         <div className="space-y-2">
                             <Label className="text-foreground/90">授课教师</Label>
                             <Select value={editForm.teacherId} onValueChange={(v) => setEditForm({ ...editForm, teacherId: v })}>
-                                <SelectTrigger data-testid="class-edit-teacher" className="bg-background border-border text-foreground">
+                                <SelectTrigger aria-label="编辑班级授课教师" data-testid="class-edit-teacher" className="bg-background border-border text-foreground">
                                     <SelectValue placeholder="选择教师" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">

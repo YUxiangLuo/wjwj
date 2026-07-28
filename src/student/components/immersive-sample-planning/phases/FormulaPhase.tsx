@@ -124,7 +124,7 @@ export function FormulaPhase({
 
                 <div className="max-w-sm mx-auto space-y-3">
                     <Select value={params.confidenceLevel} onValueChange={onConfidenceLevelChange}>
-                        <SelectTrigger className="h-14 text-lg bg-background border-border">
+                        <SelectTrigger aria-label="公式推导置信水平" className="h-14 text-lg bg-background border-border">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -210,8 +210,9 @@ export function FormulaPhase({
                 <div className="max-w-sm mx-auto space-y-4">
                     {!isProportion && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted-foreground">总体方差 σ²</label>
+                            <label htmlFor="formula-population-variance" className="text-sm font-medium text-muted-foreground">总体方差 σ²</label>
                             <Input
+                                id="formula-population-variance"
                                 type="number"
                                 min={0.01}
                                 step={0.1}
@@ -237,6 +238,7 @@ export function FormulaPhase({
                                 <span className="text-muted-foreground">10% (粗略)</span>
                             </div>
                             <Slider
+                                aria-label="公式推导比例误差限"
                                 value={[params.marginOfError]}
                                 onValueChange={([v]) => v != null && onMarginOfErrorChange(v)}
                                 min={1}
@@ -247,8 +249,9 @@ export function FormulaPhase({
                         </div>
                     ) : (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted-foreground">绝对误差限 e</label>
+                            <label htmlFor="formula-margin-of-error" className="text-sm font-medium text-muted-foreground">绝对误差限 e</label>
                             <Input
+                                id="formula-margin-of-error"
                                 type="number"
                                 min={0.01}
                                 step={0.1}

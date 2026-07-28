@@ -118,6 +118,7 @@ export function ClusterSamplingCalculator({
                             </span>
                         </div>
                         <Slider
+                            aria-label="平均群规模"
                             value={[clusterSize]}
                             onValueChange={(v) => setClusterSize(v[0] ?? 50)}
                             min={10}
@@ -141,6 +142,7 @@ export function ClusterSamplingCalculator({
                             </span>
                         </div>
                         <Slider
+                            aria-label="整群抽样设计效应"
                             value={[deff]}
                             onValueChange={(v) => setDeff(v[0] ?? 2)}
                             min={1}
@@ -160,7 +162,7 @@ export function ClusterSamplingCalculator({
                         <div className="space-y-1.5">
                             <Label className="text-xs text-primary">置信水平</Label>
                             <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
-                                <SelectTrigger className="h-9 text-sm bg-background border-primary">
+                                <SelectTrigger aria-label="整群抽样置信水平" className="h-9 text-sm bg-background border-primary">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -178,6 +180,7 @@ export function ClusterSamplingCalculator({
                                 </span>
                             </div>
                             <Slider
+                                aria-label="整群抽样允许误差"
                                 value={[marginOfErrorLocal]}
                                 onValueChange={([v]) => v != null && setMarginOfErrorLocal(v)}
                                 min={1}
@@ -189,8 +192,9 @@ export function ClusterSamplingCalculator({
                     </div>
 
                     <div className="space-y-1">
-                        <Label className="text-xs text-primary">无回答率 (%)</Label>
+                        <Label htmlFor="cluster-non-response-rate" className="text-xs text-primary">无回答率 (%)</Label>
                         <Input
+                            id="cluster-non-response-rate"
                             type="number"
                             value={nonResponseRate}
                             onChange={(e) => setNonResponseRate(parseFloat(e.target.value) || 0)}

@@ -19,6 +19,38 @@ test("admin password policy rejects username and short passwords", () => {
     expect(result.isPolicyValid).toBe(false);
 });
 
+test("password policy rejects forbidden substrings regardless of case", () => {
+    const result = evaluatePasswordRules({
+        password: "SafeAdmin!2026",
+        minLength: ADMIN_PASSWORD_POLICY.minLength,
+        forbiddenSubstrings: ["admin"],
+    });
+
+    expect(result.noForbiddenSubstring).toBe(false);
+    expect(result.isPolicyValid).toBe(false);
+});
+
+test("password policy applies Unicode NFKC normalization for comparison", () => {
+    const result = evaluatePasswordRules({
+        password: "SafeＡＤＭＩＮ!2026",
+        minLength: ADMIN_PASSWORD_POLICY.minLength,
+        forbiddenSubstrings: ["admin"],
+    });
+
+    expect(result.noForbiddenSubstring).toBe(false);
+});
+
+test("password policy ignores empty forbidden values without trimming the password", () => {
+    const result = evaluatePasswordRules({
+        password: " ValidPass!9 ",
+        minLength: 8,
+        forbiddenSubstrings: ["", "   ", null, undefined],
+    });
+
+    expect(result.noForbiddenSubstring).toBe(true);
+    expect(result.isPolicyValid).toBe(true);
+});
+
 test("teacher password policy accepts valid password with confirmation", () => {
     const result = evaluatePasswordRules({
         password: "Teacher@2026",

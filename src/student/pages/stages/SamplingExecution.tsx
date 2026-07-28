@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -36,12 +36,12 @@ import {
     PPS_UNAVAILABLE_STATUS_MESSAGE,
 } from "../../experiment/sampling-messages";
 import {
-    formatSystematicRange,
-    findBestSystematicKValue,
-    getSystematicAcceptedRange,
-    getSystematicSampleCountRange,
-    isSystematicRangeWithinAcceptedRange,
+    formatSystematicInterval,
+    getStoredSystematicInterval,
+    getSystematicInterval,
 } from "../../experiment/systematic-sampling";
+import { getSamplingAcceptedRange } from "../../experiment/sampling-tolerance";
+import { getSamplingResultCount } from "../../experiment/sampling-results";
 
 interface SamplingExecutionProps {
     onPrev: () => void;
@@ -67,22 +67,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const hasValidSamplePlan = Number.isInteger(samplePlan?.finalSampleSize) && (samplePlan?.finalSampleSize ?? 0) > 0;
     const n = hasValidSamplePlan ? samplePlan!.finalSampleSize : 0;
     const N = populationSize;
-    const preferredSystematicK = useMemo(
-        () => (hasValidSamplePlan ? findBestSystematicKValue(N, n) : null),
-        [N, hasValidSamplePlan, n],
-    );
-    const hasAnyValidSystematicK = preferredSystematicK !== null;
-    const defaultSystematicK = useMemo(() => {
-        if (!hasValidSamplePlan || N < 1) {
-            return 1;
-        }
-
-        if (preferredSystematicK !== null) {
-            return preferredSystematicK;
-        }
-
-        return Math.max(1, Math.min(N, Math.round(N / n)));
-    }, [N, hasValidSamplePlan, n, preferredSystematicK]);
+    const systematicInterval = getSystematicInterval(N, n);
 
     // Initialize from saved data
     const initialResults = experiment?.samplingResults as SamplingResultsData | null;
@@ -92,7 +77,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [ppsResult, setPpsResult] = useState(initialResults?.pps ?? null);
     const [stratifiedResult, setStratifiedResult] = useState(initialResults?.stratified ?? null);
 
-    const [kValue, setKValue] = useState(initialResults?.systematic?.kValue ?? defaultSystematicK);
     const [ppsSizeField, setPpsSizeField] = useState(initialResults?.pps?.sizeField ?? "");
     const [ppsSampleSize, setPpsSampleSize] = useState(initialResults?.pps?.sampleCount ?? n);
     const [simpleSeed, setSimpleSeed] = useState(initialResults?.simple?.seed ? String(initialResults.simple.seed) : "");
@@ -157,7 +141,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
     const [stratifiedAnimationLayers, setStratifiedAnimationLayers] = useState<StratifiedLayer[]>([]);
     const [stratifiedAnimationStratifyBy, setStratifiedAnimationStratifyBy] = useState("gender");
-    const stratifiedExecuteRef = useRef<(() => void) | null>(null);
 
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
@@ -198,6 +181,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSimple.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length });
+                setAnimatingMethod("simple");
             } else {
                 toast.error(res.error?.message || "简单随机抽样执行失败");
                 setAnimatingMethod(null);
@@ -211,7 +195,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     };
 
     const executeSystematic = async () => {
-        if (!taskId || !hasValidSamplePlan || kValue < 1) return;
+        if (!taskId || !hasValidSamplePlan || systematicInterval === null) return;
         setExecuting("systematic");
         setAnimationSampledData(null);
         const startTime = performance.now();
@@ -219,8 +203,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             const { seed, error: seedError } = parseSeed(systematicSeed);
             if (seedError) { toast.error(seedError); setExecuting(null); return; }
             const res = await experimentApi.executeSampling(taskId, "systematic", {
-                kValue,
-                sampleSize: Math.ceil(N / kValue),
                 seed,
             });
             if (res.success && res.data?.result) {
@@ -229,6 +211,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSystematic.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextSystematic.sampleCount ?? dataArr.length });
+                setAnimatingMethod("systematic");
             } else {
                 toast.error(res.error?.message || "系统抽样执行失败");
                 setAnimatingMethod(null);
@@ -260,6 +243,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, pps: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextPps.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextPps.sampleCount ?? dataArr.length });
+                setAnimatingMethod("pps");
             } else {
                 toast.error(res.error?.message || "PPS抽样执行失败");
                 setAnimatingMethod(null);
@@ -273,13 +257,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     };
 
     // Validation
-    const systematicAcceptedRange = getSystematicAcceptedRange(n);
-    const systematicSampleCountRange = getSystematicSampleCountRange(N, kValue);
-    const isKValid = kValue >= 1 && kValue <= N &&
-        isSystematicRangeWithinAcceptedRange(systematicSampleCountRange, systematicAcceptedRange);
-
-    const ppsMinSize = systematicAcceptedRange?.min ?? 1;
-    const ppsMaxSize = systematicAcceptedRange?.max ?? N;
+    const samplingAcceptedRange = getSamplingAcceptedRange(n);
+    const ppsMinSize = samplingAcceptedRange?.min ?? 1;
+    const ppsMaxSize = samplingAcceptedRange?.max ?? N;
     const isPpsSizeValid = ppsSampleSize >= ppsMinSize && ppsSampleSize <= ppsMaxSize && ppsSampleSize >= 1 && ppsSampleSize <= N;
     const hasPpsNumericField = ppsEligibleFields.length > 0;
     const ppsCompletedOrUnavailable = Boolean(ppsResult?.completed || ppsResult?.unavailable || !hasPpsNumericField);
@@ -287,10 +267,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const ppsSummaryFieldLabel = ppsResult?.sizeField
         ? FIELD_LABELS[ppsResult.sizeField] || ppsResult.sizeField
         : "所选规模变量";
-    const allCompleted = Boolean(simpleResult?.completed && systematicResult?.completed && ppsCompletedOrUnavailable && stratifiedResult?.completed);
+    const systematicCompletedForCurrentPlan = Boolean(
+        systematicResult?.completed && systematicResult.sampleCount === n,
+    );
+    const resultSystematicInterval = getStoredSystematicInterval(systematicResult) ?? systematicInterval;
+    const allCompleted = Boolean(simpleResult?.completed && systematicCompletedForCurrentPlan && ppsCompletedOrUnavailable && stratifiedResult?.completed);
     const completedMethodCount = [
         Boolean(simpleResult?.completed),
-        Boolean(systematicResult?.completed),
+        systematicCompletedForCurrentPlan,
         ppsCompletedOrUnavailable,
         Boolean(stratifiedResult?.completed),
     ].filter(Boolean).length;
@@ -360,7 +344,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <div className="text-sm font-medium text-muted-foreground">完成进度</div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xl font-bold text-foreground">
-                                        {[simpleResult?.completed, systematicResult?.completed, ppsResult?.completed, stratifiedResult?.completed].filter(Boolean).length}/4
+                                        {completedMethodCount}/4
                                     </span>
                                     <span className="text-sm text-muted-foreground">种方法</span>
                                 </div>
@@ -382,7 +366,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
                         <div className="flex items-center gap-2">
                             <span>系统抽样</span>
-                            {systematicResult?.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
+                            {systematicCompletedForCurrentPlan && <CheckCircle2 className="w-4 h-4 text-success" />}
                         </div>
                     </TabsTrigger>
                     <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
@@ -430,7 +414,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     {!simpleResult?.completed ? (
                                         <div className="bg-background/50 rounded-xl p-8 text-center border border-border border-dashed">
                                             <div className="mb-4 text-muted-foreground">尚未执行抽样</div>
-                                            <Button onClick={() => setAnimatingMethod("simple")} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
+                                            <Button onClick={() => void executeSimple()} disabled={executing !== null} data-testid="student-sampling-simple-run" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
                                                 {executing === "simple" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -442,9 +426,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     ) : (
                                         <SamplingSuccessState
                                             summary={`共成功抽取 ${simpleResult.sampleCount} 个样本${executionTimes.simple !== null ? `，耗时 ${executionTimes.simple} ms` : ""}${simpleResult.seed ? `，Seed ${simpleResult.seed}` : ""}`}
-                                            onRerun={() => setAnimatingMethod("simple")}
+                                            onRerun={() => void executeSimple()}
                                             disabled={executing !== null}
                                             rerunTestId="student-sampling-simple-rerun"
+                                            rerunLabel="重新执行简单随机抽样"
                                         />
                                     )}
                                 </CardContent>
@@ -484,48 +469,28 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         系统抽样
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground pt-1">
-                                        按固定间隔 K 从总体中抽取样本。规划样本量为 {n}，实际样本量会随 K 值和随机起点在小范围内波动。
+                                        使用分数间隔 K=N/n 从总体中等距抽取，确保实际样本量精确等于规划值 {n}。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
                                         <div className="space-y-3">
-                                            <Label htmlFor="kValue" className="text-foreground/90">间隔 K 值 (步长)</Label>
-                                            <div className="relative">
-                                                <Input
-                                                    id="kValue"
-                                                    type="number"
-                                                    value={kValue}
-                                                    onChange={(e) => setKValue(parseInt(e.target.value) || 1)}
-                                                    min={1}
-                                                    max={N}
-                                                    data-testid="student-sampling-systematic-k"
-                                                    className="bg-card border-input text-foreground focus:border-info pr-10"
-                                                />
-                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">Steps</span>
+                                            <p className="text-sm font-medium text-foreground/90">抽样间隔 K=N/n</p>
+                                            <div
+                                                className="flex h-10 items-center rounded-md border border-input bg-card px-3 font-mono font-semibold text-foreground"
+                                                data-testid="student-sampling-systematic-k"
+                                            >
+                                                {formatSystematicInterval(systematicInterval)}
                                             </div>
+                                            <p className="text-xs text-muted-foreground">内部使用完整精度，界面最多显示 4 位小数。</p>
                                         </div>
                                         <div className="space-y-3">
-                                            <Label className="text-foreground/90">预计抽取数量</Label>
-                                            <div className={`p-2.5 border rounded-md flex items-center justify-between ${isKValid ? "border-input bg-card" : "border-destructive/50 bg-destructive/10"}`}>
-                                                <span className={`font-mono font-bold ${isKValid ? "text-foreground" : "text-destructive"}`}>{formatSystematicRange(systematicSampleCountRange)}</span>
-                                                <span className="text-xs text-muted-foreground">允许范围: {formatSystematicRange(systematicAcceptedRange)}</span>
+                                            <p className="text-sm font-medium text-foreground/90">精确抽取数量</p>
+                                            <div className="flex h-10 items-center justify-between rounded-md border border-input bg-card px-3">
+                                                <span className="font-mono font-bold text-foreground">{n}</span>
+                                                <span className="text-xs text-success">与规划值一致</span>
                                             </div>
-                                            {systematicSampleCountRange.min !== systematicSampleCountRange.max && (
-                                                <p className="text-xs text-muted-foreground mt-1">
-                                                    随机起点不同，实际抽取数量会在 {formatSystematicRange(systematicSampleCountRange)} 之间波动。
-                                                </p>
-                                            )}
-                                            {!hasAnyValidSystematicK && (
-                                                <p className="text-xs text-destructive mt-1">
-                                                    当前总体规模与目标样本量下，没有任何 K 值能满足允许范围，请返回上一阶段调整样本量规划。
-                                                </p>
-                                            )}
-                                            {hasAnyValidSystematicK && !isKValid && (
-                                                <p className="text-xs text-destructive mt-1">
-                                                    当前 K 值的实际样本量可能超出允许范围，请调整 K 值
-                                                </p>
-                                            )}
+                                            <p className="text-xs text-muted-foreground">随机起点只改变入选单位，不再改变样本数量。</p>
                                         </div>
                                         <div className="space-y-3">
                                             <Label htmlFor="systematicSeed" className="text-foreground/90">随机种子（可选）</Label>
@@ -544,9 +509,15 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         </div>
                                     </div>
 
-                                    {!systematicResult?.completed ? (
-                                        <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("systematic")} disabled={executing !== null || !isKValid} data-testid="student-sampling-systematic-run" className="bg-info hover:bg-info/90 text-info-foreground shadow-lg shadow-info/20 w-auto px-8">
+                                    {!systematicCompletedForCurrentPlan ? (
+                                        <div className="space-y-3">
+                                            {systematicResult?.completed && (
+                                                <p className="rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-sm text-warning">
+                                                    已保存的旧系统抽样结果为 {systematicResult.sampleCount} 个样本，与当前规划值 {n} 不一致，请重新执行。
+                                                </p>
+                                            )}
+                                            <div className="flex justify-end">
+                                            <Button onClick={() => void executeSystematic()} disabled={executing !== null || systematicInterval === null} data-testid="student-sampling-systematic-run" className="bg-info hover:bg-info/90 text-info-foreground shadow-lg shadow-info/20 w-auto px-8">
                                                 {executing === "systematic" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -554,13 +525,15 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 )}
                                                 执行系统抽样
                                             </Button>
+                                            </div>
                                         </div>
                                     ) : (
                                         <SamplingSuccessState
-                                            summary={`K=${systematicResult.kValue}，共抽取 ${systematicResult.sampleCount} 个样本${executionTimes.systematic !== null ? `，耗时 ${executionTimes.systematic} ms` : ""}`}
-                                            onRerun={() => setAnimatingMethod("systematic")}
-                                            disabled={executing !== null || !isKValid}
+                                            summary={`K=${formatSystematicInterval(resultSystematicInterval)}，共抽取 ${systematicResult?.sampleCount} 个样本${executionTimes.systematic !== null ? `，耗时 ${executionTimes.systematic} ms` : ""}`}
+                                            onRerun={() => void executeSystematic()}
+                                            disabled={executing !== null || systematicInterval === null}
                                             rerunTestId="student-sampling-systematic-rerun"
+                                            rerunLabel="重新执行系统抽样"
                                         />
                                     )}
                                 </CardContent>
@@ -576,12 +549,12 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     <CardDescription className="text-muted-foreground">展示部分抽样结果数据</CardDescription>
                                 </CardHeader>
                                 <CardContent className="h-[300px] overflow-hidden">
-                                    {!systematicResult?.completed ? (
+                                    {!systematicCompletedForCurrentPlan ? (
                                         <div className="h-full flex items-center justify-center text-sm text-muted-foreground italic">
                                             完成抽样后展示
                                         </div>
                                     ) : (
-                                        <SamplePreviewTable data={systematicResult.data ?? []} total={systematicResult.sampleCount} />
+                                        <SamplePreviewTable data={systematicResult?.data ?? []} total={systematicResult?.sampleCount ?? 0} />
                                     )}
                                 </CardContent>
                             </Card>
@@ -609,7 +582,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             <Label className="text-foreground/90">选择规模变量</Label>
                                             {hasPpsNumericField ? (
                                                 <Select value={ppsSizeField} onValueChange={setPpsSizeField}>
-                                                    <SelectTrigger data-testid="student-sampling-pps-size-field" className="w-full bg-card border-input text-foreground">
+                                                    <SelectTrigger aria-label="选择 PPS 规模度量字段" data-testid="student-sampling-pps-size-field" className="w-full bg-card border-input text-foreground">
                                                         <SelectValue placeholder="选择数值变量" />
                                                     </SelectTrigger>
                                                     <SelectContent className="bg-card border-border text-foreground">
@@ -666,7 +639,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                                     {!ppsResult?.completed ? (
                                         <div className="flex justify-end">
-                                            <Button onClick={() => setAnimatingMethod("pps")} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="bg-auxiliary hover:bg-auxiliary/90 text-auxiliary-foreground shadow-lg shadow-auxiliary/20 w-auto px-8">
+                                            <Button onClick={() => void executePPS()} disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid} data-testid="student-sampling-pps-run" className="bg-auxiliary hover:bg-auxiliary/90 text-auxiliary-foreground shadow-lg shadow-auxiliary/20 w-auto px-8">
                                                 {executing === "pps" ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                                 ) : (
@@ -678,9 +651,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     ) : (
                                         <SamplingSuccessState
                                             summary={`按 ${ppsSummaryFieldLabel} 进行PPS抽样，共抽取 ${ppsPreviewTotal} 个样本${executionTimes.pps !== null ? `，耗时 ${executionTimes.pps} ms` : ""}`}
-                                            onRerun={() => setAnimatingMethod("pps")}
+                                            onRerun={() => void executePPS()}
                                             disabled={executing !== null || !hasPpsNumericField || !ppsSizeField || !isPpsSizeValid}
                                             rerunTestId="student-sampling-pps-rerun"
+                                            rerunLabel="重新执行 PPS 抽样"
                                         />
                                     )}
                                 </CardContent>
@@ -724,15 +698,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         onResult={(result) => {
                             setStratifiedResult(result);
                             const dataArr = (result.data ?? []) as Array<Record<string, unknown>>;
-                            setAnimationSampledData({ data: dataArr, total: result.layers?.reduce((a, l) => a + l.sampleCount, 0) ?? dataArr.length });
+                            setAnimationSampledData({ data: dataArr, total: getSamplingResultCount("stratified", result) });
                         }}
                         onAnimate={(animLayers, animStratifyBy) => {
                             setStratifiedAnimationLayers(animLayers);
                             setStratifiedAnimationStratifyBy(animStratifyBy);
                             setAnimatingMethod("stratified");
                         }}
-                        onRegisterExecute={(fn) => { stratifiedExecuteRef.current = fn; }}
-                        onExecutionError={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
                         buildSavePayload={() => undefined}
                         executionTime={executionTimes.stratified}
                         setExecutionTime={(ms) => setExecutionTimes(prev => ({ ...prev, stratified: ms }))}
@@ -761,7 +733,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 您已完成四种抽样方法的执行：
                                 <div className="bg-background p-4 rounded-xl border border-border mt-3 mb-3 space-y-2">
                                     <div className="flex justify-between"><span>简单随机抽样:</span> <span className="text-foreground">{simpleResult?.sampleCount} 样本</span></div>
-                                    <div className="flex justify-between"><span>系统抽样:</span> <span className="text-foreground">{systematicResult?.sampleCount} 样本 (K={systematicResult?.kValue})</span></div>
+                                    <div className="flex justify-between"><span>系统抽样:</span> <span className="text-foreground">{systematicResult?.sampleCount} 样本 (K={formatSystematicInterval(resultSystematicInterval)})</span></div>
                                     <div className="flex justify-between">
                                         <span>PPS抽样:</span>
                                         <span className="text-foreground">
@@ -770,7 +742,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 : `${ppsResult?.sampleCount} 样本`}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between"><span>分层抽样:</span> <span className="text-foreground">{stratifiedResult?.layers?.reduce((a, l) => a + l.sampleCount, 0)} 样本</span></div>
+                                    <div className="flex justify-between"><span>分层抽样:</span> <span className="text-foreground">{getSamplingResultCount("stratified", stratifiedResult)} 样本</span></div>
                                 </div>
                                 <p>确认后将进入分析与报告阶段。</p>
                             </div>
@@ -788,17 +760,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 <ImmersiveSamplingAnimation
                     method={animatingMethod}
                     populationSize={N}
-                    sampleSize={animatingMethod === "systematic" ? Math.ceil(N / kValue) : animatingMethod === "pps" ? ppsSampleSize : n}
-                    kValue={animatingMethod === "systematic" ? kValue : undefined}
+                    sampleSize={animatingMethod === "pps" ? ppsSampleSize : n}
+                    interval={animatingMethod === "systematic" ? resultSystematicInterval ?? undefined : undefined}
                     sizeField={animatingMethod === "pps" ? ppsSizeField : undefined}
                     stratifyBy={animatingMethod === "stratified" ? stratifiedAnimationStratifyBy : undefined}
                     layers={animatingMethod === "stratified" ? stratifiedAnimationLayers : undefined}
-                    onAnimationComplete={() => {
-                        if (animatingMethod === "simple") executeSimple();
-                        else if (animatingMethod === "systematic") executeSystematic();
-                        else if (animatingMethod === "pps") executePPS();
-                        else if (animatingMethod === "stratified") stratifiedExecuteRef.current?.();
-                    }}
                     onClose={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
                     sampledData={animationSampledData?.data}
                     sampledTotal={animationSampledData?.total}

@@ -129,7 +129,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                 <div className="space-y-2">
                     <label className="text-xs text-primary font-medium">抽样方法</label>
                     <Select value={selectedMethod} onValueChange={handleMethodChange}>
-                        <SelectTrigger className="bg-background border-primary text-foreground">
+                        <SelectTrigger aria-label="选择抽样方法" className="bg-background border-primary text-foreground">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-background border-primary">
@@ -197,7 +197,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                 <div className="space-y-2">
                     <label className="text-xs text-primary font-medium">调查方式</label>
                     <Select value={selectedMode} onValueChange={setSelectedMode}>
-                        <SelectTrigger className="bg-background border-primary text-foreground">
+                        <SelectTrigger aria-label="选择调查方式" className="bg-background border-primary text-foreground">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-background border-primary">

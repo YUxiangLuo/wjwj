@@ -35,16 +35,45 @@ export function performSimpleSampling(data: any[], n: number, random: () => numb
     return selectedIndices.map((i) => data[i]);
 }
 
-export function performSystematicSampling(data: any[], k: number, random: () => number): any[] {
-    const step = Math.max(1, Number(k) || 1);
-    const start = Math.floor(random() * step);
-    const result = [];
+export interface SystematicSamplingResult<T> {
+    data: T[];
+    indices: number[];
+    interval: number;
+    randomStart: number;
+}
 
-    for (let i = start; i < data.length; i += step) {
-        result.push(data[i]);
+/**
+ * Linear systematic sampling with a fractional interval.
+ *
+ * For population size N and target sample size n, K=N/n and the selected
+ * zero-based indices are floor(r + jK), j=0..n-1, where r is uniform in
+ * [0, K). Since K is always at least 1, this produces exactly n unique
+ * in-range units.
+ */
+export function performSystematicSampling<T>(
+    data: T[],
+    n: number,
+    random: () => number,
+): SystematicSamplingResult<T> {
+    const sampleSize = Math.max(0, Math.min(Math.floor(Number(n) || 0), data.length));
+    if (sampleSize === 0) {
+        return { data: [], indices: [], interval: 0, randomStart: 0 };
     }
 
-    return result;
+    const interval = data.length / sampleSize;
+    const randomUnit = Math.min(Math.max(Number(random()) || 0, 0), 1 - Number.EPSILON);
+    const randomStart = randomUnit * interval;
+    const indices = Array.from(
+        { length: sampleSize },
+        (_, index) => Math.floor(randomStart + index * interval),
+    );
+
+    return {
+        data: indices.map((index) => data[index]!),
+        indices,
+        interval,
+        randomStart,
+    };
 }
 
 export function performStratifiedSampling(data: any[], stratifyBy: string, layers: any[], random: () => number): any[] {

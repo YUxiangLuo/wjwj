@@ -50,7 +50,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                     <div className="space-y-2">
                         <Label className="text-foreground/90">选择课题</Label>
                         <Select onValueChange={onSelectedTopicIdChange} value={selectedTopicId}>
-                            <SelectTrigger data-testid="teacher-task-topic-select" className="bg-background border-border text-foreground">
+                            <SelectTrigger aria-label="选择发布课题" data-testid="teacher-task-topic-select" className="bg-background border-border text-foreground">
                                 <SelectValue placeholder="请选择课题" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -97,7 +97,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="deadline" className="text-foreground/90">截止时间（可选）</Label>
+                        <Label htmlFor="deadline" className="text-foreground/90">截止时间（可选，中国标准时间）</Label>
                         <DatetimePicker24
                             id="deadline"
                             data-testid="teacher-task-deadline"
@@ -105,6 +105,7 @@ export function TaskPublishDialog(props: TaskPublishDialogProps) {
                             onChange={onDeadlineChange}
                             placeholder="选择日期与时间（24 小时制）"
                         />
+                        <p className="text-xs text-muted-foreground">所有教师和学生均按中国标准时间（UTC+8）查看该截止时刻。</p>
                     </div>
                 </div>
                 <DialogFooter>

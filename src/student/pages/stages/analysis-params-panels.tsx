@@ -11,6 +11,10 @@ import {
     PPS_UNAVAILABLE_REASON,
     PPS_UNAVAILABLE_STATUS_MESSAGE,
 } from "../../experiment/sampling-messages";
+import {
+    formatSystematicInterval,
+    getStoredSystematicInterval,
+} from "../../experiment/systematic-sampling";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { METHOD_META, type MethodKey } from "./analysis-utils";
 
@@ -47,7 +51,6 @@ function samplingMethodPanelForKey(
     key: MethodKey,
     samplingResults: SamplingResultsData,
     targetSampleSize: number | null,
-    populationSize: number,
 ): { completed: boolean; content: ReactNode } {
     switch (key) {
         case "simple": {
@@ -75,24 +78,21 @@ function samplingMethodPanelForKey(
             if (!r?.completed) {
                 return { completed: false, content: notDoneHint };
             }
+            const interval = getStoredSystematicInterval(r);
             return {
                 completed: true,
                 content: (
                     <div className="space-y-0">
-                        <ParamRow label="间隔 K" value={String(r.kValue)} />
+                        <ParamRow label="间隔 K=N/n" value={formatSystematicInterval(interval)} />
                         <ParamRow label="实际抽取数量" value={r.sampleCount?.toLocaleString() ?? "—"} />
                         <ParamRow
-                            label="按 N/K 推算"
-                            value={
-                                populationSize > 0 && r.kValue > 0
-                                    ? `约 ⌈N/K⌉ = ⌈${populationSize}/${r.kValue}⌉ = ${Math.ceil(populationSize / r.kValue)}`
-                                    : "—"
-                            }
+                            label="随机起点 r"
+                            value={r.randomStart !== undefined ? formatSystematicInterval(r.randomStart) : r.startIndex !== undefined ? String(r.startIndex) : "—"}
                         />
                         <ParamRow label="随机种子" value={r.seed !== undefined ? String(r.seed) : "未设置（每次随机）"} />
                         {targetSampleSize !== null && (
                             <p className="mt-2 text-[11px] text-muted-foreground">
-                                系统抽样实际样本量可能随 K 与随机起点在较小范围内波动；规划目标为 {targetSampleSize.toLocaleString()}。
+                                分数间隔系统抽样固定抽取 {targetSampleSize.toLocaleString()} 个样本；随机起点只改变入选单位。
                             </p>
                         )}
                     </div>
@@ -308,7 +308,6 @@ export function SamplingMethodParamsPanel({
                     key,
                     samplingResults,
                     targetSampleSize,
-                    populationSize,
                 );
 
                 return (

@@ -1,47 +1,105 @@
+import { APP_TIMEZONE, APP_TIMEZONE_OFFSET } from "@/utils/format";
+
 /**
- * 任务截止时间：教师端用「本地墙钟」编辑，提交与 API 传输使用 ISO-8601 UTC（…Z）。
- * 数据库存储由 Drizzle/Bun SQL 将 JS Date 写入 PostgreSQL timestamptz；JSON 响应中 Date 序列化为 UTC ISO。
+ * Task schedule wall-clock values are always China Standard Time. API and
+ * database values remain absolute UTC instants.
  */
 
-/** 解析 `YYYY-MM-DDTHH:mm`（浏览器本地日历/时分），与 DatetimePicker24 存储一致 */
+export interface PickerDateTimeValue {
+    year: number;
+    month: number;
+    day: number;
+    hour: number;
+    minute: number;
+}
+
+const WALL_CLOCK_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
+
+const PICKER_PARTS_FORMATTER = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+});
+
+function partsForInstant(date: Date): PickerDateTimeValue | null {
+    if (!Number.isFinite(date.getTime())) return null;
+    const parts = PICKER_PARTS_FORMATTER.formatToParts(date);
+    const read = (type: Intl.DateTimeFormatPartTypes) =>
+        Number(parts.find((part) => part.type === type)?.value);
+    const result = {
+        year: read("year"),
+        month: read("month"),
+        day: read("day"),
+        hour: read("hour"),
+        minute: read("minute"),
+    };
+    return Object.values(result).every(Number.isFinite) ? result : null;
+}
+
+function parseWallClockParts(value: string): PickerDateTimeValue | null {
+    const match = WALL_CLOCK_PATTERN.exec(value.trim());
+    if (!match) return null;
+    const [, year, month, day, hour, minute] = match;
+    return {
+        year: Number(year),
+        month: Number(month),
+        day: Number(day),
+        hour: Number(hour),
+        minute: Number(minute),
+    };
+}
+
+export function formatPickerDateTimeValue(value: PickerDateTimeValue) {
+    return `${String(value.year).padStart(4, "0")}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}T${String(value.hour).padStart(2, "0")}:${String(value.minute).padStart(2, "0")}`;
+}
+
+/** Strictly parse `YYYY-MM-DDTHH:mm` as a China Standard Time instant. */
 export function parseLocalDateTime(value: string): Date | null {
-    if (!value) return null;
-    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
-    if (!m) return null;
-    const [, ys, ms, ds, hs, mins] = m;
-    const d = new Date(Number(ys), Number(ms) - 1, Number(ds), Number(hs), Number(mins), 0, 0);
-    return Number.isNaN(d.getTime()) ? null : d;
+    const parts = parseWallClockParts(value);
+    if (!parts) return null;
+
+    const input = formatPickerDateTimeValue(parts);
+    const date = new Date(`${input}:00${APP_TIMEZONE_OFFSET}`);
+    if (!Number.isFinite(date.getTime())) return null;
+
+    // Date parsing normalizes invalid calendar values such as February 30.
+    return toLocalDateTimeString(date) === input ? date : null;
 }
 
-/** 本地墙钟 → `YYYY-MM-DDTHH:mm`（供选择器受控值） */
-export function toLocalDateTimeString(d: Date): string {
-    const y = d.getFullYear();
-    const mo = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const hh = String(d.getHours()).padStart(2, "0");
-    const mm = String(d.getMinutes()).padStart(2, "0");
-    return `${y}-${mo}-${day}T${hh}:${mm}`;
+/** Absolute instant → China Standard Time `YYYY-MM-DDTHH:mm`. */
+export function toLocalDateTimeString(date: Date): string {
+    const parts = partsForInstant(date);
+    return parts ? formatPickerDateTimeValue(parts) : "";
 }
 
-/** 本地墙钟串 → UTC ISO，用于 `createTask` / `extendTaskDeadline` 请求体 */
+/** China Standard Time wall clock → UTC ISO for teacher task APIs. */
 export function localWallClockToUtcIso(local: string): string | undefined {
-    const t = local.trim();
-    if (!t) return undefined;
-    const d = parseLocalDateTime(t);
-    if (!d) return undefined;
-    return d.toISOString();
+    const trimmed = local.trim();
+    if (!trimmed) return undefined;
+    return parseLocalDateTime(trimmed)?.toISOString();
 }
 
 /**
- * 日期时间选择器：受控值可能是本地墙钟串，或接口返回的 ISO UTC 串。
- * 统一解析为 Date（本地展示用 getHours/getDate 等）。
+ * Accept either a controlled China Standard Time wall-clock value or an ISO
+ * instant returned by the API, and expose stable calendar fields to the picker.
  */
-export function parsePickerValue(value: string): Date | null {
-    if (!value.trim()) return null;
-    const v = value.trim();
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) {
-        return parseLocalDateTime(v);
+export function parsePickerValue(value: string): PickerDateTimeValue | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    if (WALL_CLOCK_PATTERN.test(trimmed)) {
+        const date = parseLocalDateTime(trimmed);
+        return date ? parseWallClockParts(trimmed) : null;
     }
-    const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? null : d;
+
+    const date = new Date(trimmed);
+    return partsForInstant(date);
+}
+
+export function getCurrentPickerDateTimeValue(date: Date = new Date()) {
+    return partsForInstant(date);
 }

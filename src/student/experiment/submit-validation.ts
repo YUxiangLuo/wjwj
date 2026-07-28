@@ -2,7 +2,7 @@ import { getRichTextPlainLength, getRichTextPlainText } from "../../utils/rich-t
 import { validateQuestionAtIndex } from "../../lib/validate-question";
 import { normalizeSamplePlanEstimationType } from "./sample-plan-display";
 import { getFinalSampleSizeBounds } from "./final-sample-bounds";
-import { getSystematicAcceptedRange } from "./systematic-sampling";
+import { getSamplingAcceptedRange } from "./sampling-tolerance";
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -141,13 +141,13 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
             return `简单随机抽样样本量需等于目标样本量（${targetSampleSize}）`;
         }
 
-        const acceptedRange = getSystematicAcceptedRange(targetSampleSize);
         const systematicCount = toInteger(systematic.sampleCount);
-        if (acceptedRange && (systematicCount === null || systematicCount < acceptedRange.min || systematicCount > acceptedRange.max)) {
-            return `系统抽样样本量需在 ${acceptedRange.min}-${acceptedRange.max} 之间`;
+        if (systematicCount !== targetSampleSize) {
+            return `系统抽样样本量需等于目标样本量（${targetSampleSize}）`;
         }
 
         if (!isPpsUnavailable) {
+            const acceptedRange = getSamplingAcceptedRange(targetSampleSize);
             const ppsCount = toInteger(pps?.sampleCount);
             if (ppsCount === null || ppsCount < 1) {
                 return "PPS抽样样本量需大于0";

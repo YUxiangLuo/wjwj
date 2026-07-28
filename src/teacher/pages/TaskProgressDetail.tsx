@@ -5,7 +5,9 @@ import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, type TaskProgressData } from "../api-client";
 
 const STATUS_CONFIG = {
@@ -102,7 +104,7 @@ export function TaskProgressDetail() {
                         <span className="flex items-center gap-1"><Users className="w-3 h-3" />{data.task.className}</span>
                         <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {data.task.deadline ? `截止: ${new Date(data.task.deadline).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}` : "无截止时间"}
+                            {data.task.deadline ? `截止：${formatDateTimeDisplay(data.task.deadline)}（UTC+8）` : "无截止时间"}
                         </span>
                         <span>{total} 名学生</span>
                     </div>
@@ -131,7 +133,7 @@ export function TaskProgressDetail() {
                     {/* Ring chart */}
                     <Card>
                         <CardContent className="p-6 flex flex-col items-center">
-                            <svg width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-4">
+                            <svg role="img" aria-label="学生实验状态分布环形图" width={CHART_SIZE} height={CHART_SIZE} viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`} className="mb-4">
                                 {(() => {
                                     const circumference = 2 * Math.PI * RING_RADIUS;
                                     let offset = 0;
@@ -230,8 +232,10 @@ export function TaskProgressDetail() {
                 <div className="p-4 border-b border-border flex items-center justify-between">
                     <span className="text-sm font-medium text-foreground">学生列表</span>
                     <div className="relative w-56">
+                        <Label htmlFor="teacher-progress-search" className="sr-only">搜索学号或姓名</Label>
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <Input
+                            id="teacher-progress-search"
                             placeholder="搜索学号/姓名"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -267,7 +271,7 @@ export function TaskProgressDetail() {
                                             {s.stage !== null ? `阶段 ${s.stage}` : "-"}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-xs">
-                                            {s.lastActivity ? new Date(s.lastActivity).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" }) : "-"}
+                                            {s.lastActivity ? `${formatDateTimeDisplay(s.lastActivity)}（UTC+8）` : "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {STATUSES_WITH_SUBMISSION.includes(s.status as StatusKey) && s.submissionId ? (

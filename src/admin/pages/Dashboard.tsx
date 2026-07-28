@@ -32,7 +32,15 @@ export function Dashboard() {
                 ))}
             </div>
             <Card>
-                <CardHeader className="flex-row items-center justify-between"><CardTitle className="flex items-center gap-2 text-lg"><Megaphone className="h-5 w-5 text-primary" />最近公告</CardTitle><Link className="text-sm text-primary hover:underline" to="/announcement">管理公告</Link></CardHeader>
+                <CardHeader className="flex-row items-center justify-between">
+                    <CardTitle>
+                        <h2 className="flex items-center gap-2 text-lg">
+                            <Megaphone className="h-5 w-5 text-primary" />
+                            最近公告
+                        </h2>
+                    </CardTitle>
+                    <Link className="text-sm text-primary hover:underline" to="/announcement">管理公告</Link>
+                </CardHeader>
                 <CardContent className="space-y-3">
                     {announcements.length ? announcements.map((item) => (
                         <div key={item.id} className="rounded-xl border border-border p-4"><div className="flex items-center justify-between gap-4"><h3 className="font-medium">{item.title}</h3><span className="text-xs text-muted-foreground">{formatDateDisplay(item.createdAt, "-")}</span></div><RichTextContent html={item.content} className="mt-2 line-clamp-2 text-sm text-muted-foreground" /></div>

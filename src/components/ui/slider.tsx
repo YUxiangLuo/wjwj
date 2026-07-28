@@ -5,14 +5,22 @@ import * as SliderPrimitive from "@radix-ui/react-slider"
 
 import { cn } from "@/lib/utils"
 
+type SliderProps = Omit<
+  React.ComponentProps<typeof SliderPrimitive.Root>,
+  "aria-label" | "aria-labelledby"
+> & {
+  "aria-label": string
+}
+
 function Slider({
   className,
   defaultValue,
   value,
   min = 0,
   max = 100,
+  "aria-label": accessibleLabel,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root>) {
+}: SliderProps) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -53,6 +61,11 @@ function Slider({
         <SliderPrimitive.Thumb
           data-slot="slider-thumb"
           key={index}
+          aria-label={
+            _values.length > 1
+              ? `${accessibleLabel}${index === 0 ? "下限" : index === _values.length - 1 ? "上限" : `第 ${index + 1} 个值`}`
+              : accessibleLabel
+          }
           className="border-primary ring-ring/50 block size-4 shrink-0 rounded-full border bg-background shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}

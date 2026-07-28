@@ -9,6 +9,7 @@ type DomGlobals = {
     HTMLButtonElement?: typeof globalThis.HTMLButtonElement;
     Element?: typeof globalThis.Element;
     Node?: typeof globalThis.Node;
+    NodeFilter?: typeof globalThis.NodeFilter;
     DocumentFragment?: typeof globalThis.DocumentFragment;
     SVGElement?: typeof globalThis.SVGElement;
     Event?: typeof globalThis.Event;
@@ -17,6 +18,7 @@ type DomGlobals = {
     CustomEvent?: typeof globalThis.CustomEvent;
     PopStateEvent?: typeof globalThis.PopStateEvent;
     MutationObserver?: typeof globalThis.MutationObserver;
+    ResizeObserver?: typeof globalThis.ResizeObserver;
     getComputedStyle?: typeof globalThis.getComputedStyle;
     localStorage?: typeof globalThis.localStorage;
     sessionStorage?: typeof globalThis.sessionStorage;
@@ -41,6 +43,7 @@ export function installDomGlobals(url = "http://localhost/") {
         HTMLButtonElement: globalThis.HTMLButtonElement,
         Element: globalThis.Element,
         Node: globalThis.Node,
+        NodeFilter: globalThis.NodeFilter,
         DocumentFragment: globalThis.DocumentFragment,
         SVGElement: globalThis.SVGElement,
         Event: globalThis.Event,
@@ -49,6 +52,7 @@ export function installDomGlobals(url = "http://localhost/") {
         CustomEvent: globalThis.CustomEvent,
         PopStateEvent: globalThis.PopStateEvent,
         MutationObserver: globalThis.MutationObserver,
+        ResizeObserver: globalThis.ResizeObserver,
         getComputedStyle: globalThis.getComputedStyle,
         localStorage: globalThis.localStorage,
         sessionStorage: globalThis.sessionStorage,
@@ -67,6 +71,7 @@ export function installDomGlobals(url = "http://localhost/") {
         HTMLButtonElement: window.HTMLButtonElement,
         Element: window.Element,
         Node: window.Node,
+        NodeFilter: window.NodeFilter,
         DocumentFragment: window.DocumentFragment,
         SVGElement: window.SVGElement,
         Event: window.Event,
@@ -75,6 +80,7 @@ export function installDomGlobals(url = "http://localhost/") {
         CustomEvent: window.CustomEvent,
         PopStateEvent: window.PopStateEvent,
         MutationObserver: window.MutationObserver,
+        ResizeObserver: window.ResizeObserver,
         getComputedStyle: window.getComputedStyle.bind(window),
         localStorage: window.localStorage,
         sessionStorage: window.sessionStorage,

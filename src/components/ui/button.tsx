@@ -59,4 +59,30 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+type IconButtonProps = Omit<
+  React.ComponentProps<"button">,
+  "aria-label" | "children"
+> &
+  Omit<VariantProps<typeof buttonVariants>, "size"> & {
+    "aria-label": string
+    children: React.ReactNode
+    size?: "icon" | "icon-sm" | "icon-lg"
+  }
+
+function IconButton({
+  className,
+  variant = "default",
+  size = "icon",
+  ...props
+}: IconButtonProps) {
+  return (
+    <Button
+      className={className}
+      variant={variant}
+      size={size}
+      {...props}
+    />
+  )
+}
+
+export { Button, IconButton, buttonVariants }

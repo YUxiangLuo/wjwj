@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, BarChart3, KeyRound, Loader2, LogOut, User } from "lucide-react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { Toaster } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { AppToaster } from "@/components/AppToaster";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import {
     AlertDialog,
@@ -87,7 +87,13 @@ function StudentAppContent() {
                     </div>
 
                     <div className="relative">
-                        <Button variant="ghost" className="h-10 rounded-full px-1" onClick={() => setShowAccountMenu((value) => !value)}>
+                        <Button
+                            variant="ghost"
+                            className="h-10 rounded-full px-1"
+                            aria-label="打开账户菜单"
+                            aria-expanded={showAccountMenu}
+                            onClick={() => setShowAccountMenu((value) => !value)}
+                        >
                             <Avatar className="h-9 w-9">
                                 <AvatarFallback className="bg-primary text-primary-foreground" data-testid="student-avatar">
                                     {currentUser.name.charAt(0)}
@@ -155,7 +161,7 @@ function StudentAppContent() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <Toaster richColors position="top-right" />
+            <AppToaster />
         </div>
     );
 }

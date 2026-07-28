@@ -4,6 +4,7 @@ import { installDomGlobals } from "@/test-utils/dom";
 import type { SampleParams } from "../types";
 import { PrecisionPhase } from "./PrecisionPhase";
 import { FactorsPhase } from "./FactorsPhase";
+import { QuizPhase } from "./QuizPhase";
 
 let restoreDom: (() => void) | null = null;
 
@@ -36,6 +37,20 @@ function meanParams(overrides: Partial<SampleParams> = {}): SampleParams {
     };
 }
 
+function proportionParams(overrides: Partial<SampleParams> = {}): SampleParams {
+    return {
+        populationSize: 200,
+        estimationType: "proportion",
+        confidenceLevel: "95",
+        marginOfError: 5,
+        designEffect: 1,
+        nonResponseRate: 0,
+        finalSampleSize: 132,
+        recommendedSize: 132,
+        ...overrides,
+    };
+}
+
 test("PrecisionPhase 在均值估计下展示均值公式而非比例公式", () => {
     const view = render(<PrecisionPhase params={meanParams()} onNext={() => {}} />);
     const text = view.container.textContent ?? "";
@@ -64,4 +79,19 @@ test("FactorsPhase 的均值子总体页说明沿用共同方差假设", () => {
     expect(text).toContain("分别估计均值");
     expect(text).toContain("统一使用 σ²=100");
     expect(text).not.toContain("±5%");
+});
+
+test("FactorsPhase 区分初始 n0 的 25 倍与有限总体实际倍数", () => {
+    const view = render(<FactorsPhase step="error_tolerance" params={proportionParams()} onNext={() => {}} />);
+    const text = view.container.textContent ?? "";
+
+    expect(text).toContain("初始公式 n₀");
+    expect(text).toContain("n₀ 会增加 25 倍");
+    expect(text).toContain("有限总体校正后的样本量由 132 增至 196");
+    expect(text).toContain("实际约为 1.48 倍");
+});
+
+test("QuizPhase 将 25 倍结论限定在未校正的 n0 公式", () => {
+    const view = render(<QuizPhase questionIndex={6} onNext={() => {}} onSkip={() => {}} />);
+    expect(view.container.textContent).toContain("未考虑有限总体校正的初始样本量 n₀ 公式");
 });
