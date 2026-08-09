@@ -66,7 +66,12 @@ function ChartBars({
     }
 
     return (
-        <div className={`${heightClass} rounded-2xl bg-background/30 border border-border p-4 overflow-auto`}>
+        <div
+            role="region"
+            aria-label="图表数据，可滚动查看"
+            tabIndex={0}
+            className={`${heightClass} rounded-2xl bg-background/30 border border-border p-4 overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+        >
             <div className="space-y-4">
                 {rows.map((row) => (
                     <div key={row.label} className="rounded-xl border border-border bg-card/40 p-3">
@@ -160,7 +165,7 @@ function FieldSelect({
 }) {
     return (
         <Select value={value} onValueChange={onChange}>
-            <SelectTrigger aria-label="选择分析抽样方法" className="w-[220px] bg-background border-border text-foreground">
+            <SelectTrigger aria-label={placeholder} className="w-[220px] bg-background border-border text-foreground">
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent className="bg-card border-border text-foreground">

@@ -1,27 +1,31 @@
 import { afterAll, afterEach, beforeAll, expect, test } from "bun:test";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { installDomGlobals } from "@/test-utils/dom";
-import { ImmersiveReportPreview } from "./ImmersiveReportPreview";
 
 let restoreDom: (() => void) | null = null;
+let ImmersiveReportPreviewContent: typeof import("./ImmersiveReportPreview").ImmersiveReportPreviewContent;
 
-beforeAll(() => {
+beforeAll(async () => {
     const dom = installDomGlobals("http://localhost/");
     restoreDom = dom.restore;
+    ({ ImmersiveReportPreviewContent } = await import("./ImmersiveReportPreview"));
 });
 
-afterEach(() => {
+afterEach(async () => {
     cleanup();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    document.body.innerHTML = "";
 });
 
-afterAll(() => {
+afterAll(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
     restoreDom?.();
     restoreDom = null;
 });
 
 test("ImmersiveReportPreview shows persisted sample plan semantics in overview", async () => {
     const view = render(
-        <ImmersiveReportPreview
+        <ImmersiveReportPreviewContent
             taskName="抽样调查"
             onClose={() => undefined}
             experiment={{
@@ -62,7 +66,6 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
         expect(view.getByText("样本量规划摘要")).toBeTruthy();
     });
 
-    expect(view.getByRole("dialog", { name: "抽样调查实验报告全屏预览" })).toBeTruthy();
     expect(view.getByRole("button", { name: "关闭全屏预览" })).toBeTruthy();
 
     const text = view.container.textContent ?? "";

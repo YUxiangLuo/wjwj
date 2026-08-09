@@ -1,20 +1,105 @@
 import { serve } from "bun";
+import { resolve } from "node:path";
 import adminPage from "./admin/admin.html";
 import teacherPage from "./teacher/teacher.html";
 import studentPage from "./student/student.html";
 import { adminApiRoutes } from "./admin/api";
 import { studentApiRoutes } from "./student/api";
 import { teacherApiRoutes } from "./teacher/api";
-import { redirect } from "react-router-dom";
 import { registerLongRunningProcessSignals } from "./server/process-signals";
 import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./server/template-files";
 import { closeDatabase } from "./db";
+import { buildResponseHeaders, handleServerError, withSecurityHeaders } from "./server/http";
+import type { RouteDefinition, RouteHandler } from "./server/route-types";
 
 type RouteRequest = Request & { params: Record<string, string> };
 
+const isProduction = process.env.NODE_ENV === "production";
+const distRoot = resolve(import.meta.dir, "../dist");
+const builtAssetNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+function securedResponse(body: BodyInit | null, init: ResponseInit = {}) {
+  return new Response(body, {
+    ...init,
+    headers: buildResponseHeaders(init.headers),
+  });
+}
+
+function productionPageRoute(fileName: "admin.html" | "teacher.html" | "student.html") {
+  return async (req: Request) => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      return securedResponse("Method Not Allowed", {
+        status: 405,
+        headers: { Allow: "GET, HEAD" },
+      });
+    }
+
+    const file = Bun.file(resolve(distRoot, fileName));
+    if (!(await file.exists())) {
+      return securedResponse("Production assets unavailable. Run bun run build.", { status: 503 });
+    }
+
+    const headers = {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-cache",
+    };
+    return securedResponse(req.method === "HEAD" ? null : file, { headers });
+  };
+}
+
+async function productionAssetRoute(req: RouteRequest) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return securedResponse("Method Not Allowed", {
+      status: 405,
+      headers: { Allow: "GET, HEAD" },
+    });
+  }
+
+  const fileName = req.params.asset ?? "";
+  if (!builtAssetNamePattern.test(fileName) || fileName.endsWith(".html")) {
+    return securedResponse("Not Found", { status: 404 });
+  }
+
+  const file = Bun.file(resolve(distRoot, fileName));
+  if (!(await file.exists())) return securedResponse("Not Found", { status: 404 });
+
+  const headers = {
+    "Content-Type": file.type || "application/octet-stream",
+    "Cache-Control": "public, max-age=31536000, immutable",
+  };
+  return securedResponse(req.method === "HEAD" ? null : file, { headers });
+}
+
+const adminRoute = isProduction ? productionPageRoute("admin.html") : adminPage;
+const teacherRoute = isProduction ? productionPageRoute("teacher.html") : teacherPage;
+const studentRoute = isProduction ? productionPageRoute("student.html") : studentPage;
+const productionAssetRoutes: Record<string, typeof productionAssetRoute> = isProduction
+  ? { "/:asset": productionAssetRoute }
+  : {};
+
+function secureRouteHandler(handler: RouteHandler | undefined): RouteHandler | undefined {
+  if (!handler) return undefined;
+  return async (req) => withSecurityHeaders(await handler(req));
+}
+
+function secureApiRoutes(routeMap: Record<string, RouteDefinition>) {
+  return Object.fromEntries(Object.entries(routeMap).map(([path, definition]) => {
+    const secured: RouteDefinition = {};
+    if (definition.GET) secured.GET = secureRouteHandler(definition.GET);
+    if (definition.POST) secured.POST = secureRouteHandler(definition.POST);
+    if (definition.PUT) secured.PUT = secureRouteHandler(definition.PUT);
+    if (definition.DELETE) secured.DELETE = secureRouteHandler(definition.DELETE);
+    return [path, secured];
+  })) as Record<string, RouteDefinition>;
+}
+
+const securedAdminApiRoutes = secureApiRoutes(adminApiRoutes);
+const securedStudentApiRoutes = secureApiRoutes(studentApiRoutes);
+const securedTeacherApiRoutes = secureApiRoutes(teacherApiRoutes);
+
 async function faviconRoute(req: Request) {
   if (req.method !== "GET" && req.method !== "HEAD") {
-    return new Response("Method Not Allowed", {
+    return securedResponse("Method Not Allowed", {
       status: 405,
       headers: { Allow: "GET, HEAD" },
     });
@@ -25,17 +110,17 @@ async function faviconRoute(req: Request) {
     "Content-Type": "image/svg+xml; charset=utf-8",
     "Cache-Control": "public, max-age=86400",
   };
-  return req.method === "HEAD" ? new Response(null, { headers }) : new Response(file, { headers });
+  return securedResponse(req.method === "HEAD" ? null : file, { headers });
 }
 
 function legacyFaviconRoute(req: Request) {
   if (req.method !== "GET" && req.method !== "HEAD") {
-    return new Response("Method Not Allowed", {
+    return securedResponse("Method Not Allowed", {
       status: 405,
       headers: { Allow: "GET, HEAD" },
     });
   }
-  return new Response(null, {
+  return securedResponse(null, {
     status: 308,
     headers: {
       Location: "/favicon.svg",
@@ -45,42 +130,45 @@ function legacyFaviconRoute(req: Request) {
 }
 
 const routes = {
-  "/": redirect("/student"),
+  "/": securedResponse(null, { status: 302, headers: { Location: "/student" } }),
   "/favicon.svg": faviconRoute,
   "/favicon.ico": legacyFaviconRoute,
-  "/student": studentPage,
-  "/student/*": studentPage,
+  "/student": studentRoute,
+  "/student/*": studentRoute,
 
   // Admin panel
-  "/admin": adminPage,
-  "/admin/*": adminPage,
+  "/admin": adminRoute,
+  "/admin/*": adminRoute,
 
   // Teacher panel
-  "/teacher": teacherPage,
-  "/teacher/*": teacherPage,
+  "/teacher": teacherRoute,
+  "/teacher/*": teacherRoute,
+
+  // Production assets are built with absolute root URLs.
+  ...productionAssetRoutes,
 
   // Admin API routes
-  ...adminApiRoutes,
+  ...securedAdminApiRoutes,
 
   // Student API routes
-  ...studentApiRoutes,
+  ...securedStudentApiRoutes,
 
   // Teacher API routes
-  ...teacherApiRoutes,
+  ...securedTeacherApiRoutes,
 
   // Static templates (teacher upload guides and csv templates)
   "/templates/:name": async (req: RouteRequest) => {
     if (req.method !== "GET" && req.method !== "HEAD") {
-      return new Response("Method Not Allowed", { status: 405 });
+      return securedResponse("Method Not Allowed", { status: 405 });
     }
 
     const fileName = req.params.name ?? "";
     const fullPath = resolveTemplatePath(fileName);
-    if (!fullPath) return new Response("Not Found", { status: 404 });
+    if (!fullPath) return securedResponse("Not Found", { status: 404 });
 
     const file = Bun.file(fullPath);
     if (!(await file.exists())) {
-      return new Response("Not Found", { status: 404 });
+      return securedResponse("Not Found", { status: 404 });
     }
 
     const headers = {
@@ -89,10 +177,10 @@ const routes = {
     };
 
     if (req.method === "HEAD") {
-      return new Response(null, { headers });
+      return securedResponse(null, { headers });
     }
 
-    return new Response(file, { headers });
+    return securedResponse(file, { headers });
   },
 };
 
@@ -100,6 +188,7 @@ const server = serve({
   hostname: process.env.HOST || "0.0.0.0",
   port: Number(process.env.PORT) || 3000,
   routes,
+  error: handleServerError,
 
   development: process.env.NODE_ENV !== "production" && {
     // Enable browser hot reloading in development

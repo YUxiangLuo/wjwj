@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
+import { getAccessibilityViolations } from "@/test-utils/accessibility";
+import type { AnalysisMetricsData } from "../../api-client";
 
 const mockExperimentApi = {
     getAnalysisMetrics: mock(async () => ({
@@ -11,7 +13,7 @@ const mockExperimentApi = {
             categoricalFields: [],
             numeric: {},
             categorical: {},
-        },
+        } as AnalysisMetricsData,
     })),
 };
 const mockToastError = mock(() => undefined);
@@ -73,6 +75,7 @@ mock.module("@/components/ui/dialog", () => ({
     DialogContent: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
     DialogHeader: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
     DialogTitle: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
+    DialogDescription: ({ children, ...props }: ComponentProps<"div">) => <div {...props}>{children}</div>,
 }));
 
 mock.module("../../components/RichTextEditor", () => ({
@@ -202,4 +205,41 @@ test("AnalysisReport gives icon-only chart controls accessible names", async () 
     await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
     expect(view.getAllByLabelText("放大图表").length).toBeGreaterThan(0);
     expect(view.getAllByLabelText("下载图表 SVG").length).toBeGreaterThan(0);
+});
+
+test("AnalysisReport makes populated charts keyboard-scrollable and names the variable selector", async () => {
+    const methodMetrics = {
+        simple: { estimate: 31, standardError: 1 },
+        systematic: { estimate: 30, standardError: 1.1 },
+        pps: { estimate: 29, standardError: 1.2 },
+        stratified: { estimate: 30.5, standardError: 0.9 },
+    };
+    mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+        success: true,
+        data: {
+            numericFields: ["年龄"],
+            categoricalFields: [],
+            numeric: {
+                年龄: {
+                    populationMean: 30,
+                    populationVariance: 25,
+                    methods: methodMetrics,
+                },
+            },
+            categorical: {},
+        },
+    });
+
+    const view = render(
+        <AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />
+    );
+
+    await waitFor(() => expect(view.getAllByLabelText("选择数值变量").length).toBeGreaterThan(0));
+    expect(view.getAllByLabelText("选择分类变量").length).toBeGreaterThan(0);
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const chartRegions = view.getAllByRole("region", { name: "图表数据，可滚动查看" });
+    expect(chartRegions.length).toBeGreaterThan(0);
+    for (const region of chartRegions) expect(region.tabIndex).toBe(0);
+    const violations = await getAccessibilityViolations(view.container);
+    expect(violations.find((violation) => violation.id === "scrollable-region-focusable")).toBeUndefined();
 });

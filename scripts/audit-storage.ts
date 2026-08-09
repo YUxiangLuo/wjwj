@@ -1,6 +1,6 @@
 import { readdir, unlink } from "node:fs/promises";
 import { relative, resolve, sep } from "node:path";
-import { sql } from "drizzle-orm";
+import { eq, isNull, sql } from "drizzle-orm";
 import { closeDatabase, db } from "../src/db";
 import { topic, topicAttachment } from "../src/db/schema";
 import { acquireStorageMutationLock } from "../src/db/storage-mutation-lock";
@@ -33,32 +33,47 @@ function addReference(references: Set<string>, path: unknown) {
 
 type StorageReferenceReader = Pick<typeof db, "execute" | "select">;
 
-async function loadReferences(client: StorageReferenceReader) {
+export interface StorageSchemaState {
+    topic_table: string | null;
+    attachment_table: string | null;
+    submission_table: string | null;
+    legacy_sampling_column: boolean;
+}
+
+export async function loadReferences(
+    client: StorageReferenceReader,
+    knownState?: StorageSchemaState,
+) {
     const references = new Set<string>();
-    const [state] = await client.execute(sql`
-        SELECT
-            to_regclass('public.topic')::text AS topic_table,
-            to_regclass('public.topic_attachment')::text AS attachment_table,
-            to_regclass('public.submission')::text AS submission_table,
-            EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_schema = 'public'
-                  AND table_name = 'experiment'
-                  AND column_name = 'sampling_data_path'
-            ) AS legacy_sampling_column
-    `) as unknown as Array<{
-        topic_table: string | null;
-        attachment_table: string | null;
-        submission_table: string | null;
-        legacy_sampling_column: boolean;
-    }>;
+    let state = knownState;
+    if (!state) {
+        [state] = await client.execute(sql`
+            SELECT
+                to_regclass('public.topic')::text AS topic_table,
+                to_regclass('public.topic_attachment')::text AS attachment_table,
+                to_regclass('public.submission')::text AS submission_table,
+                EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'experiment'
+                      AND column_name = 'sampling_data_path'
+                ) AS legacy_sampling_column
+        `) as unknown as StorageSchemaState[];
+    }
 
     if (state?.topic_table) {
-        const topics = await client.select({ path: topic.excelFilePath }).from(topic);
+        const topics = await client
+            .select({ path: topic.excelFilePath })
+            .from(topic)
+            .where(isNull(topic.deletedAt));
         for (const row of topics) addReference(references, row.path);
     }
-    if (state?.attachment_table) {
-        const attachments = await client.select({ path: topicAttachment.filePath }).from(topicAttachment);
+    if (state?.attachment_table && state.topic_table) {
+        const attachments = await client
+            .select({ path: topicAttachment.filePath })
+            .from(topicAttachment)
+            .innerJoin(topic, eq(topicAttachment.topicId, topic.id))
+            .where(isNull(topic.deletedAt));
         for (const row of attachments) addReference(references, row.path);
     }
     if (state?.submission_table) {
@@ -78,32 +93,36 @@ async function loadReferences(client: StorageReferenceReader) {
     return references;
 }
 
-try {
-    if (shouldDelete && !args.has("--force")) {
-        throw new Error("删除孤儿文件必须同时提供 --delete 和 --force");
-    }
-
-    await db.transaction(async (tx) => {
-        await acquireStorageMutationLock(tx);
-        const [files, references] = await Promise.all([listFiles(storageRoot), loadReferences(tx)]);
-        const orphans = files.filter((path) => !path.endsWith(`${sep}.gitkeep`) && !references.has(path));
-        const totalBytes = orphans.reduce((sum, path) => sum + Bun.file(path).size, 0);
-
-        console.log(`数据库引用文件：${references.size}`);
-        console.log(`存储文件总数：${files.length}`);
-        console.log(`未引用文件：${orphans.length}（${(totalBytes / 1024 / 1024).toFixed(2)} MiB）`);
-        for (const path of orphans) console.log(`  ${relative(process.cwd(), path)}`);
-
-        if (shouldDelete) {
-            for (const path of orphans) await unlink(path);
-            console.log(`已删除 ${orphans.length} 个未引用文件。`);
-        } else if (orphans.length > 0) {
-            console.log("当前仅审计，未删除文件。确认列表后可运行 bun run storage:clean。");
+export async function runStorageAudit() {
+    try {
+        if (shouldDelete && !args.has("--force")) {
+            throw new Error("删除孤儿文件必须同时提供 --delete 和 --force");
         }
-    });
-} catch (error) {
-    console.error("存储审计失败：", error);
-    process.exitCode = 1;
-} finally {
-    await closeDatabase();
+
+        await db.transaction(async (tx) => {
+            await acquireStorageMutationLock(tx);
+            const [files, references] = await Promise.all([listFiles(storageRoot), loadReferences(tx)]);
+            const orphans = files.filter((path) => !path.endsWith(`${sep}.gitkeep`) && !references.has(path));
+            const totalBytes = orphans.reduce((sum, path) => sum + Bun.file(path).size, 0);
+
+            console.log(`数据库引用文件：${references.size}`);
+            console.log(`存储文件总数：${files.length}`);
+            console.log(`未引用文件：${orphans.length}（${(totalBytes / 1024 / 1024).toFixed(2)} MiB）`);
+            for (const path of orphans) console.log(`  ${relative(process.cwd(), path)}`);
+
+            if (shouldDelete) {
+                for (const path of orphans) await unlink(path);
+                console.log(`已删除 ${orphans.length} 个未引用文件。`);
+            } else if (orphans.length > 0) {
+                console.log("当前仅审计，未删除文件。确认列表后可运行 bun run storage:clean。");
+            }
+        });
+    } catch (error) {
+        console.error("存储审计失败：", error);
+        process.exitCode = 1;
+    } finally {
+        await closeDatabase();
+    }
 }
+
+if (import.meta.main) await runStorageAudit();

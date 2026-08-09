@@ -6,6 +6,7 @@ import { installDomGlobals } from "@/test-utils/dom";
 
 let restoreDom: (() => void) | null = null;
 let AnnouncementManagement: typeof import("@/admin/pages/AnnouncementManagement").AnnouncementManagement;
+let TeacherManagement: typeof import("@/admin/pages/TeacherManagement").TeacherManagement;
 let TaskHall: typeof import("@/student/pages/TaskHall").TaskHall;
 let GradeExport: typeof import("@/teacher/pages/GradeExport").GradeExport;
 const originalFetch = globalThis.fetch;
@@ -14,10 +15,12 @@ beforeAll(async () => {
     restoreDom = installDomGlobals("http://localhost/").restore;
     [
         { AnnouncementManagement },
+        { TeacherManagement },
         { TaskHall },
         { GradeExport },
     ] = await Promise.all([
         import("@/admin/pages/AnnouncementManagement"),
+        import("@/admin/pages/TeacherManagement"),
         import("@/student/pages/TaskHall"),
         import("@/teacher/pages/GradeExport"),
     ]);
@@ -106,6 +109,19 @@ test("teacher grade export names filters, task selectors, and progress", async (
 
     const view = render(<GradeExport />);
     await waitFor(() => expect(view.getByTestId("teacher-export-row-1")).toBeTruthy());
+
+    expect(await getAccessibilityViolations(view.container)).toEqual([]);
+});
+
+test("admin teacher management gives the search control an accessible name", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/admin/teachers")) return jsonResponse([]);
+        throw new Error(`Unhandled fetch: ${url}`);
+    }) as unknown as typeof fetch;
+
+    const view = render(<TeacherManagement />);
+    await waitFor(() => expect(view.getByRole("button", { name: "搜索教师" })).toBeTruthy());
 
     expect(await getAccessibilityViolations(view.container)).toEqual([]);
 });

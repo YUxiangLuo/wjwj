@@ -35,6 +35,7 @@ for (const entrypoint of entrypoints) {
         outdir,
         plugins: [tailwind],
         target: "browser",
+        publicPath: "/",
         define: {
             "process.env.NODE_ENV": JSON.stringify("production"),
         },

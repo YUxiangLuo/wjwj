@@ -382,13 +382,12 @@ export function SubmissionPreview() {
                 </AlertDialogContent>
             </AlertDialog>
 
-            {showFullPreview && (
-                <ImmersiveReportPreview
-                    experiment={experiment}
-                    taskName={task.name}
-                    onClose={() => setShowFullPreview(false)}
-                />
-            )}
+            <ImmersiveReportPreview
+                open={showFullPreview}
+                experiment={experiment}
+                taskName={task.name}
+                onClose={() => setShowFullPreview(false)}
+            />
         </div>
     );
 }

@@ -1,11 +1,16 @@
 import { afterAll, afterEach, beforeAll, expect, mock, test } from "bun:test";
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import { StudentManagement } from "./StudentManagement";
 
 let restoreDom: (() => void) | null = null;
 const originalFetch = globalThis.fetch;
+
+function LocationProbe() {
+    const location = useLocation();
+    return <output data-testid="location-search">{location.search}</output>;
+}
 
 beforeAll(() => {
     restoreDom = installDomGlobals("http://localhost/admin/student?classId=7").restore;
@@ -39,6 +44,7 @@ test("student management initializes its request from the classId query", async 
     const view = render(
         <MemoryRouter initialEntries={["/student?classId=7"]}>
             <StudentManagement />
+            <LocationProbe />
         </MemoryRouter>,
     );
 
@@ -47,9 +53,11 @@ test("student management initializes its request from the classId query", async 
     });
 
     expect(view.getByText("统计一班暂无学生")).toBeTruthy();
+    expect(view.getByTestId("location-search").textContent).toBe("?classId=7");
     fireEvent.click(view.getByText("查看全部学生"));
 
     await waitFor(() => {
         expect(requestedUrls.some((url) => url.endsWith("/api/admin/students"))).toBe(true);
+        expect(view.getByTestId("location-search").textContent).toBe("");
     });
 });
