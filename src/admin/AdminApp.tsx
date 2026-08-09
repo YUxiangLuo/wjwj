@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, Loader2, LogOut, Megaphone, Menu, School, Users } from "lucide-react";
+import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, Loader2, LogOut, Megaphone, School, Users } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/button";
@@ -29,7 +29,6 @@ const menu = [
 
 function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser; onLogout: () => Promise<void>; onPasswordChanged: () => void }) {
     const location = useLocation();
-    const [sidebar, setSidebar] = useState(false);
     const [passwordOpen, setPasswordOpen] = useState(false);
     const mustChangePassword = user.isFirstLogin === 1;
     const passwordChange = usePasswordChange({
@@ -49,18 +48,16 @@ function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser
                 title="系统管理"
                 titleIcon={BarChart3}
                 items={menu}
-                mobileOpen={sidebar}
-                onMobileOpenChange={setSidebar}
                 footer={
                     <div className="flex items-center gap-3"><Avatar className="h-9 w-9"><AvatarFallback className="bg-primary text-primary-foreground">{user.username.charAt(0).toUpperCase()}</AvatarFallback></Avatar><div><p className="text-sm font-medium">{user.username}</p><p className="text-xs text-muted-foreground">管理员</p></div></div>
                 }
             />
             <main className="min-w-0 flex-1">
-                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur sm:px-6">
-                    <div className="flex items-center gap-3"><IconButton aria-label="打开主菜单" variant="ghost" className="lg:hidden" onClick={() => setSidebar(true)}><Menu className="h-5 w-5" /></IconButton><div><h1 className="font-semibold">{title}</h1><p className="text-xs text-muted-foreground">内网教学系统</p></div></div>
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/80 backdrop-blur px-6">
+                    <div><h1 className="font-semibold">{title}</h1><p className="text-xs text-muted-foreground">内网教学系统</p></div>
                     <div className="flex items-center gap-1"><IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton><IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton></div>
                 </header>
-                <div className="p-4 sm:p-6">
+                <div className="p-6">
                     {mustChangePassword ? (
                         <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用管理功能。</div>
                     ) : <Routes>

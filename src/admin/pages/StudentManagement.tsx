@@ -135,7 +135,7 @@ export function StudentManagement() {
             </CardHeader>
             <CardContent>
                 <div className="mb-4 flex flex-wrap items-end gap-2">
-                    <div className="min-w-56 flex-1 sm:max-w-xs">
+                    <div className="min-w-56 flex-1 max-w-xs">
                         <Label htmlFor="admin-student-search" className="sr-only">搜索学号或姓名</Label>
                         <Input
                             id="admin-student-search"

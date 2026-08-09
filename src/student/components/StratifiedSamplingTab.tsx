@@ -280,7 +280,7 @@ export function StratifiedSamplingTab({
                 </CardHeader>
                 <CardContent className="space-y-5 pt-4">
                     {/* 参数区：分层变量 + 随机种子 */}
-                    <div className="grid gap-4 rounded-2xl border border-border/70 bg-background/40 p-4 md:grid-cols-2 xl:grid-cols-[220px_220px_1fr] xl:items-end">
+                    <div className="grid gap-4 rounded-2xl border border-border/70 bg-background/40 p-4 grid-cols-[220px_220px_1fr] items-end">
                         <div className="space-y-2">
                             <Label className="text-xs text-foreground/90">选择分层变量</Label>
                             <Select value={stratifyBy} onValueChange={setStratifyBy}>
@@ -437,8 +437,8 @@ export function StratifiedSamplingTab({
             </Card>
 
             {/* 底部区：执行按钮 + 预览 */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-1 flex items-stretch">
+            <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-1 flex items-stretch">
                     <Card className="rounded-2xl border-border bg-card/50 shadow-sm w-full flex flex-col justify-center">
                         <CardContent className="py-6 px-6">
                             {!result?.completed ? (
@@ -470,7 +470,7 @@ export function StratifiedSamplingTab({
                         </CardContent>
                     </Card>
                 </div>
-                <div className="lg:col-span-2">
+                <div className="col-span-2">
                     <Card className="rounded-2xl border-border bg-card/50 shadow-sm h-full">
                         <CardHeader>
                             <div className="flex items-center justify-between">
@@ -497,7 +497,7 @@ export function StratifiedSamplingTab({
 
             {/* 分配方法对比 Dialog */}
             <Dialog open={showAllocationComparison} onOpenChange={setShowAllocationComparison}>
-                <DialogContent className="bg-card border-border text-foreground sm:max-w-3xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="bg-card border-border text-foreground max-w-3xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">分配方法对比分析</DialogTitle>
                         <DialogDescription className="text-muted-foreground">不同分配方法的样本分布与效率比较</DialogDescription>

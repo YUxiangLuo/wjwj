@@ -346,7 +346,7 @@ export function TaskHall() {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-testid="student-stats-section">
+            <div className="grid grid-cols-3 gap-4" data-testid="student-stats-section">
                 <Card className="rounded-2xl border-border bg-card/50 shadow-sm hover:border-input transition-colors group" data-testid="student-stat-in-progress">
                     <CardContent className="p-6 flex items-center gap-5">
                         <div className="p-4 bg-primary/10 rounded-2xl text-primary group-hover:bg-primary/20 group-hover:scale-110 transition-all duration-300">
@@ -383,12 +383,12 @@ export function TaskHall() {
             </div>
 
             {/* Filter Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+            <div className="flex flex-row items-center justify-between gap-4 border-b border-border pb-4">
                 <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
                     <LayoutDashboard className="w-5 h-5 text-primary" />
                     我的任务
                 </h2>
-                <div className="flex p-1 bg-card border border-border rounded-lg self-start sm:self-auto">
+                <div className="flex p-1 bg-card border border-border rounded-lg self-auto">
                     <button
                         onClick={() => setFilter("all")}
                         data-testid="student-filter-all"
@@ -421,7 +421,7 @@ export function TaskHall() {
             </div>
 
             {/* Task Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
+            <div className="grid grid-cols-3 gap-6 min-h-[300px]" data-testid="student-task-grid">
                 {taskError ? (
                     <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-destructive/40 bg-destructive/10 py-20">
                         <div className="w-16 h-16 bg-destructive rounded-full flex items-center justify-center mb-4 border border-destructive">
@@ -457,13 +457,13 @@ export function TaskHall() {
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground">查看实验室最新通知与动态</DialogDescription>
                     </DialogHeader>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 min-h-[400px]">
+                    <div className="grid grid-cols-2 gap-6 mt-4 min-h-[400px]">
                         {/* List */}
                         <div
                             role="region"
                             tabIndex={0}
                             aria-label="公告列表"
-                            className="space-y-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar border-r border-border md:pr-4"
+                            className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar border-r border-border pr-4"
                         >
                             {announcements.length === 0 && (
                                 <div className="text-sm text-muted-foreground text-center py-12 italic">暂无公告</div>

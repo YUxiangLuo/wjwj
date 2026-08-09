@@ -128,7 +128,7 @@ export function GradingDetail() {
                 <Card>
                     <CardHeader><CardTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-success" />评分</CardTitle></CardHeader>
                     <CardContent className="space-y-5">
-                        <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="grid gap-4 grid-cols-3">
                             {(["questionnaire", "process", "report"] as const).map((key) => {
                                 const inputId = `grading-score-${key}`;
                                 return (

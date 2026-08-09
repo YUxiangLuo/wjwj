@@ -68,7 +68,7 @@ function StudentAppContent() {
     return (
         <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30">
             <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-8">
                     <div className="flex items-center gap-3">
                         {!isTaskHall && (
                             <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="返回">
@@ -121,7 +121,7 @@ function StudentAppContent() {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+            <main className="mx-auto max-w-7xl py-8 px-8">
                 {mustChangePassword ? (
                     <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再开始实验。</div>
                 ) : <Routes>

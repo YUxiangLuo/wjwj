@@ -198,7 +198,7 @@ export function SemesterManagement() {
                 </Button>
             </PageHeader>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -251,15 +251,15 @@ export function SemesterManagement() {
                         <CardTitle className="text-base text-foreground">学期列表</CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredSemesters.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                    <div className="flex gap-3 flex-row w-auto">
                         <Input
                             placeholder="搜索学期名称..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-background border-border text-foreground placeholder:text-muted-foreground sm:w-64 focus:border-ring focus:ring-ring/20"
+                            className="bg-background border-border text-foreground placeholder:text-muted-foreground w-64 focus:border-ring focus:ring-ring/20"
                         />
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "current" | "history")}>
-                            <SelectTrigger aria-label="按学期状态筛选" className="bg-background border-border text-foreground sm:w-36 focus:ring-ring/20">
+                            <SelectTrigger aria-label="按学期状态筛选" className="bg-background border-border text-foreground w-36 focus:ring-ring/20">
                                 <SelectValue placeholder="状态筛选" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -350,7 +350,7 @@ export function SemesterManagement() {
             </Card>
 
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+                <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">创建学期</DialogTitle>
                         <DialogDescription className="text-muted-foreground">创建一个新的学期用于组织班级和教学任务</DialogDescription>
@@ -394,7 +394,7 @@ export function SemesterManagement() {
             </Dialog>
 
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+                <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">编辑学期</DialogTitle>
                         <DialogDescription className="text-muted-foreground">修改学期名称</DialogDescription>

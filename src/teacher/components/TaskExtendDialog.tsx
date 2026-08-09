@@ -25,7 +25,7 @@ export function TaskExtendDialog(props: TaskExtendDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-card border-border text-foreground sm:max-w-md">
+            <DialogContent className="bg-card border-border text-foreground max-w-md">
                 <DialogHeader>
                     <DialogTitle className="text-foreground">延长截止时间</DialogTitle>
                     <DialogDescription className="sr-only">

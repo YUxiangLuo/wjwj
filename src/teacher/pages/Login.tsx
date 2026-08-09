@@ -38,9 +38,9 @@ export function Login() {
     };
 
     return (
-        <main className="min-h-screen grid lg:grid-cols-2 bg-background font-sans text-foreground">
+        <main className="min-h-screen grid grid-cols-2 bg-background font-sans text-foreground">
             {/* Left Side: Hero / Branding */}
-            <div className="hidden lg:flex flex-col justify-between bg-card relative overflow-hidden p-12 border-r border-border">
+            <div className="flex flex-col justify-between bg-card relative overflow-hidden p-12 border-r border-border">
                 <div className="absolute inset-0 z-0 opacity-40">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-card to-background z-10" />
                     <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-card/5 to-transparent" />
@@ -60,7 +60,7 @@ export function Login() {
                     <div className="relative">
                         <div className="absolute -top-10 -left-10 w-24 h-24 bg-primary/30 rounded-full blur-3xl" />
                         <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-info/20 rounded-full blur-3xl" />
-                        <h1 className="text-4xl sm:text-5xl font-bold leading-tight tracking-tight text-foreground mb-6">
+                        <h1 className="text-5xl font-bold leading-tight tracking-tight text-foreground mb-6">
                             探索数据背后的<br />
                             <span className="text-primary">数学真理</span>
                         </h1>
@@ -99,15 +99,6 @@ export function Login() {
 
             {/* Right Side: Login Form */}
             <div className="flex flex-col justify-center items-center p-8 bg-background relative">
-                <div className="absolute top-0 right-0 p-8 lg:hidden">
-                    <div className="flex items-center gap-2 font-semibold">
-                        <div className="bg-primary p-1.5 rounded-lg">
-                            <BarChart3 className="w-4 h-4 text-primary-foreground" />
-                        </div>
-                        SSS
-                    </div>
-                </div>
-
                 <div className="w-full max-w-md space-y-10">
                     <div className="flex flex-col space-y-3 text-center">
                         <h2 className="text-3xl font-bold tracking-tight text-foreground">

@@ -192,7 +192,7 @@ export function StudentManagement() {
                 <p className="text-sm text-muted-foreground mt-1">维护班级学生名单与账号状态。</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -234,8 +234,8 @@ export function StudentManagement() {
                         <CardTitle className="text-base text-foreground">学生列表</CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredStudents.length} 人</p>
                     </div>
-                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-52">
+                    <div className="flex gap-3 flex-row w-auto">
+                        <div className="relative w-52">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-student-search"

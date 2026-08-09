@@ -327,7 +327,7 @@ export function TopicManagement() {
                 <p className="text-sm text-muted-foreground mt-1">配置课题信息、数据与评分权重。</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -380,8 +380,8 @@ export function TopicManagement() {
                         <CardTitle className="text-base text-foreground">课题列表</CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredTopics.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-56">
+                    <div className="flex gap-3 flex-row w-auto">
+                        <div className="relative w-56">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 data-testid="teacher-topic-search"
@@ -392,7 +392,7 @@ export function TopicManagement() {
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger aria-label="按课题状态筛选" data-testid="teacher-topic-status-filter" className="bg-background border-border text-foreground sm:w-28">
+                            <SelectTrigger aria-label="按课题状态筛选" data-testid="teacher-topic-status-filter" className="bg-background border-border text-foreground w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -409,7 +409,7 @@ export function TopicManagement() {
                 <CardContent className="space-y-4 pt-4">
                     {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
                         <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-lg p-5 bg-background hover:bg-card hover:border-input transition-all">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+                            <div className="flex gap-3 flex-row items-start justify-between mb-4">
                                 <div className="flex items-start gap-4">
                                     <div className="w-12 h-12 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
                                         <BookOpen className="w-6 h-6" />

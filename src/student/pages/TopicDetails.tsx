@@ -207,7 +207,7 @@ export function TopicDetails() {
                     </Button>
                 </Link>
 
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mt-1">
+                <div className="flex flex-row items-center justify-between gap-3 mt-1">
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">{task.name}</h1>
                         <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-muted-foreground">
@@ -221,7 +221,7 @@ export function TopicDetails() {
 
             <Card className="rounded-2xl border-border bg-card/80 shadow-sm">
                 <CardContent className="px-5 py-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div className="flex gap-4 flex-row items-center justify-between">
                         <div className="space-y-1 max-w-2xl">
                             <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary border border-primary/20">
                                 <BookOpen className="w-3 h-3" />
@@ -247,8 +247,8 @@ export function TopicDetails() {
                 </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2 space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-2 space-y-4">
                     <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                         <CardHeader className="border-b border-border pb-3">
                             <CardTitle className="text-sm text-foreground flex items-center gap-2">
@@ -274,7 +274,7 @@ export function TopicDetails() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-3 pb-3">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 gap-2">
                                     {task.attachments.map((file) => (
                                         <div key={file.id} className="flex items-center justify-between rounded-lg border border-input bg-muted/50 px-3 py-2 hover:bg-muted transition-colors group gap-2">
                                             <div className="flex items-center gap-2.5 overflow-hidden">

@@ -257,7 +257,7 @@ export function DecisionPhase({
             </div>
 
             {hasAdvancedSource && (
-                <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 flex flex-row items-center justify-between gap-3">
                     <div className="flex items-start gap-2 text-sm text-warning">
                         <Info className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
                         <span>
@@ -276,7 +276,7 @@ export function DecisionPhase({
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
                 {/* Left: Parameter controls */}
                 <div className="rounded-2xl border border-border bg-background p-5 space-y-5 shadow-sm transition-colors">
                     <h3 className="text-sm font-semibold text-foreground/90">常规公式参数</h3>
@@ -398,7 +398,7 @@ export function DecisionPhase({
                     <Wrench className="w-4 h-4 text-muted-foreground" />
                     <h3 className="text-sm font-semibold text-foreground/90">高级工具（特殊规划场景）</h3>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                     {ADVANCED_TAB_CONFIG.map(({ key, label }) => {
                         const isActiveSource = advancedPlanSource === key;
                         const isDisabled =
@@ -437,8 +437,8 @@ export function DecisionPhase({
                 <DialogContent
                     className={`bg-background border-border text-foreground ${
                         activeAdvancedTab === "metrics"
-                            ? "w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-[min(90rem,96vw)]"
-                            : "sm:max-w-3xl"
+                            ? "w-[96vw] max-w-[90rem]"
+                            : "max-w-3xl"
                     } max-h-[85vh] overflow-y-auto`}
                 >
                     {activeAdvancedTab && (() => {
@@ -606,7 +606,7 @@ export function DecisionPhase({
 
                     {activeAdvancedTab === "metrics" && metrics && (
                         <>
-                            <div className={cn("grid min-w-0 grid-cols-1 gap-5", !isMeanEstimation && "lg:grid-cols-3 lg:gap-6")}>
+                            <div className={cn("grid min-w-0 grid-cols-1 gap-5", !isMeanEstimation && "grid-cols-3 gap-6")}>
                                 <EnhancedMetricsCard
                                     metrics={metrics}
                                     estimationType={params.estimationType}

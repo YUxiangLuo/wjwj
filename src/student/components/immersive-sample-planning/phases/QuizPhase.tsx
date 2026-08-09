@@ -115,7 +115,7 @@ export function QuizPhase({ questionIndex, onNext, onSkip }: Props) {
                 <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-info/10 text-xs font-medium text-info">
                     快速自检　{questionIndex + 1} / {QUESTIONS.length}
                 </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-foreground leading-snug">
+                <h2 className="text-2xl font-bold text-foreground leading-snug">
                     {q.question}
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-2xl mx-auto">

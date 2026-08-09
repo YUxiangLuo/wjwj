@@ -36,7 +36,7 @@ function labelField(key: string) {
 
 function ParamRow({ label, value }: { label: string; value: ReactNode }) {
     return (
-        <div className="grid grid-cols-1 gap-1 border-b border-border/80 py-2.5 last:border-0 sm:grid-cols-[minmax(140px,200px)_1fr] sm:gap-4">
+        <div className="grid border-b border-border/80 py-2.5 last:border-0 grid-cols-[minmax(140px,200px)_1fr] gap-4">
             <div className="text-xs font-medium text-muted-foreground">{label}</div>
             <div className="text-sm text-foreground break-words">{value}</div>
         </div>

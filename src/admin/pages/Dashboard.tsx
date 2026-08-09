@@ -26,7 +26,7 @@ export function Dashboard() {
     ];
     return (
         <div className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="grid gap-4 grid-cols-5">
                 {cards.map(({ label, value, icon: Icon }) => (
                     <Card key={label}><CardContent className="flex items-center justify-between p-5"><div><p className="text-sm text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-bold">{value}</p></div><span className="grid h-11 w-11 place-items-center rounded-xl bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span></CardContent></Card>
                 ))}

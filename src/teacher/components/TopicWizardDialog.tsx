@@ -279,7 +279,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="sm:max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
+                className="max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
                 onInteractOutside={(e) => e.preventDefault()}
                 onEscapeKeyDown={(e) => e.preventDefault()}
             >
@@ -762,7 +762,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 6 && (
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-3 gap-6">
                                     <div className="bg-background border border-border rounded-lg p-6 space-y-4">
                                         <Label htmlFor="teacher-topic-weight-questionnaire" className="text-foreground/90 text-lg">问卷设计权重</Label>
                                         <div className="flex items-center gap-2">

@@ -34,7 +34,7 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px]">
+            <DialogContent className="bg-card border-border text-foreground max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle className="text-foreground">批量导入学生</DialogTitle>
                     <DialogDescription className="sr-only">

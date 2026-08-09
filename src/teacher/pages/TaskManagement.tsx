@@ -178,7 +178,7 @@ export function TaskManagement() {
                 <p className="text-sm text-muted-foreground mt-1">管理发布任务与批改进度。</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -232,8 +232,8 @@ export function TaskManagement() {
                         <CardTitle className="text-base text-foreground">任务列表</CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredTasks.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                        <div className="relative sm:w-56">
+                    <div className="flex gap-3 flex-row w-auto">
+                        <div className="relative w-56">
                             <Label htmlFor="teacher-task-search" className="sr-only">搜索课题</Label>
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
@@ -246,7 +246,7 @@ export function TaskManagement() {
                             />
                         </div>
                         <Select value={classFilter} onValueChange={setClassFilter}>
-                            <SelectTrigger aria-label="按班级筛选任务" data-testid="teacher-task-class-filter" className="bg-background border-border text-foreground sm:w-40">
+                            <SelectTrigger aria-label="按班级筛选任务" data-testid="teacher-task-class-filter" className="bg-background border-border text-foreground w-40">
                                 <SelectValue placeholder="全部班级" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">

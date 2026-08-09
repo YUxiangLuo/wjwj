@@ -59,7 +59,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                 </p>
             </div>
 
-            <div className={`grid gap-4 ${isMeanEstimation ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+            <div className={`grid gap-4 ${isMeanEstimation ? "grid-cols-2" : "grid-cols-3"}`}>
                 <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">标准误差 SE</p>
                     <p className="font-mono text-sm text-foreground/90">
