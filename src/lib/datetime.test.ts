@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test";
 import {
+    getCurrentPickerDateTimeValue,
     localWallClockToUtcIso,
     parseLocalDateTime,
     parsePickerValue,
     toLocalDateTimeString,
+    toPickerCalendarDate,
 } from "./datetime";
 
 test("China Standard Time wall clock converts to the expected UTC instant", () => {
@@ -19,6 +21,19 @@ test("API UTC instant maps back to China Standard Time picker fields", () => {
         minute: 45,
     });
     expect(toLocalDateTimeString(new Date("2026-08-20T12:45:00.000Z"))).toBe("2026-08-20T20:45");
+});
+
+test("calendar today preserves the China Standard Time date in local Date fields", () => {
+    const current = getCurrentPickerDateTimeValue(new Date("2026-03-09T16:30:00.000Z"));
+    expect(current).not.toBeNull();
+
+    const calendarDate = toPickerCalendarDate(current!);
+    expect([
+        calendarDate.getFullYear(),
+        calendarDate.getMonth() + 1,
+        calendarDate.getDate(),
+        calendarDate.getHours(),
+    ]).toEqual([2026, 3, 10, 12]);
 });
 
 test("wall-clock parsing is independent of the process/browser timezone", () => {

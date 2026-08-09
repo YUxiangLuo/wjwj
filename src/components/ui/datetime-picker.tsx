@@ -11,6 +11,7 @@ import {
     formatPickerDateTimeValue,
     getCurrentPickerDateTimeValue,
     parsePickerValue,
+    toPickerCalendarDate,
 } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
@@ -49,9 +50,8 @@ export function DatetimePicker24({
     const current = getCurrentPickerDateTimeValue();
     const hour = parsed?.hour ?? 12;
     const minute = parsed?.minute ?? 0;
-    const calendarDate = parsed
-        ? new Date(parsed.year, parsed.month - 1, parsed.day, 12, 0, 0, 0)
-        : undefined;
+    const calendarDate = parsed ? toPickerCalendarDate(parsed) : undefined;
+    const calendarToday = current ? toPickerCalendarDate(current) : new Date();
 
     const handleHourChange = (h: number) => {
         const base = parsed ?? current;
@@ -116,7 +116,8 @@ export function DatetimePicker24({
                             className="rounded-md"
                             selected={calendarDate}
                             onSelect={handleDateSelect}
-                            defaultMonth={calendarDate ?? new Date()}
+                            defaultMonth={calendarDate ?? calendarToday}
+                            today={calendarToday}
                         />
                     </div>
                     <div className="flex min-w-[200px] flex-col gap-3 border-t border-border pt-3 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">

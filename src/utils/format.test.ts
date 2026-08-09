@@ -4,8 +4,9 @@ import {
     safeParseDate, parseDeadline, formatDateTimeDisplay, formatDateDisplay, formatTimeDisplay,
 } from "./format";
 
-test("formatLocalDateStamp uses local calendar date", () => {
-    expect(formatLocalDateStamp(new Date(2026, 2, 9, 4, 25, 6))).toBe("2026-03-09");
+test("formatLocalDateStamp uses the Asia/Shanghai calendar date", () => {
+    // 2026-03-09T16:25:06Z = 2026-03-10T00:25:06+08:00 (CST)
+    expect(formatLocalDateStamp(new Date("2026-03-09T16:25:06.000Z"))).toBe("2026-03-10");
 });
 
 test("formatSaveTime returns a hh:mm:ss string", () => {

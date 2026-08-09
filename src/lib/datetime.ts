@@ -57,6 +57,17 @@ export function formatPickerDateTimeValue(value: PickerDateTimeValue) {
     return `${String(value.year).padStart(4, "0")}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}T${String(value.hour).padStart(2, "0")}:${String(value.minute).padStart(2, "0")}`;
 }
 
+/**
+ * Represent picker wall-clock fields as a browser-local calendar date.
+ * DayPicker operates on local Date fields, so noon avoids DST boundaries while
+ * preserving the China Standard Time year/month/day shown to the user.
+ */
+export function toPickerCalendarDate(
+    value: Pick<PickerDateTimeValue, "year" | "month" | "day">,
+): Date {
+    return new Date(value.year, value.month - 1, value.day, 12, 0, 0, 0);
+}
+
 /** Strictly parse `YYYY-MM-DDTHH:mm` as a China Standard Time instant. */
 export function parseLocalDateTime(value: string): Date | null {
     const parts = parseWallClockParts(value);

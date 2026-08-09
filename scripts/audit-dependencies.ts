@@ -8,10 +8,6 @@ interface AuditAdvisory {
 type AuditReport = Record<string, AuditAdvisory[]>;
 
 const ACCEPTED_RESIDUALS: Record<number, { packageName: string; rationale: string }> = {
-    1124282: {
-        packageName: "react-router",
-        rationale: "GHSA-qwww-vcr4-c8h2 only affects unstable RSC APIs; all three clients use declarative BrowserRouter.",
-    },
     1102341: {
         packageName: "esbuild",
         rationale: "GHSA-67mh-4wv8-2f99 is confined to the drizzle-kit development dependency; the app uses Bun.serve and never runs esbuild's development server.",
