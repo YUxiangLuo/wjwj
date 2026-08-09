@@ -1,13 +1,84 @@
+const SECURITY_HEADERS = {
+    "Content-Security-Policy": [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'self'",
+        "form-action 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "font-src 'self' data:",
+        "connect-src 'self'",
+        "frame-src 'self' blob:",
+        "worker-src 'self' blob:",
+    ].join("; "),
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "SAMEORIGIN",
+} as const;
+
+export function buildResponseHeaders(headers?: HeadersInit): Headers {
+    const result = new Headers(headers);
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+        if (!result.has(name)) result.set(name, value);
+    }
+    return result;
+}
+
+export function withSecurityHeaders(response: Response): Response {
+    return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: buildResponseHeaders(response.headers),
+    });
+}
+
 export function json<T>(data: T, status = 200, headers?: HeadersInit): Response {
-    return Response.json({ success: true, data }, { status, headers });
+    return Response.json({ success: true, data }, { status, headers: buildResponseHeaders(headers) });
 }
 
 export function error(message: string, code: string, status = 400): Response {
-    return Response.json({ success: false, error: { code, message } }, { status });
+    return Response.json(
+        { success: false, error: { code, message } },
+        { status, headers: buildResponseHeaders() },
+    );
 }
 
-export async function parseBody<T>(req: Request): Promise<T> {
-    return req.json() as Promise<T>;
+export class InvalidJsonError extends Error {
+    constructor(message = "请求体不是有效的 JSON") {
+        super(message);
+        this.name = "InvalidJsonError";
+    }
+}
+
+export function stringValue(value: unknown): string {
+    return typeof value === "string" ? value : "";
+}
+
+export async function parseBody<T extends Record<string, unknown>>(req: Request): Promise<T> {
+    let parsed: unknown;
+    try {
+        parsed = await req.json();
+    } catch {
+        throw new InvalidJsonError();
+    }
+
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new InvalidJsonError("请求体必须是 JSON 对象");
+    }
+    return parsed as T;
+}
+
+export function handleServerError(cause: unknown): Response {
+    if (cause instanceof InvalidJsonError) {
+        return error(cause.message, "INVALID_JSON", 400);
+    }
+
+    console.error(cause);
+    return error("服务器内部错误", "INTERNAL_ERROR", 500);
 }
 
 export function getSearchParams(req: Request) {

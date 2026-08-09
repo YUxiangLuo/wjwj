@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "bun --hot src/index.ts",
-    "start": "NODE_ENV=production bun src/index.ts",
+    "start": "bun run build && NODE_ENV=production bun src/index.ts",
     "build": "bun run scripts/build.ts",
     "test": "bun run test:unit",
     "typecheck": "bunx tsc --noEmit && bun run check:styles",

@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, student } from "../../db/schema";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
-import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody } from "../../server/http";
+import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import type { RouteDefinition } from "../../server/route-types";
 import {
@@ -84,8 +84,8 @@ export async function requireAuth(req: Request, options: StudentAuthOptions = {}
 const loginRoutes: RouteDefinition = {
     async POST(req) {
         const body = await parseBody<{ studentId?: string; password?: string }>(req);
-        const studentId = body.studentId?.trim() ?? "";
-        const password = body.password ?? "";
+        const studentId = stringValue(body.studentId).trim();
+        const password = stringValue(body.password);
         if (!studentId || !password) return error("请输入学号和密码", "VALIDATION_ERROR", 400);
 
         const [row] = await db.select().from(student).where(eq(student.studentId, studentId));
@@ -141,8 +141,8 @@ const passwordRoutes: RouteDefinition = {
         if (auth.error || !auth.student) return auth.error!;
 
         const body = await parseBody<{ currentPassword?: string; newPassword?: string }>(req);
-        const currentPassword = body.currentPassword ?? "";
-        const newPassword = body.newPassword ?? "";
+        const currentPassword = stringValue(body.currentPassword);
+        const newPassword = stringValue(body.newPassword);
         if (!currentPassword || !newPassword) return error("请输入当前密码和新密码", "VALIDATION_ERROR", 400);
         if (currentPassword === newPassword) return error("新密码不能与当前密码相同", "PASSWORD_SAME", 400);
 

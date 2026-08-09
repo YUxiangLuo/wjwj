@@ -3,7 +3,7 @@ import { db } from "../../db";
 import { class_, experiment, student, task, teacher, topic } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
-import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
+import { error, getRouteParam, getSearchParams, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
 import { parseStoredJson } from "../../student/experiment/serialization";
@@ -212,7 +212,10 @@ const gradingDetailRoutes: RouteDefinition = {
         if (scores.some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100)) {
             return error("分项分数需在 0-100 之间", "VALIDATION_ERROR", 400);
         }
-        const comment = body.comment?.trim() ?? "";
+        if (body.comment !== undefined && typeof body.comment !== "string") {
+            return error("教师评语格式无效", "VALIDATION_ERROR", 400);
+        }
+        const comment = stringValue(body.comment).trim();
         if (comment.length > 2_000) return error("教师评语不能超过2000字", "VALIDATION_ERROR", 400);
         const snapshot = parseStoredJson<{ weightConfig?: unknown }>(row.submissionSnapshot);
         const weights = scoringWeightsFrom(snapshot?.weightConfig ?? row.weightConfig);
@@ -255,7 +258,7 @@ const gradingRejectRoutes: RouteDefinition = {
         const versionResult = validateObservedVersion(body.observedVersion, row.version);
         if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
         if (row.status !== "submitted") return error("只有待批改实验可以驳回", "INVALID_STATUS", 409);
-        const reason = body.reason?.trim() ?? "";
+        const reason = stringValue(body.reason).trim();
         if (reason.length < 5 || reason.length > 1_000) {
             return error("驳回理由长度需在5-1000字之间", "VALIDATION_ERROR", 400);
         }

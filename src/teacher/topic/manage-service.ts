@@ -33,6 +33,9 @@ export async function createTeacherTopic(params: {
 }) {
     const nameError = validateTopicName(params.name);
     if (nameError) return fail(nameError);
+    if (params.description !== undefined && typeof params.description !== "string") {
+        return fail("课题描述格式无效");
+    }
     if (params.status !== undefined && params.status !== 0 && params.status !== 1) {
         return fail("课题状态无效");
     }
@@ -60,6 +63,9 @@ export async function updateTeacherTopicBasics(params: {
 }) {
     if (params.body.status !== undefined && params.body.status !== 0 && params.body.status !== 1) {
         return fail("课题状态无效");
+    }
+    if (params.body.description !== undefined && typeof params.body.description !== "string") {
+        return fail("课题描述格式无效");
     }
     if (params.body.status === 1) {
         const [topicInfo] = await db

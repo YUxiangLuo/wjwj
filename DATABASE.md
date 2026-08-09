@@ -65,7 +65,10 @@ bun run storage:audit
 
 After reviewing the exact list, `bun run storage:clean` deletes only files not
 referenced by current topic data, attachments, or recognized legacy
-submission paths. Upload, copy, delete, audit, and cleanup operations share a
+submission paths. Soft-deleted topics and their attachments are intentionally
+excluded from current references because the product does not provide a restore
+flow; their files therefore appear in the audit before cleanup. Upload, copy,
+delete, audit, and cleanup operations share a
 PostgreSQL advisory lock, so cleanup cannot classify a file while its database
 reference is still being committed by the application.
 

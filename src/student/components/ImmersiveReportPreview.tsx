@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { X, FileText, Users, BarChart3, Layers, ChevronDown } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { ExperimentData, MethodKey } from "../api-client";
 import {
     formatMarginOfError,
@@ -15,6 +16,7 @@ import {
 } from "../experiment/systematic-sampling";
 
 interface Props {
+    open: boolean;
     experiment: ExperimentData;
     taskName: string;
     onClose: () => void;
@@ -29,42 +31,33 @@ const SECTIONS: { key: Section; label: string; icon: typeof FileText }[] = [
     { key: "report", label: "分析报告", icon: Layers },
 ];
 
-export function ImmersiveReportPreview({ experiment, taskName, onClose }: Props) {
-    const [phase, setPhase] = useState<"entering" | "visible" | "exiting">("entering");
+export function ImmersiveReportPreview({ open, experiment, taskName, onClose }: Props) {
+    return (
+        <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) onClose(); }}>
+            <DialogContent
+                showCloseButton={false}
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${taskName}实验报告全屏预览`}
+                className="inset-0 left-0 top-0 block h-dvh w-screen max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-0 bg-background/98 p-0 backdrop-blur-sm sm:max-w-none"
+            >
+                <DialogTitle className="sr-only">{taskName}实验报告全屏预览</DialogTitle>
+                <DialogDescription className="sr-only">查看实验概览、问卷设计、抽样结果和分析报告。</DialogDescription>
+                <ImmersiveReportPreviewContent experiment={experiment} taskName={taskName} onClose={onClose} />
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }: Omit<Props, "open">) {
     const [activeSection, setActiveSection] = useState<Section>("overview");
-
-    useEffect(() => {
-        const t = setTimeout(() => setPhase("visible"), 50);
-        return () => clearTimeout(t);
-    }, []);
-
-    const handleClose = useCallback(() => {
-        setPhase("exiting");
-        setTimeout(onClose, 300);
-    }, [onClose]);
-
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => {
-            if (e.key === "Escape") handleClose();
-        };
-        window.addEventListener("keydown", handler);
-        return () => window.removeEventListener("keydown", handler);
-    }, [handleClose]);
-
     const questionnaire = experiment.questionnaire;
     const samplePlan = experiment.samplePlan;
     const samplingResults = experiment.samplingResults;
     const reportContent = experiment.reportContent ?? "";
 
-    const opacityClass = phase === "visible" ? "opacity-100" : "opacity-0";
-
     return (
-        <div
-            className={`fixed inset-0 z-50 bg-background/98 backdrop-blur-sm transition-opacity duration-300 ${opacityClass}`}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${taskName}实验报告全屏预览`}
-        >
+        <>
             {/* top bar */}
             <div className="flex items-center justify-between px-6 py-3 border-b border-border/60 bg-background/80 backdrop-blur">
                 <div className="flex items-center gap-3">
@@ -75,7 +68,7 @@ export function ImmersiveReportPreview({ experiment, taskName, onClose }: Props)
                 <button
                     type="button"
                     aria-label="关闭全屏预览"
-                    onClick={handleClose}
+                    onClick={onClose}
                     className="p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
                     <X className="w-5 h-5" />
@@ -127,11 +120,7 @@ export function ImmersiveReportPreview({ experiment, taskName, onClose }: Props)
 
                 {/* main content */}
                 <main className="flex-1 overflow-auto p-6 md:p-10 pb-20 md:pb-10">
-                    <div
-                        className={`max-w-3xl mx-auto transition-all duration-500 ${
-                            phase === "visible" ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-                        }`}
-                    >
+                    <div className="max-w-3xl mx-auto">
                         {activeSection === "overview" && (
                             <OverviewSection
                                 taskName={taskName}
@@ -156,7 +145,7 @@ export function ImmersiveReportPreview({ experiment, taskName, onClose }: Props)
                     </div>
                 </main>
             </div>
-        </div>
+        </>
     );
 }
 

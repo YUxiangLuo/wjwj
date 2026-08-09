@@ -30,6 +30,22 @@ test("createTeacherTopic rejects direct publish before configuration", async () 
     expect(operations).toHaveLength(0);
 });
 
+test("topic basics reject non-string descriptions before touching the database", async () => {
+    const { module, operations } = await loadManageService();
+
+    expect(await module.createTeacherTopic({
+        teacherId: 9,
+        name: "抽样设计课题",
+        description: {} as never,
+    })).toMatchObject({ ok: false, code: "VALIDATION_ERROR" });
+    expect(await module.updateTeacherTopicBasics({
+        teacherId: 9,
+        topicId: 12,
+        body: { description: [] as never },
+    })).toMatchObject({ ok: false, code: "VALIDATION_ERROR" });
+    expect(operations).toHaveLength(0);
+});
+
 test("updateTeacherTopicBasics rejects publishing an incomplete topic", async () => {
     const { module, operations } = await loadManageService({
         select: [[{

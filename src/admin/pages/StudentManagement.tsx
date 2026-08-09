@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, Loader2, RotateCcw, Search, Users } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +40,7 @@ import {
 
 export function StudentManagement() {
     const location = useLocation();
+    const navigate = useNavigate();
     const requestedClassId = useMemo(() => {
         const value = new URLSearchParams(location.search).get("classId");
         return value && /^[1-9]\d*$/.test(value) ? value : "all";
@@ -103,11 +104,19 @@ export function StudentManagement() {
         void load({ nextSearch });
     };
 
+    const setClassFilter = (nextClassId: string) => {
+        setClassId(nextClassId);
+        const params = new URLSearchParams(location.search);
+        if (nextClassId === "all") params.delete("classId");
+        else params.set("classId", nextClassId);
+        navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    };
+
     const clearFilters = () => {
         setSearch("");
         setAppliedSearch("");
         setStatus("all");
-        setClassId("all");
+        setClassFilter("all");
         void load({ nextClassId: "all", nextSearch: "" });
     };
 
@@ -140,7 +149,7 @@ export function StudentManagement() {
                         <Search className="h-4 w-4" />
                         搜索
                     </Button>
-                    <Select value={classId} onValueChange={setClassId}>
+                    <Select value={classId} onValueChange={setClassFilter}>
                         <SelectTrigger aria-label="按班级筛选学生" className="w-44">
                             <SelectValue />
                         </SelectTrigger>

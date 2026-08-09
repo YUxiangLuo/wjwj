@@ -15,6 +15,20 @@ test("task publish requires a topic and at least one class", async () => {
     expect(operations).toHaveLength(0);
 });
 
+test("task publish rejects malformed runtime field types before querying", async () => {
+    const { module, operations } = await load([]);
+    const invalidInputs = [
+        { teacherId: 9, topicId: "12", classIds: [101] },
+        { teacherId: 9, topicId: 12, classIds: "101" },
+        { teacherId: 9, topicId: 12, classIds: [101], deadline: {} },
+    ];
+
+    for (const input of invalidInputs) {
+        expect(await module.publishTopicTasks(input as never)).toMatchObject({ ok: false, code: "VALIDATION_ERROR" });
+    }
+    expect(operations).toHaveLength(0);
+});
+
 test("task publish creates one task per newly selected class without notifications", async () => {
     const { module, operations } = await load([
         [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"] }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
@@ -63,6 +77,15 @@ test("task deadline extension performs one direct update", async () => {
     const update = operations.find((item) => item.kind === "update" && item.table === task);
     expect(update?.set).toMatchObject({ deadline: newDeadline, updatedAt: expect.any(Date) });
     expect(operations.some((item) => item.kind === "delete")).toBe(false);
+});
+
+test("task deadline extension rejects non-string runtime values", async () => {
+    const { module, operations } = await load([]);
+    expect(await module.extendTopicTaskDeadline({ teacherId: 9, taskId: 88, deadline: {} } as never)).toMatchObject({
+        ok: false,
+        code: "VALIDATION_ERROR",
+    });
+    expect(operations).toHaveLength(0);
 });
 
 test("task soft delete records one timestamp for deletion and update metadata", async () => {

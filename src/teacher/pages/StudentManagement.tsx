@@ -64,12 +64,21 @@ export function StudentManagement() {
     }
 
     async function handleAddStudent() {
-        if (!classId || !newStudent.id || !newStudent.name) return;
+        const studentId = newStudent.id.trim();
+        const name = newStudent.name.trim();
+        if (!classId) {
+            toast.error("班级不存在，请返回班级列表后重试");
+            return;
+        }
+        if (!studentId || !name) {
+            toast.error("请填写学号和姓名");
+            return;
+        }
         setSubmitting(true);
         const res = await teacherApi.addStudent(Number(classId), {
-            studentId: newStudent.id,
-            name: newStudent.name,
-            email: newStudent.email
+            studentId,
+            name,
+            email: newStudent.email.trim()
         });
         setSubmitting(false);
 

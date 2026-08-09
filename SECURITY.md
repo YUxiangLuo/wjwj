@@ -18,6 +18,12 @@ bun run audit:applicable
 
 React Router 公告已通过升级至 `7.18.2+` 清除；`happy-dom` 的 `ws` 链已升级至包含修复的版本。
 
+## 生产 HTTP 防护
+
+`bun run start` 会先执行生产构建；若直接以 `NODE_ENV=production bun src/index.ts` 启动，则必须预先运行 `bun run build`。生产模式下，Bun 服务从 `dist/` 提供构建产物，并统一设置 CSP（包括 `frame-ancestors 'self'`）、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy` 和同源资源策略。构建脚本使用根路径资源 URL，因此 SPA 深链也能正确加载静态资源。
+
+TLS 与 HSTS 仍由正式环境的反向代理或负载均衡器负责；只有确认所有流量均已强制 HTTPS 后才能启用 HSTS。
+
 ## 复核规则
 
 - 每次锁文件或路由架构变化时运行两层审计。
