@@ -57,17 +57,23 @@ export const STUDENT_PASSWORD_POLICY: PasswordPolicySpec = {
     errorMessage: "新密码需至少8位且包含字母、数字、特殊字符，且不包含学号",
 };
 
+function normalizeForbiddenComparison(value: string) {
+    return value.normalize("NFKC").toLocaleLowerCase("en-US");
+}
+
 export function evaluatePasswordRules(options: PasswordRuleOptions): PasswordRuleResult {
     const password = options.password ?? "";
     const forbiddenSubstrings = (options.forbiddenSubstrings ?? [])
         .map((value) => value?.trim())
-        .filter((value): value is string => Boolean(value));
+        .filter((value): value is string => Boolean(value))
+        .map(normalizeForbiddenComparison);
+    const normalizedPassword = normalizeForbiddenComparison(password);
 
     const minLength = password.length >= options.minLength;
     const hasLetter = /[A-Za-z]/.test(password);
     const hasNumber = /\d/.test(password);
     const hasSpecial = PASSWORD_SPECIAL_CHAR_REGEX.test(password);
-    const noForbiddenSubstring = forbiddenSubstrings.every((value) => !password.includes(value));
+    const noForbiddenSubstring = forbiddenSubstrings.every((value) => !normalizedPassword.includes(value));
     const matched = options.confirmPassword === undefined
         ? null
         : options.confirmPassword.length > 0 && password === options.confirmPassword;

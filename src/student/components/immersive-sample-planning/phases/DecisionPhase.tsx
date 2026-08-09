@@ -287,7 +287,7 @@ export function DecisionPhase({
                             value={params.confidenceLevel}
                             onValueChange={onConfidenceLevelChange}
                         >
-                            <SelectTrigger className="h-9 text-sm bg-card border-border">
+                            <SelectTrigger aria-label="常规公式置信水平" className="h-9 text-sm bg-card border-border">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -308,6 +308,7 @@ export function DecisionPhase({
                         {isMeanEstimation ? (
                             <div className="space-y-2">
                                 <Input
+                                    aria-label="绝对误差限"
                                     type="number"
                                     value={params.marginOfError}
                                     onChange={(e) => onMarginOfErrorChange(Number.parseFloat(e.target.value) || 0)}
@@ -321,6 +322,7 @@ export function DecisionPhase({
                             </div>
                         ) : (
                             <Slider
+                                aria-label="比例估计允许误差"
                                 value={[params.marginOfError]}
                                 onValueChange={([v]) => v != null && onMarginOfErrorChange(v)}
                                 min={1} max={10} step={1}
@@ -335,6 +337,7 @@ export function DecisionPhase({
                             <span className="text-xs font-bold text-warning tabular-nums">{params.designEffect.toFixed(1)}</span>
                         </div>
                         <Slider
+                            aria-label="设计效应"
                             value={[params.designEffect * 10]}
                             onValueChange={([v]) => v != null && onDesignEffectChange(Math.round(v) / 10)}
                             min={10} max={50} step={1}
@@ -348,6 +351,7 @@ export function DecisionPhase({
                             <span className="text-xs font-bold text-destructive tabular-nums">{Math.round(params.nonResponseRate * 100)}%</span>
                         </div>
                         <Slider
+                            aria-label="预期无回答率"
                             value={[Math.round(params.nonResponseRate * 100)]}
                             onValueChange={([v]) => v != null && onNonResponseRateChange(v / 100)}
                             min={0} max={50} step={5}
@@ -675,6 +679,7 @@ export function DecisionPhase({
                         </div>
                         <div className="relative">
                             <Input
+                                aria-label="最终样本量"
                                 type="number"
                                 value={finalSampleSize}
                                 onChange={(e) => {

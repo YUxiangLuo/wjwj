@@ -41,25 +41,35 @@ test("simple sampling on empty population returns empty array", async () => {
 
 test("systematic sampling is deterministic with same seed", async () => {
     const seed = 42;
-    const first = await performSystematicSampling(population, 5, createSeededRandom(seed));
-    const second = await performSystematicSampling(population, 5, createSeededRandom(seed));
+    const first = performSystematicSampling(population, 5, createSeededRandom(seed));
+    const second = performSystematicSampling(population, 5, createSeededRandom(seed));
 
     expect(first).toEqual(second);
 });
 
-test("systematic sampling with step=1 returns all items", async () => {
-    const result = await performSystematicSampling(population, 1, createSeededRandom("step1"));
-    expect(result.length).toBe(population.length);
+test("systematic sampling returns the exact requested count", () => {
+    const result = performSystematicSampling(population, 17, createSeededRandom("exact"));
+    expect(result.data.length).toBe(17);
+    expect(result.indices.length).toBe(17);
+    expect(new Set(result.indices).size).toBe(17);
+    expect(result.indices.every((index) => index >= 0 && index < population.length)).toBe(true);
 });
 
-test("systematic sampling on empty population returns empty array", async () => {
-    const result = await performSystematicSampling([], 3, createSeededRandom("empty-sys"));
-    expect(result).toEqual([]);
+test("systematic sampling with n=1 returns one item", () => {
+    const result = performSystematicSampling(population, 1, createSeededRandom("one"));
+    expect(result.data.length).toBe(1);
+    expect(result.interval).toBe(population.length);
 });
 
-test("systematic sampling step larger than population returns at most one item", async () => {
-    const result = await performSystematicSampling(population, 100, createSeededRandom("large-step"));
-    expect(result.length).toBeLessThanOrEqual(1);
+test("systematic sampling with n=N returns every item", () => {
+    const result = performSystematicSampling(population, population.length, createSeededRandom("all"));
+    expect(result.data).toEqual(population);
+    expect(result.interval).toBe(1);
+});
+
+test("systematic sampling on empty population returns an empty selection", () => {
+    const result = performSystematicSampling([], 3, createSeededRandom("empty-sys"));
+    expect(result).toEqual({ data: [], indices: [], interval: 0, randomStart: 0 });
 });
 
 // Stratified sampling tests

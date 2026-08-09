@@ -438,10 +438,11 @@ export function QuestionnaireDesign() {
                                                         {questionTypeLabels[q.type]}
                                                     </Badge>
                                                     <span className="flex-1 text-sm text-foreground/90 truncate font-medium">{q.content}</span>
-                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`上移第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-move-up-${q.id}`}
                                                             className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => moveQuestion(index, "up")}
@@ -452,6 +453,7 @@ export function QuestionnaireDesign() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`下移第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-move-down-${q.id}`}
                                                             className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => moveQuestion(index, "down")}
@@ -462,6 +464,7 @@ export function QuestionnaireDesign() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`复制第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-duplicate-${q.id}`}
                                                             className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => handleDuplicateQuestion(q)}
@@ -471,6 +474,7 @@ export function QuestionnaireDesign() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`编辑第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-edit-${q.id}`}
                                                             className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => handleEditQuestion(q)}
@@ -480,6 +484,7 @@ export function QuestionnaireDesign() {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`删除第 ${index + 1} 题`}
                                                             data-testid={`student-questionnaire-delete-${q.id}`}
                                                             className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                                                             onClick={() => handleDeleteQuestion(q.id)}
@@ -503,7 +508,20 @@ export function QuestionnaireDesign() {
                         </div>
                         <div className="space-y-4">
                             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
-                                <CardHeader className="cursor-pointer select-none" onClick={() => setRecommendCollapsed(!recommendCollapsed)}>
+                                <CardHeader
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-expanded={!recommendCollapsed}
+                                    aria-controls="student-recommended-question-list"
+                                    className="cursor-pointer select-none"
+                                    onClick={() => setRecommendCollapsed(!recommendCollapsed)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            setRecommendCollapsed(!recommendCollapsed);
+                                        }
+                                    }}
+                                >
                                     <div className="flex items-center justify-between">
                                         <CardTitle className="text-base text-foreground">推荐题目</CardTitle>
                                         <span className={`text-muted-foreground transition-transform duration-200 ${recommendCollapsed ? "" : "rotate-180"}`}>▲</span>
@@ -511,7 +529,13 @@ export function QuestionnaireDesign() {
                                     <CardDescription className="text-muted-foreground">可直接引用教师提供的推荐题目</CardDescription>
                                 </CardHeader>
                                 {!recommendCollapsed && (
-                                    <CardContent className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <CardContent
+                                        id="student-recommended-question-list"
+                                        role="region"
+                                        tabIndex={0}
+                                        aria-label="教师推荐题目列表"
+                                        className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar"
+                                    >
                                         {recommendQuestions.length === 0 && (
                                             <div className="rounded-xl border border-dashed border-input bg-card/50 p-4 text-sm text-muted-foreground text-center">
                                                 暂无推荐题目

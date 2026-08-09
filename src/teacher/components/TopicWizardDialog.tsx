@@ -388,6 +388,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         <>
                                             <Input
                                                 type="file"
+                                                aria-label="上传总体数据文件"
                                                 data-testid="teacher-topic-excel-file"
                                                 accept=".xlsx,.xls,.csv"
                                                 className="hidden"
@@ -488,7 +489,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             }))}
                                         disabled={isPublishedTopic}
                                     >
-                                        <SelectTrigger data-testid="teacher-topic-mapping-identifier" className="bg-background border-border text-foreground disabled:opacity-60">
+                                        <SelectTrigger aria-label="选择唯一标识字段" data-testid="teacher-topic-mapping-identifier" className="bg-background border-border text-foreground disabled:opacity-60">
                                             <SelectValue placeholder="选择标识符字段" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border text-foreground">
@@ -610,8 +611,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                         {!loadingDetail && currentStep === 4 && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <Label className="text-foreground/90">附件上传</Label>
+                                <Label htmlFor="teacher-topic-attachment-file" className="text-foreground/90">附件上传</Label>
                                 <Input
+                                    id="teacher-topic-attachment-file"
                                     data-testid="teacher-topic-attachment-file"
                                     type="file"
                                     className="bg-background border-border text-foreground/90 file:bg-muted file:text-foreground/90"
@@ -631,7 +633,9 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                aria-label={`删除附件：${a.fileName}`}
+                                                title={`删除附件：${a.fileName}`}
+                                                className="opacity-0 text-destructive group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-destructive/10 hover:text-destructive"
                                                 onClick={() => teacherApi.deleteAttachment(editingTopicId!, a.id).then(() => onRefreshTopicDetail(editingTopicId!))}
                                             >
                                                 <X className="w-4 h-4" />
@@ -651,7 +655,12 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         + 添加题目
                                     </Button>
                                 </div>
-                                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                                <div
+                                    role="region"
+                                    tabIndex={0}
+                                    aria-label="推荐题目列表"
+                                    className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
+                                >
                                     {recommendQuestions.map((q, idx) => {
                                         const qt = q.type as QuestionType;
                                         const badge = questionTypeBadgeColors[qt] ?? "bg-muted text-muted-foreground border-border";
@@ -663,6 +672,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`上移第 ${idx + 1} 题`}
                                                             className="h-6 w-6 text-muted-foreground hover:text-foreground/90 disabled:opacity-30"
                                                             disabled={idx === 0}
                                                             onClick={() => handleMoveQuestion(idx, "up")}
@@ -672,6 +682,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`下移第 ${idx + 1} 题`}
                                                             className="h-6 w-6 text-muted-foreground hover:text-foreground/90 disabled:opacity-30"
                                                             disabled={idx === recommendQuestions.length - 1}
                                                             onClick={() => handleMoveQuestion(idx, "down")}
@@ -716,6 +727,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`编辑第 ${idx + 1} 题`}
                                                             className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                             onClick={() => handleEditQuestion(q)}
                                                         >
@@ -724,6 +736,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
+                                                            aria-label={`删除第 ${idx + 1} 题`}
                                                             className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                                             onClick={() => handleDeleteQuestion(idx)}
                                                         >
@@ -751,9 +764,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="bg-background border border-border rounded-lg p-6 space-y-4">
-                                        <Label className="text-foreground/90 text-lg">问卷设计权重</Label>
+                                        <Label htmlFor="teacher-topic-weight-questionnaire" className="text-foreground/90 text-lg">问卷设计权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
+                                                id="teacher-topic-weight-questionnaire"
                                                 data-testid="teacher-topic-weight-questionnaire"
                                                 type="number"
                                                 min={0}
@@ -767,9 +781,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                     </div>
                                     <div className="bg-background border border-border rounded-lg p-6 space-y-4">
-                                        <Label className="text-foreground/90 text-lg">实验过程权重</Label>
+                                        <Label htmlFor="teacher-topic-weight-process" className="text-foreground/90 text-lg">实验过程权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
+                                                id="teacher-topic-weight-process"
                                                 data-testid="teacher-topic-weight-process"
                                                 type="number"
                                                 min={0}
@@ -783,9 +798,10 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </div>
                                     </div>
                                     <div className="bg-background border border-border rounded-lg p-6 space-y-4">
-                                        <Label className="text-foreground/90 text-lg">实验报告权重</Label>
+                                        <Label htmlFor="teacher-topic-weight-report" className="text-foreground/90 text-lg">实验报告权重</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
+                                                id="teacher-topic-weight-report"
                                                 data-testid="teacher-topic-weight-report"
                                                 type="number"
                                                 min={0}

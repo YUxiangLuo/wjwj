@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, FileText, Users, BarChart3, Layers, ChevronDown } from "lucide-react";
 import { RichTextContent } from "@/components/RichTextContent";
-import type { ExperimentData } from "../api-client";
+import type { ExperimentData, MethodKey } from "../api-client";
 import {
     formatMarginOfError,
     getAdvancedPlanSourceLabel,
     getEstimationTypeLabel,
     getMarginOfErrorLabel,
 } from "../experiment/sample-plan-display";
+import { getSamplingResultCount } from "../experiment/sampling-results";
+import {
+    formatSystematicInterval,
+    getStoredSystematicInterval,
+} from "../experiment/systematic-sampling";
 
 interface Props {
     experiment: ExperimentData;
@@ -203,10 +208,10 @@ function OverviewSection({
     ] : [];
 
     const methods = [
-        { label: "简单随机", done: samplingResults?.simple?.completed, count: samplingResults?.simple?.sampleCount },
-        { label: "系统抽样", done: samplingResults?.systematic?.completed, count: samplingResults?.systematic?.sampleCount },
-        { label: "PPS抽样", done: samplingResults?.pps?.completed, count: samplingResults?.pps?.sampleCount },
-        { label: "分层抽样", done: samplingResults?.stratified?.completed, count: samplingResults?.stratified?.completed ? samplingResults?.stratified?.layers?.reduce((s, l) => s + l.sampleCount, 0) : undefined },
+        { label: "简单随机", done: samplingResults?.simple?.completed, count: getSamplingResultCount("simple", samplingResults?.simple) },
+        { label: "系统抽样", done: samplingResults?.systematic?.completed, count: getSamplingResultCount("systematic", samplingResults?.systematic) },
+        { label: "PPS抽样", done: samplingResults?.pps?.completed, count: getSamplingResultCount("pps", samplingResults?.pps) },
+        { label: "分层抽样", done: samplingResults?.stratified?.completed, count: getSamplingResultCount("stratified", samplingResults?.stratified) },
     ];
 
     return (
@@ -355,7 +360,7 @@ function SamplingSection({
 
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
 
-    const methodCards: { key: string; label: string; color: string; data: { completed?: boolean; sampleCount?: number; seed?: number; kValue?: number; stratifyBy?: string; sizeField?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
+    const methodCards: { key: MethodKey; label: string; color: string; data: { completed?: boolean; sampleCount?: number; seed?: number; interval?: number; kValue?: number; randomStart?: number; stratifyBy?: string; sizeField?: string; layers?: Array<{ name: string; sampleCount: number }> } | undefined }[] = [
         {
             key: "simple",
             label: "简单随机抽样",
@@ -412,7 +417,7 @@ function SamplingSection({
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                                     <div>
                                         <span className="text-muted-foreground">样本量</span>
-                                        <div className="text-foreground font-mono">{d.sampleCount}</div>
+                                        <div className="text-foreground font-mono">{getSamplingResultCount(m.key, d)}</div>
                                     </div>
                                     {d.seed !== undefined && (
                                         <div>
@@ -420,10 +425,10 @@ function SamplingSection({
                                             <div className="text-foreground font-mono">{d.seed}</div>
                                         </div>
                                     )}
-                                    {d.kValue !== undefined && (
+                                    {m.key === "systematic" && getStoredSystematicInterval(d) !== null && (
                                         <div>
                                             <span className="text-muted-foreground">间隔 K</span>
-                                            <div className="text-foreground font-mono">{d.kValue}</div>
+                                            <div className="text-foreground font-mono">{formatSystematicInterval(getStoredSystematicInterval(d))}</div>
                                         </div>
                                     )}
                                     {d.stratifyBy && (

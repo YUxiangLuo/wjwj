@@ -88,6 +88,7 @@ export function ChallengePhase({
 
                     <div className="max-w-xs mx-auto space-y-3">
                         <Input
+                            aria-label="猜测所需样本量"
                             ref={inputRef}
                             type="number"
                             placeholder="先猜一个样本量…"

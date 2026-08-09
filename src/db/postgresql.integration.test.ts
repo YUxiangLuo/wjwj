@@ -93,7 +93,14 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         studentId = createdStudent!.id;
         const [createdTopic] = await database
             .insert(schema.topic)
-            .values({ teacherId, name: "PostgreSQL topic", status: 1 })
+            .values({
+                teacherId,
+                name: "PostgreSQL topic",
+                status: 1,
+                fieldMapping: { identifier: "student_id", numeric: ["score"] },
+                weightConfig: { questionnaire: 30, process: 30, report: 40 },
+                recommendQuestions: [{ id: "q1", type: "boolean", content: "测试题" }],
+            })
             .returning({ id: schema.topic.id });
         topicId = createdTopic!.id;
         const [createdTask] = await database
@@ -104,9 +111,55 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
 
         const [createdExperiment] = await database
             .insert(schema.experiment)
-            .values({ studentId, taskId })
+            .values({
+                studentId,
+                taskId,
+                questionnaire: { title: "测试问卷", questions: [] },
+                samplePlan: { confidenceLevel: "95", marginOfError: 5, finalSampleSize: 10 },
+                samplingResults: { simple: { completed: true, data: [] } },
+                submissionSnapshot: { studentName: "PostgreSQL student" },
+            })
             .returning({ id: schema.experiment.id, version: schema.experiment.version });
         expect(createdExperiment?.version).toBe(1);
+
+        const [jsonTypes] = await sqlClient`
+            SELECT
+                jsonb_typeof(t.field_mapping) AS field_mapping_type,
+                jsonb_typeof(t.weight_config) AS weight_config_type,
+                jsonb_typeof(t.recommend_questions) AS recommend_questions_type,
+                jsonb_typeof(e.questionnaire) AS questionnaire_type,
+                jsonb_typeof(e.sample_plan) AS sample_plan_type,
+                jsonb_typeof(e.sampling_results) AS sampling_results_type,
+                jsonb_typeof(e.submission_snapshot) AS submission_snapshot_type
+            FROM topic t
+            JOIN task tk ON tk.topic_id = t.id
+            JOIN experiment e ON e.task_id = tk.id
+            WHERE e.id = ${createdExperiment!.id}
+        `;
+        expect(jsonTypes).toEqual({
+            field_mapping_type: "object",
+            weight_config_type: "object",
+            recommend_questions_type: "array",
+            questionnaire_type: "object",
+            sample_plan_type: "object",
+            sampling_results_type: "object",
+            submission_snapshot_type: "object",
+        });
+
+        const [nativeJsonRead] = await database
+            .select({
+                fieldMapping: schema.topic.fieldMapping,
+                recommendQuestions: schema.topic.recommendQuestions,
+            })
+            .from(schema.topic)
+            .where(eq(schema.topic.id, topicId));
+        expect(nativeJsonRead?.fieldMapping).toEqual({
+            identifier: "student_id",
+            numeric: ["score"],
+        });
+        expect(nativeJsonRead?.recommendQuestions).toEqual([
+            { id: "q1", type: "boolean", content: "测试题" },
+        ]);
 
         const staleUpdate = await database
             .update(schema.experiment)

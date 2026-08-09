@@ -1,6 +1,6 @@
 export const APP_TIMEZONE = "Asia/Shanghai";
 /** Must match APP_TIMEZONE — used in startOfDayCN to construct an ISO-8601 timestamp. */
-const APP_TIMEZONE_OFFSET = "+08:00";
+export const APP_TIMEZONE_OFFSET = "+08:00";
 
 const SAVE_TIME_FORMATTER = new Intl.DateTimeFormat("zh-CN", {
     timeZone: APP_TIMEZONE,
@@ -15,11 +15,7 @@ export function formatSaveTime(): string {
 }
 
 export function formatLocalDateStamp(date: Date = new Date()): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
+    return formatDateStampCN(date);
 }
 
 const DATE_STAMP_CN_FORMATTER = new Intl.DateTimeFormat("en", {

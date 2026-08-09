@@ -283,13 +283,13 @@ export function StudentManagement() {
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                                            <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" aria-label={`重置${student.name}的密码`} title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10">
                                                 <RotateCcw className="w-4 h-4" />
                                             </Button>
-                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-success hover:text-success hover:bg-success/10" : "text-muted-foreground hover:text-foreground"}`}>
+                                            <Button data-testid={`teacher-student-toggle-${student.id}`} variant="ghost" size="sm" aria-label={`${student.status === 1 ? "禁用" : "启用"}学生${student.name}`} title={student.status === 1 ? "禁用" : "启用"} onClick={() => handleToggleStatus(student)} className={`h-8 w-8 p-0 ${student.status === 1 ? "text-success hover:text-success hover:bg-success/10" : "text-muted-foreground hover:text-foreground"}`}>
                                                 <UserX className={`w-4 h-4 ${student.status === 0 ? "text-muted-foreground" : ""}`} />
                                             </Button>
-                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="删除" onClick={() => handleDelete(student)}>
+                                            <Button data-testid={`teacher-student-delete-${student.id}`} variant="ghost" size="sm" aria-label={`删除学生${student.name}`} className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="删除" onClick={() => handleDelete(student)}>
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
                                         </div>

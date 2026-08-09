@@ -2,10 +2,17 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, ClipboardList, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, type GradingItem } from "../api-client";
@@ -20,6 +27,7 @@ export function GradingManagement() {
     const [status, setStatus] = useState("all");
     const [keyword, setKeyword] = useState("");
     const [loading, setLoading] = useState(true);
+
     const load = async (nextPage = 1) => {
         setLoading(true);
         const response = await teacherApi.getGradingList({
@@ -35,21 +43,111 @@ export function GradingManagement() {
         }
         setLoading(false);
     };
-    useEffect(() => { void load(1); }, [status]);
+
+    useEffect(() => {
+        void load(1);
+    }, [status]);
+
     const badge = (item: GradingItem) => {
         if (item.status === "submitted") return <StatusBadge intent="warning">待批改</StatusBadge>;
         if (item.status === "graded") return <StatusBadge intent="success">已批改 {item.score ?? 0} 分</StatusBadge>;
         return <StatusBadge intent="destructive">已驳回</StatusBadge>;
     };
     const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
     return (
         <div className="space-y-6">
-            <div><h2 className="text-lg font-semibold">作业批改</h2><p className="mt-1 text-sm text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p></div>
-            <Card><CardHeader className="flex-row items-center justify-between"><CardTitle className="text-base">批改列表（{total}）</CardTitle><div className="flex gap-2"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="w-56 pl-9" value={keyword} onChange={(event) => setKeyword(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void load(1)} placeholder="搜索学生或课题" /></div><Select value={status} onValueChange={setStatus}><SelectTrigger className="w-32"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">全部状态</SelectItem><SelectItem value="pending">待批改</SelectItem><SelectItem value="graded">已批改</SelectItem><SelectItem value="rejected">已驳回</SelectItem></SelectContent></Select></div></CardHeader><CardContent className="space-y-3">
-                {loading ? <p className="py-12 text-center text-sm text-muted-foreground">加载中...</p> : items.map((item) => <button key={item.id} className="flex w-full flex-col gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted/50 sm:flex-row sm:items-center" onClick={() => navigate(`/grading/${item.id}`)}><Avatar><AvatarFallback className="bg-primary text-primary-foreground">{item.studentName.charAt(0)}</AvatarFallback></Avatar><div className="min-w-0 flex-1"><div className="font-medium">{item.studentName} <span className="font-mono text-xs text-muted-foreground">{item.studentId}</span></div><p className="mt-1 text-sm text-muted-foreground">{item.className} · {item.topic}</p></div><div className="text-right">{badge(item)}<p className="mt-2 text-xs text-muted-foreground">{formatDateTimeDisplay(item.submittedAt, "-")}</p></div></button>)}
-                {!loading && !items.length && <div className="grid place-items-center gap-2 py-12 text-muted-foreground"><ClipboardList className="h-8 w-8" /><p className="text-sm">暂无记录</p></div>}
-                {pages > 1 && <div className="flex items-center justify-end gap-2 pt-3"><Button variant="outline" size="icon" disabled={page <= 1} onClick={() => void load(page - 1)}><ChevronLeft className="h-4 w-4" /></Button><span className="text-sm text-muted-foreground">{page} / {pages}</span><Button variant="outline" size="icon" disabled={page >= pages} onClick={() => void load(page + 1)}><ChevronRight className="h-4 w-4" /></Button></div>}
-            </CardContent></Card>
+            <div>
+                <h2 className="text-lg font-semibold">作业批改</h2>
+                <p className="mt-1 text-sm text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p>
+            </div>
+            <Card>
+                <CardHeader className="flex-row items-center justify-between">
+                    <CardTitle className="text-base">批改列表（{total}）</CardTitle>
+                    <div className="flex gap-2">
+                        <div className="relative">
+                            <Label htmlFor="grading-search" className="sr-only">搜索学生或课题</Label>
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                id="grading-search"
+                                className="w-56 pl-9"
+                                value={keyword}
+                                onChange={(event) => setKeyword(event.target.value)}
+                                onKeyDown={(event) => event.key === "Enter" && void load(1)}
+                                placeholder="搜索学生或课题"
+                            />
+                        </div>
+                        <Select value={status} onValueChange={setStatus}>
+                            <SelectTrigger aria-label="按批改状态筛选" className="w-32">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">全部状态</SelectItem>
+                                <SelectItem value="pending">待批改</SelectItem>
+                                <SelectItem value="graded">已批改</SelectItem>
+                                <SelectItem value="rejected">已驳回</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    {loading ? (
+                        <p className="py-12 text-center text-sm text-muted-foreground" role="status">加载中...</p>
+                    ) : items.map((item) => (
+                        <button
+                            key={item.id}
+                            className="flex w-full flex-col gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted/50 sm:flex-row sm:items-center"
+                            onClick={() => navigate(`/grading/${item.id}`)}
+                        >
+                            <Avatar>
+                                <AvatarFallback className="bg-primary text-primary-foreground">
+                                    {item.studentName.charAt(0)}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                                <div className="font-medium">
+                                    {item.studentName}{" "}
+                                    <span className="font-mono text-xs text-muted-foreground">{item.studentId}</span>
+                                </div>
+                                <p className="mt-1 text-sm text-muted-foreground">{item.className} · {item.topic}</p>
+                            </div>
+                            <div className="text-right">
+                                {badge(item)}
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                    {formatDateTimeDisplay(item.submittedAt, "-")}
+                                </p>
+                            </div>
+                        </button>
+                    ))}
+                    {!loading && !items.length && (
+                        <div className="grid place-items-center gap-2 py-12 text-muted-foreground">
+                            <ClipboardList className="h-8 w-8" />
+                            <p className="text-sm">暂无记录</p>
+                        </div>
+                    )}
+                    {pages > 1 && (
+                        <div className="flex items-center justify-end gap-2 pt-3">
+                            <IconButton
+                                aria-label="上一页"
+                                variant="outline"
+                                disabled={page <= 1}
+                                onClick={() => void load(page - 1)}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </IconButton>
+                            <span className="text-sm text-muted-foreground">{page} / {pages}</span>
+                            <IconButton
+                                aria-label="下一页"
+                                variant="outline"
+                                disabled={page >= pages}
+                                onClick={() => void load(page + 1)}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </IconButton>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
     );
 }

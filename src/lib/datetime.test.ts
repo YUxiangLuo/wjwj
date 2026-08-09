@@ -1,22 +1,58 @@
 import { expect, test } from "bun:test";
-import { localWallClockToUtcIso, parsePickerValue, parseLocalDateTime } from "./datetime";
+import {
+    getCurrentPickerDateTimeValue,
+    localWallClockToUtcIso,
+    parseLocalDateTime,
+    parsePickerValue,
+    toLocalDateTimeString,
+    toPickerCalendarDate,
+} from "./datetime";
 
-test("localWallClockToUtcIso converts local wall clock to Z suffix ISO", () => {
-    const d = new Date(2026, 2, 23, 14, 30, 0, 0);
-    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    const iso = localWallClockToUtcIso(local);
-    expect(iso).toBeDefined();
-    expect(iso!.endsWith("Z")).toBe(true);
-    expect(new Date(iso!).getTime()).toBe(d.getTime());
+test("China Standard Time wall clock converts to the expected UTC instant", () => {
+    expect(localWallClockToUtcIso("2026-08-20T20:45")).toBe("2026-08-20T12:45:00.000Z");
 });
 
-test("parsePickerValue accepts ISO UTC from API", () => {
-    const iso = "2026-03-23T06:30:00.000Z";
-    const p = parsePickerValue(iso);
-    expect(p).not.toBeNull();
-    expect(p!.getTime()).toBe(new Date(iso).getTime());
+test("API UTC instant maps back to China Standard Time picker fields", () => {
+    expect(parsePickerValue("2026-08-20T12:45:00.000Z")).toEqual({
+        year: 2026,
+        month: 8,
+        day: 20,
+        hour: 20,
+        minute: 45,
+    });
+    expect(toLocalDateTimeString(new Date("2026-08-20T12:45:00.000Z"))).toBe("2026-08-20T20:45");
 });
 
-test("parseLocalDateTime rejects ISO with Z", () => {
+test("calendar today preserves the China Standard Time date in local Date fields", () => {
+    const current = getCurrentPickerDateTimeValue(new Date("2026-03-09T16:30:00.000Z"));
+    expect(current).not.toBeNull();
+
+    const calendarDate = toPickerCalendarDate(current!);
+    expect([
+        calendarDate.getFullYear(),
+        calendarDate.getMonth() + 1,
+        calendarDate.getDate(),
+        calendarDate.getHours(),
+    ]).toEqual([2026, 3, 10, 12]);
+});
+
+test("wall-clock parsing is independent of the process/browser timezone", () => {
+    const parsed = parseLocalDateTime("2026-03-23T14:30");
+    expect(parsed?.toISOString()).toBe("2026-03-23T06:30:00.000Z");
+});
+
+test("strict wall-clock parser rejects invalid dates and ISO input", () => {
+    expect(parseLocalDateTime("2026-02-30T12:00")).toBeNull();
+    expect(parseLocalDateTime("2026-03-23T24:00")).toBeNull();
     expect(parseLocalDateTime("2026-03-23T06:30:00.000Z")).toBeNull();
+});
+
+test("picker accepts valid controlled wall-clock values", () => {
+    expect(parsePickerValue("2026-08-20T20:45")).toEqual({
+        year: 2026,
+        month: 8,
+        day: 20,
+        hour: 20,
+        minute: 45,
+    });
 });

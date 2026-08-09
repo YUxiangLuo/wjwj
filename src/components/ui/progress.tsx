@@ -3,14 +3,21 @@ import * as ProgressPrimitive from "@radix-ui/react-progress"
 
 import { cn } from "@/lib/utils"
 
+type ProgressProps = React.ComponentProps<typeof ProgressPrimitive.Root> &
+  (
+    | { "aria-label": string; "aria-labelledby"?: never }
+    | { "aria-label"?: never; "aria-labelledby": string }
+  )
+
 function Progress({
   className,
   value,
   ...props
-}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
+}: ProgressProps) {
   return (
     <ProgressPrimitive.Root
       data-slot="progress"
+      value={value}
       className={cn(
         "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
         className

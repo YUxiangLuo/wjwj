@@ -4,6 +4,8 @@ import { Link, useParams } from "react-router-dom";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { RichTextContent } from "@/components/RichTextContent";
 import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
+import { QuestionnaireSnapshot } from "@/components/QuestionnaireSnapshot";
+import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,34 +18,6 @@ const statusConfig: Record<SubmissionDetail["status"], { label: string; intent: 
     graded: { label: "已批改", intent: "success" },
     rejected: { label: "已驳回", intent: "destructive" },
 };
-
-function SnapshotJson({ value, emptyText }: { value: unknown; emptyText: string }) {
-    if (value == null) return <p className="text-sm text-muted-foreground">{emptyText}</p>;
-    return <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted p-4 text-xs text-foreground">{JSON.stringify(value, null, 2)}</pre>;
-}
-
-function QuestionnaireSnapshot({ questionnaire }: { questionnaire: SubmissionDetail["snapshot"]["questionnaire"] }) {
-    if (!questionnaire) return <p className="text-sm text-muted-foreground">暂无问卷内容</p>;
-    return (
-        <div className="space-y-5">
-            <div className="space-y-2 border-b border-border pb-4">
-                <h3 className="text-lg font-semibold">{questionnaire.title || "未命名问卷"}</h3>
-                <RichTextContent html={questionnaire.welcomeText ?? ""} className="text-sm text-muted-foreground" emptyFallback="无欢迎语" />
-            </div>
-            <div className="space-y-3">
-                {(questionnaire.questions ?? []).map((question, index) => (
-                    <div key={question.id || index} className="rounded-xl border border-border bg-muted/30 p-4">
-                        <p className="text-sm font-medium">{index + 1}. {question.content}</p>
-                        {question.options?.length ? <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">{question.options.map((option, optionIndex) => <li key={`${question.id}-${optionIndex}`}>{option}</li>)}</ul> : null}
-                        {question.type === "boolean" && <p className="mt-2 text-sm text-muted-foreground">选项：是 / 否</p>}
-                        {question.type === "scale" && <p className="mt-2 text-sm text-muted-foreground">量表：{question.scaleMin ?? 1}–{question.scaleMax ?? 10}</p>}
-                    </div>
-                ))}
-            </div>
-            <RichTextContent html={questionnaire.endingText ?? ""} className="border-t border-border pt-4 text-sm text-muted-foreground" emptyFallback="无结束语" />
-        </div>
-    );
-}
 
 export function SubmissionDetailPage() {
     const { taskId } = useParams();
@@ -88,7 +62,9 @@ export function SubmissionDetailPage() {
 
             <Card>
                 <CardHeader className="border-b border-border">
-                    <CardTitle className="text-2xl">{detail.topicName}</CardTitle>
+                    <CardTitle>
+                        <h1 className="text-2xl">{detail.topicName}</h1>
+                    </CardTitle>
                     <div className="flex flex-wrap gap-4 pt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" />提交：{formatDateTimeDisplay(detail.submittedAt, "-")}</span>
                         {detail.gradedAt && <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-success" />批改：{formatDateTimeDisplay(detail.gradedAt, "-")}</span>}
@@ -127,7 +103,7 @@ export function SubmissionDetailPage() {
                                     <RichTextContent html={detail.snapshot.reportContent} className="text-sm leading-relaxed" emptyFallback="暂无报告内容" />
                                 </TabsContent>
                                 <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={detail.snapshot.questionnaire} /></TabsContent>
-                                <TabsContent value="plan" className="mt-4"><SnapshotJson value={detail.snapshot.samplePlan} emptyText="暂无抽样方案" /></TabsContent>
+                                <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={detail.snapshot.samplePlan} populationSize={detail.snapshot.populationSize} /></TabsContent>
                                 <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={detail.snapshot.samplingResults} /></TabsContent>
                             </Tabs>
                         </div>

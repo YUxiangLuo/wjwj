@@ -6,12 +6,7 @@ import {
     performSystematicSampling,
 } from "../sampling";
 import { parseTopicFieldMapping } from "./population-data";
-import {
-    formatSystematicRange,
-    getSystematicAcceptedRange,
-    getSystematicSampleCountRange,
-    isSystematicRangeWithinAcceptedRange,
-} from "./systematic-sampling";
+import { getSamplingAcceptedRange } from "./sampling-tolerance";
 import type { MethodKey as SamplingMethod } from "../api-client";
 export type { SamplingMethod };
 
@@ -91,27 +86,30 @@ export async function executeSamplingAction(params: {
             };
         }
         case "systematic": {
-            const kValue = Number.parseInt(String(parsedParams.kValue ?? ""), 10);
-            if (!Number.isInteger(kValue) || kValue < 1 || kValue > params.population.length) {
+            const sampleSize = params.targetSampleSize;
+            if (
+                sampleSize === null
+                || !Number.isInteger(sampleSize)
+                || sampleSize < 1
+                || sampleSize > params.population.length
+            ) {
                 return {
                     ok: false as const,
-                    errorMessage: `K 值需为 1-${params.population.length} 之间的整数`,
+                    errorMessage: `请先保存 1-${params.population.length} 之间的最终样本量`,
                 };
             }
 
-            const acceptedRange = getSystematicAcceptedRange(params.targetSampleSize);
-            const sampleCountRange = getSystematicSampleCountRange(params.population.length, kValue);
-            if (acceptedRange && !isSystematicRangeWithinAcceptedRange(sampleCountRange, acceptedRange)) {
-                return {
-                    ok: false as const,
-                    errorMessage: `K 值导致实际样本量可能为 ${formatSystematicRange(sampleCountRange)}，需完全落在 ${formatSystematicRange(acceptedRange)} 之间`,
-                };
-            }
-
-            const data = await performSystematicSampling(params.population, kValue, random);
+            const selection = performSystematicSampling(params.population, sampleSize, random);
             return {
                 ok: true as const,
-                result: { completed: true, kValue, sampleCount: data.length, seed, data },
+                result: {
+                    completed: true,
+                    interval: selection.interval,
+                    randomStart: selection.randomStart,
+                    sampleCount: selection.data.length,
+                    seed,
+                    data: selection.data,
+                },
             };
         }
         case "pps": {
@@ -145,7 +143,7 @@ export async function executeSamplingAction(params: {
                     errorMessage: `样本量需为 1-${params.population.length} 之间的整数`,
                 };
             }
-            const ppsAcceptedRange = getSystematicAcceptedRange(params.targetSampleSize);
+            const ppsAcceptedRange = getSamplingAcceptedRange(params.targetSampleSize);
             if (ppsAcceptedRange && (sampleSize < ppsAcceptedRange.min || sampleSize > ppsAcceptedRange.max)) {
                 return {
                     ok: false as const,
@@ -240,7 +238,14 @@ export async function executeSamplingAction(params: {
             const data = await performStratifiedSampling(params.population, stratifyBy, layers, random);
             return {
                 ok: true as const,
-                result: { completed: true, stratifyBy, layers, seed, data },
+                result: {
+                    completed: true,
+                    stratifyBy,
+                    layers,
+                    sampleCount: data.length,
+                    seed,
+                    data,
+                },
             };
         }
     }

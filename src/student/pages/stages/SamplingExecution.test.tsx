@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, mock, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { installDomGlobals } from "@/test-utils/dom";
 
@@ -11,7 +11,7 @@ const mockExperimentApi = {
             numericFields: [],
         },
     })),
-    executeSampling: mock(async () => ({ success: true, data: { result: null } })),
+    executeSampling: mock(async () => ({ success: true, data: { result: null as any } })),
 };
 
 let mockExperimentContext: {
@@ -79,7 +79,9 @@ mock.module("@/components/ui/alert-dialog", () => ({
 }));
 
 mock.module("../../components/ImmersiveSamplingAnimation", () => ({
-    ImmersiveSamplingAnimation: () => null,
+    ImmersiveSamplingAnimation: ({ sampledData }: { sampledData?: unknown[] }) => (
+        <div data-testid="mock-sampling-animation">结果 {sampledData?.length ?? 0} 条</div>
+    ),
 }));
 
 mock.module("../../components/ImmersiveExperimentLaunch", () => ({
@@ -168,14 +170,56 @@ test("SamplingExecution marks PPS as unavailable when no numeric size field exis
     expect((view.getByTestId("student-sampling-pps-run") as HTMLButtonElement).disabled).toBe(true);
 });
 
-test("SamplingExecution chooses the best valid default K for systematic sampling", async () => {
+test("SamplingExecution displays the exact fractional systematic interval", async () => {
+    mockExperimentContext.populationSize = 200;
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplePlan: {
+            finalSampleSize: 132,
+            confidenceLevel: "95",
+            marginOfError: 5,
+        },
+    };
     const view = render(<SamplingExecution onPrev={() => undefined} />);
 
     await waitFor(() => {
         expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1);
     });
 
-    const input = view.getByTestId("student-sampling-systematic-k") as HTMLInputElement;
+    expect(view.getByTestId("student-sampling-systematic-k").textContent).toBe("1.5152");
+    expect(view.container.textContent).not.toContain("没有任何 K 值");
+});
 
-    expect(input.value).toBe("8");
+test("SamplingExecution waits for the API result before showing the explanation animation", async () => {
+    let resolveRequest: ((value: {
+        success: true;
+        data: { result: { completed: true; sampleCount: number; seed: number; data: Array<{ id: number }> } };
+    }) => void) | undefined;
+    mockExperimentApi.executeSampling.mockImplementationOnce(() => new Promise((resolve) => {
+        resolveRequest = resolve;
+    }));
+
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("student-sampling-simple-run")).toBeTruthy());
+
+    fireEvent.click(view.getByTestId("student-sampling-simple-run"));
+    expect(mockExperimentApi.executeSampling).toHaveBeenCalledTimes(1);
+    expect(view.queryByTestId("mock-sampling-animation")).toBeNull();
+
+    resolveRequest?.({
+        success: true,
+        data: {
+            result: {
+                completed: true,
+                sampleCount: 13,
+                seed: 42,
+                data: [{ id: 1 }, { id: 2 }],
+            },
+        },
+    });
+
+    await waitFor(() => {
+        expect(view.getByTestId("mock-sampling-animation").textContent).toContain("结果 2 条");
+    });
+    expect(mockExperimentApi.executeSampling).toHaveBeenCalledTimes(1);
 });

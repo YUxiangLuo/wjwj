@@ -160,7 +160,7 @@ function FieldSelect({
 }) {
     return (
         <Select value={value} onValueChange={onChange}>
-            <SelectTrigger className="w-[220px] bg-background border-border text-foreground">
+            <SelectTrigger aria-label="选择分析抽样方法" className="w-[220px] bg-background border-border text-foreground">
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent className="bg-card border-border text-foreground">
@@ -635,7 +635,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </CardHeader>
                         <CardContent className="pt-4 space-y-3">
                             <Select value={exportType} onValueChange={(v) => setExportType(v as MethodKey | "all")}>
-                                <SelectTrigger className="w-full bg-background border-border text-foreground">
+                                <SelectTrigger aria-label="选择报告分析方法" className="w-full bg-background border-border text-foreground">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-card border-border text-foreground">

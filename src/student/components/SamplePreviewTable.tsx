@@ -98,6 +98,9 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
             <div
                 ref={tableScrollRef}
                 onScroll={handleTableScroll}
+                role="region"
+                tabIndex={0}
+                aria-label={`抽样结果数据表，第 ${currentPage} 页，共 ${totalPages} 页`}
                 className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-xl border border-border [scrollbar-gutter:stable]"
             >
                 <div className="min-w-max pr-3 [&_[data-slot=table-container]]:w-max [&_[data-slot=table-container]]:overflow-visible">
@@ -129,6 +132,9 @@ export function SamplePreviewTable({ data, total }: { data: unknown[]; total: nu
                 <div
                     ref={horizontalScrollRef}
                     onScroll={handleTrackScroll}
+                    role="region"
+                    tabIndex={0}
+                    aria-label="横向滚动抽样结果数据表"
                     className="mt-2 overflow-x-auto overflow-y-hidden"
                 >
                     <div className="h-1" style={{ width: scrollTrackWidth }} />

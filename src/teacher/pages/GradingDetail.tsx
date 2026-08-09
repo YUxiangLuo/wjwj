@@ -9,14 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextContent } from "@/components/RichTextContent";
 import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
+import { QuestionnaireSnapshot } from "@/components/QuestionnaireSnapshot";
+import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { teacherApi, type SubmissionDetail } from "../api-client";
-
-function JsonView({ value }: { value: unknown }) {
-    return <pre className="max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-xl bg-muted p-4 text-xs text-foreground">{JSON.stringify(value, null, 2)}</pre>;
-}
 
 export function GradingDetail() {
     const { submissionId } = useParams();
@@ -101,7 +99,9 @@ export function GradingDetail() {
             </div>
             <Card>
                 <CardHeader>
-                    <CardTitle>{data.studentName} · {data.topic}</CardTitle>
+                    <CardTitle>
+                        <h2>{data.studentName} · {data.topic}</h2>
+                    </CardTitle>
                     <p className="text-sm text-muted-foreground">{data.className} · {data.studentId}</p>
                 </CardHeader>
                 <CardContent>
@@ -112,8 +112,8 @@ export function GradingDetail() {
                             <TabsTrigger value="sampling">抽样结果</TabsTrigger>
                             <TabsTrigger value="report">报告</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="questionnaire" className="mt-4"><JsonView value={data.questionnaire} /></TabsContent>
-                        <TabsContent value="plan" className="mt-4"><JsonView value={data.samplePlan} /></TabsContent>
+                        <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={data.questionnaire} /></TabsContent>
+                        <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={data.samplePlan} populationSize={data.populationSize} /></TabsContent>
                         <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={data.samplingResults} /></TabsContent>
                         <TabsContent value="report" className="mt-4 rounded-xl border border-border p-5"><RichTextContent html={data.reportContent} /></TabsContent>
                     </Tabs>

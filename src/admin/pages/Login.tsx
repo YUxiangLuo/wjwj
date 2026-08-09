@@ -38,7 +38,7 @@ export function Login() {
     };
 
     return (
-        <div className="min-h-screen grid lg:grid-cols-2 bg-background font-sans text-foreground">
+        <main className="min-h-screen grid lg:grid-cols-2 bg-background font-sans text-foreground">
             {/* Left Side: Hero / Branding */}
             <div className="hidden lg:flex flex-col justify-between bg-card relative overflow-hidden p-12 border-r border-border">
                 <div className="absolute inset-0 z-0 opacity-40">
@@ -204,7 +204,7 @@ export function Login() {
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     );
 }
 

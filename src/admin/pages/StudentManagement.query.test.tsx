@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, expect, mock, test } from "bun:test";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import { StudentManagement } from "./StudentManagement";
@@ -36,7 +36,7 @@ test("student management initializes its request from the classId query", async 
         });
     }) as unknown as typeof fetch;
 
-    render(
+    const view = render(
         <MemoryRouter initialEntries={["/student?classId=7"]}>
             <StudentManagement />
         </MemoryRouter>,
@@ -44,5 +44,12 @@ test("student management initializes its request from the classId query", async 
 
     await waitFor(() => {
         expect(requestedUrls.some((url) => url.includes("/api/admin/students?class_id=7"))).toBe(true);
+    });
+
+    expect(view.getByText("统计一班暂无学生")).toBeTruthy();
+    fireEvent.click(view.getByText("查看全部学生"));
+
+    await waitFor(() => {
+        expect(requestedUrls.some((url) => url.endsWith("/api/admin/students"))).toBe(true);
     });
 });

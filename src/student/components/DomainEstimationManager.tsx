@@ -252,61 +252,66 @@ export function DomainEstimationManager({
                             }`}
                         >
                             {/* 域头部（可点击展开） */}
-                            <div 
-                                className="flex items-center justify-between p-3 cursor-pointer"
-                                onClick={() => setExpandedDomain(expandedDomain === domain.id ? null : domain.id)}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
-                                        {index + 1}
-                                    </div>
-                                    <div>
-                                        <div className="font-medium text-primary">
-                                            {domain.name}
+                            <div className="flex items-center gap-2 p-3">
+                                <button
+                                    type="button"
+                                    className="flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 text-left"
+                                    aria-expanded={expandedDomain === domain.id}
+                                    aria-controls={`domain-panel-${domain.id}`}
+                                    aria-label={`${expandedDomain === domain.id ? "收起" : "展开"}子总体：${domain.name || "未命名子总体"}`}
+                                    onClick={() => setExpandedDomain(expandedDomain === domain.id ? null : domain.id)}
+                                >
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <div className="w-8 h-8 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+                                            {index + 1}
                                         </div>
-                                        <div className="text-xs text-foreground/90">
-                                            N = {domain.populationSize.toLocaleString()} | 需 n ≥{" "}
-                                            <span className="font-semibold text-info tabular-nums">
-                                                {domain.requiredSampleSize.toLocaleString()}
-                                            </span>
+                                        <div>
+                                            <div className="font-medium text-primary">
+                                                {domain.name}
+                                            </div>
+                                            <div className="text-xs text-foreground/90">
+                                                N = {domain.populationSize.toLocaleString()} | 需 n ≥{" "}
+                                                <span className="font-semibold text-info tabular-nums">
+                                                    {domain.requiredSampleSize.toLocaleString()}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Badge 
-                                        variant="outline" 
-                                        className="text-xs bg-primary/10 border-primary/20 text-primary"
-                                    >
-                                        {formatMarginOfError(domain.marginOfError, estimationType)} / {domain.confidenceLevel}%
-                                    </Badge>
-                                    {expandedDomain === domain.id ? (
-                                        <ChevronUp className="w-4 h-4 text-primary" />
-                                    ) : (
-                                        <ChevronDown className="w-4 h-4 text-primary" />
-                                    )}
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            removeDomain(domain.id);
-                                        }}
-                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                </div>
+                                    <div className="flex shrink-0 items-center gap-2">
+                                        <Badge
+                                            variant="outline"
+                                            className="text-xs bg-primary/10 border-primary/20 text-primary"
+                                        >
+                                            {formatMarginOfError(domain.marginOfError, estimationType)} / {domain.confidenceLevel}%
+                                        </Badge>
+                                        {expandedDomain === domain.id ? (
+                                            <ChevronUp className="w-4 h-4 text-primary" />
+                                        ) : (
+                                            <ChevronDown className="w-4 h-4 text-primary" />
+                                        )}
+                                    </div>
+                                </button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-label={`删除子总体：${domain.name || "未命名子总体"}`}
+                                    onClick={() => removeDomain(domain.id)}
+                                    className="h-8 w-8 shrink-0 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
                             </div>
 
                             {/* 展开的配置面板 */}
                             {expandedDomain === domain.id && (
-                                <div className="px-4 pb-4 space-y-4">
+                                <div id={`domain-panel-${domain.id}`} className="px-4 pb-4 space-y-4">
                                     <div className="h-px bg-primary/50" />
                                     
                                     {/* 名称 */}
                                     <div className="space-y-2">
-                                        <Label className="text-xs text-primary">子总体名称</Label>
+                                        <Label htmlFor={`domain-name-${domain.id}`} className="text-xs text-primary">子总体名称</Label>
                                         <Input
+                                            id={`domain-name-${domain.id}`}
                                             value={domain.name}
                                             onChange={(e) => updateDomain(domain.id, { name: e.target.value })}
                                             className="bg-background border-primary text-foreground"
@@ -316,8 +321,9 @@ export function DomainEstimationManager({
 
                                     {/* 总体规模 */}
                                     <div className="space-y-2">
-                                        <Label className="text-xs text-primary">子总体规模 (N)</Label>
+                                        <Label htmlFor={`domain-population-${domain.id}`} className="text-xs text-primary">子总体规模 (N)</Label>
                                         <Input
+                                            id={`domain-population-${domain.id}`}
                                             type="number"
                                             value={domain.populationSize}
                                             onChange={(e) => updateDomain(domain.id, { populationSize: parseInt(e.target.value) || 0 })}
@@ -341,7 +347,7 @@ export function DomainEstimationManager({
                                                     stratifiedValue: undefined 
                                                 })}
                                             >
-                                                <SelectTrigger className="bg-background border-primary text-foreground">
+                                                <SelectTrigger aria-label={`${domain.name || "子总体"}关联分层变量`} className="bg-background border-primary text-foreground">
                                                     <SelectValue placeholder="选择分层变量" />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-background border-primary">
@@ -362,7 +368,7 @@ export function DomainEstimationManager({
                                                 value={domain.confidenceLevel} 
                                                 onValueChange={(value) => updateDomain(domain.id, { confidenceLevel: value })}
                                             >
-                                                <SelectTrigger className="bg-background border-primary text-foreground">
+                                                <SelectTrigger aria-label={`${domain.name || "子总体"}置信水平`} className="bg-background border-primary text-foreground">
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent className="bg-background border-primary">
@@ -373,8 +379,9 @@ export function DomainEstimationManager({
                                             </Select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs text-primary">{marginLabel}{marginInputSuffix}</Label>
+                                            <Label htmlFor={`domain-margin-${domain.id}`} className="text-xs text-primary">{marginLabel}{marginInputSuffix}</Label>
                                             <Input
+                                                id={`domain-margin-${domain.id}`}
                                                 type="number"
                                                 value={domain.marginOfError}
                                                 onChange={(e) => updateDomain(domain.id, { marginOfError: Number.parseFloat(e.target.value) || 0 })}

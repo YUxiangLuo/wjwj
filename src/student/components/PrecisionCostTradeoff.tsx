@@ -252,8 +252,9 @@ export function PrecisionCostTradeoff({
                 {useCustom && (
                     <div className="space-y-3 p-3 rounded-xl border border-primary/90 bg-background">
                         <div className="space-y-2">
-                            <Label className="text-xs text-foreground">固定成本（元）</Label>
+                            <Label htmlFor="precision-fixed-cost" className="text-xs text-foreground">固定成本（元）</Label>
                             <Input
+                                id="precision-fixed-cost"
                                 type="number"
                                 value={customScenario.fixedCost}
                                 onChange={(e) => setCustomScenario({
@@ -265,8 +266,9 @@ export function PrecisionCostTradeoff({
                             <p className="text-xs text-muted-foreground">培训、督导、设备等固定支出</p>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs text-foreground">单位样本成本（元/样本）</Label>
+                            <Label htmlFor="precision-variable-cost" className="text-xs text-foreground">单位样本成本（元/样本）</Label>
                             <Input
+                                id="precision-variable-cost"
                                 type="number"
                                 value={customScenario.variableCostPerUnit}
                                 onChange={(e) => setCustomScenario({
@@ -278,8 +280,9 @@ export function PrecisionCostTradeoff({
                             <p className="text-xs text-muted-foreground">每个样本的调查费用（访问费、礼品等）</p>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs text-foreground">总预算（元）</Label>
+                            <Label htmlFor="precision-total-budget" className="text-xs text-foreground">总预算（元）</Label>
                             <Input
+                                id="precision-total-budget"
                                 type="number"
                                 value={customScenario.totalBudget}
                                 onChange={(e) => setCustomScenario({
@@ -320,7 +323,7 @@ export function PrecisionCostTradeoff({
                     <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">置信水平</Label>
                         <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>
-                            <SelectTrigger className="h-9 text-sm bg-background border-primary">
+                            <SelectTrigger aria-label="成本分析置信水平" className="h-9 text-sm bg-background border-primary">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -338,6 +341,7 @@ export function PrecisionCostTradeoff({
                             </span>
                         </div>
                         <Slider
+                            aria-label="成本分析设计效应"
                             value={[Math.round(designEffectLocal * 10)]}
                             onValueChange={([v]) => v != null && setDesignEffectLocal(Math.round(v) / 10)}
                             min={10}
@@ -354,6 +358,7 @@ export function PrecisionCostTradeoff({
                             </span>
                         </div>
                         <Slider
+                            aria-label="成本分析无回答率"
                             value={[Math.round(nonResponseRateLocal * 100)]}
                             onValueChange={([v]) => v != null && setNonResponseRateLocal((v ?? 0) / 100)}
                             min={0}
@@ -421,6 +426,7 @@ export function PrecisionCostTradeoff({
                         当前设定：±{targetMarginOfError}%
                     </p>
                     <Slider
+                        aria-label="成本分析目标精度"
                         value={[targetMarginOfError]}
                         onValueChange={(v) => setTargetMarginOfError(v[0] ?? 5)}
                         min={1}

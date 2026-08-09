@@ -211,8 +211,8 @@ export function TopicDetails() {
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">{task.name}</h1>
                         <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}</span>
-                            {task.deadline && <span>截止于 {formatDateTime(task.deadline)}</span>}
+                            <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {notOpenYet ? "开放于" : "发布于"} {formatDateTime(task.publishedAt)}（UTC+8）</span>
+                            {task.deadline && <span>截止于 {formatDateTime(task.deadline)}（UTC+8）</span>}
                         </div>
                     </div>
                     <StatusBadge intent={effectiveStatus.intent} className="h-7 px-3 py-1 text-sm">{effectiveStatus.label}</StatusBadge>
@@ -291,6 +291,7 @@ export function TopicDetails() {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
+                                                        aria-label={`预览附件：${file.name}`}
                                                         className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                         onClick={() => setPreviewFile(file)}
                                                         title="预览"
@@ -301,6 +302,7 @@ export function TopicDetails() {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    aria-label={`下载附件：${file.name}`}
                                                     className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                     onClick={() => handleDownload(file)}
                                                     title="下载"

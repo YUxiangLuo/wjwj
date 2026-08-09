@@ -392,7 +392,7 @@ export function TopicManagement() {
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as "all" | "draft" | "published")}>
-                            <SelectTrigger data-testid="teacher-topic-status-filter" className="bg-background border-border text-foreground sm:w-28">
+                            <SelectTrigger aria-label="按课题状态筛选" data-testid="teacher-topic-status-filter" className="bg-background border-border text-foreground sm:w-28">
                                 <SelectValue placeholder="全部状态" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">

@@ -111,7 +111,7 @@ export function ClassManagement() {
                             />
                         </div>
                         <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-                            <SelectTrigger data-testid="teacher-class-semester-filter" className="bg-background border-border text-foreground sm:w-44">
+                            <SelectTrigger aria-label="按学期筛选班级" data-testid="teacher-class-semester-filter" className="bg-background border-border text-foreground sm:w-44">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">

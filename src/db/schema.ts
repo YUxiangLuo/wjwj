@@ -5,7 +5,6 @@ import {
     customType,
     index,
     integer,
-    jsonb,
     numeric,
     pgTable,
     smallint,
@@ -14,6 +13,7 @@ import {
     uniqueIndex,
     varchar,
 } from "drizzle-orm/pg-core";
+import { nativeJsonb } from "./native-jsonb";
 
 const citext = customType<{ data: string; driverData: string }>({
     dataType() {
@@ -127,9 +127,9 @@ export const topic = pgTable(
         description: text("description"),
         excelFilePath: varchar("excel_file_path", { length: 500 }),
         excelRowCount: integer("excel_row_count").notNull().default(0),
-        fieldMapping: jsonb("field_mapping"),
-        weightConfig: jsonb("weight_config"),
-        recommendQuestions: jsonb("recommend_questions"),
+        fieldMapping: nativeJsonb("field_mapping"),
+        weightConfig: nativeJsonb("weight_config"),
+        recommendQuestions: nativeJsonb("recommend_questions"),
         status: smallint("status").notNull().default(0),
         deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
         createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -139,6 +139,18 @@ export const topic = pgTable(
         teacherIdIdx: index("topic_idx_teacher_id").on(table.teacherId),
         statusIdx: index("topic_idx_status").on(table.status),
         deletedIdx: index("topic_idx_deleted").on(table.deletedAt),
+        fieldMappingObject: check(
+            "topic_ck_field_mapping_object",
+            sql`${table.fieldMapping} is null or jsonb_typeof(${table.fieldMapping}) = 'object'`,
+        ),
+        weightConfigObject: check(
+            "topic_ck_weight_config_object",
+            sql`${table.weightConfig} is null or jsonb_typeof(${table.weightConfig}) = 'object'`,
+        ),
+        recommendQuestionsArray: check(
+            "topic_ck_recommend_questions_array",
+            sql`${table.recommendQuestions} is null or jsonb_typeof(${table.recommendQuestions}) = 'array'`,
+        ),
     }),
 );
 
@@ -186,15 +198,15 @@ export const experiment = pgTable(
         version: integer("version").notNull().default(1),
         currentStage: smallint("current_stage").notNull().default(1),
         status: varchar("status", { length: 20 }).$type<ExperimentStatus>().notNull().default("in_progress"),
-        questionnaire: jsonb("questionnaire"),
-        samplePlan: jsonb("sample_plan"),
-        samplingResults: jsonb("sampling_results"),
+        questionnaire: nativeJsonb("questionnaire"),
+        samplePlan: nativeJsonb("sample_plan"),
+        samplingResults: nativeJsonb("sampling_results"),
         reportContent: text("report_content"),
         stage1CompletedAt: timestamp("stage1_completed_at", { mode: "date", withTimezone: true }),
         stage2CompletedAt: timestamp("stage2_completed_at", { mode: "date", withTimezone: true }),
         stage3CompletedAt: timestamp("stage3_completed_at", { mode: "date", withTimezone: true }),
         stage4CompletedAt: timestamp("stage4_completed_at", { mode: "date", withTimezone: true }),
-        submissionSnapshot: jsonb("submission_snapshot"),
+        submissionSnapshot: nativeJsonb("submission_snapshot"),
         submittedAt: timestamp("submitted_at", { mode: "date", withTimezone: true }),
         scoreQuestionnaire: numeric("score_questionnaire", { precision: 5, scale: 2 }),
         scoreProcess: numeric("score_process", { precision: 5, scale: 2 }),
@@ -215,6 +227,22 @@ export const experiment = pgTable(
         statusCheck: check(
             "experiment_ck_status",
             sql`${table.status} in ('in_progress', 'submitted', 'graded', 'rejected')`,
+        ),
+        questionnaireObject: check(
+            "experiment_ck_questionnaire_object",
+            sql`${table.questionnaire} is null or jsonb_typeof(${table.questionnaire}) = 'object'`,
+        ),
+        samplePlanObject: check(
+            "experiment_ck_sample_plan_object",
+            sql`${table.samplePlan} is null or jsonb_typeof(${table.samplePlan}) = 'object'`,
+        ),
+        samplingResultsObject: check(
+            "experiment_ck_sampling_results_object",
+            sql`${table.samplingResults} is null or jsonb_typeof(${table.samplingResults}) = 'object'`,
+        ),
+        submissionSnapshotObject: check(
+            "experiment_ck_submission_snapshot_object",
+            sql`${table.submissionSnapshot} is null or jsonb_typeof(${table.submissionSnapshot}) = 'object'`,
         ),
     }),
 );

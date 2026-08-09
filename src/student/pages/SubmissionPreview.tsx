@@ -18,10 +18,6 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { experimentApi, tasksApi, type ExperimentData, type TaskDetail, type Question } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import {
-    formatSystematicRange,
-    getSystematicAcceptedRange,
-} from "../experiment/systematic-sampling";
-import {
     formatMarginOfError,
     getAdvancedPlanSourceLabel,
     getEstimationTypeLabel,
@@ -180,14 +176,7 @@ export function SubmissionPreview() {
         populationSize: experiment.populationSize,
     });
     const canSubmit = submitBlocker === null;
-    const systematicAcceptedRange = getSystematicAcceptedRange(samplePlan?.finalSampleSize);
-    const systematicSampleCount = samplingResults?.systematic?.sampleCount ?? null;
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
-    const showSystematicSampleNote =
-        samplePlan !== null &&
-        samplingResults?.systematic?.completed === true &&
-        systematicSampleCount !== null &&
-        systematicSampleCount !== samplePlan.finalSampleSize;
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-preview">
@@ -281,13 +270,6 @@ export function SubmissionPreview() {
                                         <p>PPS抽样：{samplingResults?.pps?.unavailable ? PPS_UNAVAILABLE_STATUS_MESSAGE : samplingResults?.pps?.completed ? `已完成（${samplingResults.pps.sampleCount} 样本）` : "未完成"}</p>
                                         <p>分层抽样：{samplingResults?.stratified?.completed ? "已完成" : "未完成"}</p>
                                     </div>
-                                    {showSystematicSampleNote && (
-                                        <div className="mt-3 rounded-lg border border-info/20 bg-info/10 px-3 py-2 text-xs text-info">
-                                            系统抽样样本量受 K 值和随机起点影响，不要求与规划样本量完全一致。
-                                            当前结果为 {systematicSampleCount}，规划样本量为 {samplePlan.finalSampleSize}，
-                                            允许范围为 {formatSystematicRange(systematicAcceptedRange)}。
-                                        </div>
-                                    )}
                                 </div>
 
                                 <div className="rounded-lg border border-border bg-card/30 p-4">
