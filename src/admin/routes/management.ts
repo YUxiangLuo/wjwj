@@ -2,7 +2,7 @@ import { and, count, desc, eq, ilike, inArray, isNull, or } from "drizzle-orm";
 import { db } from "../../db";
 import { announcement, class_, experiment, semester, student, task, teacher, topic } from "../../db/schema";
 import { experimentProgress } from "../../lib/experiment-progress";
-import { error, getRouteParam, getSearchParams, json, parseBody } from "../../server/http";
+import { error, getRouteParam, getSearchParams, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
@@ -41,8 +41,11 @@ const semesterRoutes: RouteDefinition = {
 
     async POST(req) {
         const body = await parseBody<{ name?: string; setAsCurrent?: boolean }>(req);
-        const name = body.name?.trim() ?? "";
+        const name = stringValue(body.name).trim();
         if (!name || name.length > 20) return error("学期名称须为1-20个字符", "VALIDATION_ERROR");
+        if (body.setAsCurrent !== undefined && typeof body.setAsCurrent !== "boolean") {
+            return error("当前学期标记无效", "VALIDATION_ERROR");
+        }
         if ((await db.select({ id: semester.id }).from(semester).where(eq(semester.name, name))).length > 0) {
             return error("学期名称已存在", "DUPLICATE_NAME", 409);
         }
@@ -120,8 +123,8 @@ const teacherRoutes: RouteDefinition = {
 
     async POST(req) {
         const body = await parseBody<{ employeeId?: string; name?: string }>(req);
-        const employeeId = body.employeeId?.trim() ?? "";
-        const name = body.name?.trim() ?? "";
+        const employeeId = stringValue(body.employeeId).trim();
+        const name = stringValue(body.name).trim();
         if (!employeeId || !name || employeeId.length > 50 || name.length > 100) {
             return error("教师工号或姓名无效", "VALIDATION_ERROR");
         }
@@ -140,7 +143,7 @@ const teacherUpdateRoutes: RouteDefinition = {
     async PUT(req) {
         const id = parseId(req);
         const body = await parseBody<{ name?: string }>(req);
-        const name = body.name?.trim() ?? "";
+        const name = stringValue(body.name).trim();
         if (!id) return error("无效的教师ID", "INVALID_ID");
         if (!name || name.length > 100) return error("教师姓名无效", "VALIDATION_ERROR");
         const updated = await db
@@ -219,7 +222,7 @@ const classRoutes: RouteDefinition = {
 
     async POST(req) {
         const body = await parseBody<{ name?: string; semesterId?: number; teacherId?: number }>(req);
-        const name = body.name?.trim() ?? "";
+        const name = stringValue(body.name).trim();
         if (
             !name
             || name.length > 100
@@ -250,7 +253,7 @@ const classUpdateRoutes: RouteDefinition = {
         if (!id) return error("无效的班级ID", "INVALID_ID");
         const updates: { name?: string; teacherId?: number; updatedAt: Date } = { updatedAt: new Date() };
         if (body.name !== undefined) {
-            const name = body.name.trim();
+            const name = stringValue(body.name).trim();
             if (!name || name.length > 100) return error("班级名称须为1-100个字符", "VALIDATION_ERROR");
             updates.name = name;
         }
@@ -404,11 +407,14 @@ const announcementRoutes: RouteDefinition = {
 
     async POST(req) {
         const body = await parseBody<{ title?: string; content?: string; publish?: boolean; targetScope?: string }>(req);
-        const title = body.title?.trim() ?? "";
-        const content = body.content?.trim() ?? "";
+        const title = stringValue(body.title).trim();
+        const content = stringValue(body.content).trim();
         const targetScope = body.targetScope ?? "all";
         if (!title || title.length > 100 || !content || content.length > 10_000) {
             return error("公告标题或内容无效", "VALIDATION_ERROR");
+        }
+        if (body.publish !== undefined && typeof body.publish !== "boolean") {
+            return error("公告发布状态无效", "VALIDATION_ERROR");
         }
         if (!(["all", "teacher", "student"] as const).includes(targetScope as "all" | "teacher" | "student")) {
             return error("公告目标范围无效", "VALIDATION_ERROR");
@@ -428,12 +434,12 @@ const announcementUpdateRoutes: RouteDefinition = {
         if (!id) return error("无效的公告ID", "INVALID_ID");
         const updates: { title?: string; content?: string; targetScope?: string; status?: number; updatedAt: Date } = { updatedAt: new Date() };
         if (body.title !== undefined) {
-            const title = body.title.trim();
+            const title = stringValue(body.title).trim();
             if (!title || title.length > 100) return error("公告标题无效", "VALIDATION_ERROR");
             updates.title = title;
         }
         if (body.content !== undefined) {
-            const content = body.content.trim();
+            const content = stringValue(body.content).trim();
             if (!content || content.length > 10_000) return error("公告内容无效", "VALIDATION_ERROR");
             updates.content = content;
         }

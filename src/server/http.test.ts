@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { handleServerError, InvalidJsonError, json, parseBody } from "./http";
+import { handleServerError, InvalidJsonError, json, parseBody, stringValue } from "./http";
 
 test("parseBody parses valid JSON", async () => {
     const request = new Request("http://localhost/api", {
@@ -27,6 +27,30 @@ test("parseBody classifies empty and malformed request bodies as invalid JSON", 
         }
         expect(caught).toBeInstanceOf(InvalidJsonError);
     }
+});
+
+test("parseBody rejects syntactically valid JSON that is not an object", async () => {
+    for (const body of ["null", "[]", "true", "1", '"text"']) {
+        const request = new Request("http://localhost/api", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+        });
+
+        let caught: unknown;
+        try {
+            await parseBody(request);
+        } catch (error) {
+            caught = error;
+        }
+        expect(caught).toBeInstanceOf(InvalidJsonError);
+        expect((caught as Error).message).toBe("请求体必须是 JSON 对象");
+    }
+});
+
+test("stringValue accepts only runtime strings", () => {
+    expect(stringValue(" S001 ")).toBe(" S001 ");
+    for (const value of [null, undefined, 1, true, [], {}]) expect(stringValue(value)).toBe("");
 });
 
 test("JSON responses include baseline browser security headers without dropping caller headers", () => {

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { teacher } from "../../db/schema";
 import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
-import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody } from "../../server/http";
+import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 import {
@@ -132,8 +132,8 @@ export function withTeacherAuth(routes: RouteDefinition, options: TeacherAuthOpt
 const teacherLoginRoutes: RouteDefinition = {
     async POST(req) {
         const body = await parseBody<{ employeeId?: string; password?: string }>(req);
-        const employeeId = body.employeeId?.trim() ?? "";
-        const password = body.password ?? "";
+        const employeeId = stringValue(body.employeeId).trim();
+        const password = stringValue(body.password);
         if (!employeeId || !password) return error("请输入工号和密码", "VALIDATION_ERROR", 400);
 
         const [row] = await db.select().from(teacher).where(eq(teacher.employeeId, employeeId));
@@ -191,8 +191,8 @@ const teacherPasswordRoutes: RouteDefinition = {
     async PUT(req) {
         const current = getTeacherUser(req);
         const body = await parseBody<{ currentPassword?: string; newPassword?: string }>(req);
-        const currentPassword = body.currentPassword ?? "";
-        const newPassword = body.newPassword ?? "";
+        const currentPassword = stringValue(body.currentPassword);
+        const newPassword = stringValue(body.newPassword);
         if (!currentPassword || !newPassword) return error("请输入当前密码和新密码", "VALIDATION_ERROR", 400);
         if (currentPassword === newPassword) return error("新密码不能与当前密码相同", "VALIDATION_ERROR", 400);
 

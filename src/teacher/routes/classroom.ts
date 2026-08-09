@@ -2,7 +2,7 @@ import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { class_, semester, student } from "../../db/schema";
-import { error, getRouteParam, json, parseBody } from "../../server/http";
+import { error, getRouteParam, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
 import { STUDENT_USER_TYPE } from "../../student/routes/auth";
@@ -80,9 +80,12 @@ const classStudentsRoutes: RouteDefinition = {
             return error("无权限访问该班级", "FORBIDDEN", 403);
         }
         const body = await parseBody<{ studentId?: string; name?: string; email?: string }>(req);
-        const studentId = body.studentId?.trim() ?? "";
-        const name = body.name?.trim() ?? "";
-        const email = body.email?.trim() ?? "";
+        if (body.email !== undefined && typeof body.email !== "string") {
+            return error("邮箱格式无效", "VALIDATION_ERROR");
+        }
+        const studentId = stringValue(body.studentId).trim();
+        const name = stringValue(body.name).trim();
+        const email = stringValue(body.email).trim();
         if (!studentId || !name) return error("学号和姓名不能为空", "VALIDATION_ERROR");
         if (studentId.length > MAX_STUDENT_ID_LENGTH) return error("学号不能超过50个字符", "VALIDATION_ERROR");
         if (name.length > MAX_STUDENT_NAME_LENGTH) return error("姓名不能超过100个字符", "VALIDATION_ERROR");

@@ -29,8 +29,17 @@ export async function publishTopicTasks(params: {
     classIds: number[];
     deadline?: string;
 }): Promise<TaskPublishSuccess | TaskServiceFailure> {
-    if (!params.topicId || !params.classIds.length) {
-        return fail("请选择课题和班级", "VALIDATION_ERROR");
+    if (
+        !Number.isInteger(params.topicId)
+        || params.topicId <= 0
+        || !Array.isArray(params.classIds)
+        || params.classIds.length === 0
+        || params.classIds.some((classId) => !Number.isInteger(classId) || classId <= 0)
+    ) {
+        return fail("请选择有效的课题和班级", "VALIDATION_ERROR");
+    }
+    if (params.deadline !== undefined && typeof params.deadline !== "string") {
+        return fail("截止时间无效", "VALIDATION_ERROR");
     }
 
     const [topicRow] = await db
@@ -129,7 +138,7 @@ export async function extendTopicTaskDeadline(params: {
     taskId: number;
     deadline: string;
 }): Promise<TaskServiceSuccess | TaskServiceFailure> {
-    if (!params.deadline) {
+    if (typeof params.deadline !== "string" || !params.deadline.trim()) {
         return fail("请输入截止时间", "VALIDATION_ERROR");
     }
 

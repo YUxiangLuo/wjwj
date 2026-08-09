@@ -6,8 +6,8 @@ import { createMockDb } from "../../test-utils/mock-db";
 function request(method: string, body?: unknown, cookie?: string) {
     return new Request("https://example.com", {
         method,
-        headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(cookie ? { cookie } : {}) },
-        body: body ? JSON.stringify(body) : undefined,
+        headers: { ...(body !== undefined ? { "Content-Type": "application/json" } : {}), ...(cookie ? { cookie } : {}) },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 }
 
@@ -31,6 +31,19 @@ test("student login creates an independent fixed session", async () => {
     const session = operations.find((item) => item.kind === "insert");
     expect(session?.values).toMatchObject({ userType: 3, userId: 11, expiresAt: expect.any(Date) });
     expect(session?.values).not.toHaveProperty("deviceInfo");
+});
+
+test("student login rejects non-string fields before querying or changing lockout state", async () => {
+    for (const body of [
+        { studentId: 123, password: "wrong" },
+        { studentId: "S001", password: 123 },
+    ]) {
+        const { module, operations } = await load();
+        const response = await module.loginRoutes.POST!(request("POST", body));
+        expect(response.status).toBe(400);
+        expect(await response.json()).toMatchObject({ error: { code: "VALIDATION_ERROR" } });
+        expect(operations).toHaveLength(0);
+    }
 });
 
 test("fifth wrong student password locks the account", async () => {

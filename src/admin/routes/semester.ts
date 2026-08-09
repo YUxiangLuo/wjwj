@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { semester } from "../../db/schema";
-import { error, getRouteParam, json, parseBody } from "../../server/http";
+import { error, getRouteParam, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 
 const semesterUpdateRoutes: RouteDefinition = {
@@ -13,7 +13,7 @@ const semesterUpdateRoutes: RouteDefinition = {
         }
 
         const body = await parseBody<{ name?: string }>(req);
-        const name = body.name?.trim();
+        const name = stringValue(body.name).trim();
 
         if (!name) {
             return error("学期名称不能为空", "VALIDATION_ERROR");

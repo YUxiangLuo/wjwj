@@ -59,13 +59,23 @@ export function validateParsedExcelUpload(parsed: ParsedExcelFile) {
     return null;
 }
 
-export function validateTopicFieldMappingConfig(fieldMapping: TopicFieldMappingInput | null | undefined) {
+export function validateTopicFieldMappingConfig(fieldMapping: unknown) {
     if (!fieldMapping) return "字段映射不能为空";
+    if (typeof fieldMapping !== "object" || Array.isArray(fieldMapping)) return "字段映射格式无效";
 
-    const identifier = fieldMapping.identifier;
-    const stratified = fieldMapping.stratified ?? [];
-    const numeric = fieldMapping.numeric ?? [];
-    const others = fieldMapping.others ?? [];
+    const input = fieldMapping as Record<string, unknown>;
+    if (input.identifier !== undefined && typeof input.identifier !== "string") return "字段映射格式无效";
+    for (const key of ["stratified", "numeric", "others"] as const) {
+        const value = input[key];
+        if (value !== undefined && (!Array.isArray(value) || value.some((field) => typeof field !== "string"))) {
+            return "字段映射格式无效";
+        }
+    }
+
+    const identifier = input.identifier as string | undefined;
+    const stratified = (input.stratified ?? []) as string[];
+    const numeric = (input.numeric ?? []) as string[];
+    const others = (input.others ?? []) as string[];
 
     const uniqueFields = new Set([identifier, ...stratified, ...numeric, ...others].filter(Boolean));
     if (!identifier) return "必须选择1个标识符字段";

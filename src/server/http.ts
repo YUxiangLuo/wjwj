@@ -48,18 +48,28 @@ export function error(message: string, code: string, status = 400): Response {
 }
 
 export class InvalidJsonError extends Error {
-    constructor() {
-        super("请求体不是有效的 JSON");
+    constructor(message = "请求体不是有效的 JSON") {
+        super(message);
         this.name = "InvalidJsonError";
     }
 }
 
-export async function parseBody<T>(req: Request): Promise<T> {
+export function stringValue(value: unknown): string {
+    return typeof value === "string" ? value : "";
+}
+
+export async function parseBody<T extends Record<string, unknown>>(req: Request): Promise<T> {
+    let parsed: unknown;
     try {
-        return await req.json() as T;
+        parsed = await req.json();
     } catch {
         throw new InvalidJsonError();
     }
+
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new InvalidJsonError("请求体必须是 JSON 对象");
+    }
+    return parsed as T;
 }
 
 export function handleServerError(cause: unknown): Response {
