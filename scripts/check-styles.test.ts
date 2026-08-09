@@ -4,11 +4,34 @@ import {
     countJsxSameIntentPairs,
 } from "./check-styles";
 
+function relativeLuminance(hex: string) {
+    const channels = hex.slice(1).match(/.{2}/g)?.map((value) => Number.parseInt(value, 16) / 255) ?? [];
+    const [red = 0, green = 0, blue = 0] = channels.map((value) =>
+        value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+    );
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function contrastRatio(foreground: string, background: string) {
+    const lighter = Math.max(relativeLuminance(foreground), relativeLuminance(background));
+    const darker = Math.min(relativeLuminance(foreground), relativeLuminance(background));
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
 describe("style guard", () => {
     test("excludes test fixtures from Tailwind production source detection", async () => {
         const themeCss = await Bun.file("styles/theme.css").text();
 
         expect(themeCss).toContain('@source not "../scripts";');
+    });
+
+    test("keeps normal success text above WCAG AA contrast on tinted surfaces", async () => {
+        const themeCss = await Bun.file("styles/theme.css").text();
+        const success = themeCss.match(/--success:\s*(#[0-9a-f]{6});/i)?.[1];
+
+        expect(success).toBeTruthy();
+        // Effective surface behind the success text in the graded-task score strip.
+        expect(contrastRatio(success!, "#dee9ed")).toBeGreaterThanOrEqual(4.5);
     });
 
     test("defines shared cursors for enabled and disabled interactive controls", async () => {

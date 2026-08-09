@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import { parseSpreadsheetFile } from "../../lib/spreadsheet";
 import { resolveStoragePath } from "../../server/storage-files";
 
 export interface TopicFieldMapping {
@@ -19,14 +19,10 @@ export async function readPopulationData(filePath: string): Promise<Record<strin
 
     try {
         const fileBuffer = await Bun.file(fullPath).arrayBuffer();
-        const workbook = XLSX.read(new Uint8Array(fileBuffer), { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        if (!sheetName) return [];
-        const sheet = workbook.Sheets[sheetName];
-        if (!sheet) return [];
-        return XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+        const parsed = await parseSpreadsheetFile(fileBuffer, filePath);
+        return parsed.rows;
     } catch (error) {
-        console.error("Failed to read excel:", error);
+        console.error("Failed to read population data:", error);
         return [];
     }
 }
