@@ -356,29 +356,33 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-6">
-                <TabsList className="bg-card border border-border p-1 rounded-xl w-full flex h-auto" data-testid="student-sampling-tabs">
-                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                            <span>简单随机抽样</span>
-                            {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
+                <TabsList className="bg-card border border-border p-1 rounded-xl w-full min-w-0 flex h-auto gap-1" data-testid="student-sampling-tabs">
+                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="min-w-0 flex-1 rounded-lg px-1 py-2.5 text-xs sm:px-3 sm:text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                        <div className="min-w-0 flex items-center justify-center gap-1 sm:gap-2">
+                            <span className="sm:hidden">简单</span>
+                            <span className="hidden sm:inline">简单随机抽样</span>
+                            {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                            <span>系统抽样</span>
-                            {systematicCompletedForCurrentPlan && <CheckCircle2 className="w-4 h-4 text-success" />}
+                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="min-w-0 flex-1 rounded-lg px-1 py-2.5 text-xs sm:px-3 sm:text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                        <div className="min-w-0 flex items-center justify-center gap-1 sm:gap-2">
+                            <span className="sm:hidden">系统</span>
+                            <span className="hidden sm:inline">系统抽样</span>
+                            {systematicCompletedForCurrentPlan && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                            <span>PPS抽样</span>
-                            {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
+                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="min-w-0 flex-1 rounded-lg px-1 py-2.5 text-xs sm:px-3 sm:text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                        <div className="min-w-0 flex items-center justify-center gap-1 sm:gap-2">
+                            <span className="sm:hidden">PPS</span>
+                            <span className="hidden sm:inline">PPS抽样</span>
+                            {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="flex-1 rounded-lg py-2.5 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                            <span>分层抽样</span>
-                            {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
+                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="min-w-0 flex-1 rounded-lg px-1 py-2.5 text-xs sm:px-3 sm:text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                        <div className="min-w-0 flex items-center justify-center gap-1 sm:gap-2">
+                            <span className="sm:hidden">分层</span>
+                            <span className="hidden sm:inline">分层抽样</span>
+                            {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
                 </TabsList>
@@ -713,13 +717,13 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             </Tabs>
 
             {/* Navigation */}
-            <div className="flex justify-between pt-6 border-t border-border/50">
-                <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground">
+            <div className="flex flex-col gap-3 pt-6 border-t border-border/50 sm:flex-row sm:items-center sm:justify-between">
+                <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="w-full border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground sm:w-auto">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={allCompleted ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"}>
+                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={`w-full min-w-0 whitespace-normal sm:w-auto ${allCompleted ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"}`}>
                     {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${completedMethodCount}/4)`}
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                    <ArrowRight className="w-4 h-4 ml-2 shrink-0" />
                 </Button>
             </div>
 

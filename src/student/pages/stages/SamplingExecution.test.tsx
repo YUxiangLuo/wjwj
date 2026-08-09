@@ -152,6 +152,25 @@ test("SamplingExecution blocks the stage when sample plan is missing", async () 
     expect(view.container.textContent).toContain("无法开始抽样执行");
 });
 
+test("SamplingExecution keeps tabs and navigation contained on narrow viewports", async () => {
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+
+    await waitFor(() => {
+        expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1);
+    });
+
+    const tabs = view.getByTestId("student-sampling-tabs");
+    expect(tabs.className).toContain("min-w-0");
+    for (const method of ["simple", "systematic", "pps", "stratified"]) {
+        expect(view.getByTestId(`student-sampling-tab-${method}`).className).toContain("min-w-0");
+    }
+
+    const next = view.getByTestId("student-sampling-next");
+    expect(next.parentElement?.className).toContain("flex-col");
+    expect(next.className).toContain("w-full");
+    expect(next.className).toContain("whitespace-normal");
+});
+
 test("SamplingExecution marks PPS as unavailable when no numeric size field exists", async () => {
     mockExperimentApi.getStats.mockResolvedValueOnce({
         success: true,
