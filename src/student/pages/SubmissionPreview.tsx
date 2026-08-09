@@ -206,7 +206,7 @@ export function SubmissionPreview() {
                 </CardHeader>
                 <CardContent className="pt-6">
                     <Tabs defaultValue="report" className="w-full">
-                        <TabsList className="bg-muted/50 border border-input/30 p-1 w-full md:w-auto h-auto rounded-lg" data-testid="student-preview-tabs">
+                        <TabsList className="bg-muted/50 border border-input/30 p-1 w-auto h-auto rounded-lg" data-testid="student-preview-tabs">
                             <TabsTrigger
                                 value="report"
                                 data-testid="student-preview-tab-report"
@@ -344,7 +344,7 @@ export function SubmissionPreview() {
                     onClick={() => setConfirmOpen(true)}
                     disabled={!canSubmit || submitting}
                     data-testid="student-preview-submit"
-                    className="w-full md:w-auto h-12 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                    className="w-auto h-12 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                 >
                     {submitting ? (
                         <>

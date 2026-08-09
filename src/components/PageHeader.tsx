@@ -17,7 +17,7 @@ function PageHeader({
     return (
         <Component
             className={cn(
-                "flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between",
+                "flex gap-4 flex-row items-center justify-between",
                 border && "border-b border-border pb-4",
                 className,
             )}

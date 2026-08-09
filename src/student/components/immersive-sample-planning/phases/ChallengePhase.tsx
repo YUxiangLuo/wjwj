@@ -75,7 +75,7 @@ export function ChallengePhase({
                     </div>
 
                     <div className="space-y-3">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                        <h2 className="text-3xl font-bold text-foreground leading-tight">
                             现在开始规划你的样本量
                         </h2>
                         <p className="text-muted-foreground text-lg">

@@ -48,7 +48,7 @@ export function FormulaPhase({
                 <StepHeader current={1} total={3} />
 
                 <div className="text-center space-y-3">
-                    <h2 className="text-xl sm:text-2xl font-bold text-foreground">现在进入样本量公式阶段</h2>
+                    <h2 className="text-2xl font-bold text-foreground">现在进入样本量公式阶段</h2>
                     <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
                         先选这次要规划的估计目标，再设置信心水平。后面的公式、误差定义和示例都会跟着这里的选择变化。
                     </p>
@@ -84,7 +84,7 @@ export function FormulaPhase({
                         </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2 max-w-2xl mx-auto">
+                    <div className="grid gap-3 grid-cols-2 max-w-2xl mx-auto">
                         <EstimationMethodCard
                             active={isProportion}
                             title="比例估计"
@@ -165,7 +165,7 @@ export function FormulaPhase({
                 <StepHeader current={2} total={3} />
 
                 <div className="text-center space-y-2">
-                    <h2 className="text-xl sm:text-2xl font-bold text-foreground">继续补齐公式里的关键参数</h2>
+                    <h2 className="text-2xl font-bold text-foreground">继续补齐公式里的关键参数</h2>
                     <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
                         上一步确定了“要多可靠”，这一步再确定“要多精确”。误差要求越严格，样本量就会越大。
                     </p>
@@ -392,7 +392,7 @@ function StepHeader({ current, total }: { current: number; total: number }) {
 
 function FormulaDisplay({ parts }: { parts: Array<{ text: string; dim?: boolean; highlight?: string }> }) {
     return (
-        <div className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-center">
+        <div className="text-3xl font-mono font-bold tracking-tight text-center">
             {parts.map((p, i) => (
                 <span
                     key={i}

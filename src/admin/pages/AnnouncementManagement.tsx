@@ -111,7 +111,7 @@ export function AnnouncementManagement() {
                 ) : (
                     <div className="space-y-3">
                         {rows.map((item) => (
-                            <div key={item.id} className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center">
+                            <div key={item.id} className="flex gap-3 rounded-xl border border-border p-4 flex-row items-center">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
                                         <h2 className="truncate font-medium">{item.title}</h2>

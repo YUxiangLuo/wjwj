@@ -19,7 +19,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+            <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle className="text-foreground">添加学生</DialogTitle>
                     <DialogDescription className="sr-only">

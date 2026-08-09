@@ -513,13 +513,13 @@ export function ImmersiveSamplePlanning({
                 </div>
 
                 {/* Header */}
-                <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 sm:px-6 pt-4 z-10">
+                <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-4 z-10">
                     <div className="flex items-center gap-3">
                         <span className="text-sm font-medium text-muted-foreground">
                             {PHASE_LABELS[phase.type] ?? ""}
                         </span>
                         {/* Phase dots */}
-                        <div className="hidden sm:flex gap-1.5">
+                        <div className="flex gap-1.5">
                             {NAVIGABLE_PHASES.map((t) => (
                                 <div
                                     key={t}
@@ -546,7 +546,7 @@ export function ImmersiveSamplePlanning({
                 </div>
 
                 {/* Content */}
-                <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-4 sm:px-6 pt-16 pb-24">
+                <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-6 pt-16 pb-24">
                     <div key={pageKey} className={`w-full max-w-2xl ${animationClass}`}>
                         <h1 id={titleId} className="sr-only">样本量规划</h1>
                         {renderPhase()}
@@ -555,7 +555,7 @@ export function ImmersiveSamplePlanning({
 
                 {/* Bottom bar */}
                 {canGoPrev && (
-                    <div className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-4 sm:px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/80 to-transparent">
+                    <div className="fixed bottom-0 left-0 right-0 z-10 flex items-center justify-start px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/80 to-transparent">
                         <Button
                             type="button"
                             variant="ghost"
@@ -573,7 +573,7 @@ export function ImmersiveSamplePlanning({
                     <button
                         type="button"
                         onClick={goPrev}
-                        className="hidden lg:flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card hover:bg-muted transition-colors"
+                        className="flex fixed top-1/2 -translate-y-1/2 left-4 z-10 w-11 h-11 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         aria-label="上一步"
                     >
                         <ChevronLeft className="w-5 h-5" />
@@ -584,7 +584,7 @@ export function ImmersiveSamplePlanning({
                         type="button"
                         onClick={goNext}
                         data-testid="immersive-sp-next"
-                        className="hidden lg:flex fixed top-1/2 -translate-y-1/2 right-4 z-10 w-11 h-11 rounded-full bg-primary shadow-lg shadow-primary/20 items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
+                        className="flex fixed top-1/2 -translate-y-1/2 right-4 z-10 w-11 h-11 rounded-full bg-primary shadow-lg shadow-primary/20 items-center justify-center text-primary-foreground hover:bg-primary/90 transition-colors"
                         aria-label="下一步"
                     >
                         <ChevronRight className="w-5 h-5" />

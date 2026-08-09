@@ -131,7 +131,7 @@ function ChartTabPanel({
 }) {
     return (
         <div className="mt-6 space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="flex flex-row items-center justify-between gap-3">
                 <div className="text-sm text-muted-foreground">{description}</div>
                 <div className="flex items-center gap-2">
                     {fieldSelector}
@@ -479,8 +479,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-analysis-report">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-3 gap-6">
+                <div className="col-span-2 space-y-6">
                     <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                         <CardHeader className="border-b border-border pb-4">
                             <CardTitle className="flex items-center gap-2 text-foreground">
@@ -745,7 +745,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
             {/* Zoom dialog */}
             <Dialog open={zoomChart !== null} onOpenChange={(open) => { if (!open) setZoomChart(null); }}>
-                <DialogContent className="sm:max-w-[50vw] bg-card border-border text-foreground" data-testid="student-analysis-zoom-dialog">
+                <DialogContent className="max-w-[50vw] bg-card border-border text-foreground" data-testid="student-analysis-zoom-dialog">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">
                             {activeZoom?.title}（放大）

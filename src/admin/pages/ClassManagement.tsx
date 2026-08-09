@@ -224,7 +224,7 @@ export function ClassManagement() {
                 </Button>
             </PageHeader>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -277,16 +277,16 @@ export function ClassManagement() {
                         <CardTitle className="text-base text-foreground">班级列表</CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredClasses.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                    <div className="flex gap-3 flex-row w-auto">
                         <Input
                             placeholder="搜索班级 / 学期 / 教师"
                             data-testid="class-search-input"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-background border-border text-foreground placeholder:text-muted-foreground sm:w-64 focus:border-ring"
+                            className="bg-background border-border text-foreground placeholder:text-muted-foreground w-64 focus:border-ring"
                         />
                         <Select value={filterSemester} onValueChange={setFilterSemester}>
-                            <SelectTrigger aria-label="按学期筛选班级" data-testid="class-filter-semester" className="bg-background border-border text-foreground sm:w-36">
+                            <SelectTrigger aria-label="按学期筛选班级" data-testid="class-filter-semester" className="bg-background border-border text-foreground w-36">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -297,7 +297,7 @@ export function ClassManagement() {
                             </SelectContent>
                         </Select>
                         <Select value={filterTeacher} onValueChange={setFilterTeacher}>
-                            <SelectTrigger aria-label="按教师筛选班级" data-testid="class-filter-teacher" className="bg-background border-border text-foreground sm:w-36">
+                            <SelectTrigger aria-label="按教师筛选班级" data-testid="class-filter-teacher" className="bg-background border-border text-foreground w-36">
                                 <SelectValue placeholder="全部教师" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
@@ -391,7 +391,7 @@ export function ClassManagement() {
 
             {/* 创建班级弹窗 */}
             <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-                <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+                <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">创建班级</DialogTitle>
                         <DialogDescription className="text-muted-foreground">为指定学期和教师创建一个新的教学班级。</DialogDescription>
@@ -455,7 +455,7 @@ export function ClassManagement() {
 
             {/* 编辑班级弹窗 */}
             <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-                <DialogContent className="bg-card border-border text-foreground sm:max-w-[425px]">
+                <DialogContent className="bg-card border-border text-foreground max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="text-foreground">编辑班级</DialogTitle>
                         <DialogDescription className="text-muted-foreground">更新班级名称或重新分配授课教师。</DialogDescription>

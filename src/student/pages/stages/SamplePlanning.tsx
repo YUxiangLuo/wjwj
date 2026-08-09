@@ -146,7 +146,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-4 pb-2 pt-3" data-testid="student-sample-plan-summary">
-                            <div className="grid grid-cols-1 gap-x-6 gap-y-0 sm:grid-cols-2">
+                            <div className="grid gap-x-6 gap-y-0 grid-cols-2">
                                 <SummaryRow
                                     label="估计类型"
                                     value={getEstimationTypeLabel(displayData.estimationType)}

@@ -62,15 +62,15 @@ export function GradingManagement() {
                 <p className="mt-1 text-sm text-muted-foreground">评分直接写入学生当前实验；驳回后学生可修改并覆盖重交。</p>
             </div>
             <Card>
-                <CardHeader className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <CardHeader className="flex gap-4 flex-row items-center justify-between">
                     <CardTitle className="text-base">批改列表（{total}）</CardTitle>
-                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                        <div className="relative w-full sm:w-auto">
+                    <div className="flex gap-2 w-auto flex-row">
+                        <div className="relative w-auto">
                             <Label htmlFor="grading-search" className="sr-only">搜索学生或课题</Label>
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                             <Input
                                 id="grading-search"
-                                className="w-full pl-9 sm:w-56"
+                                className="pl-9 w-56"
                                 value={keyword}
                                 onChange={(event) => setKeyword(event.target.value)}
                                 onKeyDown={(event) => event.key === "Enter" && void load(1)}
@@ -78,7 +78,7 @@ export function GradingManagement() {
                             />
                         </div>
                         <Select value={status} onValueChange={setStatus}>
-                            <SelectTrigger aria-label="按批改状态筛选" className="w-full sm:w-32">
+                            <SelectTrigger aria-label="按批改状态筛选" className="w-32">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -96,7 +96,7 @@ export function GradingManagement() {
                     ) : items.map((item) => (
                         <button
                             key={item.id}
-                            className="flex w-full flex-col gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted/50 sm:flex-row sm:items-center"
+                            className="flex w-full gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-muted/50 flex-row items-center"
                             onClick={() => navigate(`/grading/${item.id}`)}
                         >
                             <Avatar>

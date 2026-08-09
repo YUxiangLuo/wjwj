@@ -152,23 +152,22 @@ test("SamplingExecution blocks the stage when sample plan is missing", async () 
     expect(view.container.textContent).toContain("无法开始抽样执行");
 });
 
-test("SamplingExecution keeps tabs and navigation contained on narrow viewports", async () => {
+test("SamplingExecution always uses the desktop tabs and navigation", async () => {
     const view = render(<SamplingExecution onPrev={() => undefined} />);
 
     await waitFor(() => {
         expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1);
     });
 
-    const tabs = view.getByTestId("student-sampling-tabs");
-    expect(tabs.className).toContain("min-w-0");
-    for (const method of ["simple", "systematic", "pps", "stratified"]) {
-        expect(view.getByTestId(`student-sampling-tab-${method}`).className).toContain("min-w-0");
-    }
+    expect(view.getByTestId("student-sampling-tab-simple").textContent).toContain("简单随机抽样");
+    expect(view.getByTestId("student-sampling-tab-systematic").textContent).toContain("系统抽样");
+    expect(view.getByTestId("student-sampling-tab-pps").textContent).toContain("PPS抽样");
+    expect(view.getByTestId("student-sampling-tab-stratified").textContent).toContain("分层抽样");
 
     const next = view.getByTestId("student-sampling-next");
-    expect(next.parentElement?.className).toContain("flex-col");
-    expect(next.className).toContain("w-full");
-    expect(next.className).toContain("whitespace-normal");
+    expect(next.parentElement?.className).toContain("flex-row");
+    expect(next.className).toContain("w-auto");
+    expect(next.className).not.toContain("w-full");
 });
 
 test("SamplingExecution marks PPS as unavailable when no numeric size field exists", async () => {

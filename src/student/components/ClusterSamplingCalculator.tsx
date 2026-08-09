@@ -158,7 +158,7 @@ export function ClusterSamplingCalculator({
                     </div>
 
                     {/* 其他参数（继承决策面板，可在本工具内调整） */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <Label className="text-xs text-primary">置信水平</Label>
                             <Select value={confidenceLevelLocal} onValueChange={setConfidenceLevelLocal}>

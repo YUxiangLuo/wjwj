@@ -294,7 +294,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     key={`bool-${i}`}
                                     type="button"
                                     onClick={() => setSingleAnswer(qIndex, option)}
-                                    className={`w-full flex items-center gap-4 p-4 sm:p-5 rounded-xl border-2 transition-all text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
                                         selected
                                             ? "border-primary bg-primary shadow-sm"
                                             : "border-border bg-background hover:border-input hover:bg-card hover:bg-muted"
@@ -336,7 +336,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     key={`${question.id}-opt-${i}`}
                                     type="button"
                                     onClick={() => setSingleAnswer(qIndex, option)}
-                                    className={`w-full flex items-center gap-4 p-4 sm:p-5 rounded-xl border-2 transition-all text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
                                         selected
                                             ? "border-primary bg-primary shadow-sm"
                                             : "border-border bg-background hover:border-input hover:bg-card hover:bg-muted"
@@ -386,7 +386,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     type="button"
                                     onClick={() => !disabled && toggleMultipleAnswer(qIndex, question, option)}
                                     disabled={disabled}
-                                    className={`w-full flex items-center gap-4 p-4 sm:p-5 rounded-xl border-2 transition-all text-left ${
+                                    className={`w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
                                         selected
                                             ? "border-primary bg-primary shadow-sm"
                                             : disabled
@@ -437,7 +437,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                         key={val}
                                         type="button"
                                         onClick={() => setScaleAnswer(qIndex, val)}
-                                        className={`h-11 min-w-0 flex-1 basis-0 rounded-xl text-base font-bold transition-all sm:h-12 ${
+                                        className={`min-w-0 flex-1 basis-0 rounded-xl text-base font-bold transition-all h-12 ${
                                             selected
                                                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-2 ring-primary ring-offset-2 z-10"
                                                 : "bg-background border-2 border-border text-muted-foreground hover:border-primary hover:bg-primary/40"
@@ -483,7 +483,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 tabIndex={-1}
             >
                 {duplicateIds && (
-                    <div className="absolute top-12 left-0 right-0 z-20 px-4 sm:px-6">
+                    <div className="absolute top-12 left-0 right-0 z-20 px-6">
                         <div className="mx-auto max-w-lg rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-xs text-warning">
                             检测到题目 ID 重复，预览按题序区分答案；提交至服务器时仍依赖唯一 ID，请在设计器中修正。
                         </div>
@@ -499,7 +499,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 </div>
 
                 {/* Header */}
-                <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 sm:px-6 pt-4 z-10">
+                <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-6 pt-4 z-10">
                     <div className="text-sm font-medium text-muted-foreground">
                         {page.type === "question" && totalQuestions > 0 && `${page.index + 1} / ${totalQuestions}`}
                     </div>
@@ -517,7 +517,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                 </div>
 
                 {/* Content */}
-                <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-4 sm:px-6 pt-14 pb-20">
+                <div className="h-full flex flex-col items-center justify-center overflow-y-auto px-6 pt-14 pb-20">
                     <div key={pageKey} className={`w-full max-w-lg ${animationClass}`}>
                         {/* Welcome Page */}
                         {page.type === "welcome" && (
@@ -526,7 +526,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     <ClipboardList className="w-4 h-4" />
                                     模拟填写体验
                                 </div>
-                                <h1 id={titleId} className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
+                                <h1 id={titleId} className="text-3xl font-bold text-foreground leading-tight">
                                     {title || "未命名问卷"}
                                 </h1>
                                 <div className={`${cardClass}`}>
@@ -566,7 +566,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     <p className="text-sm text-muted-foreground font-medium mb-3">
                                         {questionTypeHint[currentQuestion.type] ?? "题目"}
                                     </p>
-                                    <h2 id={titleId} className="text-xl sm:text-2xl font-semibold text-foreground leading-snug">
+                                    <h2 id={titleId} className="text-2xl font-semibold text-foreground leading-snug">
                                         {currentQuestion.content}
                                     </h2>
                                 </div>
@@ -675,7 +675,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                         <button
                             type="button"
                             onClick={goPrev}
-                            className="fixed top-1/2 -translate-y-1/2 left-[max(0.75rem,calc(50%-21rem))] z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card hover:bg-muted hover:border-input transition-colors"
+                            className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-colors"
                             aria-label="上一题"
                         >
                             <ChevronLeft className="w-5 h-5" />
@@ -716,7 +716,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                     <button
                         type="button"
                         onClick={goPrev}
-                        className="fixed top-1/2 -translate-y-1/2 left-[max(0.75rem,calc(50%-21rem))] z-10 w-11 h-11 sm:w-12 sm:h-12 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card hover:bg-muted hover:border-input transition-colors"
+                        className="fixed top-1/2 -translate-y-1/2 left-[calc(50%-21rem)] z-10 w-12 h-12 rounded-full border border-border bg-background/90 backdrop-blur-sm shadow-sm flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted hover:border-input transition-colors"
                         aria-label="返回上一题"
                     >
                         <ChevronLeft className="w-5 h-5" />

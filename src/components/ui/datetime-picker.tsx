@@ -108,7 +108,7 @@ export function DatetimePicker24({
                 align="start"
                 onOpenAutoFocus={(e) => e.preventDefault()}
             >
-                <div className="flex flex-col gap-3 p-3 sm:flex-row sm:items-start">
+                <div className="flex gap-3 p-3 flex-row items-start">
                     <div className="rounded-md p-1">
                         <DayPicker
                             mode="single"
@@ -120,7 +120,7 @@ export function DatetimePicker24({
                             today={calendarToday}
                         />
                     </div>
-                    <div className="flex min-w-[200px] flex-col gap-3 border-t border-border pt-3 sm:border-l sm:border-t-0 sm:pl-3 sm:pt-0">
+                    <div className="flex min-w-[200px] flex-col gap-3 border-border border-l border-t-0 pl-3 pt-0">
                         <div className="space-y-1.5">
                             <Label htmlFor={hourId} className="text-xs text-muted-foreground">时（24 小时）</Label>
                             <select

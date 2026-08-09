@@ -85,7 +85,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="sm:max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
+                className="max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
                 onInteractOutside={(e) => e.preventDefault()}
             >
                 <DialogHeader>
@@ -214,7 +214,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {activeTab === "mapping" && (
                                 <div className="space-y-4 py-4 animate-in fade-in duration-300">
                                     {fieldMapping.identifier || fieldMapping.stratified.length > 0 || fieldMapping.numeric.length > 0 ? (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-3 gap-4">
                                             <div className="bg-background border border-border rounded-lg p-4 space-y-3">
                                                 <div className="flex items-center gap-2">
                                                     <div className="w-2 h-2 rounded-full bg-info" />
@@ -331,7 +331,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                             {/* Weights Tab */}
                             {activeTab === "weights" && (
                                 <div className="space-y-6 py-4 animate-in fade-in duration-300">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-3 gap-4">
                                         <div className="bg-background border border-border rounded-lg p-6 text-center space-y-2">
                                             <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">问卷设计</div>
                                             <div className="text-3xl font-bold text-primary">{weightConfig.questionnaire}%</div>

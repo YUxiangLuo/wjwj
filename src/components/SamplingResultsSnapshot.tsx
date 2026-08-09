@@ -74,7 +74,7 @@ export function SamplingResultsSnapshot({
 
     return (
         <Tabs defaultValue={methods[0]!.method} data-testid="sampling-results-snapshot">
-            <TabsList className="grid h-auto w-full grid-cols-2 lg:grid-cols-4">
+            <TabsList className="grid h-auto w-full grid-cols-4">
                 {methods.map(({ method, result }) => (
                     <TabsTrigger key={method} value={method} className="flex-wrap py-2">
                         <span>{METHOD_LABELS[method]}</span>
@@ -93,7 +93,7 @@ export function SamplingResultsSnapshot({
                             <StatusBadge intent={result.unavailable ? "warning" : result.completed ? "success" : "neutral"}>
                                 {result.unavailable ? "不可用" : result.completed ? "已完成" : "未完成"}
                             </StatusBadge>
-                            <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="grid flex-1 gap-3 grid-cols-4">
                                 <div>
                                     <p className="text-xs text-muted-foreground">样本数</p>
                                     <p className="mt-1 text-sm font-medium">{count}</p>
@@ -120,7 +120,7 @@ export function SamplingResultsSnapshot({
                         {method === "stratified" && result.layers?.length ? (
                             <div className="rounded-xl border border-border p-4">
                                 <h3 className="text-sm font-medium">分层分配</h3>
-                                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="mt-3 grid gap-2 grid-cols-3">
                                     {result.layers.map((layer) => (
                                         <div key={layer.name} className="rounded-lg bg-muted/40 px-3 py-2 text-sm">
                                             <span className="font-medium">{layer.name}</span>

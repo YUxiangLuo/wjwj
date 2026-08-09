@@ -325,7 +325,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <div className="text-xl font-bold text-foreground">{n}</div>
                             </div>
                         </div>
-                        <div className="w-px h-10 bg-muted hidden sm:block"></div>
+                        <div className="w-px h-10 bg-muted"></div>
                         <div className="flex items-center gap-3">
                             <div className="bg-muted p-2.5 rounded-xl border border-input">
                                 <Database className="w-5 h-5 text-info" />
@@ -335,7 +335,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                 <div className="text-xl font-bold text-foreground">{N.toLocaleString()}</div>
                             </div>
                         </div>
-                        <div className="w-px h-10 bg-muted hidden sm:block"></div>
+                        <div className="w-px h-10 bg-muted"></div>
                         <div className="flex items-center gap-3">
                             <div className="bg-muted p-2.5 rounded-xl border border-input">
                                 <Layers className="w-5 h-5 text-warning" />
@@ -357,31 +357,27 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-6">
                 <TabsList className="bg-card border border-border p-1 rounded-xl w-full min-w-0 flex h-auto gap-1" data-testid="student-sampling-tabs">
-                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="min-w-0 flex-1 rounded-lg px-1 py-2.5 text-xs sm:px-3 sm:text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="min-w-0 flex items-center justify-center gap-1 sm:gap-2">
-                            <span className="sm:hidden">简单</span>
-                            <span className="hidden sm:inline">简单随机抽样</span>
+                    <TabsTrigger value="simple" data-testid="student-sampling-tab-simple" className="min-w-0 flex-1 rounded-lg py-2.5 px-3 text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                        <div className="min-w-0 flex items-center justify-center gap-2">
+                            <span>简单随机抽样</span>
                             {simpleResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="min-w-0 flex-1 rounded-lg px-1 py-2.5 text-xs sm:px-3 sm:text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="min-w-0 flex items-center justify-center gap-1 sm:gap-2">
-                            <span className="sm:hidden">系统</span>
-                            <span className="hidden sm:inline">系统抽样</span>
+                    <TabsTrigger value="systematic" data-testid="student-sampling-tab-systematic" className="min-w-0 flex-1 rounded-lg py-2.5 px-3 text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                        <div className="min-w-0 flex items-center justify-center gap-2">
+                            <span>系统抽样</span>
                             {systematicCompletedForCurrentPlan && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="min-w-0 flex-1 rounded-lg px-1 py-2.5 text-xs sm:px-3 sm:text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="min-w-0 flex items-center justify-center gap-1 sm:gap-2">
-                            <span className="sm:hidden">PPS</span>
-                            <span className="hidden sm:inline">PPS抽样</span>
+                    <TabsTrigger value="pps" data-testid="student-sampling-tab-pps" className="min-w-0 flex-1 rounded-lg py-2.5 px-3 text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                        <div className="min-w-0 flex items-center justify-center gap-2">
+                            <span>PPS抽样</span>
                             {ppsResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
-                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="min-w-0 flex-1 rounded-lg px-1 py-2.5 text-xs sm:px-3 sm:text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
-                        <div className="min-w-0 flex items-center justify-center gap-1 sm:gap-2">
-                            <span className="sm:hidden">分层</span>
-                            <span className="hidden sm:inline">分层抽样</span>
+                    <TabsTrigger value="stratified" data-testid="student-sampling-tab-stratified" className="min-w-0 flex-1 rounded-lg py-2.5 px-3 text-sm data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">
+                        <div className="min-w-0 flex items-center justify-center gap-2">
+                            <span>分层抽样</span>
                             {stratifiedResult?.completed && <CheckCircle2 className="w-4 h-4 shrink-0 text-success" />}
                         </div>
                     </TabsTrigger>
@@ -389,8 +385,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                 {/* Simple Random Sampling */}
                 <TabsContent value="simple" className="mt-0 focus-visible:outline-none">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="lg:col-span-2 space-y-4">
+                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="col-span-2 space-y-4">
                             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="text-foreground flex items-center gap-2">
@@ -464,8 +460,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                 {/* Systematic Sampling */}
                 <TabsContent value="systematic" className="mt-0 focus-visible:outline-none">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="lg:col-span-2 space-y-4">
+                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="col-span-2 space-y-4">
                             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="text-foreground flex items-center gap-2">
@@ -477,7 +473,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
+                                    <div className="grid grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
                                         <div className="space-y-3">
                                             <p className="text-sm font-medium text-foreground/90">抽样间隔 K=N/n</p>
                                             <div
@@ -568,8 +564,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
                 {/* PPS Sampling */}
                 <TabsContent value="pps" className="mt-0 focus-visible:outline-none">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                        <div className="lg:col-span-2 space-y-4">
+                    <div className="grid grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="col-span-2 space-y-4">
                             <Card className="rounded-2xl border-border bg-card/50 shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="text-foreground flex items-center gap-2">
@@ -581,7 +577,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
+                                    <div className="grid grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
                                         <div className="space-y-3">
                                             <Label className="text-foreground/90">选择规模变量</Label>
                                             {hasPpsNumericField ? (
@@ -717,11 +713,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             </Tabs>
 
             {/* Navigation */}
-            <div className="flex flex-col gap-3 pt-6 border-t border-border/50 sm:flex-row sm:items-center sm:justify-between">
-                <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="w-full border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground sm:w-auto">
+            <div className="flex gap-3 pt-6 border-t border-border/50 flex-row items-center justify-between">
+                <Button variant="outline" onClick={onPrev} data-testid="student-sampling-prev" className="border-input bg-muted text-foreground/90 hover:bg-muted hover:text-foreground w-auto">
                     上一阶段
                 </Button>
-                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={`w-full min-w-0 whitespace-normal sm:w-auto ${allCompleted ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"}`}>
+                <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={`min-w-0 whitespace-normal w-auto ${allCompleted ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"}`}>
                     {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${completedMethodCount}/4)`}
                     <ArrowRight className="w-4 h-4 ml-2 shrink-0" />
                 </Button>

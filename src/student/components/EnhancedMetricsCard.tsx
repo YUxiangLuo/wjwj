@@ -140,7 +140,7 @@ export function EnhancedMetricsCard({
                                 比例估计
                             </Badge>
                         </div>
-                        <div className="flex flex-wrap items-stretch justify-between gap-x-3 gap-y-4 sm:flex-nowrap sm:gap-x-4">
+                        <div className="flex items-stretch justify-between gap-y-4 flex-nowrap gap-x-4">
                             <div className="min-w-[5.5rem] flex-1 text-center">
                                 <div className="text-xs text-primary mb-1">下限</div>
                                 <div className="flex items-center justify-center gap-1 text-success">
@@ -148,12 +148,12 @@ export function EnhancedMetricsCard({
                                     <span className="font-bold tabular-nums">{formatCI(metrics.confidenceInterval.lower)}</span>
                                 </div>
                             </div>
-                            <div className="hidden min-h-[2.5rem] w-px shrink-0 self-center bg-primary sm:block" aria-hidden />
+                            <div className="min-h-[2.5rem] w-px shrink-0 self-center bg-primary" aria-hidden />
                             <div className="min-w-[5.5rem] flex-1 text-center">
                                 <div className="text-xs text-primary mb-1">规划假设 p</div>
                                 <div className="font-bold tabular-nums text-primary">{formatCI(p)}</div>
                             </div>
-                            <div className="hidden min-h-[2.5rem] w-px shrink-0 self-center bg-primary sm:block" aria-hidden />
+                            <div className="min-h-[2.5rem] w-px shrink-0 self-center bg-primary" aria-hidden />
                             <div className="min-w-[5.5rem] flex-1 text-center">
                                 <div className="text-xs text-primary mb-1">上限</div>
                                 <div className="flex items-center justify-center gap-1 text-success">

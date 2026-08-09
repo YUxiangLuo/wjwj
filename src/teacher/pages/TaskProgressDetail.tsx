@@ -112,7 +112,7 @@ export function TaskProgressDetail() {
             </div>
 
             {/* Status count cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
+            <div className="grid grid-cols-8 gap-3">
                 {STATUS_KEYS.map((key) => {
                     const cfg = STATUS_CONFIG[key];
                     const count = data.counts[key];
@@ -129,7 +129,7 @@ export function TaskProgressDetail() {
 
             {/* Ring chart + Progress bar */}
             {total > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-3 gap-6">
                     {/* Ring chart */}
                     <Card>
                         <CardContent className="p-6 flex flex-col items-center">
@@ -190,7 +190,7 @@ export function TaskProgressDetail() {
                     </Card>
 
                     {/* Distribution bar (now wider, takes 2 cols) */}
-                    <Card className="border-border bg-card shadow-sm lg:col-span-2">
+                    <Card className="border-border bg-card shadow-sm col-span-2">
                         <CardContent className="p-6 flex flex-col justify-center h-full gap-4">
                             <span className="text-sm font-medium text-foreground">各阶段分布</span>
                             <div className="flex h-4 rounded-full overflow-hidden bg-muted">
@@ -208,7 +208,7 @@ export function TaskProgressDetail() {
                                     );
                                 })}
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-4 gap-3">
                                 {STATUS_KEYS.map((key) => {
                                     const cfg = STATUS_CONFIG[key];
                                     const count = data.counts[key];

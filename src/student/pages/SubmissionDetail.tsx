@@ -72,7 +72,7 @@ export function SubmissionDetailPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-4 grid-cols-4">
                         {scores.map(([label, value, weight]) => (
                             <div key={label} className="rounded-xl border border-border bg-muted/40 p-4 text-center">
                                 <p className="text-xs text-muted-foreground">{label}</p>
@@ -93,7 +93,7 @@ export function SubmissionDetailPage() {
                         </div>
                         <div className="p-5">
                             <Tabs defaultValue="report">
-                                <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+                                <TabsList className="grid h-auto w-full grid-cols-4">
                                     <TabsTrigger value="report">实验报告</TabsTrigger>
                                     <TabsTrigger value="questionnaire">问卷</TabsTrigger>
                                     <TabsTrigger value="plan">抽样方案</TabsTrigger>

@@ -164,7 +164,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-2xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground sm:rounded-xl shadow-2xl shadow-primary/10"
+                className="max-w-2xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground rounded-xl shadow-2xl shadow-primary/10"
                 data-testid="student-question-editor"
             >
                 <DialogHeader>
@@ -394,7 +394,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     )}
                 </div>
 
-                <DialogFooter className="gap-3 sm:gap-2">
+                <DialogFooter className="gap-2">
                     <Button
                         variant="outline"
                         onClick={() => onOpenChange(false)}

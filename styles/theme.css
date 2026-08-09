@@ -2,6 +2,9 @@
 @source not "../*.md";
 @source not "../**/*.md";
 @source not "../scripts";
+@source not "../src/**/*.test.ts";
+@source not "../src/**/*.test.tsx";
+@source not "../src/test-utils";
 @import "tw-animate-css";
 
 @font-face {
@@ -14,11 +17,13 @@
 
 /* Hover feedback must never make a disabled control look actionable. */
 @custom-variant hover {
-    @media (hover: hover) {
-        &:hover:not(:disabled):not([aria-disabled="true"]):not([data-disabled]) {
-            @slot;
-        }
+    &:hover:not(:disabled):not([aria-disabled="true"]):not([data-disabled]) {
+        @slot;
     }
+}
+
+@theme {
+    --breakpoint-*: initial;
 }
 
 @theme inline {
@@ -150,6 +155,13 @@
 @layer base {
     * {
         @apply border-border;
+    }
+
+    /* The three application shells intentionally support desktop viewports only. */
+    html,
+    body,
+    #root {
+        min-width: 80rem;
     }
 
     body {

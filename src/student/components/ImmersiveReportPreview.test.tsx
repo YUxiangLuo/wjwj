@@ -67,6 +67,8 @@ test("ImmersiveReportPreview shows persisted sample plan semantics in overview",
     });
 
     expect(view.getByRole("button", { name: "关闭全屏预览" })).toBeTruthy();
+    expect(view.getAllByRole("button", { name: "实验概览" })).toHaveLength(1);
+    expect(view.getByRole("navigation")).toBeTruthy();
 
     const text = view.container.textContent ?? "";
     expect(text).toContain("估计类型");

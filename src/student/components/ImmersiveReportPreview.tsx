@@ -39,7 +39,7 @@ export function ImmersiveReportPreview({ open, experiment, taskName, onClose }: 
                 role="dialog"
                 aria-modal="true"
                 aria-label={`${taskName}实验报告全屏预览`}
-                className="inset-0 left-0 top-0 block h-dvh w-screen max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-0 bg-background/98 p-0 backdrop-blur-sm sm:max-w-none"
+                className="inset-0 left-0 top-0 block h-screen w-screen translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-0 bg-background/98 p-0 backdrop-blur-sm max-w-none"
             >
                 <DialogTitle className="sr-only">{taskName}实验报告全屏预览</DialogTitle>
                 <DialogDescription className="sr-only">查看实验概览、问卷设计、抽样结果和分析报告。</DialogDescription>
@@ -77,7 +77,7 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
 
             <div className="flex h-[calc(100vh-49px)]">
                 {/* sidebar nav */}
-                <nav className="w-48 border-r border-border/60 p-3 space-y-1 hidden md:block">
+                <nav className="w-48 border-r border-border/60 p-3 space-y-1">
                     {SECTIONS.map((s) => {
                         const Icon = s.icon;
                         const isActive = activeSection === s.key;
@@ -98,28 +98,8 @@ export function ImmersiveReportPreviewContent({ experiment, taskName, onClose }:
                     })}
                 </nav>
 
-                {/* mobile nav */}
-                <div className="md:hidden fixed bottom-0 left-0 right-0 z-10 bg-background border-t border-border/60 flex">
-                    {SECTIONS.map((s) => {
-                        const Icon = s.icon;
-                        const isActive = activeSection === s.key;
-                        return (
-                            <button
-                                key={s.key}
-                                onClick={() => setActiveSection(s.key)}
-                                className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
-                                    isActive ? "text-primary" : "text-muted-foreground"
-                                }`}
-                            >
-                                <Icon className="w-4 h-4" />
-                                {s.label}
-                            </button>
-                        );
-                    })}
-                </div>
-
                 {/* main content */}
-                <main className="flex-1 overflow-auto p-6 md:p-10 pb-20 md:pb-10">
+                <main className="flex-1 overflow-auto p-10 pb-10">
                     <div className="max-w-3xl mx-auto">
                         {activeSection === "overview" && (
                             <OverviewSection
@@ -210,7 +190,7 @@ function OverviewSection({
                 <p className="text-muted-foreground">实验报告预览</p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-4">
                 {stats.map((s) => (
                     <div key={s.label} className="rounded-xl border border-border bg-card/60 p-4">
                         <div className="text-[11px] text-muted-foreground mb-1">{s.label}</div>
@@ -403,7 +383,7 @@ function SamplingSection({
                                 </span>
                             </div>
                             {completed && d && (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                                <div className="grid grid-cols-3 gap-3 text-sm">
                                     <div>
                                         <span className="text-muted-foreground">样本量</span>
                                         <div className="text-foreground font-mono">{getSamplingResultCount(m.key, d)}</div>
@@ -457,7 +437,7 @@ function ReportSection({ content }: { content: string }) {
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-foreground">分析报告</h2>
-            <div className="rounded-xl border border-border bg-card/40 p-6 md:p-8">
+            <div className="rounded-xl border border-border bg-card/40 p-8">
                 <RichTextContent
                     html={content}
                     className="text-sm text-foreground/90 leading-relaxed prose prose-invert prose-sm max-w-none"

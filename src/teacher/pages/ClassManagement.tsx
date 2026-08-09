@@ -57,7 +57,7 @@ export function ClassManagement() {
                 <p className="text-sm text-muted-foreground mt-1">查看班级名单与学期分布。</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -99,7 +99,7 @@ export function ClassManagement() {
                         <CardTitle className="text-base text-foreground">班级列表</CardTitle>
                         <p className="text-xs text-muted-foreground mt-1">共 {filteredClasses.length} 条数据</p>
                     </div>
-                    <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                    <div className="flex gap-3 flex-row w-auto">
                         <div className="relative">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                             <Input
@@ -107,11 +107,11 @@ export function ClassManagement() {
                                 placeholder="搜索班级名称"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground sm:w-64 focus:border-ring"
+                                className="pl-9 bg-background border-border text-foreground placeholder:text-muted-foreground w-64 focus:border-ring"
                             />
                         </div>
                         <Select value={semesterFilter} onValueChange={setSemesterFilter}>
-                            <SelectTrigger aria-label="按学期筛选班级" data-testid="teacher-class-semester-filter" className="bg-background border-border text-foreground sm:w-44">
+                            <SelectTrigger aria-label="按学期筛选班级" data-testid="teacher-class-semester-filter" className="bg-background border-border text-foreground w-44">
                                 <SelectValue placeholder="全部学期" />
                             </SelectTrigger>
                             <SelectContent className="bg-card border-border text-foreground">
