@@ -165,7 +165,9 @@ export function ImmersiveSamplePlanning({
     // --- Phase navigation ---
     const { phase, setPhase, direction, progress, goNext, goPrev, jumpTo, skipQuiz } = usePhaseState();
 
-    const handleConfirm = useCallback(() => jumpTo("launching"), [jumpTo]);
+    // 确认规划结果仅完成规划并返回阶段页；进入抽样执行的启动动画由阶段页的
+    // “确认并进入下一阶段”触发（见 SamplePlanning.tsx）。
+    const handleConfirm = useCallback(() => jumpTo("done"), [jumpTo]);
 
     const handleLaunchComplete = useCallback(() => {
         jumpTo("done");

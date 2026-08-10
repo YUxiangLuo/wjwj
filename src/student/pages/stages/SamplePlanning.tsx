@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -21,6 +21,7 @@ import {
     normalizeSamplePlanData,
 } from "../../experiment/sample-plan-display";
 import { ImmersiveSamplePlanning } from "../../components/immersive-sample-planning";
+import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
 import {
     getFinalSampleSizeBounds,
     type SampleParams,
@@ -41,6 +42,10 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [confirmNextSaving, setConfirmNextSaving] = useState(false);
+    // 进入抽样执行前的启动动画：点击“确认进入”后先播放，动画结束再保存。
+    // 若保存失败，重试时不再重复播放。
+    const [launching, setLaunching] = useState(false);
+    const launchPlayedRef = useRef(false);
 
     // Display state — updated from planning flow completion or loaded from saved data
     const [displayData, setDisplayData] = useState<SamplePlanData | null>(initialData);
@@ -78,7 +83,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         && displayData.finalSampleSize >= minSampleSize
         && displayData.finalSampleSize <= maxSampleSize;
 
-    const handleConfirmNext = async () => {
+    const saveStage = useCallback(async () => {
         if (!displayData || experiment == null) {
             toast.error("实验数据未就绪，请稍后重试");
             return;
@@ -86,15 +91,32 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         setConfirmNextSaving(true);
         try {
             const ok = await completeStage(2, { samplePlan: displayData });
-            if (ok) {
-                setConfirmNextOpen(false);
-            } else {
+            if (!ok) {
                 toast.error("保存失败，请重试");
             }
         } finally {
             setConfirmNextSaving(false);
         }
+    }, [completeStage, displayData, experiment]);
+
+    const handleConfirmNext = () => {
+        if (!displayData || experiment == null) {
+            toast.error("实验数据未就绪，请稍后重试");
+            return;
+        }
+        setConfirmNextOpen(false);
+        if (launchPlayedRef.current) {
+            void saveStage();
+            return;
+        }
+        setLaunching(true);
     };
+
+    const handleLaunchFinished = useCallback(() => {
+        launchPlayedRef.current = true;
+        setLaunching(false);
+        void saveStage();
+    }, [saveStage]);
 
     const handleConfirmNextDialogOpenChange = (open: boolean) => {
         if (!open && confirmNextSaving) return;
@@ -249,6 +271,19 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 )}
             </div>
 
+            {/* 进入抽样执行前的启动动画 */}
+            {launching && displayData && (
+                <ImmersiveExperimentLaunch
+                    populationSize={N}
+                    sampleSize={displayData.finalSampleSize}
+                    estimationType={displayData.estimationType}
+                    confidenceLevel={displayData.confidenceLevel}
+                    marginOfError={displayData.marginOfError}
+                    onComplete={handleLaunchFinished}
+                    onClose={handleLaunchFinished}
+                />
+            )}
+
             <AlertDialog open={confirmNextOpen} onOpenChange={handleConfirmNextDialogOpenChange}>
                 <AlertDialogContent className="bg-card border-border">
                     <AlertDialogHeader>
@@ -263,7 +298,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         </AlertDialogCancel>
                         <Button
                             type="button"
-                            onClick={() => void handleConfirmNext()}
+                            onClick={() => handleConfirmNext()}
                             disabled={confirmNextSaving}
                             className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
