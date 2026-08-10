@@ -8,10 +8,15 @@
  *
  * 默认开启；`DEV_AUTH_MODE=0` 可显式关闭，测试环境（NODE_ENV=test）自动关闭。
  * 上线前必须关闭。
+ *
+ * 注意：浏览器 bundle 中没有 `process` 全局，必须先用 typeof 防护。
  */
-export const DEV_AUTH_MODE = process.env.DEV_AUTH_MODE === "0"
+const runtimeEnv: Record<string, string | undefined> =
+    typeof process !== "undefined" ? process.env : {};
+
+export const DEV_AUTH_MODE = runtimeEnv.DEV_AUTH_MODE === "0"
     ? false
-    : process.env.DEV_AUTH_MODE === "1" || process.env.NODE_ENV !== "test";
+    : runtimeEnv.DEV_AUTH_MODE === "1" || runtimeEnv.NODE_ENV !== "test";
 
 /** 开发模式下管理员演示密码（与 src/db/seeds/default.ts 中的默认值一致）。 */
 export const DEV_ADMIN_PASSWORD = "admin123";
