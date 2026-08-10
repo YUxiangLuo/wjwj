@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { admin } from "../../db/schema";
 import { ADMIN_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
+import { DEV_AUTH_MODE } from "../../lib/dev-mode";
 import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import {
@@ -37,7 +38,7 @@ interface AdminAuthResult {
 type AdminRequestContext = Request & { [ADMIN_AUTH_CACHE]?: AdminAuthResult };
 
 function applyAdminPasswordGate(result: AdminAuthResult, options: AdminAuthOptions): AdminAuthResult {
-    if (result.admin?.isFirstLogin === 1 && !options.allowFirstLogin) {
+    if (!DEV_AUTH_MODE && result.admin?.isFirstLogin === 1 && !options.allowFirstLogin) {
         return {
             admin: null,
             error: error("首次登录请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403),

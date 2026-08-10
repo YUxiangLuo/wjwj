@@ -7,6 +7,7 @@ import { AppToaster } from "@/components/AppToaster";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
 import { WorkspaceSidebar } from "@/components/WorkspaceSidebar";
 import { TEACHER_PASSWORD_POLICY } from "@/lib/password-policy";
+import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
 import { authApi, type TeacherUser } from "./api-client";
@@ -41,7 +42,7 @@ function TeacherWorkspace({
 }) {
     const location = useLocation();
     const [passwordOpen, setPasswordOpen] = useState(false);
-    const mustChangePassword = user.isFirstLogin === 1;
+    const mustChangePassword = !DEV_AUTH_MODE && user.isFirstLogin === 1;
     const passwordChange = usePasswordChange({
         policy: TEACHER_PASSWORD_POLICY,
         forbiddenSubstrings: [user.employeeId],

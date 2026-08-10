@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db";
 import { teacher } from "../../db/schema";
 import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
+import { DEV_AUTH_MODE } from "../../lib/dev-mode";
 import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
@@ -55,7 +56,7 @@ export function getPrimaryTeacherIdOrThrow(req: Request) {
 }
 
 function applyTeacherPasswordGate(result: TeacherAuthResult, options: TeacherAuthOptions): TeacherAuthResult {
-    if (result.user?.isFirstLogin === 1 && !options.allowFirstLogin) {
+    if (!DEV_AUTH_MODE && result.user?.isFirstLogin === 1 && !options.allowFirstLogin) {
         return {
             user: null,
             error: error("首次登录或密码已重置，请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403),

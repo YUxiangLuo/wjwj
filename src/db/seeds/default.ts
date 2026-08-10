@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import * as XLSX from "xlsx";
 import { closeDatabase, db } from "../index";
+import { DEV_ADMIN_PASSWORD, DEV_AUTH_MODE } from "../../lib/dev-mode";
 import {
     admin,
     announcement,
@@ -79,7 +80,7 @@ async function writePopulationFixture() {
 }
 
 async function seed() {
-    const generatedAdminPassword = `Bootstrap!${crypto.randomUUID()}`;
+    const generatedAdminPassword = DEV_AUTH_MODE ? DEV_ADMIN_PASSWORD : `Bootstrap!${crypto.randomUUID()}`;
     const adminInitialPassword = process.env.SEED_ADMIN_PASSWORD?.trim() || generatedAdminPassword;
     const adminPassword = await Bun.password.hash(adminInitialPassword);
     const teacherInitialPassword = "T001";

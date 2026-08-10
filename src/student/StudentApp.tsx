@@ -15,6 +15,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
 import { authApi } from "./api-client";
@@ -49,7 +50,7 @@ function StudentAppContent() {
             setShowPassword(false);
         },
     });
-    const mustChangePassword = currentUser?.isFirstLogin === 1;
+    const mustChangePassword = !DEV_AUTH_MODE && currentUser?.isFirstLogin === 1;
 
     useEffect(() => {
         if (mustChangePassword) setShowPassword(true);

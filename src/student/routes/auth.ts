@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, student } from "../../db/schema";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
+import { DEV_AUTH_MODE } from "../../lib/dev-mode";
 import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
 import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import type { RouteDefinition } from "../../server/route-types";
@@ -36,7 +37,7 @@ export interface StudentAuthOptions {
 }
 
 function applyStudentPasswordGate(result: StudentAuthResult, options: StudentAuthOptions): StudentAuthResult {
-    if (result.student?.isFirstLogin === 1 && !options.allowFirstLogin) {
+    if (!DEV_AUTH_MODE && result.student?.isFirstLogin === 1 && !options.allowFirstLogin) {
         return {
             student: null,
             error: error("首次登录或密码已重置，请先修改密码", "PASSWORD_CHANGE_REQUIRED", 403),
