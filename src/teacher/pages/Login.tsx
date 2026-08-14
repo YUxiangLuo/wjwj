@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authApi } from "../api-client";
-import { DEV_AUTH_MODE } from "@/lib/dev-mode";
+import { DEV_AUTH_MODE, DEV_TEACHER_ID } from "@/lib/dev-mode";
 
 export function Login() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [username, setUsername] = useState("T001");
-    const [password, setPassword] = useState(DEV_AUTH_MODE ? "T001" : "");
+    const [username, setUsername] = useState(DEV_AUTH_MODE ? DEV_TEACHER_ID : "");
+    const [password, setPassword] = useState(DEV_AUTH_MODE ? DEV_TEACHER_ID : "");
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

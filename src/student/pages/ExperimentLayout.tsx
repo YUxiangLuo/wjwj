@@ -12,6 +12,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { getRemainingDeadlineSummary } from "@/utils/format";
 import { experimentApi, tasksApi, type ExperimentData } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
@@ -137,11 +138,11 @@ export function ExperimentLayout() {
     const [now, setNow] = useState(Date.now());
     useEffect(() => { if (!deadline) return; const timer = window.setInterval(() => setNow(Date.now()), 60_000); return () => window.clearInterval(timer); }, [deadline]);
     const deadlineInfo = useMemo(() => {
-        if (!deadline) return null;
-        const diff = new Date(deadline).getTime() - now;
-        if (diff <= 0) return { text: "已截止", urgent: true };
-        const hours = Math.floor(diff / 3_600_000);
-        return { text: hours < 24 ? `剩余 ${hours} 小时` : `剩余 ${Math.floor(hours / 24)} 天`, urgent: hours < 24 };
+        const remaining = getRemainingDeadlineSummary(deadline, now);
+        if (!remaining) return null;
+        if (remaining.passed) return { text: "已截止", urgent: true };
+        if (remaining.wholeHours < 24) return { text: `剩余 ${remaining.wholeHours} 小时`, urgent: true };
+        return { text: `剩余 ${remaining.calendarDays} 天`, urgent: false };
     }, [deadline, now]);
 
     if (loading) return <div className="grid place-items-center py-24"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;

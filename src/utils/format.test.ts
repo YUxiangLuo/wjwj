@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
     formatDateStampCN, formatDateTimeCN, formatLocalDateStamp, formatSaveTime, startOfDayCN,
     safeParseDate, parseDeadline, formatDateTimeDisplay, formatDateDisplay, formatTimeDisplay,
+    getRemainingDeadlineSummary,
 } from "./format";
 
 test("formatLocalDateStamp uses the Asia/Shanghai calendar date", () => {
@@ -98,6 +99,36 @@ test("parseDeadline appends end-of-day in Asia/Shanghai for date-only strings", 
 
 test("parseDeadline returns null for invalid strings", () => {
     expect(parseDeadline("invalid")).toBeNull();
+});
+
+test("remaining deadline uses the same calendar day count across surfaces", () => {
+    const now = Date.parse("2026-08-14T00:15:00.000Z");
+    const deadline = "2026-09-12T23:56:57.639Z";
+    const remaining = getRemainingDeadlineSummary(deadline, now);
+    expect(remaining).not.toBeNull();
+    expect(remaining!.passed).toBe(false);
+    expect(remaining!.wholeHours).toBe(719);
+    expect(remaining!.calendarDays).toBe(30);
+    expect(Math.floor(remaining!.wholeHours / 24)).toBe(29);
+});
+
+test("remaining deadline treats a leftover partial day as one calendar day", () => {
+    const now = Date.parse("2026-08-14T00:00:00.000Z");
+    const remaining = getRemainingDeadlineSummary("2026-08-15T01:00:00.000Z", now);
+    expect(remaining).toMatchObject({
+        passed: false,
+        calendarDays: 2,
+        wholeHours: 25,
+        wholeDays: 1,
+        leftoverHours: 1,
+    });
+});
+
+test("remaining deadline marks passed and invalid values", () => {
+    const now = Date.parse("2026-08-14T12:00:00.000Z");
+    expect(getRemainingDeadlineSummary(null, now)).toBeNull();
+    expect(getRemainingDeadlineSummary("invalid", now)).toBeNull();
+    expect(getRemainingDeadlineSummary("2026-08-14T11:00:00.000Z", now)?.passed).toBe(true);
 });
 
 // --- formatDateTimeDisplay tests ---

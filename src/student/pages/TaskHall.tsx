@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { RichTextContent } from "@/components/RichTextContent";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { announcementsApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
-import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
+import { formatDateTimeDisplay, getRemainingDeadlineSummary, DAY_MS } from "@/utils/format";
 
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
@@ -32,9 +32,7 @@ function formatDateTime(value: string | null) {
 }
 
 function getRemainingMs(deadline: string | null): number | null {
-    const end = parseDeadline(deadline);
-    if (!end) return null;
-    return end.getTime() - Date.now();
+    return getRemainingDeadlineSummary(deadline)?.remainingMs ?? null;
 }
 
 function isTaskNotOpenYet(publishedAt: string) {
@@ -70,40 +68,31 @@ function DeadlineDisplay({ deadline, status, notOpenYet }: { deadline: string | 
         return <span className="text-sm text-info">尚未开放</span>;
     }
 
-    const remainingMs = getRemainingMs(deadline);
-    if (remainingMs === null) return null;
-    if (remainingMs <= 0) {
+    const remaining = getRemainingDeadlineSummary(deadline);
+    if (!remaining) return null;
+    if (remaining.passed) {
         return <span className="text-sm text-muted-foreground">已截止</span>;
     }
 
-    const minuteMs = 60 * 1000;
-    const hourMs = 60 * minuteMs;
-    const dayMs = 24 * hourMs;
-
-    if (remainingMs <= dayMs) {
-        const hours = Math.floor(remainingMs / hourMs);
-        const minutes = Math.floor((remainingMs % hourMs) / minuteMs);
+    if (remaining.remainingMs <= DAY_MS) {
         return (
             <span className="text-sm text-destructive font-medium flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
-                还剩 {hours} 小时 {minutes} 分钟
+                还剩 {remaining.wholeHours} 小时 {remaining.leftoverMinutes} 分钟
             </span>
         );
     }
 
-    if (remainingMs <= 7 * dayMs) {
-        const days = Math.floor(remainingMs / dayMs);
-        const hours = Math.floor((remainingMs % dayMs) / hourMs);
+    if (remaining.remainingMs <= 7 * DAY_MS) {
         return (
             <span className="text-sm text-warning font-medium flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                还剩 {days} 天 {hours} 小时
+                还剩 {remaining.wholeDays} 天 {remaining.leftoverHours} 小时
             </span>
         );
     }
 
-    const days = Math.ceil(remainingMs / dayMs);
-    return <span className="text-sm text-muted-foreground">还剩 {days} 天</span>;
+    return <span className="text-sm text-muted-foreground">还剩 {remaining.calendarDays} 天</span>;
 }
 
 interface TaskCardProps {

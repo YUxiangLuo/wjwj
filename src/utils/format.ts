@@ -102,6 +102,50 @@ export function parseDeadline(deadline: string | null): Date | null {
     return safeParseDate(raw);
 }
 
+export const MINUTE_MS = 60 * 1000;
+export const HOUR_MS = 60 * MINUTE_MS;
+export const DAY_MS = 24 * HOUR_MS;
+
+export interface RemainingDeadlineSummary {
+    remainingMs: number;
+    passed: boolean;
+    /** Partial days still count as 1. Use this for “剩余 N 天”. */
+    calendarDays: number;
+    wholeHours: number;
+    leftoverMinutes: number;
+    wholeDays: number;
+    leftoverHours: number;
+}
+
+export function getRemainingDeadlineSummary(
+    deadline: string | null,
+    now = Date.now(),
+): RemainingDeadlineSummary | null {
+    const end = parseDeadline(deadline);
+    if (!end) return null;
+    const remainingMs = end.getTime() - now;
+    if (remainingMs <= 0) {
+        return {
+            remainingMs,
+            passed: true,
+            calendarDays: 0,
+            wholeHours: 0,
+            leftoverMinutes: 0,
+            wholeDays: 0,
+            leftoverHours: 0,
+        };
+    }
+    return {
+        remainingMs,
+        passed: false,
+        calendarDays: Math.ceil(remainingMs / DAY_MS),
+        wholeHours: Math.floor(remainingMs / HOUR_MS),
+        leftoverMinutes: Math.floor((remainingMs % HOUR_MS) / MINUTE_MS),
+        wholeDays: Math.floor(remainingMs / DAY_MS),
+        leftoverHours: Math.floor((remainingMs % DAY_MS) / HOUR_MS),
+    };
+}
+
 /** Display a date-time string in Asia/Shanghai timezone (YYYY/MM/DD HH:mm). Returns fallback on invalid input. */
 export function formatDateTimeDisplay(value: string | Date | null | undefined, fallback = "无"): string {
     const d = safeParseDate(value);

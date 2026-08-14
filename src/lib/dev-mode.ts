@@ -2,21 +2,37 @@
  * 开发模式开关（前后端共用）。
  *
  * 开启后：
- * - 三个登录页预填演示账号的密码；
+ * - 三个登录页预填演示账号；
  * - 跳过“首次登录 / 密码重置后必须修改密码”的强制流程
  *   （前端不再弹出强制改密对话框，服务端也不再以 PASSWORD_CHANGE_REQUIRED 拦截 API）。
  *
- * 默认开启；`DEV_AUTH_MODE=0` 可显式关闭，测试环境（NODE_ENV=test）自动关闭。
- * 上线前必须关闭。
- *
- * 注意：浏览器 bundle 中没有 `process` 全局，必须先用 typeof 防护。
+ * `DEV_AUTH_MODE=1` 强制开启，`DEV_AUTH_MODE=0` 强制关闭。
+ * 未设置时：本地开发默认开启；`NODE_ENV=test` / `NODE_ENV=production` 默认关闭。
+ * 读取环境变量必须写 `process.env.DEV_AUTH_MODE` / `process.env.NODE_ENV`，生产 `define` 才能内联。
  */
-const runtimeEnv: Record<string, string | undefined> =
-    typeof process !== "undefined" ? process.env : {};
+export function resolveDevAuthMode(env: Record<string, string | undefined>): boolean {
+    if (env.DEV_AUTH_MODE === "0") return false;
+    if (env.DEV_AUTH_MODE === "1") return true;
+    return env.NODE_ENV !== "test" && env.NODE_ENV !== "production";
+}
 
-export const DEV_AUTH_MODE = runtimeEnv.DEV_AUTH_MODE === "0"
-    ? false
-    : runtimeEnv.DEV_AUTH_MODE === "1" || runtimeEnv.NODE_ENV !== "test";
+function readBundledEnv(): Record<string, string | undefined> {
+    try {
+        return {
+            DEV_AUTH_MODE: process.env.DEV_AUTH_MODE,
+            NODE_ENV: process.env.NODE_ENV,
+        };
+    } catch {
+        return {};
+    }
+}
+
+export const DEV_AUTH_MODE = resolveDevAuthMode(readBundledEnv());
+
+/** 开发模式下的演示账号（与 src/db/seeds/default.ts 一致）。 */
+export const DEV_STUDENT_ID = "S010";
+export const DEV_TEACHER_ID = "T001";
+export const DEV_ADMIN_USERNAME = "admin";
 
 /** 开发模式下管理员演示密码（与 src/db/seeds/default.ts 中的默认值一致）。 */
 export const DEV_ADMIN_PASSWORD = "admin123";

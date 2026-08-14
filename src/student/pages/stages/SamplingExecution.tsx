@@ -35,6 +35,7 @@ import {
     PPS_UNAVAILABLE_REASON,
     PPS_UNAVAILABLE_STATUS_MESSAGE,
 } from "../../experiment/sampling-messages";
+import { pickDefaultPpsSizeField } from "../../experiment/pps-size-field";
 import {
     formatSystematicInterval,
     getStoredSystematicInterval,
@@ -115,7 +116,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         }
 
         if (!ppsSizeField || !ppsEligibleFields.includes(ppsSizeField)) {
-            setPpsSizeField(ppsEligibleFields[0] ?? "");
+            setPpsSizeField(pickDefaultPpsSizeField(ppsEligibleFields));
         }
     }, [ppsEligibleFields, ppsSizeField]);
 

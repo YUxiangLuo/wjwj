@@ -9,7 +9,7 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
-import { parseDeadline, formatDateTimeDisplay } from "@/utils/format";
+import { parseDeadline, formatDateTimeDisplay, getRemainingDeadlineSummary } from "@/utils/format";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
 
 const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
@@ -51,13 +51,10 @@ function isDeadlinePassed(deadline: string | null) {
 }
 
 function getDeadlineLabel(deadline: string | null) {
-    const end = parseDeadline(deadline);
-    if (!end) return "暂无截止";
-    const remainingMs = end.getTime() - Date.now();
-    if (remainingMs <= 0) return "已截止";
-    const dayMs = 24 * 60 * 60 * 1000;
-    const days = Math.ceil(remainingMs / dayMs);
-    return days <= 1 ? "即将截止" : `剩余 ${days} 天`;
+    const remaining = getRemainingDeadlineSummary(deadline);
+    if (!remaining) return "暂无截止";
+    if (remaining.passed) return "已截止";
+    return remaining.calendarDays <= 1 ? "即将截止" : `剩余 ${remaining.calendarDays} 天`;
 }
 
 function getOpeningLabel(publishedAt: string) {
