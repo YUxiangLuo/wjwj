@@ -172,7 +172,32 @@ S015 返回「账号或密码错误」，没有 `ACCOUNT_DISABLED`。有利于�
 - 移动视口（产品已 desktop-only，本轮未测 390 宽）
 - 规划里的高级工具（CV / 整群 / 子总体）只读了入口文案，没有逐个应用
 
-## 7. 发布前建议
+## 7. 二次确认（2026-08-14，对照源码与仍在跑的 `PORT=3100` 生产进程）
+
+对照 `123a7fb` 源码、`dist/` 打包结果、现网 API，以及 `dogfood-artifacts/student-2026-08-14/` 截图。服务仍以 `DEV_AUTH_MODE=0 NODE_ENV=production` 运行。
+
+| 编号 | 结论 | 依据 |
+| --- | --- | --- |
+| DF-S-001 | **成立（最高优先级）** | `scripts/build.ts` 只 define `NODE_ENV=production`。浏览器 bundle 里 `process.env.DEV_AUTH_MODE` 为空，于是 `dev-mode.ts` 因 `NODE_ENV !== "test"` 把开关判成 true。`dist/chunk-92p4r5fg.js` 仍是 `TX=i_.DEV_AUTH_MODE==="0"?!1:i_.DEV_AUTH_MODE==="1"\|\|i_.NODE_ENV!=="test"`。现网：S016 登录后 `isFirstLogin=1`，`GET /api/student/me` 200，`GET /api/student/tasks` 403 `PASSWORD_CHANGE_REQUIRED`；截图 `02-s016-after-login.png` 只有「任务加载失败」，没有改密对话框。服务端门禁有效，前端没接上。 |
+| DF-S-002 | **成立** | `Login.tsx` 写死 `useState("S001")`；密码在 `DEV_AUTH_MODE` 为 true 时预填 `"S001"`。打包结果：`useState("S001"),useState(TX?"S001":"")`。新 seed 没有 S001。现网 `S001/S001` → 401 `INVALID_CREDENTIALS`。截图 `01-login.png` 学号 S001、密码已填。 |
+| DF-S-003 | **不成立为产品缺陷** | `StudentApp` / 登录页没有整页 `onClick`，账户菜单也没有全屏遮罩。CDP 点不中、`element.click()` / `form.requestSubmit()` 能点，更像 React 事件委托让自动化树把根节点标成 clickable。不列入修复清单。 |
+| DF-S-004 | **成立** | 同一截止 `2026-09-12T23:56:57.639Z`，现网剩余约 719 小时。`TopicDetails` / 大厅（>7 天）用 `Math.ceil(ms/86400000)` → **30 天**；`ExperimentLayout` 用 `Math.floor(hours/24)` → **29 天**。截图 `08-s010-topic-detail.png`「剩余 30 天」、`06-s010-task-hall.png`「还剩 30 天」、`21-s010-after-plan.png`「剩余 29 天」。 |
+| DF-S-005 | **成立** | 现网 `GET /api/student/tasks/1/stats` 的 `ppsEligibleFields` 为 `["每周学习时长","月生活费","学习满意度"]`。`SamplingExecution` 在字段为空或不合法时落到 `[0]`。截图 `27-s010-pps-run.png` 默认「每周学习时长」，文案却写「如收入、人口等」。seed 里已完成的 S012 PPS 用的是「月生活费」，默认值与示范数据也不一致。 |
+| DF-S-006 | **成立（内容/seed，不是预览 bug）** | seed `copyGuideAttachment` 复制 `public/templates/数据上传规范.pdf`，展示名「课题说明与数据规范.pdf」。现网任务 1 附件 370550 字节。截图 `09-s010-attachment-preview.png` 正文标题是「总体数据上传规范（教师端）」。预览/下载接口正常。 |
+| DF-S-007 | **成立，但是有意设计** | `login` 对 `!row \|\| status!==1 \|\| deletedAt` 一律 401 `INVALID_CREDENTIALS`「账号或密码错误」。现网 S015 正确密码、S015 错密、S999、S001 文案完全相同。`ACCOUNT_DISABLED` 只出现在已登录后的 `me`。防枚举，不必当 bug 修。 |
+| DF-S-008 | **成立** | 现网 `GET /api/student/announcements` 返回「欢迎使用…」和「学生端实验提示」两条。`TaskHall` 横幅只用 `announcements[0]`。截图 `06-s010-task-hall.png` 只显示第一条。第二条在「查看详情」对话框里。 |
+| DF-S-009 | **成立（规则如此）** | `buildIntroOutroItem`：满 20 字即合法；20–34 字得 6 分并提示「建议丰富」；≥35 得 8；≥60 且至少两句才得 10。33 字命中 6 分档。不是实现错误，界面没写清满分门槛。 |
+
+**修复优先级（二次确认后不变）：**
+
+1. DF-S-001：构建时 define `process.env.DEV_AUTH_MODE`，生产默认 `"0"`；或前端在 `NODE_ENV==="production"` 时强制关闭开发鉴权。
+2. DF-S-002：预填与 seed 主账号对齐，或只在真正的开发鉴权开启时预填。
+3. DF-S-004：三处剩余天数用同一套取整。
+4. DF-S-005：默认规模字段不要落到「每周学习时长」。
+
+DF-S-003 不修。DF-S-006 换学生可读附件即可。DF-S-007 保持。DF-S-008 / DF-S-009 是产品体验，可后补。
+
+## 8. 发布前建议
 
 1. 先修 DF-S-001（生产包关掉开发鉴权）和 DF-S-002（预填账号）。  
 2. 用 `DEV_AUTH_MODE=0` 再走一遍 S016：必须先改密才能看见任务。  
