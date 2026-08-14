@@ -383,14 +383,14 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                     <p className="text-sm text-muted-foreground mb-2">
                                         {isPublishedTopic ? "已上传的数据文件（不可更换）" : "点击或拖拽上传 Excel 文件"}
                                     </p>
-                                    <p className="text-xs text-muted-foreground mb-4">支持 .xlsx, .xls, .csv 格式，数据行数 1-100,000</p>
+                                    <p className="text-xs text-muted-foreground mb-4">支持 .xlsx, .csv 格式，数据行数 1-100,000</p>
                                     {!isPublishedTopic && (
                                         <>
                                             <Input
                                                 type="file"
                                                 aria-label="上传总体数据文件"
                                                 data-testid="teacher-topic-excel-file"
-                                                accept=".xlsx,.xls,.csv"
+                                                accept=".xlsx,.csv"
                                                 className="hidden"
                                                 id="excel-upload"
                                                 onChange={(e) => {

@@ -35,12 +35,10 @@ export async function uploadTopicAttachment(params: {
     file: File;
 }) {
     const [countRow] = await db.select({ count: count() }).from(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
-    const attachmentType = getAttachmentType(params.file.name, params.file.type || "");
+    const attachmentType = getAttachmentType(params.file.name);
     const validationError = validateTopicAttachmentUpload(
         {
             currentCount: countRow?.count ?? 0,
-            fileName: params.file.name,
-            mimeType: params.file.type || "",
             fileSize: params.file.size,
         },
         attachmentType

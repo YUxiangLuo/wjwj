@@ -43,10 +43,40 @@ test("fifth failed teacher login locks the account", async () => {
     }));
 
     expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+        error: { code: "INVALID_CREDENTIALS", message: "工号或密码错误" },
+    });
     expect(operations.find((item) => item.kind === "update")?.set).toMatchObject({
         loginFailCount: 5,
         lockedUntil: expect.any(Date),
     });
+});
+
+test("locked teacher login verifies credentials but preserves the lock and rejects", async () => {
+    const password = "Teaching123!";
+    const { db, operations } = createMockDb({ select: [[{
+        id: 9,
+        employeeId: "T001",
+        name: "教师一",
+        status: 1,
+        password: await Bun.password.hash(password),
+        isFirstLogin: 0,
+        loginFailCount: 5,
+        lockedUntil: new Date(Date.now() + 60_000),
+    }]] });
+    mock.module("../../db", () => ({ db }));
+    const module = await import(`./auth.ts?teacher-locked=${crypto.randomUUID()}`);
+    const response = await module.teacherLoginRoutes.POST!(new Request("https://example.com/api/teacher/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId: "T001", password }),
+    }));
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+        error: { code: "INVALID_CREDENTIALS", message: "工号或密码错误" },
+    });
+    expect(operations.some((item) => item.kind === "update")).toBe(false);
 });
 
 test("teacher protected routes stay locked until the first-login flag is cleared", async () => {

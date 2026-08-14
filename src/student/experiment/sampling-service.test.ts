@@ -69,6 +69,89 @@ test("PPS sampling rejects categorical size fields even when the field exists", 
     expect(result.errorMessage).toBe("规模变量需为包含正数的数值字段");
 });
 
+test("PPS sampling rejects positive fields when the numeric mapping is empty", async () => {
+    const result = await executeSamplingAction({
+        method: "pps",
+        rawParams: { sizeField: "weight", sampleSize: 10, seed: 2026 },
+        targetSampleSize: 10,
+        population: population.map((row) => ({ ...row, weight: row.id })),
+        fieldMapping: { numeric: [] },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errorMessage).toBe("规模变量需为包含正数的数值字段");
+});
+
+test("simple sampling rejects malformed or non-numeric sample sizes", async () => {
+    for (const sampleSize of ["10", "10junk", "10.5", "1e2", [10], { value: 10 }, 10.5, Number.MAX_SAFE_INTEGER + 1]) {
+        const result = await executeSamplingAction({
+            method: "simple",
+            rawParams: { sampleSize, seed: 2026 },
+            targetSampleSize: 10,
+            population,
+            fieldMapping: null,
+        });
+        expect(result.ok).toBe(false);
+    }
+
+    const valid = await executeSamplingAction({
+        method: "simple",
+        rawParams: { sampleSize: 10, seed: 2026 },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: null,
+    });
+    expect(valid.ok).toBe(true);
+});
+
+test("PPS sampling rejects malformed or non-numeric sample sizes", async () => {
+    const weightedPopulation = population.map((row) => ({ ...row, weight: row.id }));
+    for (const sampleSize of ["10", "10junk", "10.5", "1e2", [10], { value: 10 }, 10.5, Number.MAX_SAFE_INTEGER + 1]) {
+        const result = await executeSamplingAction({
+            method: "pps",
+            rawParams: { sizeField: "weight", sampleSize, seed: 2026 },
+            targetSampleSize: 10,
+            population: weightedPopulation,
+            fieldMapping: { numeric: ["weight"] },
+        });
+        expect(result.ok).toBe(false);
+    }
+
+    const valid = await executeSamplingAction({
+        method: "pps",
+        rawParams: { sizeField: "weight", sampleSize: 10, seed: 2026 },
+        targetSampleSize: 10,
+        population: weightedPopulation,
+        fieldMapping: { numeric: ["weight"] },
+    });
+    expect(valid.ok).toBe(true);
+});
+
+test("sampling generates and returns a reproducible seed when the client omits one", async () => {
+    const result = await executeSamplingAction({
+        method: "simple",
+        rawParams: { sampleSize: 10 },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: null,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(Number.isSafeInteger(result.result.seed)).toBe(true);
+
+    const replay = await executeSamplingAction({
+        method: "simple",
+        rawParams: { sampleSize: 10, seed: result.result.seed },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: null,
+    });
+    expect(replay.ok).toBe(true);
+    if (!replay.ok) return;
+    expect(replay.result.data).toEqual(result.result.data);
+});
+
 test("PPS sampling rejects fields that have no positive numeric size values", async () => {
     const result = await executeSamplingAction({
         method: "pps",

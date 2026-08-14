@@ -121,6 +121,23 @@ test("topic excel upload rejects workbooks with fewer than two columns", async (
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
 });
 
+test("topic excel upload rejects unsupported spreadsheet extensions before parsing", async () => {
+    const { module, operations } = await loadTopicRoutes({
+        select: [[{ id: 12, status: 0 }]],
+    });
+    const form = new FormData();
+    form.append("file", new File(["not a workbook"], "population.xls", { type: "application/vnd.ms-excel" }));
+    const request = withRouteParam(new Request("https://example.com/api/teacher/topics/12/excel", {
+        method: "POST",
+        body: form,
+    }), "12");
+
+    const response = await module.topicExcelUploadRoutes.POST!(request);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "INVALID_FILE" } });
+    expect(operations.some((operation) => operation.kind === "update")).toBe(false);
+});
+
 test("topic excel upload preserves Chinese text for utf-8 csv files", async () => {
     const { module } = await loadTopicRoutes({
         select: [[{ id: 12, status: 0 }]],

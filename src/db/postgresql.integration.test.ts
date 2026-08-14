@@ -1,6 +1,6 @@
 import { SQL } from "bun";
 import { expect, test } from "bun:test";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
 
@@ -121,6 +121,27 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             })
             .returning({ id: schema.experiment.id, version: schema.experiment.version });
         expect(createdExperiment?.version).toBe(1);
+
+        const systematicResult = { completed: true, sampleCount: 2, serverGenerated: true };
+        await database
+            .update(schema.experiment)
+            .set({
+                samplingResults: sql`jsonb_set(
+                    coalesce(${schema.experiment.samplingResults}, '{}'::jsonb),
+                    array[${"systematic"}]::text[],
+                    ${systematicResult}::jsonb,
+                    true
+                )`,
+            })
+            .where(eq(schema.experiment.id, createdExperiment!.id));
+        const [mergedSamplingResults] = await database
+            .select({ samplingResults: schema.experiment.samplingResults })
+            .from(schema.experiment)
+            .where(eq(schema.experiment.id, createdExperiment!.id));
+        expect(mergedSamplingResults?.samplingResults).toEqual({
+            simple: { completed: true, data: [] },
+            systematic: { completed: true, sampleCount: 2, serverGenerated: true },
+        });
 
         const [jsonTypes] = await sqlClient`
             SELECT

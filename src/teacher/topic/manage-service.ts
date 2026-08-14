@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
+import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import {
@@ -146,6 +147,9 @@ export async function replaceTopicExcelData(params: {
     file: File;
     previousFilePath?: string | null;
 }) {
+    const fileError = validateSpreadsheetUploadFile(params.file);
+    if (fileError) return fail(fileError.message, fileError.code, fileError.status);
+
     const buffer = await params.file.arrayBuffer();
     const parsed = await parseExcelFile(buffer, params.file.name);
     const validationError = validateParsedExcelUpload(parsed);

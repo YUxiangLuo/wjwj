@@ -6,11 +6,12 @@
  * - 跳过“首次登录 / 密码重置后必须修改密码”的强制流程
  *   （前端不再弹出强制改密对话框，服务端也不再以 PASSWORD_CHANGE_REQUIRED 拦截 API）。
  *
- * `DEV_AUTH_MODE=1` 强制开启，`DEV_AUTH_MODE=0` 强制关闭。
- * 未设置时：本地开发默认开启；`NODE_ENV=test` / `NODE_ENV=production` 默认关闭。
+ * 非生产环境下，`DEV_AUTH_MODE=1` 强制开启，`DEV_AUTH_MODE=0` 强制关闭。
+ * 未设置时：本地开发默认开启，`NODE_ENV=test` 默认关闭；生产环境始终关闭。
  * 读取环境变量必须写 `process.env.DEV_AUTH_MODE` / `process.env.NODE_ENV`，生产 `define` 才能内联。
  */
 export function resolveDevAuthMode(env: Record<string, string | undefined>): boolean {
+    if (env.NODE_ENV === "production") return false;
     if (env.DEV_AUTH_MODE === "0") return false;
     if (env.DEV_AUTH_MODE === "1") return true;
     return env.NODE_ENV !== "test" && env.NODE_ENV !== "production";

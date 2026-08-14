@@ -28,8 +28,6 @@ interface TopicPublishReadyInput {
 
 interface TopicAttachmentInput {
     currentCount: number;
-    fileName: string;
-    mimeType: string;
     fileSize: number;
 }
 
@@ -147,7 +145,7 @@ export function validateTopicAttachmentUpload(input: TopicAttachmentInput, attac
         attachmentType === "image"
             ? 10 * 1024 * 1024
             : attachmentType === "video"
-                ? 200 * 1024 * 1024
+                ? 120 * 1024 * 1024
                 : attachmentType === "document"
                     ? 50 * 1024 * 1024
                     : 0;

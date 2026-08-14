@@ -32,7 +32,7 @@
 - **前端**：React 19、React Router 7、Tailwind 4，语义色写在 `styles/theme.css`
 - **后端**：`src/index.ts` 里的 `Bun.serve` 路由
 - **数据**：PostgreSQL（`citext`、`jsonb`），Drizzle + `bun:sql`
-- **上传**：课题 Excel / 附件落在 `storage/`
+- **上传**：课题总体表仅支持 `.csv` / `.xlsx` 且不超过 20 MiB；附件落在 `storage/`（图片 10 MiB、文档 50 MiB、视频 120 MiB）
 
 ## 环境要求
 
@@ -46,7 +46,7 @@
 | `PORT` | 默认 `3000` |
 | `HOST` | 默认 `0.0.0.0` |
 | `NODE_ENV` | `production` 时从 `dist/` 提供前端，并默认关闭开发鉴权 |
-| `DEV_AUTH_MODE` | `1` 强制开启开发鉴权，`0` 强制关闭。未设置时：本地开发开启，`test` / `production` 关闭 |
+| `DEV_AUTH_MODE` | 非生产环境中：`1` 强制开启开发鉴权，`0` 强制关闭。未设置时本地开发开启、`test` 关闭；`production` 始终关闭 |
 | `SEED_ADMIN_PASSWORD` | 可选。覆盖 seed 管理员初始密码 |
 | `TEST_DATABASE_URL` | 跑 `bun run test:db` 时使用的一次性库 |
 
@@ -99,6 +99,7 @@ bun run start
 bun run dev              # 热更新开发
 bun run build            # 生产前端到 dist/
 bun run start            # 构建 + 生产进程
+bun run verify           # 类型/样式、单测、构建、迁移检查、依赖门禁
 bun test                 # 单元测试
 bun run typecheck        # tsc + 样式门禁
 bun run check:styles     # 禁止调色板类、dark:、响应式断点

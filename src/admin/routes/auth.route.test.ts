@@ -61,6 +61,31 @@ test("admin protected routes require the initial password to be changed", async 
     expect(handler).toHaveBeenCalledTimes(1);
 });
 
+test("locked admin login verifies credentials but preserves the lock and rejects", async () => {
+    const password = "Teaching123!";
+    const { db, operations } = createMockDb({ select: [[{
+        id: 3,
+        username: "admin",
+        password: await Bun.password.hash(password),
+        isFirstLogin: 0,
+        loginFailCount: 5,
+        lockedUntil: new Date(Date.now() + 60_000),
+    }]] });
+    mock.module("../../db", () => ({ db }));
+    const module = await import(`./auth.ts?admin-locked=${crypto.randomUUID()}`);
+    const response = await module.adminLoginRoutes.POST!(new Request("https://example.com/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password }),
+    }));
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+        error: { code: "INVALID_CREDENTIALS", message: "用户名或密码错误" },
+    });
+    expect(operations.some((item) => item.kind === "update")).toBe(false);
+});
+
 test("fifth failed admin login locks the account", async () => {
     const { db, operations } = createMockDb({ select: [[{
         id: 3,
@@ -79,6 +104,9 @@ test("fifth failed admin login locks the account", async () => {
     }));
 
     expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+        error: { code: "INVALID_CREDENTIALS", message: "用户名或密码错误" },
+    });
     expect(operations.find((item) => item.kind === "update")?.set).toMatchObject({
         loginFailCount: 5,
         lockedUntil: expect.any(Date),

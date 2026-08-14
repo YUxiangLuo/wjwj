@@ -187,6 +187,8 @@ const routes = {
 const server = serve({
   hostname: process.env.HOST || "0.0.0.0",
   port: Number(process.env.PORT) || 3000,
+  // Keep Bun's global ceiling explicit. Individual spreadsheet routes enforce 20 MiB.
+  maxRequestBodySize: 128 * 1024 * 1024,
   routes,
   error: handleServerError,
 

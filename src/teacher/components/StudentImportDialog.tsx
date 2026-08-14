@@ -45,12 +45,12 @@ export function StudentImportDialog(props: StudentImportDialogProps) {
                     <div className="border-2 border-dashed border-input bg-background/50 rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
                         <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                         <label htmlFor="teacher-student-import-file" className="mb-2 block text-sm text-muted-foreground">选择文件上传</label>
-                        <p className="text-xs text-muted-foreground">支持 .xlsx, .xls, .csv 格式</p>
+                        <p className="text-xs text-muted-foreground">支持 .xlsx, .csv 格式</p>
                         <Input
                             id="teacher-student-import-file"
                             type="file"
                             data-testid="teacher-student-import-file"
-                            accept=".xlsx,.xls,.csv"
+                            accept=".xlsx,.csv"
                             className="mt-6 bg-card/50 border-input text-foreground/90 text-sm file:bg-muted file:text-foreground/90 file:border-0 file:rounded-md file:mr-4 file:px-3 file:py-1 cursor-pointer"
                             onChange={(e) => onImportFileChange(e.target.files?.[0] ?? null)}
                         />

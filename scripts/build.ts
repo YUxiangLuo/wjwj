@@ -38,9 +38,9 @@ for (const entrypoint of entrypoints) {
         publicPath: "/",
         define: {
             "process.env.NODE_ENV": JSON.stringify("production"),
-            // Production bundles have no live process.env. Default off so a
-            // missing DEV_AUTH_MODE cannot keep first-login password gates disabled.
-            "process.env.DEV_AUTH_MODE": JSON.stringify(process.env.DEV_AUTH_MODE === "1" ? "1" : "0"),
+            // Production must never skip the first-login password gates, even
+            // when a stale development environment exports DEV_AUTH_MODE=1.
+            "process.env.DEV_AUTH_MODE": JSON.stringify("0"),
         },
         minify: true,
     });

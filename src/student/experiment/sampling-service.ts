@@ -19,6 +19,10 @@ function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
 }
 
+function toSafeInteger(value: unknown) {
+    return typeof value === "number" && Number.isSafeInteger(value) ? value : null;
+}
+
 export function parseSamplingSeed(rawSeed: unknown) {
     let seed: number | undefined;
 
@@ -62,12 +66,13 @@ export async function executeSamplingAction(params: {
         return { ok: false as const, errorMessage };
     }
 
-    const random = createSeededRandom(seed);
+    const effectiveSeed = seed ?? crypto.getRandomValues(new Uint32Array(1))[0]!;
+    const random = createSeededRandom(effectiveSeed);
 
     switch (params.method) {
         case "simple": {
-            const sampleSize = Number.parseInt(String(parsedParams.sampleSize ?? ""), 10);
-            if (!Number.isInteger(sampleSize) || sampleSize < 1 || sampleSize > params.population.length) {
+            const sampleSize = toSafeInteger(parsedParams.sampleSize);
+            if (sampleSize === null || sampleSize < 1 || sampleSize > params.population.length) {
                 return {
                     ok: false as const,
                     errorMessage: `样本量需为 1-${params.population.length} 之间的整数`,
@@ -83,7 +88,7 @@ export async function executeSamplingAction(params: {
             const data = await performSimpleSampling(params.population, sampleSize, random);
             return {
                 ok: true as const,
-                result: { completed: true, sampleCount: data.length, seed, data },
+                result: { completed: true, sampleCount: data.length, seed: effectiveSeed, data },
             };
         }
         case "systematic": {
@@ -108,7 +113,7 @@ export async function executeSamplingAction(params: {
                     interval: selection.interval,
                     randomStart: selection.randomStart,
                     sampleCount: selection.data.length,
-                    seed,
+                    seed: effectiveSeed,
                     data: selection.data,
                 },
             };
@@ -120,7 +125,7 @@ export async function executeSamplingAction(params: {
             }
 
             const mapping = parseTopicFieldMapping(params.fieldMapping);
-            if (mapping?.numeric?.length && !mapping.numeric.includes(sizeField)) {
+            if (!mapping?.numeric?.includes(sizeField)) {
                 return { ok: false as const, errorMessage: "规模变量需为包含正数的数值字段" };
             }
 
@@ -137,8 +142,8 @@ export async function executeSamplingAction(params: {
                 return { ok: false as const, errorMessage: "规模变量需在总体中对每个单位都为正数" };
             }
 
-            const sampleSize = Number.parseInt(String(parsedParams.sampleSize ?? ""), 10);
-            if (!Number.isInteger(sampleSize) || sampleSize < 1 || sampleSize > params.population.length) {
+            const sampleSize = toSafeInteger(parsedParams.sampleSize);
+            if (sampleSize === null || sampleSize < 1 || sampleSize > params.population.length) {
                 return {
                     ok: false as const,
                     errorMessage: `样本量需为 1-${params.population.length} 之间的整数`,
@@ -162,7 +167,7 @@ export async function executeSamplingAction(params: {
                     completed: true,
                     sizeField,
                     sampleCount: selection.data.length,
-                    seed,
+                    seed: effectiveSeed,
                     randomStart: selection.randomStart,
                     inclusionProbabilities: selection.inclusionProbabilities,
                     data: selection.data,
@@ -245,7 +250,7 @@ export async function executeSamplingAction(params: {
                     stratifyBy,
                     layers,
                     sampleCount: data.length,
-                    seed,
+                    seed: effectiveSeed,
                     data,
                 },
             };

@@ -82,6 +82,59 @@ delete, audit, and cleanup operations share a
 PostgreSQL advisory lock, so cleanup cannot classify a file while its database
 reference is still being committed by the application.
 
+## Coordinated single-instance backup and restore
+
+PostgreSQL rows and `storage/` files form one backup set. For a consistent
+single-instance backup, enter a maintenance window and stop every application
+process that can upload, replace, or delete files. Then create both artifacts
+under the same timestamp outside the repository:
+
+```sh
+stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+backup_dir=/safe/path
+pg_dump "$DATABASE_URL" --format=custom --file="$backup_dir/wenjuan-$stamp.dump"
+tar -C "$(pwd)" -czf "$backup_dir/wenjuan-storage-$stamp.tar.gz" storage
+(
+  cd "$backup_dir"
+  sha256sum "wenjuan-$stamp.dump" "wenjuan-storage-$stamp.tar.gz" \
+    > "wenjuan-$stamp.sha256"
+)
+```
+
+The checksum manifest deliberately contains basenames so the set can be moved
+and verified from its own directory. Keep the dump, storage archive, checksum
+file, application commit, and migration version together. Before any restore,
+verify both artifacts, then restore into a disposable empty PostgreSQL database
+and an empty application storage location using the same application version:
+
+```sh
+stamp=20260814T120000Z
+backup_dir=/safe/path
+app_dir=/srv/wenjuan
+RESTORE_DATABASE_URL='postgresql://restore_user:password@127.0.0.1:5432/wenjuan_restore_test'
+
+(cd "$backup_dir" && sha256sum --check "wenjuan-$stamp.sha256")
+pg_restore --no-owner --no-privileges \
+  --dbname="$RESTORE_DATABASE_URL" "$backup_dir/wenjuan-$stamp.dump"
+test ! -e "$app_dir/storage" || { echo "restore storage path must not exist" >&2; exit 1; }
+tar -C "$app_dir" -xzf "$backup_dir/wenjuan-storage-$stamp.tar.gz"
+
+cd "$app_dir"
+DATABASE_URL="$RESTORE_DATABASE_URL" bun run db:migrate
+TEST_DATABASE_URL="$RESTORE_DATABASE_URL" bun run test:db
+DATABASE_URL="$RESTORE_DATABASE_URL" bun run storage:audit
+```
+
+Use a dedicated disposable restore database: `test:db` intentionally refuses to
+fall back to `DATABASE_URL`. After the commands pass, start the application with
+`DATABASE_URL="$RESTORE_DATABASE_URL"` and test representative attachment and
+population downloads before accepting the backup. Do not restore only one half
+of the set or extract over an existing production `storage/` directory.
+
+The current local-filesystem design is intentionally single-instance. Shared
+volumes or object storage are required before horizontal multi-instance
+deployment and are deferred until that deployment model is needed.
+
 ## Repair a collation version mismatch
 
 An operating-system libc/ICU upgrade can change sort rules after a database

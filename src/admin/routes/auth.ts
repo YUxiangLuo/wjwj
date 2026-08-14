@@ -108,17 +108,14 @@ const adminLoginRoutes: RouteDefinition = {
         if (!username || !password) return error("请输入用户名和密码", "VALIDATION_ERROR", 400);
 
         const [row] = await db.select().from(admin).where(eq(admin.username, username));
-        if (row && isLoginLocked(row)) {
-            return error("登录失败次数过多，账号暂时锁定，请稍后重试", "ACCOUNT_LOCKED", 423);
-        }
         const valid = row
             ? await Bun.password.verify(password, row.password)
             : await Bun.password.verify(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row) return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
+        if (!row || isLoginLocked(row)) return error("用户名或密码错误", "INVALID_CREDENTIALS", 401);
         if (!valid) {
             const failure = nextFailedLoginState(row);
             await db.update(admin).set({ loginFailCount: failure.loginFailCount, lockedUntil: failure.lockedUntil }).where(eq(admin.id, row.id));
-            return error(failedLoginMessage(failure), "INVALID_CREDENTIALS", 401);
+            return error(failedLoginMessage(failure, "用户名或密码错误"), "INVALID_CREDENTIALS", 401);
         }
 
         await db.update(admin).set({ loginFailCount: 0, lockedUntil: null }).where(eq(admin.id, row.id));

@@ -152,15 +152,6 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         return { seed: parsed, error: null };
     }, []);
 
-    const buildSamplingResultsPayload = useCallback((next?: Partial<SamplingResultsData>) => {
-        const payload: SamplingResultsData = {};
-        if (simpleResult) payload.simple = simpleResult;
-        if (systematicResult) payload.systematic = systematicResult;
-        if (ppsResult) payload.pps = ppsResult;
-        if (stratifiedResult) payload.stratified = stratifiedResult;
-        return next ? { ...payload, ...next } : payload;
-    }, [simpleResult, systematicResult, ppsResult, stratifiedResult]);
-
     const taskId = experiment?.taskId;
 
     // Execute sampling with real API
@@ -281,7 +272,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     ].filter(Boolean).length;
 
     const handleConfirmNext = async () => {
-        await completeStage(3, { samplingResults: buildSamplingResultsPayload() });
+        await completeStage(3, {});
     };
 
     if (!hasValidSamplePlan) {

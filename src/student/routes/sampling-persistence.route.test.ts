@@ -1,0 +1,224 @@
+import { afterAll, expect, mock, test } from "bun:test";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
+import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
+import { createMockDb } from "../../test-utils/mock-db";
+
+const populationPath = `/storage/test-authoritative-sampling-${crypto.randomUUID()}.csv`;
+const absolutePopulationPath = `${process.cwd()}${populationPath}`;
+await Bun.write(absolutePopulationPath, "id,gender,weight\n1,A,1\n2,A,2\n3,B,3\n4,B,4\n");
+
+afterAll(async () => {
+    await Bun.file(absolutePopulationPath).delete().catch(() => undefined);
+});
+
+function record(overrides: Record<string, unknown> = {}) {
+    return {
+        id: 9,
+        studentId: 2,
+        taskId: 3,
+        version: 6,
+        status: "in_progress",
+        currentStage: 3,
+        questionnaire: { title: "问卷" },
+        samplePlan: { confidenceLevel: "95", marginOfError: 5, finalSampleSize: 2 },
+        samplingResults: null,
+        reportContent: null,
+        stage1CompletedAt: new Date("2026-01-01T00:00:00Z"),
+        stage2CompletedAt: new Date("2026-01-02T00:00:00Z"),
+        stage3CompletedAt: null,
+        stage4CompletedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides,
+    };
+}
+
+async function load(
+    experimentRecord: Record<string, unknown>,
+    update: unknown[] = [[{ id: 9 }]],
+    fieldMapping: Record<string, unknown> = { numeric: ["weight"], stratified: ["gender"] },
+    filePath = populationPath,
+) {
+    const { db, operations } = createMockDb({ select: [[experimentRecord]], update });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createStudentAuthModuleMock({
+        requireAuth: async () => ({ student: { id: 2, studentId: "S001", name: "学生一", classId: 7 }, error: null }),
+    }));
+    mock.module("../experiment/task-access", () => ({
+        getStudentTaskAccessError: async () => null,
+        getStudentTopicAttachmentAccessError: async () => null,
+    }));
+    mock.module("../experiment/task-info", () => ({
+        findStudentTaskPopulationSize: async () => 4,
+        findStudentTaskSamplingInfo: async () => ({
+            excelFilePath: filePath,
+            fieldMapping,
+        }),
+        findStudentTaskSchedule: async () => ({ openTime: null, deadline: new Date(Date.now() + 60_000) }),
+        findStudentTaskSubmitInfo: async () => null,
+        findStudentTaskTopicInfo: async () => ({ id: 3, topicId: 4 }),
+    }));
+    return {
+        module: await import(`./experiment.ts?authoritative=${crypto.randomUUID()}`),
+        operations,
+    };
+}
+
+function routeRequest(path: string, body: unknown, params: Record<string, string>) {
+    const request = new Request(`https://example.com${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+    (request as Request & { params?: Record<string, string> }).params = params;
+    return request;
+}
+
+test("sampling action atomically persists its server-generated method result", async () => {
+    const { module, operations } = await load(record());
+    const response = await module.samplingActionRoutes.POST!(routeRequest(
+        "/api/student/tasks/3/sampling",
+        { method: "simple", params: { sampleSize: 2, seed: 2026 } },
+        { id: "3" },
+    ));
+
+    expect(response.status).toBe(200);
+    const update = operations.find((operation) => operation.kind === "update");
+    const expression = (update?.set as { samplingResults?: SQL } | undefined)?.samplingResults;
+    expect(expression).toBeDefined();
+    const query = new PgDialect().sqlToQuery(expression!);
+    expect(query.sql).toContain("jsonb_set");
+    expect(query.sql).toContain("coalesce");
+    expect(query.params).toContain("simple");
+    expect(query.params).toContainEqual(expect.objectContaining({ serverGenerated: true }));
+});
+
+test("forged stage completion cannot supply results or bypass an eligible PPS method", async () => {
+    const { module, operations } = await load(record());
+    const forged = {
+        simple: { completed: true, sampleCount: 2 },
+        systematic: { completed: true, sampleCount: 2 },
+        pps: { unavailable: true },
+        stratified: { completed: true, layers: [{ name: "A", sampleCount: 2 }] },
+    };
+    const response = await module.stageCompleteRoutes.POST!(routeRequest(
+        "/api/student/tasks/3/experiment/stages/3/complete",
+        { observedVersion: 6, samplingResults: forged },
+        { id: "3", stage: "3" },
+    ));
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: { code: "SAMPLING_RESULTS_REQUIRED" } });
+    expect(operations.some((operation) => operation.kind === "update")).toBe(false);
+});
+
+test("stage completion atomically persists server-determined PPS unavailability", async () => {
+    const stored = {
+        simple: { completed: true, sampleCount: 2, serverGenerated: true },
+        systematic: { completed: true, sampleCount: 2, serverGenerated: true },
+        stratified: {
+            completed: true,
+            serverGenerated: true,
+            layers: [{ name: "A", sampleCount: 1 }, { name: "B", sampleCount: 1 }],
+        },
+    };
+    const pps = {
+        unavailable: true,
+        unavailableReason: "当前总体不存在对每个单位都为正数的规模变量",
+        serverGenerated: true,
+    };
+    const current = record({ samplingResults: stored });
+    const marked = { ...current, samplingResults: { ...stored, pps } };
+    const updated = { ...marked, currentStage: 4, version: 7, stage3CompletedAt: new Date() };
+    const { module, operations } = await load(current, [[marked], [updated]], { numeric: [], stratified: ["gender"] });
+    const response = await module.stageCompleteRoutes.POST!(routeRequest(
+        "/api/student/tasks/3/experiment/stages/3/complete",
+        { observedVersion: 6 },
+        { id: "3", stage: "3" },
+    ));
+
+    expect(response.status).toBe(200);
+    const updates = operations.filter((operation) => operation.kind === "update");
+    expect(updates).toHaveLength(2);
+    const markerExpression = (updates[0]?.set as { samplingResults?: SQL }).samplingResults;
+    expect(markerExpression).toBeDefined();
+    const markerQuery = new PgDialect().sqlToQuery(markerExpression!);
+    expect(markerQuery.sql).toContain("jsonb_set");
+    expect(markerQuery.params).toContain("pps");
+    expect(markerQuery.params).toContainEqual(pps);
+    expect((updates[1]?.set as { samplingResults?: unknown }).samplingResults).toBeUndefined();
+});
+
+test("population-backed routes return READ_FAILED when population storage is unreadable", async () => {
+    const missingPath = `/storage/missing-${crypto.randomUUID()}.xlsx`;
+    const originalConsoleError = console.error;
+    console.error = () => undefined;
+
+    try {
+        const statsLoad = await load(record(), [[{ id: 9 }]], { numeric: ["weight"] }, missingPath);
+        const statsResponse = await statsLoad.module.statsRoutes.GET!(routeRequest(
+            "/api/student/tasks/3/stats",
+            undefined,
+            { id: "3" },
+        ));
+        expect(statsResponse.status).toBe(500);
+        expect(await statsResponse.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+
+        const samplingLoad = await load(record(), [[{ id: 9 }]], { numeric: ["weight"] }, missingPath);
+        const samplingResponse = await samplingLoad.module.samplingActionRoutes.POST!(routeRequest(
+            "/api/student/tasks/3/sampling",
+            { method: "simple", params: { sampleSize: 2 } },
+            { id: "3" },
+        ));
+        expect(samplingResponse.status).toBe(500);
+        expect(await samplingResponse.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+
+        const completionLoad = await load(record(), [[{ id: 9 }]], { numeric: [], stratified: ["gender"] }, missingPath);
+        const completionResponse = await completionLoad.module.stageCompleteRoutes.POST!(routeRequest(
+            "/api/student/tasks/3/experiment/stages/3/complete",
+            { observedVersion: 6 },
+            { id: "3", stage: "3" },
+        ));
+        expect(completionResponse.status).toBe(500);
+        expect(await completionResponse.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+
+        const analysisLoad = await load(record(), [[{ id: 9 }]], { numeric: ["weight"] }, missingPath);
+        const analysisResponse = await analysisLoad.module.analysisMetricsRoutes.GET!(routeRequest(
+            "/api/student/tasks/3/analysis-metrics",
+            undefined,
+            { id: "3" },
+        ));
+        expect(analysisResponse.status).toBe(500);
+        expect(await analysisResponse.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+    } finally {
+        console.error = originalConsoleError;
+    }
+});
+
+test("stage completion ignores client results and does not rewrite stored authoritative methods", async () => {
+    const stored = {
+        simple: { completed: true, sampleCount: 2, serverGenerated: true, data: [{ id: 1 }, { id: 2 }] },
+        systematic: { completed: true, sampleCount: 2, serverGenerated: true, data: [{ id: 1 }, { id: 3 }] },
+        pps: { completed: true, sampleCount: 2, serverGenerated: true, data: [{ id: 3 }, { id: 4 }] },
+        stratified: {
+            completed: true,
+            sampleCount: 2,
+            serverGenerated: true,
+            layers: [{ name: "A", sampleCount: 1 }, { name: "B", sampleCount: 1 }],
+            data: [{ id: 1 }, { id: 4 }],
+        },
+    };
+    const current = record({ samplingResults: stored });
+    const updated = { ...current, samplingResults: stored, currentStage: 4, version: 7, stage3CompletedAt: new Date() };
+    const { module, operations } = await load(current, [[updated]]);
+    const response = await module.stageCompleteRoutes.POST!(routeRequest(
+        "/api/student/tasks/3/experiment/stages/3/complete",
+        { observedVersion: 6, samplingResults: { pps: { unavailable: true } } },
+        { id: "3", stage: "3" },
+    ));
+
+    expect(response.status).toBe(200);
+    const update = operations.find((operation) => operation.kind === "update");
+    expect((update?.set as { samplingResults?: unknown }).samplingResults).toBeUndefined();
+});

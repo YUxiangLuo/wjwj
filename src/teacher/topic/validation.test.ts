@@ -84,17 +84,24 @@ describe("topic validation helpers", () => {
     test("validateTopicAttachmentUpload enforces type and size limits", () => {
         expect(
             validateTopicAttachmentUpload(
-                { currentCount: 20, fileName: "a.pdf", mimeType: "application/pdf", fileSize: 1 },
+                { currentCount: 20, fileSize: 1 },
                 "document"
             )
         ).toBe("附件数量已达上限");
 
         expect(
             validateTopicAttachmentUpload(
-                { currentCount: 0, fileName: "a.exe", mimeType: "application/octet-stream", fileSize: 1 },
+                { currentCount: 0, fileSize: 1 },
                 "unknown"
             )
         ).toBe("不支持的文件类型");
+
+        expect(
+            validateTopicAttachmentUpload(
+                { currentCount: 0, fileSize: 120 * 1024 * 1024 + 1 },
+                "video"
+            )
+        ).toBe("文件大小超过限制");
     });
 
     test("validateRecommendQuestionsPayload validates question list", () => {

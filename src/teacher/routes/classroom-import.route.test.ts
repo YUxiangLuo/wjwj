@@ -105,6 +105,21 @@ test("student import treats differently-cased student IDs as duplicates", async 
     ]);
 });
 
+test("student import rejects unsupported spreadsheet extensions before parsing", async () => {
+    const { module, operations } = await loadClassroomRoutes({ select: [[{ id: 3 }]] });
+    const formData = new FormData();
+    formData.append("file", new File(["not a workbook"], "students.xls", { type: "application/vnd.ms-excel" }));
+    const request = withRouteParam(new Request("https://example.com/api/teacher/classes/3/students/import", {
+        method: "POST",
+        body: formData,
+    }), "3");
+
+    const response = await module.classStudentsImportRoutes.POST!(request);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "INVALID_FILE" } });
+    expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
+});
+
 test("single student creation validates database column lengths", async () => {
     const { module, operations } = await loadClassroomRoutes({ select: [[{ id: 3 }]] });
     const request = withRouteParam(new Request("https://example.com/api/teacher/classes/3/students", {

@@ -90,13 +90,10 @@ const loginRoutes: RouteDefinition = {
         if (!studentId || !password) return error("请输入学号和密码", "VALIDATION_ERROR", 400);
 
         const [row] = await db.select().from(student).where(eq(student.studentId, studentId));
-        if (row?.status === 1 && !row.deletedAt && isLoginLocked(row)) {
-            return error("登录失败次数过多，账号暂时锁定，请稍后重试", "ACCOUNT_LOCKED", 423);
-        }
         const valid = row
             ? await Bun.password.verify(password, row.password)
             : await Bun.password.verify(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row || row.status !== 1 || row.deletedAt) {
+        if (!row || row.status !== 1 || row.deletedAt || isLoginLocked(row)) {
             return error("账号或密码错误", "INVALID_CREDENTIALS", 401);
         }
         if (!valid) {

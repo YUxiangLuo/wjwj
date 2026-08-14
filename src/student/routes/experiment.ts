@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
@@ -16,7 +16,8 @@ import {
     readPopulationData,
 } from "../experiment/population-data";
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
-import { executeSamplingAction } from "../experiment/sampling-service";
+import { PPS_UNAVAILABLE_REASON } from "../experiment/sampling-messages";
+import { executeSamplingAction, type SamplingMethod } from "../experiment/sampling-service";
 import { parseStoredJson } from "../experiment/serialization";
 import { ExperimentStatus } from "../experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
@@ -84,6 +85,81 @@ function matchesObservedExperiment(record: typeof experiment.$inferSelect, obser
     );
 }
 
+type StoredSamplingResults = Record<string, Record<string, unknown> | undefined>;
+
+function isServerGeneratedResult(value: Record<string, unknown> | undefined) {
+    return value?.serverGenerated === true;
+}
+
+async function persistSamplingMethodResult(
+    record: typeof experiment.$inferSelect,
+    method: SamplingMethod,
+    result: Record<string, unknown>,
+) {
+    const [persisted] = await db
+        .update(experiment)
+        .set({
+            samplingResults: sql`jsonb_set(
+                coalesce(${experiment.samplingResults}, '{}'::jsonb),
+                array[${method}]::text[],
+                ${result}::jsonb,
+                true
+            )`,
+            updatedAt: new Date(),
+        })
+        .where(matchesObservedExperiment(record, record.version))
+        .returning();
+    return persisted ?? null;
+}
+
+async function prepareStoredSamplingResultsForCompletion(params: {
+    record: typeof experiment.$inferSelect;
+    taskId: number;
+    classId: number;
+}) {
+    let authoritativeRecord = params.record;
+    let stored = parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
+
+    if (!isServerGeneratedResult(stored.pps)) {
+        const taskInfo = await findStudentTaskSamplingInfo(params.taskId, params.classId);
+        if (!taskInfo?.excelFilePath) {
+            return { ok: false as const, response: error("未找到总体的Excel数据文件", "NO_DATA_FILE", 500) };
+        }
+        const population = await readPopulationData(taskInfo.excelFilePath);
+        if (!population.length) {
+            return { ok: false as const, response: error("总体数据为空或读取失败", "READ_FAILED", 500) };
+        }
+        const numericFields = parseTopicFieldMapping(taskInfo.fieldMapping)?.numeric ?? [];
+        const eligibleFields = getPpsEligibleNumericFields(population, numericFields);
+        if (eligibleFields.length === 0) {
+            const unavailableResult = {
+                unavailable: true,
+                unavailableReason: PPS_UNAVAILABLE_REASON,
+                serverGenerated: true,
+            };
+            const persisted = await persistSamplingMethodResult(authoritativeRecord, "pps", unavailableResult);
+            if (!persisted) {
+                return {
+                    ok: false as const,
+                    response: error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409),
+                };
+            }
+            authoritativeRecord = persisted;
+            stored = parseStoredJson<StoredSamplingResults>(authoritativeRecord.samplingResults) ?? {};
+        }
+    }
+
+    const requiredMethods = ["simple", "systematic", "pps", "stratified"] as const;
+    if (requiredMethods.some((method) => !isServerGeneratedResult(stored[method]))) {
+        return {
+            ok: false as const,
+            response: error("请先在当前页面重新执行并完成全部抽样方法", "SAMPLING_RESULTS_REQUIRED", 409),
+        };
+    }
+
+    return { ok: true as const, record: authoritativeRecord };
+}
+
 const experimentRoutes: RouteDefinition = {
     async GET(req) {
         const auth = await requireAuth(req);
@@ -123,14 +199,26 @@ const stageCompleteRoutes: RouteDefinition = {
         const body = await parseBody<Record<string, unknown> & { observedVersion?: unknown }>(req);
         const versionResult = validateObservedVersion(body.observedVersion, record.version);
         if (!versionResult.ok) return error(versionResult.message, versionResult.code, versionResult.status);
-        const { observedVersion: _observedVersion, ...payload } = body;
+        const { observedVersion: _observedVersion, ...clientPayload } = body;
 
         const schedule = await findStudentTaskSchedule(taskId, auth.student.classId);
         const openError = ensureTaskIsOpen(schedule?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+        let payload = clientPayload;
+        let completionRecord = record;
+        if (stage === 3) {
+            const prepared = await prepareStoredSamplingResultsForCompletion({
+                record,
+                taskId,
+                classId: auth.student.classId,
+            });
+            if (!prepared.ok) return prepared.response;
+            completionRecord = prepared.record;
+            payload = {};
+        }
         const result = buildStageCompletionUpdates({
-            experimentRecord: record,
+            experimentRecord: completionRecord,
             stage,
             payload,
             populationSize,
@@ -141,7 +229,7 @@ const stageCompleteRoutes: RouteDefinition = {
         const [updated] = await db
             .update(experiment)
             .set(result.updates)
-            .where(matchesObservedExperiment(record, versionResult.value))
+            .where(matchesObservedExperiment(completionRecord, versionResult.value))
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         return json(buildExperimentResponse(updated, populationSize));
@@ -191,6 +279,7 @@ const statsRoutes: RouteDefinition = {
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
         const population = await readPopulationData(taskInfo.excelFilePath);
+        if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
         const mapping = parseTopicFieldMapping(taskInfo.fieldMapping);
         const numericFields = mapping?.numeric ?? [];
         const categoricalFields = getCategoricalFieldsFromTopicMapping(taskInfo.fieldMapping);
@@ -225,7 +314,7 @@ const samplingActionRoutes: RouteDefinition = {
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!taskInfo?.excelFilePath) return error("未找到总体的Excel数据文件", "NO_DATA_FILE");
         const population = await readPopulationData(taskInfo.excelFilePath);
-        if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED");
+        if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
         const result = await executeSamplingAction({
             method: body.method,
             rawParams: body.params,
@@ -233,9 +322,13 @@ const samplingActionRoutes: RouteDefinition = {
             population,
             fieldMapping: taskInfo.fieldMapping,
         });
-        return result.ok
-            ? json({ success: true, result: result.result })
-            : error(result.errorMessage, "VALIDATION_ERROR", 400);
+        if (!result.ok) return error(result.errorMessage, "VALIDATION_ERROR", 400);
+
+        const authoritativeResult = { ...result.result, serverGenerated: true };
+        const persisted = await persistSamplingMethodResult(record, body.method, authoritativeResult);
+        if (!persisted) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
+
+        return json({ success: true, result: result.result });
     },
 };
 
@@ -251,6 +344,7 @@ const analysisMetricsRoutes: RouteDefinition = {
         const taskInfo = await findStudentTaskSamplingInfo(taskId, auth.student.classId);
         if (!record || !taskInfo?.excelFilePath) return error("实验或总体数据不存在", "NOT_FOUND", 404);
         const population = await readPopulationData(taskInfo.excelFilePath);
+        if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
         return json(
             buildAnalysisMetrics({
                 population,

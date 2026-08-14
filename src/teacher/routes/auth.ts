@@ -138,17 +138,16 @@ const teacherLoginRoutes: RouteDefinition = {
         if (!employeeId || !password) return error("请输入工号和密码", "VALIDATION_ERROR", 400);
 
         const [row] = await db.select().from(teacher).where(eq(teacher.employeeId, employeeId));
-        if (row?.status === 1 && isLoginLocked(row)) {
-            return error("登录失败次数过多，账号暂时锁定，请稍后重试", "ACCOUNT_LOCKED", 423);
-        }
         const valid = row
             ? await Bun.password.verify(password, row.password)
             : await Bun.password.verify(password, DUMMY_PASSWORD_HASH).then(() => false).catch(() => false);
-        if (!row || row.status !== 1) return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
+        if (!row || row.status !== 1 || isLoginLocked(row)) {
+            return error("工号或密码错误", "INVALID_CREDENTIALS", 401);
+        }
         if (!valid) {
             const failure = nextFailedLoginState(row);
             await db.update(teacher).set({ loginFailCount: failure.loginFailCount, lockedUntil: failure.lockedUntil }).where(eq(teacher.id, row.id));
-            return error(failedLoginMessage(failure), "INVALID_CREDENTIALS", 401);
+            return error(failedLoginMessage(failure, "工号或密码错误"), "INVALID_CREDENTIALS", 401);
         }
 
         await db.update(teacher).set({ loginFailCount: 0, lockedUntil: null }).where(eq(teacher.id, row.id));

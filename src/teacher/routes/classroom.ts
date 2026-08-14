@@ -2,6 +2,7 @@ import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { class_, semester, student } from "../../db/schema";
+import { spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { error, getRouteParam, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { clearUserSessionsForUser } from "../../server/user-session";
@@ -112,10 +113,15 @@ const classStudentsImportRoutes: RouteDefinition = {
         if (!(await requireOwnedClass(classId, getPrimaryTeacherIdOrThrow(req)))) {
             return error("无权限访问该班级", "FORBIDDEN", 403);
         }
+        if (spreadsheetRequestExceedsLimit(req)) {
+            return error("表格文件不能超过20 MiB", "FILE_TOO_LARGE", 413);
+        }
 
         const formData = await req.formData();
         const file = formData.get("file");
         if (!(file instanceof File)) return error("请选择文件", "VALIDATION_ERROR", 400);
+        const fileError = validateSpreadsheetUploadFile(file);
+        if (fileError) return error(fileError.message, fileError.code, fileError.status);
 
         let rows: Array<Record<string, unknown>>;
         try {

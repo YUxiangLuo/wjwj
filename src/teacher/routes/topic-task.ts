@@ -1,3 +1,4 @@
+import { spreadsheetRequestExceedsLimit } from "../../lib/spreadsheet";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireTopicOwner } from "../topic/access";
@@ -102,6 +103,9 @@ const topicExcelUploadRoutes: RouteDefinition = {
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
         if (topicRow.status === 1) return error("已发布课题不能修改数据", "FORBIDDEN", 403);
+        if (spreadsheetRequestExceedsLimit(req)) {
+            return error("表格文件不能超过20 MiB", "FILE_TOO_LARGE", 413);
+        }
 
         const formData = await req.formData();
         const file = formData.get("file");

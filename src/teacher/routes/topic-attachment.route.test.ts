@@ -72,7 +72,7 @@ test("topic attachment upload stores metadata and writes the file under storage"
     }
 });
 
-test("topic attachment upload rejects unsupported attachment types before writing", async () => {
+test("topic attachment upload rejects an unknown extension spoofed as video", async () => {
     const { module, operations } = await loadTopicRoutes({
         select: [
             [{ id: 12, status: 0 }],
@@ -82,7 +82,7 @@ test("topic attachment upload rejects unsupported attachment types before writin
 
     const form = new FormData();
     form.append("file", new File(["binary"], "archive.zip", {
-        type: "application/zip",
+        type: "video/mp4",
     }));
 
     const request = withRouteParams(new Request("https://example.com/api/teacher/topics/12/attachments", {

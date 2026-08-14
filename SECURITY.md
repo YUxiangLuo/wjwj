@@ -22,8 +22,8 @@ React Router 公告已通过升级至 `7.18.2+` 清除；`happy-dom` 的 `ws` �
 
 - 会话写在 `user_session`，按角色使用独立 cookie。
 - 连续 5 次错密锁定 30 分钟。
-- 登录对停用、不存在、密码错误一律返回 `INVALID_CREDENTIALS`，不暴露账号是否存在。
-- `DEV_AUTH_MODE=0` 或 `NODE_ENV=production` 时，首次登录必须改密；未改密的业务 API 返回 `PASSWORD_CHANGE_REQUIRED`。
+- 登录对停用、不存在、密码错误和已锁定账号一律返回通用的 `INVALID_CREDENTIALS`，不暴露账号是否存在或剩余次数。
+- `DEV_AUTH_MODE=0` 或 `NODE_ENV=production` 时，首次登录必须改密；生产环境不会接受 `DEV_AUTH_MODE=1` 覆盖。未改密的业务 API 返回 `PASSWORD_CHANGE_REQUIRED`。
 - 生产构建把前端的 `process.env.DEV_AUTH_MODE` 内联为 `"0"`。不要用未构建的 `NODE_ENV=production bun src/index.ts` 上课。
 - 密码至少 8 位，需字母、数字和特殊字符，且不能包含学号/工号。
 
