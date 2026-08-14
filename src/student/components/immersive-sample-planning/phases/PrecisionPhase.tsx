@@ -63,10 +63,10 @@ export function PrecisionPhase({ params, onNext }: Props) {
                 <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">标准误差 SE</p>
                     <p className="font-mono text-sm text-foreground/90">
-                        {isMeanEstimation ? "SE(ȳ) = √(σ²/n × FPC)" : "SE = √(p(1−p)/n × FPC)"}
+                        {isMeanEstimation ? "SE(ȳ) = √(σ²/n × (1−n/N))" : "SE = √(p(1−p)/n × (1−n/N))"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        估计值的标准差，衡量抽样随机波动的大小。SE 越小，估计越精确。
+                        估计值的标准差。其中 (1−n/N) 是标准误里的有限总体校正；N 很大时它接近 1。SE 越小，估计越精确。
                     </p>
                 </div>
                 <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
@@ -84,10 +84,10 @@ export function PrecisionPhase({ params, onNext }: Props) {
                     <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">变异系数 CV</p>
                         <p className="font-mono text-sm text-foreground/90">
-                            CV = SE / <var>p̂</var>
+                            CV = SE / p
                         </p>
                         <p className="text-xs text-muted-foreground">
-                            相对精度。便于不同量纲的指标之间比较精度高低。CV &lt; 5% 通常被认为是高精度。
+                            规划阶段用假设的总体比例 p，不是样本比例 p̂。相对精度便于跨量纲比较。部分调查机构把主要指标 CV &lt; 5% 当作经验门槛，不是普遍定理。
                         </p>
                     </div>
                 )}

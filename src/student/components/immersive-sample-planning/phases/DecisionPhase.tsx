@@ -366,6 +366,11 @@ export function DecisionPhase({
                     <div className="text-5xl font-black tabular-nums text-primary">
                         {recommendedSize.toLocaleString()}
                     </div>
+                    {recommendedSize >= N && N > 0 && (
+                        <p className="text-xs text-warning text-center">
+                            已达全面调查上限（n = N = {N.toLocaleString()}）。设计效应或无回答膨胀不能再增加可抽人数。
+                        </p>
+                    )}
                     <div className="grid grid-cols-3 gap-3 w-full text-center">
                         {metricCards.map((card) => (
                             <MetricBadge key={card.label} label={card.label} value={card.value} />

@@ -1,5 +1,6 @@
 import { parseSpreadsheetFile } from "../../lib/spreadsheet";
 import { resolveStoragePath } from "../../server/storage-files";
+import { stratumKey } from "../sampling";
 
 export interface TopicFieldMapping {
     identifier?: string;
@@ -56,9 +57,8 @@ export function buildStratifiedStats(population: Array<Record<string, unknown>>,
     for (const field of mapping.stratified) {
         const counts: Record<string, number> = {};
         for (const row of population) {
-            const raw = row[field];
-            if (raw === undefined || raw === null) continue;
-            const value = String(raw);
+            const value = stratumKey(row[field]);
+            if (!value) continue;
             counts[value] = (counts[value] || 0) + 1;
         }
         stats[field] = counts;
@@ -98,9 +98,8 @@ export function buildStratifiedNumericStats(
         // Group population rows by stratum value
         const groups: Record<string, Record<string, unknown>[]> = {};
         for (const row of population) {
-            const raw = row[stratField];
-            if (raw === undefined || raw === null) continue;
-            const key = String(raw);
+            const key = stratumKey(row[stratField]);
+            if (!key) continue;
             (groups[key] ??= []).push(row);
         }
 

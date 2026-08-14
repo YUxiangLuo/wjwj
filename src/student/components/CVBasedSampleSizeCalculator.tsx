@@ -93,7 +93,7 @@ export function CVBasedSampleSizeCalculator({
                     </Badge>
                 </div>
                 <CardDescription className="text-foreground/90">
-                    根据目标变异系数(CV)反推所需样本量
+                    根据目标变异系数(CV)反推建议发放量。应用结果只改最终 n，不改变抽样执行方法。
                 </CardDescription>
             </CardHeader>
 

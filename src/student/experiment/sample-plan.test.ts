@@ -114,6 +114,59 @@ test("returns null for unsupported confidence level", () => {
     expect(result).toBeNull();
 });
 
+test("recommended sample size is capped at the population size", () => {
+    const n = calculateFinitePopulationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: "5",
+        populationSize: 200,
+        designEffect: 2,
+    });
+    expect(n).toBe(200);
+
+    const metrics = calculateSampleSizeMetrics({
+        confidenceLevel: "95",
+        marginOfError: "5",
+        populationSize: 200,
+        designEffect: 2,
+    });
+    expect(metrics?.n).toBe(200);
+    expect(metrics?.cappedAtPopulation).toBe(true);
+
+    const steps = calculateSampleSizeSteps({
+        estimationType: "proportion",
+        confidenceLevel: "95",
+        marginOfError: 5,
+        populationSize: 200,
+        designEffect: 2,
+        nonResponseRate: 0,
+    });
+    expect(steps.n3).toBe(200);
+    expect(steps.n2).toBeGreaterThan(200);
+});
+
+test("mean recommended sample size is capped at the population size", () => {
+    const n = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 1,
+        populationSize: 80,
+        populationVariance: 400,
+        designEffect: 2,
+        nonResponseRate: 0.2,
+    });
+    expect(n).toBe(80);
+
+    const metrics = calculateMeanSampleSizeMetrics({
+        confidenceLevel: "95",
+        marginOfError: 1,
+        populationSize: 80,
+        populationVariance: 400,
+        designEffect: 2,
+        nonResponseRate: 0.2,
+    });
+    expect(metrics?.n).toBe(80);
+    expect(metrics?.cappedAtPopulation).toBe(true);
+});
+
 test("deff = 1 does not change the result", () => {
     const base = calculateFinitePopulationSampleSize({
         confidenceLevel: "95",
@@ -414,6 +467,24 @@ test("optimal allocation with cost produces valid result", () => {
     expect(result!.allocation.length).toBe(3);
 });
 
+test("optimal allocation follows n_h ∝ N_h S_h / √c_h when caps do not bind", () => {
+    const result = calculateOptimalAllocationWithCost(
+        [
+            { name: "Cheap", populationSize: 5000, stdDev: 10, unitCost: 1 },
+            { name: "Expensive", populationSize: 5000, stdDev: 10, unitCost: 4 },
+        ],
+        900,
+        0,
+    );
+    expect(result).not.toBeNull();
+    // Closed form: n_h = C w_h / Σ(w_i c_i) → n1=300, n2=150, ratio 2:1
+    expect(result!.allocation[0]!.sampleSize).toBe(300);
+    expect(result!.allocation[1]!.sampleSize).toBe(150);
+    expect(result!.allocation[0]!.sampleSize / result!.allocation[1]!.sampleSize).toBeCloseTo(2, 5);
+    expect(result!.totalCost).toBeLessThanOrEqual(900);
+    expect(result!.formula).toContain("C ×");
+});
+
 test("optimal allocation returns null for insufficient budget", () => {
     const result = calculateOptimalAllocationWithCost(
         [{ name: "A", populationSize: 100, stdDev: 10, unitCost: 20 }],
@@ -696,7 +767,7 @@ test("attachCalculatedSampleSize keeps proportion formula as default", () => {
 
 // ========== calculateSampleSizeSteps tests ==========
 
-test("steps proportion: n3 close to canonical (per-step ceil causes small rounding delta)", () => {
+test("steps proportion: n3 matches the canonical formula", () => {
     const steps = calculateSampleSizeSteps({
         estimationType: "proportion",
         confidenceLevel: "95",
@@ -709,15 +780,14 @@ test("steps proportion: n3 close to canonical (per-step ceil causes small roundi
         confidenceLevel: "95", marginOfError: 5, populationSize: 1000,
         designEffect: 1.5, nonResponseRate: 0.1,
     })!;
-    expect(Math.abs(steps.n3 - canonical)).toBeLessThanOrEqual(3);
-    expect(steps.n3).toBeGreaterThanOrEqual(canonical);
+    expect(steps.n3).toBe(canonical);
     expect(steps.n0).toBeGreaterThanOrEqual(steps.n1);
     expect(steps.n2).toBeGreaterThanOrEqual(steps.n1);
     expect(steps.n3).toBeGreaterThanOrEqual(steps.n2);
     expect(steps.formulaLabel).toBe("Z²p(1-p)/E²");
 });
 
-test("steps mean: n3 close to canonical (per-step ceil causes small rounding delta)", () => {
+test("steps mean: n3 matches the canonical formula", () => {
     const steps = calculateSampleSizeSteps({
         estimationType: "mean",
         confidenceLevel: "95",
@@ -731,8 +801,7 @@ test("steps mean: n3 close to canonical (per-step ceil causes small rounding del
         confidenceLevel: "95", marginOfError: 2, populationSize: 5000,
         populationVariance: 100, designEffect: 2, nonResponseRate: 0.15,
     })!;
-    expect(Math.abs(steps.n3 - canonical)).toBeLessThanOrEqual(3);
-    expect(steps.n3).toBeGreaterThanOrEqual(canonical);
+    expect(steps.n3).toBe(canonical);
     expect(steps.formulaLabel).toBe("Z²σ²/e²");
 });
 

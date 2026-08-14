@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { BarChart3, Calculator, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react";
 import { useState, useMemo } from "react";
+import { resolveStratumOverflow } from "./stratified-allocation";
 
 interface LayerInfo {
     name: string;
@@ -37,6 +38,7 @@ interface AllocationComparison {
     hasOverAllocation: boolean;  // 是否存在超额分配
     overAllocatedLayers: string[]; // 超额分配的层名称
     adjustedTotalSampleSize?: number; // 调整后的总样本量（处理超额分配后）
+    adjustedAllocation?: Array<{ name: string; count: number; sampleCount: number }>;
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -85,12 +87,14 @@ export function StratifiedAllocationComparison({
         return means.every((m): m is number => m !== undefined && m > 0) ? means : undefined;
     }, [layers, targetVariable, stratumStdDevs]);
 
+    const canCompareVariance = Boolean(layerStdDevs);
+
     const comparisons: AllocationComparison[] = useMemo(() => {
         if (!layers.length) return [];
         const raw: AllocationComparison[] = [
             calculateProportionalAllocation(layers, totalSampleSize, layerStdDevs),
             calculateEqualAllocation(layers, totalSampleSize, layerStdDevs),
-            calculateNeymanAllocation(layers, totalSampleSize, layerStdDevs),
+            ...(layerStdDevs ? [calculateNeymanAllocation(layers, totalSampleSize, layerStdDevs)] : []),
             calculateSquareRootNAllocation(layers, totalSampleSize, layerStdDevs),
         ];
         if (layerMeans) {
@@ -100,19 +104,32 @@ export function StratifiedAllocationComparison({
             );
         }
         const propVariance = raw[0]?.totalVariance;
-        if (!propVariance || propVariance <= 0) return raw;
-        return raw.map(c => ({
-            ...c,
-            efficiency: c.totalVariance > 0 ? propVariance / c.totalVariance : 1,
-        }));
-    }, [layers, totalSampleSize, layerStdDevs, layerMeans]);
+        return raw.map((comparison) => {
+            const resolved = resolveStratumOverflow(comparison.allocation.map((layer) => ({
+                name: layer.layerName,
+                populationSize: layer.populationSize,
+                sampleSize: layer.sampleSize,
+            })));
+            return {
+                ...comparison,
+                efficiency: canCompareVariance && propVariance && propVariance > 0 && comparison.totalVariance > 0
+                    ? propVariance / comparison.totalVariance
+                    : 1,
+                hasOverAllocation: resolved.hasOverAllocation,
+                overAllocatedLayers: resolved.overAllocatedLayers,
+                adjustedTotalSampleSize: resolved.adjustedTotalSampleSize,
+                adjustedAllocation: resolved.allocation,
+            };
+        });
+    }, [canCompareVariance, layers, totalSampleSize, layerStdDevs, layerMeans]);
 
     if (!layers.length) return null;
 
-    // 找出最佳（最小方差）
-    const bestMethod = comparisons.reduce((best, current) =>
-        current.totalVariance < best.totalVariance ? current : best
-    );
+    const bestMethod = canCompareVariance
+        ? comparisons.reduce((best, current) =>
+            current.totalVariance < best.totalVariance ? current : best
+        )
+        : null;
 
     // 检测是否存在超额分配
     const hasAnyOverAllocation = comparisons.some(c => c.hasOverAllocation);
@@ -144,7 +161,7 @@ export function StratifiedAllocationComparison({
                             <span className="text-sm font-medium text-auxiliary-strong">目标估计变量</span>
                         </div>
                         <p className="text-xs text-auxiliary mb-2">
-                            选择目标变量后，将使用各层的实际标准差计算奈曼最优分配和方差估计
+                            选择目标变量后才会计算奈曼分配，并用真实层内标准差比较相对效率。未选择时只比较分配份额，不展示效率。
                         </p>
                         <Select
                             value={targetVariable ?? "__none__"}
@@ -154,7 +171,7 @@ export function StratifiedAllocationComparison({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="__none__">使用层规模近似（默认）</SelectItem>
+                                <SelectItem value="__none__">请选择目标变量后计算奈曼分配</SelectItem>
                                 {numericFields.map(field => (
                                     <SelectItem key={field} value={field}>
                                         {FIELD_LABELS[field] ?? field}
@@ -178,7 +195,7 @@ export function StratifiedAllocationComparison({
                 {/* 方法卡片 */}
                 <div className="space-y-3">
                     {comparisons.map((comparison) => {
-                        const isBest = comparison.method === bestMethod.method;
+                        const isBest = bestMethod != null && comparison.method === bestMethod.method;
 
                         return (
                             <div
@@ -257,13 +274,13 @@ export function StratifiedAllocationComparison({
                                     <div className="text-center">
                                         <div className="text-xs text-auxiliary mb-1">估计方差（相对）</div>
                                         <div className="font-bold text-auxiliary-strong">
-                                            {comparison.totalVariance.toFixed(4)}
+                                            {canCompareVariance ? comparison.totalVariance.toFixed(4) : "—"}
                                         </div>
                                     </div>
                                     <div className="text-center">
                                         <div className="text-xs text-auxiliary mb-1">相对效率</div>
                                         <div className={`font-bold ${isBest ? "text-success" : "text-auxiliary-strong"}`}>
-                                            {comparison.efficiency.toFixed(2)}×
+                                            {canCompareVariance ? `${comparison.efficiency.toFixed(2)}×` : "—"}
                                         </div>
                                     </div>
                                 </div>
@@ -272,7 +289,7 @@ export function StratifiedAllocationComparison({
                     })}
                 </div>
 
-                {/* 效率说明 */}
+                {canCompareVariance && (
                 <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
                     <div className="flex gap-2">
                         <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
@@ -285,6 +302,7 @@ export function StratifiedAllocationComparison({
                         </div>
                     </div>
                 </div>
+                )}
 
                 {/* 超额分配检测与处理 */}
                 {hasAnyOverAllocation && (
@@ -397,10 +415,10 @@ export function StratifiedAllocationComparison({
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={() => {
-                                                        onApplyAllocation(comparison.allocation.map(a => ({
+                                                        onApplyAllocation(comparison.adjustedAllocation ?? comparison.allocation.map(a => ({
                                                             name: a.layerName,
                                                             count: a.populationSize,
-                                                            sampleCount: a.isOverAllocated ? a.populationSize : a.sampleSize,
+                                                            sampleCount: a.sampleSize,
                                                         })));
                                                     }}
                                                     className="w-full text-xs border-destructive text-destructive hover:bg-destructive/10"
@@ -541,13 +559,9 @@ function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number, 
 }
 
 // 计算奈曼分配
-function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number, stdDevs?: number[]): AllocationComparison {
-    // Neyman allocation: n_h ∝ N_h × S_h
-    // When actual std devs are provided, use them; otherwise fall back to sqrt(N_h) heuristic
-    const weights = layers.map((layer, i) => {
-        const sh = stdDevs?.[i] ?? Math.sqrt(layer.count);
-        return layer.count * sh;
-    });
+function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number, stdDevs: number[]): AllocationComparison {
+    // Neyman allocation: n_h ∝ N_h × S_h；必须使用真实层内标准差
+    const weights = layers.map((layer, i) => layer.count * (stdDevs[i] ?? 0));
     const totalWeight = weights.reduce((a, b) => a + b, 0);
 
     let allocation = layers.map((layer, index) => {
@@ -576,9 +590,7 @@ function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number,
     return {
         method: "neyman",
         name: "奈曼分配",
-        description: stdDevs
-            ? "基于实际层内标准差进行最优分配，使估计方差最小化"
-            : "使用层规模近似标准差（选择目标变量可获得更准确的分配）",
+        description: "基于实际层内标准差进行最优分配，使估计方差最小化",
         allocation: markedAllocation,
         totalVariance,
         efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio

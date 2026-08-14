@@ -67,7 +67,7 @@ const METHOD_PROGRESS_COPY: Record<SamplingMethod, { populating: string; samplin
     },
     systematic: {
         populating: "排列总体顺序...",
-        sampling: "按固定间隔依次抽取...",
+        sampling: "按分数间隔 K=N/n 依次抽取...",
         complete: "系统抽样完成",
     },
     pps: {

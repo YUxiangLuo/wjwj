@@ -551,7 +551,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="mean">
                                     <ChartTabPanel
-                                        description="比较各抽样方法对同一数值变量的总体均值估计。"
+                                        description="比较各抽样方法对同一数值变量的总体均值估计。PPS 使用 Hájek 加权均值（按一阶包含概率的倒数加权并归一化），不是 Horvitz–Thompson 均值。"
                                         rows={meanRows}
                                         series={meanSeries}
                                         emptyMessage="暂无可用于均值分析的数值字段"
@@ -585,7 +585,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="error">
                                     <ChartTabPanel
-                                        description="比较各抽样方法对同一数值变量均值估计的设计标准误。"
+                                        description="比较各抽样方法对同一数值变量均值估计的设计标准误。简单随机、系统抽样和分层抽样为解析设计标准误；PPS 为 128 次独立重复抽样的模拟设计标准误。"
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
@@ -599,7 +599,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="represent">
                                     <ChartTabPanel
-                                        description="比较各抽样方法估计结果与总体指标的偏差程度（%）。"
+                                        description="数值行为相对偏差 |估计−总体均值|/|总体均值|；分类行为各类占比差的平均。两套百分数含义不同，不要直接横比。"
                                         rows={representativenessRows}
                                         series={representSeries}
                                         unit="%"
@@ -666,9 +666,9 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm text-primary">
-                            <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。</p>
-                            <p>• 再看分类分布与代表性偏差，识别各方法对总体结构的贴近程度。</p>
-                            <p>• 最后结合设计标准误，说明估计精度与稳定性。</p>
+                            <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。PPS 看的是 Hájek 加权均值。</p>
+                            <p>• 再看分类分布与代表性偏差，识别各方法对总体结构的贴近程度。数值相对偏差和分类分布偏差的百分数不可直接比较。</p>
+                            <p>• 最后结合设计标准误说明精度。PPS 的标准误来自模拟，其余方法来自设计公式。</p>
                         </CardContent>
                     </Card>
                 </div>

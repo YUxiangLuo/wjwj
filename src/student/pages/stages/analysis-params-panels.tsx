@@ -245,7 +245,7 @@ export function SamplePlanDecisionPanel({
                         value={
                             samplePlan.estimationType === "mean"
                                 ? `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（与均值同单位）`
-                                : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（边际误差）`
+                                : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（允许误差）`
                         }
                     />
                     {samplePlan.estimationType === "mean" && samplePlan.populationVariance !== undefined && samplePlan.populationVariance !== null && (

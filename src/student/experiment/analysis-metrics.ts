@@ -1,5 +1,5 @@
 import type { MethodKey, SamplingResultsData } from "../api-client";
-import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling, type PPSSamplingResult } from "../sampling";
+import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling, stratumKey, type PPSSamplingResult } from "../sampling";
 import {
     buildPopulationCategoricalStats,
     buildPopulationNumericStats,
@@ -93,6 +93,7 @@ function estimateSimpleMean(rows: Array<Record<string, unknown>>, field: string)
     return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+/** Hájek 比估计：Σ (y_i/π_i) / Σ (1/π_i)，不是 (1/N) Σ (y_i/π_i) 的 HT 均值。 */
 function estimateWeightedMean(
     rows: Array<Record<string, unknown>>,
     field: string,
@@ -345,7 +346,7 @@ function computeStratifiedMeanEstimate(
 
     let estimate = 0;
     for (const layer of layers) {
-        const layerRows = rows.filter((row) => String(row[stratifyBy] ?? "").trim() === layer.name);
+        const layerRows = rows.filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name));
         const values = extractFiniteValues(layerRows, field);
         if (values.length === 0 || layer.count < 1) {
             return null;
@@ -376,7 +377,7 @@ function computeStratifiedMeanSe(
         }
 
         const populationValues = population
-            .filter((row) => String(row[stratifyBy] ?? "").trim() === layer.name)
+            .filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name))
             .map((row) => toFiniteNumber(row[field]))
             .filter((value): value is number => value !== null);
 
@@ -470,7 +471,7 @@ function computeStratifiedDistributionEstimate(
             return {};
         }
 
-        const layerRows = rows.filter((row) => String(row[stratifyBy] ?? "").trim() === layer.name);
+        const layerRows = rows.filter((row) => stratumKey(row[stratifyBy]) === stratumKey(layer.name));
         if (layerRows.length === 0) {
             return {};
         }

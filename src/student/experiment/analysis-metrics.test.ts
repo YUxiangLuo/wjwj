@@ -115,6 +115,37 @@ test("analysis metrics use stratified weights instead of pooled sample shares fo
     expect(categoricalChoice.representativeness.stratified).toBe(0);
 });
 
+test("analysis metrics match padded stratum names after trimming", () => {
+    const population = [
+        { stratum: " A ", x: 10 },
+        { stratum: "A", x: 20 },
+        { stratum: "B", x: 30 },
+        { stratum: " B", x: 40 },
+    ];
+
+    const metrics = buildAnalysisMetrics({
+        population,
+        fieldMapping: {
+            stratified: ["stratum"],
+            numeric: ["x"],
+            others: [],
+        },
+        samplingResults: {
+            stratified: {
+                completed: true,
+                stratifyBy: "stratum",
+                layers: [
+                    { name: "A", count: 2, ratio: 0.5, sampleCount: 1 },
+                    { name: " B ", count: 2, ratio: 0.5, sampleCount: 1 },
+                ],
+                data: [{ stratum: " A ", x: 10 }, { stratum: "B", x: 40 }],
+            },
+        },
+    });
+
+    expect(metrics.numeric.x?.methods.stratified.estimate).toBe(25);
+});
+
 test("analysis metrics use PPS inclusion probabilities for weighted mean estimation", () => {
     const population = [
         { id: 1, value: 10, size: 1 },

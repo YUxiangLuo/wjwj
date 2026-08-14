@@ -68,7 +68,7 @@ export function Login() {
                     </div>
 
                     <p className="text-lg text-muted-foreground font-light leading-relaxed max-w-md">
-                        通过沉浸式虚拟仿真实验，深入理解抽样分布、参数估计与假设检验的核心原理，掌握统计学的精髓。
+                        通过沉浸式虚拟仿真实验，完成问卷设计、样本量规划、概率抽样与估计比较。
                     </p>
 
                     <div className="mt-12 flex gap-8">

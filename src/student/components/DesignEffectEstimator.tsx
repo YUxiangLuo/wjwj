@@ -35,8 +35,8 @@ const SAMPLING_METHODS = [
         name: "整群抽样",
         deffRange: [1.5, 3.0],
         deff: 2.0,
-        description: "以群体为单位抽样，群内再抽样本。会增加方差",
-        characteristics: ["群内同质性高时方差大", "deff 通常 > 1", "操作简便成本低"],
+        description: "以群为单位抽取，群内所有单元都调查。群内相似时会增加方差",
+        characteristics: ["群内同质性高时方差大", "deff 通常 > 1", "操作简便、成本较低"],
     },
     {
         key: "pps",
@@ -120,7 +120,7 @@ export function DesignEffectEstimator({ currentDeff, onDeffChange }: DesignEffec
                     </Badge>
                 </div>
                 <CardDescription className="text-foreground/90">
-                    根据抽样方法和调查方式估算设计效应与回答率
+                    下面的 deff 和回答率是经验参考值，不是定理。应用到规划后只改变建议发放量，不会把后面的抽法改成整群或多阶段。
                 </CardDescription>
             </CardHeader>
 

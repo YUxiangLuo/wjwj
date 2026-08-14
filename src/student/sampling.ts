@@ -76,17 +76,23 @@ export function performSystematicSampling<T>(
     };
 }
 
+export function stratumKey(value: unknown): string {
+    if (value === undefined || value === null) return "";
+    return String(value).trim();
+}
+
 export function performStratifiedSampling(data: any[], stratifyBy: string, layers: any[], random: () => number): any[] {
     const result: any[] = [];
     const groups: Record<string, any[]> = {};
     for (const item of data) {
-        const val = String(item[stratifyBy]);
+        const val = stratumKey(item[stratifyBy]);
+        if (!val) continue;
         if (!groups[val]) groups[val] = [];
         groups[val].push(item);
     }
 
     for (const layer of layers) {
-        const groupData = groups[layer.name] || [];
+        const groupData = groups[stratumKey(layer.name)] || [];
         const sampleCount = layer.sampleCount;
 
         if (sampleCount > 0 && groupData.length > 0) {

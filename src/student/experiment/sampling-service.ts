@@ -4,6 +4,7 @@ import {
     performSimpleSampling,
     performStratifiedSampling,
     performSystematicSampling,
+    stratumKey,
 } from "../sampling";
 import { parseTopicFieldMapping } from "./population-data";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
@@ -191,7 +192,8 @@ export async function executeSamplingAction(params: {
 
             const layerPopulationCount = new Map<string, number>();
             for (const row of params.population) {
-                const key = String(row[stratifyBy] ?? "");
+                const key = stratumKey(row[stratifyBy]);
+                if (!key) continue;
                 layerPopulationCount.set(key, (layerPopulationCount.get(key) ?? 0) + 1);
             }
 

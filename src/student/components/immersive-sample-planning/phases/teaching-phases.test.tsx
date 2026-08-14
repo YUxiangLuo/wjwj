@@ -55,9 +55,9 @@ test("PrecisionPhase 在均值估计下展示均值公式而非比例公式", ()
     const view = render(<PrecisionPhase params={meanParams()} onNext={() => {}} />);
     const text = view.container.textContent ?? "";
 
-    expect(text).toContain("SE(ȳ) = √(σ²/n × FPC)");
+    expect(text).toContain("SE(ȳ) = √(σ²/n × (1−n/N))");
     expect(text).toContain("σ²=100");
-    expect(text).not.toContain("CV = SE / p̂");
+    expect(text).not.toContain("CV = SE / p");
     expect(text).not.toContain("p=0.5");
 });
 

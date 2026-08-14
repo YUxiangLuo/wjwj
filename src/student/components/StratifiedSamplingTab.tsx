@@ -184,6 +184,16 @@ export function StratifiedSamplingTab({
         setLayers((prev) => prev.map((l, i) => i === index ? { ...l, sampleCount: Math.max(0, value) } : l));
     };
 
+    const neymanStdDevs = useMemo(() => {
+        for (const field of numericFields) {
+            const devs = layers.map((layer) => stratumNumericStats[stratifyBy]?.[layer.name]?.[field]?.stdDev);
+            if (devs.every((value): value is number => value !== undefined && value > 0)) {
+                return devs;
+            }
+        }
+        return null;
+    }, [layers, numericFields, stratifyBy, stratumNumericStats]);
+
     const applyQuickAllocation = (method: "proportional" | "equal" | "neyman") => {
         if (layers.length === 0) return;
         const totalPop = layers.reduce((a, l) => a + l.count, 0);
@@ -194,12 +204,11 @@ export function StratifiedSamplingTab({
         } else if (method === "equal") {
             rawCounts = layers.map(() => n / layers.length);
         } else {
-            const weights = layers.map((l) => {
-                const stdDev = stratumNumericStats[stratifyBy]?.[l.name]
-                    ? Object.values(stratumNumericStats[stratifyBy]![l.name]!).reduce((max, s) => Math.max(max, s.stdDev), 0)
-                    : Math.sqrt(l.count);
-                return l.count * stdDev;
-            });
+            if (!neymanStdDevs) {
+                toast.error("奈曼分配需要各层目标变量的标准差，请先上传含数值字段的总体数据，或改用按比例分配");
+                return;
+            }
+            const weights = layers.map((layer, index) => layer.count * (neymanStdDevs[index] ?? 0));
             const totalWeight = weights.reduce((a, b) => a + b, 0);
             rawCounts = totalWeight > 0
                 ? weights.map((w) => n * w / totalWeight)
@@ -416,6 +425,8 @@ export function StratifiedSamplingTab({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => applyQuickAllocation("neyman")}
+                                disabled={!neymanStdDevs}
+                                title={neymanStdDevs ? "按 N_h × S_h 分配" : "需要各层数值变量的标准差"}
                                 className="h-7 text-xs border-warning text-warning hover:bg-warning/10"
                             >
                                 <TrendingUp className="w-3 h-3 mr-1" />

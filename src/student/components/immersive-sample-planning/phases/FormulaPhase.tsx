@@ -50,7 +50,7 @@ export function FormulaPhase({
                 <div className="text-center space-y-3">
                     <h2 className="text-2xl font-bold text-foreground">现在进入样本量公式阶段</h2>
                     <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-                        先选这次要规划的估计目标，再设置信心水平。后面的公式、误差定义和示例都会跟着这里的选择变化。
+                        先选这次要规划的估计目标，再设置置信水平。后面的公式、误差定义和示例都会跟着这里的选择变化。
                     </p>
                 </div>
 
@@ -129,13 +129,13 @@ export function FormulaPhase({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="90">
-                                <span className="flex items-center gap-2">90 次 (Z = 1.645) — 要求较宽松</span>
+                                <span className="flex items-center gap-2">90%（100 次里约 90 次覆盖，Z = 1.645）— 较宽松</span>
                             </SelectItem>
                             <SelectItem value="95">
-                                <span className="flex items-center gap-2">95 次 (Z = 1.96) — 最常用 ✓</span>
+                                <span className="flex items-center gap-2">95%（100 次里约 95 次覆盖，Z = 1.96）— 最常用</span>
                             </SelectItem>
                             <SelectItem value="99">
-                                <span className="flex items-center gap-2">99 次 (Z = 2.576) — 要求更严格</span>
+                                <span className="flex items-center gap-2">99%（100 次里约 99 次覆盖，Z = 2.576）— 更严格</span>
                             </SelectItem>
                         </SelectContent>
                     </Select>

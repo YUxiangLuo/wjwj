@@ -12,7 +12,8 @@ function normalizeMarginOfError(value: number): number {
 export interface SampleSizeMetrics {
     n0: number;              // 初始样本量（无限总体）
     n1: number;              // 有限总体校正后
-    n: number;              // 最终样本量
+    n: number;              // 最终样本量（不超过 N）
+    cappedAtPopulation: boolean;
     standardError: number;   // 标准误差 SE
     relativeStandardError: number; // 相对标准误差 RSE (CV)
     marginOfError: number;   // 误差限（绝对值）
@@ -20,6 +21,14 @@ export interface SampleSizeMetrics {
         lower: number;
         upper: number;
     };
+}
+
+/** 发放样本量不能超过总体：再膨胀也只能做全面调查。 */
+export function capSampleSizeAtPopulation(n: number, populationSize: number): number {
+    const N = Math.floor(populationSize);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    if (!(N > 0)) return Math.ceil(n);
+    return Math.min(Math.ceil(n), N);
 }
 
 export function calculateFinitePopulationSampleSize(params: {
@@ -57,7 +66,7 @@ export function calculateFinitePopulationSampleSize(params: {
         n = n / (1 - nrr);
     }
 
-    return Math.ceil(n);
+    return capSampleSizeAtPopulation(n, N);
 }
 
 export function calculateSampleSizeMetrics(params: {
@@ -99,7 +108,8 @@ export function calculateSampleSizeMetrics(params: {
         n = n / (1 - nrr);
     }
 
-    const finalN = Math.ceil(n);
+    const uncappedN = Math.ceil(n);
+    const finalN = capSampleSizeAtPopulation(n, N);
 
     // 精度指标基于有效样本量 n1（FPC 校正后、deff/NRR 调整前）。
     // 原因：n_final = n1 × deff / (1-NRR)，其中 deff 和 NRR 是膨胀因子；
@@ -128,6 +138,7 @@ export function calculateSampleSizeMetrics(params: {
         n0,
         n1,
         n: finalN,
+        cappedAtPopulation: uncappedN > Math.floor(N),
         standardError,
         relativeStandardError,
         marginOfError: marginOfErrorAbs,
@@ -246,7 +257,13 @@ function meanEstimationCore(z: number, sigma2: number, e: number, N: number, def
     let n = n1;
     if (Number.isFinite(deff) && deff > 0) n *= deff;
     if (Number.isFinite(nrr) && nrr > 0 && nrr < 1) n /= (1 - nrr);
-    return { n0, n1, n: Math.ceil(n) };
+    const uncappedN = Math.ceil(n);
+    return {
+        n0,
+        n1,
+        n: capSampleSizeAtPopulation(n, N),
+        cappedAtPopulation: uncappedN > Math.floor(N),
+    };
 }
 
 function parseMeanEstimationParams(params: {
@@ -299,6 +316,7 @@ export interface MeanSampleSizeMetrics {
     n0: number;
     n1: number;
     n: number;
+    cappedAtPopulation: boolean;
     standardError: number;
     relativeStandardError: number;
     marginOfError: number;
@@ -322,7 +340,7 @@ export function calculateMeanSampleSizeMetrics(params: {
     if (!parsed) return null;
     const { z, sigma2, N, deff, nrr } = parsed;
 
-    const { n0, n1, n: finalN } = meanEstimationCore(z, sigma2, parsed.e, N, deff, nrr);
+    const { n0, n1, n: finalN, cappedAtPopulation } = meanEstimationCore(z, sigma2, parsed.e, N, deff, nrr);
     const effectiveN = Math.ceil(n1);
 
     const fpc = Math.max(0, 1 - effectiveN / N);
@@ -342,6 +360,7 @@ export function calculateMeanSampleSizeMetrics(params: {
         n0,
         n1,
         n: finalN,
+        cappedAtPopulation,
         standardError,
         relativeStandardError,
         marginOfError: marginOfErrorAbs,
@@ -370,9 +389,9 @@ export interface SampleSizeStepDetails extends SampleSizeSteps {
  * 返回四步法（n₀ → FPC → deff → NRR）各阶段的整数样本量。
  * 供 FourStepPhase 展示使用，避免 UI 层重复实现公式。
  *
- * 注意：每一步都做 ceil 取整以便展示清晰的整数管线，因此 n3 可能比
- * calculateFinitePopulationSampleSize / calculateMeanEstimationSampleSize
- * 的结果略大（差值 ≤ 3），后者在全部步骤完成后才做一次 ceil。
+ * 中间步用各自 raw 值的 ceil 仅供展示；下一步仍用 raw 往下传。
+ * 最终 n3 与 calculateFinitePopulationSampleSize /
+ * calculateMeanEstimationSampleSize 使用同一套「最后一次 ceil，再封顶为 N」。
  */
 export function calculateSampleSizeSteps(params: {
     estimationType: "proportion" | "mean";
@@ -440,7 +459,7 @@ export function calculateSampleSizeStepDetails(params: {
         n0: Math.ceil(n0Raw),
         n1: Math.ceil(n1Raw),
         n2: Math.ceil(n2Raw),
-        n3: Math.ceil(n3Raw),
+        n3: capSampleSizeAtPopulation(n3Raw, N),
         formulaLabel,
     };
 }
@@ -553,17 +572,19 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
     const n_srs = n0 / (1 + (n0 - 1) / params.populationSize);
     
     // 整群抽样样本量 = 有限总体校正后样本量 × deff / (1 - nrr)
-    const n_cluster = Math.ceil(n_srs * params.deff / (1 - (params.nonResponseRate ?? 0)));
-    
-    // 计算所需群数
-    const requiredClusters = Math.ceil(n_cluster / params.clusterSize);
+    const nrr = params.nonResponseRate ?? 0;
+    const n_cluster = nrr > 0 && nrr < 1
+        ? n_srs * params.deff / (1 - nrr)
+        : n_srs * params.deff;
+    const maxClusters = Math.max(1, Math.floor(params.populationSize / params.clusterSize) || 1);
+    const requiredClusters = Math.min(Math.max(1, Math.ceil(n_cluster / params.clusterSize)), maxClusters);
     
     // 反推群内相关系数ρ（用于教育展示）
     // deff = 1 + (M-1)×ρ => ρ = (deff - 1) / (M - 1)
     const rho = params.clusterSize > 1 ? (params.deff - 1) / (params.clusterSize - 1) : 0;
     
-    // 总样本量 = 群数 × 群规模
-    const requiredSampleSize = requiredClusters * params.clusterSize;
+    // 总样本量 = 群数 × 群规模，但不能超过总体
+    const requiredSampleSize = Math.min(requiredClusters * params.clusterSize, params.populationSize);
 
     return {
         requiredClusters,
@@ -599,8 +620,9 @@ export interface OptimalAllocationWithCostResult {
 }
 
 /**
- * 考虑费用的最优分配（Neyman分配推广）
- * 公式: n_h ∝ (N_h × S_h) / √c_h
+ * 考虑费用的最优分配（Neyman 分配推广，固定预算）
+ * 闭式解: n_h = C × (N_h S_h / √c_h) / Σ(N_i S_i √c_i)
+ * 超额层先全数调查，剩余预算在未满层上重算。
  */
 export function calculateOptimalAllocationWithCost(
     layers: LayerWithCost[],
@@ -609,92 +631,103 @@ export function calculateOptimalAllocationWithCost(
 ): OptimalAllocationWithCostResult | null {
     if (!layers.length || totalBudget <= fixedCost) return null;
 
-    // 计算可用预算
-    const availableBudget = totalBudget - fixedCost;
-    
-    // 计算各层权重: w_h = (N_h × S_h) / √c_h
-    const weights = layers.map(layer => {
+    let remainingBudget = totalBudget - fixedCost;
+    const locked = layers.map(() => false);
+    const sampleSizes = layers.map(() => 0);
+
+    const weightOf = (layer: LayerWithCost) => {
         const costFactor = Math.sqrt(layer.unitCost);
         return costFactor > 0 ? (layer.populationSize * layer.stdDev) / costFactor : 0;
-    });
-    
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    if (totalWeight <= 0) return null;
+    };
 
-    // 初始分配（按比例）
-    let allocation = layers.map((layer, index) => {
-        const weight = weights[index] ?? 0;
-        const proportion = totalWeight > 0 ? weight / totalWeight : 0;
-        
-        // 估算该层可分配的样本量（基于预算约束）
-        const budgetShare = availableBudget * proportion;
-        const sampleSize = Math.floor(budgetShare / layer.unitCost);
-        
+    for (let round = 0; round <= layers.length; round += 1) {
+        const active = layers
+            .map((layer, index) => ({ layer, index }))
+            .filter(({ layer, index }) => !locked[index] && layer.unitCost > 0 && layer.populationSize > 0);
+        if (active.length === 0 || remainingBudget <= 0) break;
+
+        const denom = active.reduce((sum, { layer }) => sum + weightOf(layer) * layer.unitCost, 0);
+        if (denom <= 0) break;
+
+        let lockedThisRound = false;
+        for (const { layer, index } of active) {
+            const exact = remainingBudget * weightOf(layer) / denom;
+            const censusCost = layer.populationSize * layer.unitCost;
+            if (exact >= layer.populationSize - 1e-9 && censusCost <= remainingBudget + 1e-9) {
+                sampleSizes[index] = layer.populationSize;
+                remainingBudget -= censusCost;
+                locked[index] = true;
+                lockedThisRound = true;
+            }
+        }
+        if (lockedThisRound) continue;
+
+        const exacts = active.map(({ layer }) => remainingBudget * weightOf(layer) / denom);
+        const floored = exacts.map((exact, position) => {
+            const cap = active[position]!.layer.populationSize;
+            return Math.min(cap, Math.max(0, Math.floor(exact)));
+        });
+        let leftover = remainingBudget - floored.reduce(
+            (sum, count, position) => sum + count * active[position]!.layer.unitCost,
+            0,
+        );
+
+        const remainderOrder = exacts
+            .map((_, position) => position)
+            .sort((left, right) => (exacts[right]! - floored[right]!) - (exacts[left]! - floored[left]!));
+        for (const position of remainderOrder) {
+            const layer = active[position]!.layer;
+            if ((floored[position] ?? 0) >= layer.populationSize) continue;
+            if (layer.unitCost > leftover + 1e-9) continue;
+            floored[position] = (floored[position] ?? 0) + 1;
+            leftover -= layer.unitCost;
+        }
+
+        let progressed = true;
+        while (progressed) {
+            progressed = false;
+            let best = -1;
+            let bestScore = -Infinity;
+            for (let position = 0; position < active.length; position += 1) {
+                const layer = active[position]!.layer;
+                if ((floored[position] ?? 0) >= layer.populationSize) continue;
+                if (layer.unitCost > leftover + 1e-9) continue;
+                const score = weightOf(layer) / layer.unitCost;
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = position;
+                }
+            }
+            if (best >= 0) {
+                floored[best] = (floored[best] ?? 0) + 1;
+                leftover -= active[best]!.layer.unitCost;
+                progressed = true;
+            }
+        }
+
+        for (let position = 0; position < active.length; position += 1) {
+            sampleSizes[active[position]!.index] = floored[position] ?? 0;
+        }
+        remainingBudget = leftover;
+        break;
+    }
+
+    const allocation = layers.map((layer, index) => {
+        const sampleSize = sampleSizes[index] ?? 0;
         return {
             layerName: layer.name,
             sampleSize,
-            proportion,
+            proportion: 0,
             cost: sampleSize * layer.unitCost,
             isOverAllocated: sampleSize > layer.populationSize,
         };
     });
-
-    // 处理超额分配并重新平衡
-    let currentTotalCost = allocation.reduce((sum, a) => sum + a.cost, 0);
-    let iterations = 0;
-    
-    while (Math.abs(currentTotalCost - availableBudget) > 1 && iterations < 100) {
-        const diff = availableBudget - currentTotalCost;
-        
-        // 找出可以增加样本量的层（未超额且剩余预算允许）
-        const increasableLayers = allocation
-            .map((a, i) => ({ 
-                ...a, 
-                index: i, 
-                maxAdd: (layers[i]?.populationSize ?? 0) - a.sampleSize,
-                unitCost: layers[i]?.unitCost ?? 0
-            }))
-            .filter(a => a.maxAdd > 0 && a.unitCost > 0);
-        
-        if (increasableLayers.length === 0) break;
-        
-        // 按权重比例增加
-        const increasableWeight = increasableLayers.reduce((sum, a) => sum + (weights[a.index] ?? 0), 0);
-        
-        for (const layer of increasableLayers) {
-            const layerWeight = weights[layer.index] ?? 0;
-            const share = increasableWeight > 0 ? layerWeight / increasableWeight : 0;
-            const addBudget = diff * share;
-            const layerUnitCost = layers[layer.index]?.unitCost ?? 1;
-            const addSamples = Math.min(
-                Math.floor(addBudget / layerUnitCost),
-                layer.maxAdd
-            );
-            
-            if (addSamples > 0) {
-                const targetLayer = allocation[layer.index];
-                if (targetLayer) {
-                    targetLayer.sampleSize += addSamples;
-                    targetLayer.cost += addSamples * layerUnitCost;
-                }
-            }
-        }
-        
-        currentTotalCost = allocation.reduce((sum, a) => sum + a.cost, 0);
-        iterations++;
+    const totalSampleSize = allocation.reduce((sum, item) => sum + item.sampleSize, 0);
+    for (const item of allocation) {
+        item.proportion = totalSampleSize > 0 ? item.sampleSize / totalSampleSize : 0;
     }
 
-    // 重新计算比例和检测超额分配
-    const totalSampleSize = allocation.reduce((sum, a) => sum + a.sampleSize, 0);
-    allocation = allocation.map((a, i) => ({
-        ...a,
-        proportion: totalSampleSize > 0 ? a.sampleSize / totalSampleSize : 0,
-        isOverAllocated: a.sampleSize > (layers[i]?.populationSize ?? 0),
-    }));
-
-    const totalCost = fixedCost + allocation.reduce((sum, a) => sum + a.cost, 0);
-    
-    // 计算方差（简化估计）
+    const totalCost = fixedCost + allocation.reduce((sum, item) => sum + item.cost, 0);
     const totalVariance = calculateOptimalVariance(allocation, layers);
 
     return {
@@ -703,7 +736,7 @@ export function calculateOptimalAllocationWithCost(
         totalCost,
         totalVariance,
         efficiency: 1 / (totalVariance || 1),
-        formula: "n_h = n × (N_h × S_h / √c_h) / Σ(N_i × S_i / √c_i)",
+        formula: "n_h = C × (N_h S_h / √c_h) / Σ(N_i S_i √c_i)",
     };
 }
 

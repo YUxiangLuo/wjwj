@@ -160,7 +160,7 @@ function OverviewSection({
             label: getMarginOfErrorLabel(samplePlan.estimationType),
             value: samplePlan.estimationType === "mean"
                 ? `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（与均值同单位）`
-                : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（边际误差）`,
+                : `${formatMarginOfError(samplePlan.marginOfError, samplePlan.estimationType)}（允许误差）`,
         },
         ...(samplePlan.estimationType === "mean" && samplePlan.populationVariance != null
             ? [{ label: "总体方差 σ²", value: String(samplePlan.populationVariance) }]

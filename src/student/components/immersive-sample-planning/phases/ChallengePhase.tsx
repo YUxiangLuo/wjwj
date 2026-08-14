@@ -80,7 +80,7 @@ export function ChallengePhase({
                         </h2>
                         <p className="text-muted-foreground text-lg">
                             你的调查总体共有 <span className="text-primary tabular-nums">{populationSize.toLocaleString()}</span> 人。<br />
-                            先凭直觉猜一猜：至少调查多少人，结果才算“有代表性”？
+                            先凭直觉猜一猜：大约要调查多少人，估计才够准？
                         </p>
                     </div>
 

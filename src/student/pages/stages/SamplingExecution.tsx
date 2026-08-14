@@ -573,7 +573,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         PPS抽样（概率与规模成比例抽样）
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground pt-1">
-                                        每个单位被抽中的概率与其"规模"指标成正比。选择一个数值型变量作为规模度量，并指定抽样数量（允许在目标样本量的 80%-120% 范围内调整）。
+                                        不放回 πps：一阶包含概率与规模成正比（πᵢ = n xᵢ / X，过大则必然入样）。分析阶段用 Hájek 加权均值，不是 Horvitz–Thompson 均值。抽取数量允许在规划目标的 80%–120% 调整，这是本实验的操作规则，不是 PPS 理论要求。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">

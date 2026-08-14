@@ -50,6 +50,11 @@ export function EnhancedMetricsCard({
                 <CardDescription className="text-primary">
                     基于简单随机抽样等效样本量 (n₁={Math.ceil(metrics.n1)}) 的精度估计
                 </CardDescription>
+                {metrics.cappedAtPopulation && (
+                    <p className="text-xs text-warning mt-1">
+                        按公式膨胀后的发放量已超过总体，推荐值已封顶为全面调查（n = {metrics.n}）。
+                    </p>
+                )}
                 {sizeDeviation && (
                     <p className="text-xs text-warning mt-1">
                         您选择的最终样本量 ({finalSampleSize}) 与公式推荐值 ({metrics.n}) 不同，实际精度可能有偏差
@@ -68,7 +73,7 @@ export function EnhancedMetricsCard({
                             {isMeanEstimation ? metrics.standardError.toFixed(4) : formatPercent(metrics.standardError)}
                         </div>
                         <div className="text-xs text-primary mt-1">
-                            {isMeanEstimation ? "SE(ȳ) = √(σ²/n × FPC)" : "抽样方差的平方根"}
+                            {isMeanEstimation ? "SE(ȳ) = √(σ²/n × (1−n/N))" : "SE = √(p(1−p)/n × (1−n/N))"}
                         </div>
                     </div>
 

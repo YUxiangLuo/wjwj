@@ -86,7 +86,7 @@ export function ClusterSamplingCalculator({
                     </Badge>
                 </div>
                 <CardDescription className="text-foreground/90">
-                    计算整群抽样中所需群数和总样本量
+                    只用来估算建议发放量。应用结果只会改最终 n，不会把实验抽法改成整群抽样。
                 </CardDescription>
             </CardHeader>
 
@@ -100,6 +100,7 @@ export function ClusterSamplingCalculator({
                             <p>
                                 整群抽样以"群"为单位抽样（如整栋居民楼、整个班级），群内所有单元都调查。
                                 由于群内单元通常同质性高，需要更大的样本量来补偿（设计效应 deff &gt; 1）。
+                                这里算出的 n 只会写回决策面板的最终样本量；抽样执行阶段仍是简单随机、系统、PPS 或分层。
                             </p>
                         </div>
                     </div>

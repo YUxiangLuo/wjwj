@@ -118,6 +118,24 @@ test("stratified sampling samples from correct strata", async () => {
     expect(eastSamples.length).toBe(1);
 });
 
+test("stratified sampling matches layer names after trimming", async () => {
+    const padded = [
+        { id: 1, region: " North " },
+        { id: 2, region: "North" },
+        { id: 3, region: "South" },
+        { id: 4, region: " South" },
+    ];
+    const result = await performStratifiedSampling(
+        padded,
+        "region",
+        [{ name: "North", sampleCount: 2 }, { name: " South ", sampleCount: 2 }],
+        createSeededRandom("trim"),
+    );
+    expect(result.length).toBe(4);
+    expect(result.filter((row) => String(row.region).trim() === "North").length).toBe(2);
+    expect(result.filter((row) => String(row.region).trim() === "South").length).toBe(2);
+});
+
 test("stratified sampling skips missing groups", async () => {
     const layersWithMissing = [
         { name: "North", sampleCount: 3 },

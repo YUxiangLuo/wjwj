@@ -48,8 +48,8 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 <ScenarioHeader
                     icon={School}
                     tag="Step 3: 设计效应"
-                    title="同一群人往往更相似"
-                    description={"整群抽样时，同一个班的学生观点相近，\u201C有效信息量\u201D打折扣。这个折扣就是设计效应 (deff)。"}
+                    title="复杂抽法会改变有效信息量"
+                    description={"设计效应 deff 是复杂抽样方差相对简单随机抽样的倍数。整群抽样里同一班学生观点相近时，deff 常常大于 1。这里只用来调整建议发放量，后面执行的仍是简单随机、系统、PPS 或分层。"}
                 />
 
                 <div className="max-w-md mx-auto space-y-4">
@@ -84,7 +84,7 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
 
                     {params.designEffect > 1 && (
                         <p className="text-sm text-warning text-center animate-in fade-in duration-300">
-                            需要多抽 <strong className="tabular-nums">{(withDeff - baseN).toLocaleString()}</strong> 人来弥补群内相似性
+                            需要多抽 <strong className="tabular-nums">{(withDeff - baseN).toLocaleString()}</strong> 人，才能达到与简单随机抽样相近的精度
                         </p>
                     )}
                 </div>
@@ -237,6 +237,11 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 <StepRow step={3} label="设计效应调整 n₂" formula={`n₁×deff (${params.designEffect.toFixed(1)})`} value={n2} color="text-warning" />
                 <StepArrow />
                 <StepRow step={4} label="无回答率调整 n" formula={`n₂/(1-NRR) (${(params.nonResponseRate * 100).toFixed(0)}%)`} value={n3} color="text-success" highlight />
+                {n3 >= params.populationSize && params.populationSize > 0 && (
+                    <p className="text-xs text-warning text-center">
+                        膨胀后的发放量已封顶为总体 N = {params.populationSize.toLocaleString()}，相当于全面调查。
+                    </p>
+                )}
             </div>
 
             {/* Plan comparison (mutually exclusive strata) */}
