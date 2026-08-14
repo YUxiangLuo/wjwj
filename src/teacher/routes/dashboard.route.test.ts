@@ -3,8 +3,9 @@ import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
+import { student } from "../../db/schema";
 
-test("dashboard keeps completed submissions and rejected grading activity", async () => {
+test("dashboard keeps completed activity but excludes soft-deleted students from every activity query", async () => {
     const submittedAt = new Date("2026-07-18T01:00:00Z");
     const gradedAt = new Date("2026-07-18T02:00:00Z");
     const { db, operations } = createMockDb({ select: [
@@ -30,8 +31,15 @@ test("dashboard keeps completed submissions and rejected grading activity", asyn
     ]);
 
     const selects = operations.filter((item) => item.kind === "select");
-    const recentSubmissionQuery = new PgDialect().sqlToQuery(selects[4]!.where as SQL);
-    const recentGradingQuery = new PgDialect().sqlToQuery(selects[5]!.where as SQL);
+    expect(selects[2]!.joins?.map((join) => join.table)).toContain(student);
+    const dialect = new PgDialect();
+    const pendingQuery = dialect.sqlToQuery(selects[2]!.where as SQL);
+    const recentSubmissionQuery = dialect.sqlToQuery(selects[4]!.where as SQL);
+    const recentGradingQuery = dialect.sqlToQuery(selects[5]!.where as SQL);
+    for (const query of [pendingQuery, recentSubmissionQuery, recentGradingQuery]) {
+        expect(query.sql).toContain('"student"."deleted_at" is null');
+    }
+    expect(pendingQuery.params).toEqual([9, "submitted"]);
     expect(recentSubmissionQuery.params).toEqual([9, "submitted", "graded", "rejected"]);
     expect(recentGradingQuery.params).toEqual([9, "graded", "rejected"]);
 });

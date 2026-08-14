@@ -31,9 +31,22 @@ installation from before the simplification, first take a database and
 `bun run db:reset`; otherwise keep the old database for export and deploy this
 version against a new empty database.
 
-`db:seed` writes the classroom fixture in `src/db/seeds/default.ts`
-(uneven 200-row population, S010–S015, T001, four tasks). `SEED_ADMIN_PASSWORD`
-overrides the generated admin password. Seed is not applied by `db:migrate`.
+`db:seed` writes the deterministic dogfood fixture in
+`src/db/seeds/default.ts`: 1 admin, 3 teachers, 2 semesters, 2 classes,
+S010–S020, 7 topics, 6 tasks, 11 experiments, 4 announcements, 1 attachment,
+and two generated population files. The main proportion/PPS task covers all
+eight teacher progress buckets; the mean task has a valid numeric analysis
+field but intentionally no eligible PPS size field. `SEED_NOW` optionally fixes
+the relative-time anchor, and `SEED_ADMIN_PASSWORD` overrides the generated
+admin password. See the exact credentials/personas in [README.md](README.md).
+Seed is not applied by `db:migrate`.
+
+`db:seed` is non-idempotent and only supports an empty migrated database. It
+preflights the required guide source before inserting rows, but later failures
+can still leave partial rows or generated files. Fix the reported cause, then
+run `bun run db:reset` to clean and rebuild the database instead of retrying
+seed against the partial state. Run `bun run db:seed:check` immediately after a
+successful seed for the read-only fixture integrity check.
 
 ## Change the schema
 

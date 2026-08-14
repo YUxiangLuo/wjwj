@@ -22,6 +22,7 @@
     "db:check": "bunx drizzle-kit check",
     "db:clean": "bun run src/db/clean.ts --force",
     "db:seed": "bun run src/db/seeds/default.ts",
+    "db:seed:check": "bun run src/db/seeds/check-default.ts",
     "db:reset": "bun run db:clean && bun run db:migrate && bun run db:seed",
     "storage:audit": "bun run scripts/audit-storage.ts",
     "storage:clean": "bun run scripts/audit-storage.ts --delete --force",

@@ -16,10 +16,11 @@ const dashboardRoutes: RouteDefinition = {
             db.select({ count: count() }).from(topic).where(and(eq(topic.teacherId, teacherId), isNull(topic.deletedAt))),
             db.select({ count: count() })
                 .from(experiment)
+                .innerJoin(student, eq(experiment.studentId, student.id))
                 .innerJoin(task, eq(experiment.taskId, task.id))
                 .innerJoin(topic, eq(task.topicId, topic.id))
                 .innerJoin(class_, eq(task.classId, class_.id))
-                .where(and(...teacherScope, eq(experiment.status, "submitted"))),
+                .where(and(...teacherScope, isNull(student.deletedAt), eq(experiment.status, "submitted"))),
             db.select({ count: count() })
                 .from(task)
                 .innerJoin(topic, eq(task.topicId, topic.id))
@@ -42,7 +43,7 @@ const dashboardRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(...teacherScope, inArray(experiment.status, ["submitted", "graded", "rejected"])))
+            .where(and(...teacherScope, isNull(student.deletedAt), inArray(experiment.status, ["submitted", "graded", "rejected"])))
             .orderBy(desc(experiment.submittedAt))
             .limit(5);
 
@@ -59,7 +60,7 @@ const dashboardRoutes: RouteDefinition = {
             .innerJoin(task, eq(experiment.taskId, task.id))
             .innerJoin(topic, eq(task.topicId, topic.id))
             .innerJoin(class_, eq(task.classId, class_.id))
-            .where(and(...teacherScope, inArray(experiment.status, ["graded", "rejected"])))
+            .where(and(...teacherScope, isNull(student.deletedAt), inArray(experiment.status, ["graded", "rejected"])))
             .orderBy(desc(experiment.gradedAt))
             .limit(5);
 

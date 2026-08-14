@@ -15,25 +15,27 @@ import {
     topic,
     topicAttachment,
 } from "../schema";
+import { calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
+import { executeSamplingAction, type SamplingMethod } from "../../student/experiment/sampling-service";
+import { PPS_UNAVAILABLE_REASON } from "../../student/experiment/sampling-messages";
+import {
+    validateQuestionnaireForSubmit,
+    validateReportForSubmit,
+    validateSamplePlanForSubmit,
+    validateSamplingResultsForSubmit,
+} from "../../student/experiment/submit-validation";
 import type { SubmissionSnapshot } from "../../student/experiment/submit-service";
-
-/**
- * Student-side dogfood seed.
- *
- * Accounts (initial password = student ID / employee ID / admin123 in DEV):
- *   S010 林清  not started on the open task — full happy path
- *   S011 周宁  questionnaire saved — resume from sample planning
- *   S012 吴敏  submitted
- *   S013 郑华  graded
- *   S014 孙琪  rejected — can revise and resubmit
- *   S015 马丽  disabled — login must fail
- *
- * Tasks on 统计学一班:
- *   校园学习体验抽样调查     open now
- *   已截止的课堂练习         deadline passed
- *   下学期预告课题           not open yet
- *   已撤销的示范课题         topic soft-deleted
- */
+import {
+    createMeanPopulation,
+    createPpsPopulation,
+    DOGFOOD_COUNTS,
+    DOGFOOD_NAMES,
+    GUIDE_ATTACHMENT_PATH,
+    MEAN_POPULATION_PATH,
+    PPS_POPULATION_PATH,
+    resolveSeedAnchor,
+    shiftDays,
+} from "./dogfood-fixtures";
 
 const questionnaire = {
     title: "校园学习体验调查",
@@ -51,8 +53,8 @@ const questionnaire = {
     ],
 };
 
-// N=200, 95%, ±5%, deff=1, nrr=0 → recommended n=132
-const samplePlan = {
+const weightConfig = { questionnaire: 30, process: 30, report: 40 };
+const proportionPlan = {
     estimationType: "proportion" as const,
     confidenceLevel: "95",
     marginOfError: 5,
@@ -61,311 +63,372 @@ const samplePlan = {
     recommendedSize: 132,
     finalSampleSize: 132,
 };
-
-const samplingResults = {
-    simple: { completed: true, sampleCount: 132, seed: 2026 },
-    systematic: { completed: true, interval: 200 / 132, sampleCount: 132, seed: 2026, randomStart: 0.7 },
-    pps: { completed: true, sizeField: "月生活费", sampleCount: 132, seed: 2026 },
-    stratified: {
-        completed: true,
-        stratifyBy: "年级",
-        layers: [
-            { name: "大一", count: 80, ratio: 0.4, sampleCount: 53 },
-            { name: "大二", count: 60, ratio: 0.3, sampleCount: 40 },
-            { name: "大三", count: 40, ratio: 0.2, sampleCount: 26 },
-            { name: "大四", count: 20, ratio: 0.1, sampleCount: 13 },
-        ],
-        sampleCount: 132,
-        seed: 2026,
-    },
+const calculatedMeanSize = calculateMeanEstimationSampleSize({
+    confidenceLevel: "95",
+    marginOfError: 2,
+    populationSize: 24,
+    populationVariance: 36,
+    designEffect: 1,
+    nonResponseRate: 0,
+});
+if (calculatedMeanSize === null) throw new Error("Dogfood mean sample plan could not be calculated");
+const meanRecommendedSize: number = calculatedMeanSize;
+const meanPlan = {
+    estimationType: "mean" as const,
+    confidenceLevel: "95",
+    marginOfError: 2,
+    populationVariance: 36,
+    designEffect: 1,
+    nonResponseRate: 0,
+    recommendedSize: meanRecommendedSize,
+    finalSampleSize: meanRecommendedSize,
 };
 
-const reportContent = `<h2>实验目的</h2><p>本实验通过校园学习体验调查，完整练习问卷设计、样本量规划、四种抽样方法和结果分析。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和百分之五允许误差下确定样本量 132，并分别使用简单随机、系统、PPS 和分层抽样。对不同方法的样本构成与总体分布进行了比较。</p><h2>结论</h2><p>分层抽样能够稳定保持各年级比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法。</p>`;
+const reportContent = `<h2>实验目的</h2><p>本实验通过校园学习体验调查，完整练习问卷设计、样本量规划、四种抽样方法和结果分析，并核对样本结构是否保持总体特征。</p><h2>方法与结果</h2><p>在百分之九十五置信水平下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。对不同方法的样本构成、数值变量与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
+const meanReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。系统按规则将 PPS 标记为不可用并跳过该方法，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种可用方法均保留随机种子和完整样本行；PPS 的跳过是由总体数据条件决定的有效结果，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
 
-const weightConfig = { questionnaire: 30, process: 30, report: 40 };
+const ppsFieldMapping = {
+    identifier: "编号",
+    numeric: ["每周学习时长", "月生活费", "学习满意度"],
+    stratified: ["年级", "性别"],
+    others: ["专业"],
+};
+const meanFieldMapping = {
+    identifier: "编号",
+    numeric: ["每周阅读时长"],
+    stratified: ["学院", "是否住宿"],
+    others: ["年级"],
+};
 
-async function writePopulationFixture() {
-    const storagePath = "/storage/topics/seed-population.xlsx";
-    const absolutePath = resolve(process.cwd(), storagePath.slice(1));
-    await mkdir(dirname(absolutePath), { recursive: true });
+async function writePopulationFixtures(
+    ppsPopulation: Array<Record<string, unknown>>,
+    meanPopulation: Array<Record<string, unknown>>,
+) {
+    const ppsTarget = resolve(process.cwd(), PPS_POPULATION_PATH.slice(1));
+    const meanTarget = resolve(process.cwd(), MEAN_POPULATION_PATH.slice(1));
+    await mkdir(dirname(ppsTarget), { recursive: true });
 
-    const gradePlan = [
-        ...Array.from({ length: 80 }, () => "大一"),
-        ...Array.from({ length: 60 }, () => "大二"),
-        ...Array.from({ length: 40 }, () => "大三"),
-        ...Array.from({ length: 20 }, () => "大四"),
-    ];
-    const majors = ["统计学", "经济学", "管理学", "计算机"];
-    const rows = gradePlan.map((年级, index) => ({
-        编号: index + 1,
-        年级,
-        专业: majors[index % majors.length],
-        性别: index % 2 === 0 ? "男" : "女",
-        每周学习时长: 6 + (index % 28),
-        月生活费: 800 + (index % 20) * 180,
-        学习满意度: 1 + (index % 5),
-    }));
+    const ppsWorkbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(ppsWorkbook, XLSX.utils.json_to_sheet(ppsPopulation), "总体数据");
+    await Bun.write(ppsTarget, XLSX.write(ppsWorkbook, { type: "buffer", bookType: "xlsx" }));
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), "总体数据");
-    await Bun.write(absolutePath, XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
-    return storagePath;
-}
+    const meanSheet = XLSX.utils.json_to_sheet(meanPopulation);
+    await Bun.write(meanTarget, `\uFEFF${XLSX.utils.sheet_to_csv(meanSheet)}`);
 
-async function copyGuideAttachment(topicId: number) {
-    const source = resolve(process.cwd(), "public/templates/数据上传规范.pdf");
-    const storagePath = "/storage/uploads/seed-topic-guide.pdf";
-    const target = resolve(process.cwd(), storagePath.slice(1));
-    await mkdir(dirname(target), { recursive: true });
-    const file = Bun.file(source);
-    if (await file.exists()) {
-        await Bun.write(target, file);
-        const size = (await file.stat()).size;
-        await db.insert(topicAttachment).values({
-            topicId,
-            fileName: "课题说明与数据规范.pdf",
-            filePath: storagePath,
-            fileType: "application/pdf",
-            fileSize: size,
-        });
+    for (const path of [ppsTarget, meanTarget]) {
+        const file = Bun.file(path);
+        if (!(await file.exists()) || file.size <= 0) throw new Error(`Failed to write seed fixture: ${path}`);
     }
 }
 
-async function seed() {
-    const generatedAdminPassword = DEV_AUTH_MODE ? DEV_ADMIN_PASSWORD : `Bootstrap!${crypto.randomUUID()}`;
-    const adminInitialPassword = process.env.SEED_ADMIN_PASSWORD?.trim() || generatedAdminPassword;
-    const adminPassword = await Bun.password.hash(adminInitialPassword);
-    const teacherInitialPassword = "T001";
-    const teacherPassword = await Bun.password.hash(teacherInitialPassword);
-    const populationPath = await writePopulationFixture();
-    const now = new Date();
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1_000);
-    const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1_000);
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1_000);
-    const nextMonth = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1_000);
+function guideSourceFile() {
+    return Bun.file(resolve(process.cwd(), "public/templates/数据上传规范.pdf"));
+}
 
-    await db.insert(admin).values({ username: "admin", password: adminPassword, isFirstLogin: 1 });
-    const [teacherRow] = await db.insert(teacher).values({
-        employeeId: "T001",
-        name: "张老师",
-        password: teacherPassword,
-        isFirstLogin: 1,
-    }).returning();
-    const [semesterRow] = await db.insert(semester).values({
-        name: "2026-2027-1",
-        isCurrent: 1,
-    }).returning();
-    const [classRow] = await db.insert(class_).values({
-        name: "统计学一班",
-        semesterId: semesterRow!.id,
-        teacherId: teacherRow!.id,
-    }).returning();
+async function preflightGuideSource() {
+    const sourceFile = guideSourceFile();
+    if (!(await sourceFile.exists()) || sourceFile.size <= 0) {
+        throw new Error(`Required seed attachment is missing or empty: ${sourceFile.name}`);
+    }
+}
 
-    const studentSeeds = [
-        { studentId: "S010", name: "林清", email: "s010@example.edu", status: 1 },
-        { studentId: "S011", name: "周宁", email: "s011@example.edu", status: 1 },
-        { studentId: "S012", name: "吴敏", email: "s012@example.edu", status: 1 },
-        { studentId: "S013", name: "郑华", email: "s013@example.edu", status: 1 },
-        { studentId: "S014", name: "孙琪", email: "s014@example.edu", status: 1 },
-        { studentId: "S015", name: "马丽", email: "s015@example.edu", status: 0 },
-    ];
-    const studentPasswords = await Promise.all(studentSeeds.map((item) => Bun.password.hash(item.studentId)));
-    const studentRows = await db.insert(student).values(studentSeeds.map((item, index) => ({
-        studentId: item.studentId,
-        name: item.name,
-        email: item.email,
-        status: item.status,
-        password: studentPasswords[index]!,
-        isFirstLogin: 1,
-        classId: classRow!.id,
-    }))).returning();
+async function copyGuideAttachment(topicId: number) {
+    const sourceFile = guideSourceFile();
+    const source = sourceFile.name;
+    if (!(await sourceFile.exists())) {
+        throw new Error(`Required seed attachment is missing: ${source}`);
+    }
 
-    const fieldMapping = {
-        identifier: "编号",
-        numeric: ["每周学习时长", "月生活费", "学习满意度"],
-        stratified: ["年级", "性别"],
-        others: ["专业"],
+    const target = resolve(process.cwd(), GUIDE_ATTACHMENT_PATH.slice(1));
+    await mkdir(dirname(target), { recursive: true });
+    await Bun.write(target, sourceFile);
+    const targetFile = Bun.file(target);
+    if (!(await targetFile.exists()) || targetFile.size <= 0) {
+        throw new Error(`Failed to write seed attachment: ${target}`);
+    }
+    await db.insert(topicAttachment).values({
+        topicId,
+        fileName: "课题说明与数据规范.pdf",
+        filePath: GUIDE_ATTACHMENT_PATH,
+        fileType: "application/pdf",
+        fileSize: targetFile.size,
+    });
+}
+
+async function runSampling(params: {
+    method: SamplingMethod;
+    rawParams: Record<string, unknown>;
+    targetSampleSize: number;
+    population: Array<Record<string, unknown>>;
+    fieldMapping: unknown;
+}) {
+    const executed = await executeSamplingAction(params);
+    if (!executed.ok) throw new Error(`Seed ${params.method} sampling failed: ${executed.errorMessage}`);
+    return { ...executed.result, serverGenerated: true };
+}
+
+async function buildSamplingFixtures(
+    ppsPopulation: Array<Record<string, unknown>>,
+    meanPopulation: Array<Record<string, unknown>>,
+) {
+    const proportionResults = {
+        simple: await runSampling({ method: "simple", rawParams: { sampleSize: 132, seed: 202601 }, targetSampleSize: 132, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
+        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202602 }, targetSampleSize: 132, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
+        pps: await runSampling({ method: "pps", rawParams: { sampleSize: 132, sizeField: "月生活费", seed: 202603 }, targetSampleSize: 132, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
+        stratified: await runSampling({
+            method: "stratified",
+            rawParams: {
+                stratifyBy: "年级",
+                seed: 202604,
+                layers: [
+                    { name: "大一", ratio: 0.4, sampleCount: 53 },
+                    { name: "大二", ratio: 0.3, sampleCount: 40 },
+                    { name: "大三", ratio: 0.2, sampleCount: 26 },
+                    { name: "大四", ratio: 0.1, sampleCount: 13 },
+                ],
+            },
+            targetSampleSize: 132,
+            population: ppsPopulation,
+            fieldMapping: ppsFieldMapping,
+        }),
     };
 
-    const [openTopic] = await db.insert(topic).values({
-        teacherId: teacherRow!.id,
-        name: "校园学习体验抽样调查",
-        description: "围绕校园学习体验完成问卷、样本量规划、四种抽样方法和统计分析。总体 200 人，年级分布不均，便于比较按比例分配与奈曼分配。",
-        excelFilePath: populationPath,
+    const meanResults = {
+        simple: await runSampling({ method: "simple", rawParams: { sampleSize: meanRecommendedSize, seed: 202611 }, targetSampleSize: meanRecommendedSize, population: meanPopulation, fieldMapping: meanFieldMapping }),
+        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202612 }, targetSampleSize: meanRecommendedSize, population: meanPopulation, fieldMapping: meanFieldMapping }),
+        pps: { unavailable: true, unavailableReason: PPS_UNAVAILABLE_REASON, serverGenerated: true },
+        stratified: await runSampling({
+            method: "stratified",
+            rawParams: {
+                stratifyBy: "学院",
+                seed: 202614,
+                layers: [
+                    { name: "文学院", ratio: 1 / 3, sampleCount: 5 },
+                    { name: "理学院", ratio: 1 / 3, sampleCount: 5 },
+                    { name: "商学院", ratio: 1 / 3, sampleCount: 5 },
+                ],
+            },
+            targetSampleSize: meanRecommendedSize,
+            population: meanPopulation,
+            fieldMapping: meanFieldMapping,
+        }),
+    };
+
+    return { proportionResults, meanResults };
+}
+
+function assertCompleteSubmission(samplePlan: unknown, samplingResults: unknown, populationSize: number, submissionReport: string) {
+    const errors = [
+        validateQuestionnaireForSubmit(questionnaire),
+        validateSamplePlanForSubmit(samplePlan, populationSize),
+        validateSamplingResultsForSubmit(samplingResults, (samplePlan as { finalSampleSize: number }).finalSampleSize),
+        validateReportForSubmit(submissionReport),
+    ].filter(Boolean);
+    if (errors.length) throw new Error(`Invalid dogfood submission fixture: ${errors.join("; ")}`);
+}
+
+function snapshot(params: {
+    topicName: string;
+    studentName: string;
+    populationSize: number;
+    samplePlan: typeof proportionPlan | typeof meanPlan;
+    samplingResults: Record<string, unknown>;
+    reportContent: string;
+}): SubmissionSnapshot {
+    return {
+        topicName: params.topicName,
+        studentName: params.studentName,
+        populationSize: params.populationSize,
+        questionnaire,
+        samplePlan: params.samplePlan,
+        samplingResults: params.samplingResults,
+        reportContent: params.reportContent,
+        weightConfig,
+    };
+}
+
+async function seed() {
+    const anchor = resolveSeedAnchor(process.env.SEED_NOW);
+    const day = (offset: number) => shiftDays(anchor, offset);
+    console.log(`Seed anchor: ${anchor.toISOString()}`);
+    await preflightGuideSource();
+
+    const generatedAdminPassword = DEV_AUTH_MODE ? DEV_ADMIN_PASSWORD : `Bootstrap!${crypto.randomUUID()}`;
+    const adminInitialPassword = process.env.SEED_ADMIN_PASSWORD?.trim() || generatedAdminPassword;
+    const ppsPopulation = createPpsPopulation();
+    const meanPopulation = createMeanPopulation();
+    await writePopulationFixtures(ppsPopulation, meanPopulation);
+    const { proportionResults, meanResults } = await buildSamplingFixtures(ppsPopulation, meanPopulation);
+    assertCompleteSubmission(proportionPlan, proportionResults, ppsPopulation.length, reportContent);
+    assertCompleteSubmission(meanPlan, meanResults, meanPopulation.length, meanReportContent);
+
+    await db.insert(admin).values({
+        username: "admin",
+        password: await Bun.password.hash(adminInitialPassword),
+        isFirstLogin: 1,
+        loginFailCount: 0,
+        lockedUntil: null,
+        createdAt: anchor,
+        updatedAt: anchor,
+    });
+
+    const teacherSeeds = [
+        { employeeId: "T001", name: "张老师", password: "Teacher!2026", isFirstLogin: 0, status: 1 },
+        { employeeId: "T002", name: "李老师", password: "T002", isFirstLogin: 1, status: 1 },
+        { employeeId: "T003", name: "停用教师", password: "T003", isFirstLogin: 1, status: 0 },
+    ];
+    const teacherRows = await db.insert(teacher).values(await Promise.all(teacherSeeds.map(async (item) => ({
+        employeeId: item.employeeId,
+        name: item.name,
+        password: await Bun.password.hash(item.password),
+        isFirstLogin: item.isFirstLogin,
+        status: item.status,
+        loginFailCount: 0,
+        lockedUntil: null,
+        createdAt: anchor,
+        updatedAt: anchor,
+    })))).returning();
+    const teachersById = Object.fromEntries(teacherRows.map((row) => [row.employeeId, row]));
+
+    const semesterRows = await db.insert(semester).values([
+        { name: DOGFOOD_NAMES.currentSemester, isCurrent: 1, createdAt: day(-60), updatedAt: anchor },
+        { name: DOGFOOD_NAMES.oldSemester, isCurrent: 0, createdAt: day(-240), updatedAt: day(-60) },
+    ]).returning();
+    const semesterByName = Object.fromEntries(semesterRows.map((row) => [row.name, row]));
+    const classRows = await db.insert(class_).values([
+        { name: DOGFOOD_NAMES.mainClass, semesterId: semesterByName[DOGFOOD_NAMES.currentSemester]!.id, teacherId: teachersById.T001!.id, createdAt: day(-45), updatedAt: day(-45) },
+        { name: DOGFOOD_NAMES.oldClass, semesterId: semesterByName[DOGFOOD_NAMES.oldSemester]!.id, teacherId: teachersById.T002!.id, createdAt: day(-220), updatedAt: day(-220) },
+    ]).returning();
+    const classByName = Object.fromEntries(classRows.map((row) => [row.name, row]));
+
+    const studentSeeds = [
+        { studentId: "S010", name: "林清", password: "Student!010", isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S011", name: "周宁", password: "S011", isFirstLogin: 1, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S012", name: "吴敏", password: "Student!012", isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S013", name: "郑华", password: "Student!013", isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S014", name: "孙琪", password: "Student!014", isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S015", name: "马丽", password: "Student!015", isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S016", name: "陈晨", password: "Student!016", isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S017", name: "何静", password: "Student!017", isFirstLogin: 0, status: 1, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S018", name: "锁定学生", password: "S018", isFirstLogin: 1, status: 1, loginFailCount: 5, lockedUntil: day(1), deletedAt: null },
+        { studentId: "S019", name: "停用学生", password: "S019", isFirstLogin: 1, status: 0, loginFailCount: 0, lockedUntil: null, deletedAt: null },
+        { studentId: "S020", name: "已删学生", password: "S020", isFirstLogin: 1, status: 0, loginFailCount: 0, lockedUntil: null, deletedAt: day(-2) },
+    ];
+    const studentRows = await db.insert(student).values(await Promise.all(studentSeeds.map(async (item) => ({
+        studentId: item.studentId,
+        name: item.name,
+        email: `${item.studentId.toLowerCase()}@example.edu`,
+        password: await Bun.password.hash(item.password),
+        isFirstLogin: item.isFirstLogin,
+        status: item.status,
+        loginFailCount: item.loginFailCount,
+        lockedUntil: item.lockedUntil,
+        deletedAt: item.deletedAt,
+        classId: classByName[DOGFOOD_NAMES.mainClass]!.id,
+        createdAt: day(-40),
+        updatedAt: item.deletedAt ?? anchor,
+    })))).returning();
+    const studentsById = Object.fromEntries(studentRows.map((row) => [row.studentId, row]));
+
+    const validTopicValues = {
+        teacherId: teachersById.T001!.id,
+        excelFilePath: PPS_POPULATION_PATH,
         excelRowCount: 200,
-        fieldMapping,
+        fieldMapping: ppsFieldMapping,
         weightConfig,
         recommendQuestions: questionnaire.questions,
         status: 1,
-    }).returning();
-    await copyGuideAttachment(openTopic!.id);
+        createdAt: day(-20),
+        updatedAt: day(-7),
+    };
+    const topicRows = await db.insert(topic).values([
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicA, description: "已发布的比例估计完整流程；月生活费对所有单位均为正，可执行 PPS。" },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicB, description: "已发布的均值估计流程；总体含一个零值，因此没有可用 PPS 规模变量。", excelFilePath: MEAN_POPULATION_PATH, excelRowCount: 24, fieldMapping: meanFieldMapping },
+        { teacherId: teachersById.T001!.id, name: DOGFOOD_NAMES.topicC, description: "未发布且未分配任务的编辑草稿。", status: 0, createdAt: day(-3), updatedAt: day(-3) },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicD, description: "已截止任务的发布课题。" },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicE, description: "尚未到开放时间的发布课题。" },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicF, description: "课题已软删除，但保留任务和历史提交用于过滤校验。", deletedAt: day(-2), updatedAt: day(-2) },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicG, description: "课题仍发布，但任务已软删除并保留历史提交。" },
+    ]).returning();
+    const topicsByName = Object.fromEntries(topicRows.map((row) => [row.name, row]));
+    await copyGuideAttachment(topicsByName[DOGFOOD_NAMES.topicA]!.id);
 
-    const [closedTopic] = await db.insert(topic).values({
-        teacherId: teacherRow!.id,
-        name: "已截止的课堂练习",
-        description: "用于验证截止后不可再进入实验。",
-        excelFilePath: populationPath,
-        excelRowCount: 200,
-        fieldMapping,
-        weightConfig,
-        recommendQuestions: questionnaire.questions.slice(0, 5),
-        status: 1,
-    }).returning();
+    const mainClassId = classByName[DOGFOOD_NAMES.mainClass]!.id;
+    const taskRows = await db.insert(task).values([
+        { topicId: topicsByName[DOGFOOD_NAMES.topicA]!.id, classId: mainClassId, openTime: day(-7), deadline: day(30), createdAt: day(-7), updatedAt: day(-7) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicB]!.id, classId: mainClassId, openTime: null, deadline: null, createdAt: day(-6), updatedAt: day(-6) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicD]!.id, classId: mainClassId, openTime: day(-14), deadline: day(-1), createdAt: day(-14), updatedAt: day(-1) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicE]!.id, classId: mainClassId, openTime: day(7), deadline: day(30), createdAt: day(-1), updatedAt: day(-1) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicF]!.id, classId: mainClassId, openTime: day(-10), deadline: day(30), createdAt: day(-10), updatedAt: day(-2) },
+        { topicId: topicsByName[DOGFOOD_NAMES.topicG]!.id, classId: mainClassId, openTime: day(-10), deadline: day(30), deletedAt: day(-2), createdAt: day(-10), updatedAt: day(-2) },
+    ]).returning();
+    const tasksByTopicId = Object.fromEntries(taskRows.map((row) => [row.topicId, row]));
+    const taskFor = (topicName: string) => tasksByTopicId[topicsByName[topicName]!.id]!;
+    const aTask = taskFor(DOGFOOD_NAMES.topicA);
 
-    const [futureTopic] = await db.insert(topic).values({
-        teacherId: teacherRow!.id,
-        name: "下学期预告课题",
-        description: "尚未开放，学生只能查看课题信息。",
-        excelFilePath: populationPath,
-        excelRowCount: 200,
-        fieldMapping,
-        weightConfig,
-        recommendQuestions: questionnaire.questions.slice(0, 5),
-        status: 1,
-    }).returning();
-
-    const [deletedTopic] = await db.insert(topic).values({
-        teacherId: teacherRow!.id,
-        name: "已撤销的示范课题",
-        description: "课题已删除，任务大厅应给出不可进入提示。",
-        excelFilePath: populationPath,
-        excelRowCount: 200,
-        fieldMapping,
-        weightConfig,
-        status: 1,
-        deletedAt: yesterday,
-    }).returning();
-
-    const [openTask] = await db.insert(task).values({
-        topicId: openTopic!.id,
-        classId: classRow!.id,
-        openTime: yesterday,
-        deadline: nextMonth,
-    }).returning();
-    await db.insert(task).values({
-        topicId: closedTopic!.id,
-        classId: classRow!.id,
-        openTime: lastWeek,
-        deadline: yesterday,
-    });
-    await db.insert(task).values({
-        topicId: futureTopic!.id,
-        classId: classRow!.id,
-        openTime: nextWeek,
-        deadline: nextMonth,
-    });
-    await db.insert(task).values({
-        topicId: deletedTopic!.id,
-        classId: classRow!.id,
-        openTime: lastWeek,
-        deadline: nextMonth,
-    });
-
-    const byId = Object.fromEntries(studentRows.map((row) => [row.studentId, row]));
-
-    await db.insert(experiment).values({
-        studentId: byId.S011!.id,
-        taskId: openTask!.id,
-        currentStage: 2,
-        status: "in_progress",
+    const completedBase = {
+        currentStage: 4,
         questionnaire,
-        stage1CompletedAt: yesterday,
-    });
-
-    const submittedSnapshot = {
-        topicName: openTopic!.name,
-        studentName: byId.S012!.name,
+        samplePlan: proportionPlan,
+        samplingResults: proportionResults,
+        reportContent,
+        stage1CompletedAt: day(-5),
+        stage2CompletedAt: day(-4),
+        stage3CompletedAt: day(-3),
+        stage4CompletedAt: day(-2),
+    } as const;
+    const proportionSnapshot = (studentId: string, topicName: string = DOGFOOD_NAMES.topicA) => snapshot({
+        topicName,
+        studentName: studentsById[studentId]!.name,
         populationSize: 200,
-        questionnaire,
-        samplePlan,
-        samplingResults,
+        samplePlan: proportionPlan,
+        samplingResults: proportionResults,
         reportContent,
-        weightConfig,
-    } satisfies SubmissionSnapshot;
-
-    await db.insert(experiment).values({
-        studentId: byId.S012!.id,
-        taskId: openTask!.id,
-        currentStage: 4,
-        status: "submitted",
-        questionnaire,
-        samplePlan,
-        samplingResults,
-        reportContent,
-        stage1CompletedAt: yesterday,
-        stage2CompletedAt: yesterday,
-        stage3CompletedAt: yesterday,
-        stage4CompletedAt: yesterday,
-        submissionSnapshot: submittedSnapshot,
-        submittedAt: now,
     });
 
-    await db.insert(experiment).values({
-        studentId: byId.S013!.id,
-        taskId: openTask!.id,
-        currentStage: 4,
-        status: "graded",
-        questionnaire,
-        samplePlan,
-        samplingResults,
-        reportContent,
-        stage1CompletedAt: yesterday,
-        stage2CompletedAt: yesterday,
-        stage3CompletedAt: yesterday,
-        stage4CompletedAt: yesterday,
-        submissionSnapshot: { ...submittedSnapshot, studentName: byId.S013!.name },
-        submittedAt: yesterday,
-        scoreQuestionnaire: "88",
-        scoreProcess: "92",
-        scoreReport: "90",
-        totalScore: "90.00",
-        teacherComment: "结构完整，方法比较清楚。",
-        gradedByTeacherId: teacherRow!.id,
-        gradedAt: now,
-    });
-
-    await db.insert(experiment).values({
-        studentId: byId.S014!.id,
-        taskId: openTask!.id,
-        currentStage: 4,
-        status: "rejected",
-        questionnaire,
-        samplePlan,
-        samplingResults,
-        reportContent,
-        stage1CompletedAt: yesterday,
-        stage2CompletedAt: yesterday,
-        stage3CompletedAt: yesterday,
-        stage4CompletedAt: yesterday,
-        rejectReason: "请补充四种抽样方法的比较，并说明分层分配依据。",
-    });
+    await db.insert(experiment).values([
+        { studentId: studentsById.S011!.id, taskId: aTask.id, currentStage: 1, status: "in_progress", questionnaire, createdAt: day(-2), updatedAt: day(-2) },
+        { studentId: studentsById.S012!.id, taskId: aTask.id, currentStage: 2, status: "in_progress", questionnaire, stage1CompletedAt: day(-2), createdAt: day(-3), updatedAt: day(-2) },
+        { studentId: studentsById.S013!.id, taskId: aTask.id, currentStage: 3, status: "in_progress", questionnaire, samplePlan: proportionPlan, stage1CompletedAt: day(-3), stage2CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
+        { ...completedBase, studentId: studentsById.S014!.id, taskId: aTask.id, status: "in_progress", reportContent: "<p>四种抽样已完成，正在撰写实验报告。</p>", stage4CompletedAt: null, createdAt: day(-6), updatedAt: day(-1) },
+        { ...completedBase, studentId: studentsById.S015!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: proportionSnapshot("S015"), submittedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...completedBase, studentId: studentsById.S016!.id, taskId: aTask.id, status: "graded", submissionSnapshot: proportionSnapshot("S016"), submittedAt: day(-2), scoreQuestionnaire: "92", scoreProcess: "88", scoreReport: "90", totalScore: "90.00", teacherComment: "结构完整，抽样方法比较清楚。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...completedBase, studentId: studentsById.S017!.id, taskId: aTask.id, version: 2, status: "rejected", submissionSnapshot: proportionSnapshot("S017"), submittedAt: day(-2), rejectReason: "请补充四种抽样方法的比较，并说明分层分配依据。", gradedByTeacherId: teachersById.T001!.id, gradedAt: day(-1), createdAt: day(-7), updatedAt: day(-1) },
+        { ...completedBase, studentId: studentsById.S020!.id, taskId: aTask.id, status: "submitted", submissionSnapshot: proportionSnapshot("S020"), submittedAt: day(-3), createdAt: day(-8), updatedAt: day(-3) },
+        {
+            studentId: studentsById.S015!.id,
+            taskId: taskFor(DOGFOOD_NAMES.topicB).id,
+            currentStage: 4,
+            status: "submitted",
+            questionnaire,
+            samplePlan: meanPlan,
+            samplingResults: meanResults,
+            reportContent: meanReportContent,
+            stage1CompletedAt: day(-5),
+            stage2CompletedAt: day(-4),
+            stage3CompletedAt: day(-3),
+            stage4CompletedAt: day(-2),
+            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById.S015!.name, populationSize: 24, samplePlan: meanPlan, samplingResults: meanResults, reportContent: meanReportContent }),
+            submittedAt: day(-1),
+            createdAt: day(-6),
+            updatedAt: day(-1),
+        },
+        { ...completedBase, studentId: studentsById.S015!.id, taskId: taskFor(DOGFOOD_NAMES.topicF).id, status: "submitted", submissionSnapshot: proportionSnapshot("S015", DOGFOOD_NAMES.topicF), submittedAt: day(-3), createdAt: day(-9), updatedAt: day(-3) },
+        { ...completedBase, studentId: studentsById.S016!.id, taskId: taskFor(DOGFOOD_NAMES.topicG).id, status: "submitted", submissionSnapshot: proportionSnapshot("S016", DOGFOOD_NAMES.topicG), submittedAt: day(-3), createdAt: day(-9), updatedAt: day(-3) },
+    ]);
 
     await db.insert(announcement).values([
-        {
-            title: "欢迎使用抽样调查虚拟实验系统",
-            content: "请按顺序完成四个实验阶段。系统只在点击“完成并进入下一步”时保存当前阶段。",
-            targetScope: "all",
-            status: 1,
-        },
-        {
-            title: "学生端实验提示",
-            content: "主任务总体 200 人，推荐样本量 132。请先看课题附件再开始问卷设计。",
-            targetScope: "student",
-            status: 1,
-        },
-        {
-            title: "仅教师可见公告",
-            content: "这条公告不应出现在学生任务大厅。",
-            targetScope: "teacher",
-            status: 1,
-        },
+        { title: "欢迎使用抽样调查虚拟实验系统", content: "请按顺序完成四个实验阶段，并留意任务开放时间和截止时间。", targetScope: "all", status: 1, createdAt: day(-6), updatedAt: day(-6) },
+        { title: "学生端实验提示", content: "比例任务推荐样本量为 132；请先查看课题附件再开始实验。", targetScope: "student", status: 1, createdAt: day(-5), updatedAt: day(-5) },
+        { title: "教师端批改提示", content: "批改列表包含待批改、已批改和已驳回状态，软删数据不应出现。", targetScope: "teacher", status: 1, createdAt: day(-4), updatedAt: day(-4) },
+        { title: "公告草稿", content: "未发布公告不应出现在学生或教师首页。", targetScope: "all", status: 0, createdAt: day(-1), updatedAt: day(-1) },
     ]);
 
     console.log("Seed completed.");
-    console.log(`Admin: admin / ${adminInitialPassword} (password change required on first login)`);
-    console.log(`Teacher: T001 / ${teacherInitialPassword} (password change required on first login)`);
-    console.log("Students: S010–S015, initial password equals student ID.");
-    console.log("S010 not started | S011 questionnaire done | S012 submitted | S013 graded | S014 rejected | S015 disabled");
+    console.log(`Counts: ${Object.entries(DOGFOOD_COUNTS).map(([key, value]) => `${key}=${value}`).join(" ")}`);
+    console.log(`Admin: admin / ${adminInitialPassword} (first-login)`);
+    console.log("Teachers: T001 / Teacher!2026 (returning); T002 / T002 (first-login); T003 / T003 (disabled)");
+    console.log("Students: S010 / Student!010; S011 / S011 (first-login); S012-S017 / Student!<suffix>; S018 locked; S019 disabled; S020 deleted");
 }
 
 try {
