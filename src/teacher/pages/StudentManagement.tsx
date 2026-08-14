@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Users, CheckCircle2, PauseCircle } from "lucide-react";
+import { ArrowLeft, Search, Upload, UserPlus, RotateCcw, UserX, Trash2, Users, CheckCircle2, LockKeyhole, PauseCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { StudentAddDialog } from "../components/StudentAddDialog";
 import { StudentConfirmDialog } from "../components/StudentConfirmDialog";
 import { StudentImportDialog } from "../components/StudentImportDialog";
@@ -14,6 +13,16 @@ import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { getAccountState } from "@/lib/account-state";
+
+function renderAccountStatus(student: Student) {
+    const state = getAccountState(student.status, student.lockedUntil);
+    return (
+        <StatusBadge intent={state === "normal" ? "success" : state === "locked" ? "warning" : "neutral"}>
+            {state === "normal" ? "正常" : state === "locked" ? "已锁定" : "已禁用"}
+        </StatusBadge>
+    );
+}
 
 export function StudentManagement() {
     const { classId } = useParams();
@@ -164,10 +173,13 @@ export function StudentManagement() {
     );
 
     const summary = useMemo(() => {
-        const total = students.length;
-        const active = students.filter((student) => student.status === 1).length;
-        const disabled = total - active;
-        return { total, active, disabled };
+        const states = students.map((student) => getAccountState(student.status, student.lockedUntil));
+        return {
+            total: states.length,
+            active: states.filter((state) => state === "normal").length,
+            locked: states.filter((state) => state === "locked").length,
+            disabled: states.filter((state) => state === "disabled").length,
+        };
     }, [students]);
 
     if (loading) return <div className="p-12 text-center text-muted-foreground">加载中...</div>;
@@ -192,7 +204,7 @@ export function StudentManagement() {
                 <p className="text-sm text-muted-foreground mt-1">维护班级学生名单与账号状态。</p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
@@ -218,10 +230,21 @@ export function StudentManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已锁定</p>
+                            <p className="text-2xl font-bold text-foreground mt-1">{summary.locked}</p>
+                        </div>
+                        <IconTile intent="warning">
+                            <LockKeyhole className="w-5 h-5" />
+                        </IconTile>
+                    </CardContent>
+                </Card>
+                <Card className="transition-colors hover:border-input">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div>
                             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已禁用</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{summary.disabled}</p>
                         </div>
-                        <IconTile intent="warning">
+                        <IconTile intent="neutral">
                             <PauseCircle className="w-5 h-5" />
                         </IconTile>
                     </CardContent>
@@ -283,13 +306,7 @@ export function StudentManagement() {
                                     <TableCell className="font-mono text-primary">{student.studentId}</TableCell>
                                     <TableCell className="font-medium text-foreground">{student.name}</TableCell>
                                     <TableCell className="text-muted-foreground">{student.email || "-"}</TableCell>
-                                    <TableCell>
-                                        {student.status === 1 ? (
-                                            <StatusBadge intent="success">正常</StatusBadge>
-                                        ) : (
-                                            <Badge variant="destructive" className="bg-muted-foreground/20 text-foreground/90 hover:bg-muted-foreground/20">已禁用</Badge>
-                                        )}
-                                    </TableCell>
+                                    <TableCell>{renderAccountStatus(student)}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button data-testid={`teacher-student-reset-${student.id}`} variant="ghost" size="sm" aria-label={`重置${student.name}的密码`} title="重置密码" onClick={() => handleResetPassword(student)} className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10">

@@ -30,7 +30,7 @@ import {
 } from "./routes/management";
 import { semesterUpdateRoutes } from "./routes/semester";
 
-const statsRoutes = {
+export const statsRoutes = {
     async GET() {
         const [[currentSemester], [teachers], [classes], [students], [pending]] = await Promise.all([
             db.select({ name: semester.name }).from(semester).where(eq(semester.isCurrent, 1)).limit(1),
@@ -39,10 +39,12 @@ const statsRoutes = {
             db.select({ count: count() }).from(student).where(isNull(student.deletedAt)),
             db.select({ count: count() })
                 .from(experiment)
+                .innerJoin(student, eq(experiment.studentId, student.id))
                 .innerJoin(task, eq(experiment.taskId, task.id))
                 .innerJoin(topic, eq(task.topicId, topic.id))
                 .where(and(
                     eq(experiment.status, "submitted"),
+                    isNull(student.deletedAt),
                     isNull(task.deletedAt),
                     isNull(topic.deletedAt),
                 )),

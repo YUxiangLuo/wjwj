@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull, lte, or } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, experiment, student, task, topic } from "../../db/schema";
 import { json } from "../../server/http";
@@ -9,6 +9,7 @@ import { getPrimaryTeacherIdOrThrow } from "./auth";
 const dashboardRoutes: RouteDefinition = {
     async GET(req) {
         const teacherId = getPrimaryTeacherIdOrThrow(req);
+        const now = new Date();
         const teacherScope = [eq(class_.teacherId, teacherId), isNull(task.deletedAt), isNull(topic.deletedAt)];
 
         const [[myClasses], [myTopics], [pendingGrading], [activeTasks]] = await Promise.all([
@@ -28,7 +29,8 @@ const dashboardRoutes: RouteDefinition = {
                 .where(and(
                     ...teacherScope,
                     eq(topic.status, 1),
-                    or(isNull(task.deadline), gt(task.deadline, new Date())),
+                    or(isNull(task.openTime), lte(task.openTime, now)),
+                    or(isNull(task.deadline), gt(task.deadline, now)),
                 )),
         ]);
 

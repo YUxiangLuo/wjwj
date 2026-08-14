@@ -46,7 +46,7 @@ export interface SubmissionDetail extends GradingItem {
     rejectReason?: string | null;
     weights?: { questionnaire: number; process: number; report: number };
 }
-export interface Student { id: number; studentId: string; name: string; email: string | null; status: number }
+export interface Student { id: number; studentId: string; name: string; email: string | null; status: number; lockedUntil: string | null }
 export interface TeacherAnnouncement { id: number; title: string; content: string; createdAt: string }
 export interface GradeExportPreviewItem { taskId: number; topicId: number; topic: string; classId: number; className: string; graded: number; total: number; avgScore: number }
 export interface GradeExportRow {

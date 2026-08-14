@@ -67,6 +67,7 @@ const classStudentsRoutes: RouteDefinition = {
                     name: student.name,
                     email: student.email,
                     status: student.status,
+                    lockedUntil: student.lockedUntil,
                 })
                 .from(student)
                 .where(and(eq(student.classId, classId), isNull(student.deletedAt)))

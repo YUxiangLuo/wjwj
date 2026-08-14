@@ -61,3 +61,73 @@ test("student management initializes its request from the classId query", async 
         expect(view.getByTestId("location-search").textContent).toBe("");
     });
 });
+
+test("student management distinguishes locked accounts", async () => {
+    const students = [
+        { id: 1, studentId: "SNORMAL", name: "正常学生", classId: 7, className: "统计一班", status: 1, lockedUntil: null, progress: 0, createdAt: new Date().toISOString() },
+        { id: 2, studentId: "SLOCKED", name: "锁定学生", classId: 7, className: "统计一班", status: 1, lockedUntil: "2099-01-01T00:00:00.000Z", progress: 0, createdAt: new Date().toISOString() },
+        { id: 3, studentId: "SDISABLED", name: "停用学生", classId: 7, className: "统计一班", status: 0, lockedUntil: "2099-01-01T00:00:00.000Z", progress: 0, createdAt: new Date().toISOString() },
+    ];
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const data = url.includes("/api/admin/classes") ? [] : students;
+        return new Response(JSON.stringify({ success: true, data }), {
+            headers: { "Content-Type": "application/json" },
+        });
+    }) as unknown as typeof fetch;
+
+    const view = render(
+        <MemoryRouter initialEntries={["/student"]}>
+            <StudentManagement />
+        </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(view.getByText("SLOCKED")).toBeTruthy());
+    expect(view.getByText("锁定")).toBeTruthy();
+    expect(view.getByText("正常")).toBeTruthy();
+    expect(view.getAllByText("停用").some((element) => element.tagName === "SPAN")).toBe(true);
+});
+
+test("resetting a locked student refreshes the displayed account state", async () => {
+    let locked = true;
+    let listRequests = 0;
+    globalThis.fetch = mock(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/reset-password") && init?.method === "POST") {
+            locked = false;
+            return new Response(JSON.stringify({ success: true, data: { success: true } }), {
+                headers: { "Content-Type": "application/json" },
+            });
+        }
+        const data = url.includes("/api/admin/classes") ? [] : [{
+            id: 2,
+            studentId: "SLOCKED",
+            name: "锁定学生",
+            classId: 7,
+            className: "统计一班",
+            status: 1,
+            lockedUntil: locked ? "2099-01-01T00:00:00.000Z" : null,
+            progress: 0,
+            createdAt: new Date().toISOString(),
+        }];
+        if (url.includes("/api/admin/students")) listRequests += 1;
+        return new Response(JSON.stringify({ success: true, data }), {
+            headers: { "Content-Type": "application/json" },
+        });
+    }) as unknown as typeof fetch;
+
+    const view = render(
+        <MemoryRouter initialEntries={["/student"]}>
+            <StudentManagement />
+        </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(view.getByText("锁定")).toBeTruthy());
+    fireEvent.click(view.getByRole("button", { name: "重置密码" }));
+
+    await waitFor(() => {
+        expect(listRequests).toBeGreaterThanOrEqual(2);
+        expect(view.getByText("正常")).toBeTruthy();
+        expect(view.queryByText("锁定")).toBeNull();
+    });
+});

@@ -5,7 +5,7 @@ import { createTeacherAuthModuleMock } from "../../test-utils/mock-auth-modules"
 import { createMockDb } from "../../test-utils/mock-db";
 import { student } from "../../db/schema";
 
-test("dashboard keeps completed activity but excludes soft-deleted students from every activity query", async () => {
+test("dashboard counts only visible activity and currently open tasks", async () => {
     const submittedAt = new Date("2026-07-18T01:00:00Z");
     const gradedAt = new Date("2026-07-18T02:00:00Z");
     const { db, operations } = createMockDb({ select: [
@@ -34,12 +34,19 @@ test("dashboard keeps completed activity but excludes soft-deleted students from
     expect(selects[2]!.joins?.map((join) => join.table)).toContain(student);
     const dialect = new PgDialect();
     const pendingQuery = dialect.sqlToQuery(selects[2]!.where as SQL);
+    const activeTaskQuery = dialect.sqlToQuery(selects[3]!.where as SQL);
     const recentSubmissionQuery = dialect.sqlToQuery(selects[4]!.where as SQL);
     const recentGradingQuery = dialect.sqlToQuery(selects[5]!.where as SQL);
     for (const query of [pendingQuery, recentSubmissionQuery, recentGradingQuery]) {
         expect(query.sql).toContain('"student"."deleted_at" is null');
     }
     expect(pendingQuery.params).toEqual([9, "submitted"]);
+    expect(activeTaskQuery.sql).toContain('"task"."open_time" is null or "task"."open_time" <=');
+    expect(activeTaskQuery.sql).toContain('"task"."deadline" is null or "task"."deadline" >');
+    expect(activeTaskQuery.params.slice(0, 2)).toEqual([9, 1]);
+    expect(typeof activeTaskQuery.params[2]).toBe("string");
+    expect(Number.isNaN(Date.parse(activeTaskQuery.params[2] as string))).toBe(false);
+    expect(activeTaskQuery.params[3]).toEqual(activeTaskQuery.params[2]);
     expect(recentSubmissionQuery.params).toEqual([9, "submitted", "graded", "rejected"]);
     expect(recentGradingQuery.params).toEqual([9, "graded", "rejected"]);
 });

@@ -5,7 +5,7 @@ export interface Stats { currentSemester: string; teacherCount: number; classCou
 export interface Semester { id: number; name: string; isCurrent: number; classCount: number; createdAt: string }
 export interface Teacher { id: number; employeeId: string; name: string; status: number; classCount: number; createdAt: string }
 export interface Class { id: number; name: string; semesterId: number; semesterName: string | null; teacherId: number; teacherName: string | null; studentCount: number; createdAt: string }
-export interface Student { id: number; studentId: string; name: string; classId: number; className: string | null; status: number; progress: number; createdAt: string }
+export interface Student { id: number; studentId: string; name: string; classId: number; className: string | null; status: number; lockedUntil: string | null; progress: number; createdAt: string }
 export interface StudentExperiment {
     id: number; taskName: string | null; currentStage: number;
     status: "in_progress" | "submitted" | "graded" | "rejected";

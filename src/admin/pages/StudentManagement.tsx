@@ -22,6 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
+import { getAccountState, matchesAccountState, type AccountStateFilter } from "@/lib/account-state";
 import {
     Table,
     TableBody,
@@ -38,6 +39,15 @@ import {
     type StudentExperiment,
 } from "../api-client";
 
+function renderAccountStatus(item: Student) {
+    const state = getAccountState(item.status, item.lockedUntil);
+    return (
+        <StatusBadge intent={state === "normal" ? "success" : state === "locked" ? "warning" : "neutral"}>
+            {state === "normal" ? "正常" : state === "locked" ? "锁定" : "停用"}
+        </StatusBadge>
+    );
+}
+
 export function StudentManagement() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -50,7 +60,7 @@ export function StudentManagement() {
     const [classId, setClassId] = useState(requestedClassId);
     const [search, setSearch] = useState("");
     const [appliedSearch, setAppliedSearch] = useState("");
-    const [status, setStatus] = useState("all");
+    const [status, setStatus] = useState<AccountStateFilter>("all");
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Student | null>(null);
     const [experiments, setExperiments] = useState<StudentExperiment[]>([]);
@@ -91,8 +101,7 @@ export function StudentManagement() {
     }, [classId]);
 
     const filtered = useMemo(
-        () => students.filter((item) => status === "all"
-            || (status === "active" ? item.status === 1 : item.status === 0)),
+        () => students.filter((item) => matchesAccountState(item.status, item.lockedUntil, status)),
         [students, status],
     );
     const selectedClassName = classes.find((item) => String(item.id) === classId)?.name;
@@ -160,13 +169,14 @@ export function StudentManagement() {
                             ))}
                         </SelectContent>
                     </Select>
-                    <Select value={status} onValueChange={setStatus}>
+                    <Select value={status} onValueChange={(value) => setStatus(value as AccountStateFilter)}>
                         <SelectTrigger aria-label="按账号状态筛选学生" className="w-36">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">全部状态</SelectItem>
-                            <SelectItem value="active">正常</SelectItem>
+                            <SelectItem value="normal">正常</SelectItem>
+                            <SelectItem value="locked">已锁定</SelectItem>
                             <SelectItem value="disabled">已停用</SelectItem>
                         </SelectContent>
                     </Select>
@@ -218,11 +228,7 @@ export function StudentManagement() {
                                     <TableCell className="font-mono">{item.studentId}</TableCell>
                                     <TableCell>{item.name}</TableCell>
                                     <TableCell>{item.className ?? "-"}</TableCell>
-                                    <TableCell>
-                                        <StatusBadge intent={item.status === 1 ? "success" : "neutral"}>
-                                            {item.status === 1 ? "正常" : "停用"}
-                                        </StatusBadge>
-                                    </TableCell>
+                                    <TableCell>{renderAccountStatus(item)}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
                                             <Progress
@@ -243,9 +249,12 @@ export function StudentManagement() {
                                                 size="sm"
                                                 onClick={async () => {
                                                     const response = await studentApi.resetPassword(item.id);
-                                                    response.success
-                                                        ? toast.success("密码已重置为学号，下次登录必须修改")
-                                                        : toast.error(response.error?.message);
+                                                    if (response.success) {
+                                                        toast.success("密码已重置为学号，下次登录必须修改");
+                                                        await load();
+                                                    } else {
+                                                        toast.error(response.error?.message);
+                                                    }
                                                 }}
                                             >
                                                 <RotateCcw className="mr-1 h-4 w-4" />重置密码

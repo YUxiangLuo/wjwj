@@ -306,6 +306,7 @@ const studentRoutes: RouteDefinition = {
                 classId: student.classId,
                 className: class_.name,
                 status: student.status,
+                lockedUntil: student.lockedUntil,
                 createdAt: student.createdAt,
             })
             .from(student)
