@@ -114,3 +114,11 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - Status badges should use `StatusBadge`; repeated icon stat tiles should use `IconTile`; repeated page section headers should use `PageHeader`.
 - The project is light-only: there is no dark theme, no theme toggle, and `dark:` variants must never be used.
 - Run `bun run check:styles` after style changes.
+
+## This repository
+
+- Three SPAs: `src/student`, `src/teacher`, `src/admin`. One `Bun.serve` entry in `src/index.ts`.
+- Do not import `src/server/**`, `src/db/**`, or `storage-files` from SPA pages or components. Browser bundles have no `process.cwd()`.
+- Production `scripts/build.ts` inlines `process.env.DEV_AUTH_MODE` to `"0"`. Read those env vars as member expressions so `define` can replace them.
+- PPS default size-field selection lives in `src/student/experiment/pps-size-field.ts`.
+- Overview: [README.md](README.md). Database: [DATABASE.md](DATABASE.md). Security: [SECURITY.md](SECURITY.md).

@@ -1,7 +1,12 @@
 # PostgreSQL operations
 
 The application uses PostgreSQL through Bun SQL and Drizzle's `bun-sql`
-adapter. `DATABASE_URL` is the only runtime database setting.
+adapter. `DATABASE_URL` is the only runtime database setting. Product
+overview and seed accounts are in [README.md](README.md).
+
+Active tables: `admin`, `teacher`, `student`, `semester`, `class`,
+`topic`, `topic_attachment`, `task`, `experiment`, `announcement`,
+`user_session`. Migrations live in `drizzle/postgresql` (`0000`–`0004`).
 
 ## Create the database
 
@@ -10,6 +15,7 @@ Create an empty PostgreSQL database and export its connection URL:
 ```sh
 export DATABASE_URL='postgresql://user:password@127.0.0.1:5432/wenjuan'
 bun run db:migrate
+bun run db:seed
 ```
 
 The first migration enables `citext` and creates the application tables,
@@ -17,13 +23,17 @@ foreign keys, constraints, and indexes. The role applying it must be
 allowed to run `CREATE EXTENSION citext`; otherwise a database administrator
 must install that extension first.
 
-This repository now uses a simplified-schema baseline intended for an empty
-database. `db:migrate` detects the former schema (for example, the old
-`submission` table) and stops instead of attempting to run `CREATE TABLE`
-statements over existing data. For an installation from before the
-simplification, first take a database and `storage/` backup. If retaining the
-old records is not required, run `bun run db:reset`; otherwise keep the old
-database for export and deploy this version against a new empty database.
+This repository uses a simplified-schema baseline intended for an empty
+database. `db:migrate` stops if it sees the former schema (`public.submission`)
+or application tables without a `drizzle.__drizzle_migrations` record. For an
+installation from before the simplification, first take a database and
+`storage/` backup. If retaining the old records is not required, run
+`bun run db:reset`; otherwise keep the old database for export and deploy this
+version against a new empty database.
+
+`db:seed` writes the classroom fixture in `src/db/seeds/default.ts`
+(uneven 200-row population, S010–S015, T001, four tasks). `SEED_ADMIN_PASSWORD`
+overrides the generated admin password. Seed is not applied by `db:migrate`.
 
 ## Change the schema
 

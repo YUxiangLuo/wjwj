@@ -9,7 +9,7 @@ bun run audit:applicable
 
 `bun audit` 保留上游公告的完整可见性；`audit:applicable` 是发布门禁，只允许下表中按“公告 ID + 包名”精确匹配的已评估残留。任何新公告、包名变化或 ID 变化都会使门禁失败。
 
-## 当前残留（复核日期：2026-08-09）
+## 当前残留（复核日期：2026-08-14）
 
 | 公告 | 依赖路径 | 适用性结论 |
 | --- | --- | --- |
@@ -18,9 +18,18 @@ bun run audit:applicable
 
 React Router 公告已通过升级至 `7.18.2+` 清除；`happy-dom` 的 `ws` 链已升级至包含修复的版本。
 
+## 鉴权
+
+- 会话写在 `user_session`，按角色使用独立 cookie。
+- 连续 5 次错密锁定 30 分钟。
+- 登录对停用、不存在、密码错误一律返回 `INVALID_CREDENTIALS`，不暴露账号是否存在。
+- `DEV_AUTH_MODE=0` 或 `NODE_ENV=production` 时，首次登录必须改密；未改密的业务 API 返回 `PASSWORD_CHANGE_REQUIRED`。
+- 生产构建把前端的 `process.env.DEV_AUTH_MODE` 内联为 `"0"`。不要用未构建的 `NODE_ENV=production bun src/index.ts` 上课。
+- 密码至少 8 位，需字母、数字和特殊字符，且不能包含学号/工号。
+
 ## 生产 HTTP 防护
 
-`bun run start` 会先执行生产构建；若直接以 `NODE_ENV=production bun src/index.ts` 启动，则必须预先运行 `bun run build`。生产模式下，Bun 服务从 `dist/` 提供构建产物，并统一设置 CSP（包括 `frame-ancestors 'self'`）、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy` 和同源资源策略。构建脚本使用根路径资源 URL，因此 SPA 深链也能正确加载静态资源。
+`bun run start` 会先执行生产构建；若直接以 `NODE_ENV=production bun src/index.ts` 启动，则必须预先运行 `bun run build`。生产模式下，Bun 服务从 `dist/` 提供构建产物，并统一设置 CSP（包括 `frame-ancestors 'self'`）、`X-Frame-Options: SAMEORIGIN`、`X-Content-Type-Options`、`Referrer-Policy`、`Permissions-Policy` 和同源资源策略。构建脚本使用根路径资源 URL，因此 SPA 深链也能正确加载静态资源。
 
 TLS 与 HSTS 仍由正式环境的反向代理或负载均衡器负责；只有确认所有流量均已强制 HTTPS 后才能启用 HSTS。
 
