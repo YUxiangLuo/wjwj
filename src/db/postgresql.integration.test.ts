@@ -25,6 +25,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
     let classId: number | undefined;
     let studentId: number | undefined;
     let topicId: number | undefined;
+    let unassignedTopicId: number | undefined;
     let taskId: number | undefined;
     let closeApplicationDatabase: (() => Promise<void>) | undefined;
 
@@ -128,6 +129,11 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             })
             .returning({ id: schema.topic.id });
         topicId = createdTopic!.id;
+        const [createdUnassignedTopic] = await database
+            .insert(schema.topic)
+            .values({ teacherId, name: "PostgreSQL unassigned topic", status: 0 })
+            .returning({ id: schema.topic.id });
+        unassignedTopicId = createdUnassignedTopic!.id;
         const [createdTask] = await database
             .insert(schema.task)
             .values({ topicId, classId })
@@ -251,11 +257,14 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         expect(invalidScoreRejected).toBe(true);
 
         process.env.DATABASE_URL = testDatabaseUrl!;
-        const [{ listTeacherTasks }, applicationDatabase] = await Promise.all([
+        const [{ listTeacherTasks }, { requireTopicOwner }, applicationDatabase] = await Promise.all([
             import("../teacher/topic/query-service"),
+            import("../teacher/topic/access"),
             import("./index"),
         ]);
         closeApplicationDatabase = applicationDatabase.closeDatabase;
+        expect((await requireTopicOwner(topicId, teacherId))?.hasTasks).toBe(true);
+        expect((await requireTopicOwner(unassignedTopicId, teacherId))?.hasTasks).toBe(false);
         const taskRows = await listTeacherTasks(teacherId);
         const taskRow = taskRows.find((row) => row.id === taskId);
         expect(taskRow).toMatchObject({
@@ -268,6 +277,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
     } finally {
         await closeApplicationDatabase?.();
         if (taskId) await database.delete(schema.task).where(eq(schema.task.id, taskId));
+        if (unassignedTopicId) await database.delete(schema.topic).where(eq(schema.topic.id, unassignedTopicId));
         if (topicId) await database.delete(schema.topic).where(eq(schema.topic.id, topicId));
         if (studentId) await database.delete(schema.student).where(eq(schema.student.id, studentId));
         if (classId) await database.delete(schema.class_).where(eq(schema.class_.id, classId));
