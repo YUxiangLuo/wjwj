@@ -58,7 +58,7 @@ export interface SamplePlanData {
 }
 
 export interface SamplingResultsData {
-    simple?: { completed: boolean; sampleCount: number; seed?: number; data?: unknown[] };
+    simple?: { completed: boolean; sampleCount: number; seed?: number; indices?: number[]; data?: unknown[] };
     systematic?: {
         completed: boolean;
         /** Fractional K=N/n written by the exact-n algorithm. */
@@ -67,6 +67,7 @@ export interface SamplingResultsData {
         kValue?: number;
         sampleCount: number;
         seed?: number;
+        indices?: number[];
         randomStart?: number;
         /** Legacy selected starting index. */
         startIndex?: number;
@@ -81,6 +82,7 @@ export interface SamplingResultsData {
         seed?: number;
         randomStart?: number;
         inclusionProbabilities?: number[];
+        indices?: number[];
         data?: unknown[];
     };
     stratified?: {
@@ -89,6 +91,7 @@ export interface SamplingResultsData {
         layers: Array<{ name: string; count: number; ratio: number; sampleCount: number }>;
         sampleCount?: number;
         seed?: number;
+        indices?: number[];
         data?: unknown[];
     };
 }

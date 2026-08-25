@@ -2,6 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, teacher, topic } from "../../db/schema";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
+import { readPopulationData } from "../experiment/population-data";
+import { hydrateSamplingResults, samplingResultsNeedPopulation } from "../experiment/sampling-storage";
 import { parseStoredJson } from "../experiment/serialization";
 import { error, getRouteParam, json } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
@@ -40,6 +42,7 @@ const submissionByTaskRoutes: RouteDefinition = {
                 graderName: teacher.name,
                 weightConfig: topic.weightConfig,
                 populationSize: topic.excelRowCount,
+                excelFilePath: topic.excelFilePath,
                 submissionSnapshot: experiment.submissionSnapshot,
                 questionnaire: experiment.questionnaire,
                 samplePlan: experiment.samplePlan,
@@ -63,13 +66,19 @@ const submissionByTaskRoutes: RouteDefinition = {
             reportContent?: string;
             weightConfig?: unknown;
         }>(row.submissionSnapshot);
+        const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
+        let samplingResults = storedSamplingResults;
+        if (samplingResultsNeedPopulation(storedSamplingResults) && row.excelFilePath) {
+            const population = await readPopulationData(row.excelFilePath);
+            if (population.length) samplingResults = hydrateSamplingResults(storedSamplingResults, population);
+        }
         const snapshotContent = {
             topicName: snapshot?.topicName ?? row.topicName,
             studentName: snapshot?.studentName ?? auth.student.name,
             populationSize: snapshot?.populationSize ?? row.populationSize,
             questionnaire: snapshot?.questionnaire ?? parseStoredJson(row.questionnaire),
             samplePlan: snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
-            samplingResults: snapshot?.samplingResults ?? parseStoredJson(row.samplingResults),
+            samplingResults,
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
         };
         return json({

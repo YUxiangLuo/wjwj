@@ -1,11 +1,13 @@
 import { and, count, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { class_, experiment, student, task, teacher, topic } from "../../db/schema";
+import { class_, experiment, samplingAttempt, student, task, teacher, topic } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { scoringWeightsFrom } from "../../lib/scoring-weights";
 import { error, getRouteParam, getSearchParams, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
+import { readPopulationData } from "../../student/experiment/population-data";
+import { hydrateSamplingResults, samplingResultsNeedPopulation } from "../../student/experiment/sampling-storage";
 import { parseStoredJson } from "../../student/experiment/serialization";
 import { getTeacherUser } from "./auth";
 
@@ -123,6 +125,7 @@ async function findOwnedExperiment(experimentId: number, teacherId: number) {
         topicName: topic.name,
         topicDesc: topic.description,
         populationSize: topic.excelRowCount,
+        excelFilePath: topic.excelFilePath,
         weightConfig: topic.weightConfig,
         status: experiment.status,
         submittedAt: experiment.submittedAt,
@@ -169,8 +172,33 @@ const gradingDetailRoutes: RouteDefinition = {
         }>(row.submissionSnapshot);
         const populationSize = snapshot?.populationSize ?? row.populationSize;
         const weights = scoringWeightsFrom(snapshot?.weightConfig ?? row.weightConfig);
+        const samplingAttempts = await db
+            .select({
+                id: samplingAttempt.id,
+                method: samplingAttempt.method,
+                seed: samplingAttempt.seed,
+                sampleCount: samplingAttempt.sampleCount,
+                details: samplingAttempt.details,
+                createdAt: samplingAttempt.createdAt,
+            })
+            .from(samplingAttempt)
+            .where(eq(samplingAttempt.experimentId, experimentId))
+            .orderBy(desc(samplingAttempt.createdAt))
+            .limit(100);
+        const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
+        let samplingResults = storedSamplingResults;
+        if (samplingResultsNeedPopulation(storedSamplingResults) && row.excelFilePath) {
+            const population = await readPopulationData(row.excelFilePath);
+            if (population.length) samplingResults = hydrateSamplingResults(storedSamplingResults, population);
+        }
+        const {
+            excelFilePath: _excelFilePath,
+            submissionSnapshot: _submissionSnapshot,
+            weightConfig: _weightConfig,
+            ...publicRow
+        } = row;
         return json({
-            ...row,
+            ...publicRow,
             studentName: snapshot?.studentName ?? row.studentName,
             topic: snapshot?.topicName ?? row.topic,
             topicName: snapshot?.topicName ?? row.topicName,
@@ -180,13 +208,14 @@ const gradingDetailRoutes: RouteDefinition = {
                 snapshot?.samplePlan ?? parseStoredJson(row.samplePlan),
                 populationSize,
             ),
-            samplingResults: snapshot?.samplingResults ?? parseStoredJson(row.samplingResults),
+            samplingResults,
             reportContent: snapshot?.reportContent ?? row.reportContent ?? "",
             scoreQuestionnaire: numeric(row.scoreQuestionnaire),
             scoreProcess: numeric(row.scoreProcess),
             scoreReport: numeric(row.scoreReport),
             totalScore: numeric(row.totalScore),
             weights,
+            samplingAttempts,
         });
     },
 

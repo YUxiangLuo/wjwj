@@ -5,6 +5,7 @@ import { validateObservedVersion } from "../../lib/observed-version";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
+import { compactSamplingResults } from "./sampling-storage";
 import { ExperimentStatus } from "./status";
 import {
     getTargetSampleSizeFromSamplePlan,
@@ -97,7 +98,9 @@ export async function submitStudentExperiment(params: {
         parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplePlan),
         populationSize,
     );
-    const samplingResults = parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults);
+    const samplingResults = compactSamplingResults(
+        parseStoredJson<Record<string, unknown>>(params.experimentRecord.samplingResults),
+    );
     const snapshot: SubmissionSnapshot = {
         topicName: params.taskInfo.topicName ?? "未命名课题",
         studentName: params.student.name || params.student.studentId,

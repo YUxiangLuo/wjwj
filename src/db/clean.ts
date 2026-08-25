@@ -20,6 +20,7 @@ const PROJECT_TABLES = [
     "operation_log",
     "system_config",
     "assistant",
+    "sampling_attempt",
     "experiment",
     "student",
     "task",

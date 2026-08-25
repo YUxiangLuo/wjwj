@@ -70,6 +70,29 @@ test("attachment preview ignores a spoofed stored MIME and derives it from the f
     }
 });
 
+test("export route hydrates compact sampling indices from the immutable population file", async () => {
+    const populationPath = `/storage/compact-export-${crypto.randomUUID()}.csv`;
+    const absolutePath = `${process.cwd()}${populationPath}`;
+    await Bun.write(absolutePath, "id,city\n1,北京\n2,上海\n");
+
+    try {
+        const module = await loadFilesRoutes({
+            select: [[{
+                excelFilePath: populationPath,
+                samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
+            }]],
+        });
+        const response = await module.exportRoutes.GET!(withRouteParam(
+            createRequest("https://example.com/api/student/tasks/40/export?type=simple"),
+            "40",
+        ));
+        expect(response.status).toBe(200);
+        expect(await response.text()).toContain("上海");
+    } finally {
+        await unlink(absolutePath).catch(() => undefined);
+    }
+});
+
 test("export route reads serialized sampling results and returns csv", async () => {
     const module = await loadFilesRoutes({
         select: [

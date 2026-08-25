@@ -102,7 +102,9 @@ const topicExcelUploadRoutes: RouteDefinition = {
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
-        if (topicRow.status === 1) return error("已发布课题不能修改数据", "FORBIDDEN", 403);
+        if (topicRow.status === 1 || topicRow.hasTasks) {
+            return error("已发布或已分配任务的课题不能修改总体数据", "FORBIDDEN", 403);
+        }
         if (spreadsheetRequestExceedsLimit(req)) {
             return error("表格文件不能超过20 MiB", "FILE_TOO_LARGE", 413);
         }
@@ -135,7 +137,9 @@ const topicFieldMappingRoutes: RouteDefinition = {
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
-        if (topicRow.status === 1) return error("已发布课题不能修改字段映射", "FORBIDDEN", 403);
+        if (topicRow.status === 1 || topicRow.hasTasks) {
+            return error("已发布或已分配任务的课题不能修改字段映射", "FORBIDDEN", 403);
+        }
 
         const body = await parseBody<{ fieldMapping: any }>(req);
         const mappingResult = await updateTopicFieldMapping({
@@ -207,7 +211,9 @@ const topicWeightRoutes: RouteDefinition = {
 
         const topicRow = await requireTopicOwner(id, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
-        if (topicRow.status === 1) return error("已发布课题不能修改评分权重", "FORBIDDEN", 403);
+        if (topicRow.status === 1 || topicRow.hasTasks) {
+            return error("已发布或已分配任务的课题不能修改评分权重", "FORBIDDEN", 403);
+        }
 
         const body = await parseBody<{ weightConfig: { questionnaire: number; process: number; report: number } }>(req);
         const weightResult = await updateTopicWeightConfig({

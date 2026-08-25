@@ -24,7 +24,7 @@
    - 系统抽样（允许分数间隔 \(K=N/n\)，抽满规划人数）
    - PPS（不放回 \(\pi\)ps，默认选名称像规模的字段；分析用 Hájek 加权均值）
    - 分层抽样（按比例 / 等额 / 奈曼；奈曼需要层内标准差，溢出后回灌）
-4. **分析与报告**：方法对比、误差与代表性，撰写报告后提交。教师可评分或驳回重做。
+4. **分析与报告**：方法对比、误差与代表性，撰写报告后提交。教师可评分或驳回重做，并查看学生最近的服务端抽样执行记录。
 
 ## 技术栈
 
@@ -130,7 +130,7 @@ src/student/          学生 SPA 与 /api/student
 src/teacher/          教师 SPA 与 /api/teacher
 src/admin/            管理 SPA 与 /api/admin
 src/student/sampling.ts
-src/student/experiment/   样本量、抽样、分析、提交
+src/student/experiment/   样本量、抽样、紧凑结果存储、分析、提交
 src/db/               schema、迁移、seed
 styles/theme.css      唯一主题源
 public/templates/     教师上传模板

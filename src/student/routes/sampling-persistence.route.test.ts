@@ -91,7 +91,41 @@ test("sampling action atomically persists its server-generated method result", a
     expect(query.sql).toContain("jsonb_set");
     expect(query.sql).toContain("coalesce");
     expect(query.params).toContain("simple");
-    expect(query.params).toContainEqual(expect.objectContaining({ serverGenerated: true }));
+    const storedResult = query.params.find((value) => (
+        value !== null && typeof value === "object" && (value as { serverGenerated?: boolean }).serverGenerated === true
+    )) as Record<string, unknown>;
+    expect(storedResult).toMatchObject({ serverGenerated: true, indices: expect.any(Array) });
+    expect(storedResult).not.toHaveProperty("data");
+
+    const attemptInsert = operations.find((operation) => operation.kind === "insert");
+    expect(attemptInsert?.values).toMatchObject({
+        experimentId: 9,
+        method: "simple",
+        seed: 2026,
+        sampleCount: 2,
+    });
+    expect((attemptInsert?.values as { details?: unknown })?.details).not.toHaveProperty("indices");
+    expect((attemptInsert?.values as { details?: unknown })?.details).not.toHaveProperty("inclusionProbabilities");
+    expect(operations.some((operation) => operation.kind === "transaction")).toBe(true);
+});
+
+test("experiment reads hydrate compact stored indices for the SPA", async () => {
+    const compact = record({
+        samplingResults: {
+            simple: { completed: true, sampleCount: 2, indices: [1, 3], serverGenerated: true },
+        },
+    });
+    const { module } = await load(compact);
+    const request = new Request("https://example.com/api/student/tasks/3/experiment");
+    (request as Request & { params?: Record<string, string> }).params = { id: "3" };
+
+    const response = await module.experimentRoutes.GET!(request);
+    const payload = await response.json() as any;
+    expect(response.status).toBe(200);
+    expect(payload.data.samplingResults.simple.data).toEqual([
+        { id: 2, gender: "A", weight: 2 },
+        { id: 4, gender: "B", weight: 4 },
+    ]);
 });
 
 test("forged stage completion cannot supply results or bypass an eligible PPS method", async () => {

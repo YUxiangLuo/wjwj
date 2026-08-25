@@ -1,8 +1,8 @@
 import {
     createSeededRandom,
     performPPSSampling,
-    performSimpleSampling,
-    performStratifiedSampling,
+    performSimpleSamplingWithIndices,
+    performStratifiedSamplingWithIndices,
     performSystematicSampling,
     stratumKey,
 } from "../sampling";
@@ -85,10 +85,16 @@ export async function executeSamplingAction(params: {
                 };
             }
 
-            const data = await performSimpleSampling(params.population, sampleSize, random);
+            const selection = performSimpleSamplingWithIndices(params.population, sampleSize, random);
             return {
                 ok: true as const,
-                result: { completed: true, sampleCount: data.length, seed: effectiveSeed, data },
+                result: {
+                    completed: true,
+                    sampleCount: selection.data.length,
+                    seed: effectiveSeed,
+                    indices: selection.indices,
+                    data: selection.data,
+                },
             };
         }
         case "systematic": {
@@ -114,6 +120,7 @@ export async function executeSamplingAction(params: {
                     randomStart: selection.randomStart,
                     sampleCount: selection.data.length,
                     seed: effectiveSeed,
+                    indices: selection.indices,
                     data: selection.data,
                 },
             };
@@ -170,6 +177,7 @@ export async function executeSamplingAction(params: {
                     seed: effectiveSeed,
                     randomStart: selection.randomStart,
                     inclusionProbabilities: selection.inclusionProbabilities,
+                    indices: selection.indices,
                     data: selection.data,
                 },
             };
@@ -255,16 +263,22 @@ export async function executeSamplingAction(params: {
                 };
             }
 
-            const data = await performStratifiedSampling(params.population, stratifyBy, layers, random);
+            const selection = performStratifiedSamplingWithIndices(
+                params.population,
+                stratifyBy,
+                layers,
+                random,
+            );
             return {
                 ok: true as const,
                 result: {
                     completed: true,
                     stratifyBy,
                     layers,
-                    sampleCount: data.length,
+                    sampleCount: selection.data.length,
                     seed: effectiveSeed,
-                    data,
+                    indices: selection.indices,
+                    data: selection.data,
                 },
             };
         }

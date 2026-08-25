@@ -37,6 +37,14 @@ export interface SubmissionDetail extends GradingItem {
     samplePlan: SamplePlanData | null;
     questionnaire: QuestionnaireData | null;
     samplingResults?: SamplingResultsData | null;
+    samplingAttempts?: Array<{
+        id: number;
+        method: "simple" | "systematic" | "pps" | "stratified";
+        seed: number;
+        sampleCount: number;
+        details: Record<string, unknown>;
+        createdAt: string;
+    }>;
     populationSize?: number | null;
     scoreQuestionnaire: number | null;
     scoreProcess: number | null;

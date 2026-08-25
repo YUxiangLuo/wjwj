@@ -5,8 +5,11 @@ adapter. `DATABASE_URL` is the only runtime database setting. Product
 overview and seed accounts are in [README.md](README.md).
 
 Active tables: `admin`, `teacher`, `student`, `semester`, `class`,
-`topic`, `topic_attachment`, `task`, `experiment`, `announcement`,
-`user_session`. Migrations live in `drizzle/postgresql` (`0000`–`0005`). Migration `0005` adds database-level status/range checks and guarantees that at most one semester is current.
+`topic`, `topic_attachment`, `task`, `experiment`, `sampling_attempt`,
+`announcement`, `user_session`. Migrations live in `drizzle/postgresql`
+(`0000`–`0006`). Migration `0005` adds database-level status/range checks
+and guarantees that at most one semester is current; `0006` adds the compact
+sampling-attempt audit log.
 
 ## Create the database
 

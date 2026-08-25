@@ -1,10 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
-import { experiment, topicAttachment } from "../../db/schema";
+import { experiment, task, topic, topicAttachment } from "../../db/schema";
 import { error, getRouteParam, getSearchParams } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { resolveStoragePath } from "../../server/storage-files";
 import { getStudentTaskAccessError, getStudentTopicAttachmentAccessError } from "../experiment/task-access";
+import { readPopulationData } from "../experiment/population-data";
+import { hydrateSamplingResults, samplingResultsNeedPopulation } from "../experiment/sampling-storage";
 import { parseStoredJson } from "../experiment/serialization";
 import { requireAuth } from "./auth";
 
@@ -152,15 +154,27 @@ const exportRoutes: RouteDefinition = {
         }
 
         const [exp] = await db
-            .select({ samplingResults: experiment.samplingResults })
+            .select({
+                samplingResults: experiment.samplingResults,
+                excelFilePath: topic.excelFilePath,
+            })
             .from(experiment)
+            .innerJoin(task, eq(experiment.taskId, task.id))
+            .innerJoin(topic, eq(task.topicId, topic.id))
             .where(and(eq(experiment.studentId, currentStudent.id), eq(experiment.taskId, taskId)));
 
         if (!exp?.samplingResults) {
             return error("暂无抽样结果", "NO_DATA", 404);
         }
 
-        const results = parseStoredJson<SamplingResultsExportData>(exp.samplingResults);
+        const storedResults = parseStoredJson<SamplingResultsExportData>(exp.samplingResults);
+        let results = storedResults;
+        if (samplingResultsNeedPopulation(storedResults) && exp.excelFilePath) {
+            const population = await readPopulationData(exp.excelFilePath);
+            if (population.length) {
+                results = hydrateSamplingResults(storedResults, population) as SamplingResultsExportData;
+            }
+        }
         if (!results) {
             return error("暂无抽样结果", "NO_DATA", 404);
         }

@@ -147,6 +147,19 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             .returning({ id: schema.experiment.id, version: schema.experiment.version });
         expect(createdExperiment?.version).toBe(1);
 
+        const [createdAttempt] = await database
+            .insert(schema.samplingAttempt)
+            .values({
+                experimentId: createdExperiment!.id,
+                method: "simple",
+                seed: 2026,
+                sampleCount: 2,
+                details: { completed: true },
+            })
+            .returning({ id: schema.samplingAttempt.id, details: schema.samplingAttempt.details });
+        expect(createdAttempt?.id).toBeNumber();
+        expect(createdAttempt?.details).toEqual({ completed: true });
+
         const systematicResult = { completed: true, sampleCount: 2, serverGenerated: true };
         await database
             .update(schema.experiment)

@@ -271,6 +271,25 @@ export const experiment = pgTable(
     }),
 );
 
+export const samplingAttempt = pgTable(
+    "sampling_attempt",
+    {
+        id: bigint("id", { mode: "number" }).generatedByDefaultAsIdentity().primaryKey(),
+        experimentId: bigint("experiment_id", { mode: "number" }).notNull().references(() => experiment.id, { onDelete: "cascade" }),
+        method: varchar("method", { length: 20 }).notNull(),
+        seed: bigint("seed", { mode: "number" }).notNull(),
+        sampleCount: integer("sample_count").notNull(),
+        details: nativeJsonb("details").notNull(),
+        createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    },
+    (table) => ({
+        experimentIdx: index("sampling_attempt_idx_experiment").on(table.experimentId, table.createdAt),
+        methodCheck: check("sampling_attempt_ck_method", sql`${table.method} in ('simple', 'systematic', 'pps', 'stratified')`),
+        sampleCountCheck: check("sampling_attempt_ck_sample_count", sql`${table.sampleCount} >= 0`),
+        detailsObject: check("sampling_attempt_ck_details_object", sql`jsonb_typeof(${table.details}) = 'object'`),
+    }),
+);
+
 // Small system domain
 export const announcement = pgTable(
     "announcement",

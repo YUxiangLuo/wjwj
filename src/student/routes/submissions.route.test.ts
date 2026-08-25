@@ -1,3 +1,4 @@
+import { unlink } from "node:fs/promises";
 import { expect, mock, test } from "bun:test";
 import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
@@ -72,6 +73,50 @@ test("submission endpoint returns the task's current experiment result", async (
     });
     expect(payload.data.weights).toEqual({ questionnaire: 40, process: 35, report: 25 });
     expect(payload.data).not.toHaveProperty("pdfStatus");
+});
+
+test("submission endpoint hydrates compact immutable snapshot samples", async () => {
+    const populationPath = `/storage/compact-submission-${crypto.randomUUID()}.csv`;
+    const absolutePath = `${process.cwd()}${populationPath}`;
+    await Bun.write(absolutePath, "id,city\n1,北京\n2,上海\n");
+
+    try {
+        const { db } = createMockDb({ select: [[{
+            id: 501,
+            taskId: 40,
+            version: 12,
+            topicId: 12,
+            topicName: "抽样调查",
+            submittedAt: new Date(),
+            status: "submitted",
+            scoreQuestionnaire: null,
+            scoreProcess: null,
+            scoreReport: null,
+            totalScore: null,
+            teacherComment: null,
+            rejectReason: null,
+            gradedAt: null,
+            graderName: null,
+            weightConfig: { questionnaire: 30, process: 30, report: 40 },
+            populationSize: 2,
+            excelFilePath: populationPath,
+            submissionSnapshot: {
+                samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
+            },
+        }]] });
+        mock.module("../../db", () => ({ db }));
+        mock.module("./auth", () => createStudentAuthModuleMock());
+        mock.module("../experiment/task-access", () => ({
+            getStudentTaskAccessError: async () => null,
+            getStudentTopicAttachmentAccessError: async () => null,
+        }));
+        const module = await import(`./submissions.ts?compact=${crypto.randomUUID()}`);
+        const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com"), "40"));
+        const payload = await response.json() as any;
+        expect(payload.data.snapshot.samplingResults.simple.data).toEqual([{ id: 2, city: "上海" }]);
+    } finally {
+        await unlink(absolutePath).catch(() => undefined);
+    }
 });
 
 test("in-progress experiment is not exposed as a result", async () => {

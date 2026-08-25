@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { experiment } from "../../db/schema";
+import { experiment, samplingAttempt } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
@@ -18,6 +18,11 @@ import {
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
 import { PPS_UNAVAILABLE_REASON } from "../experiment/sampling-messages";
 import { executeSamplingAction, type SamplingMethod } from "../experiment/sampling-service";
+import {
+    compactSamplingMethodResult,
+    hydrateSamplingResults,
+    samplingResultsNeedPopulation,
+} from "../experiment/sampling-storage";
 import { parseStoredJson } from "../experiment/serialization";
 import { ExperimentStatus } from "../experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
@@ -49,7 +54,26 @@ function iso(value: Date | null) {
     return value?.toISOString() ?? null;
 }
 
-function buildExperimentResponse(record: typeof experiment.$inferSelect, populationSize: number | null) {
+async function resolveExperimentSamplingResults(
+    record: typeof experiment.$inferSelect,
+    taskId: number,
+    classId: number,
+) {
+    const stored = parseStoredJson(record.samplingResults);
+    if (!samplingResultsNeedPopulation(stored)) return stored;
+
+    const taskInfo = await findStudentTaskSamplingInfo(taskId, classId);
+    if (!taskInfo?.excelFilePath) return stored;
+    const population = await readPopulationData(taskInfo.excelFilePath);
+    return population.length ? hydrateSamplingResults(stored, population) : stored;
+}
+
+async function buildExperimentResponse(
+    record: typeof experiment.$inferSelect,
+    populationSize: number | null,
+    taskId: number,
+    classId: number,
+) {
     return {
         id: record.id,
         taskId: record.taskId,
@@ -58,7 +82,7 @@ function buildExperimentResponse(record: typeof experiment.$inferSelect, populat
         status: record.status,
         questionnaire: parseStoredJson(record.questionnaire),
         samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
-        samplingResults: parseStoredJson(record.samplingResults),
+        samplingResults: await resolveExperimentSamplingResults(record, taskId, classId),
         reportContent: record.reportContent,
         stage1CompletedAt: iso(record.stage1CompletedAt),
         stage2CompletedAt: iso(record.stage2CompletedAt),
@@ -91,25 +115,62 @@ function isServerGeneratedResult(value: Record<string, unknown> | undefined) {
     return value?.serverGenerated === true;
 }
 
+interface SamplingAttemptWrite {
+    seed: number;
+    sampleCount: number;
+    details: Record<string, unknown>;
+}
+
 async function persistSamplingMethodResult(
     record: typeof experiment.$inferSelect,
     method: SamplingMethod,
     result: Record<string, unknown>,
+    attempt?: SamplingAttemptWrite,
 ) {
-    const [persisted] = await db
-        .update(experiment)
-        .set({
-            samplingResults: sql`jsonb_set(
-                coalesce(${experiment.samplingResults}, '{}'::jsonb),
-                array[${method}]::text[],
-                ${result}::jsonb,
-                true
-            )`,
-            updatedAt: new Date(),
-        })
-        .where(matchesObservedExperiment(record, record.version))
-        .returning();
-    return persisted ?? null;
+    return db.transaction(async (tx) => {
+        const [persisted] = await tx
+            .update(experiment)
+            .set({
+                samplingResults: sql`jsonb_set(
+                    coalesce(${experiment.samplingResults}, '{}'::jsonb),
+                    array[${method}]::text[],
+                    ${result}::jsonb,
+                    true
+                )`,
+                updatedAt: new Date(),
+            })
+            .where(matchesObservedExperiment(record, record.version))
+            .returning();
+        if (!persisted) return null;
+
+        if (attempt) {
+            await tx.insert(samplingAttempt).values({
+                experimentId: record.id,
+                method,
+                seed: attempt.seed,
+                sampleCount: attempt.sampleCount,
+                details: attempt.details,
+            });
+        }
+        return persisted;
+    });
+}
+
+function buildSamplingAttemptWrite(result: Record<string, unknown>): SamplingAttemptWrite {
+    const {
+        data: _data,
+        indices: _indices,
+        inclusionProbabilities: _inclusionProbabilities,
+        serverGenerated: _serverGenerated,
+        seed: _seed,
+        sampleCount: _sampleCount,
+        ...details
+    } = result;
+    return {
+        seed: Number(result.seed),
+        sampleCount: Number(result.sampleCount ?? 0),
+        details,
+    };
 }
 
 async function prepareStoredSamplingResultsForCompletion(params: {
@@ -181,7 +242,7 @@ const experimentRoutes: RouteDefinition = {
         record ??= await getOrCreateStudentExperiment(auth.student.id, taskId);
         if (!record) return error("创建实验记录失败", "CREATE_FAILED", 500);
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
-        return json(buildExperimentResponse(record, populationSize));
+        return json(await buildExperimentResponse(record, populationSize, taskId, auth.student.classId));
     },
 };
 
@@ -232,7 +293,7 @@ const stageCompleteRoutes: RouteDefinition = {
             .where(matchesObservedExperiment(completionRecord, versionResult.value))
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
-        return json(buildExperimentResponse(updated, populationSize));
+        return json(await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId));
     },
 };
 
@@ -264,7 +325,7 @@ const stageReopenRoutes: RouteDefinition = {
             .where(matchesObservedExperiment(record, versionResult.value))
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
-        return json(buildExperimentResponse(updated, populationSize));
+        return json(await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId));
     },
 };
 
@@ -324,8 +385,16 @@ const samplingActionRoutes: RouteDefinition = {
         });
         if (!result.ok) return error(result.errorMessage, "VALIDATION_ERROR", 400);
 
-        const authoritativeResult = { ...result.result, serverGenerated: true };
-        const persisted = await persistSamplingMethodResult(record, body.method, authoritativeResult);
+        const authoritativeResult = compactSamplingMethodResult({
+            ...result.result,
+            serverGenerated: true,
+        });
+        const persisted = await persistSamplingMethodResult(
+            record,
+            body.method,
+            authoritativeResult,
+            buildSamplingAttemptWrite(authoritativeResult),
+        );
         if (!persisted) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
 
         return json({ success: true, result: result.result });
@@ -349,7 +418,10 @@ const analysisMetricsRoutes: RouteDefinition = {
             buildAnalysisMetrics({
                 population,
                 fieldMapping: parseTopicFieldMapping(taskInfo.fieldMapping),
-                samplingResults: parseStoredJson(record.samplingResults),
+                samplingResults: hydrateSamplingResults(
+                    parseStoredJson(record.samplingResults),
+                    population,
+                ) as Parameters<typeof buildAnalysisMetrics>[0]["samplingResults"],
             }),
         );
     },

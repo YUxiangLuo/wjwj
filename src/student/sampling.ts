@@ -19,9 +19,9 @@ export function createSeededRandom(seed?: number | string) {
     };
 }
 
-export function performSimpleSampling(data: any[], n: number, random: () => number): any[] {
+export function performSimpleSamplingWithIndices<T>(data: T[], n: number, random: () => number) {
     const sampleSize = Math.max(0, Math.min(Number(n) || 0, data.length));
-    // Partial Fisher-Yates: only shuffle the last `sampleSize` positions — O(n) instead of O(N)
+    // The partial shuffle draws only n positions; allocating the index frame is still O(N).
     const indices = Array.from({ length: data.length }, (_, i) => i);
 
     for (let i = indices.length - 1; i >= indices.length - sampleSize && i > 0; i--) {
@@ -32,7 +32,14 @@ export function performSimpleSampling(data: any[], n: number, random: () => numb
     }
 
     const selectedIndices = indices.slice(indices.length - sampleSize);
-    return selectedIndices.map((i) => data[i]);
+    return {
+        data: selectedIndices.map((index) => data[index]!),
+        indices: selectedIndices,
+    };
+}
+
+export function performSimpleSampling<T>(data: T[], n: number, random: () => number): T[] {
+    return performSimpleSamplingWithIndices(data, n, random).data;
 }
 
 export interface SystematicSamplingResult<T> {
@@ -81,27 +88,41 @@ export function stratumKey(value: unknown): string {
     return String(value).trim();
 }
 
-export function performStratifiedSampling(data: any[], stratifyBy: string, layers: any[], random: () => number): any[] {
-    const result: any[] = [];
-    const groups: Record<string, any[]> = {};
-    for (const item of data) {
-        const val = stratumKey(item[stratifyBy]);
-        if (!val) continue;
-        if (!groups[val]) groups[val] = [];
-        groups[val].push(item);
+export function performStratifiedSamplingWithIndices<T extends Record<string, unknown>>(
+    data: T[],
+    stratifyBy: string,
+    layers: Array<{ name: unknown; sampleCount: number }>,
+    random: () => number,
+) {
+    const result: T[] = [];
+    const selectedIndices: number[] = [];
+    const groups: Record<string, Array<{ row: T; index: number }>> = {};
+    for (let index = 0; index < data.length; index += 1) {
+        const row = data[index]!;
+        const value = stratumKey(row[stratifyBy]);
+        if (!value) continue;
+        (groups[value] ??= []).push({ row, index });
     }
 
     for (const layer of layers) {
         const groupData = groups[stratumKey(layer.name)] || [];
-        const sampleCount = layer.sampleCount;
-
-        if (sampleCount > 0 && groupData.length > 0) {
-            const sampled = performSimpleSampling(groupData, sampleCount, random);
-            result.push(...sampled);
+        if (layer.sampleCount > 0 && groupData.length > 0) {
+            const sampled = performSimpleSampling(groupData, layer.sampleCount, random);
+            result.push(...sampled.map((entry) => entry.row));
+            selectedIndices.push(...sampled.map((entry) => entry.index));
         }
     }
 
-    return result;
+    return { data: result, indices: selectedIndices };
+}
+
+export function performStratifiedSampling<T extends Record<string, unknown>>(
+    data: T[],
+    stratifyBy: string,
+    layers: Array<{ name: unknown; sampleCount: number }>,
+    random: () => number,
+): T[] {
+    return performStratifiedSamplingWithIndices(data, stratifyBy, layers, random).data;
 }
 
 export interface PPSSamplingResult<T> {

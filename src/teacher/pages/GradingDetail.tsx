@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, History, XCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
+import { formatDateTimeDisplay } from "@/utils/format";
 import { teacherApi, type SubmissionDetail } from "../api-client";
 
 export function GradingDetail() {
@@ -114,7 +115,31 @@ export function GradingDetail() {
                         </TabsList>
                         <TabsContent value="questionnaire" className="mt-4"><QuestionnaireSnapshot questionnaire={data.questionnaire} /></TabsContent>
                         <TabsContent value="plan" className="mt-4"><SamplePlanSnapshot value={data.samplePlan} populationSize={data.populationSize} /></TabsContent>
-                        <TabsContent value="sampling" className="mt-4"><SamplingResultsSnapshot value={data.samplingResults} /></TabsContent>
+                        <TabsContent value="sampling" className="mt-4 space-y-4">
+                            <SamplingResultsSnapshot value={data.samplingResults} />
+                            <div className="rounded-xl border border-border bg-card p-4">
+                                <h3 className="flex items-center gap-2 font-medium"><History className="h-4 w-4 text-primary" />抽样执行记录</h3>
+                                <p className="mt-1 text-xs text-muted-foreground">记录每次服务端抽样，便于识别重复尝试；最多展示最近 100 次。</p>
+                                {data.samplingAttempts?.length ? (
+                                    <div className="mt-3 max-h-64 space-y-2 overflow-y-auto custom-scrollbar">
+                                        {data.samplingAttempts.map((attempt) => {
+                                            const methodLabel = {
+                                                simple: "简单随机",
+                                                systematic: "系统抽样",
+                                                pps: "PPS",
+                                                stratified: "分层抽样",
+                                            }[attempt.method];
+                                            return (
+                                                <div key={attempt.id} className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm">
+                                                    <span className="font-medium">{methodLabel} · {attempt.sampleCount.toLocaleString()} 个</span>
+                                                    <span className="text-xs text-muted-foreground">seed {attempt.seed} · {formatDateTimeDisplay(attempt.createdAt)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : <p className="mt-3 text-sm text-muted-foreground">暂无执行记录（旧提交不会补记历史尝试）。</p>}
+                            </div>
+                        </TabsContent>
                         <TabsContent value="report" className="mt-4 rounded-xl border border-border p-5"><RichTextContent html={data.reportContent} /></TabsContent>
                     </Tabs>
                 </CardContent>
