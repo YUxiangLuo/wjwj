@@ -4,7 +4,7 @@ import { class_, student } from "../../db/schema";
 import { STUDENT_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { DEV_AUTH_MODE } from "../../lib/dev-mode";
 import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
-import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
+import { buildAtomicFailedLoginUpdate, failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import type { RouteDefinition } from "../../server/route-types";
 import {
     clearOtherUserSessionsForUser,
@@ -98,7 +98,10 @@ const loginRoutes: RouteDefinition = {
         }
         if (!valid) {
             const failure = nextFailedLoginState(row);
-            await db.update(student).set({ loginFailCount: failure.loginFailCount, lockedUntil: failure.lockedUntil }).where(eq(student.id, row.id));
+            await db
+                .update(student)
+                .set(buildAtomicFailedLoginUpdate(student))
+                .where(eq(student.id, row.id));
             return error(failedLoginMessage(failure), "INVALID_CREDENTIALS", 401);
         }
 

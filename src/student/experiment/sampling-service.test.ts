@@ -152,6 +152,67 @@ test("sampling generates and returns a reproducible seed when the client omits o
     expect(replay.result.data).toEqual(result.result.data);
 });
 
+test("stratified sampling rejects duplicate normalized layer names", async () => {
+    const result = await executeSamplingAction({
+        method: "stratified",
+        rawParams: {
+            stratifyBy: "gender",
+            layers: [
+                { name: "男", sampleCount: 5 },
+                { name: " 男 ", sampleCount: 5 },
+            ],
+            seed: 2026,
+        },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: { stratified: ["gender"] },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errorMessage).toBe("分层“男”不能重复配置");
+});
+
+test("stratified sampling requires every nonempty population layer", async () => {
+    const result = await executeSamplingAction({
+        method: "stratified",
+        rawParams: {
+            stratifyBy: "gender",
+            layers: [{ name: "男", sampleCount: 10 }],
+            seed: 2026,
+        },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: { stratified: ["gender"] },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errorMessage).toBe("请为全部总体分层配置样本数，缺少：女");
+});
+
+test("stratified sampling accepts each population layer exactly once", async () => {
+    const result = await executeSamplingAction({
+        method: "stratified",
+        rawParams: {
+            stratifyBy: "gender",
+            layers: [
+                { name: "男", sampleCount: 5 },
+                { name: "女", sampleCount: 5 },
+            ],
+            seed: 2026,
+        },
+        targetSampleSize: 10,
+        population,
+        fieldMapping: { stratified: ["gender"] },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.result.data).toHaveLength(10);
+    expect(result.result.layers).toHaveLength(2);
+});
+
 test("PPS sampling rejects fields that have no positive numeric size values", async () => {
     const result = await executeSamplingAction({
         method: "pps",

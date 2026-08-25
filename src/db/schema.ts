@@ -38,6 +38,8 @@ export const admin = pgTable(
     },
     (table) => ({
         usernameLength: check("admin_ck_username_length", sql`char_length(${table.username}) <= 50`),
+        firstLoginCheck: check("admin_ck_first_login", sql`${table.isFirstLogin} in (0, 1)`),
+        loginFailCountCheck: check("admin_ck_login_fail_count", sql`${table.loginFailCount} >= 0`),
     }),
 );
 
@@ -58,6 +60,9 @@ export const teacher = pgTable(
     (table) => ({
         statusIdx: index("teacher_idx_status").on(table.status),
         employeeIdLength: check("teacher_ck_employee_id_length", sql`char_length(${table.employeeId}) <= 50`),
+        statusCheck: check("teacher_ck_status_value", sql`${table.status} in (0, 1)`),
+        firstLoginCheck: check("teacher_ck_first_login", sql`${table.isFirstLogin} in (0, 1)`),
+        loginFailCountCheck: check("teacher_ck_login_fail_count", sql`${table.loginFailCount} >= 0`),
     }),
 );
 
@@ -83,6 +88,9 @@ export const student = pgTable(
         statusIdx: index("student_idx_status").on(table.status),
         deletedIdx: index("student_idx_deleted").on(table.deletedAt),
         studentIdLength: check("student_ck_student_id_length", sql`char_length(${table.studentId}) <= 50`),
+        statusCheck: check("student_ck_status_value", sql`${table.status} in (0, 1)`),
+        firstLoginCheck: check("student_ck_first_login", sql`${table.isFirstLogin} in (0, 1)`),
+        loginFailCountCheck: check("student_ck_login_fail_count", sql`${table.loginFailCount} >= 0`),
     }),
 );
 
@@ -98,6 +106,10 @@ export const semester = pgTable(
     },
     (table) => ({
         nameLength: check("semester_ck_name_length", sql`char_length(${table.name}) <= 20`),
+        currentCheck: check("semester_ck_is_current", sql`${table.isCurrent} in (0, 1)`),
+        singleCurrent: uniqueIndex("semester_uk_single_current")
+            .on(table.isCurrent)
+            .where(sql`${table.isCurrent} = 1`),
     }),
 );
 
@@ -151,6 +163,8 @@ export const topic = pgTable(
             "topic_ck_recommend_questions_array",
             sql`${table.recommendQuestions} is null or jsonb_typeof(${table.recommendQuestions}) = 'array'`,
         ),
+        statusCheck: check("topic_ck_status_value", sql`${table.status} in (0, 1)`),
+        rowCountCheck: check("topic_ck_excel_row_count", sql`${table.excelRowCount} between 0 and 100000`),
     }),
 );
 
@@ -167,6 +181,7 @@ export const topicAttachment = pgTable(
     },
     (table) => ({
         topicIdIdx: index("topic_attachment_idx_topic_id").on(table.topicId),
+        fileSizeCheck: check("topic_attachment_ck_file_size", sql`${table.fileSize} >= 0`),
     }),
 );
 
@@ -228,6 +243,15 @@ export const experiment = pgTable(
             "experiment_ck_status",
             sql`${table.status} in ('in_progress', 'submitted', 'graded', 'rejected')`,
         ),
+        versionCheck: check("experiment_ck_version", sql`${table.version} >= 1`),
+        currentStageCheck: check("experiment_ck_current_stage", sql`${table.currentStage} between 1 and 4`),
+        scoreRangesCheck: check(
+            "experiment_ck_score_ranges",
+            sql`(${table.scoreQuestionnaire} is null or ${table.scoreQuestionnaire} between 0 and 100)
+                and (${table.scoreProcess} is null or ${table.scoreProcess} between 0 and 100)
+                and (${table.scoreReport} is null or ${table.scoreReport} between 0 and 100)
+                and (${table.totalScore} is null or ${table.totalScore} between 0 and 100)`,
+        ),
         questionnaireObject: check(
             "experiment_ck_questionnaire_object",
             sql`${table.questionnaire} is null or jsonb_typeof(${table.questionnaire}) = 'object'`,
@@ -262,6 +286,7 @@ export const announcement = pgTable(
     (table) => ({
         statusIdx: index("announcement_idx_status").on(table.status),
         scopeCheck: check("announcement_ck_target_scope", sql`${table.targetScope} in ('all', 'teacher', 'student')`),
+        statusCheck: check("announcement_ck_status_value", sql`${table.status} in (0, 1)`),
     }),
 );
 
@@ -278,6 +303,7 @@ export const userSession = pgTable(
     (table) => ({
         userIdx: index("user_session_idx_user").on(table.userType, table.userId),
         expiresIdx: index("user_session_idx_expires").on(table.expiresAt),
+        userTypeCheck: check("user_session_ck_user_type", sql`${table.userType} in (1, 2, 3)`),
     }),
 );
 

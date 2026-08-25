@@ -35,8 +35,8 @@ test("topic attachment upload stores metadata and writes the file under storage"
     });
 
     const form = new FormData();
-    form.append("file", new File(["attachment body"], "guide.pdf", {
-        type: "application/pdf",
+    form.append("file", new File(["%PDF-1.7\nattachment body"], "guide.pdf", {
+        type: "video/mp4",
     }));
 
     const request = withRouteParams(new Request("https://example.com/api/teacher/topics/12/attachments", {
@@ -66,10 +66,36 @@ test("topic attachment upload stores metadata and writes the file under storage"
         });
         expect(operations.some((operation) => operation.kind === "execute")).toBe(true);
 
-        expect(await Bun.file(absolutePath).text()).toBe("attachment body");
+        expect(await Bun.file(absolutePath).text()).toBe("%PDF-1.7\nattachment body");
     } finally {
         await unlink(absolutePath).catch(() => undefined);
     }
+});
+
+test("topic attachment upload rejects content that does not match an allowed extension", async () => {
+    const { module, operations } = await loadTopicRoutes({
+        select: [[{ id: 12, status: 0 }]],
+    });
+
+    const form = new FormData();
+    form.append("file", new File(["<svg><script>alert(1)</script></svg>"], "spoofed.png", {
+        type: "image/svg+xml",
+    }));
+
+    const request = withRouteParams(new Request("https://example.com/api/teacher/topics/12/attachments", {
+        method: "POST",
+        body: form,
+    }), { id: "12" });
+
+    const response = await module.topicAttachmentRoutes.POST!(request);
+    const payload = await response.json() as any;
+
+    expect(response.status).toBe(400);
+    expect(payload.error).toEqual({
+        code: "INVALID_FILE",
+        message: "文件内容与扩展名不匹配",
+    });
+    expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
 });
 
 test("topic attachment upload rejects an unknown extension spoofed as video", async () => {

@@ -50,12 +50,10 @@ function inferMimeTypeFromName(fileName: string) {
     return "application/octet-stream";
 }
 
-function normalizeAttachmentMime(fileName: string, fileType: string) {
-    const trimmed = fileType.trim().toLowerCase();
-    if (!trimmed || trimmed === "unknown") {
-        return inferMimeTypeFromName(fileName);
-    }
-    return trimmed;
+function normalizeAttachmentMime(fileName: string, _fileType: string) {
+    // Never trust the client-supplied MIME stored by older rows. Preview MIME
+    // is derived from the server allowlisted filename extension.
+    return inferMimeTypeFromName(fileName);
 }
 
 function canInlinePreview(contentType: string) {

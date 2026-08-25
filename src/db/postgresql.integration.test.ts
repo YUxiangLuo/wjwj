@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
+import { buildAtomicFailedLoginUpdate } from "../server/login-lockout";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL?.trim();
 if (process.env.REQUIRE_TEST_DATABASE === "1" && !testDatabaseUrl) {
@@ -53,6 +54,20 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             .returning({ updatedAt: schema.admin.updatedAt });
         expect(updatedAdmin!.updatedAt.toISOString()).toBe(explicitUpdatedAt.toISOString());
 
+        const failureTime = new Date("2029-06-01T12:00:00.000Z");
+        await Promise.all(Array.from({ length: 5 }, () =>
+            database
+                .update(schema.admin)
+                .set(buildAtomicFailedLoginUpdate(schema.admin, failureTime))
+                .where(eq(schema.admin.id, createdAdmin!.id))
+        ));
+        const [lockedAdmin] = await database
+            .select({ loginFailCount: schema.admin.loginFailCount, lockedUntil: schema.admin.lockedUntil })
+            .from(schema.admin)
+            .where(eq(schema.admin.id, createdAdmin!.id));
+        expect(lockedAdmin?.loginFailCount).toBe(5);
+        expect(lockedAdmin?.lockedUntil?.toISOString()).toBe("2029-06-01T12:30:00.000Z");
+
         const expiresAt = new Date("2030-06-01T12:34:56.789Z");
         await database.insert(schema.userSession).values({
             sessionToken,
@@ -73,9 +88,19 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         teacherId = createdTeacher!.id;
         const [createdSemester] = await database
             .insert(schema.semester)
-            .values({ name: semesterName })
+            .values({ name: semesterName, isCurrent: 1 })
             .returning({ id: schema.semester.id });
         semesterId = createdSemester!.id;
+        let duplicateCurrentRejected = false;
+        try {
+            await database.insert(schema.semester).values({
+                name: `${semesterName}-duplicate-current`,
+                isCurrent: 1,
+            });
+        } catch {
+            duplicateCurrentRejected = true;
+        }
+        expect(duplicateCurrentRejected).toBe(true);
         const [createdClass] = await database
             .insert(schema.class_)
             .values({ name: "PostgreSQL class", semesterId, teacherId })
@@ -201,6 +226,16 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             ))
             .returning({ version: schema.experiment.version });
         expect(versionedExperiment?.version).toBe(2);
+        let invalidScoreRejected = false;
+        try {
+            await database
+                .update(schema.experiment)
+                .set({ totalScore: "101" })
+                .where(eq(schema.experiment.id, createdExperiment!.id));
+        } catch {
+            invalidScoreRejected = true;
+        }
+        expect(invalidScoreRejected).toBe(true);
 
         process.env.DATABASE_URL = testDatabaseUrl!;
         const [{ listTeacherTasks }, applicationDatabase] = await Promise.all([

@@ -4,7 +4,7 @@ import { teacher } from "../../db/schema";
 import { TEACHER_PASSWORD_POLICY, evaluatePasswordRules } from "../../lib/password-policy";
 import { DEV_AUTH_MODE } from "../../lib/dev-mode";
 import { buildSessionCookie, clearSessionCookie, error, isSecureRequest, json, parseBody, stringValue } from "../../server/http";
-import { failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
+import { buildAtomicFailedLoginUpdate, failedLoginMessage, isLoginLocked, nextFailedLoginState } from "../../server/login-lockout";
 import type { RouteDefinition, RouteHandler } from "../../server/route-types";
 import {
     clearOtherUserSessionsForUser,
@@ -146,7 +146,10 @@ const teacherLoginRoutes: RouteDefinition = {
         }
         if (!valid) {
             const failure = nextFailedLoginState(row);
-            await db.update(teacher).set({ loginFailCount: failure.loginFailCount, lockedUntil: failure.lockedUntil }).where(eq(teacher.id, row.id));
+            await db
+                .update(teacher)
+                .set(buildAtomicFailedLoginUpdate(teacher))
+                .where(eq(teacher.id, row.id));
             return error(failedLoginMessage(failure, "工号或密码错误"), "INVALID_CREDENTIALS", 401);
         }
 

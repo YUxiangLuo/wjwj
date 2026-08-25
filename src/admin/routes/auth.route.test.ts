@@ -1,4 +1,5 @@
 import { expect, mock, test } from "bun:test";
+import { SQL } from "drizzle-orm";
 import { createMockDb } from "../../test-utils/mock-db";
 
 test("admin password change revokes every other session", async () => {
@@ -108,7 +109,7 @@ test("fifth failed admin login locks the account", async () => {
         error: { code: "INVALID_CREDENTIALS", message: "用户名或密码错误" },
     });
     expect(operations.find((item) => item.kind === "update")?.set).toMatchObject({
-        loginFailCount: 5,
-        lockedUntil: expect.any(Date),
+        loginFailCount: expect.any(SQL),
+        lockedUntil: expect.any(SQL),
     });
 });

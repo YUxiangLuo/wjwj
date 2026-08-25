@@ -2,8 +2,10 @@ import { expect, test } from "bun:test";
 import { buildAnalysisMetrics } from "./analysis-metrics";
 import {
     createSeededRandom,
+    drawPreparedPPSSample,
     performPPSSampling,
     performSystematicSampling,
+    preparePPSSampling,
 } from "../sampling";
 
 test("analysis metrics use the true population mean as the numeric comparison baseline", () => {
@@ -185,5 +187,24 @@ test("analysis metrics use PPS inclusion probabilities for weighted mean estimat
 
     expect(weightedEstimate).not.toBeNull();
     expect(weightedEstimate).not.toBe(rawMean);
-    expect(numericValue.methods.pps.standardError).not.toBeNull();
+
+    const prepared = preparePPSSampling(population, "size", 2);
+    if (!prepared) throw new Error("expected a valid PPS design");
+    const replicateEstimates = Array.from({ length: 128 }, (_, iteration) => {
+        const replicate = drawPreparedPPSSample(prepared, createSeededRandom(`analysis-pps-${iteration}`));
+        let weightedSum = 0;
+        let totalWeight = 0;
+        for (let index = 0; index < replicate.data.length; index += 1) {
+            const weight = 1 / replicate.inclusionProbabilities[index]!;
+            weightedSum += replicate.data[index]!.value * weight;
+            totalWeight += weight;
+        }
+        return weightedSum / totalWeight;
+    });
+    const replicateMean = replicateEstimates.reduce((sum, value) => sum + value, 0) / replicateEstimates.length;
+    const expectedSe = Math.sqrt(replicateEstimates.reduce(
+        (sum, value) => sum + (value - replicateMean) ** 2,
+        0,
+    ) / replicateEstimates.length);
+    expect(numericValue.methods.pps.standardError).toBeCloseTo(expectedSe, 10);
 });

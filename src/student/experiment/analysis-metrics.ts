@@ -1,5 +1,5 @@
 import type { MethodKey, SamplingResultsData } from "../api-client";
-import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling, stratumKey, type PPSSamplingResult } from "../sampling";
+import { createSeededRandom, drawPreparedPPSSample, preparePPSSampling, stratumKey } from "../sampling";
 import {
     buildPopulationCategoricalStats,
     buildPopulationNumericStats,
@@ -12,7 +12,7 @@ const METHODS: MethodKey[] = ["simple", "systematic", "pps", "stratified"];
 const PPS_MONTE_CARLO_REPLICATES = 128;
 
 interface PpsMonteCarloContext {
-    replicates: Array<PPSSamplingResult<Record<string, unknown>>>;
+    standardErrors: Record<string, number | null>;
 }
 
 export interface NumericMethodAnalysis {
@@ -402,6 +402,7 @@ function buildPpsMonteCarloContext(
     population: Array<Record<string, unknown>>,
     sizeField: string | undefined,
     sampleSize: number | undefined,
+    numericFields: string[],
 ): PpsMonteCarloContext | null {
     const normalizedSampleSize = Number(sampleSize);
     if (!sizeField || !Number.isInteger(normalizedSampleSize) || normalizedSampleSize < 1) {
@@ -413,44 +414,54 @@ function buildPpsMonteCarloContext(
         return null;
     }
 
-    const replicates: Array<PPSSamplingResult<Record<string, unknown>>> = [];
+    // Welford accumulators keep memory at O(number of numeric fields) instead
+    // of retaining 128 complete PPS samples at once.
+    const accumulators = Object.fromEntries(numericFields.map((field) => [field, {
+        count: 0,
+        mean: 0,
+        squaredDeviation: 0,
+    }]));
+
     for (let iteration = 0; iteration < PPS_MONTE_CARLO_REPLICATES; iteration += 1) {
         const replicate = drawPreparedPPSSample(
             prepared,
             createSeededRandom(`analysis-pps-${iteration}`),
         );
         if (replicate.data.length !== normalizedSampleSize) continue;
-        replicates.push(replicate as PPSSamplingResult<Record<string, unknown>>);
+
+        for (const field of numericFields) {
+            const estimate = estimateWeightedMean(
+                replicate.data,
+                field,
+                replicate.inclusionProbabilities,
+            );
+            if (estimate === null) continue;
+
+            const accumulator = accumulators[field]!;
+            accumulator.count += 1;
+            const delta = estimate - accumulator.mean;
+            accumulator.mean += delta / accumulator.count;
+            accumulator.squaredDeviation += delta * (estimate - accumulator.mean);
+        }
     }
 
-    return replicates.length > 0 ? { replicates } : null;
+    const standardErrors = Object.fromEntries(numericFields.map((field) => {
+        const accumulator = accumulators[field]!;
+        return [
+            field,
+            accumulator.count > 0
+                ? Math.sqrt(Math.max(0, accumulator.squaredDeviation / accumulator.count))
+                : null,
+        ];
+    }));
+    return { standardErrors };
 }
 
 function computeMonteCarloPpsMeanSe(
     field: string,
     context: PpsMonteCarloContext | null,
 ) {
-    if (!context) {
-        return null;
-    }
-
-    const estimates: number[] = [];
-    for (const replicate of context.replicates) {
-        const estimate = estimateWeightedMean(
-            replicate.data,
-            field,
-            replicate.inclusionProbabilities,
-        );
-        if (estimate !== null) {
-            estimates.push(estimate);
-        }
-    }
-
-    if (estimates.length === 0) return null;
-
-    const meanEstimate = estimates.reduce((sum, value) => sum + value, 0) / estimates.length;
-    const variance = estimates.reduce((sum, value) => sum + (value - meanEstimate) ** 2, 0) / estimates.length;
-    return Math.sqrt(variance);
+    return context?.standardErrors[field] ?? null;
 }
 
 function computeStratifiedDistributionEstimate(
@@ -539,6 +550,7 @@ export function buildAnalysisMetrics(params: {
             params.population,
             params.samplingResults?.pps?.sizeField,
             params.samplingResults?.pps?.sampleCount,
+            numericFields,
         );
 
     const numeric: Record<string, NumericFieldAnalysis> = {};

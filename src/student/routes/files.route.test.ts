@@ -1,3 +1,4 @@
+import { unlink } from "node:fs/promises";
 import { expect, mock, test } from "bun:test";
 import { createStudentAuthModuleMock } from "../../test-utils/mock-auth-modules";
 import { createMockDb } from "../../test-utils/mock-db";
@@ -40,6 +41,34 @@ async function loadFilesRoutes(options: {
     const module = await import(`./files?student-files-route-test=${Math.random()}`);
     return module;
 }
+
+test("attachment preview ignores a spoofed stored MIME and derives it from the filename", async () => {
+    const filePath = `/storage/uploads/attachment-mime-${crypto.randomUUID()}.png`;
+    const absolutePath = `${process.cwd()}${filePath}`;
+    await Bun.write(absolutePath, new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+
+    try {
+        const module = await loadFilesRoutes({
+            select: [[{
+                id: 8,
+                topicId: 4,
+                fileName: "preview.png",
+                filePath,
+                fileType: "image/svg+xml",
+            }]],
+        });
+        const response = await module.attachmentDownloadRoutes.GET!(withRouteParam(
+            createRequest("https://example.com/api/student/attachments/8/download?mode=preview"),
+            "8",
+        ));
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Type")).toBe("image/png");
+        expect(response.headers.get("Content-Disposition")).toStartWith("inline;");
+    } finally {
+        await unlink(absolutePath).catch(() => undefined);
+    }
+});
 
 test("export route reads serialized sampling results and returns csv", async () => {
     const module = await loadFilesRoutes({

@@ -4,7 +4,12 @@ import { db } from "../../db";
 import { topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { copyStorageFile, createStorageUploadPath, deleteStorageFileIfExists, writeStorageFile } from "../../server/storage-files";
-import { getAttachmentType, sanitizeUploadFileName } from "./file-utils";
+import {
+    attachmentContentMatchesExtension,
+    getAttachmentContentType,
+    getAttachmentType,
+    sanitizeUploadFileName,
+} from "./file-utils";
 import { validateTopicAttachmentUpload } from "./validation";
 import type { Question } from "../../lib/questionnaire-types";
 import { parseRecommendQuestionsPayload } from "../../lib/validate-question";
@@ -34,25 +39,33 @@ export async function uploadTopicAttachment(params: {
     topicId: number;
     file: File;
 }) {
-    const [countRow] = await db.select({ count: count() }).from(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
     const attachmentType = getAttachmentType(params.file.name);
     const validationError = validateTopicAttachmentUpload(
-        {
-            currentCount: countRow?.count ?? 0,
-            fileSize: params.file.size,
-        },
-        attachmentType
+        { currentCount: 0, fileSize: params.file.size },
+        attachmentType,
     );
-    if (validationError) {
-        return fail(validationError);
-    }
+    if (validationError) return fail(validationError);
 
     const buffer = await params.file.arrayBuffer();
+    if (!attachmentContentMatchesExtension(params.file.name, new Uint8Array(buffer))) {
+        return fail("文件内容与扩展名不匹配", "INVALID_FILE");
+    }
+
     const filePath = createStorageUploadPath(sanitizeUploadFileName(params.file.name));
 
     try {
-        const createdId = await db.transaction(async (tx) => {
+        const result = await db.transaction(async (tx) => {
             await acquireStorageMutationLock(tx);
+            const [countRow] = await tx
+                .select({ count: count() })
+                .from(topicAttachment)
+                .where(eq(topicAttachment.topicId, params.topicId));
+            const countError = validateTopicAttachmentUpload(
+                { currentCount: countRow?.count ?? 0, fileSize: params.file.size },
+                attachmentType,
+            );
+            if (countError) return { ok: false as const, message: countError };
+
             await writeStorageFile(filePath, buffer);
             const [created] = await tx
                 .insert(topicAttachment)
@@ -60,14 +73,15 @@ export async function uploadTopicAttachment(params: {
                     topicId: params.topicId,
                     fileName: params.file.name,
                     filePath,
-                    fileType: params.file.type || "unknown",
+                    fileType: getAttachmentContentType(params.file.name),
                     fileSize: params.file.size,
                 })
                 .returning({ id: topicAttachment.id });
-            return created!.id;
+            return { ok: true as const, id: created!.id };
         });
 
-        return { ok: true as const, id: createdId, filePath };
+        if (!result.ok) return fail(result.message);
+        return { ok: true as const, id: result.id, filePath };
     } catch (error) {
         await deleteStorageFileIfExists(filePath).catch(() => undefined);
         throw error;

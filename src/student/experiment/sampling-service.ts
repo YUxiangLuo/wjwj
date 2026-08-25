@@ -203,6 +203,7 @@ export async function executeSamplingAction(params: {
             }
 
             const layers: Array<{ name: string; count: number; ratio: number; sampleCount: number }> = [];
+            const seenLayerNames = new Set<string>();
             let totalAssigned = 0;
 
             for (let index = 0; index < layersInput.length; index += 1) {
@@ -212,6 +213,10 @@ export async function executeSamplingAction(params: {
                 if (!name) {
                     return { ok: false as const, errorMessage: `第 ${index + 1} 层名称无效` };
                 }
+                if (seenLayerNames.has(name)) {
+                    return { ok: false as const, errorMessage: `分层“${name}”不能重复配置` };
+                }
+                seenLayerNames.add(name);
                 if (!Number.isInteger(sampleCount) || sampleCount < 1) {
                     return { ok: false as const, errorMessage: `第 ${index + 1} 层样本数需为正整数` };
                 }
@@ -230,6 +235,14 @@ export async function executeSamplingAction(params: {
                 const ratio = Number.isFinite(Number(input?.ratio)) ? Number(input?.ratio) : 0;
                 layers.push({ name, count: groupCount, ratio, sampleCount });
                 totalAssigned += sampleCount;
+            }
+
+            const missingLayers = [...layerPopulationCount.keys()].filter((name) => !seenLayerNames.has(name));
+            if (missingLayers.length > 0) {
+                return {
+                    ok: false as const,
+                    errorMessage: `请为全部总体分层配置样本数，缺少：${missingLayers.join("、")}`,
+                };
             }
 
             if (totalAssigned <= 0) {

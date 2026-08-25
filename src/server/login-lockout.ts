@@ -1,3 +1,5 @@
+import { sql, type SQLWrapper } from "drizzle-orm";
+
 export const MAX_LOGIN_ATTEMPTS = 5;
 export const LOGIN_LOCK_MINUTES = 30;
 
@@ -19,6 +21,25 @@ export function nextFailedLoginState(state: LoginLockState, now = new Date()) {
         lockedUntil: locked ? new Date(now.getTime() + LOGIN_LOCK_MINUTES * 60_000) : null,
         locked,
         remainingAttempts: Math.max(0, MAX_LOGIN_ATTEMPTS - loginFailCount),
+    };
+}
+
+export function buildAtomicFailedLoginUpdate(
+    columns: { loginFailCount: SQLWrapper; lockedUntil: SQLWrapper },
+    now = new Date(),
+) {
+    const lockExpiresAt = new Date(now.getTime() + LOGIN_LOCK_MINUTES * 60_000);
+    const nextCount = sql<number>`CASE
+        WHEN ${columns.lockedUntil} IS NOT NULL AND ${columns.lockedUntil} <= ${now} THEN 1
+        ELSE ${columns.loginFailCount} + 1
+    END`;
+
+    return {
+        loginFailCount: nextCount,
+        lockedUntil: sql<Date | null>`CASE
+            WHEN (${nextCount}) >= ${MAX_LOGIN_ATTEMPTS} THEN ${lockExpiresAt}::timestamptz
+            ELSE NULL::timestamptz
+        END`,
     };
 }
 
