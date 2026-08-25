@@ -121,6 +121,31 @@ test("topic excel upload rejects workbooks with fewer than two columns", async (
     expect(operations.filter((operation) => operation.kind === "update")).toHaveLength(0);
 });
 
+test("topic excel upload rejects duplicate headers before SheetJS can silently rename them", async () => {
+    const { module, operations } = await loadTopicRoutes({
+        select: [[{ id: 12, status: 0 }]],
+    });
+    const buffer = buildWorkbookBuffer([
+        ["id", "group", "group", "size"],
+        [1, "A", "A", 10],
+    ]);
+    const form = new FormData();
+    form.append("file", new File([buffer], "duplicate.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }));
+    const request = withRouteParam(new Request("https://example.com/api/teacher/topics/12/excel", {
+        method: "POST",
+        body: form,
+    }), "12");
+
+    const response = await module.topicExcelUploadRoutes.POST!(request);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+        error: { code: "VALIDATION_ERROR", message: "表头存在重复列名" },
+    });
+    expect(operations.some((operation) => operation.kind === "update")).toBe(false);
+});
+
 test("topic excel upload rejects unsupported spreadsheet extensions before parsing", async () => {
     const { module, operations } = await loadTopicRoutes({
         select: [[{ id: 12, status: 0 }]],

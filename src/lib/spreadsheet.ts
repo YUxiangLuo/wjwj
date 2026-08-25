@@ -28,6 +28,22 @@ export function spreadsheetRequestExceedsLimit(req: Request) {
     return BigInt(rawLength) > BigInt(MAX_SPREADSHEET_MULTIPART_BYTES);
 }
 
+function findDuplicateHeaderNames(sheet: XLSX.WorkSheet) {
+    const [header = []] = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+        header: 1,
+        defval: "",
+        blankrows: false,
+    });
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const value of header) {
+        const name = String(value).trim();
+        if (seen.has(name)) duplicates.add(name);
+        seen.add(name);
+    }
+    return [...duplicates];
+}
+
 export async function parseSpreadsheetFile(buffer: ArrayBuffer, fileName?: string | null) {
     const normalizedName = fileName?.toLowerCase() ?? "";
     const workbook = normalizedName.endsWith(".csv")
@@ -43,6 +59,7 @@ export async function parseSpreadsheetFile(buffer: ArrayBuffer, fileName?: strin
     return {
         rows,
         columns,
+        duplicateColumns: findDuplicateHeaderNames(sheet),
         rowCount: rows.length,
         colCount: columns.length,
         preview: rows.slice(0, 20),

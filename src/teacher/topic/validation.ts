@@ -5,6 +5,7 @@ interface ParsedExcelFile {
     columns: string[];
     rowCount: number;
     colCount: number;
+    duplicateColumns?: string[];
 }
 
 interface TopicFieldMappingInput {
@@ -51,7 +52,9 @@ export function validateParsedExcelUpload(parsed: ParsedExcelFile) {
     if (parsed.colCount < 2 || parsed.colCount > 50) return "数据列数需在2-50之间";
 
     const columnSet = new Set(parsed.columns);
-    if (columnSet.size !== parsed.columns.length) return "表头存在重复列名";
+    if ((parsed.duplicateColumns?.length ?? 0) > 0 || columnSet.size !== parsed.columns.length) {
+        return "表头存在重复列名";
+    }
     if (parsed.rows.some((row) => isRowEmpty(row))) return "存在完全空白的行";
 
     return null;

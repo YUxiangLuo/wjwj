@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
     MAX_SPREADSHEET_MULTIPART_BYTES,
     MAX_SPREADSHEET_UPLOAD_BYTES,
+    parseSpreadsheetFile,
     spreadsheetRequestExceedsLimit,
     validateSpreadsheetUploadFile,
 } from "./spreadsheet";
@@ -16,6 +17,14 @@ test("spreadsheet upload validation accepts only nonempty csv/xlsx files within 
         message: "表格文件不能超过20 MiB",
         status: 413,
     });
+});
+
+test("spreadsheet parser preserves raw duplicate header evidence before SheetJS renames keys", async () => {
+    const csv = "编号,年级, 年级 ,规模\n1,大一,一年级,10\n";
+    const parsed = await parseSpreadsheetFile(new TextEncoder().encode(csv).buffer, "population.csv");
+
+    expect(parsed.columns).toEqual(["编号", "年级", " 年级 ", "规模"]);
+    expect(parsed.duplicateColumns).toEqual(["年级"]);
 });
 
 test("spreadsheet multipart preflight rejects declared oversized bodies", () => {
