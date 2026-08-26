@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, expect, mock, test } from "bun:test";
-import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { installDomGlobals } from "@/test-utils/dom";
 import { StudentManagement } from "./StudentManagement";
@@ -83,9 +83,15 @@ test("student management distinguishes locked accounts", async () => {
     );
 
     await waitFor(() => expect(view.getByText("SLOCKED")).toBeTruthy());
-    expect(view.getByText("锁定")).toBeTruthy();
-    expect(view.getByText("正常")).toBeTruthy();
-    expect(view.getAllByText("停用").some((element) => element.tagName === "SPAN")).toBe(true);
+    const normalRow = view.getByText("SNORMAL").closest("tr");
+    const lockedRow = view.getByText("SLOCKED").closest("tr");
+    const disabledRow = view.getByText("SDISABLED").closest("tr");
+    expect(normalRow).not.toBeNull();
+    expect(lockedRow).not.toBeNull();
+    expect(disabledRow).not.toBeNull();
+    expect(within(normalRow!).getByText("正常")).toBeTruthy();
+    expect(within(lockedRow!).getByText("锁定")).toBeTruthy();
+    expect(within(disabledRow!).getByText("停用")).toBeTruthy();
 });
 
 test("resetting a locked student refreshes the displayed account state", async () => {
@@ -122,12 +128,20 @@ test("resetting a locked student refreshes the displayed account state", async (
         </MemoryRouter>,
     );
 
-    await waitFor(() => expect(view.getByText("锁定")).toBeTruthy());
-    fireEvent.click(view.getByRole("button", { name: "重置密码" }));
+    await waitFor(() => {
+        const row = view.getByText("SLOCKED").closest("tr");
+        expect(row).not.toBeNull();
+        expect(within(row!).getByText("锁定")).toBeTruthy();
+    });
+    const lockedRow = view.getByText("SLOCKED").closest("tr");
+    expect(lockedRow).not.toBeNull();
+    fireEvent.click(within(lockedRow!).getByRole("button", { name: "重置密码" }));
 
     await waitFor(() => {
         expect(listRequests).toBeGreaterThanOrEqual(2);
-        expect(view.getByText("正常")).toBeTruthy();
-        expect(view.queryByText("锁定")).toBeNull();
+        const refreshedRow = view.getByText("SLOCKED").closest("tr");
+        expect(refreshedRow).not.toBeNull();
+        expect(within(refreshedRow!).getByText("正常")).toBeTruthy();
+        expect(within(refreshedRow!).queryByText("锁定")).toBeNull();
     });
 });
