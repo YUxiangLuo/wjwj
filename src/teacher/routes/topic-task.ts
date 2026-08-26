@@ -75,7 +75,8 @@ const topicItemRoutes: RouteDefinition = {
         const ownsTopic = await hasTopicOwnership(id, currentTeacherId, requireTopicOwner);
         if (!ownsTopic) return error("课题不存在", "NOT_FOUND", 404);
 
-        await softDeleteTeacherTopic({ teacherId: currentTeacherId, topicId: id });
+        const deleteResult = await softDeleteTeacherTopic({ teacherId: currentTeacherId, topicId: id });
+        if (!deleteResult.ok) return error(deleteResult.message, deleteResult.code, deleteResult.status);
         return json({ success: true });
     }
 };

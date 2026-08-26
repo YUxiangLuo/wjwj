@@ -113,31 +113,63 @@ export async function updateTeacherTopicBasics(params: {
     return { ok: true as const };
 }
 
+const assignedTopicDeletion = Symbol("assigned-topic-deletion");
+
 export async function softDeleteTeacherTopic(params: { teacherId: number; topicId: number }) {
     const deletedAt = new Date();
 
-    const deleted = await db.transaction(async (tx) => {
-        const result = await tx
-            .update(topic)
-            .set({ deletedAt, updatedAt: deletedAt })
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
-            .returning({ id: topic.id });
+    let deletion: { cleanupPaths: string[] } | null;
+    try {
+        deletion = await db.transaction(async (tx) => {
+            await acquireStorageMutationLock(tx);
+            const [deletedTopic] = await tx
+                .update(topic)
+                .set({ deletedAt, updatedAt: deletedAt })
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+                .returning({ id: topic.id, excelFilePath: topic.excelFilePath });
 
-        if (result.length === 0) {
-            return false;
+            if (!deletedTopic) return null;
+
+            const attachmentRows = await tx
+                .select({ filePath: topicAttachment.filePath })
+                .from(topicAttachment)
+                .where(eq(topicAttachment.topicId, params.topicId));
+            const [taskReference] = await tx
+                .select({ id: task.id })
+                .from(task)
+                .where(eq(task.topicId, params.topicId))
+                .limit(1);
+
+            if (taskReference) throw assignedTopicDeletion;
+
+            await tx
+                .update(task)
+                .set({ deletedAt, updatedAt: deletedAt })
+                .where(and(eq(task.topicId, params.topicId), isNull(task.deletedAt)));
+            await tx.delete(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
+
+            return {
+                cleanupPaths: [deletedTopic.excelFilePath, ...attachmentRows.map((row) => row.filePath)].filter(
+                    (filePath): filePath is string => Boolean(filePath),
+                ),
+            };
+        });
+    } catch (error) {
+        if (error === assignedTopicDeletion) {
+            return fail("已分配任务的课题不能删除", "TOPIC_ASSIGNED", 403);
         }
+        throw error;
+    }
 
-        await tx
-            .update(task)
-            .set({ deletedAt, updatedAt: deletedAt })
-            .where(and(eq(task.topicId, params.topicId), isNull(task.deletedAt)));
-
-        return true;
-    });
-
-    if (!deleted) {
+    if (!deletion) {
         return fail("课题不存在", "NOT_FOUND", 404);
     }
+
+    await Promise.all(deletion.cleanupPaths.map(async (filePath) => {
+        await deleteStorageFileIfExists(filePath).catch((error) => {
+            console.warn(`已删除课题的存储文件清理失败：${filePath}`, error);
+        });
+    }));
 
     return { ok: true as const };
 }
