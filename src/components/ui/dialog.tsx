@@ -5,9 +5,34 @@ import { XIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 function Dialog({
+  open,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  const wasOpenRef = React.useRef(Boolean(open))
+  const restoreFocusRef = React.useRef<HTMLElement | null>(null)
+
+  // Most application dialogs are controlled by buttons outside Radix's DialogTrigger.
+  // Preserve that opener so keyboard focus does not fall back to <body> on close.
+  if (open && !wasOpenRef.current && typeof document !== "undefined") {
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+  }
+
+  React.useLayoutEffect(() => {
+    const wasOpen = wasOpenRef.current
+    wasOpenRef.current = Boolean(open)
+    if (open || !wasOpen) return
+
+    const opener = restoreFocusRef.current
+    const frame = requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus()
+      restoreFocusRef.current = null
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open])
+
+  return <DialogPrimitive.Root data-slot="dialog" open={open} {...props} />
 }
 
 function DialogTrigger({
