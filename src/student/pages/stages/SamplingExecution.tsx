@@ -576,7 +576,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         PPS抽样（概率与规模成比例抽样）
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground pt-1">
-                                        不放回 πps：一阶包含概率与规模成正比（πᵢ = n xᵢ / X，过大则必然入样）。分析阶段用 Hájek 加权均值，不是 Horvitz–Thompson 均值。抽取数量允许在规划目标的 80%–120% 调整，这是本实验的操作规则，不是 PPS 理论要求。
+                                        不放回 πps：一阶包含概率与规模成正比（πᵢ = n xᵢ / X，过大则必然入样）。分析阶段用 Hájek 加权均值，不是 Horvitz–Thompson 均值。规模变量应在抽样前对总体单位可获得；它与目标变量相关时 PPS 才更可能提高效率，相关性弱时未必优于等概率设计。抽取数量允许在规划目标的 80%–120% 调整，这是本实验的操作规则，不是 PPS 理论要求。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
@@ -603,7 +603,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             )}
                                             <p className={`text-xs leading-relaxed ${hasPpsNumericField ? "text-muted-foreground" : "text-destructive"}`}>
                                                 {hasPpsNumericField
-                                                    ? "选择一个规模变量（如收入、人口等），该字段必须在总体中对每个单位都为正数。"
+                                                    ? "选择一个抽样前已知的规模变量（如收入、人口等）；本实验执行还要求该字段对总体每个单位均为正数。"
                                                     : PPS_UNAVAILABLE_REASON}
                                             </p>
                                         </div>

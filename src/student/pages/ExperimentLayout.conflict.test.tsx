@@ -40,7 +40,7 @@ afterAll(() => {
     restoreDom = null;
 });
 
-function experiment(version: number, reportContent: string) {
+function experiment(version: number, reportContent: string, overrides: Record<string, unknown> = {}) {
     return {
         id: 88,
         taskId: 2,
@@ -56,8 +56,65 @@ function experiment(version: number, reportContent: string) {
         stage3CompletedAt: "2026-03-01T00:00:00.000Z",
         stage4CompletedAt: "2026-03-01T00:00:00.000Z",
         populationSize: 1000,
+        ...overrides,
     };
 }
+
+test("rejected experiment keeps the teacher reason visible while the student edits", async () => {
+    const rejectReason = "请补充四种抽样方法的比较，并说明分层分配依据。";
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith("/api/student/tasks/2/experiment")) {
+            return Response.json({
+                success: true,
+                data: experiment(7, `<p>${"待修改报告".repeat(30)}</p>`, {
+                    status: "rejected",
+                    rejectReason,
+                }),
+            });
+        }
+        if (url.endsWith("/api/student/tasks/2")) {
+            return Response.json({
+                success: true,
+                data: {
+                    id: 2,
+                    topicId: 3,
+                    name: "驳回实验",
+                    description: null,
+                    publishedAt: "2026-03-01T00:00:00.000Z",
+                    deadline: "2099-03-01T00:00:00.000Z",
+                    status: "rejected",
+                    currentStage: 4,
+                    rejectReason,
+                    populationSize: 1000,
+                    attachments: [],
+                    recommendQuestions: [],
+                },
+            });
+        }
+        if (url.endsWith("/api/student/tasks/2/analysis-metrics")) {
+            return Response.json({ success: true, data: { numericFields: [], categoricalFields: [], numeric: {}, categorical: {} } });
+        }
+        throw new Error(`Unhandled fetch: ${url}`);
+    }) as unknown as typeof fetch;
+
+    let view!: ReturnType<typeof render>;
+    await act(async () => {
+        view = render(
+            <MemoryRouter initialEntries={["/task/2/experiment"]}>
+                <Routes>
+                    <Route path="/task/:taskId/experiment" element={<ExperimentLayout />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const notice = await waitFor(() => view.getByTestId("student-experiment-rejection-notice"));
+    expect(notice.getAttribute("role")).toBe("alert");
+    expect(notice.textContent).toContain(rejectReason);
+    expect(view.getByTestId("student-analysis-report-editor")).toBeTruthy();
+});
 
 test("version conflict blocks retry until the student explicitly loads the latest version", async () => {
     const staleReport = `<p>${"旧标签页草稿".repeat(30)}</p>`;

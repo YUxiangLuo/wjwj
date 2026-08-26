@@ -83,6 +83,7 @@ async function buildExperimentResponse(
         version: record.version,
         currentStage: record.currentStage,
         status: record.status,
+        rejectReason: record.status === ExperimentStatus.REJECTED ? record.rejectReason : null,
         questionnaire: parseStoredJson(record.questionnaire),
         samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
         samplingResults: resolvedSamplingResults.value,

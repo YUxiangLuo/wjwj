@@ -178,6 +178,19 @@ export function ExperimentLayout() {
                     </div>
                 </div>
                 <div className="my-6 flex items-center gap-3 rounded-xl border border-border bg-card/50 px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-sm font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-xs text-muted-foreground">{stages[currentStage - 1]!.description}。仅点击阶段完成按钮时保存。</p></div></div>
+                {experiment.status === "rejected" && experiment.rejectReason?.trim() && (
+                    <div
+                        role="alert"
+                        className="mb-6 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-destructive"
+                        data-testid="student-experiment-rejection-notice"
+                    >
+                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold">本次提交已被驳回，请按教师意见修改后重新提交</p>
+                            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">{experiment.rejectReason}</p>
+                        </div>
+                    </div>
+                )}
                 <div key={editorRevision} className="min-h-[500px]">{renderStage()}</div>
             </div>
             <AlertDialog open={reopenStage !== null} onOpenChange={(open) => !open && setReopenStage(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>重新编辑“{reopenStage ? stages[reopenStage - 1]!.name : ""}”</AlertDialogTitle><AlertDialogDescription>当前阶段内容会保留，该阶段之后的内容将被清空。确认后才能重新编辑。</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>取消</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void applyReopen()}>确认重新编辑</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

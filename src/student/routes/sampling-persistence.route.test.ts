@@ -111,6 +111,9 @@ test("sampling action atomically persists its server-generated method result", a
 
 test("experiment reads hydrate compact stored indices for the SPA", async () => {
     const compact = record({
+        status: "rejected",
+        currentStage: 4,
+        rejectReason: "请补充四种抽样方法的比较",
         samplingResults: {
             simple: { completed: true, sampleCount: 2, indices: [1, 3], serverGenerated: true },
         },
@@ -122,6 +125,7 @@ test("experiment reads hydrate compact stored indices for the SPA", async () => 
     const response = await module.experimentRoutes.GET!(request);
     const payload = await response.json() as any;
     expect(response.status).toBe(200);
+    expect(payload.data.rejectReason).toBe("请补充四种抽样方法的比较");
     expect(payload.data.samplingResults.simple.data).toEqual([
         { id: 2, gender: "A", weight: 2 },
         { id: 4, gender: "B", weight: 4 },

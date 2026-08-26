@@ -102,6 +102,7 @@ export interface ExperimentData {
     version: number;
     currentStage: number;
     status: ExperimentStatus;
+    rejectReason?: string | null;
     questionnaire: QuestionnaireData | null;
     samplePlan: SamplePlanData | null;
     samplingResults: SamplingResultsData | null;

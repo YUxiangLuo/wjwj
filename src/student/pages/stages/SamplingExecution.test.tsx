@@ -164,6 +164,8 @@ test("SamplingExecution always uses the desktop tabs and navigation", async () =
     expect(view.getByTestId("student-sampling-tab-systematic").textContent).toContain("系统抽样");
     expect(view.getByTestId("student-sampling-tab-pps").textContent).toContain("PPS抽样");
     expect(view.getByTestId("student-sampling-tab-stratified").textContent).toContain("分层抽样");
+    expect(view.container.textContent).toContain("与目标变量相关时 PPS 才更可能提高效率");
+    expect(view.container.textContent).toContain("相关性弱时未必优于等概率设计");
 
     const next = view.getByTestId("student-sampling-next");
     expect(next.parentElement?.className).toContain("flex-row");
@@ -200,6 +202,7 @@ test("SamplingExecution preserves a persisted completed PPS result while eligibl
         expect(view.getByTestId("student-sampling-next").textContent).toContain("完成本阶段");
     });
     expect(view.queryByTestId("student-sampling-pps-unavailable")).toBeNull();
+    expect(view.container.textContent).toContain("本实验执行还要求该字段对总体每个单位均为正数");
 });
 
 test("SamplingExecution marks PPS as unavailable when no numeric size field exists", async () => {
