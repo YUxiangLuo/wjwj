@@ -15,7 +15,7 @@ import {
     ChevronRight
 } from "lucide-react";
 import { zForConfidenceLevel } from "../experiment/confidence-level";
-import { calculateFinitePopulationSampleSize } from "../experiment/sample-plan";
+import { calculateFinitePopulationSampleSize, finitePopulationVarianceFactor } from "../experiment/sample-plan";
 import { primarySliderClassName } from "./sample-planning-styles";
 
 interface CostScenario {
@@ -120,19 +120,15 @@ export function PrecisionCostTradeoff({
     const achievablePrecision = useMemo(() => {
         if (maxFeasibleSampleSize <= 0) return null;
 
-        // 反向计算误差限：从样本量反推
-        // 正向: n_final = (z²p(1-p)/E²) / (1+(n₀-1)/N) * deff / (1-nrr)
-        // 反推: effectiveN = n_final * (1-nrr) / deff，然后含FPC反推E
+        // 从计划发放量先得到预期完成量 m=n(1-NRR)，再按
+        // SE²≈deff×p(1-p)×FPC(m)/m 计算；FPC 必须使用完成量，不能使用除以 deff 后的“等效样本量”。
         const z = zForConfidenceLevel(confidenceLevelLocal);
         const p = 0.5;
         
-        // 去除deff和nrr调整，得到有限总体校正后的有效样本量
-        // designEffect > 0 由UI slider下限保证（最小0.5）
         const safeDeff = designEffectLocal > 0 ? designEffectLocal : 1;
-        const effectiveN = maxFeasibleSampleSize * (1 - nonResponseRateLocal) / safeDeff;
-        // 含有限总体校正 (FPC) 的反推误差限: E = z * sqrt(p(1-p)/n * (1-n/N))
-        const fpc = Math.max(0, 1 - effectiveN / populationSize);
-        const marginOfError = z * Math.sqrt(p * (1 - p) / effectiveN * fpc) * 100;
+        const expectedRespondents = maxFeasibleSampleSize * (1 - nonResponseRateLocal);
+        const fpc = finitePopulationVarianceFactor(populationSize, expectedRespondents);
+        const marginOfError = z * Math.sqrt(safeDeff * p * (1 - p) / expectedRespondents * fpc) * 100;
 
         return {
             marginOfError: Math.min(marginOfError, 50), // 最大50%
@@ -153,11 +149,9 @@ export function PrecisionCostTradeoff({
 
         sampleSizes.forEach(n => {
             if (n <= populationSize) {
-                // 去除deff和nrr调整，得到有效样本量
-                const effectiveN = n * (1 - nonResponseRateLocal) / safeDeff;
-                // 含FPC反推误差限
-                const fpc = Math.max(0, 1 - effectiveN / populationSize);
-                const marginOfError = z * Math.sqrt(p * (1 - p) / effectiveN * fpc) * 100;
+                const expectedRespondents = n * (1 - nonResponseRateLocal);
+                const fpc = finitePopulationVarianceFactor(populationSize, expectedRespondents);
+                const marginOfError = z * Math.sqrt(safeDeff * p * (1 - p) / expectedRespondents * fpc) * 100;
                 
                 // 计算成本
                 const totalCost = currentScenario.fixedCost + n * currentScenario.variableCostPerUnit;

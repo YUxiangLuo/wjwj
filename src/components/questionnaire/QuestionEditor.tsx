@@ -23,17 +23,17 @@ interface QuestionEditorProps {
 }
 
 const questionTypeLabels: Record<QuestionType, string> = {
-    boolean: "判断题",
+    boolean: "是/否题",
     single: "单选题",
     multiple: "多选题",
-    scale: "满意度量表",
+    scale: "评分题",
 };
 
 const questionTypeDescriptions: Record<QuestionType, string> = {
     boolean: "固定「是」「否」两个选项",
     single: "从多个选项中选择一个",
     multiple: "从多个选项中选择多个",
-    scale: "量表评分，可选择常用的 Likert 量表预设",
+    scale: "有序评分题，可选择常用的 Likert 型题项或一般评分预设",
 };
 
 interface LikertPreset {
@@ -45,12 +45,12 @@ interface LikertPreset {
 }
 
 const LIKERT_PRESETS: LikertPreset[] = [
-    { label: "5点 Likert（非常不同意—非常同意）", scaleMin: 1, scaleMax: 5, scaleMinLabel: "非常不同意", scaleMaxLabel: "非常同意" },
-    { label: "5点 Likert（非常不满意—非常满意）", scaleMin: 1, scaleMax: 5, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" },
-    { label: "5点 Likert（从不—总是）", scaleMin: 1, scaleMax: 5, scaleMinLabel: "从不", scaleMaxLabel: "总是" },
-    { label: "7点 Likert（非常不同意—非常同意）", scaleMin: 1, scaleMax: 7, scaleMinLabel: "非常不同意", scaleMaxLabel: "非常同意" },
-    { label: "7点 Likert（非常不满意—非常满意）", scaleMin: 1, scaleMax: 7, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" },
-    { label: "10点量表（非常不满意—非常满意）", scaleMin: 1, scaleMax: 10, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" },
+    { label: "5点 Likert 型题项（非常不同意—非常同意）", scaleMin: 1, scaleMax: 5, scaleMinLabel: "非常不同意", scaleMaxLabel: "非常同意" },
+    { label: "5点评分（非常不满意—非常满意）", scaleMin: 1, scaleMax: 5, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" },
+    { label: "5点评分（从不—总是）", scaleMin: 1, scaleMax: 5, scaleMinLabel: "从不", scaleMaxLabel: "总是" },
+    { label: "7点 Likert 型题项（非常不同意—非常同意）", scaleMin: 1, scaleMax: 7, scaleMinLabel: "非常不同意", scaleMaxLabel: "非常同意" },
+    { label: "7点评分（非常不满意—非常满意）", scaleMin: 1, scaleMax: 7, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" },
+    { label: "10点评分（非常不满意—非常满意）", scaleMin: 1, scaleMax: 10, scaleMinLabel: "非常不满意", scaleMaxLabel: "非常满意" },
 ];
 
 function generateId(): string {
@@ -222,7 +222,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     {type === "boolean" && (
                         <div className="p-4 bg-muted/30 rounded-lg border border-input/50">
                             <p className="text-sm text-muted-foreground">
-                                判断题固定提供「是」和「否」两个选项
+                                是/否题固定提供「是」和「否」两个选项
                             </p>
                         </div>
                     )}
@@ -309,7 +309,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                     {type === "scale" && (
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-muted-foreground">常用量表预设</Label>
+                                <Label className="text-muted-foreground">常用评分预设</Label>
                                 <div className="grid grid-cols-1 gap-1.5">
                                     {LIKERT_PRESETS.map((preset, idx) => (
                                         <button
@@ -335,7 +335,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="scaleMin" className="text-muted-foreground">量表最小值</Label>
+                                    <Label htmlFor="scaleMin" className="text-muted-foreground">评分最小值</Label>
                                     <Input
                                         id="scaleMin"
                                         type="number"
@@ -348,7 +348,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="scaleMax" className="text-muted-foreground">量表最大值</Label>
+                                    <Label htmlFor="scaleMax" className="text-muted-foreground">评分最大值</Label>
                                     <Input
                                         id="scaleMax"
                                         type="number"
@@ -362,7 +362,7 @@ export function QuestionEditor({ open, onOpenChange, question, onSave }: Questio
                                 </div>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                                量表范围：{scaleMin} - {scaleMax} 分
+                                评分范围：{scaleMin} - {scaleMax} 分
                             </p>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">

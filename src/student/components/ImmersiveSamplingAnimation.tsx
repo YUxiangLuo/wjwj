@@ -448,13 +448,13 @@ export function ImmersiveSamplingAnimation({
         if (method === "simple") {
             return `即将从 ${populationSize.toLocaleString()} 个总体中随机选取 ${sampleSize} 个样本，每个个体被选中的概率完全相等。`;
         } else if (method === "systematic") {
-            return `将按分数间隔 K=${formatSystematicInterval(interval)} 从总体中等距抽取 ${sampleSize} 个样本，样本量与规划值精确一致。`;
+            return `将按分数间隔 K=${formatSystematicInterval(interval)} 和随机起点从当前抽样框顺序中抽取 ${sampleSize} 个样本。执行前应检查排序与周期结构，避免其与 K 同步。`;
         } else if (method === "pps") {
             const label = FIELD_LABELS[sizeField ?? ""] ?? sizeField ?? "规模";
             return `按"${label}"大小赋予不同选中概率，从 ${populationSize.toLocaleString()} 个总体中抽取 ${sampleSize} 个样本。`;
         } else {
             const layerNames = (layers ?? []).map((l) => l.name).join("、");
-            return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerNames} 等层，再从各层中按比例抽取样本。`;
+            return `先按"${FIELD_LABELS[stratifyBy ?? ""] ?? stratifyBy ?? "分层变量"}"将总体分为 ${layerNames} 等层，再按已配置的各层样本量分别抽取。`;
         }
     }, [method, populationSize, sampleSize, interval, sizeField, stratifyBy, layers]);
 

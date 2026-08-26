@@ -2,10 +2,10 @@ import { RichTextContent } from "@/components/RichTextContent";
 import type { QuestionnaireData, QuestionType } from "@/lib/questionnaire-types";
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-    boolean: "是非题",
+    boolean: "是/否题",
     single: "单选题",
     multiple: "多选题",
-    scale: "量表题",
+    scale: "评分题",
 };
 
 export function QuestionnaireSnapshot({
@@ -60,7 +60,7 @@ export function QuestionnaireSnapshot({
                             )}
                             {question.type === "scale" && (
                                 <p className="mt-3 text-sm text-muted-foreground">
-                                    量表：{question.scaleMin ?? 1}–{question.scaleMax ?? 10}
+                                    评分范围：{question.scaleMin ?? 1}–{question.scaleMax ?? 10}
                                     {(question.scaleMinLabel || question.scaleMaxLabel)
                                         ? `（${question.scaleMinLabel ?? "最低"} ～ ${question.scaleMaxLabel ?? "最高"}）`
                                         : ""}

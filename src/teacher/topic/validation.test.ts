@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
     validateParsedExcelUpload,
+    validateNumericFieldValues,
     validateTopicPublishReadiness,
     validateStratifiedValueCardinality,
     validateTopicAttachmentUpload,
@@ -30,6 +31,16 @@ describe("topic validation helpers", () => {
                 rows: [{ id: "1", name: "Alice" }, { id: "", name: "" }],
             })
         ).toBe("存在完全空白的行");
+    });
+
+    test("validateNumericFieldValues requires every mapped numeric value to be finite", () => {
+        const rows = [
+            { score: "12.5", age: 20 },
+            { score: "", age: 21 },
+        ];
+        expect(validateNumericFieldValues(rows, ["age"])).toBeNull();
+        expect(validateNumericFieldValues(rows, ["score"])).toBe("数值变量 score 在数据第2行存在空值或非数值");
+        expect(validateNumericFieldValues([{ score: "abc" }], ["score"])).toBe("数值变量 score 在数据第1行存在空值或非数值");
     });
 
     test("validateTopicFieldMappingConfig enforces required categories", () => {

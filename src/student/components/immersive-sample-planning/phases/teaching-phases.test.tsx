@@ -55,7 +55,7 @@ test("PrecisionPhase 在均值估计下展示均值公式而非比例公式", ()
     const view = render(<PrecisionPhase params={meanParams()} onNext={() => {}} />);
     const text = view.container.textContent ?? "";
 
-    expect(text).toContain("SE(ȳ) = √(σ²/n × (1−n/N))");
+    expect(text).toContain("SE(ȳ) = √[σ²/n × (N−n)/(N−1)]");
     expect(text).toContain("σ²=100");
     expect(text).not.toContain("CV = SE / p");
     expect(text).not.toContain("p=0.5");
@@ -89,6 +89,13 @@ test("FactorsPhase 区分初始 n0 的 25 倍与有限总体实际倍数", () =>
     expect(text).toContain("n₀ 会增加 25 倍");
     expect(text).toContain("有限总体校正后的样本量由 132 增至 196");
     expect(text).toContain("实际约为 1.48 倍");
+});
+
+test("QuizPhase 不把三个域的样本量写成固定 2–3 倍", () => {
+    const view = render(<QuizPhase questionIndex={4} onNext={() => {}} onSkip={() => {}} />);
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("共同计算");
+    expect(text).not.toContain("约 2-3 倍");
 });
 
 test("QuizPhase 将 25 倍结论限定在未校正的 n0 公式", () => {

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import type { SampleParams } from "../types";
 import { zForConfidenceLevel } from "../types";
+import { finitePopulationVarianceFactor } from "../../../experiment/sample-plan";
 
 interface Props {
     params: SampleParams;
@@ -36,7 +37,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
     });
 
     const z = zForConfidenceLevel(params.confidenceLevel);
-    const fpc = Math.max(0, 1 - demoN / N);
+    const fpc = finitePopulationVarianceFactor(N, demoN);
     const se = isMeanEstimation
         ? Math.sqrt(sigma2 / demoN * fpc)
         : Math.sqrt(0.25 / demoN * fpc);
@@ -63,10 +64,10 @@ export function PrecisionPhase({ params, onNext }: Props) {
                 <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">标准误差 SE</p>
                     <p className="font-mono text-sm text-foreground/90">
-                        {isMeanEstimation ? "SE(ȳ) = √(σ²/n × (1−n/N))" : "SE = √(p(1−p)/n × (1−n/N))"}
+                        {isMeanEstimation ? "SE(ȳ) = √[σ²/n × (N−n)/(N−1)]" : "SE = √[p(1−p)/n × (N−n)/(N−1)]"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        估计值的标准差。其中 (1−n/N) 是标准误里的有限总体校正；N 很大时它接近 1。SE 越小，估计越精确。
+                        估计值的标准差。这里把有限总体方差定义为分母 N，因此校正因子是 (N−n)/(N−1)；N 很大时它接近 1。SE 越小，估计越精确。
                     </p>
                 </div>
                 <div className="rounded-2xl border border-border bg-background p-4 shadow-sm space-y-2">
@@ -87,7 +88,7 @@ export function PrecisionPhase({ params, onNext }: Props) {
                             CV = SE / p
                         </p>
                         <p className="text-xs text-muted-foreground">
-                            规划阶段用假设的总体比例 p，不是样本比例 p̂。相对精度便于跨量纲比较。部分调查机构把主要指标 CV &lt; 5% 当作经验门槛，不是普遍定理。
+                            规划阶段用非零的假设总体比例 p，不是样本比例 p̂。它表示比例估计的相对标准误；p 接近 0 时会很不稳定，不存在通用合格阈值。
                         </p>
                     </div>
                 )}

@@ -224,7 +224,9 @@ export function FormulaPhase({
                                 placeholder="例如 100"
                                 className="h-12 text-lg bg-background border-border"
                             />
-                            <p className="text-xs text-muted-foreground">可从历史调查数据中估算，或使用预调查结果</p>
+                            <p className="text-xs text-muted-foreground">
+                                可从历史调查或预调查估算。本工具按 σ²=(1/N)Σ(yᵢ−Ȳ)² 定义；若已有分母 N−1 的有限总体方差 S²，可换算为 σ²=(N−1)S²/N（大总体时差异很小）。
+                            </p>
                         </div>
                     )}
 

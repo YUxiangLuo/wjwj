@@ -67,6 +67,14 @@ export function buildStratifiedStats(population: Array<Record<string, unknown>>,
     return stats;
 }
 
+function toFiniteNumericValue(value: unknown): number | null {
+    if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
+        return null;
+    }
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+}
+
 export interface StratumNumericStat {
     mean: number;
     stdDev: number;
@@ -108,8 +116,8 @@ export function buildStratifiedNumericStats(
 
             for (const numField of mapping.numeric) {
                 const values = rows
-                    .map((r) => Number(r[numField]))
-                    .filter((v) => Number.isFinite(v));
+                    .map((row) => toFiniteNumericValue(row[numField]))
+                    .filter((value): value is number => value !== null);
 
                 if (values.length < 2) continue;
 
@@ -137,8 +145,8 @@ export function buildPopulationNumericStats(
 
     for (const field of numericFields) {
         const values = population
-            .map((row) => Number(row[field]))
-            .filter((value) => Number.isFinite(value));
+            .map((row) => toFiniteNumericValue(row[field]))
+            .filter((value): value is number => value !== null);
 
         if (values.length === 0) {
             continue;

@@ -15,6 +15,7 @@ import {
     calculateSampleSizeSteps,
     calculateSizeMeasureAllocation,
     calculateSqrtSizeMeasureAllocation,
+    finitePopulationVarianceFactor,
 } from "./sample-plan";
 
 test("basic sample size with 95% confidence and 5% margin", () => {
@@ -184,6 +185,11 @@ test("deff = 1 does not change the result", () => {
 
 // ========== calculateSampleSizeMetrics tests ==========
 
+test("finite population variance factor uses the exact denominator-N convention", () => {
+    expect(finitePopulationVarianceFactor(60, 53)).toBeCloseTo(7 / 59, 14);
+    expect(finitePopulationVarianceFactor(60, 60)).toBe(0);
+});
+
 test("metrics SE includes finite population correction", () => {
     const metrics = calculateSampleSizeMetrics({
         confidenceLevel: "95",
@@ -194,7 +200,10 @@ test("metrics SE includes finite population correction", () => {
     // SE with FPC should be smaller than SE without FPC
     const p = 0.5;
     const n = metrics!.n1;
-    const seWithoutFPC = Math.sqrt(p * (1 - p) / Math.ceil(n));
+    const effectiveN = Math.ceil(n);
+    const seWithoutFPC = Math.sqrt(p * (1 - p) / effectiveN);
+    const expected = Math.sqrt(p * (1 - p) / effectiveN * ((1000 - effectiveN) / 999));
+    expect(metrics!.standardError).toBeCloseTo(expected, 14);
     expect(metrics!.standardError).toBeLessThan(seWithoutFPC);
     // SE should be positive
     expect(metrics!.standardError).toBeGreaterThan(0);

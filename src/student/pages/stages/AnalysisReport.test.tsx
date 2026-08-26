@@ -164,6 +164,24 @@ test("AnalysisReport labels full-population metrics as virtual-population oracle
     expect(view.getByTestId("student-analysis-tab-represent").textContent).toContain("总体对照偏差");
 });
 
+test("AnalysisReport warns when a historical numeric column is excluded for missing values", async () => {
+    mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
+        success: true,
+        data: {
+            numericFields: [],
+            excludedNumericFields: ["收入"],
+            categoricalFields: [],
+            numeric: {},
+            categorical: {},
+        } as AnalysisMetricsData,
+    });
+
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("student-analysis-invalid-numeric-warning")).toBeTruthy());
+    expect(view.getByTestId("student-analysis-invalid-numeric-warning").textContent).toContain("收入");
+    expect(view.getByTestId("student-analysis-invalid-numeric-warning").textContent).toContain("已停止");
+});
+
 test("AnalysisReport shows a visible error when analysis metrics fail to load", async () => {
     mockExperimentApi.getAnalysisMetrics.mockRejectedValueOnce(new Error("network"));
 

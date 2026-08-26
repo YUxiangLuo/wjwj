@@ -34,6 +34,7 @@ export interface CategoricalFieldAnalysis {
 
 export interface AnalysisMetricsResult {
     numericFields: string[];
+    excludedNumericFields: string[];
     categoricalFields: string[];
     numeric: Record<string, NumericFieldAnalysis>;
     categorical: Record<string, CategoricalFieldAnalysis>;
@@ -71,6 +72,9 @@ function buildEmptyRepresentativeness(): Record<MethodKey, number | null> {
 }
 
 function toFiniteNumber(value: unknown) {
+    if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
+        return null;
+    }
     const numericValue = Number(value);
     return Number.isFinite(numericValue) ? numericValue : null;
 }
@@ -538,23 +542,27 @@ export function buildAnalysisMetrics(params: {
     const populationSize = params.population.length;
 
     const populationNumericStats = buildPopulationNumericStats(params.population, numericFields);
+    // 新映射会在服务端拒绝缺失/非数值；历史数据若不完整则整列 fail closed，避免混用总行数 N 和有效值数。
+    const completeNumericFields = numericFields.filter((field) => (
+        populationNumericStats[field]?.count === populationSize
+    ));
     const populationCategoricalCounts = buildPopulationCategoricalStats(params.population, categoricalFields);
 
     const simpleRows = (params.samplingResults?.simple?.data ?? []) as Array<Record<string, unknown>>;
     const systematicRows = (params.samplingResults?.systematic?.data ?? []) as Array<Record<string, unknown>>;
     const ppsRows = (params.samplingResults?.pps?.data ?? []) as Array<Record<string, unknown>>;
     const stratifiedRows = (params.samplingResults?.stratified?.data ?? []) as Array<Record<string, unknown>>;
-    const ppsMonteCarloContext = params.samplingResults?.pps?.unavailable || numericFields.length === 0
+    const ppsMonteCarloContext = params.samplingResults?.pps?.unavailable || completeNumericFields.length === 0
         ? null
         : buildPpsMonteCarloContext(
             params.population,
             params.samplingResults?.pps?.sizeField,
             params.samplingResults?.pps?.sampleCount,
-            numericFields,
+            completeNumericFields,
         );
 
     const numeric: Record<string, NumericFieldAnalysis> = {};
-    for (const field of numericFields) {
+    for (const field of completeNumericFields) {
         const populationStat = populationNumericStats[field];
         if (!populationStat) continue;
 
@@ -655,6 +663,7 @@ export function buildAnalysisMetrics(params: {
 
     return {
         numericFields: Object.keys(numeric),
+        excludedNumericFields: numericFields.filter((field) => !completeNumericFields.includes(field)),
         categoricalFields: Object.keys(categorical),
         numeric,
         categorical,

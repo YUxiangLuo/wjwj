@@ -7,6 +7,7 @@ import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath,
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
 import {
     validateParsedExcelUpload,
+    validateNumericFieldValues,
     validateTopicPublishReadiness,
     validateStratifiedValueCardinality,
     validateTopicFieldMappingColumns,
@@ -246,6 +247,8 @@ export async function updateTopicFieldMapping(params: {
     if (columnsError) return fail(columnsError);
     const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
     if (cardinalityError) return fail(cardinalityError);
+    const numericValueError = validateNumericFieldValues(parsed.rows, params.fieldMapping.numeric ?? []);
+    if (numericValueError) return fail(numericValueError);
 
     await db
         .update(topic)

@@ -37,12 +37,30 @@ test("sampling animation can be skipped immediately without invoking close", asy
     );
 
     expect(view.getByText(/分数间隔 K=1\.5152/)).toBeTruthy();
+    expect(view.getByText(/检查排序与周期结构/)).toBeTruthy();
     fireEvent.click(view.getByTestId("immersive-sampling-skip"));
     await waitFor(() => expect(view.getByText("系统抽样完成")).toBeTruthy());
     expect(onClose).toHaveBeenCalledTimes(0);
 
     fireEvent.click(view.getByTestId("immersive-sampling-return"));
     expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test("stratified animation describes configured layer counts rather than assuming proportional allocation", () => {
+    const view = render(
+        <ImmersiveSamplingAnimation
+            method="stratified"
+            populationSize={200}
+            sampleSize={80}
+            stratifyBy="gender"
+            layers={[{ name: "A", count: 20, ratio: 0.1, sampleCount: 20 }, { name: "B", count: 180, ratio: 0.9, sampleCount: 60 }]}
+            sampledData={[]}
+            onClose={() => undefined}
+        />,
+    );
+
+    expect(view.getByText(/按已配置的各层样本量分别抽取/)).toBeTruthy();
+    expect(view.queryByText(/按比例抽取样本/)).toBeNull();
 });
 
 test("sampling animation respects reduced-motion preference", async () => {

@@ -123,6 +123,22 @@ export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput 
     return null;
 }
 
+export function validateNumericFieldValues(
+    rows: Array<Record<string, any>>,
+    numericFields: string[],
+) {
+    for (const field of numericFields) {
+        for (let index = 0; index < rows.length; index += 1) {
+            const raw = rows[index]?.[field];
+            const isBlank = raw === undefined || raw === null || (typeof raw === "string" && raw.trim() === "");
+            if (isBlank || !Number.isFinite(Number(raw))) {
+                return `数值变量 ${field} 在数据第${index + 1}行存在空值或非数值`;
+            }
+        }
+    }
+    return null;
+}
+
 export function validateStratifiedValueCardinality(
     rows: Array<Record<string, any>>,
     stratifiedFields: string[]

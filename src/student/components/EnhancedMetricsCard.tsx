@@ -73,7 +73,7 @@ export function EnhancedMetricsCard({
                             {isMeanEstimation ? metrics.standardError.toFixed(4) : formatPercent(metrics.standardError)}
                         </div>
                         <div className="text-xs text-primary mt-1">
-                            {isMeanEstimation ? "SE(ȳ) = √(σ²/n × (1−n/N))" : "SE = √(p(1−p)/n × (1−n/N))"}
+                            {isMeanEstimation ? "SE(ȳ) = √[σ²/n × (N−n)/(N−1)]" : "SE = √[p(1−p)/n × (N−n)/(N−1)]"}
                         </div>
                     </div>
 

@@ -25,10 +25,10 @@ import { tasksApi, type Question, type QuestionType, type QuestionnaireData } fr
 import { calculateQuestionnaireScoreSummary, getInvalidOptionQuestionIndexes } from "./questionnaire-scoring";
 
 const questionTypeLabels: Record<QuestionType, string> = {
-    boolean: "判断题",
+    boolean: "是/否题",
     single: "单选题",
     multiple: "多选题",
-    scale: "量表",
+    scale: "评分题",
 };
 
 const questionTypeColors: Record<QuestionType, string> = {

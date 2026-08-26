@@ -18,7 +18,7 @@ import {
     ArrowRight,
 } from "lucide-react";
 import { zForConfidenceLevel } from "../experiment/confidence-level";
-import { calculateFinitePopulationSampleSize } from "../experiment/sample-plan";
+import { calculateFinitePopulationSampleSize, capSampleSizeAtPopulation } from "../experiment/sample-plan";
 
 export interface SurveyVariable {
     id: string;
@@ -51,22 +51,49 @@ interface MultiVariableSamplePlanProps {
 }
 
 const IMPORTANCE_LABELS: Record<string, { label: string; color: string; description: string }> = {
-    primary: { 
-        label: "主要变量", 
+    primary: {
+        label: "主要变量",
         color: "bg-destructive",
-        description: "核心调查指标，必须满足精度要求"
+        description: "用于标记研究优先级；已填写的精度要求仍是硬约束",
     },
-    secondary: { 
-        label: "次要变量", 
+    secondary: {
+        label: "次要变量",
         color: "bg-warning",
-        description: "重要但可接受稍低精度"
+        description: "用于结果解读排序；不会让系统忽略本变量的精度要求",
     },
-    tertiary: { 
-        label: "参考变量", 
+    tertiary: {
+        label: "参考变量",
         color: "bg-muted-foreground/50",
-        description: "辅助参考，精度要求最低"
+        description: "若保留精度参数，仍参与最大样本量决策；不要求时请删除该变量",
     },
 };
+
+export function calculateSurveyVariableRequiredSampleSize(variable: SurveyVariable, populationSize: number) {
+    if (!(populationSize > 0) || !(variable.marginOfError > 0)) return 0;
+
+    if (variable.type === "proportion") {
+        const p = variable.estimatedValue;
+        return calculateFinitePopulationSampleSize({
+            confidenceLevel: variable.confidenceLevel,
+            marginOfError: variable.marginOfError,
+            populationSize,
+            designEffect: 1,
+            nonResponseRate: 0,
+            // 0、1 或非法值通常表示缺少可靠先验比例，按 p=.5 做保守规划。
+            p: p > 0 && p < 1 ? p : 0.5,
+        }) ?? 0;
+    }
+
+    const sigma = Number(variable.estimatedStdDev);
+    const meanMagnitude = Math.abs(variable.estimatedValue);
+    if (!(sigma > 0) || !Number.isFinite(sigma) || !(meanMagnitude > 0)) return 0;
+
+    const z = zForConfidenceLevel(variable.confidenceLevel);
+    const absoluteMargin = (variable.marginOfError / 100) * meanMagnitude;
+    const n0 = Math.pow((z * sigma) / absoluteMargin, 2);
+    const finitePopulationN = n0 / (1 + (n0 - 1) / populationSize);
+    return capSampleSizeAtPopulation(finitePopulationN, populationSize);
+}
 
 export function MultiVariableSamplePlan({
     populationSize,
@@ -103,39 +130,10 @@ export function MultiVariableSamplePlan({
 
     // 计算每个变量所需的样本量
     useEffect(() => {
-        const updatedVariables = variables.map(variable => {
-            let requiredSampleSize = 0;
-
-            if (variable.type === "proportion") {
-                // 比例估计的样本量计算
-                const p = variable.estimatedValue;
-                requiredSampleSize = calculateFinitePopulationSampleSize({
-                    confidenceLevel: variable.confidenceLevel,
-                    marginOfError: variable.marginOfError,
-                    populationSize,
-                    designEffect: 1,
-                    nonResponseRate: 0,
-                    p: p > 0 && p < 1 ? p : 0.5,
-                }) ?? 0;
-            } else if (variable.type === "mean" && variable.estimatedStdDev) {
-                // 均值估计的样本量计算（简化版）
-                const z = zForConfidenceLevel(variable.confidenceLevel);
-                const sigma = variable.estimatedStdDev;
-                // 相对误差限：用户输入的百分比 × 估计均值 = 绝对误差
-                // 例如：均值1000元、误差5% → E = 50元
-                const e = (variable.marginOfError / 100) * (variable.estimatedValue || 1);
-
-                // n₀ = (Z × σ / E)²
-                const n0 = Math.pow((z * sigma) / e, 2);
-                // 有限总体校正
-                requiredSampleSize = Math.ceil(n0 / (1 + (n0 - 1) / populationSize));
-            }
-
-            return {
-                ...variable,
-                requiredSampleSize,
-            };
-        });
+        const updatedVariables = variables.map((variable) => ({
+            ...variable,
+            requiredSampleSize: calculateSurveyVariableRequiredSampleSize(variable, populationSize),
+        }));
 
         // 检查是否有变化
         const hasChanged = updatedVariables.some((variable, index) => {
@@ -150,27 +148,11 @@ export function MultiVariableSamplePlan({
         // 依赖不含 onVariablesChange：用 ref 始终调用最新回调，避免因父级内联函数导致 effect 每帧重跑
     }, [variablesSampleCalcKey, populationSize]);
 
-    // 确定建议样本量（取主要变量中的最大值）
-    const recommendedSampleSize = useMemo(() => {
-        if (variables.length === 0) return 0;
-        
-        // 按重要性分组
-        const primaryVars = variables.filter(v => v.importance === "primary");
-        const secondaryVars = variables.filter(v => v.importance === "secondary");
-        
-        // 优先取主要变量的最大值
-        if (primaryVars.length > 0) {
-            return Math.max(...primaryVars.map(v => v.requiredSampleSize));
-        }
-        
-        // 如果没有主要变量，取次要变量的最大值
-        if (secondaryVars.length > 0) {
-            return Math.max(...secondaryVars.map(v => v.requiredSampleSize));
-        }
-        
-        // 否则取所有变量的最大值
-        return Math.max(...variables.map(v => v.requiredSampleSize));
-    }, [variables]);
+    // 每个已配置精度都是硬约束，因此取全部变量需求的最大值；重要性只用于研究优先级标记。
+    const recommendedSampleSize = useMemo(() => (
+        variables.length > 0 ? Math.max(...variables.map((variable) => variable.requiredSampleSize)) : 0
+    ), [variables]);
+    const hasInvalidVariables = variables.some((variable) => variable.requiredSampleSize <= 0);
 
     const onRecommendedSampleSizeChangeRef = useRef(onRecommendedSampleSizeChange);
     onRecommendedSampleSizeChangeRef.current = onRecommendedSampleSizeChange;
@@ -240,7 +222,7 @@ export function MultiVariableSamplePlan({
                     </Badge>
                 </div>
                 <CardDescription className="text-foreground/90">
-                    当调查包含多个指标时，确保所有重要变量都有足够精度
+                    将每个已配置变量的精度作为约束，取所需样本量的最大值
                 </CardDescription>
             </CardHeader>
 
@@ -254,7 +236,7 @@ export function MultiVariableSamplePlan({
                                 <p className="font-medium">为什么需要多变量规划？</p>
                                 <p className="text-warning">
                                     一个调查通常包含多个指标（如满意度、知晓率、消费金额等）。不同指标的变异程度不同，
-                                    所需样本量也不同。系统会自动选择能够满足所有主要变量的最大样本量。
+                                    所需样本量也不同。系统会取全部已配置变量所需样本量的最大值；重要性只标记研究优先级，不会静默取消精度约束。
                                 </p>
                                 <button 
                                     onClick={() => setShowExplanation(false)}
@@ -393,16 +375,24 @@ export function MultiVariableSamplePlan({
                                                     })}
                                                     className="bg-background border-primary text-foreground"
                                                     step={0.01}
-                                                    min={0}
+                                                    min={variable.type === "proportion" ? 0 : undefined}
                                                     max={variable.type === "proportion" ? 1 : undefined}
                                                 />
                                                 {variable.type === "proportion" && (
                                                     <span className="text-primary text-sm">0-1</span>
                                                 )}
                                             </div>
-                                            {variable.type === "proportion" && (
+                                            {variable.type === "proportion" ? (
                                                 <p className="text-xs text-primary">
-                                                    输入 0-1 小数，例如 0.5 = 50%。保守估计通常取 p=0.5，此时方差最大。
+                                                    输入 0-1 小数，例如 0.5 = 50%。若填 0 或 1，系统视为缺少可靠先验并按 p=0.5 保守规划。
+                                                </p>
+                                            ) : Math.abs(variable.estimatedValue) === 0 ? (
+                                                <p className="text-xs text-destructive">
+                                                    均值为 0 时相对误差没有稳定含义，请填写非零先验均值，或改用主流程的绝对误差限。
+                                                </p>
+                                            ) : (
+                                                <p className="text-xs text-primary">
+                                                    相对误差按估计均值的绝对值计算；均值接近 0 时结果会不稳定，宜改用绝对误差限。
                                                 </p>
                                             )}
                                         </div>
@@ -446,13 +436,13 @@ export function MultiVariableSamplePlan({
                                                     <SelectItem value="secondary">
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-2 h-2 rounded-full bg-warning" />
-                                                            次要变量（尽量满足）
+                                                            次要变量（仍满足所填精度）
                                                         </div>
                                                     </SelectItem>
                                                     <SelectItem value="tertiary">
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-2 h-2 rounded-full bg-muted-foreground/50" />
-                                                            参考变量（参考性）
+                                                            参考变量（仍参与约束）
                                                         </div>
                                                     </SelectItem>
                                                 </SelectContent>
@@ -580,13 +570,14 @@ export function MultiVariableSamplePlan({
                         </div>
 
                         <p className="text-xs text-primary mt-3 leading-relaxed">
-                            原则：取主要变量所需样本量的最大值。次要变量和参考变量可能在样本量上有所妥协。
+                            原则：取全部已配置变量所需样本量的最大值。重要性只用于标记分析优先级；如某变量不需要精度保证，请删除它或明确放宽误差限。
                         </p>
 
                         {onApplyToPlan && (
                             <Button
                                 type="button"
                                 onClick={() => onApplyToPlan({ variables, recommendedSampleSize })}
+                                disabled={hasInvalidVariables || recommendedSampleSize <= 0}
                                 className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
                             >
                                 应用到样本量规划
@@ -603,13 +594,13 @@ export function MultiVariableSamplePlan({
                             各变量样本量需求对比
                         </div>
                         <div className="space-y-2">
-                            {variables
+                            {[...variables]
                                 .sort((a, b) => b.requiredSampleSize - a.requiredSampleSize)
                                 .map((variable) => {
                                     const importanceConfig = getImportanceConfig(variable.importance);
                                     if (!importanceConfig) return null;
                                     
-                                    const isMax = variable.requiredSampleSize === recommendedSampleSize && variable.importance === "primary";
+                                    const isMax = variable.requiredSampleSize === recommendedSampleSize;
                                     
                                     return (
                                         <div key={variable.id} className="flex items-center gap-3">
@@ -642,17 +633,13 @@ export function MultiVariableSamplePlan({
                     </div>
                 )}
 
-                {/* 提示信息 */}
-                {variables.some(v => v.importance !== "primary") && (
-                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
+                {hasInvalidVariables && (
+                    <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3">
                         <div className="flex items-start gap-2">
-                            <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                            <div className="text-xs text-warning">
-                                <p className="font-medium mb-1">精度权衡提示</p>
-                                <p className="text-warning">
-                                    非主要变量的实际精度可能低于设定值。如需所有变量都达到目标精度，
-                                    建议将所有变量设为"主要"或将次要变量的误差限放宽。
-                                </p>
+                            <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                            <div className="text-xs text-destructive">
+                                <p className="font-medium mb-1">存在无法计算的变量</p>
+                                <p>均值变量需要非零先验均值、正标准差和正误差限。请修正后再应用样本量。</p>
                             </div>
                         </div>
                     </div>

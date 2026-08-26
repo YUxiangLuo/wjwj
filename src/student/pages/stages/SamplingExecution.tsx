@@ -472,7 +472,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                         系统抽样
                                     </CardTitle>
                                     <CardDescription className="text-muted-foreground pt-1">
-                                        使用分数间隔 K=N/n 从总体中等距抽取，确保实际样本量精确等于规划值 {n}。
+                                        使用分数间隔 K=N/n 和随机起点，按当前抽样框顺序抽取并确保样本量等于规划值 {n}。抽样框排序可能影响效率；若周期结构与 K 同步，结果可能失真。
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6 pt-4">
@@ -493,7 +493,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 <span className="font-mono font-bold text-foreground">{n}</span>
                                                 <span className="text-xs text-success">与规划值一致</span>
                                             </div>
-                                            <p className="text-xs text-muted-foreground">随机起点只改变入选单位，不再改变样本数量。</p>
+                                            <p className="text-xs text-muted-foreground">随机起点保证随机化，但不能自动消除抽样框中的排序或周期性风险。</p>
                                         </div>
                                         <div className="space-y-3">
                                             <Label htmlFor="systematicSeed" className="text-foreground/90">随机种子（可选）</Label>

@@ -14,6 +14,12 @@ const UTF8_CSV = [
     "A003,一线,22,2600,1.8,统计学",
 ].join("\n");
 
+test("population numeric stats do not coerce blank cells to zero", () => {
+    const stats = buildPopulationNumericStats([{ x: 10 }, { x: "" }, { x: null }, { x: 20 }], ["x"]);
+    expect(stats.x?.count).toBe(2);
+    expect(stats.x?.mean).toBe(15);
+});
+
 test("readPopulationData preserves Chinese UTF-8 CSV fields without a BOM", async () => {
     const storagePath = `/storage/uploads/population-${crypto.randomUUID()}.csv`;
     await writeStorageFile(storagePath, UTF8_CSV);

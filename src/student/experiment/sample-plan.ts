@@ -31,6 +31,18 @@ export function capSampleSizeAtPopulation(n: number, populationSize: number): nu
     return Math.min(Math.ceil(n), N);
 }
 
+/**
+ * 有限总体方差因子。这里把 p(1-p) 或 σ² 定义为分母为 N 的有限总体方差，
+ * 因此精确因子为 (N-n)/(N-1)，并与 n₁=n₀/(1+(n₀-1)/N) 保持同一口径。
+ */
+export function finitePopulationVarianceFactor(populationSize: number, sampleSize: number): number {
+    const N = Math.floor(populationSize);
+    if (!(N > 0) || !(sampleSize > 0)) return 0;
+    if (sampleSize >= N) return 0;
+    if (N === 1) return 0;
+    return Math.max(0, (N - sampleSize) / (N - 1));
+}
+
 export function calculateFinitePopulationSampleSize(params: {
     confidenceLevel: unknown;
     marginOfError: unknown;
@@ -117,9 +129,8 @@ export function calculateSampleSizeMetrics(params: {
     // 故 SE/CV 应反映设计意图下的精度，而非原始发放样本量。
     const effectiveN = Math.ceil(n1);
 
-    // 标准误差 SE = sqrt(p*(1-p)/n * (1 - n/N))，含有限总体校正
-    // 当 n ≥ N（全数调查）时 FPC=0，SE=0，此为正确行为
-    const fpc = Math.max(0, 1 - effectiveN / N);
+    // p(1-p) 按分母 N 的有限总体方差定义，与 Cochran 的 (n₀-1)/N 校正保持一致。
+    const fpc = finitePopulationVarianceFactor(N, effectiveN);
     const standardError = Math.sqrt(p * (1 - p) / effectiveN * fpc);
     
     // 相对标准误差 RSE (CV) = SE / p
@@ -297,7 +308,7 @@ function parseMeanEstimationParams(params: {
  * 有限总体: n₁ = n₀ / (1 + (n₀ - 1) / N)
  * 最终:     n  = n₁ × deff / (1 - NRR)
  *
- * 其中 σ² 为总体方差估计值，e 为绝对误差限（与均值同单位）。
+ * 其中 σ² 为按分母 N 定义的有限总体方差估计值，e 为绝对误差限（与均值同单位）。
  */
 export function calculateMeanEstimationSampleSize(params: {
     confidenceLevel: unknown;
@@ -343,7 +354,7 @@ export function calculateMeanSampleSizeMetrics(params: {
     const { n0, n1, n: finalN, cappedAtPopulation } = meanEstimationCore(z, sigma2, parsed.e, N, deff, nrr);
     const effectiveN = Math.ceil(n1);
 
-    const fpc = Math.max(0, 1 - effectiveN / N);
+    const fpc = finitePopulationVarianceFactor(N, effectiveN);
     const standardError = Math.sqrt(sigma2 / effectiveN * fpc);
 
     const mean = params.estimatedMean ?? 0;
@@ -784,7 +795,7 @@ export function calculateSquareRootAllocation(
 /**
  * 与 Nh×Yh 成比例分配
  * 分配系数 wh = (Nh × Yh) / Σ(Ni × Yi)
- * 适用于总体估计值 Y 是总值大小度量时。
+ * 这是课件指定模型下的份额规则；没有目标方差与成本假设时，不把它称为通用最优分配。
  */
 export function calculateSizeMeasureAllocation(
     layers: Array<{ name: string; populationSize: number; sizeMeasure: number }>,
@@ -799,7 +810,7 @@ export function calculateSizeMeasureAllocation(
 /**
  * 与 √(Nh×Yh) 成比例分配
  * 分配系数 wh = √(Nh × Yh) / Σ√(Ni × Yi)
- * 精度高于与 Nh×Yh 成比例分配。
+ * 这是课件给定的份额规则；没有目标方差与成本模型时，不能声称它普遍优于其他分配。
  */
 export function calculateSqrtSizeMeasureAllocation(
     layers: Array<{ name: string; populationSize: number; sizeMeasure: number }>,

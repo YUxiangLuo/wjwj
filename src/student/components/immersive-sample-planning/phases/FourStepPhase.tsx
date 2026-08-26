@@ -158,6 +158,9 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                             </p>
                         )}
                     </div>
+                    <p className="rounded-xl border border-warning/20 bg-warning/10 p-3 text-xs leading-relaxed text-warning">
+                        n₂/(1−NRR) 只是在回答率假设下补足预期完成数量。若回答概率与研究变量相关，扩大初始发放量不能消除无回答偏差，还需跟访、权重调整或专门的无回答分析。
+                    </p>
                 </div>
 
                 <PhaseNextButton onClick={onNext} />

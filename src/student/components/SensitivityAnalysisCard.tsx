@@ -34,6 +34,12 @@ export function SensitivityAnalysisCard({
     // 找出最大样本量（用于颜色编码）
     const maxSampleSize = matrix ? Math.max(...matrix.map(m => m.sampleSize)) : 0;
     const minSampleSize = matrix ? Math.min(...matrix.map(m => m.sampleSize)) : 0;
+    const currentConfidenceItems = groupedByConfidence[currentConfidenceLevel] ?? [];
+    const sampleAtThreePercent = currentConfidenceItems.find((item) => item.marginOfError === 3)?.sampleSize;
+    const sampleAtFivePercent = currentConfidenceItems.find((item) => item.marginOfError === 5)?.sampleSize;
+    const correctedRatio = sampleAtThreePercent && sampleAtFivePercent
+        ? sampleAtThreePercent / sampleAtFivePercent
+        : null;
 
     // 获取颜色强度
     const getIntensity = (sampleSize: number) => {
@@ -150,7 +156,10 @@ export function SensitivityAnalysisCard({
                             <span className="font-medium">颜色深浅</span>：颜色越深表示样本量越大。行/列高亮显示当前设置。
                         </p>
                         <p>
-                            <span className="font-medium">规律</span>：置信水平越高、允许误差越小，所需样本量越大。当允许误差从5%降至3%，样本量约增加2.8倍。
+                            <span className="font-medium">规律</span>：置信水平越高、允许误差越小，所需样本量越大。仅在未校正 n₀ 且其他参数固定时，5%降至3%的理论倍数为 (5/3)²≈2.78；
+                            {correctedRatio !== null
+                                ? `当前表格在 ${currentConfidenceLevel}% 置信水平下，经有限总体、设计效应、无回答和封顶处理后的实际倍数为 ${correctedRatio.toFixed(2)}。`
+                                : "有限总体校正和封顶后应以表格计算值为准。"}
                         </p>
                     </div>
                 </div>

@@ -1,10 +1,10 @@
 import type { QuestionType } from "./questionnaire-types";
 
 export const questionTypeLabels: Record<QuestionType, string> = {
-    boolean: "判断题",
+    boolean: "是/否题",
     single: "单选题",
     multiple: "多选题",
-    scale: "满意度量表",
+    scale: "评分题",
 };
 
 export const questionTypeBadgeColors: Record<QuestionType, string> = {

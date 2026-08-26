@@ -35,7 +35,9 @@ test("questionnaire snapshot renders question types, options, constraints, and c
     expect(view.getByText("校园体验问卷")).toBeTruthy();
     expect(view.getByText("多选题")).toBeTruthy();
     expect(view.getByText("选择数量：1–2 项")).toBeTruthy();
-    expect(view.getByText("量表：1–5（不满意 ～ 满意）")).toBeTruthy();
+    expect(view.getByText("评分题")).toBeTruthy();
+    expect(view.getByText("评分范围：1–5（不满意 ～ 满意）")).toBeTruthy();
+    expect(view.getByText("是/否题")).toBeTruthy();
     expect(view.getByText("选项：是 / 否")).toBeTruthy();
     expect(view.container.textContent).not.toContain('"questions"');
 });

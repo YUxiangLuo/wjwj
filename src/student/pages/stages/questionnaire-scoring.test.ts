@@ -18,7 +18,7 @@ const validBase = {
     endingText: "<p>问卷填写完毕，感谢您的认真作答和对本次课堂调查的支持。</p>",
 };
 
-test("结构完整度不再奖励题型数量、题干长度或量表题", () => {
+test("结构完整度不再奖励题型数量、题干长度或评分题", () => {
     const questions = Array.from({ length: 5 }, (_, index) => createQuestion(`q${index + 1}`));
 
     const summary = calculateQuestionnaireScoreSummary({ ...validBase, questions });

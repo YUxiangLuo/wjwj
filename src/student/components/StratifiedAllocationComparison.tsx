@@ -190,7 +190,7 @@ export function StratifiedAllocationComparison({
                                         </span>
                                         {isBest && (
                                             <Badge className="bg-auxiliary text-auxiliary-foreground text-xs">
-                                                最优方差
+                                                当前对比最低
                                             </Badge>
                                         )}
                                     </div>
@@ -273,7 +273,7 @@ export function StratifiedAllocationComparison({
                             <p className="font-medium">效率解读</p>
                             <p className="text-warning">
                                 相对效率以按比例分配为基准（1.00×）。&gt; 1 表示比按比例分配更精确。
-                                奈曼分配通常在层间方差差异大时效果最好，而按比例分配在层规模差异大时表现稳定。
+                                在固定总样本量、层内 SRS 和等单位成本下，奈曼分配针对所选变量最小化总体均值估计方差；改变目标变量、成本或域精度目标后，结论也会改变。
                             </p>
                         </div>
                     </div>

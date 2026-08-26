@@ -503,6 +503,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <span>{analysisMetricsError}</span>
                                 </div>
                             )}
+                            {(analysisMetrics?.excludedNumericFields?.length ?? 0) > 0 && (
+                                <div className="mb-4 flex items-start gap-2 rounded-xl border border-warning/20 bg-warning/10 p-3 text-xs leading-relaxed text-warning" data-testid="student-analysis-invalid-numeric-warning">
+                                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                    <span>
+                                        历史总体中的数值字段 {analysisMetrics!.excludedNumericFields!.join("、")} 含空值或非数值，已停止该字段的均值与标准误分析，避免混用总体行数和有效值数。请联系教师修正总体数据。
+                                    </span>
+                                </div>
+                            )}
                             <div className="mb-4 flex items-start gap-2 rounded-xl border border-info/20 bg-info/10 p-3 text-xs leading-relaxed text-info" data-testid="student-analysis-oracle-notice">
                                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                                 <span>

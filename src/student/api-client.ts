@@ -125,6 +125,7 @@ export interface AnalysisCategoricalFieldMetrics {
 }
 export interface AnalysisMetricsData {
     numericFields: string[];
+    excludedNumericFields?: string[];
     categoricalFields: string[];
     numeric: Record<string, AnalysisNumericFieldMetrics>;
     categorical: Record<string, AnalysisCategoricalFieldMetrics>;

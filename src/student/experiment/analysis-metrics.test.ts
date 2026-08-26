@@ -50,6 +50,20 @@ test("analysis metrics use the true population mean as the numeric comparison ba
     expect(numericX.methods.stratified.estimate).toBe(25);
 });
 
+test("analysis metrics fail closed for historical numeric columns with missing values", () => {
+    const metrics = buildAnalysisMetrics({
+        population: [{ x: 10 }, { x: "" }, { x: 30 }],
+        fieldMapping: { numeric: ["x"], stratified: [], others: [] },
+        samplingResults: {
+            simple: { completed: true, sampleCount: 2, data: [{ x: 10 }, { x: 30 }] },
+        },
+    });
+
+    expect(metrics.numericFields).toEqual([]);
+    expect(metrics.excludedNumericFields).toEqual(["x"]);
+    expect(metrics.numeric.x).toBeUndefined();
+});
+
 test("analysis metrics retain an exact standard error for fractional systematic intervals", () => {
     const population = Array.from({ length: 5 }, (_, index) => ({ x: index * 10 }));
     const systematicSample = performSystematicSampling(population, 3, () => 0);
