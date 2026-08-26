@@ -50,3 +50,15 @@ test("allocateStratifiedSampleCounts preserves the target total for equal alloca
     expect(counts).toEqual([4, 3, 3]);
     expect(counts.reduce((sum, count) => sum + count, 0)).toBe(10);
 });
+
+test("allocateStratifiedSampleCounts repeatedly redistributes after a tiny stratum is capped", () => {
+    const counts = allocateStratifiedSampleCounts({
+        targetSampleSize: 50,
+        rawCounts: [25, 25],
+        caps: [1, 99],
+    });
+
+    expect(counts).toEqual([1, 49]);
+    expect(counts.reduce((sum, count) => sum + count, 0)).toBe(50);
+    expect(counts.every((count, index) => count <= [1, 99][index]!)).toBe(true);
+});

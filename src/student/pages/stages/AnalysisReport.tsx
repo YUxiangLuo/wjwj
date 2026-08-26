@@ -12,7 +12,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, Ruler, ListTree, AlertCircle } from "lucide-react";
+import { BarChart3, Download, FileText, Send, Loader2, Sparkles, Maximize2, Ruler, ListTree, AlertCircle, Info } from "lucide-react";
 import { getRichTextPlainLength } from "@/utils/rich-text";
 import { useExperiment } from "../ExperimentLayout";
 import { RichTextEditor } from "../../components/RichTextEditor";
@@ -423,7 +423,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
         mean: { title: "均值对比", rows: meanRows, series: meanSeries, emptyMessage: "暂无可用于均值分析的数值字段", downloadFileName: `mean_${sanitizeFileName(selectedNumericField)}.svg` },
         dist: { title: "分布对比", rows: distributionRows, series: distributionSeries, unit: "%", emptyMessage: "暂无可用于分布分析的分类字段", downloadFileName: `distribution_${sanitizeFileName(selectedCategoricalField)}.svg` },
         error: { title: "误差分析", rows: errorRows, series: errorSeries, emptyMessage: "暂无可用于误差分析的数值字段", downloadFileName: `error_${sanitizeFileName(selectedNumericField)}.svg` },
-        represent: { title: "样本代表性", rows: representativenessRows, series: representSeries, unit: "%", emptyMessage: "暂无可用于代表性分析的数据", downloadFileName: "representativeness.svg" },
+        represent: { title: "与已知总体的描述性偏差", rows: representativenessRows, series: representSeries, unit: "%", emptyMessage: "暂无可用于总体对照偏差分析的数据", downloadFileName: "population-deviation.svg" },
     }), [meanRows, meanSeries, distributionRows, distributionSeries, errorRows, errorSeries, representSeries, representativenessRows, selectedNumericField, selectedCategoricalField]);
 
     const activeZoom = zoomChart ? chartConfig[zoomChart] : null;
@@ -503,6 +503,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <span>{analysisMetricsError}</span>
                                 </div>
                             )}
+                            <div className="mb-4 flex items-start gap-2 rounded-xl border border-info/20 bg-info/10 p-3 text-xs leading-relaxed text-info" data-testid="student-analysis-oracle-notice">
+                                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                                <span>
+                                    本页利用虚拟实验中已知的完整总体，对照总体真值并计算设计层面的误差。真实调查看不到未入样单位，应使用与抽样设计匹配的样本权重和方差估计；PPS 的标准误是 128 次重复抽样的 Monte Carlo 近似。
+                                </span>
+                            </div>
                             <Tabs defaultValue="charts" className="w-full">
                                 <TabsList
                                     className="mb-6 flex h-auto w-full flex-wrap gap-1 rounded-xl border border-border bg-background p-1"
@@ -546,12 +552,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                     <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">均值对比</TabsTrigger>
                                     <TabsTrigger value="dist" data-testid="student-analysis-tab-dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">分布对比</TabsTrigger>
                                     <TabsTrigger value="error" data-testid="student-analysis-tab-error" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">误差分析</TabsTrigger>
-                                    <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">样本代表性</TabsTrigger>
+                                    <TabsTrigger value="represent" data-testid="student-analysis-tab-represent" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">总体对照偏差</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="mean">
                                     <ChartTabPanel
-                                        description="比较各抽样方法对同一数值变量的总体均值估计。PPS 使用 Hájek 加权均值（按一阶包含概率的倒数加权并归一化），不是 Horvitz–Thompson 均值。"
+                                        description="比较各抽样方法对同一数值变量的均值估计，并利用已知虚拟总体显示真值对照。PPS 使用 Hájek 加权均值（按一阶包含概率的倒数加权并归一化），不是 Horvitz–Thompson 均值。"
                                         rows={meanRows}
                                         series={meanSeries}
                                         emptyMessage="暂无可用于均值分析的数值字段"
@@ -565,7 +571,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="dist">
                                     <ChartTabPanel
-                                        description="比较各抽样方法在分类变量上的分布占比（含总体对照）。"
+                                        description="比较各抽样方法在分类变量上的分布占比，并利用已知虚拟总体显示真值对照。"
                                         rows={distributionRows}
                                         series={distributionSeries}
                                         unit="%"
@@ -585,7 +591,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="error">
                                     <ChartTabPanel
-                                        description="比较各抽样方法对同一数值变量均值估计的设计标准误。简单随机、系统抽样和分层抽样为解析设计标准误；PPS 为 128 次独立重复抽样的模拟设计标准误。"
+                                        description="利用完整虚拟总体比较均值估计的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，PPS 为 128 次重复抽样的 Monte Carlo 近似。它们不是现实调查中仅凭当前样本直接得到的标准误。"
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
@@ -599,11 +605,11 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="represent">
                                     <ChartTabPanel
-                                        description="数值行为相对偏差 |估计−总体均值|/|总体均值|；分类行为各类占比差的平均。两套百分数含义不同，不要直接横比。"
+                                        description="描述当前样本与已知虚拟总体的差异：数值行为 |估计−总体均值|/|总体均值|，分类行为各类占比差的平均。两套百分数不可横比，接近总体也不能单独证明样本无偏或具有整体代表性。"
                                         rows={representativenessRows}
                                         series={representSeries}
                                         unit="%"
-                                        emptyMessage="暂无可用于代表性分析的数据"
+                                        emptyMessage="暂无可用于总体对照偏差分析的数据"
                                         onZoom={() => setZoomChart("represent")}
                                         onDownload={() => downloadChart("represent")}
                                     />
@@ -667,8 +673,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm text-primary">
                             <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。PPS 看的是 Hájek 加权均值。</p>
-                            <p>• 再看分类分布与代表性偏差，识别各方法对总体结构的贴近程度。数值相对偏差和分类分布偏差的百分数不可直接比较。</p>
-                            <p>• 最后结合设计标准误说明精度。PPS 的标准误来自模拟，其余方法来自设计公式。</p>
+                            <p>• 再看分类分布与总体对照偏差，描述当前样本对已知虚拟总体的贴近程度；这不能单独证明无偏或整体代表性。</p>
+                            <p>• 最后结合设计标准误说明精度。本页 SE 借助完整虚拟总体；现实调查需使用与设计匹配的样本方差估计。</p>
                         </CardContent>
                     </Card>
                 </div>

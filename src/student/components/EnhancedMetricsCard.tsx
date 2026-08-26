@@ -52,7 +52,7 @@ export function EnhancedMetricsCard({
                 </CardDescription>
                 {metrics.cappedAtPopulation && (
                     <p className="text-xs text-warning mt-1">
-                        按公式膨胀后的发放量已超过总体，推荐值已封顶为全面调查（n = {metrics.n}）。
+                        按公式膨胀后的发放量已超过总体，推荐值已封顶为全体发放（n = {metrics.n}）；若存在无回答，这不等于完整普查或零误差。
                     </p>
                 )}
                 {sizeDeviation && (

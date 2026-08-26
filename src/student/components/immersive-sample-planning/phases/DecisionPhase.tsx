@@ -368,7 +368,10 @@ export function DecisionPhase({
                     </div>
                     {recommendedSize >= N && N > 0 && (
                         <p className="text-xs text-warning text-center">
-                            已达全面调查上限（n = N = {N.toLocaleString()}）。设计效应或无回答膨胀不能再增加可抽人数。
+                            已达全体发放上限（n = N = {N.toLocaleString()}）。
+                            {params.nonResponseRate > 0
+                                ? "预期仍有无回答，因此不等于完整普查；继续膨胀也不能增加可联系人数。"
+                                : "仅在全部单位完成回答时才是完整普查。"}
                         </p>
                     )}
                     <div className="grid grid-cols-3 gap-3 w-full text-center">

@@ -23,7 +23,7 @@ export interface SampleSizeMetrics {
     };
 }
 
-/** 发放样本量不能超过总体：再膨胀也只能做全面调查。 */
+/** 计划发放量不能超过总体；存在无回答时，向全体发放仍不等于完整普查。 */
 export function capSampleSizeAtPopulation(n: number, populationSize: number): number {
     const N = Math.floor(populationSize);
     if (!Number.isFinite(n) || n <= 0) return 0;
@@ -476,8 +476,10 @@ export interface CVBasedSampleSizeParams {
 }
 
 export interface CVBasedSampleSizeResult {
-    requiredSampleSize: number;      // 所需样本量
-    achievedCV: number;              // 能达到的变异系数
+    requiredSampleSize: number;      // 计划发放量
+    expectedRespondentSampleSize: number; // 按回答率假设得到的预期完成量
+    achievedCV: number;              // 按预期完成量近似得到的设计 CV
+    cappedAtPopulation: boolean;     // 发放量是否被总体上限截断
     z: number;                       // Z值
     formula: string;                 // 使用的公式
 }
@@ -492,44 +494,48 @@ export interface CVBasedSampleSizeResult {
  * 需另行乘以 Z：相对误差限 = Z × CV(ȳ)。
  */
 export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBasedSampleSizeResult | null {
-    if (!(params.populationSize > 0) || !(params.targetCV > 0)) {
+    const N = Math.floor(params.populationSize);
+    const targetCV = params.targetCV;
+    const estimatedCV = params.estimatedCV ?? 0.5;
+    const deff = params.designEffect ?? 1;
+    const nrr = params.nonResponseRate ?? 0;
+
+    if (
+        !(N > 0)
+        || !Number.isFinite(targetCV) || !(targetCV > 0)
+        || !Number.isFinite(estimatedCV) || !(estimatedCV > 0)
+        || !Number.isFinite(deff) || !(deff > 0)
+        || !Number.isFinite(nrr) || nrr < 0 || nrr >= 1
+    ) {
         return null;
     }
-
-    const nrr = params.nonResponseRate ?? 0;
-    if (nrr >= 1) return null;
 
     // z 不参与样本量计算，仅用于 UI 展示（供用户换算置信区间相对半宽 = Z × CV(ȳ)）
     const z = zForConfidenceLevel(String(params.confidenceLevel));
 
-    const estimatedCV = params.estimatedCV ?? 0.5;  // 默认估计变异系数50%
-    const targetCV = params.targetCV;
-    const deff = params.designEffect ?? 1;
-
     // 基础样本量: n₀ = CV_pop² / targetCV²
     const n0 = Math.pow(estimatedCV, 2) / Math.pow(targetCV, 2);
+    const finitePopulationSampleSize = n0 / (1 + (n0 - 1) / N);
+    const requestedGrossSampleSize = finitePopulationSampleSize * deff / (1 - nrr);
+    const requiredSampleSize = Math.min(Math.max(1, Math.ceil(requestedGrossSampleSize)), N);
+    const cappedAtPopulation = requiredSampleSize >= N;
 
-    // 有限总体校正
-    let n = n0 / (1 + (n0 - 1) / params.populationSize);
-
-    // 设计效应和无回答率调整
-    n = n * deff / (1 - nrr);
-    
-    const requiredSampleSize = Math.min(Math.ceil(n), params.populationSize);
-    
-    // 反推实际能达到的CV（含有限总体校正）
-    // CV(ȳ) = CV_pop × √(deff × FPC / n_eff)，其中 n_eff = n × (1 - NRR)
-    // 当 n=N（全数调查）时 FPC=0，CV=0（完美估计）
-    const fpc = 1 - requiredSampleSize / params.populationSize;
-    const achievedCV = fpc > 0
-        ? estimatedCV * Math.sqrt(deff * fpc / (requiredSampleSize * (1 - nrr)))
-        : 0;
+    // 发放量被 N 截断后仍需应用回答率；“向全体发放”不等于观测到完整总体。
+    const expectedRespondentSampleSize = Math.min(N, requiredSampleSize * (1 - nrr));
+    const fpc = N > 1
+        ? Math.max(0, (N - expectedRespondentSampleSize) / (N - 1))
+        : Math.max(0, 1 - expectedRespondentSampleSize / N);
+    const achievedCV = expectedRespondentSampleSize > 0
+        ? estimatedCV * Math.sqrt(deff * fpc / expectedRespondentSampleSize)
+        : Number.POSITIVE_INFINITY;
 
     return {
         requiredSampleSize,
+        expectedRespondentSampleSize,
         achievedCV,
+        cappedAtPopulation,
         z,
-        formula: `n = CV_pop² / CV_target² × deff / (1-NRR)`,
+        formula: "n₀=CV_pop²/CV_target²；FPC 后按 deff 调整，再除以 (1−NRR) 得发放量",
     };
 }
 

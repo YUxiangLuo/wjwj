@@ -552,10 +552,10 @@ export function PrecisionCostTradeoff({
                         <div className="text-xs space-y-1 text-info">
                             <p className="font-medium">决策建议</p>
                             <ul className="space-y-1 list-disc list-inside text-info">
-                                <li>在预算约束下，精度与成本呈非线性关系</li>
-                                <li>当样本量超过1000后，精度提升的边际效益显著下降</li>
-                                <li>建议优先保证 ±3-5% 的误差限，性价比最高</li>
-                                <li>如需更高精度（±1-2%），成本将呈指数增长</li>
+                                <li>在大总体且其他参数固定时，所需样本量近似与误差限平方的倒数成比例</li>
+                                <li>例如误差限减半，线性单位成本下的样本量和变动成本约为原来的 4 倍</li>
+                                <li>有限总体校正和发放量封顶会改变上述倍数，应以本页当前情景的计算结果为准</li>
+                                <li>最终精度应由研究目标、关键子总体、预算与错误决策代价共同确定，不存在通用最优百分比</li>
                             </ul>
                         </div>
                     </div>

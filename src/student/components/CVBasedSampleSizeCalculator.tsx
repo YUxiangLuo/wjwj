@@ -93,7 +93,7 @@ export function CVBasedSampleSizeCalculator({
                     </Badge>
                 </div>
                 <CardDescription className="text-foreground/90">
-                    根据目标变异系数(CV)反推建议发放量。应用结果只改最终 n，不改变抽样执行方法。
+                    为具有有意义零点的正值均值，按目标设计 CV 反推计划发放量。应用结果只改最终 n，不改变抽样执行方法。
                 </CardDescription>
             </CardHeader>
 
@@ -105,9 +105,14 @@ export function CVBasedSampleSizeCalculator({
                         <div className="text-xs text-info space-y-1.5">
                             <p className="font-medium">什么时候使用CV计算？</p>
                             <p>
-                                当你关注估计值的<strong>相对精度</strong>（变异系数）而非绝对误差限时，
-                                例如要求"估计值的变异系数不超过5%"时。
+                                当目标变量是具有有意义零点的正值比率尺度，且你关注均值估计的<strong>相对标准误</strong>
+                                SE(ȳ)/ȳ 时使用。均值接近零、可正可负、名义分类或一般态度评分不适用。
                             </p>
+                            {estimationType === "proportion" && (
+                                <p className="font-medium">
+                                    当前主流程是比例估计；通常应直接用预计比例 p 和误差限规划，不要套用经验 CV 区间。
+                                </p>
+                            )}
                             <p className="text-info leading-relaxed">
                                 <span className="font-medium">为何 n 往往比「误差限公式」小？</span>
                                 本工具按 SE(ȳ)/ȳ ≤ 目标 CV 推导，核心为 n ∝ (CV<sub>总体</sub>/CV<sub>目标</sub>)²，
@@ -229,22 +234,32 @@ export function CVBasedSampleSizeCalculator({
                         <div className="space-y-4">
                             {/* 主要结果 */}
                             <div className="flex items-center justify-between">
-                                <span className="text-sm text-foreground/90">所需样本量</span>
+                                <span className="text-sm text-foreground/90">计划发放量</span>
                                 <span className="text-2xl font-bold tabular-nums text-info">
                                     {result.requiredSampleSize.toLocaleString()}
                                 </span>
                             </div>
 
-                            {/* 能达到的CV */}
+                            <div className="flex items-center justify-between text-sm">
+                                <span className="text-foreground/90">按回答率假设的预期完成量</span>
+                                <span className="font-mono font-bold tabular-nums text-primary">
+                                    {result.expectedRespondentSampleSize.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                                </span>
+                            </div>
                             <div className="flex items-center justify-between text-sm">
                                 <span className="text-foreground/90 flex items-center gap-1">
                                     <TrendingDown className="w-4 h-4 text-info" />
-                                    实际能达到的CV
+                                    预期设计 CV（近似）
                                 </span>
                                 <span className="font-mono font-bold tabular-nums text-info">
                                     {(result.achievedCV * 100).toFixed(2)}%
                                 </span>
                             </div>
+                            {result.cappedAtPopulation && nonResponseRate > 0 && (
+                                <p className="rounded-lg border border-warning/20 bg-warning/10 p-2 text-xs leading-relaxed text-warning">
+                                    发放量已封顶为总体 N，但仍预期存在无回答，因此不是完整普查，CV 不为 0；增加发放量也不能自动消除非随机无回答偏差。
+                                </p>
+                            )}
 
                             {/* 随置信水平变化：Z×CV(ȳ)，与主公式求 n 无关 */}
                             <div className="flex items-center justify-between text-sm border-t border-primary pt-3">
@@ -278,8 +293,8 @@ export function CVBasedSampleSizeCalculator({
                                     <BarChart3 className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                                     <div className="text-warning">
                                         <span className="font-medium">CV vs 误差限：</span>
-                                        CV是相对指标（变异系数 = SE/均值），适合比较不同规模总体的精度；
-                                        误差限是绝对指标，适合有明确误差容忍度的场景。
+                                        此处 CV 是均值估计的相对标准误 SE(ȳ)/ȳ；只有变量量纲和零点有意义时才适合跨尺度解释。
+                                        误差限是绝对指标，适合有明确绝对容忍度的场景。
                                     </div>
                                 </div>
                             </div>
@@ -288,7 +303,7 @@ export function CVBasedSampleSizeCalculator({
                             {onApplySampleSize && (
                                 <>
                                     <p className="text-xs text-muted-foreground leading-relaxed">
-                                        「应用」仅将上述样本量写入最终样本量。若本工具内参数与左侧不一致，理解此 n 时以本工具为准；左侧不会随本工具更新，勿用左侧参数代回标准公式验算。
+                                        「应用」仅将上述发放量写入最终样本量。无回答膨胀只补足预期完成数量，不能修正回答概率与研究变量相关造成的选择偏差。若本工具内参数与左侧不一致，以本工具假设为准。
                                     </p>
                                     <Button
                                         onClick={() => onApplySampleSize(result.requiredSampleSize)}
@@ -324,27 +339,10 @@ export function CVBasedSampleSizeCalculator({
                     </div>
                 </div>
 
-                {/* 参考值 */}
-                <div className="rounded-xl border border-border bg-background p-3">
-                    <p className="text-xs font-medium text-foreground mb-2">常见变异系数参考</p>
-                    <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">人口特征（如性别比例）</span>
-                            <span className="text-foreground/90">20-40%</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">经济指标（如收入）</span>
-                            <span className="text-foreground/90">50-100%</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">比例估计（如支持率）</span>
-                            <span className="text-foreground/90">10-30%</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">态度量表（如满意度）</span>
-                            <span className="text-foreground/90">15-25%</span>
-                        </div>
-                    </div>
+                <div className="rounded-xl border border-border bg-background p-3 text-xs text-muted-foreground space-y-1.5">
+                    <p className="font-medium text-foreground">使用前提</p>
+                    <p>总体 CV 应来自同一目标变量的历史调查或预调查，并记录总体、时间和计算口径。</p>
+                    <p>普通 CV 不适合没有自然零点的变量；均值接近 0 时结果会非常不稳定。</p>
                 </div>
             </CardContent>
         </Card>

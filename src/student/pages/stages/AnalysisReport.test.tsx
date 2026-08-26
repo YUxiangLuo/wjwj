@@ -154,6 +154,16 @@ test("AnalysisReport does not refetch metrics when sampling results receive a ne
     expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1);
 });
 
+test("AnalysisReport labels full-population metrics as virtual-population oracle comparisons", async () => {
+    const view = render(
+        <AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />
+    );
+
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+    expect(view.getByTestId("student-analysis-oracle-notice").textContent).toContain("已知的完整总体");
+    expect(view.getByTestId("student-analysis-tab-represent").textContent).toContain("总体对照偏差");
+});
+
 test("AnalysisReport shows a visible error when analysis metrics fail to load", async () => {
     mockExperimentApi.getAnalysisMetrics.mockRejectedValueOnce(new Error("network"));
 

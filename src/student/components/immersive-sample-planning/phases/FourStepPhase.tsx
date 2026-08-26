@@ -239,7 +239,10 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
                 <StepRow step={4} label="无回答率调整 n" formula={`n₂/(1-NRR) (${(params.nonResponseRate * 100).toFixed(0)}%)`} value={n3} color="text-success" highlight />
                 {n3 >= params.populationSize && params.populationSize > 0 && (
                     <p className="text-xs text-warning text-center">
-                        膨胀后的发放量已封顶为总体 N = {params.populationSize.toLocaleString()}，相当于全面调查。
+                        膨胀后的发放量已封顶为总体 N = {params.populationSize.toLocaleString()}。
+                        {params.nonResponseRate > 0
+                            ? "这是向全体尝试发放；预期仍有无回答，不等于完整普查，也不能消除无回答偏差。"
+                            : "在全部单位都完成回答的假设下，这相当于完整普查。"}
                     </p>
                 )}
             </div>

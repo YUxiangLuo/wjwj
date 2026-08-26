@@ -247,7 +247,7 @@ test("CV-based sample size returns valid result", () => {
     expect(result!.achievedCV).toBeGreaterThan(0);
 });
 
-test("CV-based sample size capped at population size", () => {
+test("CV-based sample size capped at population size is zero only with complete response", () => {
     const result = calculateSampleSizeByCV({
         confidenceLevel: "99",
         targetCV: 0.001,
@@ -255,9 +255,26 @@ test("CV-based sample size capped at population size", () => {
         estimatedCV: 0.5,
     });
     expect(result).not.toBeNull();
-    expect(result!.requiredSampleSize).toBeLessThanOrEqual(100);
-    // When capped, achievedCV should be 0 (census)
+    expect(result!.requiredSampleSize).toBe(100);
+    expect(result!.expectedRespondentSampleSize).toBe(100);
+    expect(result!.cappedAtPopulation).toBe(true);
     expect(result!.achievedCV).toBe(0);
+});
+
+test("CV-based full-population invitation retains uncertainty when nonresponse is expected", () => {
+    const result = calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 100,
+        estimatedCV: 0.5,
+        designEffect: 2,
+        nonResponseRate: 0.5,
+    });
+    expect(result).not.toBeNull();
+    expect(result!.requiredSampleSize).toBe(100);
+    expect(result!.expectedRespondentSampleSize).toBe(50);
+    expect(result!.cappedAtPopulation).toBe(true);
+    expect(result!.achievedCV).toBeCloseTo(0.07106690545187015, 12);
 });
 
 test("CV-based achievedCV approximates targetCV by construction", () => {
@@ -294,10 +311,10 @@ test("CV-based achievedCV follows correct formula", () => {
         nonResponseRate: 0.1,
     });
     expect(result).not.toBeNull();
-    const n = result!.requiredSampleSize;
-    const fpc = 1 - n / 5000;
-    // achievedCV = CV_pop × √(deff × fpc / (n × (1 - nrr)))  (no z factor)
-    const expectedCV = 0.4 * Math.sqrt(1.5 * fpc / (n * 0.9));
+    const expectedRespondents = result!.requiredSampleSize * 0.9;
+    const fpc = (5000 - expectedRespondents) / (5000 - 1);
+    // achievedCV = CV_pop × √(deff × FPC / expected respondents)  (no z factor)
+    const expectedCV = 0.4 * Math.sqrt(1.5 * fpc / expectedRespondents);
     expect(Math.abs(result!.achievedCV - expectedCV)).toBeLessThan(1e-10);
 });
 
@@ -336,6 +353,24 @@ test("CV-based returns null when nonResponseRate >= 1 (division by zero guard)",
         targetCV: 0.05,
         populationSize: 1000,
         nonResponseRate: 1.5,
+    })).toBeNull();
+    expect(calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 1000,
+        nonResponseRate: -0.1,
+    })).toBeNull();
+    expect(calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 1000,
+        estimatedCV: 0,
+    })).toBeNull();
+    expect(calculateSampleSizeByCV({
+        confidenceLevel: "95",
+        targetCV: 0.05,
+        populationSize: 1000,
+        designEffect: 0,
     })).toBeNull();
 });
 

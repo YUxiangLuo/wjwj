@@ -277,7 +277,6 @@ export function QuestionnaireDesign() {
         endingText: endingTextLength >= 20 && endingTextLength <= 1000,
         questionCount: questions.length >= 5 && questions.length <= 50,
         optionCount: invalidOptionQuestions.length === 0,
-        questionTypes: new Set(questions.map((q) => q.type)).size >= 2,
         previewCompleted: isPreviewValid,
     };
 
@@ -291,7 +290,7 @@ export function QuestionnaireDesign() {
     const canProceed = basicValidationPassed && validation.previewCompleted;
     const canAdvanceToNextStep = canAdvanceQuestionnaireStep(step, validation);
 
-    const { scoreItems, preliminaryScore } = useMemo(() => calculateQuestionnaireScoreSummary({
+    const { scoreItems, structureScore } = useMemo(() => calculateQuestionnaireScoreSummary({
         title,
         welcomeText,
         endingText,
@@ -308,7 +307,7 @@ export function QuestionnaireDesign() {
         validation.previewCompleted,
     ].filter(Boolean).length;
     const requiredMissingCount = 6 - requiredFailCount;
-    const warningCount = validation.questionTypes ? 0 : 1;
+    const warningCount = scoreItems.filter((item) => item.status === "warning").length;
 
     const handleConfirmComplete = async () => {
         await completeStage(1, { questionnaire: questionnaireData });
@@ -571,9 +570,10 @@ export function QuestionnaireDesign() {
                                     <CardTitle className="text-base text-foreground">设计建议</CardTitle>
                                 </CardHeader>
                                 <CardContent className="text-sm text-muted-foreground space-y-2">
-                                    <p>• 建议至少包含 2 种题型，提升回答质量。</p>
-                                    <p>• 同一类型的题目控制在 10 题以内。</p>
-                                    <p>• 题目表述应清晰无歧义。</p>
+                                    <p>• 每题只询问一个明确概念，并说明必要的时间范围。</p>
+                                    <p>• 使用目标人群能理解的简短、中性措辞，避免诱导。</p>
+                                    <p>• 封闭题选项应尽量互斥、穷尽并按逻辑排序。</p>
+                                    <p>• 题型和题量应由测量目标决定；提交前请进行模拟填写或预测试。</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -724,17 +724,6 @@ export function QuestionnaireDesign() {
                                         题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}
                                     </span>
                                 </div>
-                                <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.questionTypes ? "bg-success/10 border-success/20" : "bg-warning/10 border-warning/20"}`}>
-                                    {validation.questionTypes ? (
-                                        <CheckCircle className="w-4 h-4 text-success shrink-0" />
-                                    ) : (
-                                        <AlertCircle className="w-4 h-4 text-warning shrink-0" />
-                                    )}
-                                    <span className={`text-sm ${validation.questionTypes ? "text-success" : "text-warning"}`}>
-                                        题型多样性：{new Set(questions.map((q) => q.type)).size} 种题型
-                                        {validation.questionTypes ? "" : " (建议至少2种)"}
-                                    </span>
-                                </div>
                                 <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.optionCount ? "bg-success/10 border-success/20" : "bg-destructive/10 border-destructive/20"}`}>
                                     {validation.optionCount ? (
                                         <CheckCircle className="w-4 h-4 text-success shrink-0" />
@@ -780,25 +769,26 @@ export function QuestionnaireDesign() {
 
                         <Card className="rounded-2xl border-border bg-card/50 shadow-sm h-fit">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm text-foreground">初步评分（机器评分）</CardTitle>
-                                <CardDescription className="text-muted-foreground">供参考，满分100分</CardDescription>
+                                <CardTitle className="text-sm text-foreground">结构完整度检查</CardTitle>
+                                <CardDescription className="text-muted-foreground">仅检查可机械验证的格式，满分100分</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
                                 <div className="rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 flex items-center justify-between">
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-xs uppercase tracking-wider text-primary">当前得分</span>
-                                        <span className="text-2xl font-bold text-primary">{preliminaryScore}</span>
+                                        <span className="text-xs uppercase tracking-wider text-primary">结构完整度</span>
+                                        <span className="text-2xl font-bold text-primary">{structureScore}</span>
                                     </div>
                                     <div className="text-xs text-primary">
-                                        {preliminaryScore >= 90
-                                            ? "问卷结构优秀"
-                                            : preliminaryScore >= 75
-                                                ? "问卷结构良好"
-                                                : preliminaryScore >= 60
-                                                    ? "可继续优化"
-                                                    : "建议先完善基础项"}
+                                        {structureScore === 100
+                                            ? "自动格式检查通过"
+                                            : structureScore >= 70
+                                                ? "仍有格式项待完善"
+                                                : "请先完善基础结构"}
                                     </div>
                                 </div>
+                                <p className="rounded-lg border border-info/20 bg-info/10 px-3 py-2 text-xs leading-relaxed text-info">
+                                    100分不代表问卷具有良好效度、信度或无偏措辞。单一概念、题序、选项互斥与穷尽等仍需人工复核和预测试。
+                                </p>
                                 <div className="space-y-1.5">
                                     {scoreItems.map((item) => (
                                         <div key={item.label} className="flex items-baseline justify-between rounded-lg border border-border bg-background/40 px-3 py-2">
