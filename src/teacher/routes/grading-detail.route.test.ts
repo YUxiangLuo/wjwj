@@ -46,3 +46,30 @@ test("grading detail prefers the immutable submission snapshot", async () => {
     }]);
     expect(payload.data).not.toHaveProperty("pdfStatus");
 });
+
+test("compact grading detail returns READ_FAILED when population storage is missing", async () => {
+    const { db } = createMockDb({ select: [
+        [{
+            id: 99, version: 7, studentName: "当前学生", studentId: "S001", className: "统计一班", topic: "当前课题", topicName: "当前课题", topicDesc: "描述",
+            populationSize: 2, excelFilePath: `/storage/missing-${crypto.randomUUID()}.csv`, weightConfig: null,
+            status: "submitted", submittedAt: new Date(),
+            submissionSnapshot: { samplingResults: { simple: { completed: true, indices: [0] } } },
+            reportContent: "当前报告", samplePlan: null, questionnaire: null, samplingResults: null,
+            scoreQuestionnaire: null, scoreProcess: null, scoreReport: null, totalScore: null,
+            teacherComment: null, rejectReason: null, gradedAt: null, gradedByName: null,
+        }],
+        [],
+    ] });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createTeacherAuthModuleMock());
+    const module = await import(`./grading.ts?read-failed=${crypto.randomUUID()}`);
+    const originalConsoleError = console.error;
+    console.error = () => undefined;
+    try {
+        const response = await module.gradingDetailRoutes.GET!(withId(new Request("https://example.com"), "99"));
+        expect(response.status).toBe(500);
+        expect(await response.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+    } finally {
+        console.error = originalConsoleError;
+    }
+});

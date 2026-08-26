@@ -169,11 +169,11 @@ const exportRoutes: RouteDefinition = {
 
         const storedResults = parseStoredJson<SamplingResultsExportData>(exp.samplingResults);
         let results = storedResults;
-        if (samplingResultsNeedPopulation(storedResults) && exp.excelFilePath) {
+        if (samplingResultsNeedPopulation(storedResults)) {
+            if (!exp.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const population = await readPopulationData(exp.excelFilePath);
-            if (population.length) {
-                results = hydrateSamplingResults(storedResults, population) as SamplingResultsExportData;
-            }
+            if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+            results = hydrateSamplingResults(storedResults, population) as SamplingResultsExportData;
         }
         if (!results) {
             return error("暂无抽样结果", "NO_DATA", 404);

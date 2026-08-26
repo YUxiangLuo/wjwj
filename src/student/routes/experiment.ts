@@ -60,12 +60,13 @@ async function resolveExperimentSamplingResults(
     classId: number,
 ) {
     const stored = parseStoredJson(record.samplingResults);
-    if (!samplingResultsNeedPopulation(stored)) return stored;
+    if (!samplingResultsNeedPopulation(stored)) return { ok: true as const, value: stored };
 
     const taskInfo = await findStudentTaskSamplingInfo(taskId, classId);
-    if (!taskInfo?.excelFilePath) return stored;
+    if (!taskInfo?.excelFilePath) return { ok: false as const };
     const population = await readPopulationData(taskInfo.excelFilePath);
-    return population.length ? hydrateSamplingResults(stored, population) : stored;
+    if (!population.length) return { ok: false as const };
+    return { ok: true as const, value: hydrateSamplingResults(stored, population) };
 }
 
 async function buildExperimentResponse(
@@ -74,6 +75,8 @@ async function buildExperimentResponse(
     taskId: number,
     classId: number,
 ) {
+    const resolvedSamplingResults = await resolveExperimentSamplingResults(record, taskId, classId);
+    if (!resolvedSamplingResults.ok) return null;
     return {
         id: record.id,
         taskId: record.taskId,
@@ -82,7 +85,7 @@ async function buildExperimentResponse(
         status: record.status,
         questionnaire: parseStoredJson(record.questionnaire),
         samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
-        samplingResults: await resolveExperimentSamplingResults(record, taskId, classId),
+        samplingResults: resolvedSamplingResults.value,
         reportContent: record.reportContent,
         stage1CompletedAt: iso(record.stage1CompletedAt),
         stage2CompletedAt: iso(record.stage2CompletedAt),
@@ -242,7 +245,9 @@ const experimentRoutes: RouteDefinition = {
         record ??= await getOrCreateStudentExperiment(auth.student.id, taskId);
         if (!record) return error("创建实验记录失败", "CREATE_FAILED", 500);
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
-        return json(await buildExperimentResponse(record, populationSize, taskId, auth.student.classId));
+        const response = await buildExperimentResponse(record, populationSize, taskId, auth.student.classId);
+        if (!response) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+        return json(response);
     },
 };
 
@@ -293,7 +298,9 @@ const stageCompleteRoutes: RouteDefinition = {
             .where(matchesObservedExperiment(completionRecord, versionResult.value))
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
-        return json(await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId));
+        const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
+        if (!response) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+        return json(response);
     },
 };
 
@@ -325,7 +332,9 @@ const stageReopenRoutes: RouteDefinition = {
             .where(matchesObservedExperiment(record, versionResult.value))
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
-        return json(await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId));
+        const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
+        if (!response) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+        return json(response);
     },
 };
 

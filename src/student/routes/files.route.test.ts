@@ -93,6 +93,27 @@ test("export route hydrates compact sampling indices from the immutable populati
     }
 });
 
+test("compact export returns READ_FAILED when population storage is missing", async () => {
+    const module = await loadFilesRoutes({
+        select: [[{
+            excelFilePath: `/storage/missing-${crypto.randomUUID()}.csv`,
+            samplingResults: { simple: { completed: true, sampleCount: 1, indices: [0] } },
+        }]],
+    });
+    const originalConsoleError = console.error;
+    console.error = () => undefined;
+    try {
+        const response = await module.exportRoutes.GET!(withRouteParam(
+            createRequest("https://example.com/api/student/tasks/40/export?type=simple"),
+            "40",
+        ));
+        expect(response.status).toBe(500);
+        expect(await response.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+    } finally {
+        console.error = originalConsoleError;
+    }
+});
+
 test("export route reads serialized sampling results and returns csv", async () => {
     const module = await loadFilesRoutes({
         select: [

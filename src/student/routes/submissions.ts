@@ -68,9 +68,11 @@ const submissionByTaskRoutes: RouteDefinition = {
         }>(row.submissionSnapshot);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
         let samplingResults = storedSamplingResults;
-        if (samplingResultsNeedPopulation(storedSamplingResults) && row.excelFilePath) {
+        if (samplingResultsNeedPopulation(storedSamplingResults)) {
+            if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const population = await readPopulationData(row.excelFilePath);
-            if (population.length) samplingResults = hydrateSamplingResults(storedSamplingResults, population);
+            if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+            samplingResults = hydrateSamplingResults(storedSamplingResults, population);
         }
         const snapshotContent = {
             topicName: snapshot?.topicName ?? row.topicName,

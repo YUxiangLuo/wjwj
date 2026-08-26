@@ -119,6 +119,48 @@ test("submission endpoint hydrates compact immutable snapshot samples", async ()
     }
 });
 
+test("compact submission returns READ_FAILED instead of silently dropping rows when population storage is missing", async () => {
+    const { db } = createMockDb({ select: [[{
+        id: 501,
+        taskId: 40,
+        version: 12,
+        topicId: 12,
+        topicName: "抽样调查",
+        submittedAt: new Date(),
+        status: "submitted",
+        scoreQuestionnaire: null,
+        scoreProcess: null,
+        scoreReport: null,
+        totalScore: null,
+        teacherComment: null,
+        rejectReason: null,
+        gradedAt: null,
+        graderName: null,
+        weightConfig: { questionnaire: 30, process: 30, report: 40 },
+        populationSize: 2,
+        excelFilePath: `/storage/missing-${crypto.randomUUID()}.csv`,
+        submissionSnapshot: {
+            samplingResults: { simple: { completed: true, sampleCount: 1, indices: [1] } },
+        },
+    }]] });
+    mock.module("../../db", () => ({ db }));
+    mock.module("./auth", () => createStudentAuthModuleMock());
+    mock.module("../experiment/task-access", () => ({
+        getStudentTaskAccessError: async () => null,
+        getStudentTopicAttachmentAccessError: async () => null,
+    }));
+    const module = await import(`./submissions.ts?read-failed=${crypto.randomUUID()}`);
+    const originalConsoleError = console.error;
+    console.error = () => undefined;
+    try {
+        const response = await module.submissionByTaskRoutes.GET!(withId(new Request("https://example.com"), "40"));
+        expect(response.status).toBe(500);
+        expect(await response.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+    } finally {
+        console.error = originalConsoleError;
+    }
+});
+
 test("in-progress experiment is not exposed as a result", async () => {
     const { db } = createMockDb({ select: [[{ id: 501, taskId: 40, status: "in_progress" }]] });
     mock.module("../../db", () => ({ db }));

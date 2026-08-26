@@ -190,6 +190,16 @@ test("population-backed routes return READ_FAILED when population storage is unr
     console.error = () => undefined;
 
     try {
+        const compact = record({
+            samplingResults: { simple: { completed: true, indices: [0], serverGenerated: true } },
+        });
+        const experimentLoad = await load(compact, [[{ id: 9 }]], { numeric: ["weight"] }, missingPath);
+        const experimentRequest = new Request("https://example.com/api/student/tasks/3/experiment");
+        (experimentRequest as Request & { params?: Record<string, string> }).params = { id: "3" };
+        const experimentResponse = await experimentLoad.module.experimentRoutes.GET!(experimentRequest);
+        expect(experimentResponse.status).toBe(500);
+        expect(await experimentResponse.json()).toMatchObject({ error: { code: "READ_FAILED" } });
+
         const statsLoad = await load(record(), [[{ id: 9 }]], { numeric: ["weight"] }, missingPath);
         const statsResponse = await statsLoad.module.statsRoutes.GET!(routeRequest(
             "/api/student/tasks/3/stats",
