@@ -87,29 +87,40 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [numericFields, setNumericFields] = useState<string[]>([]);
     const [ppsEligibleFields, setPpsEligibleFields] = useState<string[]>([]);
+    const [statsLoaded, setStatsLoaded] = useState(false);
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
 
-    // Fetch stats on mount
+    // Fetch stats on mount. Keep loading distinct from a confirmed empty eligible-field list:
+    // otherwise a persisted completed PPS result is briefly marked unavailable and then erased.
     useEffect(() => {
-        if (experiment?.taskId) {
-            experimentApi.getStats(experiment.taskId).then(res => {
-                if (res.success && res.data?.stats) {
-                    setPopulationStats(res.data.stats);
-                    if (res.data.stratumNumericStats) setStratumNumericStats(res.data.stratumNumericStats);
-                }
-                if (res.success && res.data?.numericFields) {
-                    setNumericFields(res.data.numericFields);
-                }
-                if (res.success && res.data?.ppsEligibleFields) {
-                    setPpsEligibleFields(res.data.ppsEligibleFields);
-                }
-            }).catch((e) => {
-                console.error("Failed to load population stats:", e);
-            });
-        }
+        if (!experiment?.taskId) return;
+
+        let active = true;
+        setStatsLoaded(false);
+        experimentApi.getStats(experiment.taskId).then(res => {
+            if (!active) return;
+            if (res.success && res.data?.stats) {
+                setPopulationStats(res.data.stats);
+                if (res.data.stratumNumericStats) setStratumNumericStats(res.data.stratumNumericStats);
+            }
+            if (res.success && res.data?.numericFields) {
+                setNumericFields(res.data.numericFields);
+            }
+            if (res.success && res.data?.ppsEligibleFields) {
+                setPpsEligibleFields(res.data.ppsEligibleFields);
+            }
+            if (res.success) setStatsLoaded(true);
+        }).catch((e) => {
+            console.error("Failed to load population stats:", e);
+        });
+
+        return () => {
+            active = false;
+        };
     }, [experiment?.taskId]);
 
     useEffect(() => {
+        if (!statsLoaded) return;
         if (ppsEligibleFields.length === 0) {
             setPpsSizeField("");
             return;
@@ -118,10 +129,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         if (!ppsSizeField || !ppsEligibleFields.includes(ppsSizeField)) {
             setPpsSizeField(pickDefaultPpsSizeField(ppsEligibleFields));
         }
-    }, [ppsEligibleFields, ppsSizeField]);
+    }, [ppsEligibleFields, ppsSizeField, statsLoaded]);
 
     useEffect(() => {
-        if (!hasValidSamplePlan) return;
+        if (!hasValidSamplePlan || !statsLoaded) return;
 
         if (ppsEligibleFields.length === 0) {
             setPpsResult((current) => current?.unavailable
@@ -134,7 +145,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         }
 
         setPpsResult((current) => current?.unavailable ? null : current);
-    }, [hasValidSamplePlan, ppsEligibleFields.length]);
+    }, [hasValidSamplePlan, ppsEligibleFields.length, statsLoaded]);
 
     const [executing, setExecuting] = useState<SamplingMethod | null>(null);
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);

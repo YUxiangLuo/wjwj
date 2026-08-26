@@ -8,7 +8,8 @@ const mockExperimentApi = {
         success: true,
         data: {
             stats: {},
-            numericFields: [],
+            numericFields: [] as string[],
+            ppsEligibleFields: [] as string[],
         },
     })),
     executeSampling: mock(async () => ({ success: true, data: { result: null as any } })),
@@ -170,12 +171,44 @@ test("SamplingExecution always uses the desktop tabs and navigation", async () =
     expect(next.className).not.toContain("w-full");
 });
 
+test("SamplingExecution preserves a persisted completed PPS result while eligible fields load", async () => {
+    let resolveStats: ((value: {
+        success: true;
+        data: { stats: Record<string, never>; numericFields: string[]; ppsEligibleFields: string[] };
+    }) => void) | undefined;
+    mockExperimentApi.getStats.mockImplementationOnce(() => new Promise((resolve) => {
+        resolveStats = resolve;
+    }));
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingResults: {
+            simple: { completed: true, sampleCount: 13, data: [] },
+            systematic: { completed: true, sampleCount: 13, data: [] },
+            pps: { completed: true, sampleCount: 13, sizeField: "weight", data: [] },
+            stratified: { completed: true, sampleCount: 13, data: [], layers: [] },
+        },
+    };
+
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(1));
+    resolveStats?.({
+        success: true,
+        data: { stats: {}, numericFields: ["weight"], ppsEligibleFields: ["weight"] },
+    });
+
+    await waitFor(() => {
+        expect(view.getByTestId("student-sampling-next").textContent).toContain("完成本阶段");
+    });
+    expect(view.queryByTestId("student-sampling-pps-unavailable")).toBeNull();
+});
+
 test("SamplingExecution marks PPS as unavailable when no numeric size field exists", async () => {
     mockExperimentApi.getStats.mockResolvedValueOnce({
         success: true,
         data: {
             stats: { gender: { 男: 50, 女: 50 } },
             numericFields: [],
+            ppsEligibleFields: [],
         },
     });
 
