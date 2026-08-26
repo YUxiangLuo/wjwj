@@ -459,6 +459,22 @@ export function DecisionPhase({
                                 <DialogDescription className="text-muted-foreground text-sm leading-relaxed">
                                     {config?.description}
                                 </DialogDescription>
+                                {config && (
+                                    <div className="grid grid-cols-3 gap-2 pt-2 text-xs leading-relaxed" data-testid="student-advanced-tool-scope">
+                                        <div className="rounded-lg border border-border bg-card p-2">
+                                            <p className="font-semibold text-foreground">目标估计量</p>
+                                            <p className="mt-1 text-muted-foreground">{config.targetEstimand}</p>
+                                        </div>
+                                        <div className="rounded-lg border border-border bg-card p-2">
+                                            <p className="font-semibold text-foreground">假设与数据来源</p>
+                                            <p className="mt-1 text-muted-foreground">{config.assumptionsAndSource}</p>
+                                        </div>
+                                        <div className="rounded-lg border border-border bg-card p-2">
+                                            <p className="font-semibold text-foreground">适用范围与限制</p>
+                                            <p className="mt-1 text-muted-foreground">{config.scopeAndLimitations}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </DialogHeader>
                         );
                     })()}

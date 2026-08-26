@@ -330,8 +330,8 @@ function VariabilityContent() {
                         <p className="text-sm font-semibold text-foreground/90">比例估计中的变异</p>
                         <p className="text-sm text-muted-foreground">
                             p(1−p) 在 p=0.5 时取最大值 0.25（最大方差）。
-                            当比例越接近 0 或 1 时，方差越小，所需样本量越少。
-                            <strong> 不确定 p 时，取 p=0.5 是最保守的选择。</strong>
+                            <strong> 当目标是控制比例估计的绝对 Wald 误差限时，不确定 p 可取 0.5 作该公式下的保守规划。</strong>
+                            稀有事件、相对误差或最低期望事件数目标不适用这一规则；p 接近 0 或 1、小样本时，Wald 正态近似也可能不可靠，应考虑更合适的区间或模拟规划。
                         </p>
                     </div>
 

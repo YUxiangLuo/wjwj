@@ -208,6 +208,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
     const numericFields = analysisMetrics?.numericFields ?? [];
     const categoricalFields = analysisMetrics?.categoricalFields ?? [];
+    const ppsMonteCarloReplicates = analysisMetrics?.ppsMonteCarloReplicates ?? 128;
 
     useEffect(() => {
         if (!numericFields.includes(selectedNumericField)) {
@@ -514,7 +515,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             <div className="mb-4 flex items-start gap-2 rounded-xl border border-info/20 bg-info/10 p-3 text-xs leading-relaxed text-info" data-testid="student-analysis-oracle-notice">
                                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                                 <span>
-                                    本页利用虚拟实验中已知的完整总体，对照总体真值并计算设计层面的误差。真实调查看不到未入样单位，应使用与抽样设计匹配的样本权重和方差估计；PPS 的标准误是 128 次重复抽样的 Monte Carlo 近似。
+                                    本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。PPS 标准误是 {ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（按 R−1 计算重复间标准差），仍有模拟误差。
                                 </span>
                             </div>
                             <Tabs defaultValue="charts" className="w-full">
@@ -565,7 +566,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="mean">
                                     <ChartTabPanel
-                                        description="比较各抽样方法对同一数值变量的均值估计，并利用已知虚拟总体显示真值对照。PPS 使用 Hájek 加权均值（按一阶包含概率的倒数加权并归一化），不是 Horvitz–Thompson 均值。"
+                                        description="比较各抽样方法对同一数值变量的均值估计，并利用已知虚拟总体显示真值对照。PPS 使用 Hájek 比估计（按一阶包含概率的倒数加权并归一化），不是 Horvitz–Thompson 均值；Hájek 通常更稳定，但并非严格设计无偏，小样本偏差可能不可忽略。"
                                         rows={meanRows}
                                         series={meanSeries}
                                         emptyMessage="暂无可用于均值分析的数值字段"
@@ -599,7 +600,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
 
                                 <TabsContent value="error">
                                     <ChartTabPanel
-                                        description="利用完整虚拟总体比较均值估计的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，PPS 为 128 次重复抽样的 Monte Carlo 近似。它们不是现实调查中仅凭当前样本直接得到的标准误。"
+                                        description={`利用完整虚拟总体比较均值估计的设计标准误：简单随机和分层采用设计公式，系统抽样枚举随机起点，PPS 为 ${ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（重复间标准差使用 R−1）。有限重复次数会带来模拟误差；它们不是现实调查中仅凭当前样本直接得到的标准误。`}
                                         rows={errorRows}
                                         series={errorSeries}
                                         emptyMessage="暂无可用于误差分析的数值字段"
@@ -680,7 +681,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm text-primary">
-                            <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。PPS 看的是 Hájek 加权均值。</p>
+                            <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。PPS 看的是可能存在小样本偏差的 Hájek 比估计。</p>
                             <p>• 再看分类分布与总体对照偏差，描述当前样本对已知虚拟总体的贴近程度；这不能单独证明无偏或整体代表性。</p>
                             <p>• 最后结合设计标准误说明精度。本页 SE 借助完整虚拟总体；现实调查需使用与设计匹配的样本方差估计。</p>
                         </CardContent>
@@ -695,7 +696,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                         撰写报告
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
-                        请根据实验结果撰写分析报告（{minLength}-{maxLength}字）
+                        本实验要求：请根据实验结果撰写 {minLength}-{maxLength} 字的分析报告
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">

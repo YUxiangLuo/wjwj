@@ -9,7 +9,16 @@ import {
 } from "./population-data";
 
 const METHODS: MethodKey[] = ["simple", "systematic", "pps", "stratified"];
-const PPS_MONTE_CARLO_REPLICATES = 128;
+export const DEFAULT_PPS_MONTE_CARLO_REPLICATES = 128;
+
+/** 教学环境可调整重复次数；设置边界避免误配置导致无意义结果或过量计算。 */
+export function resolvePpsMonteCarloReplicates(rawValue?: string): number {
+    if (rawValue == null || rawValue.trim() === "") return DEFAULT_PPS_MONTE_CARLO_REPLICATES;
+    const parsed = Number(rawValue);
+    return Number.isInteger(parsed) && parsed >= 32 && parsed <= 1024
+        ? parsed
+        : DEFAULT_PPS_MONTE_CARLO_REPLICATES;
+}
 
 interface PpsMonteCarloContext {
     standardErrors: Record<string, number | null>;
@@ -33,6 +42,7 @@ export interface CategoricalFieldAnalysis {
 }
 
 export interface AnalysisMetricsResult {
+    ppsMonteCarloReplicates: number;
     numericFields: string[];
     excludedNumericFields: string[];
     categoricalFields: string[];
@@ -407,6 +417,7 @@ function buildPpsMonteCarloContext(
     sizeField: string | undefined,
     sampleSize: number | undefined,
     numericFields: string[],
+    replicateCount: number,
 ): PpsMonteCarloContext | null {
     const normalizedSampleSize = Number(sampleSize);
     if (!sizeField || !Number.isInteger(normalizedSampleSize) || normalizedSampleSize < 1) {
@@ -419,14 +430,14 @@ function buildPpsMonteCarloContext(
     }
 
     // Welford accumulators keep memory at O(number of numeric fields) instead
-    // of retaining 128 complete PPS samples at once.
+    // of retaining every complete PPS sample at once.
     const accumulators = Object.fromEntries(numericFields.map((field) => [field, {
         count: 0,
         mean: 0,
         squaredDeviation: 0,
     }]));
 
-    for (let iteration = 0; iteration < PPS_MONTE_CARLO_REPLICATES; iteration += 1) {
+    for (let iteration = 0; iteration < replicateCount; iteration += 1) {
         const replicate = drawPreparedPPSSample(
             prepared,
             createSeededRandom(`analysis-pps-${iteration}`),
@@ -453,8 +464,9 @@ function buildPpsMonteCarloContext(
         const accumulator = accumulators[field]!;
         return [
             field,
-            accumulator.count > 0
-                ? Math.sqrt(Math.max(0, accumulator.squaredDeviation / accumulator.count))
+            accumulator.count > 1
+                // 重复抽样结果用于估计设计分布的标准差，采用 Bessel 校正 R−1。
+                ? Math.sqrt(Math.max(0, accumulator.squaredDeviation / (accumulator.count - 1)))
                 : null,
         ];
     }));
@@ -540,6 +552,9 @@ export function buildAnalysisMetrics(params: {
     const numericFields = unique(params.fieldMapping?.numeric ?? []);
     const categoricalFields = getCategoricalFieldsFromTopicMapping(params.fieldMapping);
     const populationSize = params.population.length;
+    const ppsMonteCarloReplicates = resolvePpsMonteCarloReplicates(
+        process.env.PPS_MONTE_CARLO_REPLICATES,
+    );
 
     const populationNumericStats = buildPopulationNumericStats(params.population, numericFields);
     // 新映射会在服务端拒绝缺失/非数值；历史数据若不完整则整列 fail closed，避免混用总行数 N 和有效值数。
@@ -559,6 +574,7 @@ export function buildAnalysisMetrics(params: {
             params.samplingResults?.pps?.sizeField,
             params.samplingResults?.pps?.sampleCount,
             completeNumericFields,
+            ppsMonteCarloReplicates,
         );
 
     const numeric: Record<string, NumericFieldAnalysis> = {};
@@ -662,6 +678,7 @@ export function buildAnalysisMetrics(params: {
     }
 
     return {
+        ppsMonteCarloReplicates,
         numericFields: Object.keys(numeric),
         excludedNumericFields: numericFields.filter((field) => !completeNumericFields.includes(field)),
         categoricalFields: Object.keys(categorical),

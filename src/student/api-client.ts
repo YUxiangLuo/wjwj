@@ -124,6 +124,7 @@ export interface AnalysisCategoricalFieldMetrics {
     representativeness: Record<MethodKey, number | null>;
 }
 export interface AnalysisMetricsData {
+    ppsMonteCarloReplicates?: number;
     numericFields: string[];
     excludedNumericFields?: string[];
     categoricalFields: string[];

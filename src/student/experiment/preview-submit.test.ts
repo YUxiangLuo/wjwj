@@ -53,7 +53,7 @@ test("preview submit blocker returns report error when previous stages are compl
     expect(getPreviewSubmitBlocker({
         ...validExperiment,
         reportContent: "<p>短报告</p>",
-    })).toBe("报告内容不能少于100字");
+    })).toBe("本实验要求报告内容不少于100字");
 });
 
 test("preview submit blocker returns null for a complete valid experiment", () => {

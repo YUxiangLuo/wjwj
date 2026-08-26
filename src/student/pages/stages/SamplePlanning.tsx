@@ -141,6 +141,13 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                 />
             )}
 
+            <div className="flex items-start gap-2 rounded-xl border border-info/20 bg-info/10 p-3 text-xs leading-relaxed text-info" data-testid="student-sample-plan-scope-notice">
+                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                    本实验使用完整虚拟总体演示抽样设计。页面中的样本量、设计效应和无回答率计算是基于所列目标与假设的规划近似，不替代现实项目中的预调查、抽样框评估和专业统计设计；现实调查通常也无法直接看到未入样单位的总体真值。
+                </span>
+            </div>
+
             {/* Population info */}
             <Card className="gap-2 py-4 rounded-2xl border-border bg-card/50 shadow-sm">
                 <CardHeader className="border-b border-border px-4 pb-3 pt-0 [.border-b]:pb-3">

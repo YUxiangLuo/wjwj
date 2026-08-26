@@ -412,7 +412,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                             data-testid="student-sampling-simple-seed"
                                             className="mt-2 bg-card border-input text-foreground focus:border-ring"
                                         />
-                                        <p className="text-xs text-muted-foreground mt-2">设置后可复现同一组抽样结果。</p>
+                                        <p className="text-xs text-muted-foreground mt-2">设置后可复现同一组软件抽样结果，但这只是复现实验，不足以证明实际调查的随机化质量。</p>
                                     </div>
                                     {!simpleResult?.completed ? (
                                         <div className="bg-background/50 rounded-xl p-8 text-center border border-border border-dashed">
@@ -507,7 +507,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 className="bg-card border-input text-foreground focus:border-info"
                                             />
                                             <p className="text-xs text-muted-foreground">
-                                                设置后可复现系统抽样结果。
+                                                设置后可复现软件结果，但不能据此证明实际调查的随机化质量。
                                             </p>
                                         </div>
                                     </div>
@@ -635,7 +635,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 className="bg-card border-input text-foreground focus:border-auxiliary"
                                             />
                                             <p className="text-xs leading-relaxed text-muted-foreground">
-                                                设置后可复现同一组PPS抽样结果。
+                                                设置后可复现同一组软件 PPS 结果，但不能据此证明实际调查的随机化质量。
                                             </p>
                                         </div>
                                     </div>
@@ -721,7 +721,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     上一阶段
                 </Button>
                 <Button onClick={() => setConfirmNextOpen(true)} disabled={!allCompleted} data-testid="student-sampling-next" className={`min-w-0 whitespace-normal w-auto ${allCompleted ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground"}`}>
-                    {allCompleted ? "完成本阶段" : `请完成所有抽样方法 (${completedMethodCount}/4)`}
+                    {allCompleted ? "完成本阶段" : `本实验要求完成四种抽样方法 (${completedMethodCount}/4)`}
                     <ArrowRight className="w-4 h-4 ml-2 shrink-0" />
                 </Button>
             </div>
@@ -733,7 +733,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                         <AlertDialogTitle className="text-foreground">确认完成抽样执行</AlertDialogTitle>
                         <AlertDialogDescription asChild>
                             <div className="text-sm text-muted-foreground">
-                                您已完成四种抽样方法的执行：
+                                您已完成本实验要求的四种抽样方法：
                                 <div className="bg-background p-4 rounded-xl border border-border mt-3 mb-3 space-y-2">
                                     <div className="flex justify-between"><span>简单随机抽样:</span> <span className="text-foreground">{simpleResult?.sampleCount} 样本</span></div>
                                     <div className="flex justify-between"><span>系统抽样:</span> <span className="text-foreground">{systematicResult?.sampleCount} 样本 (K={formatSystematicInterval(resultSystematicInterval)})</span></div>

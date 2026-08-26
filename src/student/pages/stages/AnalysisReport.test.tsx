@@ -9,6 +9,7 @@ const mockExperimentApi = {
     getAnalysisMetrics: mock(async () => ({
         success: true,
         data: {
+            ppsMonteCarloReplicates: 256,
             numericFields: [],
             categoricalFields: [],
             numeric: {},
@@ -160,7 +161,9 @@ test("AnalysisReport labels full-population metrics as virtual-population oracle
     );
 
     await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
-    expect(view.getByTestId("student-analysis-oracle-notice").textContent).toContain("已知的完整总体");
+    expect(view.getByTestId("student-analysis-oracle-notice").textContent).toContain("完整虚拟总体");
+    expect(view.getByTestId("student-analysis-oracle-notice").textContent).toContain("256 次");
+    expect(view.getByTestId("student-analysis-oracle-notice").textContent).toContain("模拟误差");
     expect(view.getByTestId("student-analysis-tab-represent").textContent).toContain("总体对照偏差");
 });
 

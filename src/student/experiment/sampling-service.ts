@@ -160,7 +160,7 @@ export async function executeSamplingAction(params: {
             if (ppsAcceptedRange && (sampleSize < ppsAcceptedRange.min || sampleSize > ppsAcceptedRange.max)) {
                 return {
                     ok: false as const,
-                    errorMessage: `PPS抽样样本量需在目标样本量的80%-120%之间（${ppsAcceptedRange.min}-${ppsAcceptedRange.max}）`,
+                    errorMessage: `本实验要求PPS抽样样本量在目标样本量的80%-120%之间（${ppsAcceptedRange.min}-${ppsAcceptedRange.max}）`,
                 };
             }
 

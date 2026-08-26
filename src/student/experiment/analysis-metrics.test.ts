@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { buildAnalysisMetrics } from "./analysis-metrics";
+import {
+    DEFAULT_PPS_MONTE_CARLO_REPLICATES,
+    buildAnalysisMetrics,
+    resolvePpsMonteCarloReplicates,
+} from "./analysis-metrics";
 import {
     createSeededRandom,
     drawPreparedPPSSample,
@@ -7,6 +11,14 @@ import {
     performSystematicSampling,
     preparePPSSampling,
 } from "../sampling";
+
+test("PPS Monte Carlo replicate configuration is bounded and defaults safely", () => {
+    expect(resolvePpsMonteCarloReplicates(undefined)).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
+    expect(resolvePpsMonteCarloReplicates("512")).toBe(512);
+    expect(resolvePpsMonteCarloReplicates("31")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
+    expect(resolvePpsMonteCarloReplicates("1025")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
+    expect(resolvePpsMonteCarloReplicates("not-a-number")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
+});
 
 test("analysis metrics use the true population mean as the numeric comparison baseline", () => {
     const population = [
@@ -204,7 +216,9 @@ test("analysis metrics use PPS inclusion probabilities for weighted mean estimat
 
     const prepared = preparePPSSampling(population, "size", 2);
     if (!prepared) throw new Error("expected a valid PPS design");
-    const replicateEstimates = Array.from({ length: 128 }, (_, iteration) => {
+    expect(metrics.ppsMonteCarloReplicates).toBeGreaterThanOrEqual(32);
+    expect(metrics.ppsMonteCarloReplicates).toBeLessThanOrEqual(1024);
+    const replicateEstimates = Array.from({ length: metrics.ppsMonteCarloReplicates }, (_, iteration) => {
         const replicate = drawPreparedPPSSample(prepared, createSeededRandom(`analysis-pps-${iteration}`));
         let weightedSum = 0;
         let totalWeight = 0;
@@ -219,6 +233,6 @@ test("analysis metrics use PPS inclusion probabilities for weighted mean estimat
     const expectedSe = Math.sqrt(replicateEstimates.reduce(
         (sum, value) => sum + (value - replicateMean) ** 2,
         0,
-    ) / replicateEstimates.length);
+    ) / (replicateEstimates.length - 1));
     expect(numericValue.methods.pps.standardError).toBeCloseTo(expectedSe, 10);
 });

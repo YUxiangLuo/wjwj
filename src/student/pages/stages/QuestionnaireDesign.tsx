@@ -396,7 +396,7 @@ export function QuestionnaireDesign() {
                                             题目列表
                                         </CardTitle>
                                         <CardDescription className="text-muted-foreground mt-1">
-                                            已添加 {questions.length} 道题目（最少5题，最多50题）
+                                            已添加 {questions.length} 道题目（本实验要求：5-50题）
                                         </CardDescription>
                                     </div>
                                     <Button
@@ -501,7 +501,7 @@ export function QuestionnaireDesign() {
                             {questions.length < 5 && (
                                 <div className="p-3 bg-warning/10 text-warning border border-warning/20 rounded-xl text-sm flex items-center gap-2">
                                     <AlertCircle className="w-4 h-4" />
-                                    还需添加 {5 - questions.length} 道题目才能继续
+                                    按本实验要求，还需添加 {5 - questions.length} 道题目才能继续
                                 </div>
                             )}
                         </div>
@@ -721,7 +721,7 @@ export function QuestionnaireDesign() {
                                         <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.questionCount ? "text-success" : "text-destructive"}`}>
-                                        题目数量：{questions.length} 道 {validation.questionCount ? "" : "(需要5-50道)"}
+                                        题目数量：{questions.length} 道 {validation.questionCount ? "" : "(本实验要求5-50道)"}
                                     </span>
                                 </div>
                                 <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border ${validation.optionCount ? "bg-success/10 border-success/20" : "bg-destructive/10 border-destructive/20"}`}>

@@ -49,7 +49,7 @@ export function validateQuestionnaireForSubmit(questionnaire: unknown): string |
     }
 
     if (questions.length < 5 || questions.length > 50) {
-        return "问卷题目数量需在5-50题之间";
+        return "本实验要求问卷题目数量在5-50题之间";
     }
 
     for (let index = 0; index < questions.length; index += 1) {
@@ -153,7 +153,7 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
                 return "PPS抽样样本量需大于0";
             }
             if (acceptedRange && (ppsCount < acceptedRange.min || ppsCount > acceptedRange.max)) {
-                return `PPS抽样样本量需在目标样本量的80%-120%之间（${acceptedRange.min}-${acceptedRange.max}）`;
+                return `本实验要求PPS抽样样本量在目标样本量的80%-120%之间（${acceptedRange.min}-${acceptedRange.max}）`;
             }
         }
 
@@ -180,10 +180,10 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
 export function validateReportForSubmit(reportContent: unknown): string | null {
     const reportLength = getRichTextPlainLength(reportContent);
     if (reportLength < 100) {
-        return "报告内容不能少于100字";
+        return "本实验要求报告内容不少于100字";
     }
     if (reportLength > 5000) {
-        return "报告内容不能超过5000字";
+        return "本实验要求报告内容不超过5000字";
     }
     return null;
 }

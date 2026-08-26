@@ -51,6 +51,7 @@
 | `DEV_AUTH_MODE` | 非生产环境中：`1` 强制开启开发鉴权，`0` 强制关闭。未设置时本地开发开启、`test` 关闭；`production` 始终关闭 |
 | `SEED_ADMIN_PASSWORD` | 可选。覆盖 seed 管理员初始密码 |
 | `SEED_NOW` | 可选。默认 seed 的 ISO 时间锚点；未设置时使用当前时间 |
+| `PPS_MONTE_CARLO_REPLICATES` | 可选，默认 `128`，范围 `32`–`1024`。控制分析页 PPS 设计标准误的重复抽样次数；越高通常模拟误差越小、计算越慢 |
 | `TEST_DATABASE_URL` | 跑 `bun run test:db` 时使用的一次性库 |
 
 开发鉴权开启时，三个登录页会预填演示账号，并跳过首次改密。`bun run start` / 生产构建会把前端的 `DEV_AUTH_MODE` 内联为 `"0"`，上课环境必须走改密门禁。不要用未构建的 `NODE_ENV=production bun src/index.ts`。

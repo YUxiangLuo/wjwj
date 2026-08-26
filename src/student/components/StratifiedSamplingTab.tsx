@@ -327,7 +327,7 @@ export function StratifiedSamplingTab({
                                 className="w-48 bg-card border-input text-foreground"
                             />
                             <p className="text-xs leading-relaxed text-muted-foreground">
-                                留空时每次重新随机，填写后可复现同一组结果。
+                                留空时每次重新随机；填写后可复现软件结果，但不能据此证明实际调查的随机化质量。
                             </p>
                         </div>
                     </div>

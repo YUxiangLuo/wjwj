@@ -225,7 +225,7 @@ export function FormulaPhase({
                                 className="h-12 text-lg bg-background border-border"
                             />
                             <p className="text-xs text-muted-foreground">
-                                可从历史调查或预调查估算。本工具按 σ²=(1/N)Σ(yᵢ−Ȳ)² 定义；若已有分母 N−1 的有限总体方差 S²，可换算为 σ²=(N−1)S²/N（大总体时差异很小）。
+                                可从历史调查或预调查估算。本工具按 σ²=(1/N)Σ(yᵢ−Ȳ)² 定义，并用 z 与可靠先验方差作正态近似规划；若方差仅来自小型预调查，应考虑 t 分布迭代规划。若已有分母 N−1 的有限总体方差 S²，可换算为 σ²=(N−1)S²/N（大总体时差异很小）。
                             </p>
                         </div>
                     )}

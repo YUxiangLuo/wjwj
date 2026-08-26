@@ -88,8 +88,8 @@ export function PValueComparisonCard({ comparison, currentSampleSize }: PValueCo
                         <div className="text-xs text-warning space-y-1">
                             <p className="font-medium">为什么使用 p=0.5？</p>
                             <p className="text-warning">
-                                当 p=0.5 时，p×(1-p) 达到最大值 0.25，此时方差最大，计算出的样本量最为保守。
-                                这是一种稳健的做法，确保无论真实比例是多少，样本量都足够。
+                                当目标是控制比例估计的绝对 Wald 误差限时，p=0.5 使 p×(1-p) 达到最大值 0.25，因此给出该公式下最保守的样本量。
+                                稀有事件、相对误差或最低期望事件数等目标不适用这条结论，应另行规划。
                             </p>
                         </div>
                     </div>
