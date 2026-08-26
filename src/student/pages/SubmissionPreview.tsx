@@ -180,12 +180,12 @@ export function SubmissionPreview() {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto" data-testid="student-submission-preview">
-            <Link to={`/task/${task.id}/experiment`}>
-                <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted">
+            <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted">
+                <Link to={`/task/${task.id}/experiment`}>
                     <ArrowLeft className="w-4 h-4" />
                     返回修改
-                </Button>
-            </Link>
+                </Link>
+            </Button>
 
             <Card className="border-primary/20 bg-card/40 backdrop-blur-xl shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-info opacity-20" />

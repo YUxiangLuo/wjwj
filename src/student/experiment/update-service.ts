@@ -84,6 +84,7 @@ export function buildStageCompletionUpdates(params: {
         const validationError = validateSamplingResultsForSubmit(
             parseStoredJson(record.samplingResults),
             getTargetSampleSizeFromSamplePlan(samplePlan),
+            params.populationSize,
         );
         if (validationError) return fail(validationError);
         updates.stage3CompletedAt = now;

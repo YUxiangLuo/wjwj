@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import { X, Users, Target, Layers, Shuffle, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MethodKey as SamplingMethod } from "../api-client";
@@ -24,6 +24,8 @@ interface Props {
     stratifyBy?: string;
     layers?: StratifiedLayer[];
     onClose: () => void;
+    /** External run/rerun control that should regain focus when the overlay closes. */
+    restoreFocusTo?: HTMLElement | null;
     /** Sampled data rows returned from API — when set, displayed as a table in complete phase */
     sampledData?: Array<Record<string, unknown>>;
     /** Total count of sampled rows (may exceed displayed rows) */
@@ -224,6 +226,7 @@ export function ImmersiveSamplingAnimation({
     stratifyBy,
     layers,
     onClose,
+    restoreFocusTo,
     sampledData,
     sampledTotal,
 }: Props) {
@@ -487,9 +490,77 @@ export function ImmersiveSamplingAnimation({
     );
 
     const Icon = meta.icon;
+    const overlayRef = useRef<HTMLDivElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    const onCloseRef = useRef(onClose);
+    const restoreFocusRef = useRef<HTMLElement | null>(
+        restoreFocusTo
+        ?? (typeof document !== "undefined"
+            && document.activeElement instanceof HTMLElement
+            && document.activeElement !== document.body
+            ? document.activeElement
+            : null),
+    );
+
+    useEffect(() => {
+        onCloseRef.current = onClose;
+    }, [onClose]);
+
+    useEffect(() => {
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            onCloseRef.current();
+        };
+        document.addEventListener("keydown", handleEscape);
+        return () => {
+            document.removeEventListener("keydown", handleEscape);
+            const opener = restoreFocusRef.current;
+            requestAnimationFrame(() => {
+                if (opener?.isConnected) opener.focus();
+            });
+        };
+    }, []);
+
+    // The close control changes when the animation reaches its completed phase.
+    // Keep a deterministic focus target through that automatic transition.
+    useEffect(() => {
+        closeButtonRef.current?.focus();
+    }, [phase.type]);
+
+    const handleOverlayKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key !== "Tab") return;
+
+        const focusable = [...(overlayRef.current?.querySelectorAll<HTMLElement>(
+            'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ) ?? [])].filter((element) => element.getClientRects().length > 0);
+        if (focusable.length === 0) {
+            event.preventDefault();
+            overlayRef.current?.focus();
+            return;
+        }
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    };
 
     return (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col" data-testid="immersive-sampling-animation">
+        <div
+            ref={overlayRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sampling-animation-title"
+            tabIndex={-1}
+            onKeyDown={handleOverlayKeyDown}
+            className="fixed inset-0 z-50 bg-background flex flex-col outline-none"
+            data-testid="immersive-sampling-animation"
+        >
             {/* Progress bar */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-muted z-10">
                 <div
@@ -510,7 +581,7 @@ export function ImmersiveSamplingAnimation({
                         <Icon className={`w-5 h-5 ${meta.accentText}`} />
                     </div>
                     <div>
-                        <h2 className="text-sm font-semibold text-foreground">{meta.label}</h2>
+                        <h2 id="sampling-animation-title" className="text-sm font-semibold text-foreground">{meta.label}</h2>
                         <p className="text-xs text-muted-foreground">
                             {phase.type === "intro" && "准备中..."}
                             {phase.type === "populating" && progressCopy.populating}
@@ -521,6 +592,7 @@ export function ImmersiveSamplingAnimation({
                 </div>
                 {phase.type === "complete" ? (
                     <Button
+                        ref={closeButtonRef}
                         onClick={onClose}
                         variant="outline"
                         data-testid="immersive-sampling-return"
@@ -541,6 +613,7 @@ export function ImmersiveSamplingAnimation({
                             跳过动画
                         </Button>
                         <button
+                            ref={closeButtonRef}
                             type="button"
                             onClick={onClose}
                             className="w-10 h-10 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground/90 hover:bg-muted transition-colors"

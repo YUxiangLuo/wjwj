@@ -107,7 +107,11 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
     return null;
 }
 
-export function validateSamplingResultsForSubmit(samplingResults: unknown, targetSampleSize: number | null): string | null {
+export function validateSamplingResultsForSubmit(
+    samplingResults: unknown,
+    targetSampleSize: number | null,
+    populationSize?: number | null,
+): string | null {
     if (!samplingResults || typeof samplingResults !== "object") {
         return "请先完成抽样执行";
     }
@@ -147,7 +151,7 @@ export function validateSamplingResultsForSubmit(samplingResults: unknown, targe
         }
 
         if (!isPpsUnavailable) {
-            const acceptedRange = getSamplingAcceptedRange(targetSampleSize);
+            const acceptedRange = getSamplingAcceptedRange(targetSampleSize, populationSize);
             const ppsCount = toInteger(pps?.sampleCount);
             if (ppsCount === null || ppsCount < 1) {
                 return "PPS抽样样本量需大于0";

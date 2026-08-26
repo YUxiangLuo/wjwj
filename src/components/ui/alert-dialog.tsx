@@ -7,9 +7,34 @@ import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 function AlertDialog({
+  open,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+  const wasOpenRef = React.useRef(Boolean(open))
+  const restoreFocusRef = React.useRef<HTMLElement | null>(null)
+
+  // Most application alerts are controlled without a Radix AlertDialogTrigger.
+  // Preserve the external opener before Radix moves focus into the alert.
+  if (open && !wasOpenRef.current && typeof document !== "undefined") {
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+  }
+
+  React.useLayoutEffect(() => {
+    const wasOpen = wasOpenRef.current
+    wasOpenRef.current = Boolean(open)
+    if (open || !wasOpen) return
+
+    const opener = restoreFocusRef.current
+    const frame = requestAnimationFrame(() => {
+      if (opener?.isConnected) opener.focus()
+      restoreFocusRef.current = null
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open])
+
+  return <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} {...props} />
 }
 
 function AlertDialogTrigger({

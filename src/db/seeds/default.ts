@@ -221,7 +221,7 @@ function assertCompleteSubmission(samplePlan: unknown, samplingResults: unknown,
     const errors = [
         validateQuestionnaireForSubmit(questionnaire),
         validateSamplePlanForSubmit(samplePlan, populationSize),
-        validateSamplingResultsForSubmit(samplingResults, (samplePlan as { finalSampleSize: number }).finalSampleSize),
+        validateSamplingResultsForSubmit(samplingResults, (samplePlan as { finalSampleSize: number }).finalSampleSize, populationSize),
         validateReportForSubmit(submissionReport),
     ].filter(Boolean);
     if (errors.length) throw new Error(`Invalid dogfood submission fixture: ${errors.join("; ")}`);

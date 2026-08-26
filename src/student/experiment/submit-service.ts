@@ -66,7 +66,7 @@ export function validateExperimentSubmission(params: {
     const validationError =
         validateQuestionnaireForSubmit(questionnaire) ??
         validateSamplePlanForSubmit(samplePlan, populationSize) ??
-        validateSamplingResultsForSubmit(samplingResults, getTargetSampleSizeFromSamplePlan(samplePlan)) ??
+        validateSamplingResultsForSubmit(samplingResults, getTargetSampleSizeFromSamplePlan(samplePlan), populationSize) ??
         validateReportForSubmit(record.reportContent);
     return validationError ? fail(validationError, "INCOMPLETE") : { ok: true as const };
 }

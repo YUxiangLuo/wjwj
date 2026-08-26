@@ -156,7 +156,7 @@ export async function executeSamplingAction(params: {
                     errorMessage: `样本量需为 1-${params.population.length} 之间的整数`,
                 };
             }
-            const ppsAcceptedRange = getSamplingAcceptedRange(params.targetSampleSize);
+            const ppsAcceptedRange = getSamplingAcceptedRange(params.targetSampleSize, params.population.length);
             if (ppsAcceptedRange && (sampleSize < ppsAcceptedRange.min || sampleSize > ppsAcceptedRange.max)) {
                 return {
                     ok: false as const,

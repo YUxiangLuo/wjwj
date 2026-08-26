@@ -1,5 +1,5 @@
 import { expect, test, describe } from "bun:test";
-import { getTargetSampleSizeFromSamplePlan, validateSamplePlanForSubmit } from "./submit-validation";
+import { getTargetSampleSizeFromSamplePlan, validateSamplePlanForSubmit, validateSamplingResultsForSubmit } from "./submit-validation";
 
 /** 与后端/持久化字段一致的最小合法对象 */
 function plan(overrides: Record<string, unknown>) {
@@ -95,6 +95,22 @@ describe("validateSamplePlanForSubmit", () => {
                 200,
             ),
         ).toBe("均值估计时需提供正的总体方差估计");
+    });
+});
+
+describe("validateSamplingResultsForSubmit", () => {
+    const completedResults = (ppsCount: number) => ({
+        simple: { completed: true, sampleCount: 12 },
+        systematic: { completed: true, sampleCount: 12 },
+        pps: { completed: true, sampleCount: ppsCount },
+        stratified: { completed: true, layers: [{ name: "all", sampleCount: 12 }] },
+    });
+
+    test("caps the PPS range at the population during completion and submission validation", () => {
+        expect(validateSamplingResultsForSubmit(completedResults(12), 12, 12)).toBeNull();
+        expect(validateSamplingResultsForSubmit(completedResults(13), 12, 12)).toBe(
+            "本实验要求PPS抽样样本量在目标样本量的80%-120%之间（9-12）",
+        );
     });
 });
 

@@ -51,9 +51,9 @@ export function SubmissionDetailPage() {
     return (
         <div className="mx-auto max-w-4xl space-y-6" data-testid="student-submission-detail">
             <div className="flex items-center justify-between gap-4">
-                <Link to={`/task/${detail.taskId}`}>
-                    <Button variant="ghost" className="gap-2"><ArrowLeft className="h-4 w-4" />返回任务</Button>
-                </Link>
+                <Button asChild variant="ghost" className="gap-2">
+                    <Link to={`/task/${detail.taskId}`}><ArrowLeft className="h-4 w-4" />返回任务</Link>
+                </Button>
                 <StatusBadge intent={status.intent}>
                     {detail.status === "graded" ? <CheckCircle2 className="h-3.5 w-3.5" /> : detail.status === "rejected" ? <AlertCircle className="h-3.5 w-3.5" /> : <Loader2 className="h-3.5 w-3.5" />}
                     {status.label}
@@ -120,7 +120,7 @@ export function SubmissionDetailPage() {
                         <section className="rounded-xl border border-destructive/20 bg-destructive/10 p-5">
                             <h2 className="mb-2 flex items-center gap-2 text-sm font-medium text-destructive"><AlertCircle className="h-4 w-4" />驳回理由</h2>
                             <p className="whitespace-pre-line text-sm leading-relaxed text-destructive">{detail.rejectReason}</p>
-                            <Link to={`/task/${detail.taskId}/experiment`} className="mt-4 inline-block"><Button>继续修改</Button></Link>
+                            <Button asChild className="mt-4"><Link to={`/task/${detail.taskId}/experiment`}>继续修改</Link></Button>
                         </section>
                     )}
 

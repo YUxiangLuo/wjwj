@@ -128,6 +128,28 @@ test("PPS sampling rejects malformed or non-numeric sample sizes", async () => {
     expect(valid.ok).toBe(true);
 });
 
+test("PPS sampling caps its accepted range at a small population", async () => {
+    const smallPopulation = population.slice(0, 12).map((row) => ({ ...row, weight: row.id }));
+    const invalid = await executeSamplingAction({
+        method: "pps",
+        rawParams: { sizeField: "weight", sampleSize: 13, seed: 2026 },
+        targetSampleSize: 12,
+        population: smallPopulation,
+        fieldMapping: { numeric: ["weight"] },
+    });
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) expect(invalid.errorMessage).toContain("1-12");
+
+    const valid = await executeSamplingAction({
+        method: "pps",
+        rawParams: { sizeField: "weight", sampleSize: 12, seed: 2026 },
+        targetSampleSize: 12,
+        population: smallPopulation,
+        fieldMapping: { numeric: ["weight"] },
+    });
+    expect(valid.ok).toBe(true);
+});
+
 test("sampling generates and returns a reproducible seed when the client omits one", async () => {
     const result = await executeSamplingAction({
         method: "simple",

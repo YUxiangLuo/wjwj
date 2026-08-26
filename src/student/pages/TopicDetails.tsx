@@ -197,12 +197,12 @@ export function TopicDetails() {
     return (
         <div className="space-y-4 pb-12" data-testid="student-task-detail">
             <div>
-                <Link to="/">
-                    <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted -ml-4 h-8 text-sm">
+                <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted -ml-4 h-8 text-sm">
+                    <Link to="/">
                         <ArrowLeft className="w-3.5 h-3.5" />
                         返回任务列表
-                    </Button>
-                </Link>
+                    </Link>
+                </Button>
 
                 <div className="flex flex-row items-center justify-between gap-3 mt-1">
                     <div>
@@ -368,16 +368,16 @@ export function TopicDetails() {
                                     <span className="text-xl font-bold text-success tracking-tight ml-auto">{task.score}</span>
                                 </div>
                             )}
-                            {action.link ? (
-                                <Link to={action.link} className="w-full block">
-                                    <Button
-                                        size="lg"
-                                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-11 text-base font-medium"
-                                        disabled={action.disabled}
-                                    >
+                            {action.link && !action.disabled ? (
+                                <Button
+                                    asChild
+                                    size="lg"
+                                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 h-11 text-base font-medium"
+                                >
+                                    <Link to={action.link}>
                                         {action.text} <ChevronRight className="w-4 h-4 ml-1" />
-                                    </Button>
-                                </Link>
+                                    </Link>
+                                </Button>
                             ) : (
                                 <Button size="lg" className="w-full bg-muted hover:bg-muted text-foreground/90" disabled>{action.text}</Button>
                             )}

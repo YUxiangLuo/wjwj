@@ -19,7 +19,7 @@ export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questi
     if (samplePlanError) return samplePlanError;
 
     const targetSampleSize = getTargetSampleSizeFromSamplePlan(experiment.samplePlan);
-    const samplingResultsError = validateSamplingResultsForSubmit(experiment.samplingResults, targetSampleSize);
+    const samplingResultsError = validateSamplingResultsForSubmit(experiment.samplingResults, targetSampleSize, experiment.populationSize);
     if (samplingResultsError) return samplingResultsError;
 
     const reportError = validateReportForSubmit(experiment.reportContent);

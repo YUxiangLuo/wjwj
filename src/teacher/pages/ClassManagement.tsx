@@ -151,12 +151,12 @@ export function ClassManagement() {
                                         </TableCell>
                                         <TableCell className="text-muted-foreground text-xs">{new Date(cls.createdAt).toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" })}</TableCell>
                                         <TableCell className="text-right">
-                                            <Link to={`/class/${cls.id}/students`}>
-                                                <Button data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                                            <Button asChild data-testid={`teacher-class-manage-students-${cls.id}`} variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                                                <Link to={`/class/${cls.id}/students`}>
                                                     <Users className="w-3.5 h-3.5 mr-1" />
                                                     管理学生
-                                                </Button>
-                                            </Link>
+                                                </Link>
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}

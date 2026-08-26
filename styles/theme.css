@@ -215,6 +215,19 @@
     }
 }
 
+/* Respect the OS accessibility preference across all three SPAs. Loading
+ * indicators remain visible as static status icons, while decorative motion,
+ * sliding, zooming, bouncing, and smooth transitions are removed. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        scroll-behavior: auto !important;
+        transition: none !important;
+    }
+}
+
 .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;

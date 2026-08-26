@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -153,6 +153,15 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [animationSampledData, setAnimationSampledData] = useState<{ data: Array<Record<string, unknown>>; total: number } | null>(null);
     const [stratifiedAnimationLayers, setStratifiedAnimationLayers] = useState<StratifiedLayer[]>([]);
     const [stratifiedAnimationStratifyBy, setStratifiedAnimationStratifyBy] = useState("gender");
+    const animationOpenerRef = useRef<HTMLElement | null>(null);
+
+    const rememberAnimationOpener = () => {
+        animationOpenerRef.current = typeof document !== "undefined"
+            && document.activeElement instanceof HTMLElement
+            && document.activeElement !== document.body
+            ? document.activeElement
+            : null;
+    };
 
     const parseSeed = useCallback((seedText: string): { seed: number | undefined; error: string | null } => {
         const trimmed = seedText.trim();
@@ -168,6 +177,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     // Execute sampling with real API
     const executeSimple = async () => {
         if (!taskId || !hasValidSamplePlan) return;
+        rememberAnimationOpener();
         setExecuting("simple");
         setAnimationSampledData(null);
         const startTime = performance.now();
@@ -199,6 +209,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     const executeSystematic = async () => {
         if (!taskId || !hasValidSamplePlan || systematicInterval === null) return;
+        rememberAnimationOpener();
         setExecuting("systematic");
         setAnimationSampledData(null);
         const startTime = performance.now();
@@ -229,6 +240,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
 
     const executePPS = async () => {
         if (!taskId || !hasValidSamplePlan || !ppsSizeField || ppsEligibleFields.length === 0) return;
+        rememberAnimationOpener();
         setExecuting("pps");
         setAnimationSampledData(null);
         const startTime = performance.now();
@@ -260,7 +272,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     };
 
     // Validation
-    const samplingAcceptedRange = getSamplingAcceptedRange(n);
+    const samplingAcceptedRange = getSamplingAcceptedRange(n, N);
     const ppsMinSize = samplingAcceptedRange?.min ?? 1;
     const ppsMaxSize = samplingAcceptedRange?.max ?? N;
     const isPpsSizeValid = ppsSampleSize >= ppsMinSize && ppsSampleSize <= ppsMaxSize && ppsSampleSize >= 1 && ppsSampleSize <= N;
@@ -616,11 +628,14 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                 onChange={(e) => setPpsSampleSize(Math.max(1, Number.parseInt(e.target.value, 10) || 0))}
                                                 min={ppsMinSize}
                                                 max={ppsMaxSize}
+                                                aria-invalid={!isPpsSizeValid}
+                                                aria-describedby="pps-sample-size-hint"
                                                 data-testid="student-sampling-pps-sample-size"
                                                 className={`bg-card border-input text-foreground focus:border-auxiliary ${!isPpsSizeValid ? "border-destructive" : ""}`}
                                             />
-                                            <p className="text-xs leading-relaxed text-muted-foreground">
-                                                允许范围: {ppsMinSize}-{ppsMaxSize}（目标值 {n} 的 80%-120%）
+                                            <p id="pps-sample-size-hint" className={`text-xs leading-relaxed ${isPpsSizeValid ? "text-muted-foreground" : "text-destructive"}`}>
+                                                有效范围: {ppsMinSize}-{ppsMaxSize}（本实验按目标值 {n} 的 80%-120%，且无放回抽样不能超过总体 N={N}）
+                                                {!isPpsSizeValid && `；请输入 ${ppsMinSize}-${ppsMaxSize} 之间的整数`}
                                             </p>
                                         </div>
                                         <div className="space-y-3">
@@ -703,7 +718,8 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             const dataArr = (result.data ?? []) as Array<Record<string, unknown>>;
                             setAnimationSampledData({ data: dataArr, total: getSamplingResultCount("stratified", result) });
                         }}
-                        onAnimate={(animLayers, animStratifyBy) => {
+                        onAnimate={(animLayers, animStratifyBy, opener) => {
+                            animationOpenerRef.current = opener;
                             setStratifiedAnimationLayers(animLayers);
                             setStratifiedAnimationStratifyBy(animStratifyBy);
                             setAnimatingMethod("stratified");
@@ -769,6 +785,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     stratifyBy={animatingMethod === "stratified" ? stratifiedAnimationStratifyBy : undefined}
                     layers={animatingMethod === "stratified" ? stratifiedAnimationLayers : undefined}
                     onClose={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
+                    restoreFocusTo={animationOpenerRef.current}
                     sampledData={animationSampledData?.data}
                     sampledTotal={animationSampledData?.total}
                 />

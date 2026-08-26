@@ -16,6 +16,10 @@ import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 
+export function isRecommendedSemesterName(value: string) {
+    return /^\d{4}-\d{4}-[12]$/.test(value.trim());
+}
+
 export function SemesterManagement() {
     const { confirm, dialog } = useConfirmDialog();
     const [semesters, setSemesters] = useState<Semester[]>([]);
@@ -51,12 +55,12 @@ export function SemesterManagement() {
     async function handleAddSemester() {
         if (!newSemesterName.trim()) return;
 
-        // Warn if format doesn't match recommended pattern
-        const formatRegex = /^\d{4}-(Spring|Fall)$/;
-        if (!formatRegex.test(newSemesterName.trim())) {
+        // Keep the recommendation aligned with the academic-year names used by
+        // the dashboard and the default teaching data.
+        if (!isRecommendedSemesterName(newSemesterName)) {
             const shouldContinue = await confirm({
                 title: "学期名称不符合推荐格式",
-                description: "建议使用 YYYY-Spring 或 YYYY-Fall。\n继续创建后不会影响系统功能，但会降低列表可读性。",
+                description: "建议使用 YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）。\n继续创建后不会影响系统功能，但会降低列表可读性。",
                 confirmLabel: "继续创建",
             });
             if (!shouldContinue) {
@@ -366,7 +370,7 @@ export function SemesterManagement() {
                                 onChange={(e) => setNewSemesterName(e.target.value)}
                                 className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
                             />
-                            <p className="text-xs text-muted-foreground">建议格式：YYYY-Spring 或 YYYY-Fall</p>
+                            <p className="text-xs text-muted-foreground">建议格式：YYYY-YYYY-1 或 YYYY-YYYY-2（例如 2026-2027-1）</p>
                         </div>
                         <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
                             <div className="space-y-0.5">

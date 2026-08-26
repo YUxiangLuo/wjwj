@@ -78,7 +78,7 @@ export interface StratifiedSamplingTabProps {
     executing: MethodKey | null;
     setExecuting: (method: MethodKey | null) => void;
     onResult: (result: StratifiedResult) => void;
-    onAnimate: (layers: StratifiedLayer[], stratifyBy: string) => void;
+    onAnimate: (layers: StratifiedLayer[], stratifyBy: string, opener: HTMLElement | null) => void;
     buildSavePayload: (stratifiedResult: StratifiedResult) => void;
     executionTime: number | null;
     setExecutionTime: (ms: number) => void;
@@ -228,6 +228,11 @@ export function StratifiedSamplingTab({
 
     const executeStratified = useCallback(async () => {
         if (!taskId) return;
+        const opener = typeof document !== "undefined"
+            && document.activeElement instanceof HTMLElement
+            && document.activeElement !== document.body
+            ? document.activeElement
+            : null;
         setExecuting("stratified");
         const startTime = performance.now();
         const layersPayload = layers.map((l) => ({
@@ -251,7 +256,7 @@ export function StratifiedSamplingTab({
                 setExecutionTime(Math.round(performance.now() - startTime));
                 onResult(nextResult);
                 buildSavePayload(nextResult);
-                onAnimate(layers, stratifyBy);
+                onAnimate(layers, stratifyBy, opener);
             } else {
                 toast.error(res.error?.message || "分层抽样执行失败");
             }

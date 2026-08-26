@@ -30,11 +30,9 @@ export function TopicDeletedState({
                     </div>
                     <h2 className="text-2xl font-bold text-destructive">{title}</h2>
                     <p className="text-sm text-destructive leading-relaxed max-w-md mx-auto">{description}</p>
-                    <Link to={backTo}>
-                        <Button className="bg-muted hover:bg-muted text-foreground">
-                            {backText}
-                        </Button>
-                    </Link>
+                    <Button asChild className="bg-muted hover:bg-muted text-foreground">
+                        <Link to={backTo}>{backText}</Link>
+                    </Button>
                 </CardContent>
             </Card>
         </div>
