@@ -1,4 +1,8 @@
+import { and, eq, isNull } from "drizzle-orm";
+import { db } from "../../db";
+import { topic, topicAttachment } from "../../db/schema";
 import { spreadsheetRequestExceedsLimit } from "../../lib/spreadsheet";
+import { buildAttachmentDownloadResponse } from "../../server/attachment-download";
 import { error, getRouteParam, json, parseBody } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
 import { requireTopicOwner } from "../topic/access";
@@ -114,14 +118,13 @@ const topicExcelUploadRoutes: RouteDefinition = {
         const file = formData.get("file");
         if (!file || !(file instanceof File)) return error("请选择文件", "VALIDATION_ERROR", 400);
         const replaceResult = await replaceTopicExcelData({
+            teacherId: currentTeacherId,
             topicId: id,
             file,
-            previousFilePath: topicRow.excelFilePath,
         });
         if (!replaceResult.ok) return error(replaceResult.message, replaceResult.code, replaceResult.status);
 
         return json({
-            filePath: replaceResult.filePath,
             rowCount: replaceResult.rowCount,
             colCount: replaceResult.colCount,
             columns: replaceResult.columns,
@@ -144,6 +147,7 @@ const topicFieldMappingRoutes: RouteDefinition = {
 
         const body = await parseBody<{ fieldMapping: any }>(req);
         const mappingResult = await updateTopicFieldMapping({
+            teacherId: currentTeacherId,
             topicId: id,
             fieldMapping: body.fieldMapping ?? {},
         });
@@ -165,11 +169,40 @@ const topicAttachmentRoutes: RouteDefinition = {
         const formData = await req.formData();
         const file = formData.get("file");
         if (!file || !(file instanceof File)) return error("请选择文件", "VALIDATION_ERROR", 400);
-        const uploadResult = await uploadTopicAttachment({ topicId: id, file });
+        const uploadResult = await uploadTopicAttachment({ teacherId: currentTeacherId, topicId: id, file });
         if (!uploadResult.ok) return error(uploadResult.message, uploadResult.code, uploadResult.status);
 
-        return json({ id: uploadResult.id, filePath: uploadResult.filePath });
+        return json({ id: uploadResult.id });
     }
+};
+
+const topicAttachmentDownloadRoutes: RouteDefinition = {
+    async GET(req) {
+        const currentTeacherId = getPrimaryTeacherIdOrThrow(req);
+        const topicId = Number(getRouteParam(req, "id"));
+        const attachmentId = Number(getRouteParam(req, "attachmentId"));
+        if (!Number.isInteger(topicId) || topicId <= 0 || !Number.isInteger(attachmentId) || attachmentId <= 0) {
+            return error("Invalid ID", "INVALID_ID");
+        }
+
+        const [attachment] = await db
+            .select({ fileName: topicAttachment.fileName, filePath: topicAttachment.filePath })
+            .from(topicAttachment)
+            .innerJoin(topic, eq(topicAttachment.topicId, topic.id))
+            .where(and(
+                eq(topicAttachment.id, attachmentId),
+                eq(topicAttachment.topicId, topicId),
+                eq(topic.teacherId, currentTeacherId),
+                isNull(topic.deletedAt),
+            ));
+        if (!attachment) return error("附件不存在", "NOT_FOUND", 404);
+
+        return buildAttachmentDownloadResponse({
+            request: req,
+            fileName: attachment.fileName,
+            filePath: attachment.filePath,
+        });
+    },
 };
 
 const topicAttachmentDeleteRoutes: RouteDefinition = {
@@ -182,7 +215,8 @@ const topicAttachmentDeleteRoutes: RouteDefinition = {
         const topicRow = await requireTopicOwner(topicId, currentTeacherId);
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
 
-        await deleteTopicAttachment({ topicId, attachmentId });
+        const deleteResult = await deleteTopicAttachment({ teacherId: currentTeacherId, topicId, attachmentId });
+        if (!deleteResult.ok) return error(deleteResult.message, deleteResult.code, deleteResult.status);
         return json({ success: true });
     }
 };
@@ -197,7 +231,7 @@ const topicRecommendQuestionRoutes: RouteDefinition = {
         if (!topicRow) return error("课题不存在", "NOT_FOUND", 404);
 
         const body = await parseBody<{ items?: unknown }>(req);
-        const replaceResult = await replaceTopicRecommendQuestions({ topicId: id, items: body.items });
+        const replaceResult = await replaceTopicRecommendQuestions({ teacherId: currentTeacherId, topicId: id, items: body.items });
         if (!replaceResult.ok) return error(replaceResult.message, replaceResult.code, replaceResult.status);
 
         return json({ success: true });
@@ -218,6 +252,7 @@ const topicWeightRoutes: RouteDefinition = {
 
         const body = await parseBody<{ weightConfig: { questionnaire: number; process: number; report: number } }>(req);
         const weightResult = await updateTopicWeightConfig({
+            teacherId: currentTeacherId,
             topicId: id,
             weightConfig: body.weightConfig,
         });
@@ -318,6 +353,7 @@ export {
     taskProgressRoutes,
     taskRoutes,
     topicAttachmentDeleteRoutes,
+    topicAttachmentDownloadRoutes,
     topicAttachmentRoutes,
     topicCopyRoutes,
     topicDetailRoutes,

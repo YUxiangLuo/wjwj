@@ -205,6 +205,31 @@ test("SamplingExecution preserves a persisted completed PPS result while eligibl
     expect(view.container.textContent).toContain("本实验执行还要求该字段对总体每个单位均为正数");
 });
 
+test("SamplingExecution exposes stats failures, preserves PPS state, and retries", async () => {
+    mockExperimentApi.getStats
+        .mockResolvedValueOnce({ success: false, error: { code: "READ_FAILED", message: "总体文件暂不可用" } } as never)
+        .mockResolvedValueOnce({
+            success: true,
+            data: { stats: {}, numericFields: ["weight"], ppsEligibleFields: ["weight"] },
+        });
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingResults: {
+            pps: { completed: true, sampleCount: 13, sizeField: "weight", data: [] },
+        },
+    };
+
+    const view = render(<SamplingExecution onPrev={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("student-sampling-stats-error")).toBeTruthy());
+    expect(view.container.textContent).toContain("总体文件暂不可用");
+    expect(view.queryByTestId("student-sampling-pps-unavailable")).toBeNull();
+
+    fireEvent.click(view.getByTestId("student-sampling-stats-retry"));
+    await waitFor(() => expect(mockExperimentApi.getStats).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(view.queryByTestId("student-sampling-stats-error")).toBeNull());
+    expect(view.queryByTestId("student-sampling-pps-unavailable")).toBeNull();
+});
+
 test("SamplingExecution caps the PPS range at the population and exposes invalid input accessibly", async () => {
     mockExperimentContext.populationSize = 12;
     mockExperimentContext.experiment = {
@@ -231,13 +256,13 @@ test("SamplingExecution caps the PPS range at the population and exposes invalid
     await waitFor(() => expect(view.getByTestId("student-sampling-pps-sample-size")).toBeTruthy());
 
     const input = view.getByTestId("student-sampling-pps-sample-size") as HTMLInputElement;
-    expect(input.min).toBe("9");
+    expect(input.min).toBe("10");
     expect(input.max).toBe("12");
-    expect(view.container.textContent).toContain("有效范围: 9-12");
+    expect(view.container.textContent).toContain("有效范围: 10-12");
     expect(view.container.textContent).toContain("不能超过总体 N=12");
     expect(input.value).toBe("13");
     expect(input.getAttribute("aria-invalid")).toBe("true");
-    expect(view.container.textContent).toContain("请输入 9-12 之间的整数");
+    expect(view.container.textContent).toContain("请输入 10-12 之间的整数");
     expect((view.getByTestId("student-sampling-pps-run") as HTMLButtonElement).disabled).toBe(true);
 });
 

@@ -14,7 +14,10 @@ function request(id: string) {
 }
 
 async function load(status: number, hasTasks = false) {
-    const { db, operations } = createMockDb({ select: [[{ id: 12, status, hasTasks, excelFilePath: null }]] });
+    const routeTopic = { id: 12, status, hasTasks, excelFilePath: null };
+    const select = [[routeTopic]];
+    if (status === 0 && !hasTasks) select.push([{ status }] as typeof select[number], []);
+    const { db, operations } = createMockDb({ select });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());
     const module = await import(`./topic-task.ts?weights=${crypto.randomUUID()}`);

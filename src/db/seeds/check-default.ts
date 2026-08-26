@@ -5,6 +5,7 @@ import {
     announcement,
     class_,
     experiment,
+    samplingAttempt,
     semester,
     student,
     task,
@@ -29,7 +30,7 @@ function check(condition: unknown, message: string): asserts condition {
     if (!condition) throw new Error(message);
 }
 
-async function rowCount(table: typeof admin | typeof teacher | typeof semester | typeof class_ | typeof student | typeof topic | typeof task | typeof experiment | typeof announcement | typeof topicAttachment) {
+async function rowCount(table: typeof admin | typeof teacher | typeof semester | typeof class_ | typeof student | typeof topic | typeof task | typeof experiment | typeof samplingAttempt | typeof announcement | typeof topicAttachment) {
     const [row] = await db.select({ value: count() }).from(table as typeof admin);
     return row?.value ?? 0;
 }
@@ -44,6 +45,7 @@ async function verify() {
         topic: await rowCount(topic),
         task: await rowCount(task),
         experiment: await rowCount(experiment),
+        samplingAttempt: await rowCount(samplingAttempt),
         announcement: await rowCount(announcement),
         topicAttachment: await rowCount(topicAttachment),
     };
@@ -98,15 +100,18 @@ async function verify() {
             check(results?.[method]?.serverGenerated === true, `${label}/${method} is not server generated`);
         }
         for (const method of ["simple", "systematic", "stratified"] as const) {
-            const data = results?.[method]?.data;
-            check(Array.isArray(data) && data.length > 0, `${label}/${method} has no sampled rows`);
+            const section = results?.[method];
+            check(!Array.isArray(section?.data), `${label}/${method} unexpectedly embeds sampled rows`);
+            check(Array.isArray(section?.indices) && section.indices.length === section.sampleCount, `${label}/${method} has invalid replay indices`);
         }
         const pps = results?.pps;
         if (allowUnavailablePps) {
-            check(pps?.unavailable === true && !Array.isArray(pps.data), `${label}/pps must be the unavailable marker`);
+            check(pps?.unavailable === true && !Array.isArray(pps.data) && !Array.isArray(pps.indices), `${label}/pps must be the compact unavailable marker`);
         } else {
             check(pps?.completed === true && pps.unavailable !== true, `${label}/pps is not a completed result`);
-            check(Array.isArray(pps.data) && pps.data.length > 0, `${label}/pps has no sampled rows`);
+            check(!Array.isArray(pps.data), `${label}/pps unexpectedly embeds sampled rows`);
+            check(Array.isArray(pps.indices) && pps.indices.length === pps.sampleCount, `${label}/pps has invalid replay indices`);
+            check(Array.isArray(pps.inclusionProbabilities) && pps.inclusionProbabilities.length === pps.sampleCount, `${label}/pps probabilities differ from its sample count`);
         }
         return results;
     }
@@ -131,6 +136,22 @@ async function verify() {
         }
     }
     check(authoritative.filter((row) => row.studentId === "S015" && row.topicName === DOGFOOD_NAMES.topicB).length === 1, "Expected exactly one mean PPS-unavailable fixture");
+
+    const auditRows = await db
+        .select({ method: samplingAttempt.method, seed: samplingAttempt.seed, sampleCount: samplingAttempt.sampleCount })
+        .from(samplingAttempt)
+        .innerJoin(experiment, eq(samplingAttempt.experimentId, experiment.id))
+        .innerJoin(student, eq(experiment.studentId, student.id))
+        .innerJoin(task, eq(experiment.taskId, task.id))
+        .innerJoin(topic, eq(task.topicId, topic.id))
+        .where(and(eq(student.studentId, "S015"), eq(topic.name, DOGFOOD_NAMES.topicA)))
+        .orderBy(asc(samplingAttempt.createdAt));
+    check(JSON.stringify(auditRows) === JSON.stringify([
+        { method: "simple", seed: 202601, sampleCount: 132 },
+        { method: "systematic", seed: 202602, sampleCount: 132 },
+        { method: "pps", seed: 202603, sampleCount: 132 },
+        { method: "stratified", seed: 202604, sampleCount: 132 },
+    ]), `Sampling attempt fixtures differ: ${JSON.stringify(auditRows)}`);
 
     const visible = await db
         .select({ studentId: student.studentId, topicName: topic.name })
@@ -223,7 +244,7 @@ async function verify() {
     console.log(`Counts: ${Object.entries(actualCounts).map(([key, value]) => `${key}=${value}`).join(" ")}`);
     console.log(`A progress: ${Object.entries(progress.counts).map(([key, value]) => `${key}=${value}`).join(" ")}`);
     console.log(`Visible grading fixtures: ${visibleKeys.join(", ")}`);
-    console.log(`Authoritative stage4/terminal fixtures: ${authoritative.length}; population rows: A=${parsedRowCounts[DOGFOOD_NAMES.topicA]} B=${parsedRowCounts[DOGFOOD_NAMES.topicB]}`);
+    console.log(`Authoritative compact stage4/terminal fixtures: ${authoritative.length}; sampling attempts: ${auditRows.length}; population rows: A=${parsedRowCounts[DOGFOOD_NAMES.topicA]} B=${parsedRowCounts[DOGFOOD_NAMES.topicB]}`);
 }
 
 try {

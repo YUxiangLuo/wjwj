@@ -43,7 +43,7 @@ test("completing the current stage saves it and advances once", () => {
                 marginOfError: 5,
                 designEffect: 1,
                 nonResponseRate: 0,
-                recommendedSize: 50,
+                recommendedSize: 132,
                 finalSampleSize: 50,
             },
         },

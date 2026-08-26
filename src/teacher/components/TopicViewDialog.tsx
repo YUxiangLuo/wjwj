@@ -168,7 +168,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                         </div>
                                         <div className="bg-background border border-border rounded-lg p-4 text-center">
                                             <div className="text-2xl font-bold text-foreground">
-                                                {detail?.topic?.excelFilePath ? (
+                                                {detail?.hasExcelFile ? (
                                                     <CheckCircle2 className="w-6 h-6 text-success mx-auto" />
                                                 ) : (
                                                     <span className="text-muted-foreground">—</span>
@@ -280,7 +280,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                                                     </div>
                                                 </div>
                                                 <a
-                                                    href={a.filePath}
+                                                    href={`/api/teacher/topics/${topic.id}/attachments/${a.id}/download?mode=preview`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-xs text-primary hover:text-primary flex items-center gap-1"

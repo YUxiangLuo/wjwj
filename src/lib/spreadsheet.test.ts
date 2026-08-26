@@ -25,6 +25,16 @@ test("spreadsheet parser preserves raw duplicate header evidence before SheetJS 
 
     expect(parsed.columns).toEqual(["编号", "年级", " 年级 ", "规模"]);
     expect(parsed.duplicateColumns).toEqual(["年级"]);
+    expect(parsed.blankColumnIndexes).toEqual([]);
+});
+
+test("spreadsheet parser preserves blank header evidence before SheetJS creates __EMPTY keys", async () => {
+    const csv = "编号,,规模\n1,大一,10\n";
+    const parsed = await parseSpreadsheetFile(new TextEncoder().encode(csv).buffer, "population.csv");
+
+    expect(parsed.columns).toEqual(["编号", "__EMPTY", "规模"]);
+    expect(parsed.duplicateColumns).toEqual([]);
+    expect(parsed.blankColumnIndexes).toEqual([2]);
 });
 
 test("spreadsheet multipart preflight rejects declared oversized bodies", () => {

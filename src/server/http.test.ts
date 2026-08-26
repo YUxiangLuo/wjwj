@@ -1,5 +1,13 @@
 import { expect, test } from "bun:test";
-import { handleServerError, InvalidJsonError, json, parseBody, stringValue } from "./http";
+import {
+    handleServerError,
+    InvalidJsonError,
+    json,
+    MAX_JSON_BODY_BYTES,
+    parseBody,
+    RequestBodyTooLargeError,
+    stringValue,
+} from "./http";
 
 test("parseBody parses valid JSON", async () => {
     const request = new Request("http://localhost/api", {
@@ -27,6 +35,30 @@ test("parseBody classifies empty and malformed request bodies as invalid JSON", 
         }
         expect(caught).toBeInstanceOf(InvalidJsonError);
     }
+});
+
+test("parseBody rejects declared and streamed JSON bodies above 256 KiB", async () => {
+    const declared = new Request("http://localhost/api", {
+        method: "POST",
+        headers: { "content-length": String(MAX_JSON_BODY_BYTES + 1) },
+        body: "{}",
+    });
+    await expect(parseBody(declared)).rejects.toBeInstanceOf(RequestBodyTooLargeError);
+
+    const streamed = new Request("http://localhost/api", {
+        method: "POST",
+        body: JSON.stringify({ value: "x".repeat(MAX_JSON_BODY_BYTES) }),
+    });
+    let caught: unknown;
+    try {
+        await parseBody(streamed);
+    } catch (error) {
+        caught = error;
+    }
+    expect(caught).toBeInstanceOf(RequestBodyTooLargeError);
+    const response = handleServerError(caught);
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ error: { code: "PAYLOAD_TOO_LARGE" } });
 });
 
 test("parseBody rejects syntactically valid JSON that is not an object", async () => {

@@ -11,8 +11,9 @@ export function getSamplingAcceptedRange(
     if (!Number.isFinite(parsed) || parsed < 1) return null;
 
     const normalized = Math.floor(parsed);
-    const rawMin = Math.max(1, Math.floor(normalized * 0.8));
-    const rawMax = Math.max(rawMin, Math.ceil(normalized * 1.2));
+    // Integer sample counts must themselves remain inside the stated 80%–120% interval.
+    const rawMin = Math.max(1, Math.ceil(normalized * 0.8));
+    const rawMax = Math.max(rawMin, Math.floor(normalized * 1.2));
     const parsedPopulation = Number(populationSize);
     if (!Number.isFinite(parsedPopulation) || parsedPopulation < 1) {
         return { min: rawMin, max: rawMax };

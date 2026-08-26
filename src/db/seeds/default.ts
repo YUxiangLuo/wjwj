@@ -8,6 +8,7 @@ import {
     announcement,
     class_,
     experiment,
+    samplingAttempt,
     semester,
     student,
     task,
@@ -25,6 +26,7 @@ import {
     validateSamplingResultsForSubmit,
 } from "../../student/experiment/submit-validation";
 import type { SubmissionSnapshot } from "../../student/experiment/submit-service";
+import { compactSamplingResults } from "../../student/experiment/sampling-storage";
 import {
     createMeanPopulation,
     createPpsPopulation,
@@ -217,6 +219,19 @@ async function buildSamplingFixtures(
     return { proportionResults, meanResults };
 }
 
+function buildSamplingAttemptDetails(result: Record<string, unknown>) {
+    const {
+        data: _data,
+        indices: _indices,
+        inclusionProbabilities: _inclusionProbabilities,
+        serverGenerated: _serverGenerated,
+        seed: _seed,
+        sampleCount: _sampleCount,
+        ...details
+    } = result;
+    return details;
+}
+
 function assertCompleteSubmission(samplePlan: unknown, samplingResults: unknown, populationSize: number, submissionReport: string) {
     const errors = [
         validateQuestionnaireForSubmit(questionnaire),
@@ -261,6 +276,9 @@ async function seed() {
     const { proportionResults, meanResults } = await buildSamplingFixtures(ppsPopulation, meanPopulation);
     assertCompleteSubmission(proportionPlan, proportionResults, ppsPopulation.length, reportContent);
     assertCompleteSubmission(meanPlan, meanResults, meanPopulation.length, meanReportContent);
+    const compactProportionResults = compactSamplingResults(proportionResults);
+    const compactMeanResults = compactSamplingResults(meanResults);
+    if (!compactProportionResults || !compactMeanResults) throw new Error("Dogfood sampling fixtures could not be compacted");
 
     await db.insert(admin).values({
         username: "admin",
@@ -370,7 +388,7 @@ async function seed() {
         currentStage: 4,
         questionnaire,
         samplePlan: proportionPlan,
-        samplingResults: proportionResults,
+        samplingResults: compactProportionResults,
         reportContent,
         stage1CompletedAt: day(-5),
         stage2CompletedAt: day(-4),
@@ -382,11 +400,11 @@ async function seed() {
         studentName: studentsById[studentId]!.name,
         populationSize: 200,
         samplePlan: proportionPlan,
-        samplingResults: proportionResults,
+        samplingResults: compactProportionResults,
         reportContent,
     });
 
-    await db.insert(experiment).values([
+    const experimentRows = await db.insert(experiment).values([
         { studentId: studentsById.S011!.id, taskId: aTask.id, currentStage: 1, status: "in_progress", questionnaire, createdAt: day(-2), updatedAt: day(-2) },
         { studentId: studentsById.S012!.id, taskId: aTask.id, currentStage: 2, status: "in_progress", questionnaire, stage1CompletedAt: day(-2), createdAt: day(-3), updatedAt: day(-2) },
         { studentId: studentsById.S013!.id, taskId: aTask.id, currentStage: 3, status: "in_progress", questionnaire, samplePlan: proportionPlan, stage1CompletedAt: day(-3), stage2CompletedAt: day(-2), createdAt: day(-4), updatedAt: day(-2) },
@@ -402,20 +420,37 @@ async function seed() {
             status: "submitted",
             questionnaire,
             samplePlan: meanPlan,
-            samplingResults: meanResults,
+            samplingResults: compactMeanResults,
             reportContent: meanReportContent,
             stage1CompletedAt: day(-5),
             stage2CompletedAt: day(-4),
             stage3CompletedAt: day(-3),
             stage4CompletedAt: day(-2),
-            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById.S015!.name, populationSize: 24, samplePlan: meanPlan, samplingResults: meanResults, reportContent: meanReportContent }),
+            submissionSnapshot: snapshot({ topicName: DOGFOOD_NAMES.topicB, studentName: studentsById.S015!.name, populationSize: 24, samplePlan: meanPlan, samplingResults: compactMeanResults, reportContent: meanReportContent }),
             submittedAt: day(-1),
             createdAt: day(-6),
             updatedAt: day(-1),
         },
         { ...completedBase, studentId: studentsById.S015!.id, taskId: taskFor(DOGFOOD_NAMES.topicF).id, status: "submitted", submissionSnapshot: proportionSnapshot("S015", DOGFOOD_NAMES.topicF), submittedAt: day(-3), createdAt: day(-9), updatedAt: day(-3) },
         { ...completedBase, studentId: studentsById.S016!.id, taskId: taskFor(DOGFOOD_NAMES.topicG).id, status: "submitted", submissionSnapshot: proportionSnapshot("S016", DOGFOOD_NAMES.topicG), submittedAt: day(-3), createdAt: day(-9), updatedAt: day(-3) },
-    ]);
+    ]).returning({ id: experiment.id, studentId: experiment.studentId, taskId: experiment.taskId });
+
+    const auditedExperiment = experimentRows.find((row) => (
+        row.studentId === studentsById.S015!.id && row.taskId === aTask.id
+    ));
+    if (!auditedExperiment) throw new Error("Dogfood audited experiment is missing");
+    const auditedMethods = (["simple", "systematic", "pps", "stratified"] as const).map((method, index) => {
+        const result = proportionResults[method] as Record<string, unknown>;
+        return {
+            experimentId: auditedExperiment.id,
+            method,
+            seed: Number(result.seed),
+            sampleCount: Number(result.sampleCount),
+            details: buildSamplingAttemptDetails(result),
+            createdAt: new Date(day(-1).getTime() - (3 - index) * 60_000),
+        };
+    });
+    await db.insert(samplingAttempt).values(auditedMethods);
 
     await db.insert(announcement).values([
         { title: "欢迎使用抽样调查虚拟实验系统", content: "请按顺序完成四个实验阶段，并留意任务开放时间和截止时间。", targetScope: "all", status: 1, createdAt: day(-6), updatedAt: day(-6) },

@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { class_, task, topic } from "../../db/schema";
+import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { validateTopicPublishReadiness } from "./validation";
 
 interface TaskServiceFailure {
@@ -35,46 +36,12 @@ export async function publishTopicTasks(params: {
         || !Array.isArray(params.classIds)
         || params.classIds.length === 0
         || params.classIds.some((classId) => !Number.isInteger(classId) || classId <= 0)
+        || new Set(params.classIds).size !== params.classIds.length
     ) {
         return fail("请选择有效的课题和班级", "VALIDATION_ERROR");
     }
     if (params.deadline !== undefined && typeof params.deadline !== "string") {
         return fail("截止时间无效", "VALIDATION_ERROR");
-    }
-
-    const [topicRow] = await db
-        .select({
-            id: topic.id,
-            name: topic.name,
-            status: topic.status,
-            excelFilePath: topic.excelFilePath,
-            fieldMapping: topic.fieldMapping,
-            weightConfig: topic.weightConfig,
-        })
-        .from(topic)
-        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-    if (!topicRow) {
-        return fail("无权限使用该课题", "FORBIDDEN", 403);
-    }
-    if (topicRow.status !== 1) {
-        return fail("只能发布已发布课题", "VALIDATION_ERROR");
-    }
-
-    const publishReadinessError = validateTopicPublishReadiness({
-        excelFilePath: topicRow.excelFilePath,
-        fieldMapping: topicRow.fieldMapping as Record<string, unknown> | string | null | undefined,
-        weightConfig: topicRow.weightConfig as Record<string, unknown> | string | null | undefined,
-    });
-    if (publishReadinessError) {
-        return fail(publishReadinessError, "VALIDATION_ERROR");
-    }
-
-    const allowedClasses = await db
-        .select({ id: class_.id })
-        .from(class_)
-        .where(and(eq(class_.teacherId, params.teacherId), sql`${class_.id} IN (${sql.join(params.classIds, sql`, `)})`));
-    if (allowedClasses.length !== params.classIds.length) {
-        return fail("存在无权限的班级", "FORBIDDEN", 403);
     }
 
     // 教师端传 ISO-8601 UTC（如 2026-03-23T06:30:00.000Z）；与绝对时刻比较、入库一致
@@ -86,51 +53,87 @@ export async function publishTopicTasks(params: {
         return fail("截止时间必须晚于当前时间", "VALIDATION_ERROR");
     }
 
-    const rowsForTopic = await db
-        .select({ id: task.id, classId: task.classId, deletedAt: task.deletedAt })
-        .from(task)
-        .where(and(eq(task.topicId, params.topicId), sql`${task.classId} IN (${sql.join(params.classIds, sql`, `)})`));
-
-    const classIdToRow = new Map(rowsForTopic.map((r) => [r.classId, r]));
-    const skipped: number[] = [];
-    const toInsert: number[] = [];
-    const toRevive: { taskId: number; classId: number }[] = [];
-
-    for (const classId of params.classIds) {
-        const r = classIdToRow.get(classId);
-        if (!r) {
-            toInsert.push(classId);
-        } else if (r.deletedAt == null) {
-            skipped.push(classId);
-        } else {
-            toRevive.push({ taskId: r.id, classId });
+    // Publishing and storage-backed topic mutations share one transaction lock.
+    // The topic is revalidated only after the lock is held, so deletion cannot
+    // pass its no-task check between this read and the task insert.
+    return db.transaction(async (tx) => {
+        await acquireStorageMutationLock(tx);
+        const [topicRow] = await tx
+            .select({
+                id: topic.id,
+                name: topic.name,
+                status: topic.status,
+                excelFilePath: topic.excelFilePath,
+                fieldMapping: topic.fieldMapping,
+                weightConfig: topic.weightConfig,
+            })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+        if (!topicRow) {
+            return fail("无权限使用该课题", "FORBIDDEN", 403);
         }
-    }
+        if (topicRow.status !== 1) {
+            return fail("只能发布已发布课题", "VALIDATION_ERROR");
+        }
 
-    if (toInsert.length > 0 || toRevive.length > 0) {
-        await db.transaction(async (tx) => {
-            const now = new Date();
-            if (toRevive.length > 0) {
-                await tx
-                    .update(task)
-                    .set({ deletedAt: null, openTime: now, deadline: deadlineDate, updatedAt: now })
-                    .where(inArray(task.id, toRevive.map((r) => r.taskId)));
-            }
-            if (toInsert.length > 0) {
-                await tx.insert(task).values(
-                    toInsert.map((classId) => ({
-                        topicId: params.topicId,
-                        classId,
-                        openTime: now,
-                        deadline: deadlineDate,
-                    }))
-                );
-            }
-
+        const publishReadinessError = validateTopicPublishReadiness({
+            excelFilePath: topicRow.excelFilePath,
+            fieldMapping: topicRow.fieldMapping as Record<string, unknown> | string | null | undefined,
+            weightConfig: topicRow.weightConfig as Record<string, unknown> | string | null | undefined,
         });
-    }
+        if (publishReadinessError) {
+            return fail(publishReadinessError, "VALIDATION_ERROR");
+        }
 
-    return { ok: true, skipped };
+        const allowedClasses = await tx
+            .select({ id: class_.id })
+            .from(class_)
+            .where(and(eq(class_.teacherId, params.teacherId), sql`${class_.id} IN (${sql.join(params.classIds, sql`, `)})`));
+        if (allowedClasses.length !== params.classIds.length) {
+            return fail("存在无权限的班级", "FORBIDDEN", 403);
+        }
+
+        const rowsForTopic = await tx
+            .select({ id: task.id, classId: task.classId, deletedAt: task.deletedAt })
+            .from(task)
+            .where(and(eq(task.topicId, params.topicId), sql`${task.classId} IN (${sql.join(params.classIds, sql`, `)})`));
+
+        const classIdToRow = new Map(rowsForTopic.map((row) => [row.classId, row]));
+        const skipped: number[] = [];
+        const toInsert: number[] = [];
+        const toRevive: { taskId: number; classId: number }[] = [];
+
+        for (const classId of params.classIds) {
+            const row = classIdToRow.get(classId);
+            if (!row) {
+                toInsert.push(classId);
+            } else if (row.deletedAt == null) {
+                skipped.push(classId);
+            } else {
+                toRevive.push({ taskId: row.id, classId });
+            }
+        }
+
+        const now = new Date();
+        if (toRevive.length > 0) {
+            await tx
+                .update(task)
+                .set({ deletedAt: null, openTime: now, deadline: deadlineDate, updatedAt: now })
+                .where(inArray(task.id, toRevive.map((row) => row.taskId)));
+        }
+        if (toInsert.length > 0) {
+            await tx.insert(task).values(
+                toInsert.map((classId) => ({
+                    topicId: params.topicId,
+                    classId,
+                    openTime: now,
+                    deadline: deadlineDate,
+                }))
+            );
+        }
+
+        return { ok: true as const, skipped };
+    });
 }
 
 export async function extendTopicTaskDeadline(params: {

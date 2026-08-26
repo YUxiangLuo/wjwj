@@ -22,9 +22,9 @@ describe("validateSamplePlanForSubmit", () => {
     });
 
     test("有总体规模时：与 getFinalSampleSizeBounds 一致，允许 1..N", () => {
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 1 }), 50)).toBeNull();
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 50 }), 50)).toBeNull();
-        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 51 }), 50)).toBe(
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 1, recommendedSize: 45 }), 50)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 50, recommendedSize: 45 }), 50)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ finalSampleSize: 51, recommendedSize: 45 }), 50)).toBe(
             "最终样本量需在 1～50 人之间",
         );
     });
@@ -73,7 +73,7 @@ describe("validateSamplePlanForSubmit", () => {
     test("均值估计校验绝对误差限与总体方差", () => {
         expect(
             validateSamplePlanForSubmit(
-                plan({ estimationType: "mean", marginOfError: 2, populationVariance: 100 }),
+                plan({ estimationType: "mean", marginOfError: 2, populationVariance: 100, recommendedSize: 66 }),
                 200,
             ),
         ).toBeNull();
@@ -85,7 +85,7 @@ describe("validateSamplePlanForSubmit", () => {
         ).toBe("均值估计的绝对误差限需为正数");
         expect(
             validateSamplePlanForSubmit(
-                plan({ estimationType: "mean", marginOfError: 12, populationVariance: 100 }),
+                plan({ estimationType: "mean", marginOfError: 12, populationVariance: 100, recommendedSize: 3 }),
                 200,
             ),
         ).toBeNull();
@@ -95,6 +95,18 @@ describe("validateSamplePlanForSubmit", () => {
                 200,
             ),
         ).toBe("均值估计时需提供正的总体方差估计");
+    });
+
+    test("服务端校验设计效应、无回答率、高级来源和建议样本量", () => {
+        expect(validateSamplePlanForSubmit(plan({ designEffect: 0.49 }), 200)).toBe("设计效应需在 0.5～5.0 之间");
+        expect(validateSamplePlanForSubmit(plan({ designEffect: 5.1 }), 200)).toBe("设计效应需在 0.5～5.0 之间");
+        expect(validateSamplePlanForSubmit(plan({ designEffect: 0.9, recommendedSize: 119 }), 200)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ nonResponseRate: -0.1 }), 200)).toBe("无回答率需在 0%～50% 之间");
+        expect(validateSamplePlanForSubmit(plan({ nonResponseRate: 0.51 }), 200)).toBe("无回答率需在 0%～50% 之间");
+        expect(validateSamplePlanForSubmit(plan({ advancedPlanSource: "unknown" }), 200)).toBe("高级规划来源无效");
+        expect(validateSamplePlanForSubmit(plan({ estimationType: "unknown" }), 200)).toBe("估计类型无效");
+        expect(validateSamplePlanForSubmit(plan({ recommendedSize: 131 }), 200)).toBe("建议样本量与当前规划参数不一致，请重新计算");
+        expect(validateSamplePlanForSubmit(plan({ advancedPlanSource: "cost" }), 200)).toBeNull();
     });
 });
 
@@ -109,7 +121,7 @@ describe("validateSamplingResultsForSubmit", () => {
     test("caps the PPS range at the population during completion and submission validation", () => {
         expect(validateSamplingResultsForSubmit(completedResults(12), 12, 12)).toBeNull();
         expect(validateSamplingResultsForSubmit(completedResults(13), 12, 12)).toBe(
-            "本实验要求PPS抽样样本量在目标样本量的80%-120%之间（9-12）",
+            "本实验要求PPS抽样样本量在目标样本量的80%-120%之间（10-12）",
         );
     });
 });

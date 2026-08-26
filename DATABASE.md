@@ -36,8 +36,9 @@ version against a new empty database.
 
 `db:seed` writes the deterministic dogfood fixture in
 `src/db/seeds/default.ts`: 1 admin, 3 teachers, 2 semesters, 2 classes,
-S010–S020, 7 topics, 6 tasks, 11 experiments, 4 announcements, 1 attachment,
-and two generated population files. The main proportion/PPS task covers all
+S010–S020, 7 topics, 6 tasks, 11 experiments, 4 bounded sampling-attempt audit
+rows, 4 announcements, 1 attachment, and two generated population files. The
+stage-4 and terminal fixtures use production-style compact replay indices. The main proportion/PPS task covers all
 eight teacher progress buckets; the mean task has a valid numeric analysis
 field but intentionally no eligible PPS size field. `SEED_NOW` optionally fixes
 the relative-time anchor, and `SEED_ADMIN_PASSWORD` overrides the generated
@@ -93,10 +94,10 @@ After reviewing the exact list, `bun run storage:clean` deletes only files not
 referenced by current topic data, attachments, or recognized legacy
 submission paths. Soft-deleted topics and their attachments are intentionally
 excluded from current references because the product does not provide a restore
-flow; their files therefore appear in the audit before cleanup. Upload, copy,
-delete, audit, and cleanup operations share a
-PostgreSQL advisory lock, so cleanup cannot classify a file while its database
-reference is still being committed by the application.
+flow; their files therefore appear in the audit before cleanup. Upload, copy, task publication, topic deletion, audit, and cleanup operations
+share a PostgreSQL advisory lock. Ownership and mutability are revalidated only
+after that lock is held, so a file cannot be deleted while a task or another
+metadata reference is being committed by the application.
 
 ## Coordinated single-instance backup and restore
 

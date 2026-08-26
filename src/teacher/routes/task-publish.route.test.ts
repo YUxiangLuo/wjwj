@@ -29,6 +29,15 @@ test("task publish rejects malformed runtime field types before querying", async
     expect(operations).toHaveLength(0);
 });
 
+test("task publish rejects duplicate class IDs before taking the mutation lock", async () => {
+    const { module, operations } = await load([]);
+    expect(await module.publishTopicTasks({ teacherId: 9, topicId: 12, classIds: [101, 101] })).toMatchObject({
+        ok: false,
+        code: "VALIDATION_ERROR",
+    });
+    expect(operations).toHaveLength(0);
+});
+
 test("task publish creates one task per newly selected class without notifications", async () => {
     const { module, operations } = await load([
         [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"] }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
@@ -43,6 +52,9 @@ test("task publish creates one task per newly selected class without notificatio
         expect.objectContaining({ topicId: 12, classId: 102 }),
     ]);
     expect(operations.some((item) => item.kind === "transaction")).toBe(true);
+    expect(operations[0]?.kind).toBe("transaction");
+    expect(operations[1]?.kind).toBe("execute");
+    expect(operations.findIndex((item) => item.kind === "select")).toBeGreaterThan(1);
 });
 
 test("task publish advances updatedAt when reviving a deleted task", async () => {

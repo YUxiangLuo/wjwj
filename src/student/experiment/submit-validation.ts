@@ -3,6 +3,7 @@ import { validateQuestionAtIndex } from "../../lib/validate-question";
 import { normalizeSamplePlanEstimationType } from "./sample-plan-display";
 import { getFinalSampleSizeBounds } from "./final-sample-bounds";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
+import { calculateFinitePopulationSampleSize, calculateMeanEstimationSampleSize } from "./sample-plan";
 
 function toTrimmedString(value: unknown) {
     return typeof value === "string" ? value.trim() : "";
@@ -67,10 +68,16 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
     }
 
     const data = samplePlan as Record<string, unknown>;
+    if (data.estimationType !== undefined && data.estimationType !== "proportion" && data.estimationType !== "mean") {
+        return "估计类型无效";
+    }
     const estimationType = normalizeSamplePlanEstimationType(data.estimationType);
     const confidenceLevel = toTrimmedString(data.confidenceLevel);
     const marginOfError = Number(data.marginOfError);
     const populationVariance = Number(data.populationVariance);
+    const designEffect = Number(data.designEffect);
+    const nonResponseRate = Number(data.nonResponseRate);
+    const recommendedSize = Number(data.recommendedSize);
     const finalSampleSize = Number(data.finalSampleSize);
 
     if (!confidenceLevel) {
@@ -93,14 +100,54 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
         return "允许误差需在1%-10%之间";
     }
 
+    if (data.designEffect === null || !Number.isFinite(designEffect) || designEffect < 0.5 || designEffect > 5) {
+        return "设计效应需在 0.5～5.0 之间";
+    }
+    if (data.nonResponseRate === null || !Number.isFinite(nonResponseRate) || nonResponseRate < 0 || nonResponseRate > 0.5) {
+        return "无回答率需在 0%～50% 之间";
+    }
+    if (!Number.isFinite(recommendedSize) || !Number.isInteger(recommendedSize) || recommendedSize < 1) {
+        return "建议样本量需为不小于 1 的整数";
+    }
     if (!Number.isFinite(finalSampleSize) || !Number.isInteger(finalSampleSize) || finalSampleSize < 1) {
         return "最终样本量需为不小于 1 的整数";
+    }
+
+    const advancedSource = data.advancedPlanSource;
+    if (
+        advancedSource !== undefined
+        && advancedSource !== "cost"
+        && advancedSource !== "multivar"
+        && advancedSource !== "cv"
+        && advancedSource !== "cluster"
+    ) {
+        return "高级规划来源无效";
     }
 
     if (populationSize !== null && Number.isFinite(populationSize) && populationSize > 0) {
         const { min, max } = getFinalSampleSizeBounds(populationSize);
         if (finalSampleSize < min || finalSampleSize > max) {
             return `最终样本量需在 ${min}～${max} 人之间`;
+        }
+
+        const calculatedRecommendedSize = estimationType === "mean"
+            ? calculateMeanEstimationSampleSize({
+                confidenceLevel,
+                marginOfError,
+                populationSize,
+                populationVariance,
+                designEffect,
+                nonResponseRate,
+            })
+            : calculateFinitePopulationSampleSize({
+                confidenceLevel,
+                marginOfError,
+                populationSize,
+                designEffect,
+                nonResponseRate,
+            });
+        if (calculatedRecommendedSize === null || recommendedSize !== calculatedRecommendedSize) {
+            return "建议样本量与当前规划参数不一致，请重新计算";
         }
     }
 

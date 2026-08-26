@@ -30,7 +30,7 @@ export function TopicManagement() {
     const [viewingTopic, setViewingTopic] = useState<Topic | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentStep, setCurrentStep] = useState(1);
-    const [excelInfo, setExcelInfo] = useState<{ filePath: string; rowCount: number; colCount: number; columns: string[]; preview: any[] } | null>(null);
+    const [excelInfo, setExcelInfo] = useState<{ rowCount: number; colCount: number; columns: string[]; preview: any[] } | null>(null);
     const [columns, setColumns] = useState<string[]>([]);
     const [fieldMapping, setFieldMapping] = useState<{ identifier?: string; stratified: string[]; numeric: string[]; others: string[] }>({
         stratified: [],
@@ -96,7 +96,6 @@ export function TopicManagement() {
             }
             if (res.data.excelInfo) {
                 setExcelInfo({
-                    filePath: res.data.topic?.excelFilePath ?? "",
                     rowCount: res.data.topic?.excelRowCount ?? 0,
                     colCount: res.data.excelInfo.columns.length,
                     columns: res.data.excelInfo.columns,

@@ -32,7 +32,7 @@ interface TopicWizardDialogProps {
     newTopicDesc: string;
     setNewTopicDesc: (value: string) => void;
     loadingDetail: boolean;
-    excelInfo: { filePath: string; rowCount: number; colCount: number; columns: string[]; preview: any[] } | null;
+    excelInfo: { rowCount: number; colCount: number; columns: string[]; preview: any[] } | null;
     uploadingExcel: boolean;
     onExcelUpload: (file: File) => void;
     columns: string[];

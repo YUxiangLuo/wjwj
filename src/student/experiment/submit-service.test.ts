@@ -23,7 +23,7 @@ function validRecord(status: "in_progress" | "rejected" = "in_progress") {
         currentStage: 4,
         status,
         questionnaire: validQuestionnaire(),
-        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 50, finalSampleSize: 50 },
+        samplePlan: { confidenceLevel: "95", marginOfError: 5, designEffect: 1, nonResponseRate: 0, recommendedSize: 132, finalSampleSize: 50 },
         samplingResults: {
             simple: { completed: true, sampleCount: 50 },
             systematic: { completed: true, sampleCount: 50, kValue: 2 },

@@ -29,6 +29,7 @@ test("topic attachment upload stores metadata and writes the file under storage"
     const { module, operations } = await loadTopicRoutes({
         select: [
             [{ id: 12, status: 0 }],
+            [{ id: 12 }],
             [{ count: 0 }],
         ],
         insert: [[{ id: 18 }]],
@@ -46,23 +47,23 @@ test("topic attachment upload stores metadata and writes the file under storage"
 
     const response = await module.topicAttachmentRoutes.POST!(request);
     const payload = await response.json() as any;
-    const absolutePath = `${process.cwd()}${payload.data.filePath}`;
+    const insertOperation = operations.find((operation) => operation.kind === "insert");
+    const storedPath = (insertOperation?.values as { filePath?: string } | undefined)?.filePath ?? "";
+    const absolutePath = `${process.cwd()}${storedPath}`;
 
     try {
         expect(response.status).toBe(200);
         expect(payload).toEqual({
             success: true,
-            data: {
-                id: 18,
-                filePath: expect.stringContaining("/storage/uploads/"),
-            },
+            data: { id: 18 },
         });
+        expect(payload.data).not.toHaveProperty("filePath");
 
-        const insertOperation = operations.find((operation) => operation.kind === "insert");
         expect(insertOperation?.values).toMatchObject({
             topicId: 12,
             fileName: "guide.pdf",
             fileType: "application/pdf",
+            filePath: expect.stringContaining("/storage/uploads/"),
         });
         expect(operations.some((operation) => operation.kind === "execute")).toBe(true);
 
@@ -130,6 +131,40 @@ test("topic attachment upload rejects an unknown extension spoofed as video", as
     expect(operations.filter((operation) => operation.kind === "insert")).toHaveLength(0);
 });
 
+test("teacher attachment download authorizes ownership and serves a server-derived preview MIME", async () => {
+    const filePath = `/storage/uploads/teacher-download-${crypto.randomUUID()}.pdf`;
+    const absolutePath = `${process.cwd()}${filePath}`;
+    await Bun.write(absolutePath, "%PDF-1.7\nprotected teacher attachment");
+    const { module } = await loadTopicRoutes({
+        select: [[{ fileName: "课堂说明.pdf", filePath }]],
+    });
+
+    try {
+        const request = withRouteParams(new Request("https://example.com/api/teacher/topics/12/attachments/3/download?mode=preview"), {
+            id: "12",
+            attachmentId: "3",
+        });
+        const response = await module.topicAttachmentDownloadRoutes.GET!(request);
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Type")).toBe("application/pdf");
+        expect(response.headers.get("Content-Disposition")).toStartWith("inline;");
+        expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+        expect(await response.text()).toContain("protected teacher attachment");
+    } finally {
+        await unlink(absolutePath).catch(() => undefined);
+    }
+});
+
+test("teacher attachment download hides files outside the teacher topic scope", async () => {
+    const { module } = await loadTopicRoutes({ select: [[]] });
+    const response = await module.topicAttachmentDownloadRoutes.GET!(withRouteParams(
+        new Request("https://example.com/api/teacher/topics/12/attachments/3/download"),
+        { id: "12", attachmentId: "3" },
+    ));
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: { code: "NOT_FOUND" } });
+});
+
 test("topic attachment delete removes the attachment after ownership check", async () => {
     const testId = crypto.randomUUID().slice(0, 8);
     const filePath = `/storage/uploads/delete-attachment-test-${testId}.pdf`;
@@ -139,7 +174,9 @@ test("topic attachment delete removes the attachment after ownership check", asy
     const { module, operations } = await loadTopicRoutes({
         select: [
             [{ id: 12, status: 0 }],
+            [{ id: 12 }],
             [{ filePath }],
+            [{ count: 0 }],
             [{ count: 0 }],
         ],
     });

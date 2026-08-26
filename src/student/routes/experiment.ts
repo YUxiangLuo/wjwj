@@ -16,12 +16,15 @@ import {
     readPopulationData,
 } from "../experiment/population-data";
 import { normalizeSamplePlanData } from "../experiment/sample-plan-display";
+import { trimSamplingAttempts } from "../experiment/sampling-attempt-retention";
 import { PPS_UNAVAILABLE_REASON } from "../experiment/sampling-messages";
 import { executeSamplingAction, type SamplingMethod } from "../experiment/sampling-service";
 import {
     compactSamplingMethodResult,
     hydrateSamplingResults,
-    samplingResultsNeedPopulation,
+    inspectSamplingResultsStorage,
+    INVALID_SAMPLING_STORAGE_CODE,
+    INVALID_SAMPLING_STORAGE_MESSAGE,
 } from "../experiment/sampling-storage";
 import { parseStoredJson } from "../experiment/serialization";
 import { ExperimentStatus } from "../experiment/status";
@@ -60,13 +63,29 @@ async function resolveExperimentSamplingResults(
     classId: number,
 ) {
     const stored = parseStoredJson(record.samplingResults);
-    if (!samplingResultsNeedPopulation(stored)) return { ok: true as const, value: stored };
+    const inspection = inspectSamplingResultsStorage(stored);
+    if (!inspection.ok) {
+        return {
+            ok: false as const,
+            code: INVALID_SAMPLING_STORAGE_CODE,
+            message: INVALID_SAMPLING_STORAGE_MESSAGE,
+        };
+    }
+    if (!inspection.needsPopulation) return { ok: true as const, value: stored };
 
     const taskInfo = await findStudentTaskSamplingInfo(taskId, classId);
-    if (!taskInfo?.excelFilePath) return { ok: false as const };
+    if (!taskInfo?.excelFilePath) return { ok: false as const, code: "READ_FAILED", message: "总体数据为空或读取失败" };
     const population = await readPopulationData(taskInfo.excelFilePath);
-    if (!population.length) return { ok: false as const };
-    return { ok: true as const, value: hydrateSamplingResults(stored, population) };
+    if (!population.length) return { ok: false as const, code: "READ_FAILED", message: "总体数据为空或读取失败" };
+    const hydrated = hydrateSamplingResults(stored, population);
+    if (!hydrated.ok) {
+        return {
+            ok: false as const,
+            code: INVALID_SAMPLING_STORAGE_CODE,
+            message: INVALID_SAMPLING_STORAGE_MESSAGE,
+        };
+    }
+    return hydrated;
 }
 
 async function buildExperimentResponse(
@@ -76,8 +95,8 @@ async function buildExperimentResponse(
     classId: number,
 ) {
     const resolvedSamplingResults = await resolveExperimentSamplingResults(record, taskId, classId);
-    if (!resolvedSamplingResults.ok) return null;
-    return {
+    if (!resolvedSamplingResults.ok) return resolvedSamplingResults;
+    return { ok: true as const, value: {
         id: record.id,
         taskId: record.taskId,
         version: record.version,
@@ -93,7 +112,7 @@ async function buildExperimentResponse(
         stage3CompletedAt: iso(record.stage3CompletedAt),
         stage4CompletedAt: iso(record.stage4CompletedAt),
         populationSize: populationSize ?? 10_000,
-    };
+    } };
 }
 
 async function loadOwnedExperiment(studentId: number, taskId: number) {
@@ -155,6 +174,7 @@ async function persistSamplingMethodResult(
                 sampleCount: attempt.sampleCount,
                 details: attempt.details,
             });
+            await trimSamplingAttempts(tx, record.id);
         }
         return persisted;
     });
@@ -247,8 +267,8 @@ const experimentRoutes: RouteDefinition = {
         if (!record) return error("创建实验记录失败", "CREATE_FAILED", 500);
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
         const response = await buildExperimentResponse(record, populationSize, taskId, auth.student.classId);
-        if (!response) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-        return json(response);
+        if (!response.ok) return error(response.message, response.code, 500);
+        return json(response.value);
     },
 };
 
@@ -300,8 +320,8 @@ const stageCompleteRoutes: RouteDefinition = {
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
-        if (!response) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-        return json(response);
+        if (!response.ok) return error(response.message, response.code, 500);
+        return json(response.value);
     },
 };
 
@@ -334,8 +354,8 @@ const stageReopenRoutes: RouteDefinition = {
             .returning();
         if (!updated) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
         const response = await buildExperimentResponse(updated, populationSize, taskId, auth.student.classId);
-        if (!response) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-        return json(response);
+        if (!response.ok) return error(response.message, response.code, 500);
+        return json(response.value);
     },
 };
 
@@ -424,14 +444,15 @@ const analysisMetricsRoutes: RouteDefinition = {
         if (!record || !taskInfo?.excelFilePath) return error("实验或总体数据不存在", "NOT_FOUND", 404);
         const population = await readPopulationData(taskInfo.excelFilePath);
         if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
+        const hydrated = hydrateSamplingResults(parseStoredJson(record.samplingResults), population);
+        if (!hydrated.ok) {
+            return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+        }
         return json(
             buildAnalysisMetrics({
                 population,
                 fieldMapping: parseTopicFieldMapping(taskInfo.fieldMapping),
-                samplingResults: hydrateSamplingResults(
-                    parseStoredJson(record.samplingResults),
-                    population,
-                ) as Parameters<typeof buildAnalysisMetrics>[0]["samplingResults"],
+                samplingResults: hydrated.value as Parameters<typeof buildAnalysisMetrics>[0]["samplingResults"],
             }),
         );
     },

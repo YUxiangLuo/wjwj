@@ -7,7 +7,12 @@ import { error, getRouteParam, getSearchParams, json, parseBody, stringValue } f
 import type { RouteDefinition } from "../../server/route-types";
 import { normalizeSamplePlanData } from "../../student/experiment/sample-plan-display";
 import { readPopulationData } from "../../student/experiment/population-data";
-import { hydrateSamplingResults, samplingResultsNeedPopulation } from "../../student/experiment/sampling-storage";
+import {
+    hydrateSamplingResults,
+    inspectSamplingResultsStorage,
+    INVALID_SAMPLING_STORAGE_CODE,
+    INVALID_SAMPLING_STORAGE_MESSAGE,
+} from "../../student/experiment/sampling-storage";
 import { parseStoredJson } from "../../student/experiment/serialization";
 import { getTeacherUser } from "./auth";
 
@@ -183,15 +188,19 @@ const gradingDetailRoutes: RouteDefinition = {
             })
             .from(samplingAttempt)
             .where(eq(samplingAttempt.experimentId, experimentId))
-            .orderBy(desc(samplingAttempt.createdAt))
+            .orderBy(desc(samplingAttempt.createdAt), desc(samplingAttempt.id))
             .limit(100);
         const storedSamplingResults = snapshot?.samplingResults ?? parseStoredJson(row.samplingResults);
+        const inspection = inspectSamplingResultsStorage(storedSamplingResults);
+        if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         let samplingResults = storedSamplingResults;
-        if (samplingResultsNeedPopulation(storedSamplingResults)) {
+        if (inspection.needsPopulation) {
             if (!row.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const population = await readPopulationData(row.excelFilePath);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-            samplingResults = hydrateSamplingResults(storedSamplingResults, population);
+            const hydrated = hydrateSamplingResults(storedSamplingResults, population);
+            if (!hydrated.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+            samplingResults = hydrated.value;
         }
         const {
             excelFilePath: _excelFilePath,

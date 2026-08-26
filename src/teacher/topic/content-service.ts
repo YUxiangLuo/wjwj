@@ -13,6 +13,7 @@ import {
 import { validateTopicAttachmentUpload } from "./validation";
 import type { Question } from "../../lib/questionnaire-types";
 import { parseRecommendQuestionsPayload } from "../../lib/validate-question";
+import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
 
 interface ServiceFailure {
     ok: false;
@@ -36,6 +37,7 @@ function normalizeJsonColumnValue<T>(value: T | string | null | undefined): T | 
 }
 
 export async function uploadTopicAttachment(params: {
+    teacherId: number;
     topicId: number;
     file: File;
 }) {
@@ -56,6 +58,12 @@ export async function uploadTopicAttachment(params: {
     try {
         const result = await db.transaction(async (tx) => {
             await acquireStorageMutationLock(tx);
+            const [activeTopic] = await tx
+                .select({ id: topic.id })
+                .from(topic)
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+
             const [countRow] = await tx
                 .select({ count: count() })
                 .from(topicAttachment)
@@ -64,7 +72,7 @@ export async function uploadTopicAttachment(params: {
                 { currentCount: countRow?.count ?? 0, fileSize: params.file.size },
                 attachmentType,
             );
-            if (countError) return { ok: false as const, message: countError };
+            if (countError) return fail(countError);
 
             await writeStorageFile(filePath, buffer);
             const [created] = await tx
@@ -80,7 +88,7 @@ export async function uploadTopicAttachment(params: {
             return { ok: true as const, id: created!.id };
         });
 
-        if (!result.ok) return fail(result.message);
+        if (!result.ok) return result;
         return { ok: true as const, id: result.id, filePath };
     } catch (error) {
         await deleteStorageFileIfExists(filePath).catch(() => undefined);
@@ -89,6 +97,7 @@ export async function uploadTopicAttachment(params: {
 }
 
 export async function replaceTopicRecommendQuestions(params: {
+    teacherId: number;
     topicId: number;
     items: unknown;
 }) {
@@ -98,43 +107,47 @@ export async function replaceTopicRecommendQuestions(params: {
         return fail(parsed.error);
     }
 
-    await db
-        .update(topic)
-        .set({ recommendQuestions: parsed.questions, updatedAt: new Date() })
-        .where(eq(topic.id, params.topicId));
-
-    return { ok: true as const };
+    return db.transaction(async (tx) => {
+        await acquireStorageMutationLock(tx);
+        const [activeTopic] = await tx
+            .select({ id: topic.id })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+        if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+        const [updated] = await tx
+            .update(topic)
+            .set({ recommendQuestions: parsed.questions, updatedAt: new Date() })
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .returning({ id: topic.id });
+        return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);
+    });
 }
 
 export async function deleteTopicAttachment(params: {
+    teacherId: number;
     topicId: number;
     attachmentId: number;
 }) {
-    const filePath = await db.transaction(async (tx) => {
+    const deletion = await db.transaction(async (tx) => {
         await acquireStorageMutationLock(tx);
+        const [activeTopic] = await tx
+            .select({ id: topic.id })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+        if (!activeTopic) return fail("课题不存在", "NOT_FOUND", 404);
+
         const [attachment] = await tx
             .select({ filePath: topicAttachment.filePath })
             .from(topicAttachment)
             .where(and(eq(topicAttachment.id, params.attachmentId), eq(topicAttachment.topicId, params.topicId)));
-
-        if (!attachment?.filePath) {
-            return null;
-        }
+        if (!attachment?.filePath) return fail("附件不存在", "NOT_FOUND", 404);
 
         await tx.delete(topicAttachment).where(and(eq(topicAttachment.id, params.attachmentId), eq(topicAttachment.topicId, params.topicId)));
-
-        const [refCount] = await tx
-            .select({ count: count() })
-            .from(topicAttachment)
-            .where(eq(topicAttachment.filePath, attachment.filePath));
-
-        return (refCount?.count ?? 0) === 0 ? attachment.filePath : null;
+        return { ok: true as const, filePath: attachment.filePath };
     });
 
-    if (filePath) {
-        await deleteStorageFileIfExists(filePath).catch(() => undefined);
-    }
-
+    if (!deletion.ok) return deletion;
+    await deleteTopicStorageFileIfUnreferenced(deletion.filePath).catch(() => undefined);
     return { ok: true as const };
 }
 
@@ -142,20 +155,18 @@ export async function copyTopicWithResources(params: {
     teacherId: number;
     topicId: number;
 }) {
-    const [sourceTopic] = await db
-        .select()
-        .from(topic)
-        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-    if (!sourceTopic) {
-        return fail("课题不存在", "NOT_FOUND", 404);
-    }
-
-    const attachments = await db.select().from(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
     const copiedStoragePaths: string[] = [];
 
     try {
         const newTopicId = await db.transaction(async (tx) => {
             await acquireStorageMutationLock(tx);
+            const [sourceTopic] = await tx
+                .select()
+                .from(topic)
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            if (!sourceTopic) return null;
+            const attachments = await tx.select().from(topicAttachment).where(eq(topicAttachment.topicId, params.topicId));
+
             const copiedExcelFilePath = sourceTopic.excelFilePath
                 ? createStorageUploadPath(sanitizeUploadFileName(basename(sourceTopic.excelFilePath)))
                 : null;
@@ -217,6 +228,7 @@ export async function copyTopicWithResources(params: {
             return insertedTopicId;
         });
 
+        if (newTopicId === null) return fail("课题不存在", "NOT_FOUND", 404);
         return { ok: true as const, id: newTopicId };
     } catch (error) {
         await Promise.all(copiedStoragePaths.map((filePath) => deleteStorageFileIfExists(filePath).catch(() => undefined)));

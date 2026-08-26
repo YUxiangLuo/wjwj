@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { join } from "node:path";
 import { ADVANCED_TAB_CONFIG } from "./components/sample-planning/advancedTabs";
+import { allocateStratifiedSampleCounts } from "./components/stratified-allocation";
 import {
     calculateFinitePopulationSampleSize,
     calculateMeanEstimationSampleSize,
@@ -37,6 +38,17 @@ test("authority benchmark: equal-cost optimum reduces to Neyman allocation", () 
     expect(result?.allocation.map((layer) => layer.sampleSize)).toEqual([50, 50]);
     expect(result?.totalSampleSize).toBe(100);
     expect(result?.totalCost).toBe(100);
+});
+
+test("property gate: capacity-constrained allocation preserves remaining Neyman weights", () => {
+    const allocation = allocateStratifiedSampleCounts({
+        targetSampleSize: 100,
+        rawCounts: [80, 15, 5],
+        caps: [1, 100, 100],
+    });
+    expect(allocation).toEqual([1, 74, 25]);
+    expect(allocation.reduce((sum, value) => sum + value, 0)).toBe(100);
+    expect(allocation[1]! / allocation[2]!).toBeCloseTo(3, 1);
 });
 
 test("property gate: precision, population cap, symmetry, and nonresponse remain coherent", () => {

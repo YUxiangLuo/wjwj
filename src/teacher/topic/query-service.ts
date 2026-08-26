@@ -24,7 +24,14 @@ export async function listTeacherTopics(teacherId: number) {
 export async function getTeacherTopicDetail(topicId: number) {
     const [topicInfo] = await db.select().from(topic).where(eq(topic.id, topicId));
     const attachments = await db
-        .select()
+        .select({
+            id: topicAttachment.id,
+            topicId: topicAttachment.topicId,
+            fileName: topicAttachment.fileName,
+            fileType: topicAttachment.fileType,
+            fileSize: topicAttachment.fileSize,
+            createdAt: topicAttachment.createdAt,
+        })
         .from(topicAttachment)
         .where(eq(topicAttachment.topicId, topicId))
         .orderBy(desc(topicAttachment.createdAt));
@@ -43,7 +50,23 @@ export async function getTeacherTopicDetail(topicId: number) {
         }
     }
 
-    return { topic: topicInfo ?? null, attachments, recommendQuestions, excelInfo };
+    const publicTopic = topicInfo ? (() => {
+        const {
+            teacherId: _teacherId,
+            excelFilePath: _excelFilePath,
+            deletedAt: _deletedAt,
+            ...safeTopic
+        } = topicInfo;
+        return safeTopic;
+    })() : null;
+
+    return {
+        topic: publicTopic,
+        hasExcelFile: Boolean(topicInfo?.excelFilePath),
+        attachments,
+        recommendQuestions,
+        excelInfo,
+    };
 }
 
 export async function listTeacherTasks(teacherId: number) {

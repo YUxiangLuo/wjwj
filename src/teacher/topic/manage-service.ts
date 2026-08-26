@@ -5,6 +5,7 @@ import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
+import { deleteTopicStorageFileIfUnreferenced } from "./storage-cleanup";
 import {
     validateParsedExcelUpload,
     validateNumericFieldValues,
@@ -69,28 +70,6 @@ export async function updateTeacherTopicBasics(params: {
     if (params.body.description !== undefined && typeof params.body.description !== "string") {
         return fail("课题描述格式无效");
     }
-    if (params.body.status === 1) {
-        const [topicInfo] = await db
-            .select({
-                excelFilePath: topic.excelFilePath,
-                fieldMapping: topic.fieldMapping,
-                weightConfig: topic.weightConfig,
-            })
-            .from(topic)
-            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
-
-        if (!topicInfo) {
-            return fail("课题不存在", "NOT_FOUND", 404);
-        }
-
-        const publishReadinessError = validateTopicPublishReadiness({
-            excelFilePath: topicInfo.excelFilePath,
-            fieldMapping: topicInfo.fieldMapping as Record<string, unknown> | string | null | undefined,
-            weightConfig: topicInfo.weightConfig as Record<string, unknown> | string | null | undefined,
-        });
-        if (publishReadinessError) return fail(publishReadinessError);
-    }
-
     const updateData: Record<string, unknown> = {};
     if (params.body.name !== undefined) {
         const nameError = validateTopicName(params.body.name);
@@ -106,12 +85,34 @@ export async function updateTeacherTopicBasics(params: {
 
     updateData.updatedAt = new Date();
 
-    await db
-        .update(topic)
-        .set(updateData)
-        .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+    return db.transaction(async (tx) => {
+        await acquireStorageMutationLock(tx);
+        const [topicInfo] = await tx
+            .select({
+                excelFilePath: topic.excelFilePath,
+                fieldMapping: topic.fieldMapping,
+                weightConfig: topic.weightConfig,
+            })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+        if (!topicInfo) return fail("课题不存在", "NOT_FOUND", 404);
 
-    return { ok: true as const };
+        if (params.body.status === 1) {
+            const publishReadinessError = validateTopicPublishReadiness({
+                excelFilePath: topicInfo.excelFilePath,
+                fieldMapping: topicInfo.fieldMapping as Record<string, unknown> | string | null | undefined,
+                weightConfig: topicInfo.weightConfig as Record<string, unknown> | string | null | undefined,
+            });
+            if (publishReadinessError) return fail(publishReadinessError);
+        }
+
+        const [updated] = await tx
+            .update(topic)
+            .set(updateData)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .returning({ id: topic.id });
+        return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);
+    });
 }
 
 const assignedTopicDeletion = Symbol("assigned-topic-deletion");
@@ -167,7 +168,7 @@ export async function softDeleteTeacherTopic(params: { teacherId: number; topicI
     }
 
     await Promise.all(deletion.cleanupPaths.map(async (filePath) => {
-        await deleteStorageFileIfExists(filePath).catch((error) => {
+        await deleteTopicStorageFileIfUnreferenced(filePath, { excludeTopicId: params.topicId }).catch((error) => {
             console.warn(`已删除课题的存储文件清理失败：${filePath}`, error);
         });
     }));
@@ -176,9 +177,9 @@ export async function softDeleteTeacherTopic(params: { teacherId: number; topicI
 }
 
 export async function replaceTopicExcelData(params: {
+    teacherId: number;
     topicId: number;
     file: File;
-    previousFilePath?: string | null;
 }) {
     const fileError = validateSpreadsheetUploadFile(params.file);
     if (fileError) return fail(fileError.message, fileError.code, fileError.status);
@@ -190,11 +191,22 @@ export async function replaceTopicExcelData(params: {
 
     const filePath = createStorageUploadPath(sanitizeUploadFileName(params.file.name));
 
+    let previousFilePath: string | null = null;
     try {
-        await db.transaction(async (tx) => {
+        const replacement = await db.transaction(async (tx) => {
             await acquireStorageMutationLock(tx);
+            const [currentTopic] = await tx
+                .select({ excelFilePath: topic.excelFilePath, status: topic.status })
+                .from(topic)
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+            if (!currentTopic) return fail("课题不存在", "NOT_FOUND", 404);
+            const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
+            if (currentTopic.status === 1 || taskReference) {
+                return fail("已发布或已分配任务的课题不能修改总体数据", "FORBIDDEN", 403);
+            }
+
             await writeStorageFile(filePath, buffer);
-            await tx
+            const [updated] = await tx
                 .update(topic)
                 .set({
                     excelFilePath: filePath,
@@ -202,23 +214,22 @@ export async function replaceTopicExcelData(params: {
                     fieldMapping: null,
                     updatedAt: new Date(),
                 })
-                .where(eq(topic.id, params.topicId));
+                .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+                .returning({ id: topic.id });
+            if (!updated) throw new Error("TOPIC_UPDATE_CONFLICT");
+            return { ok: true as const, previousFilePath: currentTopic.excelFilePath };
         });
+        if (!replacement.ok) return replacement;
+        previousFilePath = replacement.previousFilePath;
     } catch (error) {
         await deleteStorageFileIfExists(filePath).catch(() => undefined);
         throw error;
     }
 
-    if (params.previousFilePath && params.previousFilePath !== filePath) {
-        const [[topicReference], [attachmentReference]] = await Promise.all([
-            db.select({ id: topic.id }).from(topic).where(eq(topic.excelFilePath, params.previousFilePath)).limit(1),
-            db.select({ id: topicAttachment.id }).from(topicAttachment).where(eq(topicAttachment.filePath, params.previousFilePath)).limit(1),
-        ]);
-        if (!topicReference && !attachmentReference) {
-            await deleteStorageFileIfExists(params.previousFilePath).catch((error) => {
-                console.warn(`旧总体数据文件清理失败：${params.previousFilePath}`, error);
-            });
-        }
+    if (previousFilePath && previousFilePath !== filePath) {
+        await deleteTopicStorageFileIfUnreferenced(previousFilePath).catch((error) => {
+            console.warn(`旧总体数据文件清理失败：${previousFilePath}`, error);
+        });
     }
 
     return {
@@ -232,41 +243,68 @@ export async function replaceTopicExcelData(params: {
 }
 
 export async function updateTopicFieldMapping(params: {
+    teacherId: number;
     topicId: number;
     fieldMapping: { identifier?: string; stratified?: string[]; numeric?: string[]; others?: string[] };
 }) {
     const mappingError = validateTopicFieldMappingConfig(params.fieldMapping);
     if (mappingError) return fail(mappingError);
 
-    const [topicInfo] = await db.select({ excelFilePath: topic.excelFilePath }).from(topic).where(eq(topic.id, params.topicId));
-    if (!topicInfo?.excelFilePath) return fail("请先上传总体数据");
+    return db.transaction(async (tx) => {
+        await acquireStorageMutationLock(tx);
+        const [topicInfo] = await tx
+            .select({ excelFilePath: topic.excelFilePath, status: topic.status })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+        if (!topicInfo) return fail("课题不存在", "NOT_FOUND", 404);
+        const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
+        if (topicInfo.status === 1 || taskReference) {
+            return fail("已发布或已分配任务的课题不能修改字段映射", "FORBIDDEN", 403);
+        }
+        if (!topicInfo.excelFilePath) return fail("请先上传总体数据");
 
-    const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
-    const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
-    const columnsError = validateTopicFieldMappingColumns(params.fieldMapping, parsed.columns);
-    if (columnsError) return fail(columnsError);
-    const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
-    if (cardinalityError) return fail(cardinalityError);
-    const numericValueError = validateNumericFieldValues(parsed.rows, params.fieldMapping.numeric ?? []);
-    if (numericValueError) return fail(numericValueError);
+        const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
+        const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
+        const columnsError = validateTopicFieldMappingColumns(params.fieldMapping, parsed.columns);
+        if (columnsError) return fail(columnsError);
+        const cardinalityError = validateStratifiedValueCardinality(parsed.rows, params.fieldMapping.stratified ?? []);
+        if (cardinalityError) return fail(cardinalityError);
+        const numericValueError = validateNumericFieldValues(parsed.rows, params.fieldMapping.numeric ?? []);
+        if (numericValueError) return fail(numericValueError);
 
-    await db
-        .update(topic)
-        .set({ fieldMapping: params.fieldMapping, updatedAt: new Date() })
-        .where(eq(topic.id, params.topicId));
-    return { ok: true as const };
+        const [updated] = await tx
+            .update(topic)
+            .set({ fieldMapping: params.fieldMapping, updatedAt: new Date() })
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .returning({ id: topic.id });
+        return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);
+    });
 }
 
 export async function updateTopicWeightConfig(params: {
+    teacherId: number;
     topicId: number;
     weightConfig: { questionnaire: number; process: number; report: number } | null | undefined;
 }) {
     const weightError = validateWeightConfig(params.weightConfig);
     if (weightError) return fail(weightError);
 
-    await db
-        .update(topic)
-        .set({ weightConfig: params.weightConfig, updatedAt: new Date() })
-        .where(eq(topic.id, params.topicId));
-    return { ok: true as const };
+    return db.transaction(async (tx) => {
+        await acquireStorageMutationLock(tx);
+        const [topicInfo] = await tx
+            .select({ status: topic.status })
+            .from(topic)
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)));
+        if (!topicInfo) return fail("课题不存在", "NOT_FOUND", 404);
+        const [taskReference] = await tx.select({ id: task.id }).from(task).where(eq(task.topicId, params.topicId)).limit(1);
+        if (topicInfo.status === 1 || taskReference) {
+            return fail("已发布或已分配任务的课题不能修改评分权重", "FORBIDDEN", 403);
+        }
+        const [updated] = await tx
+            .update(topic)
+            .set({ weightConfig: params.weightConfig, updatedAt: new Date() })
+            .where(and(eq(topic.id, params.topicId), eq(topic.teacherId, params.teacherId), isNull(topic.deletedAt)))
+            .returning({ id: topic.id });
+        return updated ? { ok: true as const } : fail("课题不存在", "NOT_FOUND", 404);
+    });
 }

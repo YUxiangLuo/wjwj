@@ -23,6 +23,7 @@ export const DOGFOOD_COUNTS = {
     topic: 7,
     task: 6,
     experiment: 11,
+    samplingAttempt: 4,
     announcement: 4,
     topicAttachment: 1,
 } as const;

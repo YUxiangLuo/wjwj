@@ -23,7 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle, CheckCircle2, Play, Loader2, Target, Layers, ArrowRight, Database } from "lucide-react";
+import { AlertCircle, CheckCircle2, Play, Loader2, Target, Layers, ArrowRight, Database, RefreshCw } from "lucide-react";
 import { useExperiment } from "../ExperimentLayout";
 import { experimentApi, type SamplingResultsData, type SamplePlanData } from "../../api-client";
 import type { MethodKey as SamplingMethod } from "../../api-client";
@@ -87,7 +87,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const [populationStats, setPopulationStats] = useState<Record<string, Record<string, number>>>({});
     const [numericFields, setNumericFields] = useState<string[]>([]);
     const [ppsEligibleFields, setPpsEligibleFields] = useState<string[]>([]);
-    const [statsLoaded, setStatsLoaded] = useState(false);
+    const [statsState, setStatsState] = useState<"loading" | "ready" | "error">("loading");
+    const [statsError, setStatsError] = useState("");
+    const [statsReloadKey, setStatsReloadKey] = useState(0);
+    const statsLoaded = statsState === "ready";
     const [stratumNumericStats, setStratumNumericStats] = useState<Record<string, Record<string, Record<string, { mean: number; stdDev: number }>>>>({});
 
     // Fetch stats on mount. Keep loading distinct from a confirmed empty eligible-field list:
@@ -96,28 +99,31 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         if (!experiment?.taskId) return;
 
         let active = true;
-        setStatsLoaded(false);
+        setStatsState("loading");
+        setStatsError("");
         experimentApi.getStats(experiment.taskId).then(res => {
             if (!active) return;
-            if (res.success && res.data?.stats) {
-                setPopulationStats(res.data.stats);
-                if (res.data.stratumNumericStats) setStratumNumericStats(res.data.stratumNumericStats);
+            if (!res.success || !res.data) {
+                setStatsState("error");
+                setStatsError(res.error?.message || "总体统计信息加载失败");
+                return;
             }
-            if (res.success && res.data?.numericFields) {
-                setNumericFields(res.data.numericFields);
-            }
-            if (res.success && res.data?.ppsEligibleFields) {
-                setPpsEligibleFields(res.data.ppsEligibleFields);
-            }
-            if (res.success) setStatsLoaded(true);
-        }).catch((e) => {
-            console.error("Failed to load population stats:", e);
+            setPopulationStats(res.data.stats ?? {});
+            setStratumNumericStats(res.data.stratumNumericStats ?? {});
+            setNumericFields(res.data.numericFields ?? []);
+            setPpsEligibleFields(res.data.ppsEligibleFields ?? []);
+            setStatsState("ready");
+        }).catch((cause) => {
+            if (!active) return;
+            console.error("Failed to load population stats:", cause);
+            setStatsState("error");
+            setStatsError("总体统计信息加载失败，请检查网络后重试");
         });
 
         return () => {
             active = false;
         };
-    }, [experiment?.taskId]);
+    }, [experiment?.taskId, statsReloadKey]);
 
     useEffect(() => {
         if (!statsLoaded) return;
@@ -277,7 +283,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
     const ppsMaxSize = samplingAcceptedRange?.max ?? N;
     const isPpsSizeValid = ppsSampleSize >= ppsMinSize && ppsSampleSize <= ppsMaxSize && ppsSampleSize >= 1 && ppsSampleSize <= N;
     const hasPpsNumericField = ppsEligibleFields.length > 0;
-    const ppsCompletedOrUnavailable = Boolean(ppsResult?.completed || ppsResult?.unavailable || !hasPpsNumericField);
+    const ppsCompletedOrUnavailable = Boolean(
+        ppsResult?.completed || ppsResult?.unavailable || (statsLoaded && !hasPpsNumericField),
+    );
     const ppsPreviewTotal = ppsResult?.sampleCount ?? ppsResult?.data?.length ?? 0;
     const ppsSummaryFieldLabel = ppsResult?.sizeField
         ? FIELD_LABELS[ppsResult.sizeField] || ppsResult.sizeField
@@ -368,6 +376,36 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     </div>
                 </CardContent>
             </Card>
+
+            {statsState === "loading" && (
+                <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm" data-testid="student-sampling-stats-loading">
+                    <CardContent className="flex items-center gap-3 px-4 py-3 text-sm text-info">
+                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                        正在加载总体统计信息和 PPS 可用字段…
+                    </CardContent>
+                </Card>
+            )}
+
+            {statsState === "error" && (
+                <Card className="rounded-2xl border-destructive/20 bg-destructive/10 shadow-sm" data-testid="student-sampling-stats-error">
+                    <CardContent className="flex items-center justify-between gap-4 px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-3 text-sm text-destructive">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            <span>{statsError}</span>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setStatsReloadKey((value) => value + 1)}
+                            data-testid="student-sampling-stats-retry"
+                            className="shrink-0 border-destructive/30 bg-background text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                            <RefreshCw className="mr-1.5 h-4 w-4" />
+                            重试
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Sampling methods tabs */}
             <Tabs defaultValue="simple" className="space-y-6">
@@ -595,7 +633,11 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                     <div className="grid grid-cols-3 gap-6 p-4 bg-background/30 rounded-xl border border-border/50">
                                         <div className="space-y-3">
                                             <Label className="text-foreground/90">选择规模变量</Label>
-                                            {hasPpsNumericField ? (
+                                            {!statsLoaded ? (
+                                                <div className="flex h-10 items-center rounded-md border border-info/30 bg-info/10 px-3 text-sm text-info" data-testid="student-sampling-pps-fields-pending">
+                                                    {statsState === "loading" ? "正在加载可用规模变量…" : "规模变量信息加载失败，请先重试"}
+                                                </div>
+                                            ) : hasPpsNumericField ? (
                                                 <Select value={ppsSizeField} onValueChange={setPpsSizeField}>
                                                     <SelectTrigger aria-label="选择 PPS 规模度量字段" data-testid="student-sampling-pps-size-field" className="w-full bg-card border-input text-foreground">
                                                         <SelectValue placeholder="选择数值变量" />
@@ -613,10 +655,12 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                                                     {PPS_UNAVAILABLE_STATUS_MESSAGE}
                                                 </div>
                                             )}
-                                            <p className={`text-xs leading-relaxed ${hasPpsNumericField ? "text-muted-foreground" : "text-destructive"}`}>
-                                                {hasPpsNumericField
-                                                    ? "选择一个抽样前已知的规模变量（如收入、人口等）；本实验执行还要求该字段对总体每个单位均为正数。"
-                                                    : PPS_UNAVAILABLE_REASON}
+                                            <p className={`text-xs leading-relaxed ${statsLoaded && !hasPpsNumericField ? "text-destructive" : "text-muted-foreground"}`}>
+                                                {!statsLoaded
+                                                    ? "只有统计信息成功加载后，系统才会确认 PPS 是否可用。"
+                                                    : hasPpsNumericField
+                                                        ? "选择一个抽样前已知的规模变量（如收入、人口等）；本实验执行还要求该字段对总体每个单位均为正数。"
+                                                        : PPS_UNAVAILABLE_REASON}
                                             </p>
                                         </div>
                                         <div className="space-y-3">

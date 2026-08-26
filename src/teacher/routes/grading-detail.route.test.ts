@@ -53,7 +53,7 @@ test("compact grading detail returns READ_FAILED when population storage is miss
             id: 99, version: 7, studentName: "当前学生", studentId: "S001", className: "统计一班", topic: "当前课题", topicName: "当前课题", topicDesc: "描述",
             populationSize: 2, excelFilePath: `/storage/missing-${crypto.randomUUID()}.csv`, weightConfig: null,
             status: "submitted", submittedAt: new Date(),
-            submissionSnapshot: { samplingResults: { simple: { completed: true, indices: [0] } } },
+            submissionSnapshot: { samplingResults: { simple: { completed: true, sampleCount: 1, indices: [0] } } },
             reportContent: "当前报告", samplePlan: null, questionnaire: null, samplingResults: null,
             scoreQuestionnaire: null, scoreProcess: null, scoreReport: null, totalScore: null,
             teacherComment: null, rejectReason: null, gradedAt: null, gradedByName: null,

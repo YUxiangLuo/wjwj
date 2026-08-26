@@ -58,7 +58,6 @@ test("topic detail returns attachments, recommended questions, and parsed excel 
                     id: 5,
                     topicId: 12,
                     fileName: "guide.pdf",
-                    filePath: "/storage/uploads/guide.pdf",
                     fileType: "application/pdf",
                     fileSize: 1024,
                 }],
@@ -77,7 +76,10 @@ test("topic detail returns attachments, recommended questions, and parsed excel 
             id: 12,
             name: "抽样设计课题",
         });
+        expect(payload.data.hasExcelFile).toBe(true);
         expect(payload.data.attachments).toHaveLength(1);
+        expect(payload.data.attachments[0]).not.toHaveProperty("filePath");
+        expect(payload.data.topic).not.toHaveProperty("excelFilePath");
         expect(payload.data.recommendQuestions).toHaveLength(1);
         expect(payload.data.excelInfo).toEqual({
             columns: ["name", "score"],

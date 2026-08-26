@@ -2,11 +2,17 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment, task, topic, topicAttachment } from "../../db/schema";
 import { error, getRouteParam, getSearchParams } from "../../server/http";
+import { buildAttachmentDownloadResponse } from "../../server/attachment-download";
 import type { RouteDefinition } from "../../server/route-types";
 import { resolveStoragePath } from "../../server/storage-files";
 import { getStudentTaskAccessError, getStudentTopicAttachmentAccessError } from "../experiment/task-access";
 import { readPopulationData } from "../experiment/population-data";
-import { hydrateSamplingResults, samplingResultsNeedPopulation } from "../experiment/sampling-storage";
+import {
+    hydrateSamplingResults,
+    inspectSamplingResultsStorage,
+    INVALID_SAMPLING_STORAGE_CODE,
+    INVALID_SAMPLING_STORAGE_MESSAGE,
+} from "../experiment/sampling-storage";
 import { parseStoredJson } from "../experiment/serialization";
 import { requireAuth } from "./auth";
 
@@ -34,36 +40,6 @@ function toCsv(data: Record<string, unknown>[], extraHeaders: string[] = []) {
 
 export function resolveAttachmentPath(filePath: string) {
     return resolveStoragePath(filePath);
-}
-
-function inferMimeTypeFromName(fileName: string) {
-    const lower = fileName.toLowerCase();
-    if (lower.endsWith(".png")) return "image/png";
-    if (/\.(jpe?g)$/.test(lower)) return "image/jpeg";
-    if (lower.endsWith(".gif")) return "image/gif";
-    if (lower.endsWith(".webp")) return "image/webp";
-    if (lower.endsWith(".bmp")) return "image/bmp";
-    if (lower.endsWith(".svg")) return "image/svg+xml";
-    if (lower.endsWith(".mp4") || lower.endsWith(".m4v")) return "video/mp4";
-    if (lower.endsWith(".webm")) return "video/webm";
-    if (lower.endsWith(".ogg")) return "video/ogg";
-    if (lower.endsWith(".mov")) return "video/quicktime";
-    if (lower.endsWith(".pdf")) return "application/pdf";
-    return "application/octet-stream";
-}
-
-function normalizeAttachmentMime(fileName: string, _fileType: string) {
-    // Never trust the client-supplied MIME stored by older rows. Preview MIME
-    // is derived from the server allowlisted filename extension.
-    return inferMimeTypeFromName(fileName);
-}
-
-function canInlinePreview(contentType: string) {
-    return (
-        contentType.startsWith("image/") ||
-        contentType.startsWith("video/") ||
-        contentType.startsWith("application/pdf")
-    );
 }
 
 const attachmentDownloadRoutes: RouteDefinition = {
@@ -95,32 +71,11 @@ const attachmentDownloadRoutes: RouteDefinition = {
         const attachmentAccessError = await getStudentTopicAttachmentAccessError(att.topicId, currentStudent.classId);
         if (attachmentAccessError) return attachmentAccessError;
 
-        let fullPath: string;
-        try {
-            fullPath = resolveAttachmentPath(att.filePath);
-        } catch {
-            return error("无效的文件路径", "INVALID_PATH", 400);
-        }
-
-        try {
-            const file = Bun.file(fullPath);
-            if (!(await file.exists())) {
-                return error("文件不存在", "NOT_FOUND", 404);
-            }
-            const fileBuffer = await file.arrayBuffer();
-            const mode = getSearchParams(req).get("mode");
-            const contentType = normalizeAttachmentMime(att.fileName, att.fileType ?? "");
-            const isPreviewMode = mode === "preview" && canInlinePreview(contentType);
-
-            return new Response(fileBuffer, {
-                headers: {
-                    "Content-Type": isPreviewMode ? contentType : "application/octet-stream",
-                    "Content-Disposition": `${isPreviewMode ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(att.fileName)}`,
-                },
-            });
-        } catch {
-            return error("文件不存在", "NOT_FOUND", 404);
-        }
+        return buildAttachmentDownloadResponse({
+            request: req,
+            fileName: att.fileName,
+            filePath: att.filePath,
+        });
     },
 };
 
@@ -168,12 +123,16 @@ const exportRoutes: RouteDefinition = {
         }
 
         const storedResults = parseStoredJson<SamplingResultsExportData>(exp.samplingResults);
+        const inspection = inspectSamplingResultsStorage(storedResults);
+        if (!inspection.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
         let results = storedResults;
-        if (samplingResultsNeedPopulation(storedResults)) {
+        if (inspection.needsPopulation) {
             if (!exp.excelFilePath) return error("总体数据为空或读取失败", "READ_FAILED", 500);
             const population = await readPopulationData(exp.excelFilePath);
             if (!population.length) return error("总体数据为空或读取失败", "READ_FAILED", 500);
-            results = hydrateSamplingResults(storedResults, population) as SamplingResultsExportData;
+            const hydrated = hydrateSamplingResults(storedResults, population);
+            if (!hydrated.ok) return error(INVALID_SAMPLING_STORAGE_MESSAGE, INVALID_SAMPLING_STORAGE_CODE, 500);
+            results = hydrated.value as SamplingResultsExportData;
         }
         if (!results) {
             return error("暂无抽样结果", "NO_DATA", 404);

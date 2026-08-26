@@ -132,6 +132,21 @@ test("experiment reads hydrate compact stored indices for the SPA", async () => 
     ]);
 });
 
+test("experiment reads fail closed when compact replay indices are corrupted", async () => {
+    const compact = record({
+        samplingResults: {
+            simple: { completed: true, sampleCount: 2, indices: [1, 1], data: [], serverGenerated: true },
+        },
+    });
+    const { module } = await load(compact);
+    const request = new Request("https://example.com/api/student/tasks/3/experiment");
+    (request as Request & { params?: Record<string, string> }).params = { id: "3" };
+
+    const response = await module.experimentRoutes.GET!(request);
+    expect(response.status).toBe(500);
+    expect(await response.json()).toMatchObject({ error: { code: "INVALID_SAMPLING_STORAGE" } });
+});
+
 test("forged stage completion cannot supply results or bypass an eligible PPS method", async () => {
     const { module, operations } = await load(record());
     const forged = {
@@ -153,10 +168,12 @@ test("forged stage completion cannot supply results or bypass an eligible PPS me
 
 test("stage completion atomically persists server-determined PPS unavailability", async () => {
     const stored = {
-        simple: { completed: true, sampleCount: 2, serverGenerated: true },
-        systematic: { completed: true, sampleCount: 2, serverGenerated: true },
+        simple: { completed: true, sampleCount: 2, indices: [0, 1], serverGenerated: true },
+        systematic: { completed: true, sampleCount: 2, indices: [0, 2], serverGenerated: true },
         stratified: {
             completed: true,
+            sampleCount: 2,
+            indices: [1, 3],
             serverGenerated: true,
             layers: [{ name: "A", sampleCount: 1 }, { name: "B", sampleCount: 1 }],
         },
@@ -195,7 +212,7 @@ test("population-backed routes return READ_FAILED when population storage is unr
 
     try {
         const compact = record({
-            samplingResults: { simple: { completed: true, indices: [0], serverGenerated: true } },
+            samplingResults: { simple: { completed: true, sampleCount: 1, indices: [0], serverGenerated: true } },
         });
         const experimentLoad = await load(compact, [[{ id: 9 }]], { numeric: ["weight"] }, missingPath);
         const experimentRequest = new Request("https://example.com/api/student/tasks/3/experiment");

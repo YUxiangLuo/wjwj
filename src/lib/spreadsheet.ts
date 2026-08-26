@@ -28,7 +28,7 @@ export function spreadsheetRequestExceedsLimit(req: Request) {
     return BigInt(rawLength) > BigInt(MAX_SPREADSHEET_MULTIPART_BYTES);
 }
 
-function findDuplicateHeaderNames(sheet: XLSX.WorkSheet) {
+function inspectHeaderNames(sheet: XLSX.WorkSheet) {
     const [header = []] = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
         header: 1,
         defval: "",
@@ -36,12 +36,14 @@ function findDuplicateHeaderNames(sheet: XLSX.WorkSheet) {
     });
     const seen = new Set<string>();
     const duplicates = new Set<string>();
-    for (const value of header) {
+    const blankColumnIndexes: number[] = [];
+    header.forEach((value, index) => {
         const name = String(value).trim();
+        if (!name) blankColumnIndexes.push(index + 1);
         if (seen.has(name)) duplicates.add(name);
         seen.add(name);
-    }
-    return [...duplicates];
+    });
+    return { duplicateColumns: [...duplicates], blankColumnIndexes };
 }
 
 export async function parseSpreadsheetFile(buffer: ArrayBuffer, fileName?: string | null) {
@@ -50,16 +52,17 @@ export async function parseSpreadsheetFile(buffer: ArrayBuffer, fileName?: strin
         ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
         : XLSX.read(buffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
-    if (!sheetName) return { rows: [], columns: [], rowCount: 0, colCount: 0, preview: [] };
+    if (!sheetName) return { rows: [], columns: [], duplicateColumns: [], blankColumnIndexes: [], rowCount: 0, colCount: 0, preview: [] };
     const sheet = workbook.Sheets[sheetName];
-    if (!sheet) return { rows: [], columns: [], rowCount: 0, colCount: 0, preview: [] };
+    if (!sheet) return { rows: [], columns: [], duplicateColumns: [], blankColumnIndexes: [], rowCount: 0, colCount: 0, preview: [] };
 
     const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
     const columns = Object.keys(rows[0] ?? {});
+    const headerIssues = inspectHeaderNames(sheet);
     return {
         rows,
         columns,
-        duplicateColumns: findDuplicateHeaderNames(sheet),
+        ...headerIssues,
         rowCount: rows.length,
         colCount: columns.length,
         preview: rows.slice(0, 20),

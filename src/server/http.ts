@@ -47,6 +47,15 @@ export function error(message: string, code: string, status = 400): Response {
     );
 }
 
+export const MAX_JSON_BODY_BYTES = 256 * 1024;
+
+export class RequestBodyTooLargeError extends Error {
+    constructor(message = "JSON 请求体不能超过 256 KiB") {
+        super(message);
+        this.name = "RequestBodyTooLargeError";
+    }
+}
+
 export class InvalidJsonError extends Error {
     constructor(message = "请求体不是有效的 JSON") {
         super(message);
@@ -59,9 +68,37 @@ export function stringValue(value: unknown): string {
 }
 
 export async function parseBody<T extends Record<string, unknown>>(req: Request): Promise<T> {
+    const declaredLength = req.headers.get("content-length");
+    if (declaredLength && /^\d+$/.test(declaredLength) && BigInt(declaredLength) > BigInt(MAX_JSON_BODY_BYTES)) {
+        throw new RequestBodyTooLargeError();
+    }
+
+    const reader = req.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    if (reader) {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            totalBytes += value.byteLength;
+            if (totalBytes > MAX_JSON_BODY_BYTES) {
+                await reader.cancel().catch(() => undefined);
+                throw new RequestBodyTooLargeError();
+            }
+            chunks.push(value);
+        }
+    }
+
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+
     let parsed: unknown;
     try {
-        parsed = await req.json();
+        parsed = JSON.parse(new TextDecoder().decode(bytes));
     } catch {
         throw new InvalidJsonError();
     }
@@ -73,6 +110,9 @@ export async function parseBody<T extends Record<string, unknown>>(req: Request)
 }
 
 export function handleServerError(cause: unknown): Response {
+    if (cause instanceof RequestBodyTooLargeError) {
+        return error(cause.message, "PAYLOAD_TOO_LARGE", 413);
+    }
     if (cause instanceof InvalidJsonError) {
         return error(cause.message, "INVALID_JSON", 400);
     }

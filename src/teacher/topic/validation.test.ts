@@ -13,7 +13,7 @@ import {
 import { validateRecommendQuestionsPayload } from "../../lib/validate-question";
 
 describe("topic validation helpers", () => {
-    test("validateParsedExcelUpload rejects duplicate columns and blank rows", () => {
+    test("validateParsedExcelUpload rejects duplicate columns, blank headers, and blank rows", () => {
         expect(
             validateParsedExcelUpload({
                 columns: ["id", "id"],
@@ -22,6 +22,16 @@ describe("topic validation helpers", () => {
                 rows: [{ id: "1" }],
             })
         ).toBe("表头存在重复列名");
+
+        expect(
+            validateParsedExcelUpload({
+                columns: ["id", "__EMPTY", "value"],
+                blankColumnIndexes: [2],
+                rowCount: 1,
+                colCount: 3,
+                rows: [{ id: "1", __EMPTY: "A", value: 2 }],
+            })
+        ).toBe("表头存在空白列名（第2列）");
 
         expect(
             validateParsedExcelUpload({

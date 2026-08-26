@@ -2,63 +2,111 @@ function fractionalPart(value: number): number {
     return value - Math.floor(value);
 }
 
+/**
+ * 按原始权重做带上下界的比例分配，再用最大余数法整数化。
+ * 层达到容量上限后会锁定并重新归一化剩余层权重，避免退化成轮询等额分配。
+ */
 export function allocateStratifiedSampleCounts(params: {
     targetSampleSize: number;
     rawCounts: number[];
     caps: number[];
     minPerLayer?: number;
 }): number[] {
-    const targetSampleSize = Math.max(0, Math.round(params.targetSampleSize));
+    const requestedTarget = Math.max(0, Math.round(params.targetSampleSize));
     const minPerLayer = Math.max(0, Math.floor(params.minPerLayer ?? 1));
     const rawCounts = params.rawCounts.map((value) => Number.isFinite(value) && value > 0 ? value : 0);
-    const caps = params.caps.map((value) => Math.max(0, Math.floor(Number.isFinite(value) ? value : 0)));
+    const caps = rawCounts.map((_, index) => {
+        const value = params.caps[index];
+        return Math.max(0, Math.floor(Number.isFinite(value) ? Number(value) : 0));
+    });
+    const lowerBounds = caps.map((cap) => Math.min(cap, minPerLayer));
+    const lowerBoundTotal = lowerBounds.reduce((sum, value) => sum + value, 0);
+    const capacityTotal = caps.reduce((sum, value) => sum + value, 0);
+    // 保持既有 minPerLayer 契约：目标本身不可行时优先保住每层下限。
+    const target = Math.min(capacityTotal, Math.max(requestedTarget, lowerBoundTotal));
+    const indexes = rawCounts.map((_, index) => index);
 
-    const counts = rawCounts.map((raw, index) => {
-        const cap = caps[index] ?? 0;
-        return Math.min(cap, Math.max(minPerLayer, Math.floor(raw)));
+    const solveBoundedProportions = (
+        selectedIndexes: number[],
+        selectedTarget: number,
+        weights: number[],
+    ) => {
+        const values = Array<number>(rawCounts.length).fill(0);
+        const lowerTotal = selectedIndexes.reduce((sum, index) => sum + (lowerBounds[index] ?? 0), 0);
+        if (selectedTarget <= lowerTotal) {
+            for (const index of selectedIndexes) values[index] = lowerBounds[index] ?? 0;
+            return values;
+        }
+
+        // x_i = clamp(lambda * w_i, lower_i, cap_i). The clamped sum is
+        // monotone in lambda, so bisection avoids prematurely freezing a lower
+        // bound that may become non-binding after another layer is capped.
+        const upperLambda = selectedIndexes.reduce((maximum, index) => {
+            const weight = weights[index] ?? 0;
+            return weight > 0 ? Math.max(maximum, (caps[index] ?? 0) / weight) : maximum;
+        }, 0);
+        let low = 0;
+        let high = upperLambda;
+        for (let iteration = 0; iteration < 80; iteration += 1) {
+            const lambda = (low + high) / 2;
+            const sum = selectedIndexes.reduce((total, index) => {
+                const proportional = lambda * (weights[index] ?? 0);
+                return total + Math.min(caps[index] ?? 0, Math.max(lowerBounds[index] ?? 0, proportional));
+            }, 0);
+            if (sum < selectedTarget) low = lambda;
+            else high = lambda;
+        }
+        for (const index of selectedIndexes) {
+            const proportional = high * (weights[index] ?? 0);
+            values[index] = Math.min(caps[index] ?? 0, Math.max(lowerBounds[index] ?? 0, proportional));
+        }
+        return values;
+    };
+
+    const positiveIndexes = indexes.filter((index) => (rawCounts[index] ?? 0) > 0);
+    const zeroWeightIndexes = indexes.filter((index) => (rawCounts[index] ?? 0) === 0);
+    const positiveMaximumWithZeroLowerBounds = positiveIndexes.reduce(
+        (sum, index) => sum + (caps[index] ?? 0),
+        zeroWeightIndexes.reduce((sum, index) => sum + (lowerBounds[index] ?? 0), 0),
+    );
+
+    let continuous: number[];
+    if (positiveIndexes.length === 0) {
+        continuous = solveBoundedProportions(indexes, target, indexes.map(() => 1));
+    } else if (target <= positiveMaximumWithZeroLowerBounds) {
+        continuous = solveBoundedProportions(indexes, target, rawCounts);
+    } else {
+        // Positive-weight layers are exhausted. Only then may genuinely
+        // zero-weight layers receive the otherwise unallocatable remainder.
+        continuous = Array<number>(rawCounts.length).fill(0);
+        for (const index of positiveIndexes) continuous[index] = caps[index] ?? 0;
+        const zeroTarget = target - positiveIndexes.reduce((sum, index) => sum + (caps[index] ?? 0), 0);
+        const zeroValues = solveBoundedProportions(zeroWeightIndexes, zeroTarget, indexes.map(() => 1));
+        for (const index of zeroWeightIndexes) continuous[index] = zeroValues[index] ?? 0;
+    }
+
+    const counts = continuous.map((value, index) => (
+        Math.min(caps[index] ?? 0, Math.max(lowerBounds[index] ?? 0, Math.floor(value)))
+    ));
+    let remainder = target - counts.reduce((sum, value) => sum + value, 0);
+    const incrementOrder = indexes.sort((left, right) => {
+        const fractionalDiff = fractionalPart(continuous[right] ?? 0) - fractionalPart(continuous[left] ?? 0);
+        if (Math.abs(fractionalDiff) > Number.EPSILON) return fractionalDiff;
+        const weightDiff = (rawCounts[right] ?? 0) - (rawCounts[left] ?? 0);
+        return weightDiff !== 0 ? weightDiff : left - right;
     });
 
-    let diff = targetSampleSize - counts.reduce((sum, count) => sum + count, 0);
-    const indices = counts.map((_, index) => index);
-
-    if (diff > 0) {
-        const incrementOrder = [...indices].sort((left, right) => {
-            const fractionalDiff = fractionalPart(rawCounts[right] ?? 0) - fractionalPart(rawCounts[left] ?? 0);
-            if (fractionalDiff !== 0) return fractionalDiff;
-            return (caps[right] ?? 0) - (caps[left] ?? 0);
-        });
-
-        while (diff > 0) {
-            let progressed = false;
-            for (const index of incrementOrder) {
-                if (diff <= 0) break;
-                if ((counts[index] ?? 0) < (caps[index] ?? 0)) {
-                    counts[index]!++;
-                    diff--;
-                    progressed = true;
-                }
+    while (remainder > 0) {
+        let progressed = false;
+        for (const index of incrementOrder) {
+            if (remainder <= 0) break;
+            if ((counts[index] ?? 0) < (caps[index] ?? 0)) {
+                counts[index]!++;
+                remainder--;
+                progressed = true;
             }
-            if (!progressed) break;
         }
-    } else if (diff < 0) {
-        const decrementOrder = [...indices].sort((left, right) => {
-            const overallocationDiff = ((counts[right] ?? 0) - (rawCounts[right] ?? 0)) - ((counts[left] ?? 0) - (rawCounts[left] ?? 0));
-            if (overallocationDiff !== 0) return overallocationDiff;
-            return fractionalPart(rawCounts[left] ?? 0) - fractionalPart(rawCounts[right] ?? 0);
-        });
-
-        while (diff < 0) {
-            let progressed = false;
-            for (const index of decrementOrder) {
-                if (diff >= 0) break;
-                if ((counts[index] ?? 0) > minPerLayer) {
-                    counts[index]!--;
-                    diff++;
-                    progressed = true;
-                }
-            }
-            if (!progressed) break;
-        }
+        if (!progressed) break;
     }
 
     return counts;

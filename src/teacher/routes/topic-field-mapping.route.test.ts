@@ -19,10 +19,16 @@ test("field mapping rejects columns left over from a replaced workbook", async (
     ]), "总体数据");
     await Bun.write(absolutePath, XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }));
 
+    const routeTopic = { id: 12, status: 0, excelFilePath: filePath, hasTasks: false };
     const { db, operations } = createMockDb({
-        select: Array.from({ length: 8 }, () => [
-            { id: 12, status: 0, excelFilePath: filePath, hasTasks: false },
-        ]),
+        select: [
+            [routeTopic],
+            [{ status: 0, excelFilePath: filePath }],
+            [],
+            [routeTopic],
+            [{ status: 0, excelFilePath: filePath }],
+            [],
+        ],
     });
     mock.module("../../db", () => ({ db }));
     mock.module("./auth", () => createTeacherAuthModuleMock());

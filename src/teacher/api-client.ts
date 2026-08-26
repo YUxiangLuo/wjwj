@@ -11,8 +11,8 @@ export interface TeacherStats {
 }
 export interface TeacherClass { id: number; name: string; semester: string | null; studentCount: number; createdAt: string }
 export interface Topic { id: number; name: string; description: string | null; status: number; dataRows: number; createdAt: string }
-export interface TopicAttachment { id: number; topicId: number; fileName: string; filePath: string; fileType: string; fileSize: number; createdAt: string }
-export interface TopicDetail { topic: any; attachments: TopicAttachment[]; recommendQuestions: Question[]; excelInfo?: { columns: string[]; preview: any[] } | null }
+export interface TopicAttachment { id: number; topicId: number; fileName: string; fileType: string; fileSize: number; createdAt: string }
+export interface TopicDetail { topic: any; hasExcelFile: boolean; attachments: TopicAttachment[]; recommendQuestions: Question[]; excelInfo?: { columns: string[]; preview: any[] } | null }
 export type { Question };
 export interface Task {
     id: number; topicId: number; classId: number; topic: string; className: string;
@@ -107,9 +107,9 @@ export const teacherApi = {
     createTopic: (data: { name: string; description?: string }) => request<{ id: number }>("/api/teacher/topics", { method: "POST", body: JSON.stringify(data) }),
     updateTopic: (id: number, data: { name?: string; description?: string; status?: number }) => request<{ success: boolean }>(`/api/teacher/topics/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     deleteTopic: (id: number) => request<{ success: boolean }>(`/api/teacher/topics/${id}`, { method: "DELETE" }),
-    uploadTopicExcel: (id: number, file: File) => upload<{ filePath: string; rowCount: number; colCount: number; columns: string[]; preview: any[] }>(`/api/teacher/topics/${id}/excel`, file),
+    uploadTopicExcel: (id: number, file: File) => upload<{ rowCount: number; colCount: number; columns: string[]; preview: any[] }>(`/api/teacher/topics/${id}/excel`, file),
     updateFieldMapping: (id: number, fieldMapping: any) => request<{ success: boolean }>(`/api/teacher/topics/${id}/mapping`, { method: "PUT", body: JSON.stringify({ fieldMapping }) }),
-    uploadAttachment: (id: number, file: File) => upload<{ id: number; filePath: string }>(`/api/teacher/topics/${id}/attachments`, file),
+    uploadAttachment: (id: number, file: File) => upload<{ id: number }>(`/api/teacher/topics/${id}/attachments`, file),
     deleteAttachment: (topicId: number, attachmentId: number) => request<{ success: boolean }>(`/api/teacher/topics/${topicId}/attachments/${attachmentId}`, { method: "DELETE" }),
     updateRecommendQuestions: (id: number, items: Question[]) => request<{ success: boolean }>(`/api/teacher/topics/${id}/recommend-questions`, { method: "PUT", body: JSON.stringify({ items }) }),
     updateWeightConfig: (id: number, weightConfig: { questionnaire: number; process: number; report: number }) => request<{ success: boolean }>(`/api/teacher/topics/${id}/weights`, { method: "PUT", body: JSON.stringify({ weightConfig }) }),

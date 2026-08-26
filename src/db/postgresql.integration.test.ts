@@ -1,15 +1,20 @@
 import { SQL } from "bun";
 import { expect, test } from "bun:test";
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sql";
 import * as schema from "./schema";
 import { buildAtomicFailedLoginUpdate } from "../server/login-lockout";
+import { MAX_SAMPLING_ATTEMPTS_PER_EXPERIMENT, trimSamplingAttempts } from "../student/experiment/sampling-attempt-retention";
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL?.trim();
-if (process.env.REQUIRE_TEST_DATABASE === "1" && !testDatabaseUrl) {
+const requireTestDatabase = process.env.REQUIRE_TEST_DATABASE === "1";
+if (requireTestDatabase && !testDatabaseUrl) {
     throw new Error("TEST_DATABASE_URL is required for bun run test:db");
 }
-const postgresqlTest = testDatabaseUrl ? test : test.skip;
+// Database integration must run in its dedicated command/process. Running it
+// inside the broad unit suite allows unrelated mock.module() registrations to
+// replace the real database client before the concurrency assertions execute.
+const postgresqlTest = requireTestDatabase ? test : test.skip;
 
 postgresqlTest("PostgreSQL preserves the application database contract", async () => {
     const sqlClient = new SQL(testDatabaseUrl!);
@@ -27,6 +32,7 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
     let topicId: number | undefined;
     let unassignedTopicId: number | undefined;
     let taskId: number | undefined;
+    let raceTaskId: number | undefined;
     let closeApplicationDatabase: (() => Promise<void>) | undefined;
 
     try {
@@ -166,6 +172,20 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         expect(createdAttempt?.id).toBeNumber();
         expect(createdAttempt?.details).toEqual({ completed: true });
 
+        await database.insert(schema.samplingAttempt).values(Array.from({ length: 105 }, (_, index) => ({
+            experimentId: createdExperiment!.id,
+            method: "simple" as const,
+            seed: 10_000 + index,
+            sampleCount: 2,
+            details: { completed: true, index },
+        })));
+        await trimSamplingAttempts(database, createdExperiment!.id);
+        const [retainedAttempts] = await database
+            .select({ value: count() })
+            .from(schema.samplingAttempt)
+            .where(eq(schema.samplingAttempt.experimentId, createdExperiment!.id));
+        expect(retainedAttempts?.value).toBe(MAX_SAMPLING_ATTEMPTS_PER_EXPERIMENT);
+
         const systematicResult = { completed: true, sampleCount: 2, serverGenerated: true };
         await database
             .update(schema.experiment)
@@ -256,10 +276,28 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
         }
         expect(invalidScoreRejected).toBe(true);
 
+        await database
+            .update(schema.topic)
+            .set({
+                status: 1,
+                excelFilePath: `/storage/integration-${suffix}.csv`,
+                fieldMapping: { identifier: "student_id", stratified: ["group"], numeric: ["score"] },
+                weightConfig: { questionnaire: 30, process: 30, report: 40 },
+            })
+            .where(eq(schema.topic.id, unassignedTopicId));
+
         process.env.DATABASE_URL = testDatabaseUrl!;
-        const [{ listTeacherTasks }, { requireTopicOwner }, applicationDatabase] = await Promise.all([
+        const [
+            { listTeacherTasks },
+            { requireTopicOwner },
+            { publishTopicTasks },
+            { softDeleteTeacherTopic },
+            applicationDatabase,
+        ] = await Promise.all([
             import("../teacher/topic/query-service"),
             import("../teacher/topic/access"),
+            import("../teacher/topic/task-service"),
+            import("../teacher/topic/manage-service"),
             import("./index"),
         ]);
         closeApplicationDatabase = applicationDatabase.closeDatabase;
@@ -274,8 +312,25 @@ postgresqlTest("PostgreSQL preserves the application database contract", async (
             completed: 0,
             pending: 0,
         });
+
+        const [publishRace, deleteRace] = await Promise.all([
+            publishTopicTasks({ teacherId, topicId: unassignedTopicId, classIds: [classId] }),
+            softDeleteTeacherTopic({ teacherId, topicId: unassignedTopicId }),
+        ]);
+        const [raceTopic] = await database
+            .select({ deletedAt: schema.topic.deletedAt })
+            .from(schema.topic)
+            .where(eq(schema.topic.id, unassignedTopicId));
+        const raceTasks = await database
+            .select({ id: schema.task.id })
+            .from(schema.task)
+            .where(eq(schema.task.topicId, unassignedTopicId));
+        raceTaskId = raceTasks[0]?.id;
+        expect(Number(publishRace.ok) + Number(deleteRace.ok)).toBe(1);
+        expect(Boolean(raceTopic?.deletedAt) && raceTasks.length > 0).toBe(false);
     } finally {
         await closeApplicationDatabase?.();
+        if (raceTaskId) await database.delete(schema.task).where(eq(schema.task.id, raceTaskId));
         if (taskId) await database.delete(schema.task).where(eq(schema.task.id, taskId));
         if (unassignedTopicId) await database.delete(schema.topic).where(eq(schema.topic.id, unassignedTopicId));
         if (topicId) await database.delete(schema.topic).where(eq(schema.topic.id, topicId));

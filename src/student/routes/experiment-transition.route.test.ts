@@ -15,7 +15,7 @@ function post(stage: number, observedVersion: unknown = 6) {
                 marginOfError: 5,
                 designEffect: 1,
                 nonResponseRate: 0,
-                recommendedSize: 50,
+                recommendedSize: 132,
                 finalSampleSize: 50,
             },
         } : { observedVersion }),
