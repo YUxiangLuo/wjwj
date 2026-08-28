@@ -23,6 +23,7 @@ import {
     type ChartRow,
     METHOD_META,
     POPULATION_SERIES,
+    preferAnalysisField,
 } from "./analysis-utils";
 import { downloadChartAsSvg, sanitizeFileName } from "./chart-svg-export";
 import { SamplePlanDecisionPanel, SamplingMethodParamsPanel } from "./analysis-params-panels";
@@ -193,6 +194,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const [statsLoading, setStatsLoading] = useState(false);
     const [selectedNumericField, setSelectedNumericField] = useState("");
     const [selectedCategoricalField, setSelectedCategoricalField] = useState("");
+    const analysisTarget = experiment?.analysisTarget?.target;
+    const [chartTab, setChartTab] = useState(analysisTarget?.kind === "proportion" ? "dist" : "mean");
     const samplingResultsKey = useMemo(
         () => JSON.stringify(experiment?.samplingResults ?? null),
         [experiment?.samplingResults],
@@ -211,16 +214,14 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
     const ppsMonteCarloReplicates = analysisMetrics?.ppsMonteCarloReplicates ?? 128;
 
     useEffect(() => {
-        if (!numericFields.includes(selectedNumericField)) {
-            setSelectedNumericField(numericFields[0] ?? "");
-        }
-    }, [numericFields, selectedNumericField]);
+        const preferred = analysisTarget?.kind === "mean" ? analysisTarget.field : "";
+        setSelectedNumericField((current) => preferAnalysisField(numericFields, current, preferred));
+    }, [analysisTarget, numericFields]);
 
     useEffect(() => {
-        if (!categoricalFields.includes(selectedCategoricalField)) {
-            setSelectedCategoricalField(categoricalFields[0] ?? "");
-        }
-    }, [categoricalFields, selectedCategoricalField]);
+        const preferred = analysisTarget?.kind === "proportion" ? analysisTarget.field : "";
+        setSelectedCategoricalField((current) => preferAnalysisField(categoricalFields, current, preferred));
+    }, [analysisTarget, categoricalFields]);
 
     useEffect(() => {
         let cancelled = false;
@@ -556,7 +557,7 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                                 </TabsList>
 
                                 <TabsContent value="charts" className="mt-0 focus-visible:outline-none">
-                            <Tabs defaultValue="mean">
+                            <Tabs value={chartTab} onValueChange={setChartTab}>
                                 <TabsList className="bg-background border border-border p-1 rounded-xl w-full flex h-auto" data-testid="student-analysis-tabs">
                                     <TabsTrigger value="mean" data-testid="student-analysis-tab-mean" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">均值对比</TabsTrigger>
                                     <TabsTrigger value="dist" data-testid="student-analysis-tab-dist" className="flex-1 rounded-lg py-2 data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground">分布对比</TabsTrigger>

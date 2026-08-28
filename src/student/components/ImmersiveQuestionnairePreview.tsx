@@ -662,7 +662,7 @@ export function ImmersiveQuestionnairePreview({ questionnaire, onComplete, onClo
                                     data-testid="immersive-preview-return"
                                     className="bg-primary hover:bg-primary/90 text-primary-foreground text-base px-10 py-6 rounded-xl shadow-lg shadow-primary/20"
                                 >
-                                    返回问卷设计
+                                    返回问卷预试
                                 </Button>
                             </div>
                         )}

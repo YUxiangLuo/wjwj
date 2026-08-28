@@ -20,3 +20,10 @@ export const METHOD_META: Record<MethodKey, { label: string; color: string }> = 
 };
 
 export const POPULATION_SERIES: ChartSeries = { key: "population", label: "总体", color: "var(--chart-1)" };
+
+/** Keep a valid user choice; otherwise fall back to the analysis-target field, then the first field. */
+export function preferAnalysisField(fields: string[], current: string, preferred: string): string {
+    if (current && fields.includes(current)) return current;
+    if (preferred && fields.includes(preferred)) return preferred;
+    return fields[0] ?? "";
+}

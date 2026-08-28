@@ -6,6 +6,7 @@ import {
     performSystematicSampling,
     stratumKey,
 } from "../sampling";
+import { analysisTargetConflictsWithSizeField, resolveAnalysisTarget } from "../../lib/analysis-target";
 import { parseTopicFieldMapping } from "./population-data";
 import { getSamplingAcceptedRange } from "./sampling-tolerance";
 import type { MethodKey as SamplingMethod } from "../api-client";
@@ -134,6 +135,10 @@ export async function executeSamplingAction(params: {
             const mapping = parseTopicFieldMapping(params.fieldMapping);
             if (!mapping?.numeric?.includes(sizeField)) {
                 return { ok: false as const, errorMessage: "规模变量需为包含正数的数值字段" };
+            }
+            const resolvedTarget = resolveAnalysisTarget(params.fieldMapping);
+            if (resolvedTarget && !resolvedTarget.inferred && analysisTargetConflictsWithSizeField(resolvedTarget.target, sizeField)) {
+                return { ok: false as const, errorMessage: "PPS 规模变量不能与课题对照变量相同，请改用抽样前已知的辅助变量" };
             }
 
             const hasField = params.population.some((row) => Object.prototype.hasOwnProperty.call(row, sizeField));

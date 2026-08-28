@@ -1,3 +1,4 @@
+import { validateAnalysisTarget } from "../../lib/analysis-target";
 import { isRowEmpty } from "./file-utils";
 
 interface ParsedExcelFile {
@@ -14,6 +15,7 @@ interface TopicFieldMappingInput {
     stratified?: string[];
     numeric?: string[];
     others?: string[];
+    analysisTarget?: { kind?: string; field?: string; value?: string };
 }
 
 interface TopicWeightConfigInput {
@@ -88,6 +90,10 @@ export function validateTopicFieldMappingConfig(fieldMapping: unknown) {
     if (stratified.length < 1) return "至少选择1个分层变量";
     if (numeric.length < 1) return "至少选择1个数值变量";
     if (uniqueFields.size < 3) return "至少选择3个字段";
+    if (input.analysisTarget !== undefined) {
+        const analysisError = validateAnalysisTarget(input);
+        if (analysisError) return analysisError;
+    }
 
     return null;
 }
@@ -119,6 +125,8 @@ export function validateTopicPublishReadiness(topicInfo: TopicPublishReadyInput 
     if (!fieldMapping || validateTopicFieldMappingConfig(fieldMapping)) {
         return "课题需先完成字段映射后才能发布";
     }
+    const analysisError = validateAnalysisTarget(fieldMapping);
+    if (analysisError) return "课题需先指定对照变量后才能发布";
 
     const weightConfig = parseObjectLike<TopicWeightConfigInput>(topicInfo.weightConfig);
     if (!weightConfig || validateWeightConfig(weightConfig)) {

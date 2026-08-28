@@ -4,6 +4,7 @@ import { installDomGlobals } from "@/test-utils/dom";
 import type { SampleParams } from "../types";
 import { PrecisionPhase } from "./PrecisionPhase";
 import { FactorsPhase } from "./FactorsPhase";
+import { FormulaPhase } from "./FormulaPhase";
 import { QuizPhase } from "./QuizPhase";
 
 let restoreDom: (() => void) | null = null;
@@ -51,6 +52,26 @@ function proportionParams(overrides: Partial<SampleParams> = {}): SampleParams {
     };
 }
 
+test("FormulaPhase 小结把有限总体校正标为 n₂，并使用 deff 后再校正的恒等式", () => {
+    const view = render(
+        <FormulaPhase
+            step="summary"
+            params={meanParams({ populationSize: 200, populationVariance: 100, marginOfError: 2 })}
+            estimationType="mean"
+            populationVariance={100}
+            onEstimationTypeChange={() => {}}
+            onPopulationVarianceChange={() => {}}
+            onConfidenceLevelChange={() => {}}
+            onMarginOfErrorChange={() => {}}
+            onNext={() => {}}
+        />,
+    );
+    const text = view.container.textContent ?? "";
+    expect(text).toContain("n₂ =");
+    expect(text).toContain("200 − 1 +");
+    expect(text).not.toContain("n₁ =");
+});
+
 test("PrecisionPhase 在均值估计下展示均值公式而非比例公式", () => {
     const view = render(<PrecisionPhase params={meanParams()} onNext={() => {}} />);
     const text = view.container.textContent ?? "";
@@ -91,14 +112,12 @@ test("FactorsPhase 区分初始 n0 的 25 倍与有限总体实际倍数", () =>
     expect(text).toContain("实际约为 1.48 倍");
 });
 
-test("QuizPhase 不把三个域的样本量写成固定 2–3 倍", () => {
-    const view = render(<QuizPhase questionIndex={4} onNext={() => {}} onSkip={() => {}} />);
-    const text = view.container.textContent ?? "";
-    expect(text).toContain("共同计算");
-    expect(text).not.toContain("约 2-3 倍");
-});
-
-test("QuizPhase 将 25 倍结论限定在未校正的 n0 公式", () => {
-    const view = render(<QuizPhase questionIndex={6} onNext={() => {}} onSkip={() => {}} />);
-    expect(view.container.textContent).toContain("未考虑有限总体校正的初始样本量 n₀ 公式");
+test("QuizPhase 基础路径只考已出现的 SE、FPC 与 deff", () => {
+    const first = render(<QuizPhase questionIndex={0} onNext={() => {}} onSkip={() => {}} />);
+    expect(first.container.textContent).toContain("标准误差");
+    const second = render(<QuizPhase questionIndex={1} onNext={() => {}} onSkip={() => {}} />);
+    expect(second.container.textContent).toContain("总体规模从 2,000 增加到 200,000");
+    const third = render(<QuizPhase questionIndex={2} onNext={() => {}} onSkip={() => {}} />);
+    expect(third.container.textContent).toContain("deff = 2");
+    expect(third.container.textContent).not.toContain("奈曼");
 });

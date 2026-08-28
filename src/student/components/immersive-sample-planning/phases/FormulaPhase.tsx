@@ -11,6 +11,7 @@ interface Props {
     estimationType: EstimationType;
     populationVariance: number;
     onEstimationTypeChange: (v: EstimationType) => void;
+    estimationLocked?: boolean;
     onPopulationVarianceChange: (v: number) => void;
     onConfidenceLevelChange: (v: string) => void;
     onMarginOfErrorChange: (v: number) => void;
@@ -31,6 +32,7 @@ export function FormulaPhase({
     onEstimationTypeChange, onPopulationVarianceChange,
     onConfidenceLevelChange, onMarginOfErrorChange,
     onNext,
+    estimationLocked = false,
 }: Props) {
     const z = Z_VALUES[params.confidenceLevel] ?? 1.96;
     const isProportion = estimationType === "proportion";
@@ -50,18 +52,23 @@ export function FormulaPhase({
                 <div className="text-center space-y-3">
                     <h2 className="text-2xl font-bold text-foreground">现在进入样本量公式阶段</h2>
                     <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-                        先选这次要规划的估计目标，再设置置信水平。后面的公式、误差定义和示例都会跟着这里的选择变化。
+                        {estimationLocked
+                            ? "估计类型由课题对照变量锁定。下面设置置信水平；公式、误差定义和示例都按该类型计算。"
+                            : "先选这次要规划的估计目标，再设置置信水平。后面的公式、误差定义和示例都会跟着这里的选择变化。"}
                     </p>
                 </div>
 
                 <div className="space-y-4">
-                    <p className="text-center text-sm font-medium text-muted-foreground">先选择你要估计什么</p>
+                    <p className="text-center text-sm font-medium text-muted-foreground">
+                        {estimationLocked ? "本次规划的估计类型" : "先选择你要估计什么"}
+                    </p>
 
                     <div className="flex justify-center">
                         <div className="inline-flex rounded-xl border border-border bg-card p-1">
                             <button
                                 type="button"
-                                onClick={() => onEstimationTypeChange("proportion")}
+                                onClick={() => !estimationLocked && onEstimationTypeChange("proportion")}
+                                disabled={estimationLocked && !isProportion}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                                     isProportion
                                         ? "bg-background text-primary shadow-sm"
@@ -72,7 +79,8 @@ export function FormulaPhase({
                             </button>
                             <button
                                 type="button"
-                                onClick={() => onEstimationTypeChange("mean")}
+                                onClick={() => !estimationLocked && onEstimationTypeChange("mean")}
+                                disabled={estimationLocked && isProportion}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                                     !isProportion
                                         ? "bg-background text-primary shadow-sm"
@@ -305,10 +313,10 @@ export function FormulaPhase({
     });
 
     const n0Rounded = stepDetails.n0;
-    const n1Rounded = stepDetails.n1;
+    const nFpcRounded = stepDetails.n2;
     const n0RawDisplay = stepDetails.n0Raw.toFixed(2);
-    const n1RawDisplay = stepDetails.n1Raw.toFixed(2);
-    const n0MinusOneRawDisplay = Math.max(stepDetails.n0Raw - 1, 0).toFixed(2);
+    const nDeffRawDisplay = stepDetails.n1Raw.toFixed(2);
+    const nFpcRawDisplay = stepDetails.n2Raw.toFixed(2);
 
     return (
         <div className="space-y-8">
@@ -340,8 +348,8 @@ export function FormulaPhase({
                 <div className="border-t border-dashed border-border my-3" />
                 <FormulaLine
                     label="有限总体校正"
-                    formula={`n₁ = ${n0RawDisplay} / (1 + ${n0MinusOneRawDisplay} / ${params.populationSize.toLocaleString()})`}
-                    result={`≈ ${n1RawDisplay}，取 ${n1Rounded.toLocaleString()}`}
+                    formula={`n₂ = ${nDeffRawDisplay} × ${params.populationSize.toLocaleString()} / (${params.populationSize.toLocaleString()} − 1 + ${nDeffRawDisplay})`}
+                    result={`≈ ${nFpcRawDisplay}，取 ${nFpcRounded.toLocaleString()}`}
                     delay={400}
                 />
             </div>
@@ -368,7 +376,7 @@ export function FormulaPhase({
                 <p className="text-muted-foreground text-lg">
                     在无限大总体下先算得 <strong className="text-primary tabular-nums">{n0RawDisplay}</strong>，
                     规划时向上取整为 <strong className="text-primary tabular-nums">{n0Rounded.toLocaleString()}</strong> 人；
-                    再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，约为 <strong className="text-success tabular-nums">{n1RawDisplay}</strong>，规划时取 <strong className="text-success tabular-nums">{n1Rounded.toLocaleString()}</strong> 人。
+                    再考虑总体只有 <strong className="tabular-nums">{params.populationSize.toLocaleString()}</strong> 人后，约为 <strong className="text-success tabular-nums">{nFpcRawDisplay}</strong>，规划时取 <strong className="text-success tabular-nums">{nFpcRounded.toLocaleString()}</strong> 人。此步尚未计入设计效应与无回答率。
                 </p>
                 <p className="text-muted-foreground text-sm">
                     接下来单独看看“有限总体校正”为何会起作用。

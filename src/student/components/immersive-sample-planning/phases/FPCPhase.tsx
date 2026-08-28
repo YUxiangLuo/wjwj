@@ -20,7 +20,7 @@ const MAX_CUSTOM_POPULATION = 10_000_000;
 export function FPCPhase({ params, onNext }: Props) {
     const [customN, setCustomN] = useState<string>("");
 
-    const { n0Raw, n0, n1: fpcOnlyUserN } = calculateSampleSizeStepDetails({
+    const { n0Raw, n0, n2: fpcOnlyUserN } = calculateSampleSizeStepDetails({
         estimationType: params.estimationType,
         confidenceLevel: params.confidenceLevel,
         marginOfError: params.marginOfError,
@@ -79,14 +79,14 @@ export function FPCPhase({ params, onNext }: Props) {
                     把公式修正到你的真实总体
                 </h2>
                 <p className="text-muted-foreground">
-                    前一步得到的是无限总体下的初始样本量 n₀；这一步根据你的总体规模 N 做有限总体校正，得到更贴近真实调查的 n₁。
+                    前一步得到的是无限总体下的初始样本量 n₀；这一步根据你的总体规模 N 做有限总体校正，得到更贴近真实调查的 n₂。
                 </p>
             </div>
 
             <div className="mx-auto max-w-lg rounded-2xl border border-border bg-background shadow-sm overflow-hidden">
                 <div className="bg-card px-4 py-2.5 border-b border-border">
                     <div className="font-mono text-sm text-muted-foreground text-center">
-                        n₁ = n₀ / (1 + (n₀ − 1) / <strong className="text-auxiliary">N</strong>)　　n₀ ≈ {n0RawDisplay}
+                        n₂ = n<sub>deff</sub> × N / (N − 1 + n<sub>deff</sub>)　　n<sub>deff</sub> ≈ {n0RawDisplay}
                     </div>
                 </div>
 
@@ -165,7 +165,7 @@ export function FPCPhase({ params, onNext }: Props) {
                     （无限总体计算值约为 {n0RawDisplay}，规划时取 {n0.toLocaleString()}）
                 </p>
                 <p className="text-xs text-muted-foreground">
-                    这意味着：你现在已经得到可用于真实总体的基础样本量 n₁。
+                    这意味着：你现在已经得到可用于真实总体的基础样本量 n₂。
                 </p>
             </div>
 

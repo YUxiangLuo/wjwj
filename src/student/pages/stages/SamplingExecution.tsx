@@ -48,6 +48,24 @@ interface SamplingExecutionProps {
     onPrev: () => void;
 }
 
+const SAMPLING_ANIMATION_SKIP_KEY = "wj-skip-sampling-animation";
+
+function shouldSkipSamplingAnimation() {
+    try {
+        return sessionStorage.getItem(SAMPLING_ANIMATION_SKIP_KEY) === "1";
+    } catch {
+        return false;
+    }
+}
+
+function persistSkipSamplingAnimation() {
+    try {
+        sessionStorage.setItem(SAMPLING_ANIMATION_SKIP_KEY, "1");
+    } catch {
+        // ignore quota / private mode
+    }
+}
+
 const FIELD_LABELS: Record<string, string> = {
     "gender": "性别",
     "education": "学历",
@@ -111,7 +129,10 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             setPopulationStats(res.data.stats ?? {});
             setStratumNumericStats(res.data.stratumNumericStats ?? {});
             setNumericFields(res.data.numericFields ?? []);
-            setPpsEligibleFields(res.data.ppsEligibleFields ?? []);
+            const analysisField = experiment?.analysisTarget?.inferred
+                ? undefined
+                : experiment?.analysisTarget?.target.field;
+            setPpsEligibleFields((res.data.ppsEligibleFields ?? []).filter((field) => field !== analysisField));
             setStatsState("ready");
         }).catch((cause) => {
             if (!active) return;
@@ -123,7 +144,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
         return () => {
             active = false;
         };
-    }, [experiment?.taskId, statsReloadKey]);
+    }, [experiment?.analysisTarget?.target.field, experiment?.taskId, statsReloadKey]);
 
     useEffect(() => {
         if (!statsLoaded) return;
@@ -200,7 +221,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, simple: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSimple.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextSimple.sampleCount ?? dataArr.length });
-                setAnimatingMethod("simple");
+                if (!shouldSkipSamplingAnimation()) setAnimatingMethod("simple");
             } else {
                 toast.error(res.error?.message || "简单随机抽样执行失败");
                 setAnimatingMethod(null);
@@ -231,7 +252,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, systematic: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextSystematic.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextSystematic.sampleCount ?? dataArr.length });
-                setAnimatingMethod("systematic");
+                if (!shouldSkipSamplingAnimation()) setAnimatingMethod("systematic");
             } else {
                 toast.error(res.error?.message || "系统抽样执行失败");
                 setAnimatingMethod(null);
@@ -264,7 +285,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                 setExecutionTimes(prev => ({ ...prev, pps: Math.round(performance.now() - startTime) }));
                 const dataArr = (nextPps.data ?? []) as Array<Record<string, unknown>>;
                 setAnimationSampledData({ data: dataArr, total: nextPps.sampleCount ?? dataArr.length });
-                setAnimatingMethod("pps");
+                if (!shouldSkipSamplingAnimation()) setAnimatingMethod("pps");
             } else {
                 toast.error(res.error?.message || "PPS抽样执行失败");
                 setAnimatingMethod(null);
@@ -766,7 +787,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                             animationOpenerRef.current = opener;
                             setStratifiedAnimationLayers(animLayers);
                             setStratifiedAnimationStratifyBy(animStratifyBy);
-                            setAnimatingMethod("stratified");
+                            if (!shouldSkipSamplingAnimation()) setAnimatingMethod("stratified");
                         }}
                         buildSavePayload={() => undefined}
                         executionTime={executionTimes.stratified}
@@ -829,6 +850,7 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
                     stratifyBy={animatingMethod === "stratified" ? stratifiedAnimationStratifyBy : undefined}
                     layers={animatingMethod === "stratified" ? stratifiedAnimationLayers : undefined}
                     onClose={() => { setAnimatingMethod(null); setAnimationSampledData(null); }}
+                    onSkipRest={persistSkipSamplingAnimation}
                     restoreFocusTo={animationOpenerRef.current}
                     sampledData={animationSampledData?.data}
                     sampledTotal={animationSampledData?.total}

@@ -11,11 +11,15 @@ export function isSubmissionCompleteResponse(response: { success: boolean; error
     return response.success || response.error?.code === "ALREADY_SUBMITTED";
 }
 
-export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questionnaire" | "samplePlan" | "samplingResults" | "reportContent" | "populationSize">) {
+export function getPreviewSubmitBlocker(experiment: Pick<ExperimentData, "questionnaire" | "samplePlan" | "samplingResults" | "reportContent" | "populationSize" | "analysisTarget">) {
     const questionnaireError = validateQuestionnaireForSubmit(experiment.questionnaire);
     if (questionnaireError) return questionnaireError;
 
-    const samplePlanError = validateSamplePlanForSubmit(experiment.samplePlan, experiment.populationSize);
+    const samplePlanError = validateSamplePlanForSubmit(
+        experiment.samplePlan,
+        experiment.populationSize,
+        experiment.analysisTarget?.target.kind,
+    );
     if (samplePlanError) return samplePlanError;
 
     const targetSampleSize = getTargetSampleSizeFromSamplePlan(experiment.samplePlan);

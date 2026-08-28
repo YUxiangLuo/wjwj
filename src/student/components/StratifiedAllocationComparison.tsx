@@ -66,6 +66,7 @@ export function StratifiedAllocationComparison({
     onApplyAllocation,
 }: StratifiedAllocationComparisonProps) {
     const [targetVariable, setTargetVariable] = useState<string | null>(null);
+    const [showExtraMethods, setShowExtraMethods] = useState(false);
 
     // Extract per-layer std devs for the selected target variable
     const layerStdDevs = useMemo(() => {
@@ -107,8 +108,11 @@ export function StratifiedAllocationComparison({
 
     if (!layers.length) return null;
 
+    const primaryComparisons = comparisons.filter((comparison) => comparison.method === "proportional" || comparison.method === "neyman");
+    const extraComparisons = comparisons.filter((comparison) => comparison.method !== "proportional" && comparison.method !== "neyman");
+    const visibleComparisons = showExtraMethods ? comparisons : primaryComparisons;
     const bestMethod = canCompareVariance
-        ? comparisons.reduce((best, current) =>
+        ? visibleComparisons.reduce((best, current) =>
             current.totalVariance < best.totalVariance ? current : best
         )
         : null;
@@ -170,7 +174,7 @@ export function StratifiedAllocationComparison({
 
                 {/* 方法卡片 */}
                 <div className="space-y-3">
-                    {comparisons.map((comparison) => {
+                    {visibleComparisons.map((comparison) => {
                         const isBest = bestMethod != null && comparison.method === bestMethod.method;
 
                         return (
@@ -264,6 +268,17 @@ export function StratifiedAllocationComparison({
                         );
                     })}
                 </div>
+
+                {extraComparisons.length > 0 && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full border-auxiliary-border text-auxiliary-strong"
+                        onClick={() => setShowExtraMethods((value) => !value)}
+                    >
+                        {showExtraMethods ? "收起更多方法" : `更多方法（${extraComparisons.length}）`}
+                    </Button>
+                )}
 
                 {canCompareVariance && (
                 <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">

@@ -30,6 +30,7 @@ import { parseStoredJson } from "../experiment/serialization";
 import { ExperimentStatus } from "../experiment/status";
 import { submitStudentExperiment } from "../experiment/submit-service";
 import { getTargetSampleSizeFromSamplePlan } from "../experiment/submit-validation";
+import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { getStudentTaskAccessError } from "../experiment/task-access";
 import {
     findStudentTaskPopulationSize,
@@ -42,6 +43,25 @@ import { ensureTaskIsOpen, ensureTaskSubmissionWindow, hasTaskDeadlinePassed } f
 import { buildStageCompletionUpdates, buildStageReopenUpdates } from "../experiment/update-service";
 import { getOrCreateStudentExperiment } from "../experiment/workflow";
 import { requireAuth } from "./auth";
+
+const SAMPLING_PREVIEW_ROWS = 50;
+
+function previewSamplingResults(value: unknown) {
+    if (!value || typeof value !== "object") return value;
+    const results = value as Record<string, Record<string, unknown>>;
+    const previewed: Record<string, Record<string, unknown>> = {};
+    for (const [method, section] of Object.entries(results)) {
+        if (!section || typeof section !== "object") {
+            previewed[method] = section;
+            continue;
+        }
+        const data = section.data;
+        previewed[method] = Array.isArray(data) && data.length > SAMPLING_PREVIEW_ROWS
+            ? { ...section, data: data.slice(0, SAMPLING_PREVIEW_ROWS) }
+            : section;
+    }
+    return previewed;
+}
 
 function getTaskId(req: Request) {
     const id = Number.parseInt(getRouteParam(req, "id") ?? "", 10);
@@ -96,6 +116,7 @@ async function buildExperimentResponse(
 ) {
     const resolvedSamplingResults = await resolveExperimentSamplingResults(record, taskId, classId);
     if (!resolvedSamplingResults.ok) return resolvedSamplingResults;
+    const taskInfo = await findStudentTaskSamplingInfo(taskId, classId);
     return { ok: true as const, value: {
         id: record.id,
         taskId: record.taskId,
@@ -105,13 +126,14 @@ async function buildExperimentResponse(
         rejectReason: record.status === ExperimentStatus.REJECTED ? record.rejectReason : null,
         questionnaire: parseStoredJson(record.questionnaire),
         samplePlan: normalizeSamplePlanData(parseStoredJson(record.samplePlan), populationSize),
-        samplingResults: resolvedSamplingResults.value,
+        samplingResults: previewSamplingResults(resolvedSamplingResults.value),
         reportContent: record.reportContent,
         stage1CompletedAt: iso(record.stage1CompletedAt),
         stage2CompletedAt: iso(record.stage2CompletedAt),
         stage3CompletedAt: iso(record.stage3CompletedAt),
         stage4CompletedAt: iso(record.stage4CompletedAt),
         populationSize: populationSize ?? 10_000,
+        analysisTarget: resolveAnalysisTarget(taskInfo?.fieldMapping),
     } };
 }
 
@@ -292,6 +314,9 @@ const stageCompleteRoutes: RouteDefinition = {
         const openError = ensureTaskIsOpen(schedule?.openTime);
         if (openError) return error(openError.message, openError.code, openError.status);
         const populationSize = await findStudentTaskPopulationSize(taskId, auth.student.classId);
+        const fieldMapping = stage === 2
+            ? (await findStudentTaskSamplingInfo(taskId, auth.student.classId))?.fieldMapping
+            : undefined;
         let payload = clientPayload;
         let completionRecord = record;
         if (stage === 3) {
@@ -310,6 +335,7 @@ const stageCompleteRoutes: RouteDefinition = {
             payload,
             populationSize,
             deadlinePassed: hasTaskDeadlinePassed(schedule?.deadline),
+            fieldMapping,
         });
         if (!result.ok) return error(result.message, result.code, result.status);
 
@@ -427,7 +453,8 @@ const samplingActionRoutes: RouteDefinition = {
         );
         if (!persisted) return error("实验记录已发生变化，请刷新后重试", "VERSION_CONFLICT", 409);
 
-        return json({ success: true, result: result.result });
+        const previewRows = Array.isArray(result.result.data) ? result.result.data.slice(0, 50) : result.result.data;
+        return json({ success: true, result: { ...result.result, data: previewRows } });
     },
 };
 
@@ -487,6 +514,7 @@ const submitRoutes: RouteDefinition = {
                 topicName: taskInfo?.topicName ?? null,
                 populationSize: taskInfo?.populationSize ?? null,
                 weightConfig: taskInfo?.weightConfig,
+                fieldMapping: taskInfo?.fieldMapping,
             },
             student: { studentId: auth.student.studentId, name: auth.student.name },
         });

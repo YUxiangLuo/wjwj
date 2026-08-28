@@ -9,6 +9,7 @@ import { teacherApiRoutes } from "./teacher/api";
 import { registerLongRunningProcessSignals } from "./server/process-signals";
 import { getTemplateContentDisposition, getTemplateContentType, resolveTemplatePath } from "./server/template-files";
 import { closeDatabase } from "./db";
+import { acceptsGzip, createGzipCache } from "./server/asset-gzip";
 import { buildResponseHeaders, handleServerError, withSecurityHeaders } from "./server/http";
 import type { RouteDefinition, RouteHandler } from "./server/route-types";
 
@@ -17,6 +18,7 @@ type RouteRequest = Request & { params: Record<string, string> };
 const isProduction = process.env.NODE_ENV === "production";
 const distRoot = resolve(import.meta.dir, "../dist");
 const builtAssetNamePattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const gzipCache = createGzipCache();
 
 function securedResponse(body: BodyInit | null, init: ResponseInit = {}) {
   return new Response(body, {
@@ -63,11 +65,21 @@ async function productionAssetRoute(req: RouteRequest) {
   const file = Bun.file(resolve(distRoot, fileName));
   if (!(await file.exists())) return securedResponse("Not Found", { status: 404 });
 
-  const headers = {
+  const headers: Record<string, string> = {
     "Content-Type": file.type || "application/octet-stream",
     "Cache-Control": "public, max-age=31536000, immutable",
   };
-  return securedResponse(req.method === "HEAD" ? null : file, { headers });
+  const compressible = fileName.endsWith(".js") || fileName.endsWith(".css");
+  if (!compressible || !acceptsGzip(req.headers.get("accept-encoding"))) {
+    headers["Content-Length"] = String(file.size);
+    return securedResponse(req.method === "HEAD" ? null : file, { headers });
+  }
+
+  const compressed = gzipCache.get(fileName, new Uint8Array(await file.arrayBuffer()));
+  headers["Content-Encoding"] = "gzip";
+  headers["Content-Length"] = String(compressed.byteLength);
+  headers.Vary = "Accept-Encoding";
+  return securedResponse(req.method === "HEAD" ? null : compressed.buffer, { headers });
 }
 
 const adminRoute = isProduction ? productionPageRoute("admin.html") : adminPage;

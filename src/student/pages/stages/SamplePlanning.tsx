@@ -13,7 +13,7 @@ import {
 import { Users, ClipboardList, Sparkles, ChevronLeft, ChevronRight, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useExperiment } from "../ExperimentLayout";
-import type { SamplePlanData } from "../../api-client";
+import { experimentApi, type SamplePlanData } from "../../api-client";
 import {
     formatMarginOfError,
     getEstimationTypeLabel,
@@ -35,10 +35,43 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     const { populationSize, experiment, completeStage } = useExperiment();
 
     const N = populationSize;
+    const lockedEstimationType = experiment?.analysisTarget?.target.kind;
     const initialData = useMemo(
-        () => normalizeSamplePlanData(experiment?.samplePlan, N),
-        [experiment?.samplePlan, N],
+        () => {
+            const normalized = normalizeSamplePlanData(experiment?.samplePlan, N);
+            if (!normalized || !lockedEstimationType) return normalized;
+            return { ...normalized, estimationType: lockedEstimationType };
+        },
+        [experiment?.samplePlan, lockedEstimationType, N],
     );
+    const [targetVariance, setTargetVariance] = useState<number | null>(
+        experiment?.samplePlan?.populationVariance ?? null,
+    );
+    const needsTargetVariance = lockedEstimationType === "mean";
+    const [targetVarianceReady, setTargetVarianceReady] = useState(
+        !needsTargetVariance || (typeof experiment?.samplePlan?.populationVariance === "number" && experiment.samplePlan.populationVariance > 0),
+    );
+
+    useEffect(() => {
+        if (lockedEstimationType !== "mean" || !experiment?.taskId || !experiment.analysisTarget) {
+            setTargetVarianceReady(true);
+            return;
+        }
+        const field = experiment.analysisTarget.target.field;
+        let cancelled = false;
+        void experimentApi.getStats(experiment.taskId).then((res) => {
+            if (cancelled) return;
+            const variance = res.data?.populationNumericStats?.[field]?.variance;
+            if (typeof variance === "number" && Number.isFinite(variance) && variance > 0) {
+                setTargetVariance(variance);
+            }
+        }).catch(() => {}).finally(() => {
+            if (!cancelled) setTargetVarianceReady(true);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [experiment?.analysisTarget, experiment?.taskId, lockedEstimationType]);
 
     const [confirmNextOpen, setConfirmNextOpen] = useState(false);
     const [confirmNextSaving, setConfirmNextSaving] = useState(false);
@@ -50,15 +83,22 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
     // Display state — updated from planning flow completion or loaded from saved data
     const [displayData, setDisplayData] = useState<SamplePlanData | null>(initialData);
 
-    // Auto-open planning overlay on first visit (no saved data)
-    const [immersiveOpen, setImmersiveOpen] = useState(!initialData);
+    const [immersiveOpen, setImmersiveOpen] = useState(false);
+    const autoOpenedRef = useRef(false);
+
+    useEffect(() => {
+        if (autoOpenedRef.current || initialData || !targetVarianceReady) return;
+        autoOpenedRef.current = true;
+        setImmersiveOpen(true);
+    }, [initialData, targetVarianceReady]);
 
     const handleImmersiveComplete = useCallback((result: SampleParams) => {
+        const estimationType = lockedEstimationType ?? result.estimationType;
         setDisplayData({
-            estimationType: result.estimationType,
+            estimationType,
             confidenceLevel: result.confidenceLevel,
             marginOfError: result.marginOfError,
-            ...(result.estimationType === "mean" && result.populationVariance != null
+            ...(estimationType === "mean" && result.populationVariance != null
                 ? { populationVariance: result.populationVariance }
                 : {}),
             designEffect: result.designEffect,
@@ -68,7 +108,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             ...(result.advancedPlanSource ? { advancedPlanSource: result.advancedPlanSource } : {}),
         });
         setImmersiveOpen(false);
-    }, []);
+    }, [lockedEstimationType]);
 
     useEffect(() => {
         setDisplayData(initialData);
@@ -125,17 +165,18 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300" data-testid="student-stage-sample-plan">
-            {immersiveOpen && (
+            {immersiveOpen && targetVarianceReady && (
                 <ImmersiveSamplePlanning
                     populationSize={N}
                     initialConfidenceLevel={displayData?.confidenceLevel}
-                    initialMarginOfError={displayData?.marginOfError}
+                    initialMarginOfError={displayData?.marginOfError ?? (lockedEstimationType === "mean" ? 2 : 5)}
                     initialDesignEffect={displayData?.designEffect}
                     initialNonResponseRate={displayData?.nonResponseRate}
                     initialFinalSampleSize={displayData?.finalSampleSize}
-                    initialEstimationType={displayData?.estimationType ?? "proportion"}
-                    initialPopulationVariance={displayData?.populationVariance ?? 100}
+                    initialEstimationType={lockedEstimationType ?? displayData?.estimationType ?? "proportion"}
+                    initialPopulationVariance={targetVariance ?? displayData?.populationVariance ?? 100}
                     initialAdvancedPlanSource={displayData?.advancedPlanSource ?? null}
+                    estimationLocked={Boolean(lockedEstimationType)}
                     onComplete={handleImmersiveComplete}
                     onClose={() => setImmersiveOpen(false)}
                 />
@@ -213,6 +254,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             type="button"
                             variant="outline"
                             onClick={() => setImmersiveOpen(true)}
+                            disabled={!targetVarianceReady}
                             className="border-primary text-primary hover:bg-primary/10"
                         >
                             <Sparkles className="w-4 h-4 mr-1.5" />
@@ -243,11 +285,16 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                         <Button
                             type="button"
                             onClick={() => setImmersiveOpen(true)}
+                            disabled={!targetVarianceReady}
                             data-testid="student-sample-plan-start"
                             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 shadow-lg shadow-primary/20"
                         >
-                            <Sparkles className="w-4 h-4 mr-1.5" />
-                            开始规划样本量
+                            {targetVarianceReady ? (
+                                <Sparkles className="w-4 h-4 mr-1.5" />
+                            ) : (
+                                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                            )}
+                            {targetVarianceReady ? "开始规划样本量" : "正在加载对照变量方差…"}
                         </Button>
                     </CardContent>
                 </Card>

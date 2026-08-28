@@ -59,6 +59,30 @@ test("completing the current stage saves it and advances once", () => {
     expect(result.updates.samplePlan).toMatchObject({ finalSampleSize: 50 });
 });
 
+test("stage 2 rejects a proportion plan on a mean-locked topic", () => {
+    const result = buildStageCompletionUpdates({
+        experimentRecord: record(),
+        stage: 2,
+        payload: {
+            samplePlan: {
+                confidenceLevel: "95",
+                marginOfError: 5,
+                designEffect: 1,
+                nonResponseRate: 0,
+                recommendedSize: 132,
+                finalSampleSize: 50,
+            },
+        },
+        populationSize: 200,
+        deadlinePassed: false,
+        fieldMapping: {
+            numeric: ["每周学习时长"],
+            analysisTarget: { kind: "mean", field: "每周学习时长" },
+        },
+    });
+    expect(result).toMatchObject({ ok: false, message: "估计类型需与课题对照变量一致" });
+});
+
 test("a stage cannot be saved out of order", () => {
     const result = buildStageCompletionUpdates({
         experimentRecord: record(),

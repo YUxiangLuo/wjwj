@@ -62,7 +62,11 @@ export function validateQuestionnaireForSubmit(questionnaire: unknown): string |
 }
 
 /** 校验持久化后的 samplePlan 形状；不包含子总体/多变量等仅前端的辅助字段（那些字段也不会写入存储）。 */
-export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize: number | null): string | null {
+export function validateSamplePlanForSubmit(
+    samplePlan: unknown,
+    populationSize: number | null,
+    analysisTargetKind?: "mean" | "proportion" | null,
+): string | null {
     if (!samplePlan || typeof samplePlan !== "object") {
         return "请先完成样本量规划";
     }
@@ -72,6 +76,12 @@ export function validateSamplePlanForSubmit(samplePlan: unknown, populationSize:
         return "估计类型无效";
     }
     const estimationType = normalizeSamplePlanEstimationType(data.estimationType);
+    if (
+        (analysisTargetKind === "mean" || analysisTargetKind === "proportion")
+        && estimationType !== analysisTargetKind
+    ) {
+        return "估计类型需与课题对照变量一致";
+    }
     const confidenceLevel = toTrimmedString(data.confidenceLevel);
     const marginOfError = Number(data.marginOfError);
     const populationVariance = Number(data.populationVariance);

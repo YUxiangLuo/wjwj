@@ -187,17 +187,14 @@ export function DecisionPhase({
         if (isMeanEstimation) {
             return [
                 { label: "SE", value: metrics.standardError.toFixed(4) },
-                { label: "ME", value: formattedMeanMetricMargin },
-                { label: "n₁", value: Math.ceil(metrics.n1).toLocaleString() },
+                { label: "预期 ME", value: formattedMeanMetricMargin },
+                { label: "预期完成", value: Math.ceil(metrics.expectedCompleted).toLocaleString() },
             ];
         }
         return [
             { label: "SE", value: metrics.standardError.toFixed(4) },
-            { label: "CV", value: `${(metrics.relativeStandardError * 100).toFixed(1)}%` },
-            {
-                label: "CI",
-                value: `[${metrics.confidenceInterval.lower.toFixed(2)}, ${metrics.confidenceInterval.upper.toFixed(2)}]`,
-            },
+            { label: "预期半宽", value: `±${(metrics.marginOfError * 100).toFixed(2)}%` },
+            { label: "预期完成", value: Math.ceil(metrics.expectedCompleted).toLocaleString() },
         ];
     }, [formattedMeanMetricMargin, isMeanEstimation, metrics]);
 
@@ -368,10 +365,18 @@ export function DecisionPhase({
                     </div>
                     {recommendedSize >= N && N > 0 && (
                         <p className="text-xs text-warning text-center">
-                            已达全体发放上限（n = N = {N.toLocaleString()}）。
+                            已达全体发放上限（邀请 n = N = {N.toLocaleString()}）。
                             {params.nonResponseRate > 0
-                                ? "预期仍有无回答，因此不等于完整普查；继续膨胀也不能增加可联系人数。"
+                                ? `最多邀请 ${N.toLocaleString()} 人，预期完成约 ${Math.ceil(metrics?.expectedCompleted ?? 0).toLocaleString()} 人；不等于完整普查。`
                                 : "仅在全部单位完成回答时才是完整普查。"}
+                        </p>
+                    )}
+                    {metrics?.precisionUnreachable && (
+                        <p className="text-xs text-destructive text-center">
+                            目标精度不可达。当前预期误差限约 {isMeanEstimation
+                                ? formattedMeanMetricMargin
+                                : `±${(metrics.marginOfError * 100).toFixed(2)}%`}
+                            ，大于目标 {currentMarginValue}。
                         </p>
                     )}
                     <div className="grid grid-cols-3 gap-3 w-full text-center">
@@ -401,11 +406,12 @@ export function DecisionPhase({
             )}
 
             {/* Advanced tools */}
-            <div className="rounded-2xl border border-border bg-background p-5 shadow-sm space-y-3">
-                <div className="flex items-center gap-2">
+            <details className="rounded-2xl border border-border bg-background p-5 shadow-sm">
+                <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-foreground/90">
                     <Wrench className="w-4 h-4 text-muted-foreground" />
-                    <h3 className="text-sm font-semibold text-foreground/90">高级工具（特殊规划场景）</h3>
-                </div>
+                    高级工具（可选）
+                </summary>
+                <div className="mt-3 space-y-3">
                 <div className="grid grid-cols-4 gap-2">
                     {ADVANCED_TAB_CONFIG.map(({ key, label }) => {
                         const isActiveSource = advancedPlanSource === key;
@@ -438,7 +444,8 @@ export function DecisionPhase({
                         );
                     })}
                 </div>
-            </div>
+                </div>
+            </details>
 
             {/* Advanced tool Dialog */}
             <Dialog open={activeAdvancedTab !== null} onOpenChange={(open) => { if (!open) setActiveAdvancedTab(null); }}>

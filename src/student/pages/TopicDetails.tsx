@@ -12,7 +12,7 @@ import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-de
 import { parseDeadline, formatDateTimeDisplay, getRemainingDeadlineSummary } from "@/utils/format";
 import { notifyAuthExpiredFromResponse } from "@/lib/auth-expired";
 
-const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
+const stageNames = ["问卷预试", "样本量规划", "抽样执行", "分析与报告"];
 
 const statusConfig: Record<TaskStatus, { label: string; intent: StatusBadgeIntent }> = {
     not_started: { label: "未开始", intent: "neutral" },

@@ -143,7 +143,7 @@ export function QuestionnaireDesign() {
         { num: 1, title: "欢迎语设置" },
         { num: 2, title: "题目设计" },
         { num: 3, title: "结束语设置" },
-        { num: 4, title: "模拟填写" },
+        { num: 4, title: "认知预试" },
     ];
 
     // Question management
@@ -573,7 +573,7 @@ export function QuestionnaireDesign() {
                                     <p>• 每题只询问一个明确概念，并说明必要的时间范围。</p>
                                     <p>• 使用目标人群能理解的简短、中性措辞，避免诱导。</p>
                                     <p>• 封闭题选项应尽量互斥、穷尽并按逻辑排序。</p>
-                                    <p>• 题型和题量应由测量目标决定；提交前请进行模拟填写或预测试。</p>
+                                    <p>• 题型和题量应由测量目标决定；提交前请完成一次认知预试。预试答案不进入抽样或分析。</p>
                                 </CardContent>
                             </Card>
                         </div>
@@ -633,7 +633,7 @@ export function QuestionnaireDesign() {
                                                 <CheckCircle className="w-5 h-5 text-success" />
                                             </div>
                                             <div>
-                                                <h3 className="text-base font-semibold text-success">模拟填写已完成</h3>
+                                                <h3 className="text-base font-semibold text-success">认知预试已完成</h3>
                                                 <p className="text-sm text-muted-foreground">您已体验了受访者视角的问卷填写过程</p>
                                             </div>
                                         </div>
@@ -644,7 +644,7 @@ export function QuestionnaireDesign() {
                                             className="border-input text-foreground/90 hover:bg-muted hover:text-foreground shrink-0"
                                         >
                                             <RotateCcw className="w-4 h-4 mr-2" />
-                                            重新模拟填写
+                                            重新预试
                                         </Button>
                                     </div>
                                 </CardContent>
@@ -656,7 +656,7 @@ export function QuestionnaireDesign() {
                                                 <Play className="w-5 h-5 text-primary" />
                                             </div>
                                             <div>
-                                                <h3 className="text-base font-semibold text-primary">模拟填写体验</h3>
+                                                <h3 className="text-base font-semibold text-primary">认知预试</h3>
                                                 <p className="text-xs text-primary mt-0.5">请以受访者身份完整体验一次问卷填写</p>
                                             </div>
                                         </div>
@@ -675,7 +675,7 @@ export function QuestionnaireDesign() {
                                                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 px-8"
                                             >
                                                 <Play className="w-5 h-5 mr-2" />
-                                                开始模拟填写
+                                                开始认知预试
                                             </Button>
                                             {!basicValidationPassed && (
                                                 <p className="text-xs text-warning">请先完成下方校验清单中的必填项</p>
@@ -751,7 +751,7 @@ export function QuestionnaireDesign() {
                                         <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
                                     )}
                                     <span className={`text-sm ${validation.previewCompleted ? "text-success" : "text-destructive"}`}>
-                                        模拟填写：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次）"}
+                                        认知预试：{validation.previewCompleted ? "已完成" : "未完成（必须以受访者身份完整填写一次；答案不进入估计）"}
                                     </span>
                                 </div>
                                 {requiredMissingCount === 0 ? (
@@ -927,7 +927,7 @@ export function QuestionnaireDesign() {
             <AlertDialog open={confirmNextOpen} onOpenChange={setConfirmNextOpen}>
                 <AlertDialogContent className="bg-card border-border text-foreground" data-testid="student-questionnaire-complete-dialog">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-foreground">确认完成问卷设计</AlertDialogTitle>
+                        <AlertDialogTitle className="text-foreground">确认完成问卷预试</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground text-base leading-relaxed">
                             确认后问卷设计将被<strong className="text-primary">锁定</strong>。如需修改，您需要返回本阶段重新设计，届时后续阶段的数据将被<strong className="text-destructive">清空</strong>。
                             <br /><br />

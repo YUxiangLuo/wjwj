@@ -11,15 +11,93 @@ function normalizeMarginOfError(value: number): number {
 
 export interface SampleSizeMetrics {
     n0: number;              // 初始样本量（无限总体）
-    n1: number;              // 有限总体校正后
-    n: number;              // 最终样本量（不超过 N）
+    nDeff: number;           // n₀ × deff
+    nFpc: number;            // 对 deff 调整后的样本量做有限总体校正
+    n1: number;              // 预期完成样本量（与 expectedCompleted 相同，供旧 UI 读取）
+    n: number;              // 计划邀请数（不超过 N）
+    expectedCompleted: number;
     cappedAtPopulation: boolean;
-    standardError: number;   // 标准误差 SE
-    relativeStandardError: number; // 相对标准误差 RSE (CV)
-    marginOfError: number;   // 误差限（绝对值）
-    confidenceInterval: {    // 置信区间
+    precisionUnreachable: boolean;
+    targetMarginOfError: number;
+    standardError: number;   // 按预期完成量与 deff 计算的 SE
+    relativeStandardError: number;
+    marginOfError: number;   // 预期误差限（绝对值）
+    /** 规划假设下的预期区间，不是观测后的置信区间。 */
+    confidenceInterval: {
         lower: number;
         upper: number;
+    };
+}
+
+export interface DesignAdjustedSampleSize {
+    n0Raw: number;
+    nDeffRaw: number;
+    nFpcRaw: number;
+    nInviteRaw: number;
+    n0: number;
+    nDeff: number;
+    nFpc: number;
+    nInvite: number;
+    expectedCompleted: number;
+    cappedAtPopulation: boolean;
+}
+
+function emptyDesignAdjustedSampleSize(): DesignAdjustedSampleSize {
+    return {
+        n0Raw: 0,
+        nDeffRaw: 0,
+        nFpcRaw: 0,
+        nInviteRaw: 0,
+        n0: 0,
+        nDeff: 0,
+        nFpc: 0,
+        nInvite: 0,
+        expectedCompleted: 0,
+        cappedAtPopulation: false,
+    };
+}
+
+function normalizeDeff(deff: unknown): number {
+    const value = Number(deff);
+    return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
+function normalizeNrr(nrr: unknown): number {
+    const value = Number(nrr);
+    return Number.isFinite(value) && value > 0 && value < 1 ? value : 0;
+}
+
+/**
+ * 先按设计效应膨胀，再对膨胀后的目标完成量做有限总体校正，最后按无回答率换算邀请数。
+ * n_fpc = n_deff × N / (N − 1 + n_deff)，与 ME² = Z² deff v / n × (N−n)/(N−1) 联立结果一致。
+ */
+export function applyDesignAdjustments(
+    n0Raw: number,
+    populationSize: number,
+    deff: unknown,
+    nrr: unknown,
+): DesignAdjustedSampleSize {
+    const N = Math.floor(populationSize);
+    if (!(n0Raw > 0) || !(N > 0)) return emptyDesignAdjustedSampleSize();
+
+    const deffValue = normalizeDeff(deff);
+    const nrrValue = normalizeNrr(nrr);
+    const nDeffRaw = n0Raw * deffValue;
+    const nFpcRaw = nDeffRaw * N / (N - 1 + nDeffRaw);
+    const nInviteRaw = nrrValue > 0 ? nFpcRaw / (1 - nrrValue) : nFpcRaw;
+    const nInvite = capSampleSizeAtPopulation(nInviteRaw, N);
+
+    return {
+        n0Raw,
+        nDeffRaw,
+        nFpcRaw,
+        nInviteRaw,
+        n0: Math.ceil(n0Raw),
+        nDeff: Math.ceil(nDeffRaw),
+        nFpc: Math.ceil(nFpcRaw),
+        nInvite,
+        expectedCompleted: nInvite * (1 - nrrValue),
+        cappedAtPopulation: nInviteRaw > N,
     };
 }
 
@@ -60,25 +138,9 @@ export function calculateFinitePopulationSampleSize(params: {
     const z = Z_VALUES[clStr];
     const e = normalizeMarginOfError(Number(params.marginOfError));
 
-    const N = params.populationSize;
     const p = params.p ?? 0.5;
-
-    // Basic sample size with finite population correction
     const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
-    let n = n0 / (1 + (n0 - 1) / N);
-    // Apply design effect (deff): accounts for complex sampling designs (e.g., cluster sampling)
-    const deff = Number(params.designEffect);
-    if (Number.isFinite(deff) && deff > 0) {
-        n = n * deff;
-    }
-
-    // Apply non-response rate adjustment: n_final = n / (1 - nonResponseRate)
-    const nrr = Number(params.nonResponseRate);
-    if (Number.isFinite(nrr) && nrr > 0 && nrr < 1) {
-        n = n / (1 - nrr);
-    }
-
-    return capSampleSizeAtPopulation(n, N);
+    return applyDesignAdjustments(n0, params.populationSize, params.designEffect, params.nonResponseRate).nInvite;
 }
 
 export function calculateSampleSizeMetrics(params: {
@@ -100,60 +162,34 @@ export function calculateSampleSizeMetrics(params: {
 
     const N = params.populationSize;
     const p = params.p ?? 0.5;
-
-    // 初始样本量（无限总体）
+    const deff = normalizeDeff(params.designEffect);
     const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
-    
-    // 有限总体校正
-    const n1 = n0 / (1 + (n0 - 1) / N);
-    let n = n1;
-
-    // 设计效应调整
-    const deff = Number(params.designEffect);
-    if (Number.isFinite(deff) && deff > 0) {
-        n = n * deff;
-    }
-
-    // 无回答率调整
-    const nrr = Number(params.nonResponseRate);
-    if (Number.isFinite(nrr) && nrr > 0 && nrr < 1) {
-        n = n / (1 - nrr);
-    }
-
-    const uncappedN = Math.ceil(n);
-    const finalN = capSampleSizeAtPopulation(n, N);
-
-    // 精度指标基于有效样本量 n1（FPC 校正后、deff/NRR 调整前）。
-    // 原因：n_final = n1 × deff / (1-NRR)，其中 deff 和 NRR 是膨胀因子；
-    // 实际回收有效样本的等效精度仍为 n1（deff 抵消群内相关，NRR 补偿丢失），
-    // 故 SE/CV 应反映设计意图下的精度，而非原始发放样本量。
-    const effectiveN = Math.ceil(n1);
-
-    // p(1-p) 按分母 N 的有限总体方差定义，与 Cochran 的 (n₀-1)/N 校正保持一致。
-    const fpc = finitePopulationVarianceFactor(N, effectiveN);
-    const standardError = Math.sqrt(p * (1 - p) / effectiveN * fpc);
-    
-    // 相对标准误差 RSE (CV) = SE / p
+    const adjusted = applyDesignAdjustments(n0, N, deff, params.nonResponseRate);
+    const expectedCompleted = adjusted.expectedCompleted;
+    const fpc = finitePopulationVarianceFactor(N, expectedCompleted);
+    const standardError = expectedCompleted > 0
+        ? Math.sqrt(deff * p * (1 - p) / expectedCompleted * fpc)
+        : 0;
     const relativeStandardError = p > 0 ? standardError / p : 0;
-    
-    // 误差限 = z * SE
     const marginOfErrorAbs = z * standardError;
-    
-    // 置信区间
-    const confidenceInterval = {
-        lower: Math.max(0, p - marginOfErrorAbs),
-        upper: Math.min(1, p + marginOfErrorAbs),
-    };
 
     return {
         n0,
-        n1,
-        n: finalN,
-        cappedAtPopulation: uncappedN > Math.floor(N),
+        nDeff: adjusted.nDeff,
+        nFpc: adjusted.nFpc,
+        n1: expectedCompleted,
+        n: adjusted.nInvite,
+        expectedCompleted,
+        cappedAtPopulation: adjusted.cappedAtPopulation,
+        precisionUnreachable: adjusted.cappedAtPopulation && marginOfErrorAbs > e + 1e-12,
+        targetMarginOfError: e,
         standardError,
         relativeStandardError,
         marginOfError: marginOfErrorAbs,
-        confidenceInterval,
+        confidenceInterval: {
+            lower: Math.max(0, p - marginOfErrorAbs),
+            upper: Math.min(1, p + marginOfErrorAbs),
+        },
     };
 }
 
@@ -261,19 +297,14 @@ export function attachCalculatedSampleSize(samplePlan: Record<string, any>, popu
 
 // ========== 均值估计样本量计算（课件第16页） ==========
 
-/** 均值估计 n₀ 计算的内部核心（无副作用，无参数校验）。 */
+/** 均值估计 n₀ 及 deff → FPC → 邀请数（无副作用，无参数校验）。 */
 function meanEstimationCore(z: number, sigma2: number, e: number, N: number, deff: number, nrr: number) {
     const n0 = (z * z * sigma2) / (e * e);
-    const n1 = n0 / (1 + (n0 - 1) / N);
-    let n = n1;
-    if (Number.isFinite(deff) && deff > 0) n *= deff;
-    if (Number.isFinite(nrr) && nrr > 0 && nrr < 1) n /= (1 - nrr);
-    const uncappedN = Math.ceil(n);
+    const adjusted = applyDesignAdjustments(n0, N, deff, nrr);
     return {
+        ...adjusted,
         n0,
-        n1,
-        n: capSampleSizeAtPopulation(n, N),
-        cappedAtPopulation: uncappedN > Math.floor(N),
+        n: adjusted.nInvite,
     };
 }
 
@@ -305,8 +336,7 @@ function parseMeanEstimationParams(params: {
  * 均值估计下的样本量计算（简单随机抽样）
  *
  * 无限总体: n₀ = Z² × σ² / e²
- * 有限总体: n₁ = n₀ / (1 + (n₀ - 1) / N)
- * 最终:     n  = n₁ × deff / (1 - NRR)
+ * 随后先乘 deff，再做有限总体校正，最后按无回答率换算邀请数。
  *
  * 其中 σ² 为按分母 N 定义的有限总体方差估计值，e 为绝对误差限（与均值同单位）。
  */
@@ -325,9 +355,14 @@ export function calculateMeanEstimationSampleSize(params: {
 
 export interface MeanSampleSizeMetrics {
     n0: number;
+    nDeff: number;
+    nFpc: number;
     n1: number;
     n: number;
+    expectedCompleted: number;
     cappedAtPopulation: boolean;
+    precisionUnreachable: boolean;
+    targetMarginOfError: number;
     standardError: number;
     relativeStandardError: number;
     marginOfError: number;
@@ -351,31 +386,35 @@ export function calculateMeanSampleSizeMetrics(params: {
     if (!parsed) return null;
     const { z, sigma2, N, deff, nrr } = parsed;
 
-    const { n0, n1, n: finalN, cappedAtPopulation } = meanEstimationCore(z, sigma2, parsed.e, N, deff, nrr);
-    const effectiveN = Math.ceil(n1);
-
-    const fpc = finitePopulationVarianceFactor(N, effectiveN);
-    const standardError = Math.sqrt(sigma2 / effectiveN * fpc);
+    const adjusted = meanEstimationCore(z, sigma2, parsed.e, N, deff, nrr);
+    const deffValue = normalizeDeff(deff);
+    const expectedCompleted = adjusted.expectedCompleted;
+    const fpc = finitePopulationVarianceFactor(N, expectedCompleted);
+    const standardError = expectedCompleted > 0
+        ? Math.sqrt(deffValue * sigma2 / expectedCompleted * fpc)
+        : 0;
 
     const mean = params.estimatedMean ?? 0;
     const relativeStandardError = mean !== 0 ? standardError / Math.abs(mean) : 0;
-
     const marginOfErrorAbs = z * standardError;
 
-    const confidenceInterval = {
-        lower: mean - marginOfErrorAbs,
-        upper: mean + marginOfErrorAbs,
-    };
-
     return {
-        n0,
-        n1,
-        n: finalN,
-        cappedAtPopulation,
+        n0: adjusted.n0,
+        nDeff: adjusted.nDeff,
+        nFpc: adjusted.nFpc,
+        n1: expectedCompleted,
+        n: adjusted.nInvite,
+        expectedCompleted,
+        cappedAtPopulation: adjusted.cappedAtPopulation,
+        precisionUnreachable: adjusted.cappedAtPopulation && marginOfErrorAbs > parsed.e + 1e-12,
+        targetMarginOfError: parsed.e,
         standardError,
         relativeStandardError,
         marginOfError: marginOfErrorAbs,
-        confidenceInterval,
+        confidenceInterval: {
+            lower: mean - marginOfErrorAbs,
+            upper: mean + marginOfErrorAbs,
+        },
     };
 }
 
@@ -383,9 +422,9 @@ export function calculateMeanSampleSizeMetrics(params: {
 
 export interface SampleSizeSteps {
     n0: number; // Step 1: 初始样本量
-    n1: number; // Step 2: 有限总体校正后
-    n2: number; // Step 3: 设计效应调整后
-    n3: number; // Step 4: 无回答率调整后（最终值）
+    n1: number; // Step 2: 设计效应调整后
+    n2: number; // Step 3: 有限总体校正后
+    n3: number; // Step 4: 邀请数（封顶后）
     formulaLabel: string;
 }
 
@@ -397,7 +436,7 @@ export interface SampleSizeStepDetails extends SampleSizeSteps {
 }
 
 /**
- * 返回四步法（n₀ → FPC → deff → NRR）各阶段的整数样本量。
+ * 返回四步法（n₀ → deff → FPC → 邀请数）各阶段的整数样本量。
  * 供 FourStepPhase 展示使用，避免 UI 层重复实现公式。
  *
  * 中间步用各自 raw 值的 ceil 仅供展示；下一步仍用 raw 往下传。
@@ -458,19 +497,17 @@ export function calculateSampleSizeStepDetails(params: {
         formulaLabel = "Z²p(1-p)/E²";
     }
 
-    const n1Raw = n0Raw / (1 + (n0Raw - 1) / N);
-    const n2Raw = n1Raw * deff;
-    const n3Raw = nrr > 0 && nrr < 1 ? n2Raw / (1 - nrr) : n2Raw;
+    const adjusted = applyDesignAdjustments(n0Raw, N, deff, nrr);
 
     return {
-        n0Raw,
-        n1Raw,
-        n2Raw,
-        n3Raw,
-        n0: Math.ceil(n0Raw),
-        n1: Math.ceil(n1Raw),
-        n2: Math.ceil(n2Raw),
-        n3: capSampleSizeAtPopulation(n3Raw, N),
+        n0Raw: adjusted.n0Raw,
+        n1Raw: adjusted.nDeffRaw,
+        n2Raw: adjusted.nFpcRaw,
+        n3Raw: adjusted.nInviteRaw,
+        n0: adjusted.n0,
+        n1: adjusted.nDeff,
+        n2: adjusted.nFpc,
+        n3: adjusted.nInvite,
         formulaLabel,
     };
 }
@@ -524,18 +561,11 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
     // z 不参与样本量计算，仅用于 UI 展示（供用户换算置信区间相对半宽 = Z × CV(ȳ)）
     const z = zForConfidenceLevel(String(params.confidenceLevel));
 
-    // 基础样本量: n₀ = CV_pop² / targetCV²
     const n0 = Math.pow(estimatedCV, 2) / Math.pow(targetCV, 2);
-    const finitePopulationSampleSize = n0 / (1 + (n0 - 1) / N);
-    const requestedGrossSampleSize = finitePopulationSampleSize * deff / (1 - nrr);
-    const requiredSampleSize = Math.min(Math.max(1, Math.ceil(requestedGrossSampleSize)), N);
-    const cappedAtPopulation = requiredSampleSize >= N;
-
-    // 发放量被 N 截断后仍需应用回答率；“向全体发放”不等于观测到完整总体。
-    const expectedRespondentSampleSize = Math.min(N, requiredSampleSize * (1 - nrr));
-    const fpc = N > 1
-        ? Math.max(0, (N - expectedRespondentSampleSize) / (N - 1))
-        : Math.max(0, 1 - expectedRespondentSampleSize / N);
+    const adjusted = applyDesignAdjustments(n0, N, deff, nrr);
+    const requiredSampleSize = Math.max(1, adjusted.nInvite);
+    const expectedRespondentSampleSize = adjusted.expectedCompleted;
+    const fpc = finitePopulationVarianceFactor(N, expectedRespondentSampleSize);
     const achievedCV = expectedRespondentSampleSize > 0
         ? estimatedCV * Math.sqrt(deff * fpc / expectedRespondentSampleSize)
         : Number.POSITIVE_INFINITY;
@@ -544,9 +574,9 @@ export function calculateSampleSizeByCV(params: CVBasedSampleSizeParams): CVBase
         requiredSampleSize,
         expectedRespondentSampleSize,
         achievedCV,
-        cappedAtPopulation,
+        cappedAtPopulation: adjusted.cappedAtPopulation,
         z,
-        formula: "n₀=CV_pop²/CV_target²；FPC 后按 deff 调整，再除以 (1−NRR) 得发放量",
+        formula: "n₀=CV_pop²/CV_target²；先按 deff 调整，再做 FPC，再除以 (1−NRR) 得发放量",
     };
 }
 
@@ -584,17 +614,15 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
     const e = normalizeMarginOfError(params.marginOfError);
     const p = params.p ?? 0.5;
     
-    // 基础样本量（简单随机抽样，含有限总体校正）
     const n0 = (Math.pow(z, 2) * p * (1 - p)) / Math.pow(e, 2);
-    const n_srs = n0 / (1 + (n0 - 1) / params.populationSize);
-    
-    // 整群抽样样本量 = 有限总体校正后样本量 × deff / (1 - nrr)
-    const nrr = params.nonResponseRate ?? 0;
-    const n_cluster = nrr > 0 && nrr < 1
-        ? n_srs * params.deff / (1 - nrr)
-        : n_srs * params.deff;
+    const nCluster = applyDesignAdjustments(
+        n0,
+        params.populationSize,
+        params.deff,
+        params.nonResponseRate,
+    ).nInvite;
     const maxClusters = Math.max(1, Math.floor(params.populationSize / params.clusterSize) || 1);
-    const requiredClusters = Math.min(Math.max(1, Math.ceil(n_cluster / params.clusterSize)), maxClusters);
+    const requiredClusters = Math.min(Math.max(1, Math.ceil(nCluster / params.clusterSize)), maxClusters);
     
     // 反推群内相关系数ρ（用于教育展示）
     // deff = 1 + (M-1)×ρ => ρ = (deff - 1) / (M - 1)

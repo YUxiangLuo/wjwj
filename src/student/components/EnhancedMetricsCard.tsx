@@ -48,11 +48,16 @@ export function EnhancedMetricsCard({
                     </Badge>
                 </div>
                 <CardDescription className="text-primary">
-                    基于简单随机抽样等效样本量 (n₁={Math.ceil(metrics.n1)}) 的精度估计
+                    基于预期完成样本量（{Math.ceil(metrics.expectedCompleted).toLocaleString()}）与设计效应后的规划精度
                 </CardDescription>
                 {metrics.cappedAtPopulation && (
                     <p className="text-xs text-warning mt-1">
-                        按公式膨胀后的发放量已超过总体，推荐值已封顶为全体发放（n = {metrics.n}）；若存在无回答，这不等于完整普查或零误差。
+                        邀请数已封顶为全体发放（n = {metrics.n}）；预期完成约 {Math.ceil(metrics.expectedCompleted).toLocaleString()} 人。若存在无回答，这不等于完整普查或零误差。
+                    </p>
+                )}
+                {metrics.precisionUnreachable && (
+                    <p className="text-xs text-destructive mt-1">
+                        目标精度不可达：预期误差限大于设定目标。
                     </p>
                 )}
                 {sizeDeviation && (
@@ -97,10 +102,10 @@ export function EnhancedMetricsCard({
                                     <span className="text-xs text-primary">等效样本量</span>
                                 </div>
                                 <div className="text-lg font-bold text-primary">
-                                    {Math.ceil(metrics.n1).toLocaleString()}
+                                    {Math.ceil(metrics.expectedCompleted).toLocaleString()}
                                 </div>
                                 <div className="text-xs text-primary mt-1">
-                                    有限总体校正后的 n₁
+                                    预期完成样本量
                                 </div>
                             </div>
                         </>
@@ -123,7 +128,7 @@ export function EnhancedMetricsCard({
                 {isMeanEstimation ? (
                     <div className="rounded-xl border border-primary bg-background p-4">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="text-sm font-medium text-primary">{confidenceLevel}% 区间形式</span>
+                            <span className="text-sm font-medium text-primary">{confidenceLevel}% 规划假设下的预期半宽</span>
                             <Badge variant="outline" className="text-xs text-primary border-primary">
                                 均值估计
                             </Badge>
@@ -140,7 +145,7 @@ export function EnhancedMetricsCard({
                 ) : (
                     <div className="rounded-xl border border-primary bg-background p-4">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="text-sm font-medium text-primary">{confidenceLevel}% 理论误差带</span>
+                            <span className="text-sm font-medium text-primary">{confidenceLevel}% 规划假设下的预期误差带</span>
                             <Badge variant="outline" className="text-xs text-primary border-primary">
                                 比例估计
                             </Badge>
@@ -182,11 +187,19 @@ export function EnhancedMetricsCard({
                             <span className="text-foreground/90">{Math.ceil(metrics.n0).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">有限总体校正 n₁</span>
-                            <span className="text-foreground/90">{Math.ceil(metrics.n1).toLocaleString()}</span>
+                            <span className="text-muted-foreground">设计效应后 n₁</span>
+                            <span className="text-foreground/90">{metrics.nDeff.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">有限总体校正 n₂</span>
+                            <span className="text-foreground/90">{metrics.nFpc.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">预期完成</span>
+                            <span className="text-foreground/90">{Math.ceil(metrics.expectedCompleted).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between font-medium">
-                            <span className="text-primary">最终样本量 n</span>
+                            <span className="text-primary">计划邀请数 n</span>
                             <span className="text-primary">{metrics.n.toLocaleString()}</span>
                         </div>
                     </div>

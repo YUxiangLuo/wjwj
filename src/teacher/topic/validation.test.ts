@@ -96,10 +96,22 @@ describe("topic validation helpers", () => {
         expect(
             validateTopicPublishReadiness({
                 excelFilePath: "/storage/uploads/topic.xlsx",
-                fieldMapping: JSON.stringify({ identifier: "id", stratified: ["gender"], numeric: ["score"] }),
+                fieldMapping: JSON.stringify({
+                    identifier: "id",
+                    stratified: ["gender"],
+                    numeric: ["score"],
+                    analysisTarget: { kind: "mean", field: "score" },
+                }),
                 weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
             })
         ).toBeNull();
+        expect(
+            validateTopicPublishReadiness({
+                excelFilePath: "/storage/uploads/topic.xlsx",
+                fieldMapping: JSON.stringify({ identifier: "id", stratified: ["gender"], numeric: ["score"] }),
+                weightConfig: JSON.stringify({ questionnaire: 30, process: 30, report: 40 }),
+            })
+        ).toBe("课题需先指定对照变量后才能发布");
     });
 
     test("validateTopicAttachmentUpload enforces type and size limits", () => {

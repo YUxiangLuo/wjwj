@@ -100,13 +100,32 @@ describe("validateSamplePlanForSubmit", () => {
     test("服务端校验设计效应、无回答率、高级来源和建议样本量", () => {
         expect(validateSamplePlanForSubmit(plan({ designEffect: 0.49 }), 200)).toBe("设计效应需在 0.5～5.0 之间");
         expect(validateSamplePlanForSubmit(plan({ designEffect: 5.1 }), 200)).toBe("设计效应需在 0.5～5.0 之间");
-        expect(validateSamplePlanForSubmit(plan({ designEffect: 0.9, recommendedSize: 119 }), 200)).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({ designEffect: 0.9, recommendedSize: 127 }), 200)).toBeNull();
         expect(validateSamplePlanForSubmit(plan({ nonResponseRate: -0.1 }), 200)).toBe("无回答率需在 0%～50% 之间");
         expect(validateSamplePlanForSubmit(plan({ nonResponseRate: 0.51 }), 200)).toBe("无回答率需在 0%～50% 之间");
         expect(validateSamplePlanForSubmit(plan({ advancedPlanSource: "unknown" }), 200)).toBe("高级规划来源无效");
         expect(validateSamplePlanForSubmit(plan({ estimationType: "unknown" }), 200)).toBe("估计类型无效");
         expect(validateSamplePlanForSubmit(plan({ recommendedSize: 131 }), 200)).toBe("建议样本量与当前规划参数不一致，请重新计算");
         expect(validateSamplePlanForSubmit(plan({ advancedPlanSource: "cost" }), 200)).toBeNull();
+    });
+
+    test("估计类型需与课题对照变量一致", () => {
+        expect(validateSamplePlanForSubmit(plan({}), 200, "proportion")).toBeNull();
+        expect(validateSamplePlanForSubmit(plan({}), 200, "mean")).toBe("估计类型需与课题对照变量一致");
+        expect(
+            validateSamplePlanForSubmit(
+                plan({ estimationType: "mean", marginOfError: 2, populationVariance: 100, recommendedSize: 66 }),
+                200,
+                "mean",
+            ),
+        ).toBeNull();
+        expect(
+            validateSamplePlanForSubmit(
+                plan({ estimationType: "mean", marginOfError: 2, populationVariance: 100, recommendedSize: 66 }),
+                200,
+                "proportion",
+            ),
+        ).toBe("估计类型需与课题对照变量一致");
     });
 });
 

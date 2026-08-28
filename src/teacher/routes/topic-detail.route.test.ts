@@ -87,6 +87,10 @@ test("topic detail returns attachments, recommended questions, and parsed excel 
                 { name: "Alice", score: 95 },
                 { name: "Bob", score: 88 },
             ],
+            columnValues: {
+                name: ["Alice", "Bob"],
+                score: ["95", "88"],
+            },
         });
     } finally {
         await unlink(absolutePath).catch(() => undefined);

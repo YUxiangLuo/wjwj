@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../db";
 import { experiment } from "../../db/schema";
 import { validateObservedVersion } from "../../lib/observed-version";
+import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import { scoringWeightsFrom, type ScoringWeights } from "../../lib/scoring-weights";
 import { normalizeSamplePlanData } from "./sample-plan-display";
 import { parseStoredJson } from "./serialization";
@@ -32,6 +33,7 @@ interface SubmitTaskInfo {
     topicName: string | null;
     populationSize: number | string | null;
     weightConfig?: unknown;
+    fieldMapping?: unknown;
 }
 
 interface SubmitStudentInfo {
@@ -65,7 +67,11 @@ export function validateExperimentSubmission(params: {
 
     const validationError =
         validateQuestionnaireForSubmit(questionnaire) ??
-        validateSamplePlanForSubmit(samplePlan, populationSize) ??
+        validateSamplePlanForSubmit(
+            samplePlan,
+            populationSize,
+            resolveAnalysisTarget(params.taskInfo.fieldMapping)?.target.kind,
+        ) ??
         validateSamplingResultsForSubmit(samplingResults, getTargetSampleSizeFromSamplePlan(samplePlan), populationSize) ??
         validateReportForSubmit(record.reportContent);
     return validationError ? fail(validationError, "INCOMPLETE") : { ok: true as const };

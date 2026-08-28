@@ -1,3 +1,4 @@
+import type { AnalysisTarget } from "../../lib/analysis-target";
 import { parseSpreadsheetFile } from "../../lib/spreadsheet";
 import { resolveStoragePath } from "../../server/storage-files";
 import { stratumKey } from "../sampling";
@@ -7,7 +8,18 @@ export interface TopicFieldMapping {
     stratified?: string[];
     numeric?: string[];
     others?: string[];
+    analysisTarget?: AnalysisTarget;
 }
+
+const POPULATION_CACHE_MAX_ENTRIES = 2;
+const POPULATION_CACHE_MAX_ROWS = 20_000;
+
+type PopulationCacheEntry = {
+    key: string;
+    rows: Record<string, any>[];
+};
+
+const populationCache: PopulationCacheEntry[] = [];
 
 export async function readPopulationData(filePath: string): Promise<Record<string, any>[]> {
     let fullPath: string;
@@ -19,8 +31,17 @@ export async function readPopulationData(filePath: string): Promise<Record<strin
     }
 
     try {
-        const fileBuffer = await Bun.file(fullPath).arrayBuffer();
+        const file = Bun.file(fullPath);
+        const cacheKey = `${fullPath}:${file.size}:${file.lastModified}`;
+        const cached = populationCache.find((entry) => entry.key === cacheKey);
+        if (cached) return cached.rows;
+
+        const fileBuffer = await file.arrayBuffer();
         const parsed = await parseSpreadsheetFile(fileBuffer, filePath);
+        if (parsed.rows.length <= POPULATION_CACHE_MAX_ROWS) {
+            populationCache.unshift({ key: cacheKey, rows: parsed.rows });
+            populationCache.splice(POPULATION_CACHE_MAX_ENTRIES);
+        }
         return parsed.rows;
     } catch (error) {
         console.error("Failed to read population data:", error);

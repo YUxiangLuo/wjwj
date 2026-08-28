@@ -39,12 +39,12 @@ export async function getTeacherTopicDetail(topicId: number) {
         ? normalizeRecommendQuestionsFromDb(topicInfo.recommendQuestions)
         : [];
 
-    let excelInfo = null as null | { columns: string[]; preview: any[] };
+    let excelInfo = null as null | { columns: string[]; preview: any[]; columnValues: Record<string, string[]> };
     if (topicInfo?.excelFilePath) {
         try {
             const buffer = await Bun.file(resolveStoragePath(topicInfo.excelFilePath)).arrayBuffer();
             const parsed = await parseExcelFile(buffer, topicInfo.excelFilePath);
-            excelInfo = { columns: parsed.columns, preview: parsed.preview };
+            excelInfo = { columns: parsed.columns, preview: parsed.preview, columnValues: parsed.columnValues };
         } catch {
             excelInfo = null;
         }

@@ -28,7 +28,7 @@ test("basic sample size with 95% confidence and 5% margin", () => {
     expect(n).toBeLessThan(400);
 });
 
-test("design effect > 1 increases sample size", () => {
+test("design effect > 1 increases sample size without doubling after FPC", () => {
     const base = calculateFinitePopulationSampleSize({
         confidenceLevel: "95",
         marginOfError: "5",
@@ -40,7 +40,11 @@ test("design effect > 1 increases sample size", () => {
         populationSize: 1000,
         designEffect: 2,
     });
-    expect(withDeff).toBe(base! * 2);
+    const n0 = 1.96 ** 2 * 0.25 / 0.05 ** 2;
+    const expected = Math.ceil(2 * n0 * 1000 / (999 + 2 * n0));
+    expect(withDeff).toBe(expected);
+    expect(withDeff).toBeGreaterThan(base!);
+    expect(withDeff).toBeLessThan(base! * 2);
 });
 
 test("non-response rate increases sample size", () => {
@@ -73,9 +77,11 @@ test("design effect and non-response rate combine multiplicatively", () => {
         marginOfError: "5",
         populationSize: 1000,
     });
-    // Result should be close to base * 1.5 / 0.9, within ±1 due to ceil rounding
-    const expected = Math.ceil(base! * 1.5 / 0.9);
-    expect(Math.abs(withBoth! - expected)).toBeLessThanOrEqual(1);
+    expect(withBoth).toBeGreaterThan(base!);
+    const n0 = 1.96 ** 2 * 0.25 / 0.05 ** 2;
+    const nFpc = (n0 * 1.5) * 1000 / (999 + n0 * 1.5);
+    const expected = Math.ceil(nFpc / 0.9);
+    expect(withBoth).toBe(expected);
 });
 
 test("returns null for invalid population size", () => {
@@ -115,14 +121,14 @@ test("returns null for unsupported confidence level", () => {
     expect(result).toBeNull();
 });
 
-test("recommended sample size is capped at the population size", () => {
+test("N=200 deff=2 uses variance-equation sample size 159, not a census", () => {
     const n = calculateFinitePopulationSampleSize({
         confidenceLevel: "95",
         marginOfError: "5",
         populationSize: 200,
         designEffect: 2,
     });
-    expect(n).toBe(200);
+    expect(n).toBe(159);
 
     const metrics = calculateSampleSizeMetrics({
         confidenceLevel: "95",
@@ -130,8 +136,10 @@ test("recommended sample size is capped at the population size", () => {
         populationSize: 200,
         designEffect: 2,
     });
-    expect(metrics?.n).toBe(200);
-    expect(metrics?.cappedAtPopulation).toBe(true);
+    expect(metrics?.n).toBe(159);
+    expect(metrics?.cappedAtPopulation).toBe(false);
+    expect(metrics?.precisionUnreachable).toBe(false);
+    expect(metrics?.marginOfError).toBeCloseTo(0.05, 3);
 
     const steps = calculateSampleSizeSteps({
         estimationType: "proportion",
@@ -141,8 +149,24 @@ test("recommended sample size is capped at the population size", () => {
         designEffect: 2,
         nonResponseRate: 0,
     });
-    expect(steps.n3).toBe(200);
-    expect(steps.n2).toBeGreaterThan(200);
+    expect(steps.n3).toBe(159);
+    expect(steps.n1).toBeGreaterThan(steps.n2);
+    expect(steps.n2).toBe(159);
+});
+
+test("N=200 NRR=50% caps invitations at 200 and shows unreachable 5% ME", () => {
+    const metrics = calculateSampleSizeMetrics({
+        confidenceLevel: "95",
+        marginOfError: 5,
+        populationSize: 200,
+        designEffect: 1,
+        nonResponseRate: 0.5,
+    });
+    expect(metrics?.n).toBe(200);
+    expect(metrics?.cappedAtPopulation).toBe(true);
+    expect(metrics?.expectedCompleted).toBe(100);
+    expect(metrics?.precisionUnreachable).toBe(true);
+    expect(metrics?.marginOfError).toBeCloseTo(1.96 * Math.sqrt(0.25 / 100 * 100 / 199), 4);
 });
 
 test("mean recommended sample size is capped at the population size", () => {
@@ -197,15 +221,12 @@ test("metrics SE includes finite population correction", () => {
         populationSize: 1000,
     });
     expect(metrics).not.toBeNull();
-    // SE with FPC should be smaller than SE without FPC
     const p = 0.5;
-    const n = metrics!.n1;
-    const effectiveN = Math.ceil(n);
+    const effectiveN = metrics!.expectedCompleted;
     const seWithoutFPC = Math.sqrt(p * (1 - p) / effectiveN);
     const expected = Math.sqrt(p * (1 - p) / effectiveN * ((1000 - effectiveN) / 999));
     expect(metrics!.standardError).toBeCloseTo(expected, 14);
     expect(metrics!.standardError).toBeLessThan(seWithoutFPC);
-    // SE should be positive
     expect(metrics!.standardError).toBeGreaterThan(0);
 });
 
@@ -266,7 +287,6 @@ test("CV-based sample size capped at population size is zero only with complete 
     expect(result).not.toBeNull();
     expect(result!.requiredSampleSize).toBe(100);
     expect(result!.expectedRespondentSampleSize).toBe(100);
-    expect(result!.cappedAtPopulation).toBe(true);
     expect(result!.achievedCV).toBe(0);
 });
 
@@ -648,8 +668,10 @@ test("mean estimation: deff and NRR adjust multiplicatively", () => {
     });
     expect(base).not.toBeNull();
     expect(adjusted).not.toBeNull();
-    const expected = Math.ceil(base! * 2 / 0.9);
-    expect(Math.abs(adjusted! - expected)).toBeLessThanOrEqual(2);
+    expect(adjusted!).toBeGreaterThan(base!);
+    const n0 = 1.96 ** 2 * 100 / 4;
+    const nFpc = (n0 * 2) * 10000 / (9999 + n0 * 2);
+    expect(adjusted).toBe(Math.ceil(nFpc / 0.9));
 });
 
 test("mean estimation: returns null for invalid inputs", () => {
@@ -825,8 +847,8 @@ test("steps proportion: n3 matches the canonical formula", () => {
         designEffect: 1.5, nonResponseRate: 0.1,
     })!;
     expect(steps.n3).toBe(canonical);
-    expect(steps.n0).toBeGreaterThanOrEqual(steps.n1);
-    expect(steps.n2).toBeGreaterThanOrEqual(steps.n1);
+    expect(steps.n1).toBeGreaterThanOrEqual(steps.n0);
+    expect(steps.n2).toBeLessThanOrEqual(steps.n1);
     expect(steps.n3).toBeGreaterThanOrEqual(steps.n2);
     expect(steps.formulaLabel).toBe("Z²p(1-p)/E²");
 });
@@ -873,7 +895,8 @@ test("step details expose raw values consistent with canonical formulas", () => 
     });
 
     expect(details.n0Raw).toBeCloseTo(384.16, 2);
-    expect(details.n1Raw).toBeCloseTo(366.60, 2);
+    expect(details.n1Raw).toBeCloseTo(384.16, 2);
+    expect(details.n2Raw).toBeCloseTo(366.60, 2);
     expect(details.n0).toBe(385);
-    expect(details.n1).toBe(367);
+    expect(details.n2).toBe(367);
 });

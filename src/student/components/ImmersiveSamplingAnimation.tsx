@@ -24,6 +24,7 @@ interface Props {
     stratifyBy?: string;
     layers?: StratifiedLayer[];
     onClose: () => void;
+    onSkipRest?: () => void;
     /** External run/rerun control that should regain focus when the overlay closes. */
     restoreFocusTo?: HTMLElement | null;
     /** Sampled data rows returned from API — when set, displayed as a table in complete phase */
@@ -226,6 +227,7 @@ export function ImmersiveSamplingAnimation({
     stratifyBy,
     layers,
     onClose,
+    onSkipRest,
     restoreFocusTo,
     sampledData,
     sampledTotal,
@@ -591,6 +593,18 @@ export function ImmersiveSamplingAnimation({
                     </div>
                 </div>
                 {phase.type === "complete" ? (
+                    <div className="flex items-center gap-2">
+                        {onSkipRest && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => { onSkipRest(); onClose(); }}
+                                data-testid="immersive-sampling-skip-rest"
+                                className="text-muted-foreground"
+                            >
+                                本次实验不再播放
+                            </Button>
+                        )}
                     <Button
                         ref={closeButtonRef}
                         onClick={onClose}
@@ -601,6 +615,7 @@ export function ImmersiveSamplingAnimation({
                         关闭
                         <X className="w-4 h-4 ml-1" />
                     </Button>
+                    </div>
                 ) : (
                     <div className="flex items-center gap-2">
                         <Button

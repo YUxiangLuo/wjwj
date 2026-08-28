@@ -1,3 +1,5 @@
+import { calculateMeanEstimationSampleSize } from "../../student/experiment/sample-plan";
+
 export const DAY_MS = 24 * 60 * 60 * 1_000;
 
 export const DOGFOOD_NAMES = {
@@ -5,7 +7,7 @@ export const DOGFOOD_NAMES = {
     oldSemester: "2025-2026-2",
     mainClass: "统计学一班",
     oldClass: "历史空班",
-    topicA: "比例-PPS全流程",
+    topicA: "均值对照（PPS 可用）",
     topicB: "均值-无PPS",
     topicC: "未发布草稿",
     topicD: "已截止",
@@ -54,6 +56,47 @@ export function resolveSeedAnchor(raw: string | undefined) {
 
 export function shiftDays(anchor: Date, days: number) {
     return new Date(anchor.getTime() + days * DAY_MS);
+}
+
+export function allocateIntegerShares(total: number, ratios: readonly number[]): number[] {
+    if (!Number.isInteger(total) || total < 0) {
+        throw new Error("allocateIntegerShares total must be a non-negative integer");
+    }
+    if (ratios.length === 0) return [];
+    const weightSum = ratios.reduce((sum, ratio) => sum + ratio, 0);
+    if (!(weightSum > 0)) {
+        throw new Error("allocateIntegerShares ratios must sum to a positive number");
+    }
+    const raw = ratios.map((ratio) => (ratio / weightSum) * total);
+    const shares = raw.map((value) => Math.floor(value));
+    let remaining = total - shares.reduce((sum, value) => sum + value, 0);
+    const order = raw
+        .map((value, index) => ({ index, frac: value - Math.floor(value) }))
+        .sort((a, b) => b.frac - a.frac || a.index - b.index);
+    for (let i = 0; i < remaining; i += 1) {
+        const slot = order[i % order.length];
+        if (!slot) break;
+        shares[slot.index] = (shares[slot.index] ?? 0) + 1;
+    }
+    return shares;
+}
+
+export function computePpsMeanPlan(population = createPpsPopulation()) {
+    const weeklyHours = population.map((row) => Number(row.每周学习时长));
+    const mean = weeklyHours.reduce((sum, value) => sum + value, 0) / weeklyHours.length;
+    const populationVariance = weeklyHours.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (weeklyHours.length - 1);
+    const recommendedSize = calculateMeanEstimationSampleSize({
+        confidenceLevel: "95",
+        marginOfError: 2,
+        populationSize: population.length,
+        populationVariance,
+        designEffect: 1,
+        nonResponseRate: 0,
+    });
+    if (recommendedSize === null) {
+        throw new Error("Dogfood PPS mean sample plan could not be calculated");
+    }
+    return { recommendedSize, populationVariance };
 }
 
 export function createPpsPopulation() {

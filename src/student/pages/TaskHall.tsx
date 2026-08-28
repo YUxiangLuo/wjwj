@@ -17,7 +17,7 @@ import { formatDateTimeDisplay, getRemainingDeadlineSummary, DAY_MS } from "@/ut
 // Re-export types for compatibility
 export type { TaskStatus, StudentTask };
 
-const stageNames = ["问卷设计", "样本量规划", "抽样执行", "分析与报告"];
+const stageNames = ["问卷预试", "样本量规划", "抽样执行", "分析与报告"];
 const ACTIVE_TASK_STATUSES: TaskStatus[] = ["not_started", "in_progress", "rejected"];
 const statusConfig: Record<TaskStatus, { label: string; intent: StatusBadgeIntent }> = {
     not_started: { label: "未开始", intent: "neutral" },
@@ -110,6 +110,9 @@ function TaskCard({ task }: TaskCardProps) {
         }
         switch (task.status) {
             case "not_started":
+                if (isDeadlinePassed(task.deadline)) {
+                    return { text: "已截止", variant: "outline" as const };
+                }
                 return { text: "开始实验", variant: "default" as const };
             case "in_progress":
                 return { text: "继续实验", variant: "default" as const };

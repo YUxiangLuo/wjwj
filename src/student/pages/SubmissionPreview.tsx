@@ -174,6 +174,7 @@ export function SubmissionPreview() {
         samplingResults,
         reportContent,
         populationSize: experiment.populationSize,
+        analysisTarget: experiment.analysisTarget,
     });
     const canSubmit = submitBlocker === null;
     const advancedSourceLabel = getAdvancedPlanSourceLabel(samplePlan?.advancedPlanSource);
@@ -226,7 +227,7 @@ export function SubmissionPreview() {
                         <TabsContent value="report" className="mt-6 space-y-4 animate-in fade-in-50 slide-in-from-bottom-2">
                             <div className="bg-muted/30 rounded-xl p-6 border border-border min-h-[300px] space-y-5">
                                 <div className="rounded-lg border border-border bg-card/30 p-4">
-                                    <h3 className="text-base font-semibold text-foreground mb-3">阶段一：问卷设计</h3>
+                                    <h3 className="text-base font-semibold text-foreground mb-3">阶段一：问卷预试</h3>
                                     <div className="text-sm text-foreground/90 space-y-1">
                                         <p>问卷标题：{questionnaire?.title || "未填写"}</p>
                                         <p>题目数量：{questionnaireQuestions.length} 题</p>

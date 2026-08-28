@@ -52,9 +52,9 @@ export async function parseSpreadsheetFile(buffer: ArrayBuffer, fileName?: strin
         ? XLSX.read(new TextDecoder("utf-8").decode(buffer), { type: "string" })
         : XLSX.read(buffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
-    if (!sheetName) return { rows: [], columns: [], duplicateColumns: [], blankColumnIndexes: [], rowCount: 0, colCount: 0, preview: [] };
+    if (!sheetName) return { rows: [], columns: [], duplicateColumns: [], blankColumnIndexes: [], rowCount: 0, colCount: 0, preview: [], columnValues: {} };
     const sheet = workbook.Sheets[sheetName];
-    if (!sheet) return { rows: [], columns: [], duplicateColumns: [], blankColumnIndexes: [], rowCount: 0, colCount: 0, preview: [] };
+    if (!sheet) return { rows: [], columns: [], duplicateColumns: [], blankColumnIndexes: [], rowCount: 0, colCount: 0, preview: [], columnValues: {} };
 
     const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
     const columns = Object.keys(rows[0] ?? {});
@@ -66,5 +66,22 @@ export async function parseSpreadsheetFile(buffer: ArrayBuffer, fileName?: strin
         rowCount: rows.length,
         colCount: columns.length,
         preview: rows.slice(0, 20),
+        columnValues: uniqueColumnValues(rows, columns),
     };
+}
+
+export function uniqueColumnValues(
+    rows: Array<Record<string, unknown>>,
+    columns: string[],
+): Record<string, string[]> {
+    const result: Record<string, string[]> = {};
+    for (const column of columns) {
+        const seen = new Set<string>();
+        for (const row of rows) {
+            const value = String(row[column] ?? "").trim();
+            if (value) seen.add(value);
+        }
+        result[column] = [...seen];
+    }
+    return result;
 }

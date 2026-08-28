@@ -1,3 +1,4 @@
+import type { ResolvedAnalysisTarget } from "@/lib/analysis-target";
 import type { Question, QuestionnaireData, QuestionType } from "@/lib/questionnaire-types";
 import { notifyAuthExpired } from "@/lib/auth-expired";
 
@@ -112,6 +113,7 @@ export interface ExperimentData {
     stage3CompletedAt: string | null;
     stage4CompletedAt: string | null;
     populationSize: number;
+    analysisTarget?: ResolvedAnalysisTarget | null;
 }
 
 export interface AnalysisNumericFieldMetrics {

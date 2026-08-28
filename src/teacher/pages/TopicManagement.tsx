@@ -30,9 +30,21 @@ export function TopicManagement() {
     const [viewingTopic, setViewingTopic] = useState<Topic | null>(null);
     const [loading, setLoading] = useState(true);
     const [currentStep, setCurrentStep] = useState(1);
-    const [excelInfo, setExcelInfo] = useState<{ rowCount: number; colCount: number; columns: string[]; preview: any[] } | null>(null);
+    const [excelInfo, setExcelInfo] = useState<{
+        rowCount: number;
+        colCount: number;
+        columns: string[];
+        preview: any[];
+        columnValues?: Record<string, string[]>;
+    } | null>(null);
     const [columns, setColumns] = useState<string[]>([]);
-    const [fieldMapping, setFieldMapping] = useState<{ identifier?: string; stratified: string[]; numeric: string[]; others: string[] }>({
+    const [fieldMapping, setFieldMapping] = useState<{
+        identifier?: string;
+        stratified: string[];
+        numeric: string[];
+        others: string[];
+        analysisTarget?: { kind: "mean"; field: string } | { kind: "proportion"; field: string; value: string };
+    }>({
         stratified: [],
         numeric: [],
         others: [],
@@ -90,6 +102,7 @@ export function TopicManagement() {
                 stratified: parsed?.stratified ?? [],
                 numeric: parsed?.numeric ?? [],
                 others: parsed?.others ?? [],
+                analysisTarget: parsed?.analysisTarget,
             });
             if (res.data.excelInfo?.columns?.length) {
                 setColumns(res.data.excelInfo.columns);
@@ -100,6 +113,7 @@ export function TopicManagement() {
                     colCount: res.data.excelInfo.columns.length,
                     columns: res.data.excelInfo.columns,
                     preview: res.data.excelInfo.preview,
+                    columnValues: res.data.excelInfo.columnValues,
                 });
             }
             setAttachments(res.data.attachments ?? []);
@@ -207,7 +221,13 @@ export function TopicManagement() {
         const res = await teacherApi.uploadTopicExcel(editingTopicId, file);
         setUploadingExcel(false);
         if (res.success && res.data) {
-            setExcelInfo(res.data);
+            setExcelInfo({
+                rowCount: res.data.rowCount ?? 0,
+                colCount: res.data.colCount ?? res.data.columns.length,
+                columns: res.data.columns,
+                preview: res.data.preview,
+                columnValues: res.data.columnValues,
+            });
             setColumns(res.data.columns ?? []);
             setFieldMapping({ stratified: [], numeric: [], others: [] });
         } else {
@@ -227,6 +247,10 @@ export function TopicManagement() {
         }
         if (fieldMapping.stratified.length === 0 || fieldMapping.numeric.length === 0) {
             toast.error("至少选择1个分层变量和1个数值变量");
+            return;
+        }
+        if (!fieldMapping.analysisTarget?.field || (fieldMapping.analysisTarget.kind === "proportion" && !fieldMapping.analysisTarget.value)) {
+            toast.error("请指定对照变量");
             return;
         }
         const res = await teacherApi.updateFieldMapping(editingTopicId, fieldMapping);

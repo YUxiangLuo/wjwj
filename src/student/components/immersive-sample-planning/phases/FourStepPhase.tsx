@@ -235,11 +235,11 @@ export function FourStepPhase({ scenario, params, estimationType, populationVari
             <div className="mx-auto max-w-md rounded-2xl border border-border bg-background p-5 shadow-sm space-y-3">
                 <StepRow step={1} label="初始样本量 n₀" formula={step1Formula} value={n0} color="text-primary" />
                 <StepArrow />
-                <StepRow step={2} label="有限总体校正 n₁" formula="n₀/(1+(n₀-1)/N)" value={n1} color="text-auxiliary" />
+                <StepRow step={2} label="设计效应调整 n₁" formula={`n₀×deff (${params.designEffect.toFixed(1)})`} value={n1} color="text-warning" />
                 <StepArrow />
-                <StepRow step={3} label="设计效应调整 n₂" formula={`n₁×deff (${params.designEffect.toFixed(1)})`} value={n2} color="text-warning" />
+                <StepRow step={3} label="有限总体校正 n₂" formula="n₁N/(N−1+n₁)" value={n2} color="text-auxiliary" />
                 <StepArrow />
-                <StepRow step={4} label="无回答率调整 n" formula={`n₂/(1-NRR) (${(params.nonResponseRate * 100).toFixed(0)}%)`} value={n3} color="text-success" highlight />
+                <StepRow step={4} label="计划邀请数 n" formula={`n₂/(1-NRR) (${(params.nonResponseRate * 100).toFixed(0)}%)`} value={n3} color="text-success" highlight />
                 {n3 >= params.populationSize && params.populationSize > 0 && (
                     <p className="text-xs text-warning text-center">
                         膨胀后的发放量已封顶为总体 N = {params.populationSize.toLocaleString()}。

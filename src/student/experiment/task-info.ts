@@ -86,6 +86,7 @@ export async function findStudentTaskSubmitInfo(taskId: number, classId: number)
             topicName: topic.name,
             populationSize: topic.excelRowCount,
             weightConfig: topic.weightConfig,
+            fieldMapping: topic.fieldMapping,
             teacherId: class_.teacherId,
             classId: task.classId,
         })

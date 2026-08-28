@@ -28,6 +28,8 @@ import {
 import type { SubmissionSnapshot } from "../../student/experiment/submit-service";
 import { compactSamplingResults } from "../../student/experiment/sampling-storage";
 import {
+    allocateIntegerShares,
+    computePpsMeanPlan,
     createMeanPopulation,
     createPpsPopulation,
     DOGFOOD_COUNTS,
@@ -40,8 +42,8 @@ import {
 } from "./dogfood-fixtures";
 
 const questionnaire = {
-    title: "校园学习体验调查",
-    welcomeText: "您好！本问卷用于了解同学们的校园学习体验，所有数据仅用于课堂统计实验。请根据真实情况作答。",
+    title: "校园学习体验调查（认知预试）",
+    welcomeText: "您好！本问卷用于课堂认知预试，帮助练习问卷设计。预试答案不进入抽样或统计分析。请根据真实情况作答。",
     endingText: "感谢您的认真作答，您的反馈将帮助我们更好地理解抽样调查与统计推断。",
     questions: [
         { id: "q1", type: "single", content: "您每天用于自主学习的时间？", options: ["1小时以内", "1-2小时", "2-3小时", "3小时以上"] },
@@ -56,14 +58,17 @@ const questionnaire = {
 };
 
 const weightConfig = { questionnaire: 30, process: 30, report: 40 };
+const ppsPopulationForPlan = createPpsPopulation();
+const { recommendedSize: ppsMeanRecommendedSize, populationVariance: weeklyHoursVariance } = computePpsMeanPlan(ppsPopulationForPlan);
 const proportionPlan = {
-    estimationType: "proportion" as const,
+    estimationType: "mean" as const,
     confidenceLevel: "95",
-    marginOfError: 5,
+    marginOfError: 2,
+    populationVariance: weeklyHoursVariance,
     designEffect: 1,
     nonResponseRate: 0,
-    recommendedSize: 132,
-    finalSampleSize: 132,
+    recommendedSize: ppsMeanRecommendedSize,
+    finalSampleSize: ppsMeanRecommendedSize,
 };
 const calculatedMeanSize = calculateMeanEstimationSampleSize({
     confidenceLevel: "95",
@@ -86,7 +91,7 @@ const meanPlan = {
     finalSampleSize: meanRecommendedSize,
 };
 
-const reportContent = `<h2>实验目的</h2><p>本实验通过校园学习体验调查，完整练习问卷设计、样本量规划、四种抽样方法和结果分析，并核对样本结构是否保持总体特征。</p><h2>方法与结果</h2><p>在百分之九十五置信水平下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。对不同方法的样本构成、数值变量与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
+const reportContent = `<h2>实验目的</h2><p>本实验对照虚拟总体中每周学习时长的均值，比较四种抽样设计。问卷阶段是认知预试，答案不进入估计。</p><h2>方法与结果</h2><p>在百分之九十五置信水平和绝对误差限 2 下确定样本量，分别使用简单随机、系统、PPS 和分层抽样。PPS 使用月生活费作为规模变量，避免与对照变量循环。对不同方法的样本构成、每周学习时长与总体分布进行了比较，并记录随机种子以保证结果可复现。</p><h2>结论</h2><p>分层抽样能够稳定保持各层比例，简单随机抽样实现方便。实际调查中应结合总体结构、抽样框质量和执行成本选择方法，同时完整说明误差限和无回答率假设。</p>`;
 const meanReportContent = `<h2>实验目的</h2><p>本实验以每周阅读时长的均值为估计目标，使用总体方差估计、绝对误差限和有限总体校正确定样本量，并比较可执行抽样方法的结果。</p><h2>方法与结果</h2><p>总体中每周阅读时长包含零值，且没有其他对每个单位都为正数的数值字段，因此不存在合格的 PPS 规模变量。系统按规则将 PPS 标记为不可用并跳过该方法，随后完成简单随机、系统和按学院分层抽样。</p><h2>结论</h2><p>均值估计流程使用样本量 15。三种可用方法均保留随机种子和完整样本行；PPS 的跳过是由总体数据条件决定的有效结果，而不是执行失败。分析时应明确记录这一限制，避免为完成形式而选用不满足正值条件的规模变量。</p>`;
 
 const ppsFieldMapping = {
@@ -94,12 +99,14 @@ const ppsFieldMapping = {
     numeric: ["每周学习时长", "月生活费", "学习满意度"],
     stratified: ["年级", "性别"],
     others: ["专业"],
+    analysisTarget: { kind: "mean" as const, field: "每周学习时长" },
 };
 const meanFieldMapping = {
     identifier: "编号",
     numeric: ["每周阅读时长"],
     stratified: ["学院", "是否住宿"],
     others: ["年级"],
+    analysisTarget: { kind: "mean" as const, field: "每周阅读时长" },
 };
 
 async function writePopulationFixtures(
@@ -173,23 +180,26 @@ async function buildSamplingFixtures(
     ppsPopulation: Array<Record<string, unknown>>,
     meanPopulation: Array<Record<string, unknown>>,
 ) {
+    const n = ppsMeanRecommendedSize;
+    const [grade1 = 0, grade2 = 0, grade3 = 0, grade4 = 0] = allocateIntegerShares(n, [0.4, 0.3, 0.2, 0.1]);
+    const [college1 = 0, college2 = 0, college3 = 0] = allocateIntegerShares(meanRecommendedSize, [1 / 3, 1 / 3, 1 / 3]);
     const proportionResults = {
-        simple: await runSampling({ method: "simple", rawParams: { sampleSize: 132, seed: 202601 }, targetSampleSize: 132, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
-        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202602 }, targetSampleSize: 132, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
-        pps: await runSampling({ method: "pps", rawParams: { sampleSize: 132, sizeField: "月生活费", seed: 202603 }, targetSampleSize: 132, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
+        simple: await runSampling({ method: "simple", rawParams: { sampleSize: n, seed: 202601 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
+        systematic: await runSampling({ method: "systematic", rawParams: { seed: 202602 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
+        pps: await runSampling({ method: "pps", rawParams: { sampleSize: n, sizeField: "月生活费", seed: 202603 }, targetSampleSize: n, population: ppsPopulation, fieldMapping: ppsFieldMapping }),
         stratified: await runSampling({
             method: "stratified",
             rawParams: {
                 stratifyBy: "年级",
                 seed: 202604,
                 layers: [
-                    { name: "大一", ratio: 0.4, sampleCount: 53 },
-                    { name: "大二", ratio: 0.3, sampleCount: 40 },
-                    { name: "大三", ratio: 0.2, sampleCount: 26 },
-                    { name: "大四", ratio: 0.1, sampleCount: 13 },
+                    { name: "大一", ratio: 0.4, sampleCount: grade1 },
+                    { name: "大二", ratio: 0.3, sampleCount: grade2 },
+                    { name: "大三", ratio: 0.2, sampleCount: grade3 },
+                    { name: "大四", ratio: 0.1, sampleCount: grade4 },
                 ],
             },
-            targetSampleSize: 132,
+            targetSampleSize: n,
             population: ppsPopulation,
             fieldMapping: ppsFieldMapping,
         }),
@@ -205,9 +215,9 @@ async function buildSamplingFixtures(
                 stratifyBy: "学院",
                 seed: 202614,
                 layers: [
-                    { name: "文学院", ratio: 1 / 3, sampleCount: 5 },
-                    { name: "理学院", ratio: 1 / 3, sampleCount: 5 },
-                    { name: "商学院", ratio: 1 / 3, sampleCount: 5 },
+                    { name: "文学院", ratio: 1 / 3, sampleCount: college1 },
+                    { name: "理学院", ratio: 1 / 3, sampleCount: college2 },
+                    { name: "商学院", ratio: 1 / 3, sampleCount: college3 },
                 ],
             },
             targetSampleSize: meanRecommendedSize,
@@ -360,7 +370,7 @@ async function seed() {
         updatedAt: day(-7),
     };
     const topicRows = await db.insert(topic).values([
-        { ...validTopicValues, name: DOGFOOD_NAMES.topicA, description: "已发布的比例估计完整流程；月生活费对所有单位均为正，可执行 PPS。" },
+        { ...validTopicValues, name: DOGFOOD_NAMES.topicA, description: "已发布的均值对照流程；对照每周学习时长，PPS 使用月生活费作为规模变量。" },
         { ...validTopicValues, name: DOGFOOD_NAMES.topicB, description: "已发布的均值估计流程；总体含一个零值，因此没有可用 PPS 规模变量。", excelFilePath: MEAN_POPULATION_PATH, excelRowCount: 24, fieldMapping: meanFieldMapping },
         { teacherId: teachersById.T001!.id, name: DOGFOOD_NAMES.topicC, description: "未发布且未分配任务的编辑草稿。", status: 0, createdAt: day(-3), updatedAt: day(-3) },
         { ...validTopicValues, name: DOGFOOD_NAMES.topicD, description: "已截止任务的发布课题。" },
@@ -454,7 +464,7 @@ async function seed() {
 
     await db.insert(announcement).values([
         { title: "欢迎使用抽样调查虚拟实验系统", content: "请按顺序完成四个实验阶段，并留意任务开放时间和截止时间。", targetScope: "all", status: 1, createdAt: day(-6), updatedAt: day(-6) },
-        { title: "学生端实验提示", content: "比例任务推荐样本量为 132；请先查看课题附件再开始实验。", targetScope: "student", status: 1, createdAt: day(-5), updatedAt: day(-5) },
+        { title: "学生端实验提示", content: `均值对照任务推荐样本量为 ${ppsMeanRecommendedSize}；请先查看课题附件再开始实验。问卷是预试，不进入估计。`, targetScope: "student", status: 1, createdAt: day(-5), updatedAt: day(-5) },
         { title: "教师端批改提示", content: "批改列表包含待批改、已批改和已驳回状态，软删数据不应出现。", targetScope: "teacher", status: 1, createdAt: day(-4), updatedAt: day(-4) },
         { title: "公告草稿", content: "未发布公告不应出现在学生或教师首页。", targetScope: "all", status: 0, createdAt: day(-1), updatedAt: day(-1) },
     ]);

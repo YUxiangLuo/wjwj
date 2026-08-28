@@ -37,6 +37,17 @@ test("spreadsheet parser preserves blank header evidence before SheetJS creates 
     expect(parsed.blankColumnIndexes).toEqual([2]);
 });
 
+test("spreadsheet parser collects unique column values from all rows, not only the preview", async () => {
+    const header = "编号,年级";
+    const early = Array.from({ length: 20 }, (_, index) => `${index + 1},大一`).join("\n");
+    const csv = `${header}\n${early}\n21,大四\n`;
+    const parsed = await parseSpreadsheetFile(new TextEncoder().encode(csv).buffer, "population.csv");
+
+    expect(parsed.preview).toHaveLength(20);
+    expect(parsed.preview.some((row) => row.年级 === "大四")).toBe(false);
+    expect(parsed.columnValues.年级).toEqual(["大一", "大四"]);
+});
+
 test("spreadsheet multipart preflight rejects declared oversized bodies", () => {
     expect(spreadsheetRequestExceedsLimit(new Request("https://example.com", {
         headers: { "content-length": String(MAX_SPREADSHEET_MULTIPART_BYTES + 1) },

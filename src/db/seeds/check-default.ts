@@ -19,6 +19,7 @@ import { getPpsEligibleNumericFields, parseTopicFieldMapping } from "../../stude
 import { validateReportForSubmit } from "../../student/experiment/submit-validation";
 import { buildTaskProgressSnapshot } from "../../teacher/topic/task-progress";
 import {
+    computePpsMeanPlan,
     DOGFOOD_COUNTS,
     DOGFOOD_NAMES,
     GUIDE_ATTACHMENT_PATH,
@@ -146,11 +147,12 @@ async function verify() {
         .innerJoin(topic, eq(task.topicId, topic.id))
         .where(and(eq(student.studentId, "S015"), eq(topic.name, DOGFOOD_NAMES.topicA)))
         .orderBy(asc(samplingAttempt.createdAt));
+    const { recommendedSize: expectedPpsSampleCount } = computePpsMeanPlan();
     check(JSON.stringify(auditRows) === JSON.stringify([
-        { method: "simple", seed: 202601, sampleCount: 132 },
-        { method: "systematic", seed: 202602, sampleCount: 132 },
-        { method: "pps", seed: 202603, sampleCount: 132 },
-        { method: "stratified", seed: 202604, sampleCount: 132 },
+        { method: "simple", seed: 202601, sampleCount: expectedPpsSampleCount },
+        { method: "systematic", seed: 202602, sampleCount: expectedPpsSampleCount },
+        { method: "pps", seed: 202603, sampleCount: expectedPpsSampleCount },
+        { method: "stratified", seed: 202604, sampleCount: expectedPpsSampleCount },
     ]), `Sampling attempt fixtures differ: ${JSON.stringify(auditRows)}`);
 
     const visible = await db
@@ -216,6 +218,8 @@ async function verify() {
         check(storedTopic.rowCount === expected.rowCount, `${storedTopic.name} stored row count differs: ${storedTopic.rowCount}`);
         const mapping = parseTopicFieldMapping(storedTopic.fieldMapping);
         check(mapping, `${storedTopic.name} field mapping is invalid`);
+        check(mapping?.analysisTarget?.kind === "mean", `${storedTopic.name} analysis target kind differs`);
+        check(Boolean(mapping?.analysisTarget && "field" in mapping.analysisTarget && mapping.analysisTarget.field), `${storedTopic.name} analysis target field missing`);
 
         const file = Bun.file(resolveStoragePath(storedTopic.path));
         check(await file.exists(), `${storedTopic.name} population file is missing: ${storedTopic.path}`);

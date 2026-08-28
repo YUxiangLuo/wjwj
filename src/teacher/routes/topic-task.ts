@@ -129,6 +129,7 @@ const topicExcelUploadRoutes: RouteDefinition = {
             colCount: replaceResult.colCount,
             columns: replaceResult.columns,
             preview: replaceResult.preview,
+            columnValues: replaceResult.columnValues,
         });
     }
 };

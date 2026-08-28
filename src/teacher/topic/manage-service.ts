@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db";
 import { task, topic, topicAttachment } from "../../db/schema";
 import { acquireStorageMutationLock } from "../../db/storage-mutation-lock";
+import { validateAnalysisTarget } from "../../lib/analysis-target";
 import { validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { createStorageUploadPath, deleteStorageFileIfExists, resolveStoragePath, writeStorageFile } from "../../server/storage-files";
 import { parseExcelFile, sanitizeUploadFileName } from "./file-utils";
@@ -239,13 +240,20 @@ export async function replaceTopicExcelData(params: {
         colCount: parsed.colCount,
         columns: parsed.columns,
         preview: parsed.preview,
+        columnValues: parsed.columnValues,
     };
 }
 
 export async function updateTopicFieldMapping(params: {
     teacherId: number;
     topicId: number;
-    fieldMapping: { identifier?: string; stratified?: string[]; numeric?: string[]; others?: string[] };
+    fieldMapping: {
+        identifier?: string;
+        stratified?: string[];
+        numeric?: string[];
+        others?: string[];
+        analysisTarget?: { kind?: string; field?: string; value?: string };
+    };
 }) {
     const mappingError = validateTopicFieldMappingConfig(params.fieldMapping);
     if (mappingError) return fail(mappingError);
@@ -271,6 +279,8 @@ export async function updateTopicFieldMapping(params: {
         if (cardinalityError) return fail(cardinalityError);
         const numericValueError = validateNumericFieldValues(parsed.rows, params.fieldMapping.numeric ?? []);
         if (numericValueError) return fail(numericValueError);
+        const analysisError = validateAnalysisTarget(params.fieldMapping, parsed.rows);
+        if (analysisError) return fail(analysisError);
 
         const [updated] = await tx
             .update(topic)

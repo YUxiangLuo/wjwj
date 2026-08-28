@@ -54,6 +54,23 @@ test("systematic sampling requires a valid saved target", async () => {
     expect(result.errorMessage).toBe("请先保存 1-200 之间的最终样本量");
 });
 
+test("PPS sampling rejects a size field that equals the analysis target", async () => {
+    const result = await executeSamplingAction({
+        method: "pps",
+        rawParams: { sizeField: "weight", sampleSize: 10, seed: 2026 },
+        targetSampleSize: 10,
+        population: population.map((row) => ({ ...row, weight: row.id, income: row.id + 1 })),
+        fieldMapping: {
+            numeric: ["weight", "income"],
+            analysisTarget: { kind: "mean", field: "weight" },
+        },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.errorMessage).toBe("PPS 规模变量不能与课题对照变量相同，请改用抽样前已知的辅助变量");
+});
+
 test("PPS sampling rejects categorical size fields even when the field exists", async () => {
     const result = await executeSamplingAction({
         method: "pps",

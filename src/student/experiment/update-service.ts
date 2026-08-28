@@ -2,6 +2,7 @@ import { experiment } from "../../db/schema";
 import { attachCalculatedSampleSize } from "./sample-plan";
 import { parseStoredJson } from "./serialization";
 import { ExperimentStatus } from "./status";
+import { resolveAnalysisTarget } from "../../lib/analysis-target";
 import {
     getTargetSampleSizeFromSamplePlan,
     validateQuestionnaireForSubmit,
@@ -41,6 +42,7 @@ export function buildStageCompletionUpdates(params: {
     payload: Record<string, unknown>;
     populationSize: number | null;
     deadlinePassed: boolean;
+    fieldMapping?: unknown;
 }) {
     const { experimentRecord: record, stage, payload } = params;
     if (!Number.isInteger(stage) || stage < 1 || stage > 4) return fail("阶段必须是1-4的整数");
@@ -72,7 +74,8 @@ export function buildStageCompletionUpdates(params: {
             return fail("请填写完整的抽样方案");
         }
         const samplePlan = attachCalculatedSampleSize(rawSamplePlan as Record<string, unknown>, params.populationSize);
-        const validationError = validateSamplePlanForSubmit(samplePlan, params.populationSize);
+        const analysisTargetKind = resolveAnalysisTarget(params.fieldMapping)?.target.kind;
+        const validationError = validateSamplePlanForSubmit(samplePlan, params.populationSize, analysisTargetKind);
         if (validationError) return fail(validationError);
         updates.samplePlan = samplePlan;
         updates.stage2CompletedAt = now;

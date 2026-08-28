@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getRemainingDeadlineSummary } from "@/utils/format";
 import { experimentApi, tasksApi, type ExperimentData } from "../api-client";
+import { formatAnalysisTargetSummary } from "@/lib/analysis-target";
+import { formatMarginOfError } from "../experiment/sample-plan-display";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getExperimentRouteRedirect } from "../experiment/page-access";
 import { AnalysisReport } from "./stages/AnalysisReport";
@@ -22,10 +24,10 @@ import { SamplePlanning } from "./stages/SamplePlanning";
 import { SamplingExecution } from "./stages/SamplingExecution";
 
 const stages = [
-    { name: "问卷设计", description: "设计调查问卷并完成模拟填写", icon: FileText },
-    { name: "样本量规划", description: "计算并确认最终调查样本量", icon: Ruler },
+    { name: "问卷预试", description: "设计问卷原型并完成认知预试", icon: FileText },
+    { name: "样本量规划", description: "按课题对照变量计算邀请人数", icon: Ruler },
     { name: "抽样执行", description: "完成简单随机、系统、PPS 和分层抽样", icon: Play },
-    { name: "分析与报告", description: "比较抽样结果并撰写实验报告", icon: BarChart3 },
+    { name: "分析与报告", description: "比较抽样框字段上的设计并撰写报告", icon: BarChart3 },
 ] as const;
 
 interface ExperimentContextValue {
@@ -144,12 +146,18 @@ export function ExperimentLayout() {
         if (remaining.wholeHours < 24) return { text: `剩余 ${remaining.wholeHours} 小时`, urgent: true };
         return { text: `剩余 ${remaining.calendarDays} 天`, urgent: false };
     }, [deadline, now]);
+    const currentStage = experiment ? Math.max(1, Math.min(4, experiment.currentStage)) : 1;
+    useEffect(() => {
+        if (!experiment) return;
+        window.scrollTo({ top: 0, behavior: "auto" });
+        const heading = document.querySelector("[data-testid=student-experiment-layout] h1, [data-testid=student-analysis-target-summary]");
+        if (heading instanceof HTMLElement) heading.focus?.();
+    }, [currentStage, experiment]);
 
     if (loading) return <div className="grid place-items-center py-24"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
     if (accessDenied) return <TopicDeletedState variant={accessDenied} />;
     if (redirect) return <Navigate to={redirect} replace />;
     if (notFound || !experiment) return <Navigate to="/" replace />;
-    const currentStage = Math.max(1, Math.min(4, experiment.currentStage));
     const completed = [experiment.stage1CompletedAt, experiment.stage2CompletedAt, experiment.stage3CompletedAt, experiment.stage4CompletedAt];
     const renderStage = () => {
         if (currentStage === 1) return <QuestionnaireDesign />;
@@ -178,6 +186,11 @@ export function ExperimentLayout() {
                     </div>
                 </div>
                 <div className="my-6 flex items-center gap-3 rounded-xl border border-border bg-card/50 px-4 py-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/15 text-primary">{(() => { const Icon = stages[currentStage - 1]!.icon; return <Icon className="h-4 w-4" />; })()}</span><div><p className="text-sm font-semibold">阶段 {currentStage}：{stages[currentStage - 1]!.name}</p><p className="text-xs text-muted-foreground">{stages[currentStage - 1]!.description}。仅点击阶段完成按钮时保存。</p></div></div>
+                <p className="mb-6 rounded-xl border border-info/20 bg-info/10 px-4 py-3 text-sm text-info" data-testid="student-analysis-target-summary">
+                    {formatAnalysisTargetSummary(experiment.analysisTarget ?? null, experiment.samplePlan
+                        ? { marginLabel: formatMarginOfError(experiment.samplePlan.marginOfError, experiment.analysisTarget?.target.kind ?? experiment.samplePlan.estimationType) }
+                        : undefined)}
+                </p>
                 {experiment.status === "rejected" && experiment.rejectReason?.trim() && (
                     <div
                         role="alert"

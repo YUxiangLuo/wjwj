@@ -44,7 +44,7 @@ describe("usePhaseState", () => {
         expect(result.current.phase).toEqual({ type: "challenge", guess: 42, revealed: true });
     });
 
-    test("precision → factors:error_tolerance → ... → factors:summary → formula:z", () => {
+    test("precision → fourstep summary → decision", () => {
         const { result } = renderHook(() => usePhaseState());
         act(() => {
             result.current.setPhase({ type: "precision" });
@@ -52,63 +52,11 @@ describe("usePhaseState", () => {
         act(() => {
             result.current.goNext();
         });
-        expect(result.current.phase).toEqual({ type: "factors", step: "error_tolerance" });
-        // Walk through all factors steps
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "subpopulation" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "variability" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "cost_balance" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "formula", step: "z" });
-    });
-
-    test("formula 子步骤 z→e→summary→fpc", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "formula", step: "z" });
-        });
-        act(() => {
-            result.current.goNext();
-        });
-        expect(result.current.phase).toEqual({ type: "formula", step: "e" });
-        act(() => {
-            result.current.goNext();
-        });
-        expect(result.current.phase).toEqual({ type: "formula", step: "summary" });
-        act(() => {
-            result.current.goNext();
-        });
-        expect(result.current.phase).toEqual({ type: "fpc" });
-    });
-
-    test("formula:z goPrev 回到 factors:summary", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "formula", step: "z" });
-        });
-        act(() => {
-            result.current.goPrev();
-        });
-        expect(result.current.phase).toEqual({ type: "factors", step: "summary" });
-    });
-
-    test("fpc → fourstep:deff → fourstep:nrr → fourstep:summary → decision", () => {
-        const { result } = renderHook(() => usePhaseState());
-        act(() => {
-            result.current.setPhase({ type: "fpc" });
-        });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "fourstep", scenario: "deff" });
-        act(() => { result.current.goNext(); });
-        expect(result.current.phase).toEqual({ type: "fourstep", scenario: "nrr" });
-        act(() => { result.current.goNext(); });
         expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
         act(() => { result.current.goNext(); });
         expect(result.current.phase).toEqual({ type: "decision" });
+        act(() => { result.current.goPrev(); });
+        expect(result.current.phase).toEqual({ type: "fourstep", scenario: "summary" });
     });
 
     test("quiz 0→...→last→confirm，goPrev 从 confirm 回到 last quiz", () => {

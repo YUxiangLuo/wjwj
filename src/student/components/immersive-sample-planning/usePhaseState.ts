@@ -33,7 +33,7 @@ function defaultPhaseFor(type: PhaseType): Phase {
         case "factors": return { type: "factors", step: "error_tolerance" };
         case "formula": return { type: "formula", step: "z" };
         case "fpc": return { type: "fpc" };
-        case "fourstep": return { type: "fourstep", scenario: "deff" };
+        case "fourstep": return { type: "fourstep", scenario: "summary" };
         case "decision": return { type: "decision" };
         case "quiz": return { type: "quiz", questionIndex: 0 };
         case "confirm": return { type: "confirm" };
@@ -66,23 +66,12 @@ export function usePhaseState() {
                 return { type: "precision" };
             }
             if (prev.type === "precision") {
-                return { type: "factors", step: "error_tolerance" };
+                return { type: "fourstep", scenario: "summary" };
             }
-            if (prev.type === "factors") {
-                const idx = FACTORS_STEPS.indexOf(prev.step);
-                if (idx < FACTORS_STEPS.length - 1) {
-                    return { type: "factors", step: FACTORS_STEPS[idx + 1]! };
-                }
-                return { type: "formula", step: "z" };
-            }
-            if (prev.type === "formula") {
-                if (prev.step === "z") return { type: "formula", step: "e" };
-                if (prev.step === "e") return { type: "formula", step: "summary" };
-                return { type: "fpc" };
+            if (prev.type === "factors" || prev.type === "formula" || prev.type === "fpc") {
+                return { type: "fourstep", scenario: "summary" };
             }
             if (prev.type === "fourstep") {
-                if (prev.scenario === "deff") return { type: "fourstep", scenario: "nrr" };
-                if (prev.scenario === "nrr") return { type: "fourstep", scenario: "summary" };
                 return { type: "decision" };
             }
             if (prev.type === "quiz") {
@@ -106,22 +95,8 @@ export function usePhaseState() {
                     revealed: challengeSnapshotRef.current.revealed,
                 };
             }
-            if (prev.type === "factors") {
-                const idx = FACTORS_STEPS.indexOf(prev.step);
-                if (idx > 0) {
-                    return { type: "factors", step: FACTORS_STEPS[idx - 1]! };
-                }
+            if (prev.type === "factors" || prev.type === "formula" || prev.type === "fpc" || prev.type === "fourstep") {
                 return { type: "precision" };
-            }
-            if (prev.type === "formula") {
-                if (prev.step === "summary") return { type: "formula", step: "e" };
-                if (prev.step === "e") return { type: "formula", step: "z" };
-                return { type: "factors", step: "summary" };
-            }
-            if (prev.type === "fourstep") {
-                if (prev.scenario === "summary") return { type: "fourstep", scenario: "nrr" };
-                if (prev.scenario === "nrr") return { type: "fourstep", scenario: "deff" };
-                return { type: "fpc" };
             }
             if (prev.type === "quiz") {
                 if (prev.questionIndex > 0) return { type: "quiz", questionIndex: prev.questionIndex - 1 };

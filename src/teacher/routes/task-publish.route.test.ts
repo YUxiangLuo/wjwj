@@ -40,7 +40,7 @@ test("task publish rejects duplicate class IDs before taking the mutation lock",
 
 test("task publish creates one task per newly selected class without notifications", async () => {
     const { module, operations } = await load([
-        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"] }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
+        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"], analysisTarget: { kind: "mean", field: "值" } }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
         [{ id: 101 }, { id: 102 }],
         [],
     ]);
@@ -59,7 +59,7 @@ test("task publish creates one task per newly selected class without notificatio
 
 test("task publish advances updatedAt when reviving a deleted task", async () => {
     const { module, operations } = await load([
-        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"] }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
+        [{ id: 12, name: "抽样课题", status: 1, excelFilePath: "/storage/topic.xlsx", fieldMapping: { identifier: "id", stratified: ["组"], numeric: ["值"], analysisTarget: { kind: "mean", field: "值" } }, weightConfig: { questionnaire: 30, process: 30, report: 40 } }],
         [{ id: 101 }],
         [{ id: 88, classId: 101, deletedAt: new Date("2026-01-01T00:00:00Z") }],
     ]);

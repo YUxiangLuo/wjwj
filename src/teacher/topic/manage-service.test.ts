@@ -74,7 +74,7 @@ test("updateTeacherTopicBasics allows publishing a fully configured topic", asyn
     const { module, operations } = await loadManageService({
         select: [[{
             excelFilePath: "/storage/uploads/topic.xlsx",
-            fieldMapping: { identifier: "id", stratified: ["gender"], numeric: ["score"] },
+            fieldMapping: { identifier: "id", stratified: ["gender"], numeric: ["score"], analysisTarget: { kind: "mean", field: "score" } },
             weightConfig: { questionnaire: 30, process: 30, report: 40 },
         }]],
     });

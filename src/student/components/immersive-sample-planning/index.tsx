@@ -34,9 +34,7 @@ const FOCUSABLE_SELECTOR =
     'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 /** Phases shown as dots in the header — excludes internal/terminal phases. */
-const NAVIGABLE_PHASES = PHASE_ORDER.filter(
-    (t) => t !== "confirm" && t !== "launching" && t !== "done",
-);
+const NAVIGABLE_PHASES = ["challenge", "precision", "fourstep", "decision", "quiz"] as const;
 
 const PHASE_LABELS: Record<string, string> = {
     challenge: "开始规划",
@@ -44,7 +42,7 @@ const PHASE_LABELS: Record<string, string> = {
     factors: "判断条件",
     formula: "进入公式",
     fpc: "总体修正",
-    fourstep: "汇总 n",
+    fourstep: "计算 n",
     decision: "确认方案",
     quiz: "快速自检",
     confirm: "确认方案",
@@ -62,6 +60,7 @@ interface Props {
     initialEstimationType?: EstimationType;
     initialPopulationVariance?: number;
     initialAdvancedPlanSource?: AdvancedNonStandardSampleSource | null;
+    estimationLocked?: boolean;
     onComplete: (params: SampleParams) => void;
     onClose: () => void;
     /** Called after the launch animation completes (phase reaches "done"). */
@@ -71,13 +70,14 @@ interface Props {
 export function ImmersiveSamplePlanning({
     populationSize,
     initialConfidenceLevel = "95",
-    initialMarginOfError = 5,
+    initialMarginOfError,
     initialDesignEffect = 1,
     initialNonResponseRate = 0,
     initialFinalSampleSize,
     initialEstimationType = "proportion",
     initialPopulationVariance = 100,
     initialAdvancedPlanSource = null,
+    estimationLocked = false,
     onComplete,
     onClose,
     onLaunchComplete,
@@ -86,7 +86,9 @@ export function ImmersiveSamplePlanning({
     const [confidenceLevel, setConfidenceLevel] = useState<ConfidenceLevel>(() =>
         normalizeConfidenceLevel(initialConfidenceLevel ?? "95"),
     );
-    const [marginOfError, setMarginOfError] = useState(initialMarginOfError);
+    const [marginOfError, setMarginOfError] = useState(
+        initialMarginOfError ?? (initialEstimationType === "mean" ? 2 : 5),
+    );
     const [designEffect, setDesignEffect] = useState(initialDesignEffect);
     const [nonResponseRate, setNonResponseRate] = useState(initialNonResponseRate);
     const [estimationType, setEstimationType] = useState<EstimationType>(initialEstimationType);
@@ -99,13 +101,14 @@ export function ImmersiveSamplePlanning({
     }, []);
 
     const handleEstimationTypeChange = useCallback((next: EstimationType) => {
+        if (estimationLocked) return;
         setEstimationType((prev) => {
             if (prev === next) return prev;
             clearAdvancedPlanSource();
             setMarginOfError(next === "proportion" ? 5 : 2);
             return next;
         });
-    }, [clearAdvancedPlanSource]);
+    }, [clearAdvancedPlanSource, estimationLocked]);
 
     const recommendedSize = useMemo(() => {
         if (estimationType === "mean") {
@@ -361,6 +364,7 @@ export function ImmersiveSamplePlanning({
                         estimationType={estimationType}
                         populationVariance={populationVariance}
                         onEstimationTypeChange={handleEstimationTypeChange}
+                        estimationLocked={estimationLocked}
                         onPopulationVarianceChange={handlePopulationVarianceChange}
                         onConfidenceLevelChange={handleConfidenceLevelChange}
                         onMarginOfErrorChange={handleMarginOfErrorChange}
