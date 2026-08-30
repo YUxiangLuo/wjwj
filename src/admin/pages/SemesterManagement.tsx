@@ -206,7 +206,7 @@ export function SemesterManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Semesters</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学期总数</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
@@ -217,7 +217,7 @@ export function SemesterManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Current Semester</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
                             <p className="text-sm font-bold text-foreground mt-2">{loading ? "-" : summary.currentName}</p>
                         </div>
                         <IconTile intent="success">
@@ -228,7 +228,7 @@ export function SemesterManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">History</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">历史学期</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.history}</p>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-muted text-muted-foreground flex items-center justify-center border border-input">
@@ -239,7 +239,7 @@ export function SemesterManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">With Classes</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">已建班学期</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.withClasses}</p>
                         </div>
                         <IconTile intent="auxiliary">

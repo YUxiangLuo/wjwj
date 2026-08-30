@@ -105,6 +105,12 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
 
     const [immersiveOpen, setImmersiveOpen] = useState(false);
     const autoOpenedRef = useRef(false);
+    const planningTriggerRef = useRef<HTMLButtonElement>(null);
+
+    const closeImmersivePlanning = useCallback(() => {
+        setImmersiveOpen(false);
+        requestAnimationFrame(() => planningTriggerRef.current?.focus());
+    }, []);
 
     useEffect(() => {
         if (autoOpenedRef.current || !targetVarianceReady) return;
@@ -141,8 +147,8 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
             ...(result.advancedPlanSource ? { advancedPlanSource: result.advancedPlanSource } : {}),
         });
         setWizardDraft(null);
-        setImmersiveOpen(false);
-    }, [lockedEstimationType]);
+        closeImmersivePlanning();
+    }, [closeImmersivePlanning, lockedEstimationType]);
 
     useEffect(() => {
         setDisplayData(initialData);
@@ -210,7 +216,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     initialDraft={wizardDraft}
                     onDraftChange={handleImmersiveDraftChange}
                     onComplete={handleImmersiveComplete}
-                    onClose={() => setImmersiveOpen(false)}
+                    onClose={closeImmersivePlanning}
                 />
             )}
 
@@ -283,6 +289,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                     {/* Re-open sample planning */}
                     <div className="flex justify-center">
                         <Button
+                            ref={planningTriggerRef}
                             type="button"
                             variant="outline"
                             onClick={() => setImmersiveOpen(true)}
@@ -315,6 +322,7 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
                             </p>
                         </div>
                         <Button
+                            ref={planningTriggerRef}
                             type="button"
                             onClick={() => setImmersiveOpen(true)}
                             disabled={!targetVarianceReady}

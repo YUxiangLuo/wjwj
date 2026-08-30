@@ -14,6 +14,7 @@ import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getAccountState } from "@/lib/account-state";
+import { isValidOptionalEmail } from "@/lib/email";
 
 function renderAccountStatus(student: Student) {
     const state = getAccountState(student.status, student.lockedUntil);
@@ -52,8 +53,8 @@ export function StudentManagement() {
         loadData();
     }, [classId]);
 
-    async function loadData() {
-        setLoading(true);
+    async function loadData(showLoading = true) {
+        if (showLoading) setLoading(true);
         const id = Number(classId);
 
         const [resClasses, resStudents] = await Promise.all([
@@ -69,7 +70,7 @@ export function StudentManagement() {
         if (resStudents.success && resStudents.data) {
             setStudents(resStudents.data);
         }
-        setLoading(false);
+        if (showLoading) setLoading(false);
     }
 
     async function handleAddStudent() {
@@ -83,6 +84,10 @@ export function StudentManagement() {
             toast.error("请填写学号和姓名");
             return;
         }
+        if (!isValidOptionalEmail(newStudent.email)) {
+            toast.error("请输入有效的邮箱地址");
+            return;
+        }
         setSubmitting(true);
         const res = await teacherApi.addStudent(Number(classId), {
             studentId,
@@ -94,7 +99,7 @@ export function StudentManagement() {
         if (res.success) {
             setShowAddModal(false);
             setNewStudent({ id: "", name: "", email: "" });
-            loadData();
+            void loadData(false);
         } else {
             toast.error("添加失败: " + res.error?.message);
         }
@@ -124,7 +129,7 @@ export function StudentManagement() {
 
         if (res.success && res.data) {
             setImportResult(res.data);
-            loadData();
+            void loadData(false);
         } else {
             toast.error("导入失败: " + res.error?.message);
         }
@@ -161,7 +166,7 @@ export function StudentManagement() {
 
         if (res?.success) {
             if (type === "reset") toast.success("密码已重置为学号，下次登录必须修改");
-            loadData();
+            void loadData(false);
         } else {
             toast.error("操作失败: " + res?.error?.message);
         }

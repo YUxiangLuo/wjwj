@@ -1,3 +1,5 @@
+import { isValidOptionalEmail } from "@/lib/email";
+
 export interface StudentAddFormState {
     id: string;
     name: string;
@@ -5,5 +7,5 @@ export interface StudentAddFormState {
 }
 
 export function isStudentAddFormComplete(form: StudentAddFormState) {
-    return Boolean(form.id.trim() && form.name.trim());
+    return Boolean(form.id.trim() && form.name.trim() && isValidOptionalEmail(form.email));
 }

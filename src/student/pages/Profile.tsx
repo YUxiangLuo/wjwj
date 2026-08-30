@@ -89,9 +89,9 @@ export function Profile() {
         <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
+                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground">
                         个人信息
-                    </h2>
+                    </h1>
                     <p className="text-muted-foreground text-sm mt-1">查看你的账号资料与安全设置</p>
                 </div>
                 <Button variant="outline" onClick={() => navigate("/")} className="border-input hover:bg-muted text-foreground/90">

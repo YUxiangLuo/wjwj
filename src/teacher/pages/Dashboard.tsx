@@ -169,20 +169,20 @@ export function Dashboard() {
                         ) : (
                             recentSubmissions.map((item, idx) => (
                                 <div key={idx} className="flex flex-row items-center justify-between p-4 rounded-xl border border-border bg-background/30 hover:bg-muted/50 hover:border-input transition-all gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <Avatar className="w-10 h-10 border border-input">
+                                    <div className="flex min-w-0 items-center gap-4">
+                                        <Avatar className="w-10 h-10 shrink-0 border border-input">
                                             <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
-                                        <div>
-                                            <div className="text-sm font-medium text-foreground">{item.student}</div>
-                                            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-                                                <span className="bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{item.class}</span>
-                                                <span>·</span>
-                                                <span className="text-primary">{item.topic}</span>
+                                        <div className="min-w-0">
+                                            <div className="truncate text-sm font-medium text-foreground">{item.student}</div>
+                                            <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                                                <span className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-muted-foreground">{item.class}</span>
+                                                <span className="shrink-0">·</span>
+                                                <span className="min-w-0 truncate text-primary" title={item.topic}>{item.topic}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="text-xs text-muted-foreground font-mono">{item.time}</span>
+                                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground font-mono">{item.time}</span>
                                 </div>
                             ))
                         )}
@@ -205,27 +205,27 @@ export function Dashboard() {
                         ) : (
                             recentGradings.map((item, idx) => (
                                 <div key={idx} className="flex flex-row items-center justify-between p-4 rounded-xl border border-border bg-background/30 hover:bg-muted/50 hover:border-input transition-all gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <Avatar className="w-10 h-10 border border-input">
+                                    <div className="flex min-w-0 items-center gap-4">
+                                        <Avatar className="w-10 h-10 shrink-0 border border-input">
                                             <AvatarFallback className={`text-sm font-semibold ${item.rejected ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground"}`}>{item.student?.[0] ?? "?"}</AvatarFallback>
                                         </Avatar>
-                                        <div>
-                                            <div className="text-sm font-medium text-foreground">{item.student}</div>
-                                            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
-                                                <span className="bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{item.class}</span>
-                                                <span>·</span>
-                                                <span className="text-primary">{item.topic}</span>
+                                        <div className="min-w-0">
+                                            <div className="truncate text-sm font-medium text-foreground">{item.student}</div>
+                                            <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                                                <span className="shrink-0 whitespace-nowrap rounded bg-muted px-1.5 py-0.5 text-muted-foreground">{item.class}</span>
+                                                <span className="shrink-0">·</span>
+                                                <span className="min-w-0 truncate text-primary" title={item.topic}>{item.topic}</span>
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex shrink-0 items-center gap-3 whitespace-nowrap">
                                         {item.rejected ? (
-                                            <span className="flex items-center gap-1 text-xs text-destructive">
+                                            <span className="flex shrink-0 items-center gap-1 text-xs text-destructive">
                                                 <XCircle className="w-3.5 h-3.5" />
                                                 已驳回
                                             </span>
                                         ) : (
-                                            <span className="flex items-center gap-1 text-xs text-success">
+                                            <span className="flex shrink-0 items-center gap-1 text-xs text-success">
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                                 {item.score ?? "-"} 分
                                             </span>

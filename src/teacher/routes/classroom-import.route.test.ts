@@ -133,3 +133,48 @@ test("single student creation validates database column lengths", async () => {
     expect(await response.json()).toMatchObject({ error: { code: "VALIDATION_ERROR", message: "学号不能超过50个字符" } });
     expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
 });
+
+test("single student creation rejects a malformed optional email", async () => {
+    const { module, operations } = await loadClassroomRoutes({ select: [[{ id: 3 }]] });
+    const request = withRouteParam(new Request("https://example.com/api/teacher/classes/3/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: "S009", name: "测试学生", email: "wrong-email" }),
+    }), "3");
+
+    const response = await module.classStudentsRoutes.POST!(request);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: { code: "VALIDATION_ERROR", message: "邮箱格式无效" } });
+    expect(operations.some((operation) => operation.kind === "insert")).toBe(false);
+});
+
+test("student import reports and skips malformed optional emails", async () => {
+    const { module, operations } = await loadClassroomRoutes({
+        select: [
+            [{ id: 3 }],
+            [],
+        ],
+    });
+    const formData = new FormData();
+    formData.append(
+        "file",
+        new File(
+            ["studentId,name,email\nS009,测试学生,wrong-email\nS010,有效学生,valid@example.edu\n"],
+            "students.csv",
+            { type: "text/csv" },
+        ),
+    );
+
+    const response = await module.classStudentsImportRoutes.POST!(withRouteParam(
+        new Request("https://example.com/api/teacher/classes/3/students/import", { method: "POST", body: formData }),
+        "3",
+    ));
+    const payload = await response.json() as any;
+
+    expect(payload.data).toMatchObject({ successCount: 1, failureCount: 1 });
+    expect(payload.data.errors).toEqual([{ row: 2, reason: "邮箱格式无效" }]);
+    const insert = operations.find((operation) => operation.kind === "insert" && operation.table === student);
+    expect(insert?.values).toEqual([
+        expect.objectContaining({ studentId: "S010", email: "valid@example.edu" }),
+    ]);
+});

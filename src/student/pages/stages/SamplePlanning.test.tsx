@@ -31,6 +31,7 @@ let lastPlanningProps: {
     initialDraft?: SamplePlanningWizardDraft | null;
     onDraftChange?: (draft: SamplePlanningWizardDraft) => void;
     onComplete?: (params: SampleParams) => void;
+    onClose?: () => void;
 } | null = null;
 
 mock.module("../ExperimentLayout", () => ({
@@ -75,6 +76,7 @@ mock.module("../../components/immersive-sample-planning", () => ({
         initialDraft?: SamplePlanningWizardDraft | null;
         onDraftChange?: (draft: SamplePlanningWizardDraft) => void;
         onComplete: (params: SampleParams) => void;
+        onClose: () => void;
     }) => {
         lastPlanningProps = props;
         return (
@@ -118,6 +120,13 @@ mock.module("../../components/immersive-sample-planning", () => ({
                     })}
                 >
                     progress
+                </button>
+                <button
+                    type="button"
+                    data-testid="mock-planning-close"
+                    onClick={props.onClose}
+                >
+                    close
                 </button>
             </div>
         );
@@ -180,6 +189,18 @@ test("mean-locked first visit waits for target variance then opens overlay with 
     expect(lastPlanningProps?.initialMarginOfError).toBe(2);
     expect(lastPlanningProps?.initialPopulationVariance).toBe(67.128040201005);
     expect(lastPlanningProps?.initialEstimationType).toBe("mean");
+});
+
+test("closing the immersive planner restores focus to its trigger", async () => {
+    const view = render(<SamplePlanning onPrev={() => undefined} />);
+    await waitFor(() => expect(view.getByTestId("mock-immersive-planning")).toBeTruthy());
+
+    fireEvent.click(view.getByTestId("mock-planning-close"));
+
+    await waitFor(() => {
+        expect(view.queryByTestId("mock-immersive-planning")).toBeNull();
+        expect(document.activeElement).toBe(view.getByTestId("student-sample-plan-start"));
+    });
 });
 
 test("completing the overlay persists the variance used to compute n, not a later parent fetch", async () => {

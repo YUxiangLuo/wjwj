@@ -228,7 +228,7 @@ export function ClassManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Classes</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">班级总数</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.total}</p>
                         </div>
                         <IconTile intent="info">
@@ -239,7 +239,7 @@ export function ClassManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Students</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">学生总数</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.studentTotal}</p>
                         </div>
                         <IconTile intent="success">
@@ -250,7 +250,7 @@ export function ClassManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Current Term</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">当前学期</p>
                             <p className="text-sm font-bold text-foreground mt-2">{loading ? "-" : summary.currentSemesterName}</p>
                         </div>
                         <IconTile intent="warning">
@@ -261,7 +261,7 @@ export function ClassManagement() {
                 <Card className="transition-colors hover:border-input">
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Teachers</p>
+                            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">授课教师</p>
                             <p className="text-2xl font-bold text-foreground mt-1">{loading ? "-" : summary.teacherCount}</p>
                         </div>
                         <IconTile intent="auxiliary">

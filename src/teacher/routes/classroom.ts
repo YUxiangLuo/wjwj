@@ -2,6 +2,7 @@ import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import { db } from "../../db";
 import { class_, semester, student } from "../../db/schema";
+import { isValidOptionalEmail } from "../../lib/email";
 import { spreadsheetRequestExceedsLimit, validateSpreadsheetUploadFile } from "../../lib/spreadsheet";
 import { error, getRouteParam, json, parseBody, stringValue } from "../../server/http";
 import type { RouteDefinition } from "../../server/route-types";
@@ -92,6 +93,7 @@ const classStudentsRoutes: RouteDefinition = {
         if (studentId.length > MAX_STUDENT_ID_LENGTH) return error("学号不能超过50个字符", "VALIDATION_ERROR");
         if (name.length > MAX_STUDENT_NAME_LENGTH) return error("姓名不能超过100个字符", "VALIDATION_ERROR");
         if (email.length > MAX_STUDENT_EMAIL_LENGTH) return error("邮箱不能超过120个字符", "VALIDATION_ERROR");
+        if (!isValidOptionalEmail(email)) return error("邮箱格式无效", "VALIDATION_ERROR");
         if ((await db.select({ id: student.id }).from(student).where(eq(student.studentId, studentId))).length) {
             return error("学号已存在", "DUPLICATE_ERROR", 409);
         }
@@ -161,6 +163,10 @@ const classStudentsImportRoutes: RouteDefinition = {
             }
             if (email.length > MAX_STUDENT_EMAIL_LENGTH) {
                 errors.push({ row: rowNumber, reason: "邮箱不能超过120个字符" });
+                return [];
+            }
+            if (!isValidOptionalEmail(email)) {
+                errors.push({ row: rowNumber, reason: "邮箱格式无效" });
                 return [];
             }
             const normalizedStudentId = normalizeStudentId(studentId);

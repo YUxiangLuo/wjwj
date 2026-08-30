@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isValidOptionalEmail } from "@/lib/email";
 import { isStudentAddFormComplete, type StudentAddFormState } from "./student-add-form";
 
 interface StudentAddDialogProps {
@@ -16,6 +17,7 @@ interface StudentAddDialogProps {
 
 export function StudentAddDialog(props: StudentAddDialogProps) {
     const { open, onOpenChange, form, onFormChange, submitting, onSubmit } = props;
+    const emailInvalid = !isValidOptionalEmail(form.email);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,8 +65,15 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                             maxLength={120}
                             value={form.email}
                             onChange={(e) => onFormChange({ ...form, email: e.target.value })}
+                            aria-invalid={emailInvalid}
+                            aria-describedby={emailInvalid ? "studentEmail-error" : undefined}
                             className="bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
                         />
+                        {emailInvalid && (
+                            <p id="studentEmail-error" role="alert" className="text-xs text-destructive">
+                                请输入有效的邮箱地址
+                            </p>
+                        )}
                     </div>
                 </div>
                 <DialogFooter>
