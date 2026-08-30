@@ -262,7 +262,7 @@ export function TaskManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="pt-0">
-                    {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : (
+                    {loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : (
                         <Table>
                             <TableHeader>
                                 <TableRow className="border-border hover:bg-card/50">

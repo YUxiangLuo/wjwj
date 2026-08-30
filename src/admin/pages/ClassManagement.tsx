@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { LoadingStatus } from "@/components/LoadingStatus";
 
 export function ClassManagement() {
     const navigate = useNavigate();
@@ -311,9 +312,7 @@ export function ClassManagement() {
                 </PageHeader>
                 <CardContent className="pt-0">
                     {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                        </div>
+                        <LoadingStatus className="py-12" iconClassName="text-muted-foreground" label="正在加载班级列表" />
                     ) : (
                         <Table>
                             <TableHeader>

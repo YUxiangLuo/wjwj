@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { IconTile } from "@/components/IconTile";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
+import { LoadingStatus } from "@/components/LoadingStatus";
 
 export function isRecommendedSemesterName(value: string) {
     return /^\d{4}-\d{4}-[12]$/.test(value.trim());
@@ -276,9 +277,7 @@ export function SemesterManagement() {
                 </PageHeader>
                 <CardContent className="pt-0">
                     {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                        </div>
+                        <LoadingStatus className="py-12" iconClassName="text-muted-foreground" label="正在加载学期列表" />
                     ) : (
                         <Table>
                             <TableHeader>

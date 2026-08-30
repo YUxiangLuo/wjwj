@@ -399,9 +399,9 @@ export function SamplingExecution({ onPrev }: SamplingExecutionProps) {
             </Card>
 
             {statsState === "loading" && (
-                <Card className="rounded-2xl border-info/20 bg-info/10 shadow-sm" data-testid="student-sampling-stats-loading">
+                <Card role="status" aria-live="polite" className="rounded-2xl border-info/20 bg-info/10 shadow-sm" data-testid="student-sampling-stats-loading">
                     <CardContent className="flex items-center gap-3 px-4 py-3 text-sm text-info">
-                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                        <Loader2 aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin" />
                         正在加载总体统计信息和 PPS 可用字段…
                     </CardContent>
                 </Card>

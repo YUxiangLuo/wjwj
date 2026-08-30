@@ -38,3 +38,15 @@ test("the shared theme disables decorative motion for reduced-motion users", asy
     expect(reducedMotionBlock).toContain("transition: none !important");
     expect(reducedMotionBlock).toContain("scroll-behavior: auto !important");
 });
+
+test("the explicit desktop-only viewport contract remains enabled", async () => {
+    const theme = await Bun.file("styles/theme.css").text();
+    const styleCheck = await Bun.file("scripts/check-styles.ts").text();
+    expect(theme).toContain("min-width: 80rem");
+    expect(styleCheck).toContain("The frontend is desktop-only.");
+});
+
+test("the topic wizard follows the standard Escape close behavior", async () => {
+    const wizard = await Bun.file("src/teacher/components/TopicWizardDialog.tsx").text();
+    expect(wizard).not.toContain("onEscapeKeyDown={(e) => e.preventDefault()}");
+});

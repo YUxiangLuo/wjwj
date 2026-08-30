@@ -772,8 +772,8 @@ export function ImmersiveSamplingAnimation({
                         {phase.type === "complete" && (
                             <div className="animate-in fade-in duration-300 flex flex-col min-h-0 h-full">
                                 {!sampledData ? (
-                                    <div className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
-                                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                                    <div role="status" aria-live="polite" className="flex-1 flex flex-col items-center justify-center gap-3 py-8">
+                                        <Loader2 aria-hidden="true" className="w-8 h-8 animate-spin text-muted-foreground" />
                                         <p className="text-sm text-muted-foreground">正在获取抽样数据...</p>
                                     </div>
                                 ) : (

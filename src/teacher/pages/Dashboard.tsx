@@ -163,7 +163,7 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         {loading ? (
-                            <div className="text-sm text-muted-foreground flex items-center justify-center py-6">加载中...</div>
+                            <div role="status" aria-live="polite" className="text-sm text-muted-foreground flex items-center justify-center py-6">加载中...</div>
                         ) : recentSubmissions.length === 0 ? (
                             <div className="text-center text-sm text-muted-foreground py-8">暂无提交记录</div>
                         ) : (
@@ -199,7 +199,7 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent className="pt-6 space-y-3">
                         {loading ? (
-                            <div className="text-sm text-muted-foreground flex items-center justify-center py-6">加载中...</div>
+                            <div role="status" aria-live="polite" className="text-sm text-muted-foreground flex items-center justify-center py-6">加载中...</div>
                         ) : recentGradings.length === 0 ? (
                             <div className="text-center text-sm text-muted-foreground py-8">暂无批改记录</div>
                         ) : (

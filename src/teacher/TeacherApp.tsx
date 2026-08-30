@@ -1,15 +1,19 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, Loader2, LogOut, PenLine, School } from "lucide-react";
+import { BarChart3, BookOpen, ClipboardList, Download, KeyRound, LayoutDashboard, LogOut, PenLine, School } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
+import { LoadingStatus } from "@/components/LoadingStatus";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
+import { SkipLink } from "@/components/SkipLink";
 import { WorkspaceSidebar } from "@/components/WorkspaceSidebar";
 import { TEACHER_PASSWORD_POLICY } from "@/lib/password-policy";
 import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
+import { getTeacherDocumentTitle } from "@/lib/document-title";
 import { authApi, type TeacherUser } from "./api-client";
 import { Login } from "./pages/Login";
 
@@ -24,7 +28,7 @@ const TaskProgressDetail = lazy(async () => ({ default: (await import("./pages/T
 const TopicManagement = lazy(async () => ({ default: (await import("./pages/TopicManagement")).TopicManagement }));
 
 function RouteLoading() {
-    return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    return <LoadingStatus className="min-h-[60vh]" label="正在加载教师端页面" />;
 }
 
 const menu = [
@@ -61,6 +65,7 @@ function TeacherWorkspace({
 
     return (
         <div className="flex min-h-screen bg-background text-foreground">
+            <SkipLink />
             <WorkspaceSidebar
                 title="教师工作台"
                 titleIcon={BarChart3}
@@ -81,7 +86,7 @@ function TeacherWorkspace({
                         <IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton>
                     </div>
                 </header>
-                <div className="p-6">
+                <div id="main-content" tabIndex={-1} className="p-6">
                     {mustChangePassword ? (
                         <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用教学功能。</div>
                     ) : <Suspense fallback={<RouteLoading />}><Routes>
@@ -121,6 +126,7 @@ export function TeacherApp() {
     const navigate = useNavigate();
     const [checking, setChecking] = useState(true);
     const [user, setUser] = useState<TeacherUser | null>(null);
+    useDocumentTitle(getTeacherDocumentTitle(location.pathname));
     useEffect(() => {
         const clearUser = () => setUser(null);
         window.addEventListener(AUTH_EXPIRED_EVENT, clearUser);
@@ -132,7 +138,7 @@ export function TeacherApp() {
             setChecking(false);
         });
     }, []);
-    if (checking) return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    if (checking) return <LoadingStatus className="min-h-screen bg-background" label="正在验证教师登录状态" />;
     if (location.pathname === "/login") return user ? <Navigate to="/" replace /> : <Login />;
     if (!user) return <Navigate to="/login" replace />;
     return <TeacherWorkspace

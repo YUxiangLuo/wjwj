@@ -87,7 +87,7 @@ export function TaskProgressDetail() {
 
     const total = data ? Object.values(data.counts).reduce((a, b) => a + b, 0) : 0;
 
-    if (loading) return <div className="p-12 text-center text-muted-foreground">加载中...</div>;
+    if (loading) return <div role="status" aria-live="polite" className="p-12 text-center text-muted-foreground">加载中...</div>;
     if (!data) return <div className="p-12 text-center text-muted-foreground">未找到任务</div>;
 
     return (

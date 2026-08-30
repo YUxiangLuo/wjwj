@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard, FileText, FlaskConical, CheckCircle,
-    ChevronRight, Clock, AlertCircle, Loader2, Trophy, BookOpen
+    ChevronRight, Clock, AlertCircle, Trophy, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
+import { LoadingStatus } from "@/components/LoadingStatus";
 import { getRichTextPlainText } from "@/utils/rich-text";
 import { announcementsApi, tasksApi, type StudentTask, type TaskStatus, type Announcement } from "../api-client";
 import { formatDateTimeDisplay, getRemainingDeadlineSummary, DAY_MS } from "@/utils/format";
@@ -307,11 +308,7 @@ export function TaskHall() {
         .filter(t => t.status === "graded" && t.score !== undefined)
         .reduce((acc, t, _, arr) => acc + (t.score || 0) / arr.length, 0);
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
-            </div>
-        );
+        return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验任务" />;
     }
 
     return (

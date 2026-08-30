@@ -120,6 +120,8 @@ export function Login() {
                                     placeholder="请输入用户名"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
+                                    aria-invalid={error ? true : undefined}
+                                    aria-describedby={error ? "admin-login-error" : undefined}
                                     autoComplete="username"
                                     className="h-12 bg-card border-border focus:border-ring focus:ring-ring/20 text-foreground placeholder:text-muted-foreground rounded-xl transition-all"
                                 />
@@ -138,6 +140,8 @@ export function Login() {
                                     placeholder="请输入密码"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    aria-invalid={error ? true : undefined}
+                                    aria-describedby={error ? "admin-login-error" : undefined}
                                     autoComplete="current-password"
                                     className="h-12 bg-card border-border focus:border-ring focus:ring-ring/20 text-foreground placeholder:text-muted-foreground rounded-xl transition-all"
                                 />
@@ -145,8 +149,8 @@ export function Login() {
                         </div>
 
                         {error && (
-                            <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-xl border border-destructive/20 flex items-center gap-3 animate-in slide-in-from-top-2">
-                                <div className="w-2 h-2 rounded-full bg-destructive" />
+                            <div id="admin-login-error" role="alert" aria-atomic="true" className="p-4 text-sm text-destructive bg-destructive/10 rounded-xl border border-destructive/20 flex items-center gap-3 animate-in slide-in-from-top-2">
+                                <div aria-hidden="true" className="w-2 h-2 rounded-full bg-destructive" />
                                 {error}
                             </div>
                         )}
@@ -155,7 +159,7 @@ export function Login() {
                             <Button type="submit" data-testid="admin-login-submit" className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]" disabled={loading}>
                                 {loading ? (
                                     <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        <Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" />
                                         登录中...
                                     </>
                                 ) : (

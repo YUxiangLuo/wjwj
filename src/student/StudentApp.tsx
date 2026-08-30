@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { ArrowLeft, BarChart3, KeyRound, Loader2, LogOut, User } from "lucide-react";
+import { ArrowLeft, BarChart3, KeyRound, LogOut, User } from "lucide-react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
+import { LoadingStatus } from "@/components/LoadingStatus";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
+import { SkipLink } from "@/components/SkipLink";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -18,6 +20,8 @@ import {
 import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { STUDENT_PASSWORD_POLICY } from "@/lib/password-policy";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { getStudentDocumentTitle } from "@/lib/document-title";
 import { authApi } from "./api-client";
 import { StudentProvider, useStudent } from "./contexts/StudentContext";
 import { Login } from "./pages/Login";
@@ -30,7 +34,7 @@ const TaskHall = lazy(() => import("./pages/TaskHall"));
 const TopicDetails = lazy(() => import("./pages/TopicDetails"));
 
 function LoadingScreen() {
-    return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    return <LoadingStatus className="min-h-screen bg-background" label="正在加载学生端" />;
 }
 
 function StudentAppContent() {
@@ -40,6 +44,7 @@ function StudentAppContent() {
     const [showAccountMenu, setShowAccountMenu] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showLogout, setShowLogout] = useState(false);
+    useDocumentTitle(getStudentDocumentTitle(location.pathname));
     const isLogin = location.pathname === "/login";
     const isTaskHall = location.pathname === "/";
     const passwordChange = usePasswordChange({
@@ -69,6 +74,7 @@ function StudentAppContent() {
 
     return (
         <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30">
+            <SkipLink />
             <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur">
                 <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-8">
                     <div className="flex items-center gap-3">
@@ -123,7 +129,7 @@ function StudentAppContent() {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-7xl py-8 px-8">
+            <main id="main-content" tabIndex={-1} className="mx-auto max-w-7xl py-8 px-8">
                 {mustChangePassword ? (
                     <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再开始实验。</div>
                 ) : <Suspense fallback={<LoadingScreen />}><Routes>

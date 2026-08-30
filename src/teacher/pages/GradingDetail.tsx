@@ -82,7 +82,7 @@ export function GradingDetail() {
         toast.success("已驳回，学生可修改后重交");
         navigate("/grading");
     };
-    if (loading) return <p className="py-12 text-center text-muted-foreground">加载中...</p>;
+    if (loading) return <p role="status" aria-live="polite" className="py-12 text-center text-muted-foreground">加载中...</p>;
     if (!data) return <p className="py-12 text-center text-muted-foreground">未找到提交记录</p>;
     const canGrade = data.status === "submitted" || data.status === "graded";
     const scoreLabels = {

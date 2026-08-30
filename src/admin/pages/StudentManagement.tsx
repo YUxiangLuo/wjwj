@@ -187,7 +187,7 @@ export function StudentManagement() {
 
                 {loading ? (
                     <div className="grid place-items-center py-12" role="status" aria-label="正在加载学生列表">
-                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <Loader2 aria-hidden="true" className="h-6 w-6 animate-spin" />
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="grid place-items-center gap-3 rounded-xl border border-dashed border-border px-4 py-12 text-center">

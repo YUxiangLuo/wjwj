@@ -272,7 +272,7 @@ export function GradeExport() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">加载中...</TableCell>
+                                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground"><span role="status" aria-live="polite">加载中...</span></TableCell>
                                 </TableRow>
                             ) : preview.length === 0 ? (
                                 <TableRow>

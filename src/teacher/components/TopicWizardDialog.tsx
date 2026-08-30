@@ -305,7 +305,6 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
             <DialogContent
                 className="max-w-5xl h-[80vh] flex flex-col bg-card border-border text-foreground"
                 onInteractOutside={(e) => e.preventDefault()}
-                onEscapeKeyDown={(e) => e.preventDefault()}
             >
                 <DialogHeader>
                     <DialogTitle className="text-foreground">{editingTopicId ? "编辑课题" : "创建新课题"}</DialogTitle>
@@ -340,8 +339,8 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
 
                     <div className="flex-1">
                         {loadingDetail && currentStep > 1 && (
-                            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-in fade-in duration-200">
-                                <Loader2 className="w-6 h-6 animate-spin mb-3" />
+                            <div role="status" aria-live="polite" className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-in fade-in duration-200">
+                                <Loader2 aria-hidden="true" className="w-6 h-6 animate-spin mb-3" />
                                 <span className="text-sm">加载中...</span>
                             </div>
                         )}
@@ -430,7 +429,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         </>
                                     )}
                                 </div>
-                                {uploadingExcel && <div className="flex items-center gap-2 text-sm text-primary"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
+                                {uploadingExcel && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-primary"><Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                 {excelInfo && (
                                     <div className="space-y-3">
                                         <div className="bg-background border border-border rounded-lg p-4 text-sm text-foreground/90">
@@ -740,7 +739,7 @@ export function TopicWizardDialog(props: TopicWizardDialogProps) {
                                         if (file) onAttachmentUpload(file);
                                     }}
                                 />
-                                {uploadingAttachment && <div className="flex items-center gap-2 text-sm text-primary"><Loader2 className="w-4 h-4 animate-spin" /> 上传中...</div>}
+                                {uploadingAttachment && <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-primary"><Loader2 aria-hidden="true" className="w-4 h-4 animate-spin" /> 上传中...</div>}
                                 <div className="space-y-2 mt-4">
                                     {attachments.map((a) => (
                                         <div key={a.id} className="flex items-center justify-between text-sm p-3 bg-background border border-border rounded-lg group">

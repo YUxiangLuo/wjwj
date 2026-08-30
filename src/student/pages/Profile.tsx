@@ -157,6 +157,8 @@ export function Profile() {
                                 type="password"
                                 value={passwordForm.currentPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                aria-invalid={error ? true : undefined}
+                                aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="current-password"
                                 data-testid="student-profile-password-current"
                                 className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
@@ -169,6 +171,8 @@ export function Profile() {
                                 type="password"
                                 value={passwordForm.newPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                                aria-invalid={error ? true : undefined}
+                                aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-new"
                                 className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
@@ -181,6 +185,8 @@ export function Profile() {
                                 type="password"
                                 value={passwordForm.confirmPassword}
                                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                aria-invalid={error ? true : undefined}
+                                aria-describedby={error ? "student-profile-password-error" : undefined}
                                 autoComplete="new-password"
                                 data-testid="student-profile-password-confirm"
                                 className="bg-background/50 border-input text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
@@ -200,10 +206,10 @@ export function Profile() {
                             <div className={passwordRules.noStudentId ? "text-success" : "text-muted-foreground"}>{passwordRules.noStudentId ? "✓" : "✗"} 不包含学号</div>
                             <div className={passwordRules.matched ? "text-success" : "text-muted-foreground"}>{passwordRules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
-                        {error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded border border-destructive/20">{error}</div>}
+                        {error && <div id="student-profile-password-error" role="alert" aria-atomic="true" className="text-sm text-destructive bg-destructive/10 p-2 rounded border border-destructive/20">{error}</div>}
                         {success && (
-                            <div className="flex items-center gap-2 text-sm text-success bg-success/10 p-2 rounded border border-success/20">
-                                <CheckCircle2 className="w-4 h-4" />
+                            <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-success bg-success/10 p-2 rounded border border-success/20">
+                                <CheckCircle2 aria-hidden="true" className="w-4 h-4" />
                                 密码已更新
                             </div>
                         )}
@@ -211,6 +217,7 @@ export function Profile() {
                             className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 mt-2"
                             onClick={handleChangePassword}
                             disabled={saving}
+                            aria-busy={saving}
                             data-testid="student-profile-password-save"
                         >
                             {saving ? "保存中..." : "保存新密码"}

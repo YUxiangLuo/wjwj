@@ -127,7 +127,7 @@ export function ClassManagement() {
                 </PageHeader>
                 <CardContent className="pt-0">
                     {loading ? (
-                        <div className="flex items-center justify-center py-12 text-muted-foreground">加载中...</div>
+                        <div role="status" aria-live="polite" className="flex items-center justify-center py-12 text-muted-foreground">加载中...</div>
                     ) : (
                         <Table>
                             <TableHeader>

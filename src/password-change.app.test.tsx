@@ -128,6 +128,14 @@ test("student-style password dialog updates policy hints and shows forbidden sub
         expect(view.getByText("新密码不能包含学号")).toBeTruthy();
     });
 
+    const alert = view.getByRole("alert");
+    expect(alert.id.length).toBeGreaterThan(0);
+    for (const testId of ["student-password-current", "student-password-new", "student-password-confirm"]) {
+        const input = view.getByTestId(testId);
+        expect(input.getAttribute("aria-invalid")).toBe("true");
+        expect(input.getAttribute("aria-describedby")).toBe(alert.id);
+    }
+
     expect(submit).toHaveBeenCalledTimes(0);
 });
 

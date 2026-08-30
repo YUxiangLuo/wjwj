@@ -131,7 +131,7 @@ export function TopicViewDialog({ open, onOpenChange, topic }: TopicViewDialogPr
                 {/* Tab content */}
                 <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
                     {loading ? (
-                        <div className="flex items-center justify-center py-20 text-muted-foreground">加载中...</div>
+                        <div role="status" aria-live="polite" className="flex items-center justify-center py-20 text-muted-foreground">加载中...</div>
                     ) : (
                         <>
                             {/* Basic Info Tab */}

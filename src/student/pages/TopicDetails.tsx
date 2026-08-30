@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Loader2, Clock, AlertTriangle, BookOpen, ChevronRight, Eye } from "lucide-react";
+import { ArrowLeft, FileText, Download, Play, Image, File, CheckCircle, Clock, AlertTriangle, BookOpen, ChevronRight, Eye } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, type StatusBadgeIntent } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RichTextContent } from "@/components/RichTextContent";
+import { LoadingStatus } from "@/components/LoadingStatus";
 import { tasksApi, type TaskDetail, type TaskStatus, type TopicAttachment } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import { getTaskPrimaryAction, shouldShowTaskAvailabilityHint } from "./topic-detail-action";
@@ -130,11 +131,7 @@ export function TopicDetails() {
     }, [taskId]);
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-10 h-10 animate-spin text-primary" />
-            </div>
-        );
+        return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载课题详情" />;
     }
 
     if (accessDeniedVariant) {

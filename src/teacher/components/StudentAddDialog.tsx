@@ -84,7 +84,7 @@ export function StudentAddDialog(props: StudentAddDialogProps) {
                         disabled={submitting || !isStudentAddFormComplete(form)}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground"
                     >
-                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "确认添加"}
+                        {submitting ? <><Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" />添加中...</> : "确认添加"}
                     </Button>
                 </DialogFooter>
             </DialogContent>

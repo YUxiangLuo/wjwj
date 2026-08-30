@@ -15,6 +15,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { RichTextContent } from "@/components/RichTextContent";
+import { LoadingStatus } from "@/components/LoadingStatus";
 import { experimentApi, tasksApi, type ExperimentData, type TaskDetail, type Question } from "../api-client";
 import { TopicDeletedState } from "../components/TopicDeletedState";
 import {
@@ -146,11 +147,7 @@ export function SubmissionPreview() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center py-24">
-                <Loader2 className="w-8 h-8 animate-spin text-info" />
-            </div>
-        );
+        return <LoadingStatus className="py-24" iconClassName="h-8 w-8 text-info" label="正在加载提交预览" />;
     }
 
     if (accessDeniedVariant) {

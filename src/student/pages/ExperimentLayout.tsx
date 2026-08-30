@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Loader2, Play, RefreshCw, Ruler } from "lucide-react";
+import { AlertCircle, ArrowLeft, BarChart3, CheckCircle2, ChevronRight, Clock, FileText, Home, Play, RefreshCw, Ruler } from "lucide-react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getRemainingDeadlineSummary } from "@/utils/format";
+import { LoadingStatus } from "@/components/LoadingStatus";
 import { experimentApi, tasksApi, type ExperimentData } from "../api-client";
 import { formatAnalysisTargetSummary } from "@/lib/analysis-target";
 import { formatMarginOfError } from "../experiment/sample-plan-display";
@@ -154,7 +155,7 @@ export function ExperimentLayout() {
         if (heading instanceof HTMLElement) heading.focus?.();
     }, [currentStage, experiment]);
 
-    if (loading) return <div className="grid place-items-center py-24"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+    if (loading) return <LoadingStatus className="py-24" iconClassName="h-10 w-10" label="正在加载实验进度" />;
     if (accessDenied) return <TopicDeletedState variant={accessDenied} />;
     if (redirect) return <Navigate to={redirect} replace />;
     if (notFound || !experiment) return <Navigate to="/" replace />;

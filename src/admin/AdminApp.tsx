@@ -1,15 +1,19 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, Loader2, LogOut, Megaphone, School, Users } from "lucide-react";
+import { BarChart3, Calendar, GraduationCap, KeyRound, LayoutDashboard, LogOut, Megaphone, School, Users } from "lucide-react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/button";
 import { AppToaster } from "@/components/AppToaster";
+import { LoadingStatus } from "@/components/LoadingStatus";
 import { PasswordChangeDialog } from "@/components/PasswordChangeDialog";
+import { SkipLink } from "@/components/SkipLink";
 import { WorkspaceSidebar } from "@/components/WorkspaceSidebar";
 import { ADMIN_PASSWORD_POLICY } from "@/lib/password-policy";
 import { DEV_AUTH_MODE } from "@/lib/dev-mode";
 import { usePasswordChange } from "@/hooks/usePasswordChange";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { AUTH_EXPIRED_EVENT } from "@/lib/auth-expired";
+import { getAdminDocumentTitle } from "@/lib/document-title";
 import { authApi, type AdminUser } from "./api-client";
 import { Login } from "./pages/Login";
 
@@ -21,7 +25,7 @@ const StudentManagement = lazy(async () => ({ default: (await import("./pages/St
 const TeacherManagement = lazy(async () => ({ default: (await import("./pages/TeacherManagement")).TeacherManagement }));
 
 function RouteLoading() {
-    return <div className="grid min-h-[60vh] place-items-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    return <LoadingStatus className="min-h-[60vh]" label="正在加载管理页面" />;
 }
 
 const menu = [
@@ -50,6 +54,7 @@ function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser
 
     return (
         <div className="flex min-h-screen bg-background text-foreground">
+            <SkipLink />
             <WorkspaceSidebar
                 title="系统管理"
                 titleIcon={BarChart3}
@@ -63,7 +68,7 @@ function AdminWorkspace({ user, onLogout, onPasswordChanged }: { user: AdminUser
                     <div><h1 className="font-semibold">{title}</h1><p className="text-xs text-muted-foreground">内网教学系统</p></div>
                     <div className="flex items-center gap-1"><IconButton aria-label="修改密码" variant="ghost" title="修改密码" onClick={() => { passwordChange.reset(); setPasswordOpen(true); }}><KeyRound className="h-5 w-5" /></IconButton><IconButton aria-label="退出登录" variant="ghost" title="退出登录" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void onLogout()}><LogOut className="h-5 w-5" /></IconButton></div>
                 </header>
-                <div className="p-6">
+                <div id="main-content" tabIndex={-1} className="p-6">
                     {mustChangePassword ? (
                         <div className="grid min-h-[60vh] place-items-center text-sm text-muted-foreground">请先修改初始密码后再使用管理功能。</div>
                     ) : <Suspense fallback={<RouteLoading />}><Routes>
@@ -88,6 +93,7 @@ export function AdminApp() {
     const navigate = useNavigate();
     const [checking, setChecking] = useState(true);
     const [user, setUser] = useState<AdminUser | null>(null);
+    useDocumentTitle(getAdminDocumentTitle(location.pathname));
     useEffect(() => {
         const clearUser = () => setUser(null);
         window.addEventListener(AUTH_EXPIRED_EVENT, clearUser);
@@ -99,7 +105,7 @@ export function AdminApp() {
             setChecking(false);
         });
     }, []);
-    if (checking) return <div className="min-h-screen grid place-items-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    if (checking) return <LoadingStatus className="min-h-screen bg-background" label="正在验证管理员登录状态" />;
     if (location.pathname === "/login") return user ? <Navigate to="/" replace /> : <Login />;
     if (!user) return <Navigate to="/login" replace />;
     return <AdminWorkspace

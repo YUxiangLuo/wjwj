@@ -106,7 +106,7 @@ export function AnnouncementManagement() {
             <CardContent>
                 {loading ? (
                     <div className="grid place-items-center py-12" role="status" aria-label="正在加载公告">
-                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <Loader2 aria-hidden="true" className="h-6 w-6 animate-spin" />
                     </div>
                 ) : (
                     <div className="space-y-3">

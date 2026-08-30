@@ -6,6 +6,7 @@ import { RichTextContent } from "@/components/RichTextContent";
 import { SamplingResultsSnapshot } from "@/components/SamplingResultsSnapshot";
 import { QuestionnaireSnapshot } from "@/components/QuestionnaireSnapshot";
 import { SamplePlanSnapshot } from "@/components/SamplePlanSnapshot";
+import { LoadingStatus } from "@/components/LoadingStatus";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -38,7 +39,7 @@ export function SubmissionDetailPage() {
         }).finally(() => setLoading(false));
     }, [taskId]);
 
-    if (loading) return <div className="grid place-items-center py-24"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    if (loading) return <LoadingStatus className="py-24" iconClassName="h-8 w-8" label="正在加载实验结果" />;
     if (!detail) return <div className="mx-auto max-w-xl rounded-xl border border-border bg-card p-8 text-center text-muted-foreground">{error ?? "未找到提交记录"}</div>;
 
     const status = statusConfig[detail.status];

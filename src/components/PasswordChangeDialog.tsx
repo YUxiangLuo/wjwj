@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -33,6 +34,11 @@ function getStrengthToneClassName(score: number) {
 }
 
 export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
+    const idPrefix = useId();
+    const currentPasswordId = `${idPrefix}-current-password`;
+    const newPasswordId = `${idPrefix}-new-password`;
+    const confirmPasswordId = `${idPrefix}-confirm-password`;
+    const errorId = `${idPrefix}-error`;
     const {
         open,
         onOpenChange,
@@ -65,36 +71,42 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                     <div className="space-y-2">
-                        <Label htmlFor="currentPassword" className="text-foreground/90">当前密码</Label>
+                        <Label htmlFor={currentPasswordId} className="text-foreground/90">当前密码</Label>
                         <Input
-                            id="currentPassword"
+                            id={currentPasswordId}
                             type="password"
                             value={form.currentPassword}
                             onChange={(event) => onFieldChange("currentPassword", event.target.value)}
+                            aria-invalid={error ? true : undefined}
+                            aria-describedby={error ? errorId : undefined}
                             autoComplete="current-password"
                             data-testid={fieldTestIds?.currentPassword}
                             className="bg-background border-border text-foreground focus:border-ring"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="newPassword" className="text-foreground/90">新密码</Label>
+                        <Label htmlFor={newPasswordId} className="text-foreground/90">新密码</Label>
                         <Input
-                            id="newPassword"
+                            id={newPasswordId}
                             type="password"
                             value={form.newPassword}
                             onChange={(event) => onFieldChange("newPassword", event.target.value)}
+                            aria-invalid={error ? true : undefined}
+                            aria-describedby={error ? errorId : undefined}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.newPassword}
                             className="bg-background border-border text-foreground focus:border-ring"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="confirmPassword" className="text-foreground/90">确认新密码</Label>
+                        <Label htmlFor={confirmPasswordId} className="text-foreground/90">确认新密码</Label>
                         <Input
-                            id="confirmPassword"
+                            id={confirmPasswordId}
                             type="password"
                             value={form.confirmPassword}
                             onChange={(event) => onFieldChange("confirmPassword", event.target.value)}
+                            aria-invalid={error ? true : undefined}
+                            aria-describedby={error ? errorId : undefined}
                             autoComplete="new-password"
                             data-testid={fieldTestIds?.confirmPassword}
                             className="bg-background border-border text-foreground focus:border-ring"
@@ -114,7 +126,7 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             <div className={rules.matched ? "text-success" : "text-muted-foreground"}>{rules.matched ? "✓" : "✗"} 两次密码一致</div>
                         </div>
                     ) : null}
-                    {error ? <div className="text-sm text-destructive bg-destructive/20 p-2 rounded">{error}</div> : null}
+                    {error ? <div id={errorId} role="alert" aria-atomic="true" className="text-sm text-destructive bg-destructive/20 p-2 rounded">{error}</div> : null}
                 </div>
                 <DialogFooter>
                     {allowClose ? (
@@ -122,8 +134,8 @@ export function PasswordChangeDialog(props: PasswordChangeDialogProps) {
                             取消
                         </Button>
                     ) : null}
-                    <Button onClick={onSubmit} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground" data-testid={submitTestId}>
-                        {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    <Button onClick={onSubmit} disabled={saving} aria-busy={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground" data-testid={submitTestId}>
+                        {saving ? <Loader2 aria-hidden="true" className="w-4 h-4 mr-2 animate-spin" /> : null}
                         {submitLabel}
                     </Button>
                 </DialogFooter>

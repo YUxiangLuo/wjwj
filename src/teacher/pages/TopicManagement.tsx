@@ -430,7 +430,7 @@ export function TopicManagement() {
                     </div>
                 </PageHeader>
                 <CardContent className="space-y-4 pt-4">
-                    {loading ? <div className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
+                    {loading ? <div role="status" aria-live="polite" className="text-center py-12 text-muted-foreground">加载中...</div> : filteredTopics.map((topic) => (
                         <div data-testid={`teacher-topic-row-${topic.id}`} key={topic.id} className="border border-border rounded-lg p-5 bg-background hover:bg-card hover:border-input transition-all">
                             <div className="flex gap-3 flex-row items-start justify-between mb-4">
                                 <div className="flex items-start gap-4">
@@ -439,7 +439,7 @@ export function TopicManagement() {
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h4 className="font-semibold text-foreground text-lg">{topic.name}</h4>
+                                            <h3 className="font-semibold text-foreground text-lg">{topic.name}</h3>
                                             {topic.status === 1 ? (
                                                 <StatusBadge intent="success">已发布</StatusBadge>
                                             ) : (
