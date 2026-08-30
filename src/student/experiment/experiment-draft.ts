@@ -124,10 +124,6 @@ export function useExperimentDraft<T>({
     latestRef.current = { data, enabled, identity };
 
     useEffect(() => {
-        suspendedRef.current = false;
-    }, [identity.experimentId, identity.experimentVersion, identity.stage]);
-
-    useEffect(() => {
         if (!enabled || suspendedRef.current || !hasValidIdentity(identity)) return;
         const timer = window.setTimeout(() => {
             if (!suspendedRef.current) writeExperimentDraft(identity, data);
@@ -144,5 +140,9 @@ export function useExperimentDraft<T>({
     return useCallback(() => {
         suspendedRef.current = true;
         clearExperimentDraft(identity);
+        const latestIdentity = latestRef.current.identity;
+        if (draftKey(latestIdentity) !== draftKey(identity)) {
+            clearExperimentDraft(latestIdentity);
+        }
     }, [identity.experimentId, identity.experimentVersion, identity.stage]);
 }

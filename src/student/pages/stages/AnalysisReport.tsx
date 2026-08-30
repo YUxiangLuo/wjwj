@@ -536,7 +536,8 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             <div className="mb-4 flex items-start gap-2 rounded-xl border border-info/20 bg-info/10 p-3 text-xs leading-relaxed text-info" data-testid="student-analysis-oracle-notice">
                                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                                 <span>
-                                    本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。PPS 标准误是 {ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（按 R−1 计算重复间标准差），仍有模拟误差。
+                                    本实验使用完整虚拟总体演示抽样设计，因此可以对照总体真值并计算设计层面的误差。现实调查通常看不到未入样单位，需使用与抽样设计匹配的权重和方差估计。样本量、设计效应和无回答率计算均是基于页面所列假设的规划近似，不替代预调查、抽样框评估和专业统计设计。
+                                    {!isPpsUnavailable && <>PPS 标准误是 {ppsMonteCarloReplicates} 次重复抽样的 Monte Carlo 估计（按 R−1 计算重复间标准差），仍有模拟误差。</>}
                                 </span>
                             </div>
                             <Tabs defaultValue="charts" className="w-full">
@@ -702,7 +703,12 @@ export function AnalysisReport({ onPrev, onSubmit }: AnalysisReportProps) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-sm text-primary">
-                            <p>• 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。PPS 看的是可能存在小样本偏差的 Hájek 比估计。</p>
+                            <p>
+                                • 先比较总体均值估计，判断不同抽样方法是否给出接近的结果。
+                                {isPpsUnavailable
+                                    ? "本任务没有合格的 PPS 规模变量，因此 PPS 已按规则跳过，不应纳入方法间比较。"
+                                    : "PPS 看的是可能存在小样本偏差的 Hájek 比估计。"}
+                            </p>
                             <p>• 再看分类分布与总体对照偏差，描述当前样本对已知虚拟总体的贴近程度；这不能单独证明无偏或整体代表性。</p>
                             <p>• 最后结合设计标准误说明精度。本页 SE 借助完整虚拟总体；现实调查需使用与设计匹配的样本方差估计。</p>
                         </CardContent>

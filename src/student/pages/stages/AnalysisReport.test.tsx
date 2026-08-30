@@ -182,6 +182,22 @@ test("AnalysisReport labels full-population metrics as virtual-population oracle
     expect(view.getByTestId("student-analysis-tab-represent").textContent).toContain("总体对照偏差");
 });
 
+test("AnalysisReport omits PPS-only guidance when PPS is unavailable", async () => {
+    mockExperimentContext.experiment = {
+        ...mockExperimentContext.experiment,
+        samplingResults: {
+            ...(mockExperimentContext.experiment?.samplingResults as Record<string, unknown>),
+            pps: { completed: false, unavailable: true, unavailableReason: "没有合格的规模变量" },
+        },
+    };
+
+    const view = render(<AnalysisReport onPrev={() => undefined} onSubmit={() => undefined} />);
+
+    await waitFor(() => expect(mockExperimentApi.getAnalysisMetrics).toHaveBeenCalledTimes(1));
+    expect(view.getByTestId("student-analysis-oracle-notice").textContent).not.toContain("PPS 标准误");
+    expect(view.getByText(/PPS 已按规则跳过，不应纳入方法间比较/)).toBeTruthy();
+});
+
 test("AnalysisReport warns when a historical numeric column is excluded for missing values", async () => {
     mockExperimentApi.getAnalysisMetrics.mockResolvedValueOnce({
         success: true,

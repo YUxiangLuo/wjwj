@@ -92,3 +92,23 @@ test("successful completion remains cleared after the editor unmounts", () => {
 
     expect(readExperimentDraft(identity)).toBeNull();
 });
+
+test("successful completion stays suspended across the server version update", () => {
+    const oldIdentity = { experimentId: 23, experimentVersion: 4, stage: 4 };
+    const newIdentity = { ...oldIdentity, experimentVersion: 5 };
+    const hook = renderHook(
+        ({ identity }) => useExperimentDraft({
+            ...identity,
+            data: { reportContent: "已提交内容" },
+            saveDelayMs: 60_000,
+        }),
+        { initialProps: { identity: oldIdentity } },
+    );
+
+    act(() => hook.result.current());
+    act(() => hook.rerender({ identity: newIdentity }));
+    hook.unmount();
+
+    expect(readExperimentDraft(oldIdentity)).toBeNull();
+    expect(readExperimentDraft(newIdentity)).toBeNull();
+});
