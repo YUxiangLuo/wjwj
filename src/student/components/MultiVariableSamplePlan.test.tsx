@@ -105,6 +105,12 @@ test("均值相对误差拒绝零均值，并对负均值使用绝对值", () =>
     expect(zero).toBe(0);
 });
 
+test("比例变量把 UI 中小于 1% 的误差限按百分数换算", () => {
+    const variable = proportionVar({ marginOfError: 0.5, estimatedValue: 0.5 });
+
+    expect(calculateSurveyVariableRequiredSampleSize(variable, 10_000)).toBe(7935);
+});
+
 test("传入 onApplyToPlan 时不自动调用 onRecommendedSampleSizeChange", async () => {
     const onRecommendedSampleSizeChange = mock((_n: number) => {});
     const onApplyToPlan = mock(() => {});

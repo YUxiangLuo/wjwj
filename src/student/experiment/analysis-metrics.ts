@@ -9,7 +9,7 @@ import {
 } from "./population-data";
 
 const METHODS: MethodKey[] = ["simple", "systematic", "pps", "stratified"];
-export const DEFAULT_PPS_MONTE_CARLO_REPLICATES = 128;
+export const DEFAULT_PPS_MONTE_CARLO_REPLICATES = 512;
 
 /** 教学环境可调整重复次数；设置边界避免误配置导致无意义结果或过量计算。 */
 export function resolvePpsMonteCarloReplicates(rawValue?: string): number {

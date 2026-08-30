@@ -11,6 +11,7 @@ import {
     getMarginOfErrorLabel,
     normalizeSamplePlanData,
 } from "../../experiment/sample-plan-display";
+import { finitePopulationS2ToSigma2 } from "../../experiment/sample-plan";
 import { ImmersiveSamplePlanning } from "../../components/immersive-sample-planning";
 import { ImmersiveExperimentLaunch } from "../../components/ImmersiveExperimentLaunch";
 import {
@@ -68,8 +69,11 @@ export function SamplePlanning({ onPrev }: SamplePlanningProps) {
         let cancelled = false;
         void experimentApi.getStats(experiment.taskId).then((res) => {
             if (cancelled) return;
-            const variance = res.data?.populationNumericStats?.[field]?.variance;
-            if (typeof variance === "number" && Number.isFinite(variance) && variance > 0) {
+            const stat = res.data?.populationNumericStats?.[field];
+            const variance = stat
+                ? finitePopulationS2ToSigma2(stat.variance, stat.count)
+                : null;
+            if (variance != null && variance > 0) {
                 setTargetVariance(variance);
             }
         }).catch(() => {}).finally(() => {

@@ -187,7 +187,7 @@ test("mean-locked first visit waits for target variance then opens overlay with 
 
     await waitFor(() => expect(view.getByTestId("mock-immersive-planning")).toBeTruthy());
     expect(lastPlanningProps?.initialMarginOfError).toBe(2);
-    expect(lastPlanningProps?.initialPopulationVariance).toBe(67.128040201005);
+    expect(lastPlanningProps?.initialPopulationVariance).toBeCloseTo(66.7924, 10);
     expect(lastPlanningProps?.initialEstimationType).toBe("mean");
 });
 
@@ -210,7 +210,8 @@ test("completing the overlay persists the variance used to compute n, not a late
     fireEvent.click(view.getByTestId("mock-planning-complete"));
     await waitFor(() => expect(view.getByTestId("student-sample-plan-summary")).toBeTruthy());
     const summary = view.getByTestId("student-sample-plan-summary").textContent ?? "";
-    expect(summary).toContain("67.128040201005");
+    expect(summary).toContain(String(lastPlanningProps?.initialPopulationVariance));
+    expect(summary).not.toContain("67.128040201005");
     expect(summary).toContain("49");
 });
 

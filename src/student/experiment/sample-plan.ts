@@ -121,6 +121,18 @@ export function finitePopulationVarianceFactor(populationSize: number, sampleSiz
     return Math.max(0, (N - sampleSize) / (N - 1));
 }
 
+/**
+ * 把分母 N−1 的有限总体方差 S² 换成分母 N 的 σ²。
+ * 项目的均值规划公式使用 σ² 与 (N−n)/(N−1) 这一组一致口径。
+ */
+export function finitePopulationS2ToSigma2(s2: number, populationCount: number): number | null {
+    if (!Number.isFinite(s2) || s2 < 0 || !Number.isInteger(populationCount) || populationCount < 1) {
+        return null;
+    }
+    if (populationCount === 1) return 0;
+    return s2 * (populationCount - 1) / populationCount;
+}
+
 export function calculateFinitePopulationSampleSize(params: {
     confidenceLevel: unknown;
     marginOfError: unknown;
@@ -636,7 +648,7 @@ export function calculateClusterSamplingSize(params: ClusterSamplingParams): Clu
         requiredSampleSize,
         intraClassCorrelation: Math.min(rho, 1),  // ρ不超过1
         deff: params.deff,
-        explanation: `整群抽样中，由于群内单元同质性高，需要${params.deff}倍于简单随机抽样的样本量来补偿。`,
+        explanation: `在当前目标变量的 deff=${params.deff} 假设下，规划样本量按相对简单随机抽样的方差放大进行补偿。`,
     };
 }
 

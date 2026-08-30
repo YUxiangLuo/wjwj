@@ -75,7 +75,9 @@ export function calculateSurveyVariableRequiredSampleSize(variable: SurveyVariab
         const p = variable.estimatedValue;
         return calculateFinitePopulationSampleSize({
             confidenceLevel: variable.confidenceLevel,
-            marginOfError: variable.marginOfError,
+            // 本组件的输入框始终以百分数显示和存储；底层兼容函数对 <1 的值
+            // 会视为小数比例，因此必须在组件边界显式换算，避免 0.5% 被当成 50%。
+            marginOfError: variable.marginOfError / 100,
             populationSize,
             designEffect: 1,
             nonResponseRate: 0,

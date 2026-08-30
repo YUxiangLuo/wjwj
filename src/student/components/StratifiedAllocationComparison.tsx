@@ -30,8 +30,8 @@ interface AllocationComparison {
         sampleSize: number;      // nh
         proportion: number;      // nh / 总样本量
     }>;
-    totalVariance: number;       // 估计方差（相对值）
-    efficiency: number;          // 相对于按比例分配的效率（Var_prop / Var_method）
+    totalVariance: number | null; // 估计方差；有正总体层未抽样时不可计算
+    efficiency: number | null;    // 相对于按比例分配的效率（Var_prop / Var_method）
     totalCost?: number;          // 总成本（最优分配时）
 }
 
@@ -100,9 +100,13 @@ export function StratifiedAllocationComparison({
         const propVariance = raw[0]?.totalVariance;
         return raw.map((comparison) => ({
             ...comparison,
-            efficiency: canCompareVariance && propVariance && propVariance > 0 && comparison.totalVariance > 0
+            efficiency: canCompareVariance
+                && propVariance != null
+                && propVariance > 0
+                && comparison.totalVariance != null
+                && comparison.totalVariance > 0
                 ? propVariance / comparison.totalVariance
-                : 1,
+                : null,
         }));
     }, [canCompareVariance, layers, totalSampleSize, layerStdDevs, layerMeans]);
 
@@ -111,11 +115,14 @@ export function StratifiedAllocationComparison({
     const primaryComparisons = comparisons.filter((comparison) => comparison.method === "proportional" || comparison.method === "neyman");
     const extraComparisons = comparisons.filter((comparison) => comparison.method !== "proportional" && comparison.method !== "neyman");
     const visibleComparisons = showExtraMethods ? comparisons : primaryComparisons;
-    const bestMethod = canCompareVariance
-        ? visibleComparisons.reduce((best, current) =>
-            current.totalVariance < best.totalVariance ? current : best
-        )
-        : null;
+    const validVarianceComparisons = canCompareVariance
+        ? visibleComparisons.filter((comparison) => comparison.totalVariance != null)
+        : [];
+    const bestMethod = validVarianceComparisons.reduce<AllocationComparison | null>(
+        (best, current) => best == null || current.totalVariance! < best.totalVariance! ? current : best,
+        null,
+    );
+    const hasIncompleteAllocation = visibleComparisons.some((comparison) => comparison.totalVariance == null);
 
     return (
         <Card className="rounded-2xl border-auxiliary-border bg-auxiliary-muted/80 shadow-sm">
@@ -202,6 +209,7 @@ export function StratifiedAllocationComparison({
                                         <Button
                                             variant="outline"
                                             size="sm"
+                                            disabled={comparison.totalVariance == null}
                                             onClick={() => {
                                                 onApplyAllocation(comparison.allocation.map(a => ({
                                                     name: a.layerName,
@@ -254,13 +262,17 @@ export function StratifiedAllocationComparison({
                                     <div className="text-center">
                                         <div className="text-xs text-auxiliary mb-1">估计方差（相对）</div>
                                         <div className="font-bold text-auxiliary-strong">
-                                            {canCompareVariance ? comparison.totalVariance.toFixed(4) : "—"}
+                                            {canCompareVariance && comparison.totalVariance != null
+                                                ? comparison.totalVariance.toFixed(4)
+                                                : "—"}
                                         </div>
                                     </div>
                                     <div className="text-center">
                                         <div className="text-xs text-auxiliary mb-1">相对效率</div>
                                         <div className={`font-bold ${isBest ? "text-success" : "text-auxiliary-strong"}`}>
-                                            {canCompareVariance ? `${comparison.efficiency.toFixed(2)}×` : "—"}
+                                            {canCompareVariance && comparison.efficiency != null
+                                                ? `${comparison.efficiency.toFixed(2)}×`
+                                                : "—"}
                                         </div>
                                     </div>
                                 </div>
@@ -268,6 +280,18 @@ export function StratifiedAllocationComparison({
                         );
                     })}
                 </div>
+
+                {hasIncompleteAllocation && (
+                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
+                        <div className="flex gap-2">
+                            <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                            <p className="text-xs text-warning leading-relaxed">
+                                当前总样本量不足以让每个正总体层至少获得 1 个样本。普通分层均值无法估计，
+                                因此相关方案不计算方差或效率，也不能应用；请把总样本量至少提高到正总体层数。
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {extraComparisons.length > 0 && (
                     <Button
@@ -280,19 +304,19 @@ export function StratifiedAllocationComparison({
                     </Button>
                 )}
 
-                {canCompareVariance && (
-                <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
-                    <div className="flex gap-2">
-                        <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                        <div className="text-xs text-warning space-y-1">
-                            <p className="font-medium">效率解读</p>
-                            <p className="text-warning">
-                                相对效率以按比例分配为基准（1.00×）。&gt; 1 表示比按比例分配更精确。
-                                在固定总样本量、层内 SRS 和等单位成本下，奈曼分配针对所选变量最小化总体均值估计方差；改变目标变量、成本或域精度目标后，结论也会改变。
-                            </p>
+                {canCompareVariance && !hasIncompleteAllocation && (
+                    <div className="rounded-xl border border-warning/20 bg-warning/10 p-3">
+                        <div className="flex gap-2">
+                            <AlertCircle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                            <div className="text-xs text-warning space-y-1">
+                                <p className="font-medium">效率解读</p>
+                                <p className="text-warning">
+                                    相对效率以按比例分配为基准（1.00×）。&gt; 1 表示比按比例分配更精确。
+                                    在固定总样本量、层内 SRS 和等单位成本下，奈曼分配针对所选变量最小化总体均值估计方差；改变目标变量、成本或域精度目标后，结论也会改变。
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
                 )}
 
                 <p className="text-xs leading-relaxed text-auxiliary">
@@ -320,7 +344,7 @@ function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: n
     // 调整总和为 totalSampleSize
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
 
-    const totalVariance = calculateVariance(allocation, layers, stdDevs);
+    const totalVariance = calculateStratifiedMeanVariance(allocation, layers, stdDevs);
 
     return {
         method: "proportional",
@@ -328,7 +352,7 @@ function calculateProportionalAllocation(layers: LayerInfo[], totalSampleSize: n
         description: "样本量与层总体大小成比例，是最常用且稳健的方法",
         allocation,
         totalVariance,
-        efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio
+        efficiency: null, // overridden by comparisons useMemo with relative-to-proportional ratio
     };
 }
 
@@ -346,7 +370,7 @@ function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number, 
 
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
 
-    const totalVariance = calculateVariance(allocation, layers, stdDevs);
+    const totalVariance = calculateStratifiedMeanVariance(allocation, layers, stdDevs);
 
     return {
         method: "equal",
@@ -354,7 +378,7 @@ function calculateEqualAllocation(layers: LayerInfo[], totalSampleSize: number, 
         description: "每层尽量分配相同样本量，适合重视各层分别估计或有意增加小层样本的场景",
         allocation,
         totalVariance,
-        efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio
+        efficiency: null, // overridden by comparisons useMemo with relative-to-proportional ratio
     };
 }
 
@@ -377,7 +401,7 @@ function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number,
 
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
 
-    const totalVariance = calculateVariance(allocation, layers, stdDevs);
+    const totalVariance = calculateStratifiedMeanVariance(allocation, layers, stdDevs);
 
     return {
         method: "neyman",
@@ -385,7 +409,7 @@ function calculateNeymanAllocation(layers: LayerInfo[], totalSampleSize: number,
         description: "在固定总样本量、层内 SRS 和等单位成本下，按 NₕSₕ 分配使目标均值估计的方差最小",
         allocation,
         totalVariance,
-        efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio
+        efficiency: null, // overridden by comparisons useMemo with relative-to-proportional ratio
     };
 }
 
@@ -416,29 +440,32 @@ function normalizeAllocation(
 
 // 方差计算
 // Var(ȳ_st) = Σ (W_h² × S_h² / n_h) × (1 − n_h / N_h)
-function calculateVariance(
+export function calculateStratifiedMeanVariance(
     allocation: Array<{ layerName: string; populationSize: number; sampleSize: number }>,
     layers: LayerInfo[],
     stdDevs?: number[],
-): number {
-    const totalPopulation = layers.reduce((a, l) => a + l.count, 0);
+): number | null {
+    const totalPopulation = layers.reduce((sum, layer) => sum + Math.max(0, layer.count), 0);
+    if (!(totalPopulation > 0)) return null;
 
     let totalVariance = 0;
-    allocation.forEach((a, i) => {
-        const Nh = a.populationSize;
-        const nh = a.sampleSize;
-        const Wh = totalPopulation > 0 ? Nh / totalPopulation : 0;
+    for (let i = 0; i < layers.length; i += 1) {
+        const Nh = Math.max(0, layers[i]?.count ?? 0);
+        if (Nh === 0) continue;
+
+        const nh = allocation[i]?.sampleSize ?? 0;
+        if (!Number.isInteger(nh) || nh < 1 || nh > Nh) return null;
+        const Wh = Nh / totalPopulation;
 
         // Use actual S_h² when available, otherwise fall back to heuristic S_h² ∝ N_h/N
         const Sh2 = stdDevs
-            ? stdDevs[i]! ** 2
-            : (totalPopulation > 0 ? Nh / totalPopulation : 0);
+            ? (stdDevs[i] ?? Number.NaN) ** 2
+            : Nh / totalPopulation;
+        if (!Number.isFinite(Sh2) || Sh2 < 0) return null;
 
-        if (nh > 0) {
-            const layerVariance = Wh ** 2 * (Sh2 / nh) * (1 - nh / Nh);
-            totalVariance += layerVariance;
-        }
-    });
+        const layerVariance = Wh ** 2 * (Sh2 / nh) * (1 - nh / Nh);
+        totalVariance += layerVariance;
+    }
 
     return totalVariance;
 }
@@ -461,7 +488,7 @@ function calculateSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSize: n
 
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
 
-    const totalVariance = calculateVariance(allocation, layers, stdDevs);
+    const totalVariance = calculateStratifiedMeanVariance(allocation, layers, stdDevs);
 
     return {
         method: "sizeMeasure",
@@ -469,7 +496,7 @@ function calculateSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSize: n
         description: "按课件模型使各层样本量与 Nₕ×Ȳₕ 成比例；不是一般估计问题的通用最优分配",
         allocation,
         totalVariance,
-        efficiency: 1,
+        efficiency: null,
     };
 }
 
@@ -491,7 +518,7 @@ function calculateSqrtSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSiz
 
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
 
-    const totalVariance = calculateVariance(allocation, layers, stdDevs);
+    const totalVariance = calculateStratifiedMeanVariance(allocation, layers, stdDevs);
 
     return {
         method: "sqrtSizeMeasure",
@@ -499,7 +526,7 @@ function calculateSqrtSizeMeasureNAllocation(layers: LayerInfo[], totalSampleSiz
         description: "按课件模型与 √(Nₕ×Ȳₕ) 成比例，在两种份额规则间折中；不代表普遍方差最优",
         allocation,
         totalVariance,
-        efficiency: 1,
+        efficiency: null,
     };
 }
 
@@ -521,7 +548,7 @@ function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: nu
 
     allocation = normalizeAllocation(allocation, totalSampleSize, layers);
 
-    const totalVariance = calculateVariance(allocation, layers, stdDevs);
+    const totalVariance = calculateStratifiedMeanVariance(allocation, layers, stdDevs);
 
     return {
         method: "sqrt" as const,
@@ -529,6 +556,6 @@ function calculateSquareRootNAllocation(layers: LayerInfo[], totalSampleSize: nu
         description: "与层规模的平方根成比例，在按比例和等额份额之间折中；不代表普遍方差最优",
         allocation,
         totalVariance,
-        efficiency: 1, // overridden by comparisons useMemo with relative-to-proportional ratio
+        efficiency: null, // overridden by comparisons useMemo with relative-to-proportional ratio
     };
 }

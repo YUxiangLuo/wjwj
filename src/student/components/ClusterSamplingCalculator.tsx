@@ -99,7 +99,8 @@ export function ClusterSamplingCalculator({
                             <p className="font-medium">什么是整群抽样？</p>
                             <p>
                                 整群抽样以"群"为单位抽样（如整栋居民楼、整个班级），群内所有单元都调查。
-                                由于群内单元通常同质性高，需要更大的样本量来补偿（设计效应 deff &gt; 1）。
+                                当目标变量在群内正相关时，设计效应通常大于 1，需要增加样本量；实际 deff
+                                取决于目标变量、群规模、群内相关和权重，而不是仅由“整群抽样”这个名称决定。
                                 这里算出的 n 只会写回决策面板的最终样本量；抽样执行阶段仍是简单随机、系统、PPS 或分层。
                             </p>
                         </div>
@@ -152,10 +153,13 @@ export function ClusterSamplingCalculator({
                             className={primarySliderClassName}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>1.0 (简单随机)</span>
-                            <span>2.0 (中等)</span>
-                            <span>5.0 (高度聚集)</span>
+                            <span>1.0（SRS 基准）</span>
+                            <span>当前 {deff.toFixed(1)}</span>
+                            <span>5.0（设置上限）</span>
                         </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            优先采用同类历史调查中同一指标的 deff，或用预调查、设计模拟估计；不要按抽样方法套用固定区间。
+                        </p>
                     </div>
 
                     {/* 其他参数（继承决策面板，可在本工具内调整） */}
@@ -283,27 +287,13 @@ export function ClusterSamplingCalculator({
                     </div>
                 )}
 
-                {/* 参考值 */}
+                {/* 取值依据 */}
                 <div className="rounded-xl border border-border bg-background p-3">
-                    <p className="text-xs font-medium text-foreground mb-2">设计效应参考</p>
-                    <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">简单随机抽样 (SRS)</span>
-                            <span className="text-foreground/90 font-bold">1.0</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">分层抽样（层内同质）</span>
-                            <span className="text-success font-bold">0.7-0.9</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">整群抽样（中等聚集）</span>
-                            <span className="text-warning font-bold">1.5-2.5</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">整群抽样（高度聚集）</span>
-                            <span className="text-destructive font-bold">3.0-5.0</span>
-                        </div>
-                    </div>
+                    <p className="text-xs font-medium text-foreground mb-1.5">设计效应如何取值</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        SRS 的基准为 deff=1。复杂设计的 deff 应针对当前目标变量和估计量确定；不同指标即使来自同一调查，也可能有不同设计效应。
+                        若只有群规模 M 和可信的群内相关系数 ρ，可用 deff≈1+(M−1)ρ 作规划近似。
+                    </p>
                 </div>
             </CardContent>
         </Card>

@@ -13,6 +13,7 @@ import {
 } from "../sampling";
 
 test("PPS Monte Carlo replicate configuration is bounded and defaults safely", () => {
+    expect(DEFAULT_PPS_MONTE_CARLO_REPLICATES).toBe(512);
     expect(resolvePpsMonteCarloReplicates(undefined)).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);
     expect(resolvePpsMonteCarloReplicates("512")).toBe(512);
     expect(resolvePpsMonteCarloReplicates("31")).toBe(DEFAULT_PPS_MONTE_CARLO_REPLICATES);

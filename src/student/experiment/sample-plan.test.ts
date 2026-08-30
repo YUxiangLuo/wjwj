@@ -15,6 +15,7 @@ import {
     calculateSampleSizeSteps,
     calculateSizeMeasureAllocation,
     calculateSqrtSizeMeasureAllocation,
+    finitePopulationS2ToSigma2,
     finitePopulationVarianceFactor,
 } from "./sample-plan";
 
@@ -212,6 +213,12 @@ test("deff = 1 does not change the result", () => {
 test("finite population variance factor uses the exact denominator-N convention", () => {
     expect(finitePopulationVarianceFactor(60, 53)).toBeCloseTo(7 / 59, 14);
     expect(finitePopulationVarianceFactor(60, 60)).toBe(0);
+});
+
+test("finite-population S² is converted from denominator N−1 to denominator N", () => {
+    expect(finitePopulationS2ToSigma2(50, 24)).toBeCloseTo(47.916666666666664, 14);
+    expect(finitePopulationS2ToSigma2(67.128040201005, 200)).toBeCloseTo(66.7924, 10);
+    expect(finitePopulationS2ToSigma2(-1, 200)).toBeNull();
 });
 
 test("metrics SE includes finite population correction", () => {
